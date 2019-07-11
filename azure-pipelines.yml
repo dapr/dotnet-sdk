@@ -10,6 +10,21 @@ stages:
   - job: 'build_projects'
     pool:
       vmImage: 'windows-2019'
+    steps:
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: 'build'
+          projects: 'Microsoft.Actions.Actors/Microsoft.Actions.Actors.sln'
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: 'test'
+          projects: 'Microsoft.Actions.Actors/Microsoft.Actions.Actors.sln'
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: 'pack'
+          packagesToPack: '**/*.csproj'
+          nobuild: true
+          versioningScheme: 'byBuildNumber'
 - stage: Publish
   displayName: 'Publish Nuget Packages'
   dependsOn: Build
