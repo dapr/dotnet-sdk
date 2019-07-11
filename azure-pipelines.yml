@@ -25,6 +25,9 @@ stages:
           packagesToPack: '**/*.csproj'
           nobuild: true
           versioningScheme: 'byBuildNumber'
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: '$(Pipeline.Workspace)'
 - stage: Publish
   displayName: 'Publish Nuget Packages'
   dependsOn: Build
