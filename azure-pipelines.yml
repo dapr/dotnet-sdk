@@ -1,0 +1,19 @@
+# actionscore/cs-sdk pipeline
+
+trigger:
+- master
+- release-*
+
+stages:
+- stage: Build
+  jobs:
+  - job: 'build_projects'
+    pool:
+      vmImage: 'windows-2019'
+- stage: Publish
+  displayName: 'Publish Nuget Packages'
+  dependsOn: Build
+  jobs:
+  - job: 'publish_edge_binaries'
+    pool:
+      vmImage: 'windows-2019'
