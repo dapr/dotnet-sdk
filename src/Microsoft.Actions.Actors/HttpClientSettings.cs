@@ -13,7 +13,7 @@ namespace Microsoft.Actions.Actors
     internal class HttpClientSettings
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ClientSettings"/> class.
+        /// Initializes a new instance of the <see cref="HttpClientSettings"/> class.
         /// </summary>
         /// <param name="clientTimeout">Timespan to wait before the request times out for the client.</param>
         public HttpClientSettings(TimeSpan? clientTimeout = null)

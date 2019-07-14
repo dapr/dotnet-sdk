@@ -1,7 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\service_fabric_managed_stylecop.props" />
+  <Import Project="..\..\properties\actions_managed_netstandard.props" />
+  <Import Project="..\..\properties\actions_managed_stylecop.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Microsoft.Actions.Actors</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <DocumentationFile>$(OutputPath)\$(AssemblyName).xml</DocumentationFile>
+
+    <!-- Nuget package properties when packed using dotnet pack. -->
+    <NuspecFile>nuspec\Microsoft.Actions.Actors.nuspec</NuspecFile>
+    <NuspecProperties>version=$(NupkgVersion);Configuration=$(Configuration)</NuspecProperties>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
@@ -11,9 +19,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Serialization\" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Resources\SR.Designer.cs">

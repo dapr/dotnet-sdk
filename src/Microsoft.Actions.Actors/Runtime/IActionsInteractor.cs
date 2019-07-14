@@ -5,6 +5,7 @@
 
 namespace Microsoft.Actions.Actors.Runtime
 {
+    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -16,10 +17,10 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <summary>
         /// Saves a state to Actions.
         /// </summary>
-        /// <param name="key">Name of the state to save.</param>
-        /// <param name="value">Value of the state to save.</param>
+        /// <param name="actorId">ActorId..</param>
+        /// <param name="stateChanges">State changes.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateAsync(string key, object value, CancellationToken cancellationToken = default(CancellationToken));
+        Task SaveStateAsync(ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

@@ -6,19 +6,15 @@
 namespace Microsoft.Actions.Actors
 {
     using System;
-    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Runtime;
 
     internal sealed class ActorStateManager : IActorStateManager
     {
-        private readonly Dictionary<string, StateMetadata> stateChangeTracker;
-        private readonly ActorBase actor;
-
         public Task AddOrUpdateState<T>(string stateName, T value)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public Task ClearCacheAsync(CancellationToken cancellationToken = default(CancellationToken))
@@ -43,12 +39,10 @@ namespace Microsoft.Actions.Actors
 
         private sealed class StateMetadata
         {
-            private readonly Type type;
-
             private StateMetadata(object value, Type type, StateChangeKind changeKind)
             {
                 this.Value = value;
-                this.type = type;
+                this.Type = type;
                 this.ChangeKind = changeKind;
             }
 
@@ -56,10 +50,7 @@ namespace Microsoft.Actions.Actors
 
             public StateChangeKind ChangeKind { get; set; }
 
-            public Type Type
-            {
-                get { return this.type; }
-            }
+            public Type Type { get; }
 
             public static StateMetadata Create<T>(T value, StateChangeKind changeKind)
             {

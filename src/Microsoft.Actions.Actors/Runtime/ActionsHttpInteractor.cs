@@ -11,6 +11,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.Net;
     using System.Net.Http;
     using System.Security.Authentication;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Resources;
@@ -48,6 +49,11 @@ namespace Microsoft.Actions.Actors.Runtime
             this.httpClient = this.CreateHttpClient();
         }
 
+        public Task SaveStateAsync(ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        {            
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Sends an HTTP get request to Actions.
         /// </summary>
@@ -56,7 +62,6 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="requestId">Request Id for corelation.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The payload of the GET response.</returns>
-        /// <exception cref="ServiceFabricException">When the response is not a success.</exception>
         internal async Task SendAsync(
             Func<HttpRequestMessage> requestFunc,
             string relativeUri,
@@ -74,7 +79,6 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="requestId">Request Id for corelation.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The payload of the GET response as string.</returns>
-        /// <exception cref="ServiceFabricException">When the response is not a success.</exception>
         internal async Task<string> SendAsyncGetResponseAsRawJson(
             Func<HttpRequestMessage> requestFunc,
             string relativeUri,
@@ -118,7 +122,6 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="requestId">Request Id for corelation.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The payload of the GET response.</returns>
-        /// <exception cref="ServiceFabricException">When the response is not a success.</exception>
         private async Task<HttpResponseMessage> SendAsyncHandleUnsuccessfulResponse(
             Func<HttpRequestMessage> requestFunc,
             string relativeUri,
@@ -262,11 +265,6 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return httpClientInstance;
-        }
-
-        public Task SaveStateAsync(string key, object value, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            throw new NotImplementedException();
         }
     }
 }
