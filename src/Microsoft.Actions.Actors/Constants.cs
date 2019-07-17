@@ -19,5 +19,10 @@ namespace Microsoft.Actions.Actors
         /// Constant string for Environment Variable for Actions port.
         /// </summary>
         public const string ActionsPortEnvironmentVariable = "ACTIONSPORT";
+
+        /// <summary>
+        /// Constant string for Actors state management relative url.
+        /// </summary>
+        public const string ActorStateManagementRelativeUrl = "actions/state";
     }
 }

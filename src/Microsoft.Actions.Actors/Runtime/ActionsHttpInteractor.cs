@@ -50,8 +50,24 @@ namespace Microsoft.Actions.Actors.Runtime
         }
 
         public Task SaveStateAsync(ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
-        {            
-            throw new NotImplementedException();
+        {
+            var url = Constants.ActorStateManagementRelativeUrl;
+            var requestId = Guid.NewGuid().ToString();
+
+            string content;
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Post,
+                    Content = new StringContent(content, Encoding.UTF8),
+                };
+                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                return request;
+            }
+
+            return this.SendAsync(RequestFunc, url, requestId, cancellationToken);
         }
 
         /// <summary>
@@ -265,6 +281,11 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return httpClientInstance;
+        }
+
+        public Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
         }
     }
 }

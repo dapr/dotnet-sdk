@@ -22,5 +22,13 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
         Task SaveStateAsync(ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Saves a state to Actions.
+        /// </summary>
+        /// <param name="actorId">ActorId..</param>
+        /// <param name="cancellationToken">Cancels the operation.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken));
     }
 }
