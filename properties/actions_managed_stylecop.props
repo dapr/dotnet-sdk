@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <StylecopSettingsFile>$(MSBuildThisFileDirectory)stylecop\stylecop.json</StylecopSettingsFile>
+    <StylecopSuppressionsFile>$(MSBuildThisFileDirectory)stylecop\StylecopSuppressions.cs</StylecopSuppressionsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta006" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="$(StylecopSettingsFile)" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="$(StylecopSettingsFile)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(StylecopSuppressionsFile)" />
+  </ItemGroup>
+</Project>
