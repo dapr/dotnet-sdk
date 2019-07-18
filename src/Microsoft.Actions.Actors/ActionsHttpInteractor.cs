@@ -54,7 +54,8 @@ namespace Microsoft.Actions.Actors.Runtime
             var url = Constants.ActorStateManagementRelativeUrl;
             var requestId = Guid.NewGuid().ToString();
 
-            string content;
+            // TODO: create the content as serialized state info expected by Actions runtime.
+            string content = string.Empty;
 
             HttpRequestMessage RequestFunc()
             {
@@ -68,6 +69,11 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return this.SendAsync(RequestFunc, url, requestId, cancellationToken);
+        }
+
+        public Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -281,11 +287,6 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return httpClientInstance;
-        }
-
-        public Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            throw new NotImplementedException();
         }
     }
 }
