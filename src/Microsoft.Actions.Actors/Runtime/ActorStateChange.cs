@@ -12,11 +12,6 @@ namespace Microsoft.Actions.Actors.Runtime
     /// </summary>
     public sealed class ActorStateChange
     {
-        private readonly string stateName;
-        private readonly Type type;
-        private readonly object value;
-        private readonly StateChangeKind changeKind;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorStateChange"/> class.
         /// </summary>
@@ -28,10 +23,10 @@ namespace Microsoft.Actions.Actors.Runtime
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
-            this.stateName = stateName;
-            this.type = type;
-            this.value = value;
-            this.changeKind = changeKind;
+            this.StateName = stateName;
+            this.Type = type;
+            this.Value = value;
+            this.ChangeKind = changeKind;
         }
 
         /// <summary>
@@ -40,10 +35,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <value>
         /// The name of the actor state.
         /// </value>
-        public string StateName
-        {
-            get { return this.stateName; }
-        }
+        public string StateName { get; }
 
         /// <summary>
         /// Gets the type of value associated with given actor state name.
@@ -51,10 +43,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <value>
         /// The type of value associated with given actor state name.
         /// </value>
-        public Type Type
-        {
-            get { return this.type; }
-        }
+        public Type Type { get; }
 
         /// <summary>
         /// Gets the value associated with given actor state name.
@@ -62,10 +51,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <value>
         /// The value associated with given actor state name.
         /// </value>
-        public object Value
-        {
-            get { return this.value; }
-        }
+        public object Value { get; }
 
         /// <summary>
         /// Gets the kind of state change for given actor state name.
@@ -73,9 +59,6 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <value>
         /// The kind of state change for given actor state name.
         /// </value>
-        public StateChangeKind ChangeKind
-        {
-            get { return this.changeKind; }
-        }
+        public StateChangeKind ChangeKind { get; }
     }
 }

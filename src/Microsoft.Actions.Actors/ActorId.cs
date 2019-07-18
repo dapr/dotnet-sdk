@@ -13,7 +13,6 @@ namespace Microsoft.Actions.Actors
     /// </summary>
     public class ActorId
     {
-        private readonly ActorIdKind kind;
         private readonly long longId;
         private readonly Guid guidId;
         private readonly string stringId;
@@ -26,7 +25,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="id">Value for actor id.</param>
         public ActorId(long id)
         {
-            this.kind = ActorIdKind.Long;
+            this.Kind = ActorIdKind.Long;
             this.longId = id;
         }
 
@@ -36,7 +35,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="id">Value for actor id.</param>
         public ActorId(Guid id)
         {
-            this.kind = ActorIdKind.Guid;
+            this.Kind = ActorIdKind.Guid;
             this.guidId = id;
         }
 
@@ -51,7 +50,7 @@ namespace Microsoft.Actions.Actors
                 throw new ArgumentNullException("id");
             }
 
-            this.kind = ActorIdKind.String;
+            this.Kind = ActorIdKind.String;
             this.stringId = id;
         }
 
@@ -59,10 +58,7 @@ namespace Microsoft.Actions.Actors
         /// Gets the <see cref="ActorIdKind"/> for the ActorId.
         /// </summary>
         /// <value><see cref="ActorIdKind"/> for the ActorId.</value>
-        public ActorIdKind Kind
-        {
-            get { return this.kind; }
-        }
+        public ActorIdKind Kind { get; }
 
         /// <summary>
         /// Overrides <see cref="object.ToString"/>.
@@ -76,7 +72,7 @@ namespace Microsoft.Actions.Actors
             }
 
             var actorIdAsString = string.Empty;
-            switch (this.kind)
+            switch (this.Kind)
             {
                 case ActorIdKind.Long:
                     actorIdAsString = this.longId.ToString(CultureInfo.InvariantCulture);
@@ -91,7 +87,7 @@ namespace Microsoft.Actions.Actors
                     break;
 
                 default:
-                    Environment.FailFast($"The ActorIdKind value {this.kind} is invalid");
+                    Environment.FailFast($"The ActorIdKind value {this.Kind} is invalid");
                     break;
             }
 
@@ -105,7 +101,7 @@ namespace Microsoft.Actions.Actors
             {
                 // Needs InvariantCulture for key.
                 string key;
-                switch (this.kind)
+                switch (this.Kind)
                 {
                     case ActorIdKind.Long:
                         key = string.Format(CultureInfo.InvariantCulture, "{0}_{1}", this.Kind.ToString(), this.longId);
@@ -124,7 +120,7 @@ namespace Microsoft.Actions.Actors
                         break;
 
                     default:
-                        Environment.FailFast($"The ActorIdKind value {this.kind} is invalid");
+                        Environment.FailFast($"The ActorIdKind value {this.Kind} is invalid");
                         key = null; // unreachable
                         break;
                 }

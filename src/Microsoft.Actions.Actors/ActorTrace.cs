@@ -12,7 +12,7 @@ namespace Microsoft.Actions.Actors
         internal static readonly ActorTrace Instance = new ActorTrace();
 
         /// <summary>
-        /// Prevents a default instance of the <see cref="ActorEventSource" /> class from being created.
+        /// Prevents a default instance of the <see cref="ActorTrace" /> class from being created.
         /// </summary>
         private ActorTrace()
         {

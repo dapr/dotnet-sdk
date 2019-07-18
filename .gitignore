@@ -7,7 +7,6 @@
 /src/**/obj/**/*
 /src/**/bin/**/*
 /src/**/gen/**/*
-/src/**/*.nuspec
 /src/**/StyleCop.Cache
 
 # MSBuild's log file
@@ -19,6 +18,7 @@ msbuild.log
 *.log
 *.prf
 *.trc
+*.nupkg
 buildd.dbb
 build.dbb
 buildd.evt
