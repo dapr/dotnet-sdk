@@ -35,14 +35,12 @@ stages:
           packagesToPack: 'src/Microsoft.Actions.Actors/Microsoft.Actions.Actors.csproj'
           nobuild: true
           versioningScheme: 'off'
-      - task: PublishPipelineArtifact@1
+      - task: CopyFiles@2
         inputs:
-          targetPath: 'bin/$(Configuration)'
-- stage: Publish
-  displayName: 'Publish Nuget Packages'
-  dependsOn: Build
-  condition: ne(variables['Build.Reason'], 'PullRequest')
-  jobs:
-  - job: 'publish_edge_binaries'
-    pool:
-      vmImage: 'windows-2019'
+          SourceFolder: 'bin/$(Configuration)'
+          Contents: '**'
+          TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      - task: PublishPipelineArtifact@1
+        condition: ne(variables['Build.Reason'], 'PullRequest')
+        inputs:
+          targetPath: '$(Build.ArtifactStagingDirectory)'
