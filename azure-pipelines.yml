@@ -14,23 +14,24 @@ stages:
       - task: DotNetCoreCLI@2
         inputs:
           command: 'build'
-          projects: 'Microsoft.Actions.Actors/Microsoft.Actions.Actors.sln'
+          projects: 'code.sln'
       - task: DotNetCoreCLI@2
         inputs:
           command: 'test'
-          projects: 'Microsoft.Actions.Actors/Microsoft.Actions.Actors.sln'
+          projects: 'code.sln'
       - task: DotNetCoreCLI@2
         inputs:
           command: 'pack'
-          packagesToPack: '**/*.csproj'
+          packagesToPack: 'src/Microsoft.Actions.Actors/Microsoft.Actions.Actors.csproj'
           nobuild: true
           versioningScheme: 'byBuildNumber'
       - task: PublishPipelineArtifact@1
         inputs:
-          targetPath: '$(Pipeline.Workspace)'
+          targetPath: 'bin'
 - stage: Publish
   displayName: 'Publish Nuget Packages'
   dependsOn: Build
+  condition: ne(variables['Build.Reason'], 'PullRequest')
   jobs:
   - job: 'publish_edge_binaries'
     pool:
