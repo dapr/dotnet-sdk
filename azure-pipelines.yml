@@ -1,0 +1,47 @@
+# actionscore/cs-sdk pipeline
+
+trigger:
+- master
+- release-*
+
+stages:
+- stage: Build
+  jobs:
+  - job: 'build_projects'
+    pool:
+      vmImage: 'windows-2019'
+    strategy:
+      maxParallel: 2
+      matrix:
+        debug:
+          configuration: debug
+        release:
+          configuration: release
+    steps:
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: 'build'
+          arguments: '--configuration $(Configuration)'
+          projects: 'code.sln'
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: 'test'
+          arguments: '--configuration $(Configuration)'
+          projects: 'code.sln'
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: 'pack'
+          arguments: '--configuration $(Configuration)'
+          packagesToPack: 'src/Microsoft.Actions.Actors/Microsoft.Actions.Actors.csproj'
+          nobuild: true
+          versioningScheme: 'off'
+      - task: CopyFiles@2
+        condition: ne(variables['Build.Reason'], 'PullRequest')
+        inputs:
+          SourceFolder: 'bin/$(Configuration)'
+          Contents: '**'
+          TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      - task: PublishPipelineArtifact@1
+        condition: ne(variables['Build.Reason'], 'PullRequest')
+        inputs:
+          targetPath: '$(Build.ArtifactStagingDirectory)'
