@@ -10,26 +10,34 @@ stages:
   - job: 'build_projects'
     pool:
       vmImage: 'windows-2019'
-    variables:
-      BUILD_BUILDNUMBER: $(Build.BuildNumber)
+    strategy:
+      maxParallel: 2
+      matrix:
+        debug:
+          configuration: debug
+        release:
+          configuration: release
     steps:
       - task: DotNetCoreCLI@2
         inputs:
           command: 'build'
+          arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
       - task: DotNetCoreCLI@2
         inputs:
           command: 'test'
+          arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
       - task: DotNetCoreCLI@2
         inputs:
           command: 'pack'
+          arguments: '--configuration $(Configuration)'
           packagesToPack: 'src/Microsoft.Actions.Actors/Microsoft.Actions.Actors.csproj'
           nobuild: true
-          versioningScheme: 'byBuildNumber'
+          versioningScheme: 'off'
       - task: PublishPipelineArtifact@1
         inputs:
-          targetPath: 'bin'
+          targetPath: 'bin/$(Configuration)'
 - stage: Publish
   displayName: 'Publish Nuget Packages'
   dependsOn: Build
