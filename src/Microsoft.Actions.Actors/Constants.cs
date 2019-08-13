@@ -16,6 +16,11 @@ namespace Microsoft.Actions.Actors
         public const string RequestIdHeaderName = "X-ActionsRequestId";
 
         /// <summary>
+        /// Constant string for request header name in header.
+        /// </summary>
+        public const string RequestHeaderName = "X-ActionsRequestHeader";
+
+        /// <summary>
         /// Constant string for Environment Variable for Actions port.
         /// </summary>
         public const string ActionsPortEnvironmentVariable = "ACTIONSPORT";
@@ -24,5 +29,14 @@ namespace Microsoft.Actions.Actors
         /// Constant string for Actors state management relative url.
         /// </summary>
         public const string ActorStateManagementRelativeUrl = "actions/state";
+
+        public const string Namespace = "urn:actors";
+
+        public const string ServiceCommunicationNamespace = "urn:Actions.Communication";
+
+        public const int DefaultHeaderBufferSize = 1024;
+        public const int DefaultHeaderMaxBufferCount = 1000;
+        public const int DefaultMessageBufferSize = 2 * 1024;
+        public const int DefaultMaxBufferCount = 20000;
     }
 }
