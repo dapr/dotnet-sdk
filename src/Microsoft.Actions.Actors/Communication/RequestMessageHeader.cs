@@ -9,13 +9,10 @@ namespace Microsoft.Actions.Actors.Communication
     using System.Globalization;
     using System.Runtime.Serialization;
 
-    [DataContract(Name = "ServiceMessageHeaders", Namespace = Constants.ServiceCommunicationNamespace)]
+    [DataContract(Name = "ActorHeader", Namespace = Constants.Namespace)]
     internal class RequestMessageHeader : IRequestMessageHeader
     {
         internal const string CancellationHeaderName = "CancellationHeader";
-
-        [DataMember(Name = "Headers", IsRequired = true, Order = 2)]
-        private Dictionary<string, byte[]> headers;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RequestMessageHeader"/> class.
@@ -43,21 +40,33 @@ namespace Microsoft.Actions.Actors.Communication
         /// <summary>
         /// Gets or sets identifier for the remote method invocation.
         /// </summary>
-        [DataMember(Name = "InvocationId", IsRequired = false, Order = 3, EmitDefaultValue = false)]
+        [DataMember(Name = "InvocationId", IsRequired = false, Order = 2, EmitDefaultValue = false)]
         public string InvocationId { get; set; }
+
+        [DataMember(IsRequired = false, Order = 3)]
+        public ActorId ActorId { get; set; }
+
+        [DataMember(IsRequired = false, Order = 4)]
+        public string CallContext { get; set; }
+
+        [DataMember(Name = "Headers", IsRequired = true, Order = 5)]
+
+#pragma warning disable SA1201 // Elements should appear in the correct order. Increases readbility when fields kept in order.
+        private Dictionary<string, byte[]> headers;
+#pragma warning restore SA1201 // Elements should appear in the correct order
 
         /// <summary>
         /// Gets or sets the method name of the remote method.
         /// </summary>
         /// <value>Method Name.</value>
-        [DataMember(Name = "MethodName", IsRequired = false, Order = 4)]
+        [DataMember(Name = "MethodName", IsRequired = false, Order = 6)]
         public string MethodName { get; set; }
 
         public void AddHeader(string headerName, byte[] headerValue)
         {
             if (this.headers.ContainsKey(headerName))
             {
-                // TODO throw actions specific translated exception type
+                // TODO throw specific translated exception type
                 throw new System.Exception(
                     string.Format(
                         CultureInfo.CurrentCulture,

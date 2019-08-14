@@ -9,7 +9,7 @@ namespace Microsoft.Actions.Actors.Communication
     using System.Globalization;
     using System.Runtime.Serialization;
 
-    [DataContract(Name = "ServiceResponseMessageHeaders", Namespace = Constants.ServiceCommunicationNamespace)]
+    [DataContract(Name = "ActorResponseMessageHeaders", Namespace = Constants.Namespace)]
 
     internal class ResponseMessageHeader : IResponseMessageHeader
     {

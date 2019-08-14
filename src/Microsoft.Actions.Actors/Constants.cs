@@ -31,12 +31,5 @@ namespace Microsoft.Actions.Actors
         public const string ActorStateManagementRelativeUrl = "actions/state";
 
         public const string Namespace = "urn:actors";
-
-        public const string ServiceCommunicationNamespace = "urn:Actions.Communication";
-
-        public const int DefaultHeaderBufferSize = 1024;
-        public const int DefaultHeaderMaxBufferCount = 1000;
-        public const int DefaultMessageBufferSize = 2 * 1024;
-        public const int DefaultMaxBufferCount = 20000;
     }
 }

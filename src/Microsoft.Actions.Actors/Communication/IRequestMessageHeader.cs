@@ -11,6 +11,16 @@ namespace Microsoft.Actions.Actors.Communication
     public interface IRequestMessageHeader
     {
         /// <summary>
+        /// Gets or sets the actorId to which remoting request will dispatch to.
+        /// </summary>
+        ActorId ActorId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the call context which is used to limit ren-entrancy in Actors.
+        /// </summary>
+        string CallContext { get; set; }
+
+        /// <summary>
         /// Gets or sets the methodId of the remote method.
         /// </summary>
         /// <value>The method id.</value>

@@ -8,14 +8,15 @@ namespace Microsoft.Actions.Actors.Test
     using System.Threading;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using Microsoft.Actions.Actors.Client;
+    using Microsoft.Actions.Actors.Communication.Client;
 
     [TestClass]
     public class ActorCommunicationTests
     {
         [TestMethod]
-        public void TestCreateHttpActorCommunicationClientFactory()
+        public void TestCreateActorCommunicationClientFactory()
         {
-            var factory = new HttpActorCommunicationClientFactory();
+            var factory = new ActorCommunicationClientFactory();
         }
 
         [TestMethod]

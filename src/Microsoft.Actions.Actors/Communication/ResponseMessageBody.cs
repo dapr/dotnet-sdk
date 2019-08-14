@@ -8,7 +8,7 @@ namespace Microsoft.Actions.Actors.Communication
     using System;
     using System.Runtime.Serialization;
 
-    [DataContract(Name = "msgResponse", Namespace = Constants.ServiceCommunicationNamespace)]
+    [DataContract(Name = "msgResponse", Namespace = Constants.Namespace)]
     internal class ResponseMessageBody : IResponseMessageBody
     {
         [DataMember]

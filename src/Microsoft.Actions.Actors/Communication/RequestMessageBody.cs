@@ -9,7 +9,7 @@ namespace Microsoft.Actions.Actors.Communication
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
-    [DataContract(Name = "msgBody", Namespace = Constants.ServiceCommunicationNamespace)]
+    [DataContract(Name = "msgBody", Namespace = Constants.Namespace)]
     internal class RequestMessageBody : IRequestMessageBody
     {
         [DataMember]
