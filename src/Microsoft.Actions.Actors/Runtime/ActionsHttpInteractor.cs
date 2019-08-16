@@ -14,6 +14,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Resources;
     using Newtonsoft.Json;
 
@@ -54,7 +55,7 @@ namespace Microsoft.Actions.Actors.Runtime
             var url = Constants.ActorStateManagementRelativeUrl;
             var requestId = Guid.NewGuid().ToString();
 
-            string content;
+            string content = string.Empty;
 
             HttpRequestMessage RequestFunc()
             {
@@ -70,6 +71,33 @@ namespace Microsoft.Actions.Actors.Runtime
             return this.SendAsync(RequestFunc, url, requestId, cancellationToken);
         }
 
+        public Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<object> InvokeActorMethod(string actorId, string actorType, string methodName, byte[] messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var relativeUrl = $"{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/{methodName}";
+
+            var requestId = Guid.NewGuid().ToString();
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Post,
+                    Content = new ByteArrayContent(messageBody),
+                };
+
+                request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(messageHeader, 0, messageHeader.Length));
+                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                return request;
+            }
+
+            return Task.FromResult((object)this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken));
+        }
+
         /// <summary>
         /// Sends an HTTP get request to Actions.
         /// </summary>
@@ -78,13 +106,13 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="requestId">Request Id for corelation.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The payload of the GET response.</returns>
-        internal async Task SendAsync(
+        internal async Task<HttpResponseMessage> SendAsync(
             Func<HttpRequestMessage> requestFunc,
             string relativeUri,
             string requestId,
             CancellationToken cancellationToken)
         {
-            await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, requestId, cancellationToken);
+            return await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, requestId, cancellationToken);
         }
 
         /// <summary>
@@ -281,11 +309,6 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return httpClientInstance;
-        }
-
-        public Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            throw new NotImplementedException();
         }
     }
 }

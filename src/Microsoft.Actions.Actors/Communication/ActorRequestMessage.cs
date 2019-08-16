@@ -5,25 +5,23 @@
 
 namespace Microsoft.Actions.Actors.Communication
 {
-    internal class ResponseMessage : IResponseMessage
+    internal class ActorRequestMessage : IActorRequestMessage
     {
-        private readonly IResponseMessageHeader header;
-        private readonly IResponseMessageBody msgBody;
+        private readonly IActorRequestMessageHeader header;
+        private readonly IActorMessageBody msgBody;
 
-        public ResponseMessage(
-            IResponseMessageHeader header,
-            IResponseMessageBody msgBody)
+        public ActorRequestMessage(IActorRequestMessageHeader header, IActorMessageBody msgBody)
         {
             this.header = header;
             this.msgBody = msgBody;
         }
 
-        public IResponseMessageHeader GetHeader()
+        public IActorRequestMessageHeader GetHeader()
         {
             return this.header;
         }
 
-        public IResponseMessageBody GetBody()
+        public IActorMessageBody GetBody()
         {
             return this.msgBody;
         }

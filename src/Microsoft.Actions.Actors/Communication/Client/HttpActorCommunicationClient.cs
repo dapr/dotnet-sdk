@@ -6,35 +6,44 @@
 namespace Microsoft.Actions.Actors.Communication.Client
 {
     using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using System.Net.Http;
+    using System.Text;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Runtime;
 
     internal class HttpActorCommunicationClient : IActorCommunicationClient
     {
-        private readonly ActorCommunicationMessageSerializersManager serializersManager;
-        private readonly IActionsInteractor fabricTransportClient;
+        private readonly ActorMessageSerializersManager serializersManager;
+        private readonly IActionsInteractor actionsInteractor;
 
         // we need to pass a cache of the serializers here rather than the known types,
         // the serializer cache should be maintained by the factor
         internal HttpActorCommunicationClient(
-            ActorCommunicationMessageSerializersManager serializersManager,
-            IActionsInteractor fabricTransportClient)
+            ActorMessageSerializersManager serializersManager,
+            IActionsInteractor actionsInteractor)
         {
-            this.fabricTransportClient = fabricTransportClient;
+            this.actionsInteractor = actionsInteractor;
             this.serializersManager = serializersManager;
         }
 
         public ActorId ActorId => throw new NotImplementedException();
 
-        public async Task<IResponseMessage> RequestResponseAsync(
-            IRequestMessage remotingRequestRequestMessage)
+        public async Task<IActorResponseMessage> RequestResponseAsync(
+            IActorRequestMessage remotingRequestRequestMessage)
         {
-            var actorId = new ActorId("actorId");
-            string method = "methodName";
-            Type actorType = typeof(object);
-            var interfaceId = remotingRequestRequestMessage.GetHeader().InterfaceId;
+            var requestMessageHeader = remotingRequestRequestMessage.GetHeader();
+
+            var actorId = requestMessageHeader.ActorId.ToString();
+            var method = requestMessageHeader.MethodName;
+            var actorType = requestMessageHeader.ActorType;
+            var interfaceId = requestMessageHeader.InterfaceId;
+
             var serializedHeader = this.serializersManager.GetHeaderSerializer()
                 .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
+
             var msgBodySeriaizer = this.serializersManager.GetRequestBodySerializer(interfaceId);
             var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
 
@@ -43,54 +52,49 @@ namespace Microsoft.Actions.Actors.Communication.Client
             var serializedMsgBodyBuffers = serializedMsgBody.GetSendBytes();
 
             // Send Request
-            await this.fabricTransportClient.InvokeActorMethod(actorId, actorType, method, serializedHeaderBytes, serializedMsgBodyBuffers);
+            var retval = (HttpResponseMessage)await this.actionsInteractor.InvokeActorMethod(actorId, actorType, method, serializedHeaderBytes, serializedMsgBodyBuffers);
 
-            // TODO pending on response message format
-            /* Need to come back once decided on response message
-            var incomingHeader = (retval != null && retval.GetHeader() != null)
-                    ? new IncomingMessageHeader(retval.GetHeader().GetRecievedStream())
-                    : null;
-
-            ////DeSerialize Response
-            var header =
-                this.serializersManager.GetHeaderSerializer()
-                    .DeserializeResponseHeaders(
-                        incomingHeader);
-
-            if (header != null && header.TryGetHeaderValue("HasRemoteException", out var headerValue))
+            // TODO finalize on pending on response message format and test 
+            // Need to come back once decided on response message
+            // Get the http header and extract out expected actor response message header
+            IActorResponseMessageHeader actorResponseMessageHeader = null;
+            if (retval != null && retval.Headers != null)
             {
-                var isDeserialzied =
-                    RemoteException.ToException(
-                        retval.GetBody().GetRecievedStream(),
-                        out var e);
-                if (isDeserialzied)
+                IEnumerable<string> headerValues = null;
+                
+                // TODO Assert if expected header is not there
+                if (retval.Headers.TryGetValues(Constants.RequestHeaderName, out headerValues))
                 {
-                    throw new AggregateException(e);
-                }
-                else
-                {
-                    throw new ServiceException(e.GetType().FullName, string.Format(
-                        CultureInfo.InvariantCulture,
-                        Remoting.SR.ErrorDeserializationFailure,
-                        e.ToString()));
+                    var header = headerValues.First();
+
+                    var incomingHeader = new IncomingMessageHeader(new MemoryStream(Encoding.ASCII.GetBytes(header)));
+
+                    // DeSerialize Actor Response Message Header
+                    actorResponseMessageHeader =
+                        this.serializersManager.GetHeaderSerializer()
+                            .DeserializeResponseHeaders(
+                                incomingHeader);
                 }
             }
 
-            var responseSerializer = this.serializersManager.GetResponseBodySerializer(interfaceId);
-            IResponseMessageBody responseMessageBody = null;
-            if (retval != null && retval.GetBody() != null)
+            // Get the http response message body content and extract out expected actor response message body
+            IActorMessageBody actorResponseMessageBody = null;
+            if (retval != null && retval.Content != null)
             {
-                responseMessageBody =
-                    responseSerializer.Deserialize(new IncomingMessageBody(retval.GetBody().GetRecievedStream()));
+                var responseMessageBody = await retval.Content.ReadAsStreamAsync();
+
+                // Deserialize Actor Response Message Body
+                var responseBodySerializer = this.serializersManager.GetRequestBodySerializer(interfaceId);
+
+                actorResponseMessageBody =
+                    responseBodySerializer.Deserialize(new IncomingMessageBody(responseMessageBody));
             }
 
-            return (IResponseMessage)new ServiceRemotingResponseMessage(header, responseMessageBody);
-            */
-
-            return null;
+            // TODO Either throw exception or return response body with null header and message body
+            return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
         }
 
-        public void SendOneWay(IRequestMessage requestMessage)
+        public void SendOneWay(IActorRequestMessage requestMessage)
         {
             throw new NotImplementedException();
         }

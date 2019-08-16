@@ -9,24 +9,24 @@ namespace Microsoft.Actions.Actors.Communication
     using System.Collections.Concurrent;
     using Microsoft.Actions.Actors.Builder;
 
-    internal class ActorCommunicationMessageSerializersManager
+    internal class ActorMessageSerializersManager
     {
         private readonly ConcurrentDictionary<int, CacheEntry> cachedBodySerializers;
-        private readonly IActorCommunicationMessageHeaderSerializer headerSerializer;
-        private readonly IActorCommunicationMessageSerializationProvider serializationProvider;
+        private readonly IActorMessageHeaderSerializer headerSerializer;
+        private readonly IActorMessageBodySerializationProvider serializationProvider;
 
-        public ActorCommunicationMessageSerializersManager(
-            IActorCommunicationMessageSerializationProvider serializationProvider,
-            IActorCommunicationMessageHeaderSerializer headerSerializer)
+        public ActorMessageSerializersManager(
+            IActorMessageBodySerializationProvider serializationProvider,
+            IActorMessageHeaderSerializer headerSerializer)
         {
-            if (headerSerializer == null)
-            {
-                headerSerializer = new ActorCommunicationMessageHeaderSerializer();
-            }
-
             if (serializationProvider == null)
             {
-                serializationProvider = new ActorCommunicationWrappingDataContractSerializationProvider();
+                serializationProvider = new ActorMessageBodyDataContractSerializationProvider();
+            }
+
+            if (headerSerializer == null)
+            {
+                headerSerializer = new ActorMessageHeaderSerializer();
             }
 
             this.serializationProvider = serializationProvider;
@@ -34,24 +34,19 @@ namespace Microsoft.Actions.Actors.Communication
             this.headerSerializer = headerSerializer;
         }
 
-        public IActorCommunicationMessageSerializationProvider GetSerializationProvider()
+        public IActorMessageBodySerializationProvider GetSerializationProvider()
         {
             return this.serializationProvider;
         }
 
-        public IActorCommunicationMessageHeaderSerializer GetHeaderSerializer()
+        public IActorMessageHeaderSerializer GetHeaderSerializer()
         {
             return this.headerSerializer;
         }
 
-        public IActorCommunicationRequestMessageBodySerializer GetRequestBodySerializer(int interfaceId)
+        public IActorMessageBodySerializer GetRequestBodySerializer(int interfaceId)
         {
-            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).RequestBodySerializer;
-        }
-
-        public IActorCommunicationResponseMessageBodySerializer GetResponseBodySerializer(int interfaceId)
-        {
-            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).ResponseBodySerializer;
+            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).MessageBodySerializer;
         }
 
         internal CacheEntry CreateSerializers(int interfaceId)
@@ -68,8 +63,7 @@ namespace Microsoft.Actions.Actors.Communication
             var responseBodyTypes = interfaceDetails.ResponseKnownTypes;
 
             return new CacheEntry(
-                this.serializationProvider.CreateRequestMessageSerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes),
-                this.serializationProvider.CreateResponseMessageSerializer(serviceInterfaceType, responseBodyTypes, interfaceDetails.ResponseWrappedKnownTypes));
+                this.serializationProvider.CreateMessageBodySerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes));
         }
 
         internal InterfaceDetails GetInterfaceDetails(int interfaceId)

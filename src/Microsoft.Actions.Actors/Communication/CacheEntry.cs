@@ -7,25 +7,12 @@ namespace Microsoft.Actions.Actors.Communication
 {
     internal class CacheEntry
     {
-        private readonly IActorCommunicationRequestMessageBodySerializer requestBodySerializer;
-        private readonly IActorCommunicationResponseMessageBodySerializer responseBodySerializer;
-
         public CacheEntry(
-            IActorCommunicationRequestMessageBodySerializer requestBodySerializer,
-            IActorCommunicationResponseMessageBodySerializer responseBodySerializer)
+            IActorMessageBodySerializer messageBodySerializer)
         {
-            this.requestBodySerializer = requestBodySerializer;
-            this.responseBodySerializer = responseBodySerializer;
+            this.MessageBodySerializer = messageBodySerializer;
         }
 
-        public IActorCommunicationRequestMessageBodySerializer RequestBodySerializer
-        {
-            get { return this.requestBodySerializer; }
-        }
-
-        public IActorCommunicationResponseMessageBodySerializer ResponseBodySerializer
-        {
-            get { return this.responseBodySerializer; }
-        }
+        public IActorMessageBodySerializer MessageBodySerializer { get; }
     }
 }

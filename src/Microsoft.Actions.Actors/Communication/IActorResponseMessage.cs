@@ -8,18 +8,18 @@ namespace Microsoft.Actions.Actors.Communication
     /// <summary>
     /// Defines an interface that must be implemented to provide  a remoting response message for remoting Api.
     /// </summary>
-    public interface IResponseMessage
+    public interface IActorResponseMessage
     {
         /// <summary>
         /// Gets the header of the response message.
         /// </summary>
         /// <returns>The header of this response message.</returns>
-        IResponseMessageHeader GetHeader();
+        IActorResponseMessageHeader GetHeader();
 
         /// <summary>
         /// Gets the body of the response message.
         /// </summary>
         /// <returns>The body of this response message.</returns>
-        IResponseMessageBody GetBody();
+        IActorMessageBody GetBody();
     }
 }

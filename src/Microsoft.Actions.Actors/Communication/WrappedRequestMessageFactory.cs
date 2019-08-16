@@ -5,28 +5,13 @@
 
 using Microsoft.Actions.Actors.Communication;
 
-internal class WrappedRequestMessageFactory : IMessageBodyFactory
+internal class WrappedRequestMessageFactory : IActorMessageBodyFactory
 {
-    public IRequestMessageBody CreateRequest(
-        string interfaceName,
-        string methodName,
-        int numberOfParameters,
-        object wrappedRequestObject)
+    public IActorMessageBody CreateMessageBody(string interfaceName, string methodName, object wrappedMessageObject, int numberOfParameters = 0)
     {
         return new WrappedMessageBody()
         {
-            Value = wrappedRequestObject,
-        };
-    }
-
-    public IResponseMessageBody CreateResponse(
-        string interfaceName,
-        string methodName,
-        object wrappedResponseObject)
-    {
-        return new WrappedMessageBody()
-        {
-            Value = wrappedResponseObject,
+            Value = wrappedMessageObject,
         };
     }
 }

@@ -12,21 +12,6 @@
     <NuspecProperties>version=$(NupkgVersion);Configuration=$(Configuration)</NuspecProperties>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Builder\ActorCodeBuilderNames - Copy.cs" />
-    <Compile Remove="Builder\ActorMethodDispatcherBase - Copy.cs" />
-    <Compile Remove="Builder\ActorProxyGeneratorBuilder - Copy.cs" />
-    <Compile Remove="Builder\CodeBuilder.cs" />
-    <Compile Remove="Builder\ProxyGenerator.cs" />
-    <Compile Remove="Builder\ServiceCodeBuilder.cs" />
-    <Compile Remove="Builder\ServiceProxyGenerator.cs" />
-    <Compile Remove="Common\DebugUtility.cs" />
-    <Compile Remove="Common\ExclusiveFileStream.cs" />
-    <Compile Remove="Common\RwLock.cs" />
-    <Compile Remove="Common\SerializationUtility.cs" />
-    <Compile Remove="Common\TaskDone.cs" />
-    <Compile Remove="Common\TaskDone{T}.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
     <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.3.0" />

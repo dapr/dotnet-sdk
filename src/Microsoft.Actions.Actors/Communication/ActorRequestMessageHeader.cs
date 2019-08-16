@@ -10,14 +10,14 @@ namespace Microsoft.Actions.Actors.Communication
     using System.Runtime.Serialization;
 
     [DataContract(Name = "ActorHeader", Namespace = Constants.Namespace)]
-    internal class RequestMessageHeader : IRequestMessageHeader
+    internal class ActorRequestMessageHeader : IActorRequestMessageHeader
     {
         internal const string CancellationHeaderName = "CancellationHeader";
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RequestMessageHeader"/> class.
+        /// Initializes a new instance of the <see cref="ActorRequestMessageHeader"/> class.
         /// </summary>
-        public RequestMessageHeader()
+        public ActorRequestMessageHeader()
         {
             this.headers = new Dictionary<string, byte[]>();
             this.InvocationId = null;
@@ -61,6 +61,9 @@ namespace Microsoft.Actions.Actors.Communication
         /// <value>Method Name.</value>
         [DataMember(Name = "MethodName", IsRequired = false, Order = 6)]
         public string MethodName { get; set; }
+
+        [DataMember(IsRequired = false, Order = 7)]
+        public string ActorType { get; set; }
 
         public void AddHeader(string headerName, byte[] headerValue)
         {

@@ -11,15 +11,15 @@ namespace Microsoft.Actions.Actors.Communication
 
     [DataContract(Name = "ActorResponseMessageHeaders", Namespace = Constants.Namespace)]
 
-    internal class ResponseMessageHeader : IResponseMessageHeader
+    internal class ActorResponseMessageHeader : IActorResponseMessageHeader
     {
         [DataMember(Name = "Headers", IsRequired = true, Order = 2)]
         private Dictionary<string, byte[]> headers;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ResponseMessageHeader"/> class.
+        /// Initializes a new instance of the <see cref="ActorResponseMessageHeader"/> class.
         /// </summary>
-        public ResponseMessageHeader()
+        public ActorResponseMessageHeader()
         {
             this.headers = new Dictionary<string, byte[]>();
         }

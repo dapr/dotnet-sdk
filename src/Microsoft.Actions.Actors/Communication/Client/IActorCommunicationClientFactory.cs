@@ -18,7 +18,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// Gets a factory for creating the remoting message bodies.
         /// </summary>
         /// <returns>A factory for creating the remoting message bodies.</returns>
-        IMessageBodyFactory GetRemotingMessageBodyFactory();
+        IActorMessageBodyFactory GetRemotingMessageBodyFactory();
 
         /// <summary>
         /// Get a communication client.

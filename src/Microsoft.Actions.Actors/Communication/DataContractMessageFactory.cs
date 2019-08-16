@@ -5,16 +5,11 @@
 
 namespace Microsoft.Actions.Actors.Communication
 {
-    internal class DataContractMessageFactory : IMessageBodyFactory
+    internal class DataContractMessageFactory : IActorMessageBodyFactory
     {
-        public IRequestMessageBody CreateRequest(string interfaceName, string methodName, int numberOfParameters, object wrappedRequest)
+        public IActorMessageBody CreateMessageBody(string interfaceName, string methodName, object wrappedMessageObject, int numberOfParameters = 0)
         {
-            return new RequestMessageBody(numberOfParameters);
-        }
-
-        public IResponseMessageBody CreateResponse(string interfaceName, string methodName, object wrappedResponse)
-        {
-            return new ResponseMessageBody();
+            return new ActorMessageBody(numberOfParameters);
         }
     }
 }

@@ -34,10 +34,10 @@ namespace Microsoft.Actions.Actors.Builder
             // TODO Should this search change to BindingFlags.NonPublic
             this.invokeAsyncMethodInfo = this.proxyBaseType.GetMethod(
                 "InvokeAsync",
-                BindingFlags.Instance | BindingFlags.Public,
+                BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(int), typeof(int), typeof(string), typeof(IRequestMessageBody), typeof(CancellationToken) },
+                new[] { typeof(int), typeof(int), typeof(string), typeof(IActorMessageBody), typeof(CancellationToken) },
                 null);
 
             this.checkIfitsWrapped = this.proxyBaseType.GetMethod(
@@ -45,7 +45,7 @@ namespace Microsoft.Actions.Actors.Builder
                BindingFlags.Instance | BindingFlags.NonPublic,
                null,
                CallingConventions.Any,
-               new[] { typeof(IRequestMessageBody) },
+               new[] { typeof(IActorMessageBody) },
                null);
 
             this.createMessage = this.proxyBaseType.GetMethod(
@@ -61,7 +61,7 @@ namespace Microsoft.Actions.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(int), typeof(int), typeof(IRequestMessageBody) },
+                new[] { typeof(int), typeof(int), typeof(IActorMessageBody) },
                 null);
 
             this.continueWithResultMethodInfo = this.proxyBaseType.GetMethod(
@@ -69,7 +69,7 @@ namespace Microsoft.Actions.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(int), typeof(int), typeof(Task<IResponseMessageBody>) },
+                new[] { typeof(int), typeof(int), typeof(Task<IActorMessageBody>) },
                 null);
 
             this.continueWithMethodInfo = this.proxyBaseType.GetMethod(
@@ -326,7 +326,7 @@ namespace Microsoft.Actions.Actors.Builder
                 this.SetParameterIfNeeded(ilGen, requestMessage, parameterLength, parameters);
             }
 
-            var objectTask = ilGen.DeclareLocal(typeof(Task<IResponseMessageBody>));
+            var objectTask = ilGen.DeclareLocal(typeof(Task<IActorMessageBody>));
 
             // call the base InvokeAsync method
             ilGen.Emit(OpCodes.Ldarg_0); // base
@@ -466,7 +466,7 @@ namespace Microsoft.Actions.Actors.Builder
             ilGen.Emit(OpCodes.Brfalse, elseLabel);
 
             // if false ,Call SetParamater
-            var setMethod = typeof(IRequestMessageBody).GetMethod("SetParameter");
+            var setMethod = typeof(IActorMessageBody).GetMethod("SetParameter");
 
             // Add to Dictionary
             for (var i = 0; i < parameterLength; i++)
@@ -495,7 +495,7 @@ namespace Microsoft.Actions.Actors.Builder
         {
             LocalBuilder requestMessage;
             ilGen.Emit(OpCodes.Ldarg_0); // base
-            requestMessage = ilGen.DeclareLocal(typeof(IRequestMessageBody));
+            requestMessage = ilGen.DeclareLocal(typeof(IActorMessageBody));
             ilGen.Emit(OpCodes.Ldstr, interfaceName);
             ilGen.Emit(OpCodes.Ldstr, methodDescription.Name);
             ilGen.Emit(OpCodes.Ldc_I4, parameterLength);

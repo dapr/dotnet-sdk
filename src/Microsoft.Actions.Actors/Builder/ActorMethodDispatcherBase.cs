@@ -41,11 +41,11 @@ namespace Microsoft.Actions.Actors.Builder
         /// <param name="cancellationToken">The cancellation token that will be signaled if this operation is cancelled.</param>
         /// <returns>A task that represents the outstanding asynchronous call to the implementation object.
         /// The return value of the task contains the returned value from the invoked method.</returns>
-        public Task<IResponseMessageBody> DispatchAsync(
+        public Task<IActorMessageBody> DispatchAsync(
             object objectImplementation,
             int methodId,
-            IRequestMessageBody requestBody,
-            IMessageBodyFactory remotingMessageBodyFactory,
+            IActorMessageBody requestBody,
+            IActorMessageBodyFactory remotingMessageBodyFactory,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -67,7 +67,7 @@ namespace Microsoft.Actions.Actors.Builder
         /// <param name="objectImplementation">The object implemented the remoted interface.</param>
         /// <param name="methodId">Id of the method to which to dispatch the request to.</param>
         /// <param name="requestMessageBody">The body of the request object that needs to be dispatched to the remoting implementation.</param>
-        public void Dispatch(object objectImplementation, int methodId, IRequestMessageBody requestMessageBody)
+        public void Dispatch(object objectImplementation, int methodId, IActorMessageBody requestMessageBody)
         {
             this.OnDispatch(methodId, objectImplementation, requestMessageBody);
         }
@@ -116,14 +116,14 @@ namespace Microsoft.Actions.Actors.Builder
         /// <param name="remotingMessageBodyFactory">MessageFactory for the remoting Interface.</param>
         /// <param name="response">Response returned by remoting method.</param>
         /// <returns>Remoting Response.</returns>
-        protected IResponseMessageBody CreateResponseMessageBody(
+        protected IActorMessageBody CreateResponseMessageBody(
             string interfaceName,
             string methodName,
             int methodId,
-            IMessageBodyFactory remotingMessageBodyFactory,
+            IActorMessageBodyFactory remotingMessageBodyFactory,
             object response)
         {
-            var msg = remotingMessageBodyFactory.CreateResponse(
+            var msg = remotingMessageBodyFactory.CreateMessageBody(
                 interfaceName,
                 methodName,
                 this.CreateWrappedResponseBody(methodId, response));
@@ -149,11 +149,11 @@ namespace Microsoft.Actions.Actors.Builder
         /// A <see cref="System.Threading.Tasks.Task">Task</see> that represents outstanding operation.
         /// The result of the task is the return value from the method.
         /// </returns>
-        protected abstract Task<IResponseMessageBody> OnDispatchAsync(
+        protected abstract Task<IActorMessageBody> OnDispatchAsync(
                     int methodId,
                     object remotedObject,
-                    IRequestMessageBody requestBody,
-                    IMessageBodyFactory remotingMessageBodyFactory,
+                    IActorMessageBody requestBody,
+                    IActorMessageBodyFactory remotingMessageBodyFactory,
                     CancellationToken cancellationToken);
 
         /// <summary>
@@ -163,7 +163,7 @@ namespace Microsoft.Actions.Actors.Builder
         /// <param name="methodId">Id of the method.</param>
         /// <param name="remotedObject">The remoted object instance.</param>
         /// <param name="requestBody">Request body.</param>
-        protected abstract void OnDispatch(int methodId, object remotedObject, IRequestMessageBody requestBody);
+        protected abstract void OnDispatch(int methodId, object remotedObject, IActorMessageBody requestBody);
 
         /// <summary>
         /// Internal - used by Service remoting.
@@ -177,11 +177,11 @@ namespace Microsoft.Actions.Actors.Builder
         /// A <see cref="System.Threading.Tasks.Task">Task</see> that represents outstanding operation.
         /// </returns>
         /// <typeparam name="TRetVal">The response type for the remoting method.</typeparam>
-        protected Task<IResponseMessageBody> ContinueWithResult<TRetVal>(
+        protected Task<IActorMessageBody> ContinueWithResult<TRetVal>(
             string interfaceName,
             string methodName,
             int methodId,
-            IMessageBodyFactory remotingMessageBodyFactory,
+            IActorMessageBodyFactory remotingMessageBodyFactory,
             Task<TRetVal> task)
         {
             return task.ContinueWith(
@@ -213,7 +213,7 @@ namespace Microsoft.Actions.Actors.Builder
         /// </summary>
         /// <param name="requestMessage">Remoting Request Message.</param>
         /// <returns>true or false.</returns>
-        protected bool CheckIfItsWrappedRequest(IRequestMessageBody requestMessage)
+        protected bool CheckIfItsWrappedRequest(IActorMessageBody requestMessage)
         {
             if (requestMessage is WrappedMessage)
             {

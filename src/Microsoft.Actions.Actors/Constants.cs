@@ -30,6 +30,11 @@ namespace Microsoft.Actions.Actors
         /// </summary>
         public const string ActorStateManagementRelativeUrl = "actions/state";
 
+        /// <summary>
+        /// Constant string for Actors Requests relative url.
+        /// </summary>
+        public const string ActorRequestRelativeUrl = "actors";
+
         public const string Namespace = "urn:actors";
     }
 }

@@ -26,7 +26,7 @@ namespace Microsoft.Actions.Actors.Builder
 
         public ActorProxy CreateActorProxy(
             ActorCommunicationClient remotingPartitionClient,
-            IMessageBodyFactory remotingMessageBodyFactory)
+            IActorMessageBodyFactory remotingMessageBodyFactory)
         {
             var serviceProxy = (ActorProxy)this.proxyActivator.CreateInstance();
             serviceProxy.Initialize(remotingPartitionClient, remotingMessageBodyFactory);

@@ -8,12 +8,17 @@ namespace Microsoft.Actions.Actors.Communication
     /// <summary>
     /// Specifies the headers that are sent along with a request message.
     /// </summary>
-    public interface IRequestMessageHeader
+    public interface IActorRequestMessageHeader
     {
         /// <summary>
         /// Gets or sets the actorId to which remoting request will dispatch to.
         /// </summary>
         ActorId ActorId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the actorType to which remoting request will dispatch to.
+        /// </summary>
+        string ActorType { get; set; }
 
         /// <summary>
         /// Gets or sets the call context which is used to limit ren-entrancy in Actors.

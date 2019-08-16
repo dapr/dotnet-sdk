@@ -9,40 +9,40 @@ namespace Microsoft.Actions.Actors.Communication
     using System.Runtime.Serialization;
     using System.Xml;
 
-    internal class ActorCommunicationMessageHeaderSerializer : IActorCommunicationMessageHeaderSerializer
+    internal class ActorMessageHeaderSerializer : IActorMessageHeaderSerializer
     {
         private readonly DataContractSerializer requestHeaderSerializer;
         private readonly DataContractSerializer responseHeaderSerializer;
 
-        public ActorCommunicationMessageHeaderSerializer()
+        public ActorMessageHeaderSerializer()
             : this(
                 new DataContractSerializer(
-                    typeof(IRequestMessageHeader),
+                    typeof(IActorRequestMessageHeader),
                     new DataContractSerializerSettings()
                     {
                         MaxItemsInObjectGraph = int.MaxValue,
                         KnownTypes = new[] 
                         {
-                            typeof(RequestMessageHeader),
+                            typeof(ActorRequestMessageHeader),
                         },
                     }))
         {
         }
 
-        public ActorCommunicationMessageHeaderSerializer(
+        public ActorMessageHeaderSerializer(
             DataContractSerializer headerRequestSerializer)
         {
             this.requestHeaderSerializer = headerRequestSerializer;
             this.responseHeaderSerializer = new DataContractSerializer(
-                typeof(IResponseMessageHeader),
+                typeof(IActorResponseMessageHeader),
                 new DataContractSerializerSettings()
                 {
                     MaxItemsInObjectGraph = int.MaxValue,
-                    KnownTypes = new[] { typeof(ResponseMessageHeader) },
+                    KnownTypes = new[] { typeof(ActorResponseMessageHeader) },
                 });
         }
 
-        public IMessageHeader SerializeRequestHeader(IRequestMessageHeader serviceRemotingRequestMessageHeader)
+        public IMessageHeader SerializeRequestHeader(IActorRequestMessageHeader serviceRemotingRequestMessageHeader)
         {
             if (serviceRemotingRequestMessageHeader == null)
             {
@@ -60,10 +60,10 @@ namespace Microsoft.Actions.Actors.Communication
             }
         }
 
-        public IRequestMessageHeader DeserializeRequestHeaders(IMessageHeader messageHeader)
+        public IActorRequestMessageHeader DeserializeRequestHeaders(IMessageHeader messageHeader)
         {
-            if ((messageHeader == null) || (messageHeader.GetSendBytes() == null) ||
-                (messageHeader.GetSendBytes().Length == 0))
+            if ((messageHeader == null) || (messageHeader.GetReceivedBuffer() == null) ||
+                (messageHeader.GetReceivedBuffer().Length == 0))
             {
                 return null;
             }
@@ -72,11 +72,11 @@ namespace Microsoft.Actions.Actors.Communication
                 messageHeader.GetSendBytes(),
                 XmlDictionaryReaderQuotas.Max))
             {
-                return (IRequestMessageHeader)this.requestHeaderSerializer.ReadObject(reader);
+                return (IActorRequestMessageHeader)this.requestHeaderSerializer.ReadObject(reader);
             }
         }
 
-        public IMessageHeader SerializeResponseHeader(IResponseMessageHeader serviceRemotingResponseMessageHeader)
+        public IMessageHeader SerializeResponseHeader(IActorResponseMessageHeader serviceRemotingResponseMessageHeader)
         {
             if (serviceRemotingResponseMessageHeader == null || serviceRemotingResponseMessageHeader.CheckIfItsEmpty())
             {
@@ -94,10 +94,10 @@ namespace Microsoft.Actions.Actors.Communication
             }
         }
 
-        public IResponseMessageHeader DeserializeResponseHeaders(IMessageHeader messageHeader)
+        public IActorResponseMessageHeader DeserializeResponseHeaders(IMessageHeader messageHeader)
         {
-            if ((messageHeader == null) || (messageHeader.GetSendBytes() == null) ||
-                (messageHeader.GetSendBytes().Length == 0))
+            if ((messageHeader == null) || (messageHeader.GetReceivedBuffer() == null) ||
+                (messageHeader.GetReceivedBuffer().Length == 0))
             {
                 return null;
             }
@@ -106,7 +106,7 @@ namespace Microsoft.Actions.Actors.Communication
                 messageHeader.GetSendBytes(),
                 XmlDictionaryReaderQuotas.Max))
             {
-                return (IResponseMessageHeader)this.responseHeaderSerializer.ReadObject(reader);
+                return (IActorResponseMessageHeader)this.responseHeaderSerializer.ReadObject(reader);
             }
         }
     }

@@ -24,6 +24,7 @@ namespace Microsoft.Actions.Actors.Test
         {
             var actorId = new ActorId("Test");
             var proxy = ActorProxy.Create<ITestActor>(actorId, typeof(TestActor));
+            // TODO the following call is expected to fail as http send request will fail till we have mocked it.
             proxy.SetCountAsync(5, CancellationToken.None).GetAwaiter().GetResult();
         }
     }

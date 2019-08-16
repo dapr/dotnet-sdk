@@ -23,12 +23,12 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// <param name="requestRequestMessage">The request message.</param>
         /// <returns>A <see cref="Task"/> that represents the asynchronous operation for remote method call.
         /// The result of the task contains the response for the request.</returns>
-        Task<IResponseMessage> RequestResponseAsync(IRequestMessage requestRequestMessage);
+        Task<IActorResponseMessage> RequestResponseAsync(IActorRequestMessage requestRequestMessage);
 
         /// <summary>
         /// Sends a one-way message to the service.
         /// </summary>
         /// <param name="requestMessage">The one-way message.</param>
-        void SendOneWay(IRequestMessage requestMessage);
+        void SendOneWay(IActorRequestMessage requestMessage);
     }
 }

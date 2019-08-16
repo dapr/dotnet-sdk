@@ -9,7 +9,7 @@ namespace Microsoft.Actions.Actors.Communication
     /// Defines an interfaces that must be implemented to provide header for remoting response message.
     ///
     /// </summary>
-    public interface IResponseMessageHeader
+    public interface IActorResponseMessageHeader
     {
         /// <summary>
         /// Adds a new header with the specified name and value.

@@ -5,6 +5,9 @@
 
 namespace Microsoft.Actions.Actors.Communication
 {
+    using System;
+    using System.IO;
+
     internal sealed class OutgoingMessageHeader : IMessageHeader
     {
         private readonly byte[] outgoingBuffer;
@@ -22,6 +25,11 @@ namespace Microsoft.Actions.Actors.Communication
         public byte[] GetSendBytes()
         {
             return this.outgoingBuffer;
+        }
+
+        public Stream GetReceivedBuffer()
+        {
+            throw new NotImplementedException("This method is not valid on outgoing messages");
         }
     }
 }

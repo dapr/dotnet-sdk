@@ -8,17 +8,17 @@ namespace Microsoft.Actions.Actors.Communication
     /// <summary>
     /// Defines the interface that must be implemented for create Remoting Request Message.
     /// </summary>
-    public interface IRequestMessage
+    public interface IActorRequestMessage
     {
         /// <summary>
         /// Gets the Remoting Request Message Header.
         /// </summary>
         /// <returns>IServiceRemotingRequestMessageHeader.</returns>
-        IRequestMessageHeader GetHeader();
+        IActorRequestMessageHeader GetHeader();
 
         /// <summary>
         /// Gets the Remoting Request Message Body.</summary>
         /// <returns>IServiceRemotingRequestMessageBody.</returns>
-        IRequestMessageBody GetBody();
+        IActorMessageBody GetBody();
     }
 }

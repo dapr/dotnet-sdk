@@ -38,7 +38,7 @@ namespace Microsoft.Actions.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(IRequestMessageBody) },
+                new[] { typeof(IActorMessageBody) },
                 null);
         }
 
@@ -160,7 +160,7 @@ namespace Microsoft.Actions.Actors.Builder
                 typeof(void),
                 typeof(int), // methodid
                 typeof(object), // remoted object
-                typeof(IRequestMessageBody)); // requestBody
+                typeof(IActorMessageBody)); // requestBody
 
             var ilGen = dispatchMethodImpl.GetILGenerator();
 
@@ -205,7 +205,7 @@ namespace Microsoft.Actions.Actors.Builder
             ilGen.Emit(OpCodes.Bne_Un, elseLabel);
 
             // Check If its Wrapped , then call getparam
-            var requestBody = typeof(IRequestMessageBody);
+            var requestBody = typeof(IActorMessageBody);
 
             // now invoke the method on the casted object
             ilGen.Emit(OpCodes.Ldloc, castedObject);
@@ -237,11 +237,11 @@ namespace Microsoft.Actions.Actors.Builder
             var dispatchMethodImpl = CodeBuilderUtils.CreateProtectedMethodBuilder(
                 classBuilder,
                 "OnDispatchAsync",
-                typeof(Task<IResponseMessageBody>),
+                typeof(Task<IActorMessageBody>),
                 typeof(int), // methodid
                 typeof(object), // remoted object
-                typeof(IRequestMessageBody), // requestBody
-                typeof(IMessageBodyFactory), // remotingmessageBodyFactory
+                typeof(IActorMessageBody), // requestBody
+                typeof(IActorMessageBodyFactory), // remotingmessageBodyFactory
                 typeof(CancellationToken)); // CancellationToken
 
             var ilGen = dispatchMethodImpl.GetILGenerator();
@@ -287,7 +287,7 @@ namespace Microsoft.Actions.Actors.Builder
             ilGen.Emit(OpCodes.Bne_Un, elseLabel);
 
             var invokeTask = ilGen.DeclareLocal(methodDescription.ReturnType);
-            var requestBody = typeof(IRequestMessageBody);
+            var requestBody = typeof(IActorMessageBody);
 
             // now invoke the method on the casted object
             ilGen.Emit(OpCodes.Ldloc, castedObject);

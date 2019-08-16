@@ -17,8 +17,8 @@ namespace Microsoft.Actions.Actors.Communication.Client
     /// </summary>
     internal class ActorCommunicationClientFactory : IActorCommunicationClientFactory
     {
-        private readonly ActorCommunicationMessageSerializersManager serializersManager;
-        private IMessageBodyFactory remotingMessageBodyFactory = null;
+        private readonly ActorMessageSerializersManager serializersManager;
+        private IActorMessageBodyFactory remotingMessageBodyFactory = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorCommunicationClientFactory"/> class.
@@ -26,7 +26,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// </summary>
         /// <param name="serializationProvider">IActorCommunicationMessageSerializationProvider provider.</param>
         public ActorCommunicationClientFactory(
-            IActorCommunicationMessageSerializationProvider serializationProvider = null)
+            IActorMessageBodySerializationProvider serializationProvider = null)
         {
             // TODO  Add settings, exception handlers, serialization provider
             this.serializersManager = IntializeSerializationManager(serializationProvider);
@@ -51,18 +51,18 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// Gets a factory for creating the remoting message bodies.
         /// </summary>
         /// <returns>A factory for creating the remoting message bodies.</returns>
-        public IMessageBodyFactory GetRemotingMessageBodyFactory()
+        public IActorMessageBodyFactory GetRemotingMessageBodyFactory()
         {
             return this.remotingMessageBodyFactory;
         }
 
-        private static ActorCommunicationMessageSerializersManager IntializeSerializationManager(
-            IActorCommunicationMessageSerializationProvider serializationProvider)
+        private static ActorMessageSerializersManager IntializeSerializationManager(
+            IActorMessageBodySerializationProvider serializationProvider)
         {
             // TODO serializer settings 
-            return new ActorCommunicationMessageSerializersManager(
+            return new ActorMessageSerializersManager(
                 serializationProvider,
-                new ActorCommunicationMessageHeaderSerializer());
+                new ActorMessageHeaderSerializer());
         }
 
         /// <summary>

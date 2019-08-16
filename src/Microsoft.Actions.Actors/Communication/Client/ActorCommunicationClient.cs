@@ -14,16 +14,18 @@ namespace Microsoft.Actions.Actors.Communication.Client
     {
         private readonly SemaphoreSlim communicationClientLock;
         private readonly IActorCommunicationClientFactory communicationClientFactory;
-        private IMessageBodyFactory messageBodyFactory;
+        private IActorMessageBodyFactory messageBodyFactory;
         private IActorCommunicationClient communicationClient;
         private IActionsInteractor actionsInteractor;
 
         public ActorCommunicationClient(
             IActorCommunicationClientFactory remotingClientFactory,
             IActionsInteractor actionsInteractor,
-            ActorId actorId)
+            ActorId actorId,
+            Type actorType)
         {
             this.ActorId = actorId;
+            this.ActorType = actorType;
             this.communicationClientFactory = remotingClientFactory;
             this.actionsInteractor = actionsInteractor;
             this.communicationClientLock = new SemaphoreSlim(1);
@@ -38,8 +40,15 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// <value>actor id.</value>
         public ActorId ActorId { get; }
 
-        public async Task<IResponseMessage> InvokeAsync(
-            IRequestMessage remotingRequestMessage,
+        /// <summary>
+        /// Gets the Actor Type that this actor
+        /// belongs to.
+        /// </summary>
+        /// <value>actor id.</value>
+        public Type ActorType { get; }
+
+        public async Task<IActorResponseMessage> InvokeAsync(
+            IActorRequestMessage remotingRequestMessage,
             string methodName,
             CancellationToken cancellationToken)
         {
@@ -47,12 +56,12 @@ namespace Microsoft.Actions.Actors.Communication.Client
               return await client.RequestResponseAsync(remotingRequestMessage);
         }
 
-        public Task<IResponseMessage> RequestResponseAsync(IRequestMessage requestRequestMessage)
+        public Task<IActorResponseMessage> RequestResponseAsync(IActorRequestMessage requestRequestMessage)
         {
             throw new NotImplementedException();
         }
 
-        public void SendOneWay(IRequestMessage requestMessage)
+        public void SendOneWay(IActorRequestMessage requestMessage)
         {
             throw new NotImplementedException();
         }

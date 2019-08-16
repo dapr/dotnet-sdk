@@ -10,12 +10,15 @@ namespace Microsoft.Actions.Actors.Communication
     using System.Runtime.Serialization;
 
     [DataContract(Name = "msgBody", Namespace = Constants.Namespace)]
-    internal class RequestMessageBody : IRequestMessageBody
+    internal class ActorMessageBody : IActorMessageBody
     {
         [DataMember]
         private Dictionary<string, object> parameters;
 
-        public RequestMessageBody(int parameterInfos)
+        [DataMember]
+        private object response;
+
+        public ActorMessageBody(int parameterInfos)
         {
             this.parameters = new Dictionary<string, object>(parameterInfos);
         }
@@ -28,6 +31,16 @@ namespace Microsoft.Actions.Actors.Communication
         public object GetParameter(int position, string paramName, Type paramType)
         {
             return this.parameters[paramName];
+        }
+
+        public void Set(object response)
+        {
+            this.response = response;
+        }
+
+        public object Get(Type paramType)
+        {
+            return this.response;
         }
     }
 }
