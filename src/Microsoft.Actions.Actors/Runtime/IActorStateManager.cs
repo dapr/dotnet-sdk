@@ -76,9 +76,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// since last state save operation.
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>
-        /// A task that represents the asynchronous clear cache operation.
-        /// </returns>
+        /// <returns>A task that represents the asynchronous remove operation.</returns>
         /// <remarks>
         /// All the operation(s) performed on <see cref="IActorStateManager"/>  since last save operation are cleared on
         /// clearing the cache and will not be included in next save operation.

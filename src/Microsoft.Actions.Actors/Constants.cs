@@ -23,6 +23,21 @@ namespace Microsoft.Actions.Actors
         /// <summary>
         /// Constant string for Actors state management relative url.
         /// </summary>
-        public const string ActorStateManagementRelativeUrl = "actions/state";
+        public const string ActorStateManagementRelativeUrl = "actors/state";
+
+        /// <summary>
+        /// Local host Actions runtime endpoint..
+        /// </summary>
+        public const string ActionsEndpoint = "localhost";
+
+        /// <summary>
+        /// Default Actions runtime Port.
+        /// </summary>
+        public const string ActionsPort = "3500";
+
+        /// <summary>
+        /// Actions runtime version.
+        /// </summary>
+        public const string ActionsVersion = "v1.0";
     }
 }

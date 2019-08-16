@@ -21,39 +21,48 @@ namespace Microsoft.Actions.Actors.Runtime
     {
         private const string TraceType = "Actor";
         private readonly string traceId;
-        private IActorStateManager stateManager;        
 
-        internal Actor(ActorId actorId)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Actor"/> class.
+        /// </summary>
+        /// <param name="actorId">Id for the actor.</param>
+        protected Actor(ActorId actorId)
         {
             this.Id = actorId;
-            this.traceId = this.Id.GetStorageKey();
+            this.traceId = this.Id.GetTraceId();
             this.IsDirty = false;
-            this.stateManager = new ActionsActorStateManager();
-            this.IsInitialized = false;
+            this.StateManager = new ActorStateManager();
         }
 
         /// <summary>
         /// Gets the identity of this actor with the actor service.
         /// </summary>
         /// <value>The <see cref="ActorId"/> for the actor.</value>
-        public ActorId Id { get; }        
+        public ActorId Id { get; }
 
         internal ActorTrace TraceSource => ActorTrace.Instance;
 
-        internal bool IsDirty { get; set; }
+        internal bool IsDirty { get; private set; }
 
-        internal bool IsInitialized { get; set; }                
+        /// <summary>
+        /// Gets the StateManager for the actor.
+        /// </summary>
+        protected IActorStateManager StateManager { get; }
 
         internal async Task OnActivateInternalAsync()
         {
+            await this.ResetStateAsync();
             await this.OnActivateAsync();
             this.TraceSource.WriteInfoWithId(TraceType, this.traceId, "Activated");
+
+            // Save any state modifications done in user overridden Activate method.
+            await this.SaveStateAsync();
         }
 
-        internal virtual async Task OnDeactivateInternalAsync()
+        internal async Task OnDeactivateInternalAsync()
         {
             this.TraceSource.WriteInfoWithId(TraceType, this.traceId, "Deactivating ...");
-            await this.stateManager.ClearCacheAsync();
+            await this.ResetStateAsync();
             await this.OnDeactivateAsync();
             this.TraceSource.WriteInfoWithId(TraceType, this.traceId, "Deactivated");
         }
@@ -63,33 +72,20 @@ namespace Microsoft.Actions.Actors.Runtime
             return this.OnPreActorMethodAsync(actorMethodContext);
         }
 
-        internal Task OnPostActorMethodAsyncInternal(ActorMethodContext actorMethodContext)
+        internal async Task OnPostActorMethodAsyncInternal(ActorMethodContext actorMethodContext)
         {
-            return this.OnPostActorMethodAsync(actorMethodContext);
+            await this.OnPostActorMethodAsync(actorMethodContext);
+            await this.SaveStateAsync();
         }
 
-        internal void OnInvokeFailedInternal()
+        internal void OnInvokeFailed()
         {
             this.IsDirty = true;
         }
 
-        /// <summary>
-        /// Called from ActorManager to save state implicitly.
-        /// </summary>
-        /// <returns>A task that represents the asynchronous save operation.</returns>
-        internal Task SaveStateAsyncInternal()
-        {
-            return this.SaveStateAsync();
-        }
-
         internal Task ResetStateAsync()
         {
-            return this.stateManager.ClearCacheAsync();
-        }
-
-        internal Task OnPostActivateAsync()
-        {
-            return this.SaveStateAsync();
+            return this.StateManager.ClearCacheAsync();
         }
 
         /// <summary>
@@ -102,7 +98,7 @@ namespace Microsoft.Actions.Actors.Runtime
         {
             if (!this.IsDirty)
             {
-                await this.stateManager.SaveStateAsync();
+                await this.StateManager.SaveStateAsync();
             }
         }
 

@@ -3,11 +3,13 @@
 // Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace Microsoft.Actions.Actors.Runtime
+namespace Microsoft.Actions.Actors
 {
+    using System;
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Runtime;
 
     /// <summary>
     /// Interface for interacting with Actions runtime.
@@ -15,20 +17,34 @@ namespace Microsoft.Actions.Actors.Runtime
     internal interface IActionsInteractor
     {
         /// <summary>
-        /// Saves a state to Actions.
+        /// Invokes an Actor method on Actions.
         /// </summary>
-        /// <param name="actorId">ActorId..</param>
-        /// <param name="stateChanges">State changes.</param>
+        /// <param name="actorType">Type of actor.</param>
+        /// <param name="actorId">ActorId.</param>
+        /// <param name="methodName">Method name to invoke.</param>
+        /// <param name="jsonPayload">State changes.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateAsync(ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken));
+        Task<string> InvokeActorMethodAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Saves a state to Actions.
         /// </summary>
-        /// <param name="actorId">ActorId..</param>
+        /// <param name="actorType">Type of actor.</param>
+        /// <param name="actorId">ActorId.</param>
+        /// <param name="stateChanges">State changes.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken));
+        Task SaveStateAsync(Type actorType, ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Saves a state to Actions.
+        /// </summary>
+        /// <param name="actorType">Type of actor.</param>
+        /// <param name="actorId">ActorId.</param>
+        /// <param name="keyName">Name of key to get value for.</param>
+        /// <param name="cancellationToken">Cancels the operation.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        Task<string> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
     }
 }
