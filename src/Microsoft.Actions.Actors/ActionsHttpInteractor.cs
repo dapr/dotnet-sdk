@@ -55,6 +55,7 @@ namespace Microsoft.Actions.Actors.Runtime
             var url = Constants.ActorStateManagementRelativeUrl;
             var requestId = Guid.NewGuid().ToString();
 
+            // TODO: create the content as serialized state info expected by Actions runtime.
             string content = string.Empty;
 
             HttpRequestMessage RequestFunc()
