@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
 // ------------------------------------------------------------
@@ -13,7 +13,7 @@ namespace Microsoft.Actions.Actors.Runtime
     /// <summary>
     /// Contains extension method for Actor types.
     /// </summary>
-    public static class ActorTypeExtensions
+    internal static class ActorTypeExtensions
     {
         /// <summary>
         /// Gets the actor interfaces implemented by the actor class.
@@ -32,7 +32,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// Indicates whether the interface type is an actor interface.
         /// </summary>
         /// <param name="actorInterfaceType">The interface type of the actor.</param>
-        /// <returns>true, if the actorInterfaceType is an interface only implements <see cref="IActor"/> otherwise, false.</returns>
+        /// <returns>true, if the actorInterfaceType is an interface only implements <see cref="IActor"/>.</returns>
         public static bool IsActorInterface(this Type actorInterfaceType)
         {
             return (actorInterfaceType.GetTypeInfo().IsInterface && (actorInterfaceType.GetNonActorParentType() == null));
@@ -71,7 +71,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return actorType.IsActor() && actorType.GetInterfaces().Contains(typeof(IRemindable));
         }
 
-        internal static Type GetNonActorParentType(this Type type)
+        public static Type GetNonActorParentType(this Type type)
         {
             var list = new List<Type>(type.GetInterfaces());
 

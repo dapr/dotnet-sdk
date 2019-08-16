@@ -3,23 +3,22 @@
 // Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace Microsoft.Actions.Actors
+namespace Microsoft.Actions.Actors.Runtime
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Actions.Actors.Runtime;
 
     internal sealed class ActorStateManager : IActorStateManager
     {
         public Task AddOrUpdateState<T>(string stateName, T value)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
-        public Task ClearCacheAsync(CancellationToken cancellationToken = default(CancellationToken))
+        public Task ClearCacheAsync(CancellationToken cancellationToken)
         {
-            throw new System.NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public Task<T> GetStateAsync<T>(string stateName, CancellationToken cancellationToken = default(CancellationToken))
@@ -29,17 +28,17 @@ namespace Microsoft.Actions.Actors
 
         public Task RemoveStateAsync(string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new System.NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public Task SaveStateAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new System.NotImplementedException();
+            return Task.CompletedTask;
         }
 
         private sealed class StateMetadata
         {
-            private StateMetadata(object value, Type type, StateChangeKind changeKind)
+            private StateMetadata(object value,     Type type, StateChangeKind changeKind)
             {
                 this.Value = value;
                 this.Type = type;

@@ -4,27 +4,38 @@
 // ------------------------------------------------------------
 
 namespace Microsoft.Actions.Actors.Client
-{
+{    
     using System;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Communication.Client;
+    using Newtonsoft.Json;
 
     /// <summary>
     /// Provides the base implementation for the proxy to the remote actor objects implementing <see cref="IActor"/> interfaces.
     /// The proxy object can be used used for client-to-actor and actor-to-actor communication.
     /// </summary>
-    public abstract class ActorProxy : IActorProxy
+    public class ActorProxy : IActorProxy
     {
         internal static readonly ActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();
-        private ActorCommunicationClient actorCommunicationClient;
+        private static ActionsHttpInteractor actionsHttpInteractor = new ActionsHttpInteractor();
+        private ActorCommunicationClient actorCommunicationClient;        
+        private string actorType;
+        private ActorId actorId;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxy"/> class.
         /// </summary>
-        protected ActorProxy()
+        /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
+        /// being sent to the actor with this ID.</param>
+        /// <param name="actorType">
+        /// Type of actor implementation.
+        /// </param>
+        protected ActorProxy(ActorId actorId, string actorType)
         {
+            this.actorType = actorType;
+            this.actorId = actorId;
         }
 
         /// <inheritdoc/>
@@ -61,24 +72,21 @@ namespace Microsoft.Actions.Actors.Client
         /// Type of actor implementation.
         /// </param>
         /// <returns>Proxy to the actor object.</returns>
-        public static TActorInterface Create<TActorInterface>(ActorId actorId, Type actorType)
+        public static TActorInterface Create<TActorInterface>(ActorId actorId, Type actorType) 
             where TActorInterface : IActor
         {
             return DefaultProxyFactory.CreateActorProxy<TActorInterface>(actorId, actorType);
         }
 
         /// <summary>
-        /// Creates a proxy to the actor object that doesnt implement the actor interface.
+        /// Creates an Actor Proxy.
         /// </summary>
-        /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
-        /// being sent to the actor with this ID.</param>
-        /// <param name="actorType">
-        /// Type of actor implementation.
-        /// </param>
-        /// <returns>Proxy to the actor object.</returns>
-        public static ActorProxy Create(ActorId actorId, Type actorType)
+        /// <param name="actorId">Actor Id.</param>
+        /// <param name="actorType">Type of actor.</param>
+        /// <returns>Actor proxy to interact with remote actor object.</returns>
+        public static ActorProxy Create(ActorId actorId, string actorType)
         {
-            return DefaultProxyFactory.CreateActorProxy(actorId, actorType);
+            return new ActorProxy(actorId, actorType);
         }
 
         /// <summary>
@@ -91,19 +99,19 @@ namespace Microsoft.Actions.Actors.Client
         {
             await Task.CompletedTask;
             return string.Empty;
-        }
+        }        
 
         /// <summary>
         /// Invokes the specified method for the actor with provided json payload.
         /// </summary>
         /// <param name="method">Actor method name.</param>
-        /// <param name="json">Json payload for actor method.</param>
+        /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Json response form server.</returns>
-        public async Task<string> InvokeAsync(string method, string json, CancellationToken cancellationToken = default(CancellationToken))
+        public Task<string> InvokeAsync(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            await Task.CompletedTask;
-            return string.Empty;
+            var jsonPayload = JsonConvert.SerializeObject(data);
+            return actionsHttpInteractor.InvokeActorMethodAsync(this.actorType, this.actorId, method, jsonPayload, cancellationToken);
         }
 
         internal void Initialize(
@@ -187,7 +195,10 @@ namespace Microsoft.Actions.Actors.Client
         /// <param name="methodId">Method Id for the actor method.</param>
         /// <param name="responseBody">Response body.</param>
         /// <returns>Return value of method call as <see cref="object"/>.</returns>
-        protected abstract object GetReturnValue(int interfaceId, int methodId, object responseBody);
+        protected virtual object GetReturnValue(int interfaceId, int methodId, object responseBody)
+        {
+            return null;
+        }
 
         /// <summary>
         /// Called by the generated proxy class to get the result from the response body.

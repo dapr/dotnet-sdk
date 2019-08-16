@@ -3,11 +3,12 @@
 // Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
 // ------------------------------------------------------------
 
-namespace Microsoft.Actions.Actors.Runtime
+namespace Microsoft.Actions.Actors
 {
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Security.Authentication;
@@ -16,6 +17,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Resources;
+    using Microsoft.Actions.Actors.Runtime;
     using Newtonsoft.Json;
 
     /// <summary>
@@ -23,12 +25,12 @@ namespace Microsoft.Actions.Actors.Runtime
     /// </summary>
     internal class ActionsHttpInteractor : IActionsInteractor
     {
-        private const string ActionsEndpoint = "localhost";
-        private string actionsPort = "3550";
+        private const string ActionsEndpoint = Constants.ActionsEndpoint;
+        private readonly string actionsPort = Constants.ActionsPort;
+        private readonly HttpClientHandler innerHandler;
+        private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
+        private readonly HttpClientSettings clientSettings;
         private HttpClient httpClient = null;
-        private HttpClientHandler innerHandler;
-        private IReadOnlyList<DelegatingHandler> delegateHandlers;
-        private HttpClientSettings clientSettings;
         private bool disposed = false;
 
         public ActionsHttpInteractor(
@@ -43,36 +45,31 @@ namespace Microsoft.Actions.Actors.Runtime
                 this.actionsPort = actionsPort;
             }
 
-            this.innerHandler = innerHandler == null ? new HttpClientHandler() : innerHandler;
+            this.innerHandler = innerHandler ?? new HttpClientHandler();
             this.delegateHandlers = delegateHandlers;
             this.clientSettings = clientSettings;
 
             this.httpClient = this.CreateHttpClient();
         }
 
-        public Task SaveStateAsync(ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        public Task<string> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var url = Constants.ActorStateManagementRelativeUrl;
+            var url = $"actors/state/{actorType.Name}/{actorId.ToString()}";
             var requestId = Guid.NewGuid().ToString();
-
-            // TODO: create the content as serialized state info expected by Actions runtime.
-            string content = string.Empty;
 
             HttpRequestMessage RequestFunc()
             {
                 var request = new HttpRequestMessage()
                 {
-                    Method = HttpMethod.Post,
-                    Content = new StringContent(content, Encoding.UTF8),
+                    Method = HttpMethod.Get,
                 };
-                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
                 return request;
             }
 
-            return this.SendAsync(RequestFunc, url, requestId, cancellationToken);
+            return this.SendAsyncGetResponseAsRawJson(RequestFunc, url, requestId, cancellationToken);
         }
 
-        public Task<string> GetStateAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken))
+        public Task SaveStateAsync(Type actorType, ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
@@ -80,7 +77,6 @@ namespace Microsoft.Actions.Actors.Runtime
         public Task<object> InvokeActorMethod(string actorId, string actorType, string methodName, byte[] messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
             var relativeUrl = $"{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/{methodName}";
-
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -97,6 +93,26 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return Task.FromResult((object)this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken));
+        }
+
+        public Task<string> InvokeActorMethodAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var relativeUri = $"v1.0/actors/{actorType}/{actorId}/{methodName}";
+            var requestId = Guid.NewGuid().ToString();
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Put,
+                    Content = new StringContent(jsonPayload, Encoding.UTF8),
+                };
+
+                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                return request;
+            }
+
+            return this.SendAsyncGetResponseAsRawJson(RequestFunc, relativeUri, requestId, cancellationToken);
         }
 
         /// <summary>
@@ -209,9 +225,9 @@ namespace Microsoft.Actions.Actors.Runtime
                         }
                     }
                 }
-                catch (JsonReaderException ex)
+                catch (Exception ex)
                 {
-                    throw new ActionsException(string.Format(SR.ServerErrorNoMeaningFulResponse, response.StatusCode), ex);
+                    throw new ActionsException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode), ex);
                 }
 
                 if (error != null)
@@ -223,13 +239,13 @@ namespace Microsoft.Actions.Actors.Runtime
                     // Handle NotFound 404, without any ErrorCode.
                     if (response.StatusCode.Equals(HttpStatusCode.NotFound))
                     {
-                        throw new ActionsException(SR.ErrorMessageHTTP404, ActionsErrorCodes.ACTIONS_E_DOES_NOT_EXIST, false);
+                        throw new ActionsException("ErrorMessageHTTP404", ActionsErrorCodes.ACTIONS_E_DOES_NOT_EXIST, false);
                     }
                 }
             }
 
             // Couldn't determine Error information from response., throw exception with status code.
-            throw new ActionsException(string.Format(SR.ServerErrorNoMeaningFulResponse, response.StatusCode));
+            throw new ActionsException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode));
         }
 
         /// <summary>
