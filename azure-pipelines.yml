@@ -44,7 +44,9 @@ stages:
           SourceFolder: 'bin/$(Configuration)'
           Contents: '**'
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
-      - task: PublishPipelineArtifact@1
+      - task: PublishBuildArtifacts@1
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
-          targetPath: '$(Build.ArtifactStagingDirectory)'
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          ArtifactName: '$(Configuration)_drop'
+          publishLocation: 'Container'
