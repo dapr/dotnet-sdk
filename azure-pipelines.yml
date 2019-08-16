@@ -19,16 +19,19 @@ stages:
           configuration: release
     steps:
       - task: DotNetCoreCLI@2
+        displayName: 'Build solution - $(Configuration)'
         inputs:
           command: 'build'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
       - task: DotNetCoreCLI@2
+        displayName: 'Test - $(Configuration)'
         inputs:
           command: 'test'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
       - task: DotNetCoreCLI@2
+        displayName: 'Package nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
