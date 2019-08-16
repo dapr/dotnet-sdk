@@ -7,10 +7,12 @@ namespace Microsoft.Actions.Actors
 {
     using System;
     using System.Globalization;
+    using System.Runtime.Serialization;
 
     /// <summary>
     /// The ActorId represents the identity of an actor within an actor service.
     /// </summary>
+    [DataContract(Name = "ActorId")]
     public class ActorId
     {
         private readonly long longId;
@@ -93,6 +95,26 @@ namespace Microsoft.Actions.Actors
 
             this.stringRepresentation = actorIdAsString;
             return actorIdAsString;
+        }
+
+        /// <summary>
+        /// Gets id for ActorId whose <see cref="ActorIdKind"/> is <see cref="ActorIdKind.Guid"/>.
+        /// </summary>
+        /// <returns><see cref="Guid"/>The id value for ActorId.</returns>
+        /// <exception cref="InvalidOperationException">The <see cref="Kind"/> is not <see cref="ActorIdKind.Guid"/> type.</exception>
+        public Guid GetGuidId()
+        {
+            if (this.Kind == ActorIdKind.Guid)
+            {
+                return this.guidId;
+            }
+
+            throw new InvalidOperationException(
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.InvalidActorKind,
+                    "GetGuidId",
+                    this.Kind.ToString()));
         }
 
         internal string GetStorageKey()
