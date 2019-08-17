@@ -13,6 +13,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
     using System.Text;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Runtime;
+    using Newtonsoft.Json;
 
     internal class HttpActorCommunicationClient : IActorCommunicationClient
     {
@@ -50,9 +51,10 @@ namespace Microsoft.Actions.Actors.Communication.Client
             var serializedHeaderBytes = serializedHeader.GetSendBytes();
 
             var serializedMsgBodyBuffers = serializedMsgBody.GetSendBytes();
+            var serializedHeaderJson = JsonConvert.SerializeObject(remotingRequestRequestMessage.GetHeader());
 
             // Send Request
-            var retval = (HttpResponseMessage)await this.actionsInteractor.InvokeActorMethod(actorId, actorType, method, serializedHeaderBytes, serializedMsgBodyBuffers);
+            var retval = (HttpResponseMessage)await this.actionsInteractor.InvokeActorMethod(actorId, actorType, method, serializedHeaderJson, serializedMsgBodyBuffers);
 
             // TODO finalize on pending on response message format and test 
             // Need to come back once decided on response message

@@ -21,7 +21,7 @@ namespace Microsoft.Actions.Actors.Communication
         string ActorType { get; set; }
 
         /// <summary>
-        /// Gets or sets the call context which is used to limit ren-entrancy in Actors.
+        /// Gets or sets the call context which is used to limit re-eentrancy in Actors.
         /// </summary>
         string CallContext { get; set; }
 

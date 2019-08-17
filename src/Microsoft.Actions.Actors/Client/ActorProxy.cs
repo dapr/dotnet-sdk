@@ -27,6 +27,13 @@ namespace Microsoft.Actions.Actors.Client
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxy"/> class.
         /// </summary>
+        public ActorProxy()
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActorProxy"/> class.
+        /// </summary>
         /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
         /// being sent to the actor with this ID.</param>
         /// <param name="actorType">
@@ -72,7 +79,7 @@ namespace Microsoft.Actions.Actors.Client
         /// Type of actor implementation.
         /// </param>
         /// <returns>Proxy to the actor object.</returns>
-        public static TActorInterface Create<TActorInterface>(ActorId actorId, Type actorType) 
+        public static TActorInterface Create<TActorInterface>(ActorId actorId, string actorType) 
             where TActorInterface : IActor
         {
             return DefaultProxyFactory.CreateActorProxy<TActorInterface>(actorId, actorType);
@@ -141,7 +148,7 @@ namespace Microsoft.Actions.Actors.Client
             var headers = new ActorRequestMessageHeader
             {
                 ActorId = this.ActorId,
-                ActorType = this.actorCommunicationClient.ActorType.Name,
+                ActorType = this.actorCommunicationClient.ActorType,
                 InterfaceId = interfaceId,
                 MethodId = methodId,
                 CallContext = Actors.Helper.GetCallContext(),

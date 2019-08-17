@@ -11,6 +11,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Communication;
     using Newtonsoft.Json;
 
     /// <summary>
@@ -32,7 +33,28 @@ namespace Microsoft.Actions.Actors.Runtime
 
         internal ActorTypeInfo ActorTypeInfo { get; }
 
-        internal Task<T> DispatchSimpleAsync<T>(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
+        internal Task<T> DispatchAsync<T>(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        {
+            var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
+            var header = JsonConvert.DeserializeObject<ActorRequestMessageHeader>(actionsActorheader);
+
+            // Get the deserialized Body.
+            // Add methodDispatcher.
+            // Call the method on the method dispatcher using the Func below.
+
+            // Create a Func to be invoked by common method.
+            Task<T> RequestFunc(Actor actor, CancellationToken ct)
+            {
+                var methodInfo = this.ActorTypeInfo.LookupActorMethodInfo(actorMethodName);
+                var parameters = methodInfo.GetParameters();
+                var type = parameters[0].ParameterType;
+                return (Task<T>)methodInfo.Invoke(actor, new object[] { JsonConvert.DeserializeObject(string.Empty, type) });
+            }
+
+            return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+        }
+
+        internal Task<T> DispatchForXLangInvocationAsync<T>(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 

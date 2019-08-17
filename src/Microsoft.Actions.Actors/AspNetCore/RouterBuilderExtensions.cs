@@ -70,7 +70,15 @@ namespace Microsoft.Actions.Actors.AspNetCore
                     json = reader.ReadToEnd();
                 } */
 
-                return ActorRuntime.DispatchAsync(actorTypeName, actorId, methodName, request.Body).ContinueWith(t => response.WriteAsync(t.GetAwaiter().GetResult()));
+                if (request.Headers.ContainsKey("X-ActionsRequestHeader"))
+                {
+                    var actionsActorheader = request.Headers["X - ActionsRequestHeader"];
+                    return ActorRuntime.DispatchAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body);
+                }
+                else
+                {
+                    return ActorRuntime.DispatchForXLangInvocationAsync(actorTypeName, actorId, methodName, request.Body).ContinueWith(t => response.WriteAsync(t.GetAwaiter().GetResult()));
+                }
             });
         }
     }

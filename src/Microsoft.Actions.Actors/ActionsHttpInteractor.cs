@@ -74,30 +74,33 @@ namespace Microsoft.Actions.Actors
             throw new NotImplementedException();
         }
 
-        public Task<object> InvokeActorMethod(string actorId, string actorType, string methodName, byte[] messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<object> InvokeActorMethod(string actorId, string actorType, string methodName, string messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUrl = $"{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/{methodName}";
+            var relativeUrl = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/method/{methodName}";
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
                 var request = new HttpRequestMessage()
                 {
-                    Method = HttpMethod.Post,
+                    Method = HttpMethod.Put,
                     Content = new ByteArrayContent(messageBody),
                 };
 
-                request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(messageHeader, 0, messageHeader.Length));
-                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                request.Headers.Add(Constants.RequestHeaderName, messageHeader);
+
+                    // Encoding.UTF8.GetString(messageHeader, 0, messageHeader.Length));                
+                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
                 return request;
             }
 
-            return Task.FromResult((object)this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken));
+            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return response;
         }
 
         public Task<string> InvokeActorMethodAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUri = $"v1.0/actors/{actorType}/{actorId}/{methodName}";
+            var relativeUri = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/method/{methodName}";
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()

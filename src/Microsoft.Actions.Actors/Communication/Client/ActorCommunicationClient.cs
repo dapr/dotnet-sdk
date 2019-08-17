@@ -22,7 +22,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
             IActorCommunicationClientFactory remotingClientFactory,
             IActionsInteractor actionsInteractor,
             ActorId actorId,
-            Type actorType)
+            string actorType)
         {
             this.ActorId = actorId;
             this.ActorType = actorType;
@@ -45,7 +45,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// belongs to.
         /// </summary>
         /// <value>actor id.</value>
-        public Type ActorType { get; }
+        public string ActorType { get; }
 
         public async Task<IActorResponseMessage> InvokeAsync(
             IActorRequestMessage remotingRequestMessage,

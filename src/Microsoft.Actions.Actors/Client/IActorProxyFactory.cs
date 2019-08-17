@@ -25,7 +25,7 @@ namespace Microsoft.Actions.Actors.Client
         /// <returns>An actor proxy object that implements IActorProxy and TActorInterface.</returns>
         TActorInterface CreateActorProxy<TActorInterface>(
             ActorId actorId,
-            Type actorType)
+            string actorType)
             where TActorInterface : IActor;
 
         /// <summary>
