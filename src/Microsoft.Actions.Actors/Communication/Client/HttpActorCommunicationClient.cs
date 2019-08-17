@@ -54,7 +54,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
             var serializedHeaderJson = JsonConvert.SerializeObject(remotingRequestRequestMessage.GetHeader());
 
             // Send Request
-            var retval = (HttpResponseMessage)await this.actionsInteractor.InvokeActorMethod(actorId, actorType, method, serializedHeaderJson, serializedMsgBodyBuffers);
+            var retval = (HttpResponseMessage)await this.actionsInteractor.InvokeActorMethodWithRemotingAsync(actorId, actorType, method, serializedHeaderJson, serializedMsgBodyBuffers);
 
             // TODO finalize on pending on response message format and test 
             // Need to come back once decided on response message

@@ -33,7 +33,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         internal ActorTypeInfo ActorTypeInfo { get; }
 
-        internal Task<T> DispatchAsync<T>(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        internal Task<T> DispatchWithRemotingAsync<T>(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             var header = JsonConvert.DeserializeObject<ActorRequestMessageHeader>(actionsActorheader);
@@ -54,7 +54,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal Task<T> DispatchForXLangInvocationAsync<T>(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
+        internal Task<T> DispatchWihtoutRemotingAsync<T>(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 

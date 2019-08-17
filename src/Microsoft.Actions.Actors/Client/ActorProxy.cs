@@ -118,7 +118,7 @@ namespace Microsoft.Actions.Actors.Client
         public Task<string> InvokeAsync(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
         {
             var jsonPayload = JsonConvert.SerializeObject(data);
-            return actionsHttpInteractor.InvokeActorMethodAsync(this.actorType, this.actorId, method, jsonPayload, cancellationToken);
+            return actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId, method, jsonPayload, cancellationToken);
         }
 
         internal void Initialize(

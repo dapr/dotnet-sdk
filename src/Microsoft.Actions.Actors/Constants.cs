@@ -51,5 +51,10 @@ namespace Microsoft.Actions.Actors
         /// Actions runtime version.
         /// </summary>
         public const string ActionsVersion = "v1.0";
+
+        /// <summary>
+        /// String used in constructing method invocation url.
+        /// </summary>
+        public const string Method = "method";
     }
 }

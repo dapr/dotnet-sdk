@@ -74,9 +74,9 @@ namespace Microsoft.Actions.Actors
             throw new NotImplementedException();
         }
 
-        public async Task<object> InvokeActorMethod(string actorId, string actorType, string methodName, string messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<object> InvokeActorMethodWithRemotingAsync(string actorId, string actorType, string methodName, string messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUrl = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/method/{methodName}";
+            var relativeUrl = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/{Constants.Method}/{methodName}";
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -88,8 +88,6 @@ namespace Microsoft.Actions.Actors
                 };
 
                 request.Headers.Add(Constants.RequestHeaderName, messageHeader);
-
-                    // Encoding.UTF8.GetString(messageHeader, 0, messageHeader.Length));                
                 request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
                 return request;
             }
@@ -98,9 +96,9 @@ namespace Microsoft.Actions.Actors
             return response;
         }
 
-        public Task<string> InvokeActorMethodAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
+        public Task<string> InvokeActorMethodWithoutRemotingAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUri = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/method/{methodName}";
+            var relativeUri = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/{Constants.Method}/{methodName}";
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
