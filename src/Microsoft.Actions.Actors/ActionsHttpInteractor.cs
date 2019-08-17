@@ -7,16 +7,14 @@ namespace Microsoft.Actions.Actors
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
-    using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Security.Authentication;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Actions.Actors.Communication;
-    using Microsoft.Actions.Actors.Resources;
     using Microsoft.Actions.Actors.Runtime;
     using Newtonsoft.Json;
 
@@ -25,8 +23,8 @@ namespace Microsoft.Actions.Actors
     /// </summary>
     internal class ActionsHttpInteractor : IActionsInteractor
     {
-        private const string ActionsEndpoint = Constants.ActionsEndpoint;
-        private readonly string actionsPort = Constants.ActionsPort;
+        private const string ActionsEndpoint = Constants.ActionsDefaultEndpoint;
+        private readonly string actionsPort = Constants.ActionsDefaultPort;
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
         private readonly HttpClientSettings clientSettings;
@@ -52,9 +50,9 @@ namespace Microsoft.Actions.Actors
             this.httpClient = this.CreateHttpClient();
         }
 
-        public Task<string> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<object> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var url = $"actors/state/{actorType.Name}/{actorId.ToString()}";
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -66,17 +64,19 @@ namespace Microsoft.Actions.Actors
                 return request;
             }
 
-            return this.SendAsyncGetResponseAsRawJson(RequestFunc, url, requestId, cancellationToken);
+            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return response;
         }
 
         public Task SaveStateAsync(Type actorType, ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
         {
+            // Save state individually as Transactional update is not yet supported.
             throw new NotImplementedException();
         }
 
         public async Task<object> InvokeActorMethodWithRemotingAsync(string actorId, string actorType, string methodName, string messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUrl = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/{Constants.Method}/{methodName}";
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -98,7 +98,7 @@ namespace Microsoft.Actions.Actors
 
         public Task<string> InvokeActorMethodWithoutRemotingAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUri = $"{Constants.ActionsVersion}/{Constants.ActorRequestRelativeUrl}/{actorType}/{actorId}/{Constants.Method}/{methodName}";
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -113,7 +113,7 @@ namespace Microsoft.Actions.Actors
                 return request;
             }
 
-            return this.SendAsyncGetResponseAsRawJson(RequestFunc, relativeUri, requestId, cancellationToken);
+            return this.SendAsyncGetResponseAsRawJson(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
         /// <summary>

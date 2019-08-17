@@ -45,7 +45,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="keyName">Name of key to get value for.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<string> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<object> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Invokes Actor method with Remoting.

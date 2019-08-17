@@ -71,9 +71,9 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 } */
 
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.
-                if (request.Headers.ContainsKey("X-ActionsRequestHeader"))
+                if (request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
-                    var actionsActorheader = request.Headers["X - ActionsRequestHeader"];
+                    var actionsActorheader = request.Headers[Constants.RequestHeaderName];
                     return ActorRuntime.DispatchWitRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body);
                 }
                 else
