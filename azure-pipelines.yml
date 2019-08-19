@@ -61,7 +61,7 @@ stages:
           MaxRetryAttempts: '5'
       - task: EsrpCodeSigning@1
         displayName: ESRP Authenticode CodeSign'
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/master'))
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: 'bin/$(Configuration)'
@@ -117,7 +117,7 @@ stages:
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1
         displayName: ESRP CodeSign - Nuget Package'
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/master'))
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: '$(Build.ArtifactStagingDirectory)'
@@ -152,7 +152,7 @@ stages:
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
       - task: CmdLine@2
         displayName: "Show ESRP signing result"
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/master'))
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           script: 'type *.md'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
