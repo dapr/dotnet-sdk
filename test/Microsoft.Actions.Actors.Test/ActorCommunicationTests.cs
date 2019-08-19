@@ -23,7 +23,7 @@ namespace Microsoft.Actions.Actors.Test
         public void TestInvokingMethodOnActorInterface()
         {
             var actorId = new ActorId("Test");
-            var proxy = ActorProxy.Create<ITestActor>(actorId, typeof(TestActor));
+            var proxy = ActorProxy.Create<ITestActor>(actorId, "TestActor");
             // TODO the following call is expected to fail as http send request will fail till we have mocked it.
             proxy.SetCountAsync(5, CancellationToken.None).GetAwaiter().GetResult();
         }

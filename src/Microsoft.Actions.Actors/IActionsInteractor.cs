@@ -18,7 +18,7 @@ namespace Microsoft.Actions.Actors
     internal interface IActionsInteractor
     {
         /// <summary>
-        /// Invokes an Actor method on Actions.
+        /// Invokes an Actor method on Actions without remoting.
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
         /// <param name="actorId">ActorId.</param>
@@ -26,7 +26,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="jsonPayload">State changes.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<string> InvokeActorMethodAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken));
+        Task<string> InvokeActorMethodWithoutRemotingAsync(string actorType, ActorId actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Saves a state to Actions.
@@ -46,7 +46,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="keyName">Name of key to get value for.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<string> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<object> GetStateAsync(Type actorType, ActorId actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Invokes Actor method.
@@ -54,6 +54,6 @@ namespace Microsoft.Actions.Actors
         /// <param name="remotingRequestRequestMessage">Actor Request Message.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task<IActorResponseMessage> InvokeActorMethodAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
+        Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

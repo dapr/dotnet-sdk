@@ -78,7 +78,7 @@ namespace Microsoft.Actions.Actors.Client
         /// Type of actor implementation.
         /// </param>
         /// <returns>Proxy to the actor object.</returns>
-        public static TActorInterface Create<TActorInterface>(ActorId actorId, Type actorType) 
+        public static TActorInterface Create<TActorInterface>(ActorId actorId, string actorType) 
             where TActorInterface : IActor
         {
             return DefaultProxyFactory.CreateActorProxy<TActorInterface>(actorId, actorType);
@@ -117,7 +117,7 @@ namespace Microsoft.Actions.Actors.Client
         public Task<string> InvokeAsync(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
         {
             var jsonPayload = JsonConvert.SerializeObject(data);
-            return actionsHttpInteractor.InvokeActorMethodAsync(this.actorType, this.actorId, method, jsonPayload, cancellationToken);
+            return actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId, method, jsonPayload, cancellationToken);
         }
 
         internal void Initialize(
@@ -147,7 +147,7 @@ namespace Microsoft.Actions.Actors.Client
             var headers = new ActorRequestMessageHeader
             {
                 ActorId = this.ActorId,
-                ActorType = this.actorCommunicationClient.ActorType.Name,
+                ActorType = this.actorCommunicationClient.ActorType,
                 InterfaceId = interfaceId,
                 MethodId = methodId,
                 CallContext = Actors.Helper.GetCallContext(),

@@ -73,7 +73,22 @@ namespace Microsoft.Actions.Actors.Runtime
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor.
+        /// Invokes the specified method for the actor when used with Remotign from CSharp client.
+        /// </summary>
+        /// <param name="actorTypeName">Actor type name to invokde the method for.</param>
+        /// <param name="actorId">Actor id for the actor for which method will be invoked.</param>
+        /// <param name="actorMethodName">MEthos name on actor type which will be invoked.</param>
+        /// <param name="actionsActorheader">Actor Header.</param>
+        /// <param name="data">Payload for the actor method.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        internal static Task<string> DispatchWitRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetActorManager(actorTypeName).DispatchWithRemotingAsync<string>(new ActorId(actorId), actorMethodName, actionsActorheader, data, cancellationToken);
+        }
+
+        /// <summary>
+        /// Invokes the specified method for the actor when used without remoting, this is mainly used for cross language invocation.
         /// </summary>
         /// <param name="actorTypeName">Actor type name to invokde the method for.</param>
         /// <param name="actorId">Actor id for the actor for which method will be invoked.</param>
@@ -81,9 +96,9 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="data">Payload for the actor method.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        internal static Task<string> DispatchAsync(string actorTypeName, string actorId, string actorMethodName, Stream data, CancellationToken cancellationToken = default(CancellationToken))
+        internal static Task<string> DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return GetActorManager(actorTypeName).DispatchSimpleAsync<string>(new ActorId(actorId), actorMethodName, data, cancellationToken);
+            return GetActorManager(actorTypeName).DispatchWihtoutRemotingAsync<string>(new ActorId(actorId), actorMethodName, data, cancellationToken);
         }
 
         /// <summary>

@@ -70,7 +70,16 @@ namespace Microsoft.Actions.Actors.AspNetCore
                     json = reader.ReadToEnd();
                 } */
 
-                return ActorRuntime.DispatchAsync(actorTypeName, actorId, methodName, request.Body).ContinueWith(t => response.WriteAsync(t.GetAwaiter().GetResult()));
+                // If Header is present, call is made using Remoting, use Remoting dispatcher.
+                if (request.Headers.ContainsKey(Constants.RequestHeaderName))
+                {
+                    var actionsActorheader = request.Headers[Constants.RequestHeaderName];
+                    return ActorRuntime.DispatchWitRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body);
+                }
+                else
+                {
+                    return ActorRuntime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, request.Body).ContinueWith(t => response.WriteAsync(t.GetAwaiter().GetResult()));
+                }
             });
         }
     }

@@ -37,7 +37,7 @@ namespace Microsoft.Actions.Actors.Client
         internal HttpClient HttpClient { get; }
 
         /// <inheritdoc/>
-        public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, Type actorType) 
+        public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType) 
             where TActorInterface : IActor
         {
             var actorInterfaceType = typeof(TActorInterface);
