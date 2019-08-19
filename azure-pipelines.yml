@@ -148,7 +148,7 @@ stages:
         displayName: "Show ESRP signing result"
         condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
         inputs:
-          script: 'type bin\$(Configuration\*.md'
+          script: 'type bin\$(Configuration)\*.md'
       - task: CopyFiles@2
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
