@@ -32,7 +32,7 @@ stages:
           projects: 'code.sln'
       - task: EsrpCodeSigning@1
         displayName: ESRP CodeSign'
-        condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/master'))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: 'bin/$(Configuration)'
@@ -42,14 +42,14 @@ stages:
           inlineOperation: |
             [
                 {
-                    "keyCode": "CP-233863-SN",
+                    "keyCode": "$(ESRP_CODE_SIGN_KEYCODE)",
                     "operationSetCode": "StrongNameSign",
                     "parameters": [ ],
                     "toolName": "sign",
                     "toolVersion": "1.0"
                 },
                 {
-                    "keyCode": "CP-233863-SN",
+                    "keyCode": "$(ESRP_CODE_SIGN_KEYCODE)",
                     "operationSetCode": "StrongNameVerify",
                     "parameters": [ ],
                     "toolName": "sign",
@@ -61,7 +61,7 @@ stages:
           MaxRetryAttempts: '5'
       - task: EsrpCodeSigning@1
         displayName: ESRP Authenticode CodeSign'
-        condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/master'))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: 'bin/$(Configuration)'
@@ -70,7 +70,7 @@ stages:
           signConfigType: 'inlineSignParams'
           inlineOperation: |
             [{
-                    "keyCode": "CP-230012",
+                    "keyCode": "$(ESRP_AUTHENTICODE_SIGN)",
                     "operationSetCode": "SigntoolSign",
                     "parameters": [{
                             "parameterName": "OpusName",
@@ -97,7 +97,7 @@ stages:
                     "toolVersion": "1.0"
                 },
                 {
-                    "keyCode": "CP-230012",
+                    "keyCode": $(ESRP_AUTHENTICODE_SIGN)",
                     "operationSetCode": "SigntoolVerify",
                     "parameters": [],
                     "toolName": "sign",
@@ -117,7 +117,7 @@ stages:
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1
         displayName: ESRP CodeSign - Nuget Package'
-        condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/master'))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: '$(Build.ArtifactStagingDirectory)'
@@ -127,14 +127,14 @@ stages:
           inlineOperation: |
             [
                 {
-                    "keyCode": "CP-401405",
+                    "keyCode": "$(ESRP_CODESIGN_NUPKG)",
                     "operationSetCode": "NuGetSign",
                     "parameters": [ ],
                     "toolName": "sign",
                     "toolVersion": "1.0"
                 },
                 {
-                    "keyCode": "CP-401405",
+                    "keyCode": "$(ESRP_CODESIGN_NUPKG)",
                     "operationSetCode": "NuGetVerify",
                     "parameters": [ ],
                     "toolName": "sign",
@@ -152,7 +152,7 @@ stages:
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
       - task: CmdLine@2
         displayName: "Show ESRP signing result"
-        condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/master'))
         inputs:
           script: 'type *.md'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
