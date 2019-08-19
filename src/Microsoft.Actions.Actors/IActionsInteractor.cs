@@ -9,6 +9,7 @@ namespace Microsoft.Actions.Actors
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Runtime;
 
     /// <summary>
@@ -50,13 +51,9 @@ namespace Microsoft.Actions.Actors
         /// <summary>
         /// Invokes Actor method.
         /// </summary>
-        /// <param name="actorId">ActorId.</param>
-        /// <param name="actorType">Actor Type.</param>
-        /// <param name="methodName">Method Name.</param>
-        /// <param name="messageHeader">Message Header.</param>
-        /// <param name="messageBody">Message Body.</param>
+        /// <param name="remotingRequestRequestMessage">Actor Request Message.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task<object> InvokeActorMethod(string actorId, string actorType, string methodName, byte[] messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken));        
+        Task<IActorResponseMessage> InvokeActorMethodAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

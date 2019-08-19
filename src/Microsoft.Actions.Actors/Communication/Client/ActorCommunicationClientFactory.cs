@@ -36,15 +36,13 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// <summary>
         /// Returns a client to communicate.
         /// </summary>
-        /// <param name="actionInteractor">Action Interactor.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>
         /// A <see cref="System.Threading.Tasks.Task">Task</see> that represents outstanding operation. The result of the Task is
         /// the CommunicationClient(<see cref="IActorCommunicationClient" />) object.
         /// </returns>
-        public async Task<IActorCommunicationClient> GetClientAsync(IActionsInteractor actionInteractor, CancellationToken cancellationToken)
+        public async Task<IActionsInteractor> GetClientAsync()
         {
-            return await this.CreateClientAsync(actionInteractor, cancellationToken);
+            return await this.CreateClientAsync();
         }
 
         /// <summary>
@@ -68,20 +66,15 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// <summary>
         /// Creates a communication client for the given endpoint address.
         /// </summary>
-        /// <param name="actionsHttpInteractor">Actions Interactor.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The communication client that was created.</returns>
-        private Task<IActorCommunicationClient> CreateClientAsync(
-            IActionsInteractor actionsHttpInteractor,
-            CancellationToken cancellationToken)
+        private Task<IActionsInteractor> CreateClientAsync()
         {
             try
             {
                 // TODO add retries and error handling - add CreateClientWithRetriesAsync version
-                var client = new HttpActorCommunicationClient(
-                    this.serializersManager,
-                    actionsHttpInteractor);
-                return Task.FromResult((IActorCommunicationClient)client);
+                var client = new ActionsHttpInteractor(
+                    this.serializersManager);
+                return Task.FromResult((IActionsInteractor)client);
             }
             catch (Exception ex)
             {
