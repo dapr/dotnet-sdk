@@ -145,6 +145,8 @@ stages:
           MaxConcurrency: '50'
           MaxRetryAttempts: '5'
       - task: CmdLine@2
+        displayName: "Show ESRP signing result"
+        condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
         inputs:
           script: 'type bin\$(Configuration\*.md'
       - task: CopyFiles@2
