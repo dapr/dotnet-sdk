@@ -120,7 +120,7 @@ stages:
         condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
-          FolderPath: 'bin/$(Configuration)'
+          FolderPath: '$(Build.ArtifactStagingDirectory)'
           Pattern: 'Microsoft.Actions*.nupkg'
           UseMinimatch: true
           signConfigType: 'inlineSignParams'
