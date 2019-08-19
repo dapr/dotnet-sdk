@@ -71,7 +71,7 @@ stages:
           inlineOperation: |
             [
               {
-                "keyCode": "CP-230012",
+                "keyCode": "$(ESRP_AUTHENTICODE_SIGN)",
                 "operationSetCode": "SigntoolSign",
                 "parameters": [{
                         "parameterName": "OpusName",
@@ -98,7 +98,7 @@ stages:
                 "toolVersion": "1.0"
               },
               {
-                  "keyCode": "CP-230012",
+                  "keyCode": "$(ESRP_AUTHENTICODE_SIGN)",
                   "operationSetCode": "SigntoolVerify",
                   "parameters": [],
                   "toolName": "sign",
