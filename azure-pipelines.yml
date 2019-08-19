@@ -42,14 +42,14 @@ stages:
           inlineOperation: |
             [
                 {
-                    "keyCode": "$(ESRP_CODE_SIGN_KEYCODE)",
+                    "keyCode": "$(ESRP_CODESIGN_KEYCODE)",
                     "operationSetCode": "StrongNameSign",
                     "parameters": [ ],
                     "toolName": "sign",
                     "toolVersion": "1.0"
                 },
                 {
-                    "keyCode": "$(ESRP_CODE_SIGN_KEYCODE)",
+                    "keyCode": "$(ESRP_CODESIGN_KEYCODE)",
                     "operationSetCode": "StrongNameVerify",
                     "parameters": [ ],
                     "toolName": "sign",
