@@ -144,17 +144,18 @@ stages:
           SessionTimeout: '20'
           MaxConcurrency: '50'
           MaxRetryAttempts: '5'
-      - task: CmdLine@2
-        displayName: "Show ESRP signing result"
-        condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
-        inputs:
-          script: 'type bin\$(Configuration)\*.md'
       - task: CopyFiles@2
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
           SourceFolder: 'bin/$(Configuration)'
-          Contents: '*.dll,*.pdb,*.nupkg'
+          Contents: '**'
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      - task: CmdLine@2
+        displayName: "Show ESRP signing result"
+        condition: and(eq(variables['Configuration'], 'release'), ne(variables['Build.Reason'], 'PullRequest'))
+        inputs:
+          script: 'type *.md'
+          workingDirectory: '$(Build.ArtifactStagingDirectory)'
       - task: PublishBuildArtifacts@1
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
