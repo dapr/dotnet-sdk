@@ -27,9 +27,10 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             this.ActorFactory = actorFactory;
+            this.InterfaceTypes = actorType.GetActorInterfaces();
 
             // Find methods which are defined in IActor interface.
-            foreach (var actorInterface in actorType.GetActorInterfaces())
+            foreach (var actorInterface in this.InterfaceTypes)
             {                
                 foreach (var methodInfo in actorInterface.GetMethods())
                 {
