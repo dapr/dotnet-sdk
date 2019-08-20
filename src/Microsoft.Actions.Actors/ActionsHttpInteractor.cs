@@ -140,10 +140,6 @@ namespace Microsoft.Actions.Actors
             var msgBodySeriaizer = this.serializersManager.GetRequestBodySerializer(interfaceId);
             var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
 
-            var serializedHeaderBytes = serializedHeader.GetSendBytes();
-
-            var serializedMsgBodyBuffers = serializedMsgBody.GetSendBytes();
-
             // Send Request
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
             var requestId = Guid.NewGuid().ToString();
@@ -153,10 +149,10 @@ namespace Microsoft.Actions.Actors
                 var request = new HttpRequestMessage()
                 {
                     Method = HttpMethod.Put,
-                    Content = new ByteArrayContent(serializedMsgBodyBuffers),
+                    Content = new ByteArrayContent(serializedMsgBody),
                 };
 
-                request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeaderBytes, 0, serializedHeaderBytes.Length));
+                request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeader, 0, serializedHeader.Length));
                 request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
                 return request;
             }
@@ -173,13 +169,11 @@ namespace Microsoft.Actions.Actors
                 {
                     var header = headerValues.First();
 
-                    var incomingHeader = new IncomingMessageHeader(new MemoryStream(Encoding.ASCII.GetBytes(header)));
-
                     // DeSerialize Actor Response Message Header
                     actorResponseMessageHeader =
                         this.serializersManager.GetHeaderSerializer()
                             .DeserializeResponseHeaders(
-                                incomingHeader);
+                                new MemoryStream(Encoding.ASCII.GetBytes(header)));
                 }
             }
 
@@ -193,7 +187,7 @@ namespace Microsoft.Actions.Actors
                 var responseBodySerializer = this.serializersManager.GetRequestBodySerializer(interfaceId);
 
                 actorResponseMessageBody =
-                    responseBodySerializer.Deserialize(new IncomingMessageBody(responseMessageBody));
+                    responseBodySerializer.Deserialize(responseMessageBody);
             }
 
             // TODO Either throw exception or return response body with null header and message body
