@@ -152,13 +152,13 @@ stages:
           Contents: '**'
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
       - task: CmdLine@2
-        displayName: "Show ESRP signing result"
+        displayName: 'Show ESRP signing result'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           script: 'type *.md'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
       - task: NuGetCommand@2
-        displayName: "Publish nuget package to feed"
+        displayName: 'Publish nuget package to feed'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           command: 'push'
@@ -167,6 +167,7 @@ stages:
           publishVstsFeed: 'b3bbc81a-4160-49ac-9a5f-5a27eda7ce5b'
           allowPackageConflicts: true
       - task: PublishBuildArtifacts@1
+        displayName: 'Publish binaries to artifact'
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
           PathtoPublish: '$(Build.ArtifactStagingDirectory)'
