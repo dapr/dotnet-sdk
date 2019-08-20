@@ -61,11 +61,290 @@ namespace Microsoft.Actions.Actors.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The actor state name &apos;{0}&apos; already exist..
+        /// </summary>
+        internal static string ActorStateAlreadyExists {
+            get {
+                return ResourceManager.GetString("ActorStateAlreadyExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid Client for remoting..
+        /// </summary>
+        internal static string Error_InvalidOperation {
+            get {
+                return ResourceManager.GetString("Error_InvalidOperation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to CallBack Channel Not Found for this ClientId  : &apos;{0}&apos;.
+        /// </summary>
+        internal static string ErrorClientCallbackChannelNotFound {
+            get {
+                return ResourceManager.GetString("ErrorClientCallbackChannelNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Failed to deserialize and get remote exception  {0}.
+        /// </summary>
+        internal static string ErrorDeserializationFailure {
+            get {
+                return ResourceManager.GetString("ErrorDeserializationFailure", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0} is not an actor events interface. The actor event interface must only derive from &apos;{1}&apos;..
+        /// </summary>
+        internal static string ErrorEventInterfaceMustBeIActorEvents {
+            get {
+                return ResourceManager.GetString("ErrorEventInterfaceMustBeIActorEvents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The exception {0} was unhandled on the service and could not be serialized for transferring to the client..
+        /// </summary>
+        internal static string ErrorExceptionSerializationFailed1 {
+            get {
+                return ResourceManager.GetString("ErrorExceptionSerializationFailed1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Detailed Remote Exception Information: {0}.
+        /// </summary>
+        internal static string ErrorExceptionSerializationFailed2 {
+            get {
+                return ResourceManager.GetString("ErrorExceptionSerializationFailed2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Header with name &apos;{0}&apos; already exists.
+        /// </summary>
+        internal static string ErrorHeaderAlreadyExists {
+            get {
+                return ResourceManager.GetString("ErrorHeaderAlreadyExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interface id &apos;{0}&apos; is not implemented by object &apos;{1}&apos;.
+        /// </summary>
+        internal static string ErrorInterfaceNotImplemented {
+            get {
+                return ResourceManager.GetString("ErrorInterfaceNotImplemented", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Client is trying to connect to invalid address {0}..
+        /// </summary>
+        internal static string ErrorInvalidAddress {
+            get {
+                return ResourceManager.GetString("ErrorInvalidAddress", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The requested resource/content/path does not exist on the server..
         /// </summary>
         internal static string ErrorMessageHTTP404 {
             get {
                 return ResourceManager.GetString("ErrorMessageHTTP404", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The object of type &apos;{0}&apos; does support the method &apos;{1}&apos;.
+        /// </summary>
+        internal static string ErrorMethodNotImplemented {
+            get {
+                return ResourceManager.GetString("ErrorMethodNotImplemented", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{0}&apos; of interface &apos;{1}&apos; is not supported in remoting V1..
+        /// </summary>
+        internal static string ErrorMethodNotSupportedInRemotingV1 {
+            get {
+                return ResourceManager.GetString("ErrorMethodNotSupportedInRemotingV1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method Id &apos;{0}&apos; for interface Id &apos;{1}&apos; not found in service implementation. If a new method is added to interface and client &amp; service are being upgraded at the same time, its possible that client got upgraded before the service. If a method is removed from the interface and client &amp; service are being upgraded at the same time, its possible that service got upgraded before the client. Addition or removal of methods to an interface should be performed as a phased upgrade..
+        /// </summary>
+        internal static string ErrorMissingMethod {
+            get {
+                return ResourceManager.GetString("ErrorMissingMethod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Actor State with name {0} was not found..
+        /// </summary>
+        internal static string ErrorNamedActorStateNotFound {
+            get {
+                return ResourceManager.GetString("ErrorNamedActorStateNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The service type &apos;{0}&apos; does not implement any service interfaces or one of the interfaces implemented is not a service interface. All interfaces(including its parent interface) implemented by service type must be service interface. A service interface is the one that ultimately derives from &apos;{1}&apos; type..
+        /// </summary>
+        internal static string ErrorNoServiceInterfaceFound {
+            get {
+                return ResourceManager.GetString("ErrorNoServiceInterfaceFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an actor interface as it does not derive from the interface &apos;{1}&apos;..
+        /// </summary>
+        internal static string ErrorNotAnActorInterface_DerivationCheck1 {
+            get {
+                return ResourceManager.GetString("ErrorNotAnActorInterface_DerivationCheck1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an actor interface as it derive from a non actor interface &apos;{1}&apos;. All actor interfaces must derive from &apos;{2}&apos;..
+        /// </summary>
+        internal static string ErrorNotAnActorInterface_DerivationCheck2 {
+            get {
+                return ResourceManager.GetString("ErrorNotAnActorInterface_DerivationCheck2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an Actor interface as it is not an interface..
+        /// </summary>
+        internal static string ErrorNotAnActorInterface_InterfaceCheck {
+            get {
+                return ResourceManager.GetString("ErrorNotAnActorInterface_InterfaceCheck", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an service interface as it does not derive from the interface &apos;{1}&apos;..
+        /// </summary>
+        internal static string ErrorNotAServiceInterface_DerivationCheck1 {
+            get {
+                return ResourceManager.GetString("ErrorNotAServiceInterface_DerivationCheck1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an service interface as it derive from a non service interface &apos;{1}&apos;. All service interfaces must derive from &apos;{2}&apos;..
+        /// </summary>
+        internal static string ErrorNotAServiceInterface_DerivationCheck2 {
+            get {
+                return ResourceManager.GetString("ErrorNotAServiceInterface_DerivationCheck2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not a service interface as it is not an interface. .
+        /// </summary>
+        internal static string ErrorNotAServiceInterface_InterfaceCheck {
+            get {
+                return ResourceManager.GetString("ErrorNotAServiceInterface_InterfaceCheck", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The  {0} interface &apos;{1}&apos; is using generics. Generic interfaces cannot be remoted..
+        /// </summary>
+        internal static string ErrorRemotedInterfaceIsGeneric {
+            get {
+                return ResourceManager.GetString("ErrorRemotedInterfaceIsGeneric", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; has &apos;{4}&apos; parameter &apos;{3}&apos;, and it is not the last parameter. If a method of the {0} interface has parameter of type &apos;{4}&apos; it must be the last parameter..
+        /// </summary>
+        internal static string ErrorRemotedMethodCancellationTokenOutOfOrder {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodCancellationTokenOutOfOrder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; does not return Task or Task&lt;&gt;. The {0} interface methods must be async and must return either Task or Task&lt;&gt;..
+        /// </summary>
+        internal static string ErrorRemotedMethodDoesNotReturnTask {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodDoesNotReturnTask", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; returns &apos;{3}&apos;. The {0} interface methods must have a return of type &apos;{4}&apos;..
+        /// </summary>
+        internal static string ErrorRemotedMethodDoesNotReturnVoid {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodDoesNotReturnVoid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; is using generics. The {0} interface methods cannot use generics..
+        /// </summary>
+        internal static string ErrorRemotedMethodHasGenerics {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodHasGenerics", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; has out/ref/optional parameter &apos;{3}&apos;. The {0} interface methods must not have out, ref or optional parameters..
+        /// </summary>
+        internal static string ErrorRemotedMethodHasOutRefOptionalParameter {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodHasOutRefOptionalParameter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; has variable length parameter &apos;{3}&apos;. The {0} interface methods must not have variable length parameters..
+        /// </summary>
+        internal static string ErrorRemotedMethodHasVaArgParameter {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodHasVaArgParameter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; is using a variable argument list. The {0} interface methods cannot have a variable argument list..
+        /// </summary>
+        internal static string ErrorRemotedMethodHasVaArgs {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodHasVaArgs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; is overloaded. The {0} interface methods cannot be overloaded..
+        /// </summary>
+        internal static string ErrorRemotedMethodsIsOverloaded {
+            get {
+                return ResourceManager.GetString("ErrorRemotedMethodsIsOverloaded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The method &apos;{0}&apos; is not valid for &apos;{1}&apos; ActorId..
+        /// </summary>
+        internal static string InvalidActorKind {
+            get {
+                return ResourceManager.GetString("InvalidActorKind", resourceCulture);
             }
         }
         

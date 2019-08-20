@@ -105,19 +105,21 @@ namespace Microsoft.Actions.Actors.Client
         {
             await Task.CompletedTask;
             return string.Empty;
-        }        
+        }
 
         /// <summary>
         /// Invokes the specified method for the actor with provided json payload.
         /// </summary>
+        /// <typeparam name="T">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Json response form server.</returns>
-        public Task<string> InvokeAsync(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<T> InvokeAsync<T>(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
         {
             var jsonPayload = JsonConvert.SerializeObject(data);
-            return actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId, method, jsonPayload, cancellationToken);
+            var jsonResponse = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, jsonPayload, cancellationToken);
+            return JsonConvert.DeserializeObject<T>(jsonResponse);
         }
 
         internal void Initialize(

@@ -58,7 +58,7 @@ namespace Microsoft.Actions.Actors.AspNetCore
 
         public static void AddActorMethodRoute(this IRouteBuilder routeBuilder)
         {
-            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/{methodName}", (request, response, routeData) =>
+            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", (request, response, routeData) =>
             {
                 var actorTypeName = (string)routeData.Values["actorTypeName"];
                 var actorId = (string)routeData.Values["actorId"];

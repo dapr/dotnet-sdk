@@ -11,6 +11,7 @@ namespace Microsoft.Actions.Actors.Description
     using System.Reflection;
     using System.Threading;
     using Microsoft.Actions.Actors.Common;
+    using Microsoft.Actions.Actors.Resources;
 
     internal class MethodDescription
     {

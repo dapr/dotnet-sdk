@@ -61,23 +61,37 @@ namespace Microsoft.Actions.Actors.Runtime
             return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal Task<T> DispatchWihtoutRemotingAsync<T>(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
+        internal Task<string> DispatchWihtoutRemotingAsync(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
-            string json = default(string);
-            using (var reader = new StreamReader(data))
-            {
-                json = reader.ReadToEnd();
-            }
-
             // Create a Func to be invoked by common method.
-            Task<T> RequestFunc(Actor actor, CancellationToken ct)
-            {
-                var methodInfo = this.ActorTypeInfo.LookupActorMethodInfo(actorMethodName);
+            var methodInfo = this.ActorTypeInfo.LookupActorMethodInfo(actorMethodName);
+
+            async Task<string> RequestFunc(Actor actor, CancellationToken ct)
+            {                
                 var parameters = methodInfo.GetParameters();
-                var type = parameters[0].ParameterType;
-                return (Task<T>)methodInfo.Invoke(actor, new object[] { JsonConvert.DeserializeObject(json, type) });
+
+                if (parameters.Length == 0)
+                {
+                    // dynamic task = await (Task<dynamic>)methodInfo.Invoke(actor, null);
+                    dynamic awaitable = methodInfo.Invoke(actor, null);
+                    await awaitable;
+                    return JsonConvert.SerializeObject(awaitable.GetAwaiter().GetResult());
+                }
+                else
+                {
+                    string json = default(string);
+                    using (var reader = new StreamReader(data))
+                    {
+                        json = reader.ReadToEnd();
+                    }
+
+                    var type = parameters[0].ParameterType;
+                    dynamic awaitable = methodInfo.Invoke(actor, new object[] { JsonConvert.DeserializeObject(json, type) });
+                    await awaitable;
+                    return JsonConvert.SerializeObject(awaitable.GetAwaiter().GetResult());
+                }                
             }
 
             return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
@@ -154,9 +168,10 @@ namespace Microsoft.Actions.Actors.Runtime
                 retval = await actorFunc.Invoke(actor, cancellationToken);
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
-            catch
+            catch (Exception e)
             {
                 actor.OnInvokeFailed();
+                Console.WriteLine(e);
                 throw;
             }
 

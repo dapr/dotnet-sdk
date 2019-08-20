@@ -4,10 +4,11 @@
 // ------------------------------------------------------------
 
 namespace Microsoft.Actions.Actors.Communication
-{
+{    
     using System.Collections.Generic;
     using System.Globalization;
     using System.Runtime.Serialization;
+    using Microsoft.Actions.Actors.Resources;
 
     [DataContract(Name = "ActorResponseMessageHeaders", Namespace = Constants.Namespace)]
 
