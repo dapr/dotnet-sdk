@@ -169,7 +169,7 @@ stages:
           publishLocation: 'Container'
       - task: CmdLine@2
         displayName: 'Add release tag for release branch'
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-')))
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
         inputs:
           script: 'echo "##vso[build.addbuildtag]release"'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
