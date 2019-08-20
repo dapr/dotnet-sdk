@@ -9,6 +9,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.Collections.Concurrent;
     using System.IO;
     using System.Reflection;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Builder;
@@ -46,11 +47,12 @@ namespace Microsoft.Actions.Actors.Runtime
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             
             // Get the serialized header
-            var actorMessageHeader = JsonConvert.DeserializeObject<ActorRequestMessageHeader>(actionsActorheader);
+            var actorMessageHeader = this.serializersManager.GetHeaderSerializer()
+                .DeserializeRequestHeaders(new MemoryStream(Encoding.ASCII.GetBytes(actionsActorheader)));
 
             // Get the deserialized Body.
             var msgBodySerializer = this.serializersManager.GetRequestBodySerializer(actorMessageHeader.InterfaceId);
-            var actorMessageBody = msgBodySerializer.Deserialize(new IncomingMessageBody(data));
+            var actorMessageBody = msgBodySerializer.Deserialize(data);
 
             // Add methodDispatcher.
             // Call the method on the method dispatcher using the Func below.

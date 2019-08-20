@@ -138,7 +138,7 @@ namespace Microsoft.Actions.Actors.Communication
                 this.serializer = serializer;
             }
 
-            IOutgoingMessageBody IActorMessageBodySerializer.Serialize(
+            byte[] IActorMessageBodySerializer.Serialize(
                 IActorMessageBody serviceRemotingRequestMessageBody)
             {
                 if (serviceRemotingRequestMessageBody == null)
@@ -153,21 +153,20 @@ namespace Microsoft.Actions.Actors.Communication
                         this.serializer.WriteObject(writer, serviceRemotingRequestMessageBody);
                         writer.Flush();
 
-                        // TODO Should this be changed to ArraySegment<byte>(stream.ToArray() ?
-                        return new OutgoingMessageBody(stream.ToArray());
+                        return stream.ToArray();
                     }
                 }
             }
 
             IActorMessageBody IActorMessageBodySerializer.Deserialize(
-                IIncomingMessageBody messageBody)
+                Stream messageBody)
             {
-                if (messageBody == null || messageBody.GetReceivedBuffer() == null || messageBody.GetReceivedBuffer().Length == 0)
+                if (messageBody == null || messageBody.Length == 0)
                 {
                     return null;
                 }
 
-                using (var stream = new DisposableStream(messageBody.GetReceivedBuffer()))
+                using (var stream = new DisposableStream(messageBody))
                 {
                     using (var reader = this.CreateXmlDictionaryReader(stream))
                     {

@@ -5,6 +5,8 @@
 
 namespace Microsoft.Actions.Actors.Communication
 {
+    using System.IO;
+
     /// <summary>
     /// Represents a serializer that can serialize remoting layer message header to messaging layer header.
     /// </summary>
@@ -14,28 +16,28 @@ namespace Microsoft.Actions.Actors.Communication
         ///  Serializes the remoting request message header to a message header.
         /// </summary>
         /// <param name="serviceRemotingRequestMessageHeader">Remoting header to serialize.</param>
-        /// <returns>An <see cref="IMessageHeader"/> that has the serialized contents of the specified service remoting header.</returns>
-        IMessageHeader SerializeRequestHeader(IActorRequestMessageHeader serviceRemotingRequestMessageHeader);
+        /// <returns>Serialized bytes.</returns>
+        byte[] SerializeRequestHeader(IActorRequestMessageHeader serviceRemotingRequestMessageHeader);
 
         /// <summary>
         /// Deserializes a request message header in to remoting header.
         /// </summary>
         /// <param name="messageHeader">Messaging layer header to be deserialized.</param>
         /// <returns>An <see cref="IActorRequestMessageHeader"/> that has the deserialized contents of the specified message header.</returns>
-        IActorRequestMessageHeader DeserializeRequestHeaders(IMessageHeader messageHeader);
+        IActorRequestMessageHeader DeserializeRequestHeaders(Stream messageHeader);
 
         /// <summary>
         ///  Serializes the remoting response message header to a message header.
         /// </summary>
         /// <param name="serviceRemotingResponseMessageHeader">Remoting header to serialize.</param>
-        /// <returns>An <see cref="IMessageHeader"/> that has the serialized contents of the specified service remoting header.</returns>
-        IMessageHeader SerializeResponseHeader(IActorResponseMessageHeader serviceRemotingResponseMessageHeader);
+        /// <returns>Serialized bytes.</returns>
+        byte[] SerializeResponseHeader(IActorResponseMessageHeader serviceRemotingResponseMessageHeader);
 
         /// <summary>
         /// Deserializes a response message header in to remoting header.
         /// </summary>
         /// <param name="messageHeader">Messaging layer header to be deserialized.</param>
         /// <returns>An <see cref="IActorRequestMessageHeader"/> that has the deserialized contents of the specified message header.</returns>
-        IActorResponseMessageHeader DeserializeResponseHeaders(IMessageHeader messageHeader);
+        IActorResponseMessageHeader DeserializeResponseHeaders(Stream messageHeader);
     }
 }
