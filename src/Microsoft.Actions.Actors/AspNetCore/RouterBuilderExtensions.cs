@@ -64,17 +64,11 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 var actorId = (string)routeData.Values["actorId"];
                 var methodName = (string)routeData.Values["methodName"];
 
-                /* string json = default(string);
-                using (var reader = new StreamReader(request.Body))
-                {
-                    json = reader.ReadToEnd();
-                } */
-
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.
                 if (request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
                     var actionsActorheader = request.Headers[Constants.RequestHeaderName];
-                    return ActorRuntime.DispatchWitRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body);
+                    return ActorRuntime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body);
                 }
                 else
                 {

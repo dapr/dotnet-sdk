@@ -6,7 +6,7 @@
 namespace Microsoft.Actions.Actors.Runtime
 {
     /// <summary>
-    /// Interface for ACtorManager.
+    /// Interface for ActorManager.
     /// </summary>
     internal interface IActorManager
     {

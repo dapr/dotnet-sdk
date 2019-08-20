@@ -11,6 +11,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Builder;
     using Microsoft.Actions.Actors.Communication;
     using Newtonsoft.Json;
 
@@ -24,18 +25,23 @@ namespace Microsoft.Actions.Actors.Runtime
         private readonly ConcurrentDictionary<ActorId, Actor> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
+        private IActorMessageBodyFactory messageBodyFactory;
 
         internal ActorManager(ActorTypeInfo actorTypeInfo)
         {
             this.ActorTypeInfo = actorTypeInfo;
+            this.MethodDispatcherMap = new ActorMethodDispatcherMap(actorTypeInfo);
             this.activeActors = new ConcurrentDictionary<ActorId, Actor>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
             this.serializersManager = IntializeSerializationManager(null);
+            this.messageBodyFactory = new DataContractMessageFactory();
         }
 
         internal ActorTypeInfo ActorTypeInfo { get; }
 
-        internal Task<T> DispatchWithRemotingAsync<T>(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        internal ActorMethodDispatcherMap MethodDispatcherMap { get; set; }
+
+        internal Task<IActorMessageBody> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             
@@ -48,20 +54,26 @@ namespace Microsoft.Actions.Actors.Runtime
 
             // Add methodDispatcher.
             // Call the method on the method dispatcher using the Func below.
+            var methodDispatcher = this.MethodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
 
             // Create a Func to be invoked by common method.
-            Task<T> RequestFunc(Actor actor, CancellationToken ct)
+            async Task<IActorMessageBody> RequestFunc(Actor actor, CancellationToken ct)
             {
-                var methodInfo = this.ActorTypeInfo.LookupActorMethodInfo(actorMethodName);
-                var parameters = methodInfo.GetParameters();
-                var type = parameters[0].ParameterType;
-                return (Task<T>)methodInfo.Invoke(actor, new object[] { JsonConvert.DeserializeObject(string.Empty, type) });
+                // TODO add error handling and diagnostics
+                IActorMessageBody responseMsgBody = (IActorMessageBody)await methodDispatcher.DispatchAsync(
+                        actor,
+                        actorMessageHeader.MethodId,
+                        actorMessageBody,
+                        this.messageBodyFactory,
+                        ct);
+
+                return responseMsgBody;
             }
 
-            return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+            return this.DispatchInternalAsync<IActorMessageBody>(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal Task<string> DispatchWihtoutRemotingAsync(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
+        internal Task<string> DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
@@ -69,7 +81,7 @@ namespace Microsoft.Actions.Actors.Runtime
             var methodInfo = this.ActorTypeInfo.LookupActorMethodInfo(actorMethodName);
 
             async Task<string> RequestFunc(Actor actor, CancellationToken ct)
-            {                
+            {
                 var parameters = methodInfo.GetParameters();
 
                 if (parameters.Length == 0)
@@ -91,7 +103,7 @@ namespace Microsoft.Actions.Actors.Runtime
                     dynamic awaitable = methodInfo.Invoke(actor, new object[] { JsonConvert.DeserializeObject(json, type) });
                     await awaitable;
                     return JsonConvert.SerializeObject(awaitable.GetAwaiter().GetResult());
-                }                
+                }
             }
 
             return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);

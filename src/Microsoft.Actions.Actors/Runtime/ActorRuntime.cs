@@ -10,6 +10,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Communication;
 
     /// <summary>
     /// Contains methods to register actor types. Registering the types allows the runtime to create instances of the actor.
@@ -82,9 +83,9 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="data">Payload for the actor method.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        internal static Task<string> DispatchWitRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken = default(CancellationToken))
+        internal static Task<IActorMessageBody> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return GetActorManager(actorTypeName).DispatchWithRemotingAsync<string>(new ActorId(actorId), actorMethodName, actionsActorheader, data, cancellationToken);
+            return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, actionsActorheader, data, cancellationToken);
         }
 
         /// <summary>
@@ -98,7 +99,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static Task<string> DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return GetActorManager(actorTypeName).DispatchWihtoutRemotingAsync(new ActorId(actorId), actorMethodName, data, cancellationToken);
+            return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, data, cancellationToken);
         }
 
         /// <summary>
