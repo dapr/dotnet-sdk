@@ -159,7 +159,7 @@ stages:
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
       - task: NuGetCommand@2
         displayName: 'Publish nuget package to feed'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
         inputs:
           command: 'push'
           packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
