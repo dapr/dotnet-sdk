@@ -47,7 +47,6 @@ namespace Microsoft.Actions.Actors.Client
             // TODO factory level settings or method level parameter, default http
             var actorCommunicationClient = new ActorCommunicationClient(
                 factory,
-                new ActionsHttpInteractor(),
                 actorId,
                 actorType);
 

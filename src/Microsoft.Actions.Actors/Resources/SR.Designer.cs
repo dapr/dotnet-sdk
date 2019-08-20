@@ -160,6 +160,15 @@ namespace Microsoft.Actions.Actors.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No MethodDispatcher is found for interface id &apos;{0}&apos;.
+        /// </summary>
+        internal static string ErrorMethodDispatcherNotFound {
+            get {
+                return ResourceManager.GetString("ErrorMethodDispatcherNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The object of type &apos;{0}&apos; does support the method &apos;{1}&apos;.
         /// </summary>
         internal static string ErrorMethodNotImplemented {

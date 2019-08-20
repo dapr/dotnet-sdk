@@ -38,7 +38,17 @@ namespace Microsoft.Actions.Actors.Runtime
             }
         }
 
+        /// <summary>
+        /// Gets the type of the class implementing the actor.
+        /// </summary>
+        /// <value>The <see cref="System.Type"/> of the class implementing the actor.</value>
         public Type ImplementationType { get; }
+
+        /// <summary>
+        /// Gets the actor interface types which derive from <see cref="IActor"/> and implemented by actor class.
+        /// </summary>
+        /// <value>An enumerator that can be used to iterate through the actor interface type.</value>
+        public IEnumerable<Type> InterfaceTypes { get; private set; }
 
         public Dictionary<string, MethodInfo> Methods { get; }
 

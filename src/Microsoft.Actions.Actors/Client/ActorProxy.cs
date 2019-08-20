@@ -20,14 +20,14 @@ namespace Microsoft.Actions.Actors.Client
     {
         internal static readonly ActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();
         private static ActionsHttpInteractor actionsHttpInteractor = new ActionsHttpInteractor();
-        private ActorCommunicationClient actorCommunicationClient;        
+        private ActorCommunicationClient actorCommunicationClient;
         private string actorType;
         private ActorId actorId;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxy"/> class.
         /// </summary>
-        public ActorProxy()
+        protected ActorProxy()
         {
         }
 
@@ -54,12 +54,11 @@ namespace Microsoft.Actions.Actors.Client
             }
         }
 
-        /// <inheritdoc/>
         /// <summary>
         /// Gets the <see cref="IActorCommunicationClient"/> interface that this proxy is using to communicate with the actor.
         /// </summary>
         /// <value><see cref="ActorCommunicationClient"/> that this proxy is using to communicate with the actor.</value>
-        public IActorCommunicationClient ActorCommunicationClient
+        internal IActorCommunicationClient ActorCommunicationClient
         {
             get { return this.actorCommunicationClient; }
         }

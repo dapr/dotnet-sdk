@@ -9,12 +9,14 @@ namespace Microsoft.Actions.Actors
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
+    using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Security.Authentication;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Runtime;
     using Newtonsoft.Json;
 
@@ -28,10 +30,12 @@ namespace Microsoft.Actions.Actors
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
         private readonly HttpClientSettings clientSettings;
+        private readonly ActorMessageSerializersManager serializersManager;
         private HttpClient httpClient = null;
         private bool disposed = false;
 
         public ActionsHttpInteractor(
+            ActorMessageSerializersManager serializersManager = null,
             HttpClientHandler innerHandler = null,
             HttpClientSettings clientSettings = null,
             params DelegatingHandler[] delegateHandlers)
@@ -48,6 +52,15 @@ namespace Microsoft.Actions.Actors
             this.clientSettings = clientSettings;
 
             this.httpClient = this.CreateHttpClient();
+
+            if (serializersManager != null)
+            {
+                this.serializersManager = serializersManager;
+            }
+            else
+            {
+                this.serializersManager = IntializeSerializationManager(null);
+            }
         }
 
         public async Task<byte[]> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
@@ -112,8 +125,26 @@ namespace Microsoft.Actions.Actors
             throw new NotImplementedException();
         }
 
-        public async Task<object> InvokeActorMethodWithRemotingAsync(string actorId, string actorType, string methodName, string messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken))
         {
+            var requestMessageHeader = remotingRequestRequestMessage.GetHeader();
+
+            var actorId = requestMessageHeader.ActorId.ToString();
+            var methodName = requestMessageHeader.MethodName;
+            var actorType = requestMessageHeader.ActorType;
+            var interfaceId = requestMessageHeader.InterfaceId;
+
+            var serializedHeader = this.serializersManager.GetHeaderSerializer()
+                .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
+
+            var msgBodySeriaizer = this.serializersManager.GetRequestBodySerializer(interfaceId);
+            var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
+
+            var serializedHeaderBytes = serializedHeader.GetSendBytes();
+
+            var serializedMsgBodyBuffers = serializedMsgBody.GetSendBytes();
+
+            // Send Request
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
             var requestId = Guid.NewGuid().ToString();
 
@@ -122,16 +153,51 @@ namespace Microsoft.Actions.Actors
                 var request = new HttpRequestMessage()
                 {
                     Method = HttpMethod.Put,
-                    Content = new ByteArrayContent(messageBody),
+                    Content = new ByteArrayContent(serializedMsgBodyBuffers),
                 };
 
-                request.Headers.Add(Constants.RequestHeaderName, messageHeader);
+                request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeaderBytes, 0, serializedHeaderBytes.Length));
                 request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
                 return request;
             }
 
-            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
-            return response;
+            var retval = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+
+            IActorResponseMessageHeader actorResponseMessageHeader = null;
+            if (retval != null && retval.Headers != null)
+            {
+                IEnumerable<string> headerValues = null;
+
+                // TODO Assert if expected header is not there
+                if (retval.Headers.TryGetValues(Constants.RequestHeaderName, out headerValues))
+                {
+                    var header = headerValues.First();
+
+                    var incomingHeader = new IncomingMessageHeader(new MemoryStream(Encoding.ASCII.GetBytes(header)));
+
+                    // DeSerialize Actor Response Message Header
+                    actorResponseMessageHeader =
+                        this.serializersManager.GetHeaderSerializer()
+                            .DeserializeResponseHeaders(
+                                incomingHeader);
+                }
+            }
+
+            // Get the http response message body content and extract out expected actor response message body
+            IActorMessageBody actorResponseMessageBody = null;
+            if (retval != null && retval.Content != null)
+            {
+                var responseMessageBody = await retval.Content.ReadAsStreamAsync();
+
+                // Deserialize Actor Response Message Body
+                var responseBodySerializer = this.serializersManager.GetRequestBodySerializer(interfaceId);
+
+                actorResponseMessageBody =
+                    responseBodySerializer.Deserialize(new IncomingMessageBody(responseMessageBody));
+            }
+
+            // TODO Either throw exception or return response body with null header and message body
+            return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
         }
 
         public Task<string> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
@@ -212,6 +278,15 @@ namespace Microsoft.Actions.Actors
 
                 this.disposed = true;
             }
+        }
+
+        private static ActorMessageSerializersManager IntializeSerializationManager(
+           IActorMessageBodySerializationProvider serializationProvider)
+        {
+            // TODO serializer settings
+            return new ActorMessageSerializersManager(
+                serializationProvider,
+                new ActorMessageHeaderSerializer());
         }
 
         /// <summary>

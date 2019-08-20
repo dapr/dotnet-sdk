@@ -216,4 +216,7 @@
   <data name="ServerErrorNoMeaningFulResponse" xml:space="preserve">
     <value>Server returned error while processing the request, but did not provide a meaningful error response. Response Error Code {0}</value>
   </data>
+  <data name="ErrorMethodDispatcherNotFound" xml:space="preserve">
+    <value>No MethodDispatcher is found for interface id '{0}'</value>
+  </data>
 </root>

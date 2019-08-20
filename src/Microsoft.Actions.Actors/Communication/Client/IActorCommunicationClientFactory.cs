@@ -23,12 +23,10 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// <summary>
         /// Get a communication client.
         /// </summary>
-        /// <param name="actionInteractor">Action Interactor.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>
         /// A <see cref="System.Threading.Tasks.Task">Task</see> that represents outstanding operation. The result of the Task is
         /// the CommunicationClient(<see cref="IActorCommunicationClient" />) object.
         /// </returns>
-        Task<IActorCommunicationClient> GetClientAsync(IActionsInteractor actionInteractor, CancellationToken cancellationToken);
+        Task<IActionsInteractor> GetClientAsync();
     }
 }

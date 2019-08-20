@@ -8,28 +8,23 @@ namespace Microsoft.Actions.Actors.Communication.Client
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.Actions.Actors.Runtime;
 
     internal class ActorCommunicationClient : IActorCommunicationClient
     {
         private readonly SemaphoreSlim communicationClientLock;
         private readonly IActorCommunicationClientFactory communicationClientFactory;
         private IActorMessageBodyFactory messageBodyFactory;
-        private IActorCommunicationClient communicationClient;
         private IActionsInteractor actionsInteractor;
 
         public ActorCommunicationClient(
             IActorCommunicationClientFactory remotingClientFactory,
-            IActionsInteractor actionsInteractor,
             ActorId actorId,
             string actorType)
         {
             this.ActorId = actorId;
             this.ActorType = actorType;
             this.communicationClientFactory = remotingClientFactory;
-            this.actionsInteractor = actionsInteractor;
             this.communicationClientLock = new SemaphoreSlim(1);
-            this.communicationClient = default(IActorCommunicationClient);
             this.messageBodyFactory = remotingClientFactory.GetRemotingMessageBodyFactory();
         }
 
@@ -53,31 +48,21 @@ namespace Microsoft.Actions.Actors.Communication.Client
             CancellationToken cancellationToken)
         {
               var client = await this.GetCommunicationClientAsync(cancellationToken);
-              return await client.RequestResponseAsync(remotingRequestMessage);
+              return await client.InvokeActorMethodWithRemotingAsync(remotingRequestMessage);
         }
 
-        public Task<IActorResponseMessage> RequestResponseAsync(IActorRequestMessage requestRequestMessage)
+        private async Task<IActionsInteractor> GetCommunicationClientAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
-        }
-
-        public void SendOneWay(IActorRequestMessage requestMessage)
-        {
-            throw new NotImplementedException();
-        }
-
-        private async Task<IActorCommunicationClient> GetCommunicationClientAsync(CancellationToken cancellationToken)
-        {
-            IActorCommunicationClient client;
+            IActionsInteractor client;
             await this.communicationClientLock.WaitAsync(cancellationToken);
             try
             {
-                if (this.communicationClient == null)
+                if (this.actionsInteractor == null)
                 {
-                    this.communicationClient = await this.communicationClientFactory.GetClientAsync(this.actionsInteractor, cancellationToken);
+                    this.actionsInteractor = await this.communicationClientFactory.GetClientAsync();
                 }
 
-                client = this.communicationClient;
+                client = this.actionsInteractor;
             }
             finally
             {

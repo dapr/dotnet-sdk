@@ -9,6 +9,7 @@ namespace Microsoft.Actions.Actors
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Runtime;
 
     /// <summary>
@@ -69,15 +70,11 @@ namespace Microsoft.Actions.Actors
         Task<byte[]> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Invokes Actor method with Remoting.
+        /// Invokes Actor method.
         /// </summary>
-        /// <param name="actorId">ActorId.</param>
-        /// <param name="actorType">Actor Type.</param>
-        /// <param name="methodName">Method Name.</param>
-        /// <param name="messageHeader">Message Header.</param>
-        /// <param name="messageBody">Message Body.</param>
+        /// <param name="remotingRequestRequestMessage">Actor Request Message.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task<object> InvokeActorMethodWithRemotingAsync(string actorId, string actorType, string methodName, string messageHeader, byte[] messageBody, CancellationToken cancellationToken = default(CancellationToken));
+        Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

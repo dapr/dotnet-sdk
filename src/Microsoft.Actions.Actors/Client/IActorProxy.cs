@@ -17,11 +17,5 @@ namespace Microsoft.Actions.Actors.Client
         /// </summary>
         /// <value><see cref="Actions.Actors.ActorId"/> associated with the proxy object.</value>
         ActorId ActorId { get; }
-
-        /// <summary>
-        /// Gets <see cref="IActorCommunicationClient"/> that this proxy is using to communicate with the actor.
-        /// </summary>
-        /// <value><see cref="IActorCommunicationClient"/> that this proxy is using to communicate with the actor.</value>
-        IActorCommunicationClient ActorCommunicationClient { get; }
     }
 }
