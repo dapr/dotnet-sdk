@@ -4,10 +4,11 @@
 // ------------------------------------------------------------
 
 namespace Microsoft.Actions.Actors.Description
-{
+{    
     using System;
     using System.Globalization;
     using System.Reflection;
+    using Microsoft.Actions.Actors.Resources;
 
     internal sealed class MethodArgumentDescription
     {

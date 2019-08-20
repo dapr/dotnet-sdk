@@ -4,32 +4,63 @@
 // ------------------------------------------------------------
 
 namespace Microsoft.Actions.Actors.Runtime
-{
+{    
     using System.Collections.Generic;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Newtonsoft.Json;
 
     /// <summary>
     /// State Provider to interact with Actions runtime.
     /// </summary>
-    public class ActionsStateProvider : IActorStateProvider
+    internal static class ActionsStateProvider
     {
-        /// <inheritdoc/>
-        public Task<T> LoadStateAsync<T>(ActorId actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
+        private static IActionsInteractor actionsInteractor = new ActionsHttpInteractor();
+
+        public static async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new System.NotImplementedException();
+            var result = new ConditionalValue<T>(false, default(T));
+            var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);            
+
+            if (byteResult.Length != 0)
+            {
+                // Currently Actions runtime only support json serialization.
+                var state = Encoding.UTF8.GetString(byteResult);
+                var typedResult = JsonConvert.DeserializeObject<T>(state);
+                result = new ConditionalValue<T>(true, typedResult);
+            }
+
+            return result;
         }
 
-        /// <inheritdoc/>
-        public Task RemoveActorAsync(ActorId actorId, CancellationToken cancellationToken = default(CancellationToken))
+        public static async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new System.NotImplementedException();
+            var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);
+            return byteResult.Length != 0;
         }
 
-        /// <inheritdoc/>
-        public Task SaveStateAsync(ActorId actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        public static async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
         {
-            throw new System.NotImplementedException();
+            // Save state individually as Transactional update is not yet supported by Actions runtime.
+            foreach (var stateChange in stateChanges)
+            {
+                var keyName = stateChange.StateName;
+
+                switch (stateChange.ChangeKind)
+                {
+                    case StateChangeKind.Remove:
+                        await actionsInteractor.RemoveStateAsync(actorType, actorId, keyName, cancellationToken);
+                        break;
+                    case StateChangeKind.Add:
+                    case StateChangeKind.Update:
+                        // Currently Actions runtime only support json serialization.
+                        await actionsInteractor.SaveStateAsync(actorType, actorId, keyName, JsonConvert.SerializeObject(stateChange.Value), cancellationToken);
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
     }
 }

@@ -12,6 +12,7 @@ namespace Microsoft.Actions.Actors.Builder
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Description;
+    using Microsoft.Actions.Actors.Resources;
 
     /// <summary>
     /// The class is used by actor remoting code generator to generate a type that dispatches requests to actor

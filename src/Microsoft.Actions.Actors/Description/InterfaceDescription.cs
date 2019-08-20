@@ -10,6 +10,7 @@ namespace Microsoft.Actions.Actors.Description
     using System.Globalization;
     using System.Reflection;
     using Microsoft.Actions.Actors.Common;
+    using Microsoft.Actions.Actors.Resources;
 
     internal abstract class InterfaceDescription
     {

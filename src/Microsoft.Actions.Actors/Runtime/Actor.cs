@@ -14,8 +14,6 @@ namespace Microsoft.Actions.Actors.Runtime
     /// The base type for actors, that provides the common functionality
     /// for actors that derive from <see cref="Actor"/>.
     /// The state is preserved across actor garbage collections and fail-overs.
-    /// The storage and retrieval of the state is provided by the actor state provider. See
-    /// <see cref="IActorStateProvider"/> for more information.
     /// </remarks>
     public abstract class Actor
     {
@@ -31,7 +29,7 @@ namespace Microsoft.Actions.Actors.Runtime
             this.Id = actorId;
             this.traceId = this.Id.GetTraceId();
             this.IsDirty = false;
-            this.StateManager = new ActorStateManager();
+            this.StateManager = new ActorStateManager(this);
         }
 
         /// <summary>

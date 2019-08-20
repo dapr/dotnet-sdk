@@ -98,7 +98,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static Task<string> DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return GetActorManager(actorTypeName).DispatchWihtoutRemotingAsync<string>(new ActorId(actorId), actorMethodName, data, cancellationToken);
+            return GetActorManager(actorTypeName).DispatchWihtoutRemotingAsync(new ActorId(actorId), actorMethodName, data, cancellationToken);
         }
 
         /// <summary>

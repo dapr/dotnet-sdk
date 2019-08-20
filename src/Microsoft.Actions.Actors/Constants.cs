@@ -13,6 +13,8 @@ namespace Microsoft.Actions.Actors
         public const string RequestIdHeaderName = "X-ActionsRequestId";
         public const string RequestHeaderName = "X-ActionsRequestHeader";
         public const string ActionsPortEnvironmentVariable = "ACTIONSPORT";
+        public const string Actions = "actions";
+        public const string Config = "config";
         public const string State = "state";
         public const string Actors = "actors";
         public const string Namespace = "urn:actors";
