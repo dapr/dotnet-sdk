@@ -157,6 +157,15 @@ stages:
         inputs:
           script: 'type *.md'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
+      - task: NuGetCommand@2
+        displayName: "Publish nuget package to feed"
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        inputs:
+          command: 'push'
+          packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+          nuGetFeedType: 'internal'
+          publishVstsFeed: 'b3bbc81a-4160-49ac-9a5f-5a27eda7ce5b'
+          allowPackageConflicts: true
       - task: PublishBuildArtifacts@1
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
