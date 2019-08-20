@@ -152,10 +152,10 @@ stages:
           Contents: '**'
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
       - task: CmdLine@2
-        displayName: 'Show ESRP signing result'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        displayName: 'Add release tag for release branch'
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-')))
         inputs:
-          script: 'type *.md'
+          script: 'echo "##vso[build.addbuildtag]release"'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
       - task: NuGetCommand@2
         displayName: 'Publish nuget package to feed'
