@@ -51,7 +51,7 @@ namespace Microsoft.Actions.Actors.Communication
 
             using (var stream = new MemoryStream())
             {
-                using (var writer = XmlDictionaryWriter.CreateBinaryWriter(stream))
+                using (var writer = XmlDictionaryWriter.CreateTextWriter(stream))
                 {
                     this.requestHeaderSerializer.WriteObject(writer, serviceRemotingRequestMessageHeader);
                     writer.Flush();
@@ -68,7 +68,7 @@ namespace Microsoft.Actions.Actors.Communication
                 return null;
             }
 
-            using (var reader = XmlDictionaryReader.CreateBinaryReader(
+            using (var reader = XmlDictionaryReader.CreateTextReader(
                 messageHeader.GetSendBytes(),
                 XmlDictionaryReaderQuotas.Max))
             {
@@ -85,7 +85,7 @@ namespace Microsoft.Actions.Actors.Communication
 
             using (var stream = new MemoryStream())
             {
-                using (var writer = XmlDictionaryWriter.CreateBinaryWriter(stream))
+                using (var writer = XmlDictionaryWriter.CreateTextWriter(stream))
                 {
                     this.responseHeaderSerializer.WriteObject(writer, serviceRemotingResponseMessageHeader);
                     writer.Flush();
@@ -102,7 +102,7 @@ namespace Microsoft.Actions.Actors.Communication
                 return null;
             }
 
-            using (var reader = XmlDictionaryReader.CreateBinaryReader(
+            using (var reader = XmlDictionaryReader.CreateTextReader(
                 messageHeader.GetSendBytes(),
                 XmlDictionaryReaderQuotas.Max))
             {

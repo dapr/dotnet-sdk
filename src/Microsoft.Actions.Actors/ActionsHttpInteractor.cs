@@ -9,12 +9,14 @@ namespace Microsoft.Actions.Actors
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
+    using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Security.Authentication;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors.Communication;
     using Microsoft.Actions.Actors.Runtime;
     using Newtonsoft.Json;
 
@@ -105,6 +107,7 @@ namespace Microsoft.Actions.Actors
             var serializedMsgBodyBuffers = serializedMsgBody.GetSendBytes();
 
             // Send Request
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()

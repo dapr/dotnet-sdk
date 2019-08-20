@@ -48,7 +48,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
             CancellationToken cancellationToken)
         {
               var client = await this.GetCommunicationClientAsync(cancellationToken);
-              return await client.InvokeActorMethodAsync(remotingRequestMessage);
+              return await client.InvokeActorMethodWithRemotingAsync(remotingRequestMessage);
         }
 
         private async Task<IActionsInteractor> GetCommunicationClientAsync(CancellationToken cancellationToken)

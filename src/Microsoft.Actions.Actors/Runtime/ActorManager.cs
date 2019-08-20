@@ -23,12 +23,14 @@ namespace Microsoft.Actions.Actors.Runtime
         private const string ReceiveReminderMethodName = "ReceiveReminderAsync";
         private readonly ConcurrentDictionary<ActorId, Actor> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
+        private readonly ActorMessageSerializersManager serializersManager;
 
         internal ActorManager(ActorTypeInfo actorTypeInfo)
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.activeActors = new ConcurrentDictionary<ActorId, Actor>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
+            this.serializersManager = IntializeSerializationManager(null);
         }
 
         internal ActorTypeInfo ActorTypeInfo { get; }
@@ -36,9 +38,14 @@ namespace Microsoft.Actions.Actors.Runtime
         internal Task<T> DispatchWithRemotingAsync<T>(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
-            var header = JsonConvert.DeserializeObject<ActorRequestMessageHeader>(actionsActorheader);
+            
+            // Get the serialized header
+            var actorMessageHeader = JsonConvert.DeserializeObject<ActorRequestMessageHeader>(actionsActorheader);
 
             // Get the deserialized Body.
+            var msgBodySerializer = this.serializersManager.GetRequestBodySerializer(actorMessageHeader.InterfaceId);
+            var actorMessageBody = msgBodySerializer.Deserialize(new IncomingMessageBody(data));
+
             // Add methodDispatcher.
             // Call the method on the method dispatcher using the Func below.
 
@@ -117,6 +124,15 @@ namespace Microsoft.Actions.Actors.Runtime
             {
                 await deactivatedActor.OnDeactivateInternalAsync();
             }
+        }
+
+        private static ActorMessageSerializersManager IntializeSerializationManager(
+            IActorMessageBodySerializationProvider serializationProvider)
+        {
+            // TODO serializer settings 
+            return new ActorMessageSerializersManager(
+                serializationProvider,
+                new ActorMessageHeaderSerializer());
         }
 
         private async Task<T> DispatchInternalAsync<T>(ActorId actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
