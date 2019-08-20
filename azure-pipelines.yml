@@ -31,7 +31,7 @@ stages:
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
       - task: EsrpCodeSigning@1
-        displayName: ESRP CodeSign
+        displayName: 'ESRP CodeSign'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
@@ -60,7 +60,7 @@ stages:
           MaxConcurrency: '50'
           MaxRetryAttempts: '5'
       - task: EsrpCodeSigning@1
-        displayName: ESRP Authenticode CodeSign'
+        displayName: 'ESRP Authenticode CodeSign'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
@@ -117,7 +117,7 @@ stages:
           nobuild: true
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1
-        displayName: ESRP CodeSign - Nuget Package'
+        displayName: 'ESRP CodeSign - Nuget Package'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
