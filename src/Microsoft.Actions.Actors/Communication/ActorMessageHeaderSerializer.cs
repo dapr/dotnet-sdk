@@ -42,7 +42,7 @@ namespace Microsoft.Actions.Actors.Communication
                 });
         }
 
-        public IMessageHeader SerializeRequestHeader(IActorRequestMessageHeader serviceRemotingRequestMessageHeader)
+        public byte[] SerializeRequestHeader(IActorRequestMessageHeader serviceRemotingRequestMessageHeader)
         {
             if (serviceRemotingRequestMessageHeader == null)
             {
@@ -55,28 +55,27 @@ namespace Microsoft.Actions.Actors.Communication
                 {
                     this.requestHeaderSerializer.WriteObject(writer, serviceRemotingRequestMessageHeader);
                     writer.Flush();
-                    return new OutgoingMessageHeader(stream.ToArray());
+                    return stream.ToArray();
                 }
             }
         }
 
-        public IActorRequestMessageHeader DeserializeRequestHeaders(IMessageHeader messageHeader)
+        public IActorRequestMessageHeader DeserializeRequestHeaders(Stream messageHeader)
         {
-            if ((messageHeader == null) || (messageHeader.GetReceivedBuffer() == null) ||
-                (messageHeader.GetReceivedBuffer().Length == 0))
+            if ((messageHeader == null) || (messageHeader.Length == 0))
             {
                 return null;
             }
 
             using (var reader = XmlDictionaryReader.CreateTextReader(
-                messageHeader.GetSendBytes(),
+                messageHeader,
                 XmlDictionaryReaderQuotas.Max))
             {
                 return (IActorRequestMessageHeader)this.requestHeaderSerializer.ReadObject(reader);
             }
         }
 
-        public IMessageHeader SerializeResponseHeader(IActorResponseMessageHeader serviceRemotingResponseMessageHeader)
+        public byte[] SerializeResponseHeader(IActorResponseMessageHeader serviceRemotingResponseMessageHeader)
         {
             if (serviceRemotingResponseMessageHeader == null || serviceRemotingResponseMessageHeader.CheckIfItsEmpty())
             {
@@ -89,21 +88,20 @@ namespace Microsoft.Actions.Actors.Communication
                 {
                     this.responseHeaderSerializer.WriteObject(writer, serviceRemotingResponseMessageHeader);
                     writer.Flush();
-                    return new OutgoingMessageHeader(stream.ToArray());
+                    return stream.ToArray();
                 }
             }
         }
 
-        public IActorResponseMessageHeader DeserializeResponseHeaders(IMessageHeader messageHeader)
+        public IActorResponseMessageHeader DeserializeResponseHeaders(Stream messageHeader)
         {
-            if ((messageHeader == null) || (messageHeader.GetReceivedBuffer() == null) ||
-                (messageHeader.GetReceivedBuffer().Length == 0))
+            if ((messageHeader == null) || (messageHeader.Length == 0))
             {
                 return null;
             }
 
             using (var reader = XmlDictionaryReader.CreateTextReader(
-                messageHeader.GetSendBytes(),
+                messageHeader,
                 XmlDictionaryReaderQuotas.Max))
             {
                 return (IActorResponseMessageHeader)this.responseHeaderSerializer.ReadObject(reader);
