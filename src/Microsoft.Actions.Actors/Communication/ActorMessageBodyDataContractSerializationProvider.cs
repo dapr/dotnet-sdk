@@ -170,7 +170,7 @@ namespace Microsoft.Actions.Actors.Communication
                 {
                     using (var reader = this.CreateXmlDictionaryReader(stream))
                     {
-                        return (ActorMessageBody)this.serializer.ReadObject(reader);
+                        return (WrappedMessageBody)this.serializer.ReadObject(reader);
                     }
                 }
             }
