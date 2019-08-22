@@ -42,7 +42,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         internal ActorMethodDispatcherMap MethodDispatcherMap { get; set; }
 
-        internal Task<IActorMessageBody> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        internal Task<IActorResponseMessage> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             
@@ -54,25 +54,37 @@ namespace Microsoft.Actions.Actors.Runtime
             var msgBodySerializer = this.serializersManager.GetRequestBodySerializer(actorMessageHeader.InterfaceId);
             var actorMessageBody = msgBodySerializer.Deserialize(data);
 
-            // Add methodDispatcher.
             // Call the method on the method dispatcher using the Func below.
             var methodDispatcher = this.MethodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
 
             // Create a Func to be invoked by common method.
-            async Task<IActorMessageBody> RequestFunc(Actor actor, CancellationToken ct)
+            async Task<IActorResponseMessage> RequestFunc(Actor actor, CancellationToken ct)
             {
-                // TODO add error handling and diagnostics
-                IActorMessageBody responseMsgBody = (IActorMessageBody)await methodDispatcher.DispatchAsync(
+                IActorMessageBody responseMsgBody = null;
+                var actorResponseMessageHeader = new ActorResponseMessageHeader();
+
+                try
+                {
+                    responseMsgBody = (IActorMessageBody)await methodDispatcher.DispatchAsync(
                         actor,
                         actorMessageHeader.MethodId,
                         actorMessageBody,
                         this.messageBodyFactory,
                         ct);
+                }
+                catch (Exception exception)
+                {
+                    // set response header for error
+                    // TODO come up with error messages translation layer
+                    actorResponseMessageHeader.AddHeader(Constants.ErrorResponseHeaderName, Encoding.ASCII.GetBytes(exception.Message));
+                }
 
-                return responseMsgBody;
+                var responseMessage = new ActorResponseMessage(actorResponseMessageHeader, responseMsgBody);
+
+                return responseMessage;
             }
 
-            return this.DispatchInternalAsync<IActorMessageBody>(actorId, actorMethodContext, RequestFunc, cancellationToken);
+            return this.DispatchInternalAsync<IActorResponseMessage>(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
         internal Task<string> DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
