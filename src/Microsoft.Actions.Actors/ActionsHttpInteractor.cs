@@ -137,7 +137,7 @@ namespace Microsoft.Actions.Actors
             var serializedHeader = this.serializersManager.GetHeaderSerializer()
                 .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
 
-            var msgBodySeriaizer = this.serializersManager.GetRequestBodySerializer(interfaceId);
+            var msgBodySeriaizer = this.serializersManager.GetMessageBodySerializer(interfaceId);
             var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
 
             // Send Request
@@ -184,7 +184,7 @@ namespace Microsoft.Actions.Actors
                 var responseMessageBody = await retval.Content.ReadAsStreamAsync();
 
                 // Deserialize Actor Response Message Body
-                var responseBodySerializer = this.serializersManager.GetRequestBodySerializer(interfaceId);
+                var responseBodySerializer = this.serializersManager.GetMessageBodySerializer(interfaceId);
 
                 actorResponseMessageBody =
                     responseBodySerializer.Deserialize(responseMessageBody);

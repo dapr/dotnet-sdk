@@ -44,7 +44,7 @@ namespace Microsoft.Actions.Actors.Communication
             return this.headerSerializer;
         }
 
-        public IActorMessageBodySerializer GetRequestBodySerializer(int interfaceId)
+        public IActorMessageBodySerializer GetMessageBodySerializer(int interfaceId)
         {
             return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).MessageBodySerializer;
         }

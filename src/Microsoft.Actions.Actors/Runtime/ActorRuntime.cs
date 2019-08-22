@@ -74,7 +74,7 @@ namespace Microsoft.Actions.Actors.Runtime
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor when used with Remotign from CSharp client.
+        /// Invokes the specified method for the actor when used with Remoting from CSharp client.
         /// </summary>
         /// <param name="actorTypeName">Actor type name to invokde the method for.</param>
         /// <param name="actorId">Actor id for the actor for which method will be invoked.</param>
@@ -83,7 +83,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="data">Payload for the actor method.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        internal static Task<IActorResponseMessage> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken = default(CancellationToken))
+        internal static Task<Tuple<string, string>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken = default(CancellationToken))
         {
             return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, actionsActorheader, data, cancellationToken);
         }
