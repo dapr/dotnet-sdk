@@ -6,7 +6,7 @@
     <RequestedVerbosity Condition=" '$(RequestedVerbosity)' == '' ">minimal</RequestedVerbosity>
     
     <!-- Set Output Paths-->
-    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <OutputPath>$(RepoRoot)bin\$(Configuration)\</OutputPath>
     
     <!-- Version for binaries, nuget packages generated from this repo. -->
     <MajorVersion>1</MajorVersion>
