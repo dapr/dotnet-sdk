@@ -161,7 +161,7 @@ namespace Microsoft.Actions.Actors.Communication
             IActorMessageBody IActorMessageBodySerializer.Deserialize(
                 Stream messageBody)
             {
-                if (messageBody == null || messageBody.Length == 0)
+                if (messageBody == null)
                 {
                     return null;
                 }

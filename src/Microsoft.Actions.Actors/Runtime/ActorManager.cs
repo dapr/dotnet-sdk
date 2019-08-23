@@ -35,7 +35,7 @@ namespace Microsoft.Actions.Actors.Runtime
             this.activeActors = new ConcurrentDictionary<ActorId, Actor>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
             this.serializersManager = IntializeSerializationManager(null);
-            this.messageBodyFactory = new DataContractMessageFactory();
+            this.messageBodyFactory = new WrappedRequestMessageFactory();
         }
 
         internal ActorTypeInfo ActorTypeInfo { get; }
@@ -217,7 +217,11 @@ namespace Microsoft.Actions.Actors.Runtime
             if (header != null)
             {
                 var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(header);
-                responseHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
+
+                if (responseHeaderBytes != null)
+                {
+                    responseHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
+                }
             }
 
             string responseMsgBody = string.Empty;
