@@ -65,7 +65,7 @@ namespace Microsoft.Actions.Actors
 
         public async Task<byte[]> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId, keyName);
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -84,7 +84,7 @@ namespace Microsoft.Actions.Actors
         
         public async Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId, keyName);
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -103,7 +103,7 @@ namespace Microsoft.Actions.Actors
 
         public async Task RemoveStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId, keyName);
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -119,10 +119,23 @@ namespace Microsoft.Actions.Actors
             var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public Task SaveStateBatchAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        public Task SaveStateTransationallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // Transactional update is not yet supported by Actions runtime.
-            throw new NotImplementedException();
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
+            var requestId = Guid.NewGuid().ToString();
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Put,
+                    Content = new StringContent(data),
+                };
+
+                return request;
+            }
+
+            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
         public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken))

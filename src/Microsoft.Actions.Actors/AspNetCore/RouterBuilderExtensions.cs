@@ -72,8 +72,21 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 }
                 else
                 {
-                    return ActorRuntime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, request.Body).ContinueWith(t => response.WriteAsync(t.GetAwaiter().GetResult()));
+                    return ActorRuntime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, request.Body, response.Body);
                 }
+            });
+        }
+
+        public static void AddReminderRoute(this IRouteBuilder routeBuilder)
+        {
+            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/remind/{reminderName}", (request, response, routeData) =>
+            {
+                var actorTypeName = (string)routeData.Values["actorTypeName"];
+                var actorId = (string)routeData.Values["actorId"];
+                var reminderName = (string)routeData.Values["reminderName"];
+
+                // read dueTime, period and data from Request Body.
+                return ActorRuntime.FireReminderAsync(actorTypeName, actorId, reminderName, request.Body);
             });
         }
     }

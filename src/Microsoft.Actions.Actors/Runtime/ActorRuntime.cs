@@ -40,15 +40,25 @@ namespace Microsoft.Actions.Actors.Runtime
         /// Registers an actor with the runtime.
         /// </summary>
         /// <typeparam name="TActor">Type of actor.</typeparam>
-        /// <param name="actorFactory">An optional delegate to create actor instances. This can be used for dependency injection into actors.</param>
-        public void RegisterActor<TActor>(Func<ActorId, Actor> actorFactory = null)
+        /// <param name="actorServiceFactory">An optional delegate to create actor service. This can be used for dependency injection into actors.</param>
+        public void RegisterActor<TActor>(Func<ActorTypeInformation, ActorService> actorServiceFactory = null)
             where TActor : Actor
         {
             var actorTypeName = typeof(TActor).Name;
-            var actorTypeInfo = new ActorTypeInfo(typeof(TActor), actorFactory);
+            var actorTypeInfo = ActorTypeInformation.Get(typeof(TActor));
+
+            ActorService actorService;
+            if (actorServiceFactory != null)
+            {
+                actorService = actorServiceFactory.Invoke(actorTypeInfo);
+            }
+            else
+            {
+                actorService = new ActorService(actorTypeInfo);
+            }
 
             // Create ActorManagers, override existing entry if registered again.
-            actorManagers[actorTypeName] = new ActorManager(actorTypeInfo);
+            actorManagers[actorTypeName] = new ActorManager(actorService);
         }
 
         /// <summary>
@@ -94,12 +104,13 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="actorTypeName">Actor type name to invokde the method for.</param>
         /// <param name="actorId">Actor id for the actor for which method will be invoked.</param>
         /// <param name="actorMethodName">MEthos name on actor type which will be invoked.</param>
-        /// <param name="data">Payload for the actor method.</param>
+        /// <param name="requestBodyStream">Payload for the actor method.</param>
+        /// <param name="responseBodyStream">Response for the actor method.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        internal static Task<string> DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream data, CancellationToken cancellationToken = default(CancellationToken))
+        internal static Task DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, data, cancellationToken);
+            return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, cancellationToken);
         }
 
         /// <summary>
@@ -108,19 +119,12 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <param name="actorTypeName">Actor type name to invokde the method for.</param>
         /// <param name="actorId">Actor id for the actor for which method will be invoked.</param>
         /// <param name="reminderName">The name of reminder provided during registration.</param>
-        /// <param name="state">The user state provided during registration.</param>
-        /// <param name="dueTime">The invocation due time provided during registration.</param>
-        /// <param name="period">The invocation period provided during registration.</param>
+        /// <param name="requestBodyStream">Payload for the actor method.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        internal static Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period, CancellationToken cancellationToken = default(CancellationToken))
+        internal static Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, state, dueTime, period, cancellationToken);
-        }
-
-        private static ActorTypeInfo GetActorTypeInfo(string actorTypeName)
-        {
-            return actorManagers[actorTypeName].ActorTypeInfo;
+            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
         }
 
         private static ActorManager GetActorManager(string actorTypeName)

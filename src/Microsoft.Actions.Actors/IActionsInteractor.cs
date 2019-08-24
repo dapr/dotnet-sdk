@@ -54,10 +54,10 @@ namespace Microsoft.Actions.Actors
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
         /// <param name="actorId">ActorId.</param>
-        /// <param name="stateChanges">State changes.</param>
+        /// <param name="data">Json data with state changes as per the actions spec for transaction state update.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateBatchAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken));
+        Task SaveStateTransationallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Saves a state to Actions.

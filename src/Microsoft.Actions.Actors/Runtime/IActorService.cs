@@ -6,9 +6,9 @@
 namespace Microsoft.Actions.Actors.Runtime
 {
     /// <summary>
-    /// Serializer for Actor states.
+    /// Interface for Axtor Service.
     /// </summary>
-    public class ActorStateSerializer
+    public interface IActorService
     {
     }
 }

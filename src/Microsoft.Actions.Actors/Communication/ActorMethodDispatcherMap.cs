@@ -5,21 +5,25 @@
 
 namespace Microsoft.Actions.Actors.Communication
 {
+    using System;
     using System.Collections.Generic;
     using System.Globalization;
     using Microsoft.Actions.Actors.Builder;
     using Microsoft.Actions.Actors.Resources;
     using Microsoft.Actions.Actors.Runtime;
 
+    /// <summary>
+    /// Actor method dispatcher map for remoting calls.
+    /// </summary>
     internal class ActorMethodDispatcherMap
     {
         private readonly IDictionary<int, ActorMethodDispatcherBase> map;
 
-        public ActorMethodDispatcherMap(ActorTypeInfo actorTypeInformation)
+        public ActorMethodDispatcherMap(IEnumerable<Type> interfaceTypes)
         {
             this.map = new Dictionary<int, ActorMethodDispatcherBase>();
 
-            foreach (var actorInterfaceType in actorTypeInformation.InterfaceTypes)
+            foreach (var actorInterfaceType in interfaceTypes)
             {
                 var methodDispatcher = ActorCodeBuilder.GetOrCreateMethodDispatcher(actorInterfaceType);
                 this.map.Add(methodDispatcher.InterfaceId, methodDispatcher);

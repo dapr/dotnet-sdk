@@ -4,8 +4,10 @@
 // ------------------------------------------------------------
 
 namespace Microsoft.Actions.Actors.Runtime
-{    
+{
+    using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -14,11 +16,17 @@ namespace Microsoft.Actions.Actors.Runtime
     /// <summary>
     /// State Provider to interact with Actions runtime.
     /// </summary>
-    internal static class ActionsStateProvider
+    internal class ActionsStateProvider
     {
         private static IActionsInteractor actionsInteractor = new ActionsHttpInteractor();
+        private ActorStateProviderSerializer actorStateSerializer;
 
-        public static async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
+        public ActionsStateProvider(ActorStateProviderSerializer actorStateSerializer)
+        {
+            this.actorStateSerializer = actorStateSerializer;
+        }
+
+        public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
             var result = new ConditionalValue<T>(false, default(T));
             var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);            
@@ -34,15 +42,65 @@ namespace Microsoft.Actions.Actors.Runtime
             return result;
         }
 
-        public static async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
             var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);
             return byteResult.Length != 0;
         }
 
-        public static async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // Save state individually as Transactional update is not yet supported by Actions runtime.
+            await this.DoStateChangesTransactionallyAsync(actorType, actorId, stateChanges, cancellationToken);
+        }
+
+        private Task DoStateChangesTransactionallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // Transactional state update request body:
+            /*
+            [
+                {
+                    "operation": "upsert",
+                    "request": {
+                        "key": "key1",
+                        "value": "myData"
+                    }
+                },
+                {
+                    "operation": "delete",
+                    "request": {
+                        "key": "key2"
+                    }
+                }
+            ]
+            */
+
+            string content;
+            using (var sw = new StringWriter())
+            {
+                var writer = new JsonTextWriter(sw);
+                writer.WriteStartArray();
+
+                foreach (var stateChange in stateChanges)
+                {
+                    writer.WriteStartObject();
+                    var operation = this.GetActionsStateOperation(stateChange.ChangeKind);
+                    writer.WriteProperty(operation, "operation", JsonWriterExtensions.WriteStringValue);
+                    writer.WriteProperty(stateChange, "request", this.SerializeStateChangeRequest);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+                content = sw.ToString();
+            }
+
+            return actionsInteractor.SaveStateTransationallyAsync(actorType, actorId, content, cancellationToken);
+        }
+
+        /// <summary>
+        /// Save state individually. Actions runtime has added Tranaction save state. Use that instead. This method exists for debugging and testing of save state individually.
+        /// </summary>
+        private async Task DoStateChangesIndividuallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        {
             foreach (var stateChange in stateChanges)
             {
                 var keyName = stateChange.StateName;
@@ -61,6 +119,49 @@ namespace Microsoft.Actions.Actors.Runtime
                         break;
                 }
             }
+        }
+
+        private string GetActionsStateOperation(StateChangeKind changeKind)
+        {
+            var operation = string.Empty;
+
+            switch (changeKind)
+            {
+                case StateChangeKind.Remove:
+                    operation = "delete";
+                    break;
+                case StateChangeKind.Add:
+                case StateChangeKind.Update:
+                    operation = "upsert";
+                    break;
+                default:
+                    break;
+            }
+
+            return operation;
+        }
+
+        private void SerializeStateChangeRequest(JsonWriter writer, ActorStateChange stateChange)
+        {
+            writer.WriteStartObject();
+
+            switch (stateChange.ChangeKind)
+            {
+                case StateChangeKind.Remove:
+                    writer.WriteProperty(stateChange.StateName, "key", JsonWriterExtensions.WriteStringValue);
+                    break;
+                case StateChangeKind.Add:
+                case StateChangeKind.Update:
+                    writer.WriteProperty(stateChange.StateName, "key", JsonWriterExtensions.WriteStringValue);
+                    var buffer = this.actorStateSerializer.Serialize(stateChange.Type, stateChange.Value);
+
+                    writer.WriteProperty(Convert.ToBase64String(buffer), "value", JsonWriterExtensions.WriteStringValue);
+                    break;
+                default:
+                    break;
+            }
+
+            writer.WriteEndObject();
         }
     }
 }

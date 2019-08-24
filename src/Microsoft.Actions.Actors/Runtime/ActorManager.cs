@@ -12,6 +12,7 @@ namespace Microsoft.Actions.Actors.Runtime
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Actions.Actors;
     using Microsoft.Actions.Actors.Builder;
     using Microsoft.Actions.Actors.Communication;
     using Newtonsoft.Json;
@@ -23,24 +24,34 @@ namespace Microsoft.Actions.Actors.Runtime
     {
         private const string TraceType = "ActorManager";
         private const string ReceiveReminderMethodName = "ReceiveReminderAsync";
+        private readonly ActorService actorService;
         private readonly ConcurrentDictionary<ActorId, Actor> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
         private IActorMessageBodyFactory messageBodyFactory;
 
-        internal ActorManager(ActorTypeInfo actorTypeInfo)
+        // method dispatchermap used by remoting calls.
+        private ActorMethodDispatcherMap methodDispatcherMap;
+
+        // method info map used by non-remoting calls.
+        private ActorMethodInfoMap actorMethodInfoMap;
+
+        internal ActorManager(ActorService actorService)
         {
-            this.ActorTypeInfo = actorTypeInfo;
-            this.MethodDispatcherMap = new ActorMethodDispatcherMap(actorTypeInfo);
+            this.actorService = actorService;
+
+            // map for remoting calls.
+            this.methodDispatcherMap = new ActorMethodDispatcherMap(this.actorService.ActorTypeInfo.InterfaceTypes);
+
+            // map for non-remoting calls.
+            this.actorMethodInfoMap = new ActorMethodInfoMap(this.actorService.ActorTypeInfo.InterfaceTypes);
             this.activeActors = new ConcurrentDictionary<ActorId, Actor>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
             this.serializersManager = IntializeSerializationManager(null);
             this.messageBodyFactory = new DataContractMessageFactory();
         }
 
-        internal ActorTypeInfo ActorTypeInfo { get; }
-
-        internal ActorMethodDispatcherMap MethodDispatcherMap { get; set; }
+        internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
 
         internal Task<IActorResponseMessage> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
@@ -55,7 +66,7 @@ namespace Microsoft.Actions.Actors.Runtime
             var actorMessageBody = msgBodySerializer.Deserialize(data);
 
             // Call the method on the method dispatcher using the Func below.
-            var methodDispatcher = this.MethodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
+            var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
 
             // Create a Func to be invoked by common method.
             async Task<IActorResponseMessage> RequestFunc(Actor actor, CancellationToken ct)
@@ -87,56 +98,73 @@ namespace Microsoft.Actions.Actors.Runtime
             return this.DispatchInternalAsync<IActorResponseMessage>(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal Task<string> DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream data, CancellationToken cancellationToken)
+        internal Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
             // Create a Func to be invoked by common method.
-            var methodInfo = this.ActorTypeInfo.LookupActorMethodInfo(actorMethodName);
+            var methodInfo = this.actorMethodInfoMap.LookupActorMethodInfo(actorMethodName);
 
-            async Task<string> RequestFunc(Actor actor, CancellationToken ct)
+            async Task<object> RequestFunc(Actor actor, CancellationToken ct)
             {
                 var parameters = methodInfo.GetParameters();
+                var serializer = new JsonSerializer();
+                dynamic awaitable;
 
                 if (parameters.Length == 0)
                 {
-                    // dynamic task = await (Task<dynamic>)methodInfo.Invoke(actor, null);
-                    dynamic awaitable = methodInfo.Invoke(actor, null);
-                    await awaitable;
-                    return JsonConvert.SerializeObject(awaitable.GetAwaiter().GetResult());
+                    awaitable = methodInfo.Invoke(actor, null);
                 }
                 else
                 {
-                    string json = default(string);
-                    using (var reader = new StreamReader(data))
+                    // deserialize using stream.
+                    var type = parameters[0].ParameterType;
+                    var deserializedType = default(object);
+                    using (var streamReader = new StreamReader(requestBodyStream))
                     {
-                        json = reader.ReadToEnd();
+                        using (var reader = new JsonTextReader(streamReader))
+                        {
+                            deserializedType = serializer.Deserialize(reader, type);
+                        }
                     }
 
-                    var type = parameters[0].ParameterType;
-                    dynamic awaitable = methodInfo.Invoke(actor, new object[] { JsonConvert.DeserializeObject(json, type) });
-                    await awaitable;
-                    return JsonConvert.SerializeObject(awaitable.GetAwaiter().GetResult());
+                    awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
                 }
+
+                await awaitable;
+
+                // Its already awaited, getting Result is not blocking.
+                using (var streamWriter = new StreamWriter(responseBodyStream))
+                {
+                    using (var writer = new JsonTextWriter(streamWriter))
+                    {
+                        serializer.Serialize(writer, awaitable.GetAwaiter().GetResult());
+                    }
+                }
+
+                // return any dummy value from here as result has already been written to response stream.
+                return null;
             }
 
             return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal Task FireReminderAsync(ActorId actorId, string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period, CancellationToken cancellationToken = default(CancellationToken))
+        internal Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default(CancellationToken))
         {
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
             {
+                var reminderdata = ReminderData.Deserialize(requestBodyStream);
+
                 // Create a Func to be invoked by common method.
                 async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
                 {
                     await
                         (actor as IRemindable).ReceiveReminderAsync(
                             reminderName,
-                            state,
-                            dueTime,
-                            period);
+                            reminderdata.Data,
+                            reminderdata.DueTime,
+                            reminderdata.Period);
 
                     return null;
                 }
@@ -150,7 +178,7 @@ namespace Microsoft.Actions.Actors.Runtime
         internal async Task ActivateActor(ActorId actorId)
         {
             // An actor is activated by "actions" runtime when a call is to be made for an actor.
-            var actor = this.CreateActor(actorId);
+            var actor = this.actorService.CreateActor(actorId);
             await actor.OnActivateInternalAsync();
 
             // Add actor to activeActors only after OnActivate succeeds (user code can throw error from its override of Activate method.)
@@ -202,11 +230,6 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return retval;
-        }
-
-        private Actor CreateActor(ActorId actorId)
-        {
-            return this.ActorTypeInfo.ActorFactory.Invoke(actorId);
         }
     }
 }

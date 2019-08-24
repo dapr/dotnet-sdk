@@ -51,7 +51,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 return false;
             }
 
-            if (await ActionsStateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
+            if (await this.actor.ActorService.StateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
             {
                 return false;
             }
@@ -112,7 +112,7 @@ namespace Microsoft.Actions.Actors.Runtime
                     stateMetadata.ChangeKind = StateChangeKind.Update;
                 }
             }
-            else if (await ActionsStateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
+            else if (await this.actor.ActorService.StateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
             {
                 this.stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update));
             }
@@ -151,7 +151,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 return true;
             }
 
-            if (await ActionsStateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
+            if (await this.actor.ActorService.StateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
             {
                 this.stateChangeTracker.Add(stateName, StateMetadata.CreateForRemove());
                 return true;
@@ -172,7 +172,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 return stateMetadata.ChangeKind != StateChangeKind.Remove;
             }
 
-            if (await ActionsStateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
+            if (await this.actor.ActorService.StateProvider.ContainsStateAsync(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken))
             {
                 return true;
             }
@@ -297,7 +297,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
                 if (stateChangeList.Count > 0)
                 {
-                    await ActionsStateProvider.SaveStateAsync(this.actorType, this.actor.Id.ToString(), stateChangeList.AsReadOnly(), cancellationToken);
+                    await this.actor.ActorService.StateProvider.SaveStateAsync(this.actorType, this.actor.Id.ToString(), stateChangeList.AsReadOnly(), cancellationToken);
                 }
 
                 // Remove the states from tracker whcih were marked for removal.
@@ -321,7 +321,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         private Task<ConditionalValue<T>> TryGetStateFromStateProviderAsync<T>(string stateName, CancellationToken cancellationToken)
         {
-            return ActionsStateProvider.TryLoadStateAsync<T>(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken);
+            return this.actor.ActorService.StateProvider.TryLoadStateAsync<T>(this.actorType, this.actor.Id.ToString(), stateName, cancellationToken);
         }
 
         private sealed class StateMetadata

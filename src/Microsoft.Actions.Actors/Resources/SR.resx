@@ -219,4 +219,10 @@
   <data name="ErrorMethodDispatcherNotFound" xml:space="preserve">
     <value>No MethodDispatcher is found for interface id '{0}'</value>
   </data>
+  <data name="ErrorNoActorInterfaceFound" xml:space="preserve">
+    <value>The actor type '{0}' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from '{1}' type.</value>
+  </data>
+  <data name="ErrorNotAnActor" xml:space="preserve">
+    <value>The type '{0}' is not an Actor. An actor type must derive from '{1}'.</value>
+  </data>
 </root>

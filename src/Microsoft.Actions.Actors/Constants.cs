@@ -27,7 +27,12 @@ namespace Microsoft.Actions.Actors
         /// <summary>
         /// Gets string format for Actors state management relative url.
         /// </summary>
-        public static string ActorStateRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{State}/{{2}}";
+        public static string ActorStateKeyRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{State}/{{2}}";
+
+        /// <summary>
+        /// Gets string format for Actors state management relative url.
+        /// </summary>
+        public static string ActorStateRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{State}";
 
         /// <summary>
         /// Gets string format for Actors method invocation relative url.

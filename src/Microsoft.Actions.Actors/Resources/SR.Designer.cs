@@ -205,11 +205,29 @@ namespace Microsoft.Actions.Actors.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The actor type &apos;{0}&apos; does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from &apos;{1}&apos; type..
+        /// </summary>
+        internal static string ErrorNoActorInterfaceFound {
+            get {
+                return ResourceManager.GetString("ErrorNoActorInterfaceFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The service type &apos;{0}&apos; does not implement any service interfaces or one of the interfaces implemented is not a service interface. All interfaces(including its parent interface) implemented by service type must be service interface. A service interface is the one that ultimately derives from &apos;{1}&apos; type..
         /// </summary>
         internal static string ErrorNoServiceInterfaceFound {
             get {
                 return ResourceManager.GetString("ErrorNoServiceInterfaceFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an Actor. An actor type must derive from &apos;{1}&apos;..
+        /// </summary>
+        internal static string ErrorNotAnActor {
+            get {
+                return ResourceManager.GetString("ErrorNotAnActor", resourceCulture);
             }
         }
         
