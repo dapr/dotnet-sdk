@@ -29,13 +29,11 @@ namespace Microsoft.Actions.Actors.Runtime
         public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
             var result = new ConditionalValue<T>(false, default(T));
-            var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);            
+            var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);
 
             if (byteResult.Length != 0)
             {
-                // Currently Actions runtime only support json serialization.
-                var state = Encoding.UTF8.GetString(byteResult);
-                var typedResult = JsonConvert.DeserializeObject<T>(state);
+                var typedResult = this.actorStateSerializer.Deserialize<T>(byteResult);
                 result = new ConditionalValue<T>(true, typedResult);
             }
 
