@@ -1,15 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\properties\actions_managed_netstandard.props" />
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
 
     <IsPackable>false</IsPackable>
 
     <SignAssembly>true</SignAssembly>
-
-    <AssemblyOriginatorKeyFile>..\..\properties\Key.snk</AssemblyOriginatorKeyFile>
-
-    <DelaySign>true</DelaySign>
   </PropertyGroup>
 
   <ItemGroup>
