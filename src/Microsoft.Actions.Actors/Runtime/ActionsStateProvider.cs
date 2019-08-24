@@ -18,7 +18,6 @@ namespace Microsoft.Actions.Actors.Runtime
     /// </summary>
     internal class ActionsStateProvider
     {
-        private static IActionsInteractor actionsInteractor = new ActionsHttpInteractor();
         private ActorStateProviderSerializer actorStateSerializer;
 
         public ActionsStateProvider(ActorStateProviderSerializer actorStateSerializer)
@@ -29,7 +28,7 @@ namespace Microsoft.Actions.Actors.Runtime
         public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
             var result = new ConditionalValue<T>(false, default(T));
-            var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);
+            var byteResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
 
             if (byteResult.Length != 0)
             {
@@ -42,7 +41,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var byteResult = await actionsInteractor.GetStateAsync(actorType, actorId, stateName);
+            var byteResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
             return byteResult.Length != 0;
         }
 
@@ -91,7 +90,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 content = sw.ToString();
             }
 
-            return actionsInteractor.SaveStateTransationallyAsync(actorType, actorId, content, cancellationToken);
+            return ActorRuntime.ActionsInteractor.SaveStateTransationallyAsync(actorType, actorId, content, cancellationToken);
         }
 
         /// <summary>
@@ -106,12 +105,12 @@ namespace Microsoft.Actions.Actors.Runtime
                 switch (stateChange.ChangeKind)
                 {
                     case StateChangeKind.Remove:
-                        await actionsInteractor.RemoveStateAsync(actorType, actorId, keyName, cancellationToken);
+                        await ActorRuntime.ActionsInteractor.RemoveStateAsync(actorType, actorId, keyName, cancellationToken);
                         break;
                     case StateChangeKind.Add:
                     case StateChangeKind.Update:
                         // Currently Actions runtime only support json serialization.
-                        await actionsInteractor.SaveStateAsync(actorType, actorId, keyName, JsonConvert.SerializeObject(stateChange.Value), cancellationToken);
+                        await ActorRuntime.ActionsInteractor.SaveStateAsync(actorType, actorId, keyName, JsonConvert.SerializeObject(stateChange.Value), cancellationToken);
                         break;
                     default:
                         break;

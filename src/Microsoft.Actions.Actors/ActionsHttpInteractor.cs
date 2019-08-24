@@ -207,7 +207,7 @@ namespace Microsoft.Actions.Actors
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
         }
 
-        public Task<string> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
             var requestId = Guid.NewGuid().ToString();
@@ -217,14 +217,58 @@ namespace Microsoft.Actions.Actors
                 var request = new HttpRequestMessage()
                 {
                     Method = HttpMethod.Put,
-                    Content = new StringContent(jsonPayload, Encoding.UTF8),
+                };
+
+                if (jsonPayload != null)
+                {
+                    request.Content = new StringContent(jsonPayload);
+                    request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                }
+
+                return request;
+            }
+
+            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            var byteArray = await response.Content.ReadAsStreamAsync();
+            return byteArray;
+        }
+
+        public Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
+            var requestId = Guid.NewGuid().ToString();
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Put,
+                    Content = new StringContent(data, Encoding.UTF8),
                 };
 
                 request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
                 return request;
             }
 
-            return this.SendAsyncGetResponseAsRawJson(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+        }
+
+        public Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
+            var requestId = Guid.NewGuid().ToString();
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Delete,
+                };
+
+                return request;
+            }
+
+            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
         /// <summary>

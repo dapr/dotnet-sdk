@@ -79,7 +79,7 @@ namespace Microsoft.Actions.Actors.AspNetCore
 
         public static void AddReminderRoute(this IRouteBuilder routeBuilder)
         {
-            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/remind/{reminderName}", (request, response, routeData) =>
+            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/remind/{reminderName}", (request, response, routeData) =>
             {
                 var actorTypeName = (string)routeData.Values["actorTypeName"];
                 var actorId = (string)routeData.Values["actorId"];

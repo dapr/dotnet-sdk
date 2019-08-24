@@ -7,15 +7,28 @@ namespace Microsoft.Actions.Actors.Runtime
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
     using System.Text;
+    using System.Threading;
     using Microsoft.Actions.Actors;
+    using Microsoft.Actions.Actors.Resources;
     using Newtonsoft.Json;
 
     internal class ReminderData
     {
-        private ReminderData()
+        private readonly TimeSpan minTimePeriod = Timeout.InfiniteTimeSpan;
+
+        public ReminderData(
+            byte[] reminderState,
+            TimeSpan reminderDueTime,
+            TimeSpan reminderPeriod)
         {
+            this.ValidateDueTime("DueTime", reminderDueTime);
+            this.ValidatePeriod("Period", reminderPeriod);
+            this.Data = reminderState;
+            this.DueTime = reminderDueTime;
+            this.Period = reminderPeriod;
         }
 
         public TimeSpan DueTime { get; private set; }
@@ -36,26 +49,36 @@ namespace Microsoft.Actions.Actors.Runtime
             }
         }
 
-        internal static void Serialize(JsonWriter writer, ReminderData obj)
+        internal string SerializeToJson()
         {
-            // Required properties are always serialized, optional properties are serialized when not null.
-            writer.WriteStartObject();
-            if (obj.DueTime != null)
+            string content;
+            using (var sw = new StringWriter())
             {
-                writer.WriteProperty((TimeSpan?)obj.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
+                using (var writer = new JsonTextWriter(sw))
+                {
+                    writer.WriteStartObject();
+                    if (this.DueTime != null)
+                    {
+                        writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
+                    }
+
+                    if (this.Period != null)
+                    {
+                        writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
+                    }
+
+                    if (this.Data != null)
+                    {
+                        writer.WriteProperty(Convert.ToBase64String(this.Data), "data", JsonWriterExtensions.WriteStringValue);
+                    }
+
+                    writer.WriteEndObject();
+
+                    content = sw.ToString();
+                }
             }
 
-            if (obj.Period != null)
-            {
-                writer.WriteProperty((TimeSpan?)obj.Period, "period", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
-            }
-
-            if (obj.Data != null)
-            {
-                writer.WriteProperty(Convert.ToBase64String(obj.Data), "data", JsonWriterExtensions.WriteStringValue);
-            }
-
-            writer.WriteEndObject();
+            return content;
         }
 
         private static ReminderData GetFromJsonProperties(JsonReader reader)
@@ -77,7 +100,8 @@ namespace Microsoft.Actions.Actors.Runtime
                 }
                 else if (string.Compare("data", propName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    data = Encoding.UTF8.GetBytes(reader.ReadValueAsString());
+                    var stringData = reader.ReadValueAsString();
+                    data = stringData == null ? null : Encoding.UTF8.GetBytes(stringData);
                 }
                 else
                 {
@@ -86,12 +110,35 @@ namespace Microsoft.Actions.Actors.Runtime
             }
             while (reader.TokenType != JsonToken.EndObject);
 
-            return new ReminderData()
+            return new ReminderData(data, dueTime, period);
+        }
+
+        private void ValidateDueTime(string argName, TimeSpan value)
+        {
+            if (value < TimeSpan.Zero)
             {
-                DueTime = dueTime,
-                Period = period,
-                Data = data,
-            };
+                throw new ArgumentOutOfRangeException(
+                    argName,
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        SR.TimerArgumentOutOfRange,
+                        this.minTimePeriod.TotalMilliseconds,
+                        TimeSpan.MaxValue.TotalMilliseconds));
+            }
+        }
+
+        private void ValidatePeriod(string argName, TimeSpan value)
+        {
+            if (value < this.minTimePeriod)
+            {
+                throw new ArgumentOutOfRangeException(
+                    argName,
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        SR.TimerArgumentOutOfRange,
+                        this.minTimePeriod.TotalMilliseconds,
+                        TimeSpan.MaxValue.TotalMilliseconds));
+            }
         }
     }
 }

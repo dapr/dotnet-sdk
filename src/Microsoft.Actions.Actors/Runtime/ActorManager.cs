@@ -98,9 +98,10 @@ namespace Microsoft.Actions.Actors.Runtime
             return this.DispatchInternalAsync<IActorResponseMessage>(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
+        internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
+            var serializer = new JsonSerializer();
 
             // Create a Func to be invoked by common method.
             var methodInfo = this.actorMethodInfoMap.LookupActorMethodInfo(actorMethodName);
@@ -108,7 +109,6 @@ namespace Microsoft.Actions.Actors.Runtime
             async Task<object> RequestFunc(Actor actor, CancellationToken ct)
             {
                 var parameters = methodInfo.GetParameters();
-                var serializer = new JsonSerializer();
                 dynamic awaitable;
 
                 if (parameters.Length == 0)
@@ -133,20 +133,22 @@ namespace Microsoft.Actions.Actors.Runtime
 
                 await awaitable;
 
-                // Its already awaited, getting Result is not blocking.
-                using (var streamWriter = new StreamWriter(responseBodyStream))
-                {
-                    using (var writer = new JsonTextWriter(streamWriter))
-                    {
-                        serializer.Serialize(writer, awaitable.GetAwaiter().GetResult());
-                    }
-                }
+                // Serialize result if it has result (return type was not just Task.)
+                var resultProperty = awaitable.GetType().GetProperty("Result");
 
-                // return any dummy value from here as result has already been written to response stream.
-                return null;
+                // already await, Getting result will be non blocking.
+                return resultProperty == null ? default(object) : awaitable.GetAwaiter().GetResult();
             }
 
-            return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+            var result = await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+
+            using (var streamWriter = new StreamWriter(responseBodyStream))
+            {
+                using (var writer = new JsonTextWriter(streamWriter))
+                {
+                    serializer.Serialize(writer, result);
+                }
+            }
         }
 
         internal Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default(CancellationToken))
@@ -222,10 +224,9 @@ namespace Microsoft.Actions.Actors.Runtime
                 retval = await actorFunc.Invoke(actor, cancellationToken);
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
-            catch (Exception e)
+            catch
             {
                 actor.OnInvokeFailed();
-                Console.WriteLine(e);
                 throw;
             }
 

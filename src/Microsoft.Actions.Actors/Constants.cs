@@ -23,6 +23,7 @@ namespace Microsoft.Actions.Actors
         public const string ActionsDefaultPort = "3500";
         public const string ActionsVersion = "v1.0";
         public const string Method = "method";
+        public const string Reminders = "reminders";
 
         /// <summary>
         /// Gets string format for Actors state management relative url.
@@ -38,5 +39,10 @@ namespace Microsoft.Actions.Actors
         /// Gets string format for Actors method invocation relative url.
         /// </summary>
         public static string ActorMethodRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{Method}/{{2}}";
+
+        /// <summary>
+        /// Gets string format for Actors reminder registration relative url..
+        /// </summary>
+        public static string ActorReminderRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{Reminders}/{{2}}";
     }
 }

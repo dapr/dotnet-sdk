@@ -6,6 +6,8 @@
 namespace Microsoft.Actions.Actors.Client
 {    
     using System;
+    using System.IO;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
@@ -108,7 +110,7 @@ namespace Microsoft.Actions.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with provided json payload.
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
         /// </summary>
         /// <typeparam name="T">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
@@ -117,9 +119,65 @@ namespace Microsoft.Actions.Actors.Client
         /// <returns>Json response form server.</returns>
         public async Task<T> InvokeAsync<T>(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
         {
+            // TODO: Allow users to provide a custom Serializer.
+            var serializer = new JsonSerializer();
             var jsonPayload = JsonConvert.SerializeObject(data);
-            var jsonResponse = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, jsonPayload, cancellationToken);
-            return JsonConvert.DeserializeObject<T>(jsonResponse);
+            var response = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, jsonPayload, cancellationToken);
+
+            using (var streamReader = new StreamReader(response))
+            {
+                using (var reader = new JsonTextReader(streamReader))
+                {
+                    return serializer.Deserialize<T>(reader);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// </summary>
+        /// <param name="method">Actor method name.</param>
+        /// <param name="data">Object argument for actor method.</param>
+        /// <param name="cancellationToken">Cancellation Token.</param>
+        /// <returns>Json response form server.</returns>
+        public Task InvokeAsync(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // TODO: Allow users to provide a custom Serializer.
+            var jsonPayload = JsonConvert.SerializeObject(data);
+
+            return actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, jsonPayload, cancellationToken);
+        }
+
+        /// <summary>
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// </summary>
+        /// <typeparam name="T">Return type of method.</typeparam>
+        /// <param name="method">Actor method name.</param>
+        /// <param name="cancellationToken">Cancellation Token.</param>
+        /// <returns>Json response form server.</returns>
+        public async Task<T> InvokeAsync<T>(string method, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var response = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, null, cancellationToken);
+            var serializer = new JsonSerializer();
+
+            using (var streamReader = new StreamReader(response))
+            {
+                using (var reader = new JsonTextReader(streamReader))
+                {
+                    return serializer.Deserialize<T>(reader);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// </summary>
+        /// <param name="method">Actor method name.</param>
+        /// <param name="cancellationToken">Cancellation Token.</param>
+        /// <returns>Json response form server.</returns>
+        public async Task InvokeAsync(string method, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, null, cancellationToken);
         }
 
         internal void Initialize(

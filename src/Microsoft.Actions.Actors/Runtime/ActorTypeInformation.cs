@@ -117,6 +117,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 InterfaceTypes = actorInterfaces,
                 ImplementationType = actorType,
                 IsAbstract = actorType.GetTypeInfo().IsAbstract,
+                IsRemindable = actorType.IsRemindableActor(),
             };
         }
     }

@@ -23,6 +23,7 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 actorRouteBuilder.AddActorActivationRoute();
                 actorRouteBuilder.AddActorDeactivationRoute();
                 actorRouteBuilder.AddActorMethodRoute();
+                actorRouteBuilder.AddReminderRoute();
 
                 app.UseRouter(actorRouteBuilder.Build());
                 next(app);

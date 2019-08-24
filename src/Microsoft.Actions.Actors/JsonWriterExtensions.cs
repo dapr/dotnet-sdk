@@ -66,8 +66,14 @@ namespace Microsoft.Actions.Actors
             else
             {
                 // write in format expected by Actions, it only accepts h, m, s, ms, us(micro), ns
-                var hours = (value.Value.Days * 24) + value.Value.Hours;
-                writer.WriteValue(FormattableString.Invariant($"{hours}h{value.Value.Minutes}m{value.Value.Seconds}s{value.Value.Milliseconds}ms"));
+                var stringValue = string.Empty;
+                if (value.Value >= TimeSpan.Zero)
+                {
+                    var hours = (value.Value.Days * 24) + value.Value.Hours;
+                    stringValue = FormattableString.Invariant($"{hours}h{value.Value.Minutes}m{value.Value.Seconds}s{value.Value.Milliseconds}ms");
+                }
+
+                writer.WriteValue(stringValue);
             }
         }
 

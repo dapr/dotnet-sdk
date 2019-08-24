@@ -383,5 +383,14 @@ namespace Microsoft.Actions.Actors.Resources {
                 return ResourceManager.GetString("ServerErrorNoMeaningFulResponse", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to TimeSpan TotalMilliseconds specified value must be between {0} and {1} .
+        /// </summary>
+        internal static string TimerArgumentOutOfRange {
+            get {
+                return ResourceManager.GetString("TimerArgumentOutOfRange", resourceCulture);
+            }
+        }
     }
 }

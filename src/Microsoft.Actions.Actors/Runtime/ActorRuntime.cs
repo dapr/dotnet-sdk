@@ -36,6 +36,8 @@ namespace Microsoft.Actions.Actors.Runtime
         /// </summary>
         public static IEnumerable<string> RegisteredActorTypes => actorManagers.Keys;
 
+        internal static IActionsInteractor ActionsInteractor => new ActionsHttpInteractor();
+
         /// <summary>
         /// Registers an actor with the runtime.
         /// </summary>

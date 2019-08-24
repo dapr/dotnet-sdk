@@ -398,9 +398,24 @@ namespace Microsoft.Actions.Actors
                     try
                     {
                         // Change the value returned by Actions runtime, so that it can be parsed with TimeSpan.
-                        // Format returned by aCtions runtime: 4h5m50s60ms
-                        var convertedValue = valueString.Replace("h", ":").Replace("m", ":").Replace("s", ":").Replace("ms", string.Empty);
-                        value = TimeSpan.Parse(convertedValue);
+                        // Format returned by Actions runtime: 4h15m50s60ms. It doesnt have days.
+                        // Actions runtime should handle timespans in ISO 8601 format.
+                        // Replace ms before m & s. Also aappend 0 days for parsing correctly with TimeSpan
+                        int hIndex = valueString.IndexOf('h');
+                        int mIndex = valueString.IndexOf('m');
+                        int sIndex = valueString.IndexOf('s');
+                        int msIndex = valueString.IndexOf("ms");
+
+                        // handle days from hours.
+                        var hours = int.Parse(valueString.Substring(0, hIndex));
+                        var days = hours / 24;
+                        hours = hours % 24;
+
+                        var minutes = int.Parse(valueString.Substring(hIndex + 1, mIndex - (hIndex + 1)));
+                        var seconds = int.Parse(valueString.Substring(mIndex + 1, sIndex - (mIndex + 1)));
+                        var miliseconds = int.Parse(valueString.Substring(sIndex + 1, msIndex - (sIndex + 1)));
+
+                        value = new TimeSpan(days, hours, minutes, seconds, miliseconds);
                     }
                     catch (Exception ex)
                     {
