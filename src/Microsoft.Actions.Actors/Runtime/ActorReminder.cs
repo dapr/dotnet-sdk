@@ -15,31 +15,31 @@ namespace Microsoft.Actions.Actors.Runtime
         public ActorReminder(
             ActorId actorId,
             string reminderName,
-            ReminderData reminderData)
+            ReminderInfo reminderInfo)
         {
             this.OwnerActorId = actorId;
             this.Name = reminderName;
-            this.ReminderData = reminderData;
+            this.ReminderInfo = reminderInfo;
         }
 
         public string Name { get; }
 
         public byte[] State
         {
-            get { return this.ReminderData.Data; }
+            get { return this.ReminderInfo.Data; }
         }
 
         public TimeSpan DueTime
         {
-            get { return this.ReminderData.DueTime; }
+            get { return this.ReminderInfo.DueTime; }
         }
 
         public TimeSpan Period
         {
-            get { return this.ReminderData.Period; }
+            get { return this.ReminderInfo.Period; }
         }
 
-        internal ReminderData ReminderData { get; }
+        internal ReminderInfo ReminderInfo { get; }
 
         internal ActorId OwnerActorId { get; }
     }

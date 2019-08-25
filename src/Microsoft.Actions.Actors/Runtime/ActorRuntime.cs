@@ -129,6 +129,19 @@ namespace Microsoft.Actions.Actors.Runtime
             return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
         }
 
+        /// <summary>
+        /// Fires a timer for the Actor.
+        /// </summary>
+        /// <param name="actorTypeName">Actor type name to invokde the method for.</param>
+        /// <param name="actorId">Actor id for the actor for which method will be invoked.</param>
+        /// <param name="timerName">The name of timer provided during registration.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        internal static Task FireTimerAsync(string actorTypeName, string actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
+        }
+
         private static ActorManager GetActorManager(string actorTypeName)
         {
             if (!actorManagers.TryGetValue(actorTypeName, out var actorManager))

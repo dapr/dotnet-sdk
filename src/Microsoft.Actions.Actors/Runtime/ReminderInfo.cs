@@ -15,20 +15,20 @@ namespace Microsoft.Actions.Actors.Runtime
     using Microsoft.Actions.Actors.Resources;
     using Newtonsoft.Json;
 
-    internal class ReminderData
+    internal class ReminderInfo
     {
         private readonly TimeSpan minTimePeriod = Timeout.InfiniteTimeSpan;
 
-        public ReminderData(
-            byte[] reminderState,
-            TimeSpan reminderDueTime,
-            TimeSpan reminderPeriod)
+        public ReminderInfo(
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period)
         {
-            this.ValidateDueTime("DueTime", reminderDueTime);
-            this.ValidatePeriod("Period", reminderPeriod);
-            this.Data = reminderState;
-            this.DueTime = reminderDueTime;
-            this.Period = reminderPeriod;
+            this.ValidateDueTime("DueTime", dueTime);
+            this.ValidatePeriod("Period", period);
+            this.Data = state;
+            this.DueTime = dueTime;
+            this.Period = period;
         }
 
         public TimeSpan DueTime { get; private set; }
@@ -37,7 +37,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         public byte[] Data { get; private set; }
 
-        internal static ReminderData Deserialize(Stream stream)
+        internal static ReminderInfo Deserialize(Stream stream)
         {
             // Deserialize using JsonReader as we know the property names in response. Deserializing using JsonReader is most performant.
             using (var streamReader = new StreamReader(stream))
@@ -81,7 +81,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return content;
         }
 
-        private static ReminderData GetFromJsonProperties(JsonReader reader)
+        private static ReminderInfo GetFromJsonProperties(JsonReader reader)
         {
             var dueTime = default(TimeSpan);
             var period = default(TimeSpan);
@@ -110,7 +110,7 @@ namespace Microsoft.Actions.Actors.Runtime
             }
             while (reader.TokenType != JsonToken.EndObject);
 
-            return new ReminderData(data, dueTime, period);
+            return new ReminderInfo(data, dueTime, period);
         }
 
         private void ValidateDueTime(string argName, TimeSpan value)

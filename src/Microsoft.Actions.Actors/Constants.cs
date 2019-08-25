@@ -24,6 +24,7 @@ namespace Microsoft.Actions.Actors
         public const string ActionsVersion = "v1.0";
         public const string Method = "method";
         public const string Reminders = "reminders";
+        public const string Timers = "timers";
 
         /// <summary>
         /// Gets string format for Actors state management relative url.
@@ -44,5 +45,10 @@ namespace Microsoft.Actions.Actors
         /// Gets string format for Actors reminder registration relative url..
         /// </summary>
         public static string ActorReminderRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{Reminders}/{{2}}";
+
+        /// <summary>
+        /// Gets string format for Actors timer registration relative url..
+        /// </summary>
+        public static string ActorTimerRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{Timers}/{{2}}";
     }
 }

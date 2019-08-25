@@ -24,9 +24,11 @@ namespace Microsoft.Actions.Actors.Runtime
     {
         private const string TraceType = "ActorManager";
         private const string ReceiveReminderMethodName = "ReceiveReminderAsync";
+        private const string TimerMethodName = "FireTimerAsync";
         private readonly ActorService actorService;
         private readonly ConcurrentDictionary<ActorId, Actor> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
+        private readonly ActorMethodContext timerMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
         private IActorMessageBodyFactory messageBodyFactory;
 
@@ -47,6 +49,7 @@ namespace Microsoft.Actions.Actors.Runtime
             this.actorMethodInfoMap = new ActorMethodInfoMap(this.actorService.ActorTypeInfo.InterfaceTypes);
             this.activeActors = new ConcurrentDictionary<ActorId, Actor>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
+            this.timerMethodContext = ActorMethodContext.CreateForReminder(TimerMethodName);
             this.serializersManager = IntializeSerializationManager(null);
             this.messageBodyFactory = new DataContractMessageFactory();
         }
@@ -133,11 +136,18 @@ namespace Microsoft.Actions.Actors.Runtime
 
                 await awaitable;
 
+                // Write Response back if method's return type is other than Task.
                 // Serialize result if it has result (return type was not just Task.)
-                var resultProperty = awaitable.GetType().GetProperty("Result");
-
-                // already await, Getting result will be non blocking.
-                return resultProperty == null ? default(object) : awaitable.GetAwaiter().GetResult();
+                if (methodInfo.ReturnType.Name != typeof(Task).Name)
+                {
+                    // already await, Getting result will be non blocking.
+                    var x = awaitable.GetAwaiter().GetResult();
+                    return x;
+                }
+                else
+                {
+                    return default(object);
+                }
             }
 
             var result = await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
@@ -156,7 +166,7 @@ namespace Microsoft.Actions.Actors.Runtime
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
             {
-                var reminderdata = ReminderData.Deserialize(requestBodyStream);
+                var reminderdata = ReminderInfo.Deserialize(requestBodyStream);
 
                 // Create a Func to be invoked by common method.
                 async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
@@ -175,6 +185,20 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return Task.CompletedTask;
+        }
+
+        internal Task FireTimerAsync(ActorId actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // Create a Func to be invoked by common method.
+            async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
+            {
+                await
+                    actor.FireTimerAsync(timerName);
+
+                return null;
+            }
+
+            return this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task ActivateActor(ActorId actorId)

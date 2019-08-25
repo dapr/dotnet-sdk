@@ -89,5 +89,18 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 return ActorRuntime.FireReminderAsync(actorTypeName, actorId, reminderName, request.Body);
             });
         }
+
+        public static void AddTimerRoute(this IRouteBuilder routeBuilder)
+        {
+            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", (request, response, routeData) =>
+            {
+                var actorTypeName = (string)routeData.Values["actorTypeName"];
+                var actorId = (string)routeData.Values["actorId"];
+                var timerName = (string)routeData.Values["timerName"];
+
+                // read dueTime, period and data from Request Body.
+                return ActorRuntime.FireTimerAsync(actorTypeName, actorId, timerName);
+            });
+        }
     }
 }

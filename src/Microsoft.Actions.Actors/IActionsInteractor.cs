@@ -79,7 +79,7 @@ namespace Microsoft.Actions.Actors
         Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Invokes Actor method.
+        /// Register a reminder.
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
         /// <param name="actorId">ActorId.</param>
@@ -90,7 +90,7 @@ namespace Microsoft.Actions.Actors
         Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Invokes Actor method.
+        /// Unregisters a reminder.
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
         /// <param name="actorId">ActorId.</param>
@@ -98,5 +98,26 @@ namespace Microsoft.Actions.Actors
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Registers a timer.
+        /// </summary>
+        /// <param name="actorType">Type of actor.</param>
+        /// <param name="actorId">ActorId.</param>
+        /// <param name="timerName">Name of timer to register.</param>
+        /// <param name="data">Json reminder data as per the actions spec.</param>
+        /// <param name="cancellationToken">Cancels the operation.</param>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Unegisters a timer.
+        /// </summary>
+        /// <param name="actorType">Type of actor.</param>
+        /// <param name="actorId">ActorId.</param>
+        /// <param name="timerName">Name of timer to register.</param>
+        /// <param name="cancellationToken">Cancels the operation.</param>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

@@ -271,6 +271,44 @@ namespace Microsoft.Actions.Actors
             return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
+        public Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
+            var requestId = Guid.NewGuid().ToString();
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Put,
+                    Content = new StringContent(data, Encoding.UTF8),
+                };
+
+                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                return request;
+            }
+
+            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+        }
+
+        public Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.Timers, actorType, actorId, timerName);
+            var requestId = Guid.NewGuid().ToString();
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Delete,
+                };
+
+                return request;
+            }
+
+            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+        }
+
         /// <summary>
         /// Sends an HTTP get request to Actions.
         /// </summary>
