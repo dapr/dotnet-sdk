@@ -44,9 +44,14 @@ namespace Microsoft.Actions.Actors.Communication
             return this.headerSerializer;
         }
 
-        public IActorMessageBodySerializer GetRequestBodySerializer(int interfaceId)
+        public IActorRequestMessageBodySerializer GetRequestMessageBodySerializer(int interfaceId)
         {
-            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).MessageBodySerializer;
+            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).RequestMessageBodySerializer;
+        }
+
+        public IActorResponseMessageBodySerializer GetResponseMessageBodySerializer(int interfaceId)
+        {
+            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).ResponseMessageBodySerializer;
         }
 
         internal CacheEntry CreateSerializers(int interfaceId)
@@ -63,7 +68,8 @@ namespace Microsoft.Actions.Actors.Communication
             var responseBodyTypes = interfaceDetails.ResponseKnownTypes;
 
             return new CacheEntry(
-                this.serializationProvider.CreateMessageBodySerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes));
+               this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes),
+               this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, interfaceDetails.ResponseWrappedKnownTypes));
         }
 
         internal InterfaceDetails GetInterfaceDetails(int interfaceId)

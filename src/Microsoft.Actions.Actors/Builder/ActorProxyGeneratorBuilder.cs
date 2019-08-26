@@ -37,7 +37,7 @@ namespace Microsoft.Actions.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(int), typeof(int), typeof(string), typeof(IActorMessageBody), typeof(CancellationToken) },
+                new[] { typeof(int), typeof(int), typeof(string), typeof(IActorRequestMessageBody), typeof(CancellationToken) },
                 null);
 
             this.checkIfitsWrapped = this.proxyBaseType.GetMethod(
@@ -45,7 +45,7 @@ namespace Microsoft.Actions.Actors.Builder
                BindingFlags.Instance | BindingFlags.NonPublic,
                null,
                CallingConventions.Any,
-               new[] { typeof(IActorMessageBody) },
+               new[] { typeof(IActorRequestMessageBody) },
                null);
 
             this.createMessage = this.proxyBaseType.GetMethod(
@@ -61,7 +61,7 @@ namespace Microsoft.Actions.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(int), typeof(int), typeof(IActorMessageBody) },
+                new[] { typeof(int), typeof(int), typeof(IActorRequestMessageBody) },
                 null);
 
             this.continueWithResultMethodInfo = this.proxyBaseType.GetMethod(
@@ -69,7 +69,7 @@ namespace Microsoft.Actions.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(int), typeof(int), typeof(Task<IActorMessageBody>) },
+                new[] { typeof(int), typeof(int), typeof(Task<IActorResponseMessageBody>) },
                 null);
 
             this.continueWithMethodInfo = this.proxyBaseType.GetMethod(
@@ -326,7 +326,7 @@ namespace Microsoft.Actions.Actors.Builder
                 this.SetParameterIfNeeded(ilGen, requestMessage, parameterLength, parameters);
             }
 
-            var objectTask = ilGen.DeclareLocal(typeof(Task<IActorMessageBody>));
+            var objectTask = ilGen.DeclareLocal(typeof(Task<IActorResponseMessageBody>));
 
             // call the base InvokeAsync method
             ilGen.Emit(OpCodes.Ldarg_0); // base
@@ -466,7 +466,7 @@ namespace Microsoft.Actions.Actors.Builder
             ilGen.Emit(OpCodes.Brfalse, elseLabel);
 
             // if false ,Call SetParamater
-            var setMethod = typeof(IActorMessageBody).GetMethod("SetParameter");
+            var setMethod = typeof(IActorRequestMessageBody).GetMethod("SetParameter");
 
             // Add to Dictionary
             for (var i = 0; i < parameterLength; i++)
@@ -495,7 +495,7 @@ namespace Microsoft.Actions.Actors.Builder
         {
             LocalBuilder requestMessage;
             ilGen.Emit(OpCodes.Ldarg_0); // base
-            requestMessage = ilGen.DeclareLocal(typeof(IActorMessageBody));
+            requestMessage = ilGen.DeclareLocal(typeof(IActorRequestMessageBody));
             ilGen.Emit(OpCodes.Ldstr, interfaceName);
             ilGen.Emit(OpCodes.Ldstr, methodDescription.Name);
             ilGen.Emit(OpCodes.Ldc_I4, parameterLength);
@@ -526,7 +526,15 @@ namespace Microsoft.Actions.Actors.Builder
             ilGen.Emit(OpCodes.Ldarg_3); // load responseBody object
             ilGen.Emit(OpCodes.Castclass, responseBodyType); // cast it to responseBodyType
             ilGen.Emit(OpCodes.Stloc, castedResponseBody); // store casted result to castedResponseBody local variable
+
+            var fieldInfo = responseBodyType.GetField(this.CodeBuilder.Names.RetVal);
             ilGen.Emit(OpCodes.Ldloc, castedResponseBody);
+            ilGen.Emit(OpCodes.Ldfld, fieldInfo);
+            if (!fieldInfo.FieldType.GetTypeInfo().IsClass)
+            {
+                ilGen.Emit(OpCodes.Box, fieldInfo.FieldType);
+            }
+
             ilGen.Emit(OpCodes.Ret);
         }
 

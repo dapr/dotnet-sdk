@@ -10,20 +10,20 @@ namespace Microsoft.Actions.Actors.Communication
     /// <summary>
     /// Defines the interface that must be implemented to provide a serializer/deserializer for remoting request message body.
     /// </summary>
-    public interface IActorMessageBodySerializer
+    public interface IActorRequestMessageBodySerializer
     {
         /// <summary>
         /// Serialize the remoting request body object to a message body that can be sent over the wire.
         /// </summary>
-        /// <param name="serviceRemotingRequestMessageBody">Remoting request message body object.</param>
+        /// <param name="actorRequestMessageBody">Actor request message body object.</param>
         /// <returns>Serialized message body.</returns>
-        byte[] Serialize(IActorMessageBody serviceRemotingRequestMessageBody);
+        byte[] Serialize(IActorRequestMessageBody actorRequestMessageBody);
 
         /// <summary>
-        /// Deserializes an incoming message body to remoting request body object.
+        /// Deserializes an incoming message body to actor request body object.
         /// </summary>
         /// <param name="messageBody">Serialized message body.</param>
         /// <returns>Deserialized remoting request message body object.</returns>
-        IActorMessageBody Deserialize(Stream messageBody);
+        IActorRequestMessageBody Deserialize(Stream messageBody);
     }
 }

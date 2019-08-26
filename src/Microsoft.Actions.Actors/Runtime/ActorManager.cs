@@ -51,12 +51,12 @@ namespace Microsoft.Actions.Actors.Runtime
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
             this.timerMethodContext = ActorMethodContext.CreateForReminder(TimerMethodName);
             this.serializersManager = IntializeSerializationManager(null);
-            this.messageBodyFactory = new DataContractMessageFactory();
+            this.messageBodyFactory = new WrappedRequestMessageFactory();
         }
 
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
 
-        internal Task<IActorResponseMessage> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        internal Task<Tuple<string, string>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             
@@ -64,22 +64,24 @@ namespace Microsoft.Actions.Actors.Runtime
             var actorMessageHeader = this.serializersManager.GetHeaderSerializer()
                 .DeserializeRequestHeaders(new MemoryStream(Encoding.ASCII.GetBytes(actionsActorheader)));
 
+            var interfaceId = actorMessageHeader.InterfaceId;
+
             // Get the deserialized Body.
-            var msgBodySerializer = this.serializersManager.GetRequestBodySerializer(actorMessageHeader.InterfaceId);
+            var msgBodySerializer = this.serializersManager.GetRequestMessageBodySerializer(actorMessageHeader.InterfaceId);
             var actorMessageBody = msgBodySerializer.Deserialize(data);
 
             // Call the method on the method dispatcher using the Func below.
             var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
 
             // Create a Func to be invoked by common method.
-            async Task<IActorResponseMessage> RequestFunc(Actor actor, CancellationToken ct)
+            async Task<Tuple<string, string>> RequestFunc(Actor actor, CancellationToken ct)
             {
-                IActorMessageBody responseMsgBody = null;
+                IActorResponseMessageBody responseMsgBody = null;
                 var actorResponseMessageHeader = new ActorResponseMessageHeader();
 
                 try
                 {
-                    responseMsgBody = (IActorMessageBody)await methodDispatcher.DispatchAsync(
+                    responseMsgBody = (IActorResponseMessageBody)await methodDispatcher.DispatchAsync(
                         actor,
                         actorMessageHeader.MethodId,
                         actorMessageBody,
@@ -93,12 +95,12 @@ namespace Microsoft.Actions.Actors.Runtime
                     actorResponseMessageHeader.AddHeader(Constants.ErrorResponseHeaderName, Encoding.ASCII.GetBytes(exception.Message));
                 }
 
-                var responseMessage = new ActorResponseMessage(actorResponseMessageHeader, responseMsgBody);
+                var responseMessage = this.CreateResponseMessage(actorResponseMessageHeader, responseMsgBody, interfaceId);
 
                 return responseMessage;
             }
 
-            return this.DispatchInternalAsync<IActorResponseMessage>(actorId, actorMethodContext, RequestFunc, cancellationToken);
+            return this.DispatchInternalAsync<Tuple<string, string>>(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
@@ -255,6 +257,31 @@ namespace Microsoft.Actions.Actors.Runtime
             }
 
             return retval;
+        }
+
+        private Tuple<string, string> CreateResponseMessage(IActorResponseMessageHeader header, IActorResponseMessageBody msgBody, int interfaceId)
+        {
+            string responseHeader = string.Empty;
+            if (header != null)
+            {
+                var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(header);
+
+                if (responseHeaderBytes != null)
+                {
+                    responseHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
+                }
+            }
+
+            string responseMsgBody = string.Empty;
+            if (msgBody != null)
+            {
+                var responseSerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
+
+                var responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
+                responseMsgBody = Encoding.UTF8.GetString(responseMsgBodyBytes, 0, responseMsgBodyBytes.Length);
+            }
+
+            return new Tuple<string, string>(responseHeader, responseMsgBody);
         }
     }
 }

@@ -8,11 +8,11 @@ namespace Microsoft.Actions.Actors.Communication
     internal class ActorResponseMessage : IActorResponseMessage
     {
         private readonly IActorResponseMessageHeader header;
-        private readonly IActorMessageBody msgBody;
+        private readonly IActorResponseMessageBody msgBody;
 
         public ActorResponseMessage(
             IActorResponseMessageHeader header,
-            IActorMessageBody msgBody)
+            IActorResponseMessageBody msgBody)
         {
             this.header = header;
             this.msgBody = msgBody;
@@ -23,7 +23,7 @@ namespace Microsoft.Actions.Actors.Communication
             return this.header;
         }
 
-        public IActorMessageBody GetBody()
+        public IActorResponseMessageBody GetBody()
         {
             return this.msgBody;
         }

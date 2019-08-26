@@ -67,7 +67,15 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 if (request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
                     var actionsActorheader = request.Headers[Constants.RequestHeaderName];
-                    return ActorRuntime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body);
+                    return ActorRuntime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body)
+                        .ContinueWith(t =>
+                        {
+                            var result = t.GetAwaiter().GetResult();
+
+                            // Item 1 is header , Item 2 is body
+                            response.Headers.Add(Constants.ErrorResponseHeaderName, result.Item1); // add header
+                            response.WriteAsync(result.Item2); // add response message body
+                        });
                 }
                 else
                 {
