@@ -15,7 +15,7 @@ namespace Microsoft.Actions.Actors.Communication
     /// This is the implmentation  for <see cref="IActorMessageBodySerializationProvider"/>used by remoting service and client during
     /// request/response serialization . It uses request Wrapping and data contract for serialization.
     /// </summary>
-    public class ActorMessageBodyDataContractSerializationProvider : IActorMessageBodySerializationProvider
+    internal class ActorMessageBodyDataContractSerializationProvider : IActorMessageBodySerializationProvider
     {
         private static readonly IEnumerable<Type> DefaultKnownTypes = new[]
         {
