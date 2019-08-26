@@ -218,8 +218,7 @@ namespace Microsoft.Actions.Actors.Client
                 methodName,
                 cancellationToken);
 
-            return responseMsg != null ? responseMsg.GetBody()
-                   : null;
+            return responseMsg?.GetBody();
         }
 
         /// <summary>
@@ -278,8 +277,7 @@ namespace Microsoft.Actions.Actors.Client
             Task<IActorResponseMessageBody> task)
         {
             var responseBody = await task;
-            var wrappedMessage = responseBody as WrappedMessage;
-            if (wrappedMessage != null)
+            if (responseBody is WrappedMessage wrappedMessage)
             {
                 var obj = this.GetReturnValue(
                     interfaceId,
