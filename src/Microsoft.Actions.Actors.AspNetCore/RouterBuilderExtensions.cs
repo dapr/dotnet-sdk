@@ -5,7 +5,6 @@
 
 namespace Microsoft.Actions.Actors.AspNetCore
 {
-    using System.IO;
     using System.Linq;
     using Microsoft.Actions.Actors.Runtime;
     using Microsoft.AspNetCore.Http;
