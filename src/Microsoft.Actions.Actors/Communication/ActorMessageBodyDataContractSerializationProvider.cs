@@ -42,25 +42,53 @@ namespace Microsoft.Actions.Actors.Communication
         }
 
         /// <summary>
-        /// Creates IActorMessageBodySerializer for a serviceInterface using Wrapped Message DataContract implementation.
+        /// Creates IActorRequestMessageBodySerializer for a serviceInterface using Wrapped Message DataContract implementation.
         /// </summary>
         /// <param name="serviceInterfaceType">The remoted service interface.</param>
-        /// <param name="methodParameterTypes">The union of parameter types of all of the methods of the specified interface.</param>
-        /// <param name="wrappedMessageTypes">Wrapped Request Types for all Methods.</param>
+        /// <param name="methodRequestParameterTypes">The union of parameter types of all of the methods of the specified interface.</param>
+        /// <param name="wrappedRequestMessageTypes">Wrapped Request Types for all Methods.</param>
         /// <returns>
-        /// An instance of the <see cref="IActorMessageBodySerializer" /> that can serialize the service
-        /// remoting request message body to a messaging body for transferring over the transport.
+        /// An instance of the <see cref="IActorRequestMessageBodySerializer" /> that can serialize the service
+        /// actor request message body to a messaging body for transferring over the transport.
         /// </returns>
-        public IActorMessageBodySerializer CreateMessageBodySerializer(
+        public IActorRequestMessageBodySerializer CreateRequestMessageBodySerializer(
             Type serviceInterfaceType,
-            IEnumerable<Type> methodParameterTypes,
-            IEnumerable<Type> wrappedMessageTypes = null)
+            IEnumerable<Type> methodRequestParameterTypes,
+            IEnumerable<Type> wrappedRequestMessageTypes = null)
         {
+            var knownTypes = new List<Type>(DefaultKnownTypes);
+            knownTypes.AddRange(wrappedRequestMessageTypes);
+
             DataContractSerializer serializer = this.CreateMessageBodyDataContractSerializer(
                 typeof(WrappedMessageBody),
-                wrappedMessageTypes);
+                knownTypes);
 
-            return new MemoryStreamMessageBodySerializer(this, serializer);
+            return new MemoryStreamMessageBodySerializer<WrappedMessageBody, WrappedMessageBody>(this, serializer);
+        }
+
+        /// <summary>
+        /// Creates IActorResponseMessageBodySerializer for a serviceInterface using Wrapped Message DataContract implementation.
+        /// </summary>
+        /// <param name="serviceInterfaceType">The remoted service interface.</param>
+        /// <param name="methodReturnTypes">The return types of all of the methods of the specified interface.</param>
+        /// <param name="wrappedResponseMessageTypes">Wrapped Response Types for all remoting methods.</param>
+        /// <returns>
+        /// An instance of the <see cref="IActorResponseMessageBodySerializer" /> that can serialize the service
+        /// actor response message body to a messaging body for transferring over the transport.
+        /// </returns>
+        public IActorResponseMessageBodySerializer CreateResponseMessageBodySerializer(
+            Type serviceInterfaceType,
+            IEnumerable<Type> methodReturnTypes,
+            IEnumerable<Type> wrappedResponseMessageTypes = null)
+        {
+            var knownTypes = new List<Type>(DefaultKnownTypes);
+            knownTypes.AddRange(wrappedResponseMessageTypes);
+
+            DataContractSerializer serializer = this.CreateMessageBodyDataContractSerializer(
+                typeof(WrappedMessageBody),
+                knownTypes);
+
+            return new MemoryStreamMessageBodySerializer<WrappedMessageBody, WrappedMessageBody>(this, serializer);
         }
 
         /// <summary>
@@ -74,7 +102,7 @@ namespace Microsoft.Actions.Actors.Communication
         /// </returns>
         internal XmlDictionaryWriter CreateXmlDictionaryWriter(Stream outputStream)
         {
-            return XmlDictionaryWriter.CreateBinaryWriter(outputStream);
+            return XmlDictionaryWriter.CreateTextWriter(outputStream);
         }
 
         /// <summary>
@@ -88,7 +116,7 @@ namespace Microsoft.Actions.Actors.Communication
         /// </returns>
         internal XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
         {
-            return XmlDictionaryReader.CreateBinaryReader(inputStream, XmlDictionaryReaderQuotas.Max);
+            return XmlDictionaryReader.CreateTextReader(inputStream, XmlDictionaryReaderQuotas.Max);
         }
 
         /// <summary>
@@ -106,26 +134,22 @@ namespace Microsoft.Actions.Actors.Communication
                 new DataContractSerializerSettings()
                 {
                     MaxItemsInObjectGraph = int.MaxValue,
-                    KnownTypes = AddDefaultKnownTypes(knownTypes),
+                    KnownTypes = knownTypes,
                 });
 
             serializer.SetSerializationSurrogateProvider(new ActorDataContractSurrogate());
             return serializer;
         }
 
-        private static IEnumerable<Type> AddDefaultKnownTypes(IEnumerable<Type> knownTypes)
-        {
-            var types = new List<Type>(knownTypes);
-            types.AddRange(DefaultKnownTypes);
-            return types;
-        }
-
         /// <summary>
         ///     Default serializer for service remoting request and response message body that uses the
         ///     memory stream to create outgoing message buffers.
         /// </summary>
-        private class MemoryStreamMessageBodySerializer :
-            IActorMessageBodySerializer
+        private class MemoryStreamMessageBodySerializer<TRequest, TResponse> :
+            IActorRequestMessageBodySerializer,
+            IActorResponseMessageBodySerializer
+            where TRequest : IActorRequestMessageBody
+            where TResponse : IActorResponseMessageBody
         {
             private readonly ActorMessageBodyDataContractSerializationProvider serializationProvider;
             private readonly DataContractSerializer serializer;
@@ -138,10 +162,10 @@ namespace Microsoft.Actions.Actors.Communication
                 this.serializer = serializer;
             }
 
-            byte[] IActorMessageBodySerializer.Serialize(
-                IActorMessageBody serviceRemotingRequestMessageBody)
+            byte[] IActorRequestMessageBodySerializer.Serialize(
+                IActorRequestMessageBody actorRequestMessageBody)
             {
-                if (serviceRemotingRequestMessageBody == null)
+                if (actorRequestMessageBody == null)
                 {
                     return null;
                 }
@@ -150,7 +174,7 @@ namespace Microsoft.Actions.Actors.Communication
                 {
                     using (var writer = this.CreateXmlDictionaryWriter(stream))
                     {
-                        this.serializer.WriteObject(writer, serviceRemotingRequestMessageBody);
+                        this.serializer.WriteObject(writer, actorRequestMessageBody);
                         writer.Flush();
 
                         return stream.ToArray();
@@ -158,7 +182,7 @@ namespace Microsoft.Actions.Actors.Communication
                 }
             }
 
-            IActorMessageBody IActorMessageBodySerializer.Deserialize(
+            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(
                 Stream messageBody)
             {
                 if (messageBody == null)
@@ -170,7 +194,42 @@ namespace Microsoft.Actions.Actors.Communication
                 {
                     using (var reader = this.CreateXmlDictionaryReader(stream))
                     {
-                        return (WrappedMessageBody)this.serializer.ReadObject(reader);
+                        return (TRequest)this.serializer.ReadObject(reader);
+                    }
+                }
+            }
+
+            byte[] IActorResponseMessageBodySerializer.Serialize(IActorResponseMessageBody actorResponseMessageBody)
+            {
+                if (actorResponseMessageBody == null)
+                {
+                    return null;
+                }
+
+                using (var stream = new MemoryStream())
+                {
+                    using (var writer = this.CreateXmlDictionaryWriter(stream))
+                    {
+                        this.serializer.WriteObject(writer, actorResponseMessageBody);
+                        writer.Flush();
+
+                        return stream.ToArray();
+                    }
+                }
+            }
+
+            IActorResponseMessageBody IActorResponseMessageBodySerializer.Deserialize(Stream messageBody)
+            {
+                if (messageBody == null)
+                {
+                    return null;
+                }
+
+                using (var stream = new DisposableStream(messageBody))
+                {
+                    using (var reader = this.CreateXmlDictionaryReader(stream))
+                    {
+                        return (TResponse)this.serializer.ReadObject(reader);
                     }
                 }
             }

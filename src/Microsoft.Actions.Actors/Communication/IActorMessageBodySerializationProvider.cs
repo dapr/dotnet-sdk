@@ -20,18 +20,33 @@ namespace Microsoft.Actions.Actors.Communication
         IActorMessageBodyFactory CreateMessageBodyFactory();
 
         /// <summary>
-        /// Creates a serializer that can serialize and deserialize the remoting request message bodies for the specified service interface.
+        /// Creates IActorRequestMessageBodySerializer for a serviceInterface using Wrapped Message DataContract implementation.
         /// </summary>
-        /// <param name="serviceInterfaceType">User service interface.</param>
-        /// <param name="requestWrappedTypes">Wrapped Request object Types for all method.</param>
-        /// <param name="requestBodyTypes">Parameters for all the methods in the serviceInterfaceType.</param>
+        /// <param name="serviceInterfaceType">The remoted service interface.</param>
+        /// <param name="methodRequestParameterTypes">The union of parameter types of all of the methods of the specified interface.</param>
+        /// <param name="wrappedRequestMessageTypes">Wrapped Request Types for all Methods.</param>
         /// <returns>
-        /// An <see cref="IActorMessageBodySerializer"/> that can serialize and deserialize
-        /// the remoting request message bodies created by the custom service remoting message body factory.
+        /// An instance of the <see cref="IActorRequestMessageBodySerializer" /> that can serialize the service
+        /// actor request message body to a messaging body for transferring over the transport.
         /// </returns>
-        IActorMessageBodySerializer CreateMessageBodySerializer(
+        IActorRequestMessageBodySerializer CreateRequestMessageBodySerializer(
             Type serviceInterfaceType,
-            IEnumerable<Type> requestWrappedTypes,
-            IEnumerable<Type> requestBodyTypes = null);
+            IEnumerable<Type> methodRequestParameterTypes,
+            IEnumerable<Type> wrappedRequestMessageTypes = null);
+
+        /// <summary>
+        /// Creates IActorResponseMessageBodySerializer for a serviceInterface using Wrapped Message DataContract implementation.
+        /// </summary>
+        /// <param name="serviceInterfaceType">The remoted service interface.</param>
+        /// <param name="methodReturnTypes">The return types of all of the methods of the specified interface.</param>
+        /// <param name="wrappedResponseMessageTypes">Wrapped Response Types for all remoting methods.</param>
+        /// <returns>
+        /// An instance of the <see cref="IActorResponseMessageBodySerializer" /> that can serialize the service
+        /// actor response message body to a messaging body for transferring over the transport.
+        /// </returns>
+        IActorResponseMessageBodySerializer CreateResponseMessageBodySerializer(
+            Type serviceInterfaceType,
+            IEnumerable<Type> methodReturnTypes,
+            IEnumerable<Type> wrappedResponseMessageTypes = null);
     }
 }

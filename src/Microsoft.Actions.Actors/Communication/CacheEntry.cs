@@ -8,11 +8,15 @@ namespace Microsoft.Actions.Actors.Communication
     internal class CacheEntry
     {
         public CacheEntry(
-            IActorMessageBodySerializer messageBodySerializer)
+            IActorRequestMessageBodySerializer requestBodySerializer,
+            IActorResponseMessageBodySerializer responseBodySerializer)
         {
-            this.MessageBodySerializer = messageBodySerializer;
+            this.RequestMessageBodySerializer = requestBodySerializer;
+            this.ResponseMessageBodySerializer = responseBodySerializer;
         }
 
-        public IActorMessageBodySerializer MessageBodySerializer { get; }
+        public IActorRequestMessageBodySerializer RequestMessageBodySerializer { get; }
+
+        public IActorResponseMessageBodySerializer ResponseMessageBodySerializer { get; }
     }
 }

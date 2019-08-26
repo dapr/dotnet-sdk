@@ -137,7 +137,7 @@ namespace Microsoft.Actions.Actors
             var serializedHeader = this.serializersManager.GetHeaderSerializer()
                 .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
 
-            var msgBodySeriaizer = this.serializersManager.GetMessageBodySerializer(interfaceId);
+            var msgBodySeriaizer = this.serializersManager.GetRequestMessageBodySerializer(interfaceId);
             var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
 
             // Send Request
@@ -178,16 +178,15 @@ namespace Microsoft.Actions.Actors
             }
 
             // Get the http response message body content and extract out expected actor response message body
-            IActorMessageBody actorResponseMessageBody = null;
+            IActorResponseMessageBody actorResponseMessageBody = null;
             if (retval != null && retval.Content != null)
             {
                 var responseMessageBody = await retval.Content.ReadAsStreamAsync();
 
                 // Deserialize Actor Response Message Body
-                var responseBodySerializer = this.serializersManager.GetMessageBodySerializer(interfaceId);
+                var responseBodySerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
 
-                actorResponseMessageBody =
-                    responseBodySerializer.Deserialize(responseMessageBody);
+                actorResponseMessageBody = responseBodySerializer.Deserialize(responseMessageBody);
             }
 
             // TODO Either throw exception or return response body with null header and message body

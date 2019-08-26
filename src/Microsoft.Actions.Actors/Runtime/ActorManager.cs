@@ -53,7 +53,7 @@ namespace Microsoft.Actions.Actors.Runtime
             var interfaceId = actorMessageHeader.InterfaceId;
 
             // Get the deserialized Body.
-            var msgBodySerializer = this.serializersManager.GetMessageBodySerializer(actorMessageHeader.InterfaceId);
+            var msgBodySerializer = this.serializersManager.GetRequestMessageBodySerializer(actorMessageHeader.InterfaceId);
             var actorMessageBody = msgBodySerializer.Deserialize(data);
 
             // Call the method on the method dispatcher using the Func below.
@@ -62,12 +62,12 @@ namespace Microsoft.Actions.Actors.Runtime
             // Create a Func to be invoked by common method.
             async Task<Tuple<string, string>> RequestFunc(Actor actor, CancellationToken ct)
             {
-                IActorMessageBody responseMsgBody = null;
+                IActorResponseMessageBody responseMsgBody = null;
                 var actorResponseMessageHeader = new ActorResponseMessageHeader();
 
                 try
                 {
-                    responseMsgBody = (IActorMessageBody)await methodDispatcher.DispatchAsync(
+                    responseMsgBody = (IActorResponseMessageBody)await methodDispatcher.DispatchAsync(
                         actor,
                         actorMessageHeader.MethodId,
                         actorMessageBody,
@@ -211,7 +211,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return this.ActorTypeInfo.ActorFactory.Invoke(actorId);
         }
 
-        private Tuple<string, string> CreateResponseMessage(IActorResponseMessageHeader header, IActorMessageBody msgBody, int interfaceId)
+        private Tuple<string, string> CreateResponseMessage(IActorResponseMessageHeader header, IActorResponseMessageBody msgBody, int interfaceId)
         {
             string responseHeader = string.Empty;
             if (header != null)
@@ -227,7 +227,7 @@ namespace Microsoft.Actions.Actors.Runtime
             string responseMsgBody = string.Empty;
             if (msgBody != null)
             {
-                var responseSerializer = this.serializersManager.GetMessageBodySerializer(interfaceId);
+                var responseSerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
 
                 var responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
                 responseMsgBody = Encoding.UTF8.GetString(responseMsgBodyBytes, 0, responseMsgBodyBytes.Length);

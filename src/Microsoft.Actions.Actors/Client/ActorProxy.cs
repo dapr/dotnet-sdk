@@ -139,11 +139,11 @@ namespace Microsoft.Actions.Actors.Client
         /// <param name="requestMsgBodyValue">Request Message Body Value.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
-        protected async Task<IActorMessageBody> InvokeAsync(
+        protected async Task<IActorResponseMessageBody> InvokeAsync(
             int interfaceId,
             int methodId,
             string methodName,
-            IActorMessageBody requestMsgBodyValue,
+            IActorRequestMessageBody requestMsgBodyValue,
             CancellationToken cancellationToken)
         {
             var headers = new ActorRequestMessageHeader
@@ -168,20 +168,20 @@ namespace Microsoft.Actions.Actors.Client
         }
 
         /// <summary>
-        /// Creates the Remoting request message Body.
+        /// Creates the Actor request message Body.
         /// </summary>
         /// <param name="interfaceName">Full Name of the service interface for which this call is invoked.</param>
         /// <param name="methodName">Method Name of the service interface for which this call is invoked.</param>
         /// <param name="parameterCount">Number of Parameters in the service interface Method.</param>
         /// <param name="wrappedRequest">Wrapped Request Object.</param>
-        /// <returns>A request message body for V2 remoting stack.</returns>
-        protected IActorMessageBody CreateRequestMessageBody(
+        /// <returns>A request message body.</returns>
+        protected IActorRequestMessageBody CreateRequestMessageBody(
             string interfaceName,
             string methodName,
             int parameterCount,
             object wrappedRequest)
         {
-            return this.ActorMessageBodyFactory.CreateMessageBody(interfaceName, methodName, wrappedRequest, parameterCount);
+            return this.ActorMessageBodyFactory.CreateRequestMessageBody(interfaceName, methodName, parameterCount, wrappedRequest);
         }
 
         /// <summary>
@@ -205,7 +205,7 @@ namespace Microsoft.Actions.Actors.Client
         /// <returns>Return value of method call as <see cref="object"/>.</returns>
         protected virtual object GetReturnValue(int interfaceId, int methodId, object responseBody)
         {
-            return null;
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -220,29 +220,31 @@ namespace Microsoft.Actions.Actors.Client
         protected async Task<TRetval> ContinueWithResult<TRetval>(
             int interfaceId,
             int methodId,
-            Task<IActorMessageBody> task)
+            Task<IActorResponseMessageBody> task)
         {
             var responseBody = await task;
             var wrappedMessage = responseBody as WrappedMessage;
             if (wrappedMessage != null)
             {
-                return (TRetval)this.GetReturnValue(
+                var obj = this.GetReturnValue(
                     interfaceId,
                     methodId,
                     wrappedMessage.Value);
+
+                return (TRetval)obj;
             }
 
             return (TRetval)responseBody.Get(typeof(TRetval));
         }
 
         /// <summary>
-        /// This check if we are wrapping remoting message or not.
+        /// This check if we are wrapping actor message or not.
         /// </summary>
-        /// <param name="requestMessage">Remoting Request Message.</param>
+        /// <param name="requestMessageBody">Actor Request Message Body.</param>
         /// <returns>true or false. </returns>
-        protected bool CheckIfItsWrappedRequest(IActorMessageBody requestMessage)
+        protected bool CheckIfItsWrappedRequest(IActorRequestMessageBody requestMessageBody)
         {
-            if (requestMessage is WrappedMessage)
+            if (requestMessageBody is WrappedMessage)
             {
                 return true;
             }

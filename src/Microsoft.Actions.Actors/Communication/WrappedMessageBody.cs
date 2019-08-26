@@ -9,7 +9,7 @@ using Microsoft.Actions.Actors;
 using Microsoft.Actions.Actors.Communication;
 
 [DataContract(Name = "WrappedMsgBody", Namespace = Constants.Namespace)]
-internal class WrappedMessageBody : WrappedMessage, IActorMessageBody
+internal class WrappedMessageBody : WrappedMessage, IActorRequestMessageBody, IActorResponseMessageBody
 {
     public void SetParameter(
           int position,

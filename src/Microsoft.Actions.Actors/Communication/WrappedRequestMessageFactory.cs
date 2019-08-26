@@ -7,11 +7,19 @@ using Microsoft.Actions.Actors.Communication;
 
 internal class WrappedRequestMessageFactory : IActorMessageBodyFactory
 {
-    public IActorMessageBody CreateMessageBody(string interfaceName, string methodName, object wrappedMessageObject, int numberOfParameters = 0)
+    public IActorRequestMessageBody CreateRequestMessageBody(string interfaceName, string methodName, int numberOfParameters, object wrappedRequestObject)
     {
         return new WrappedMessageBody()
         {
-            Value = wrappedMessageObject,
+            Value = wrappedRequestObject,
+        };
+    }
+
+    public IActorResponseMessageBody CreateResponseMessageBody(string interfaceName, string methodName, object wrappedResponseObject)
+    {
+        return new WrappedMessageBody()
+        {
+            Value = wrappedResponseObject,
         };
     }
 }

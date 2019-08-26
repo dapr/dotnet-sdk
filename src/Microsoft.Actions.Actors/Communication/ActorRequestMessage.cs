@@ -8,9 +8,9 @@ namespace Microsoft.Actions.Actors.Communication
     internal class ActorRequestMessage : IActorRequestMessage
     {
         private readonly IActorRequestMessageHeader header;
-        private readonly IActorMessageBody msgBody;
+        private readonly IActorRequestMessageBody msgBody;
 
-        public ActorRequestMessage(IActorRequestMessageHeader header, IActorMessageBody msgBody)
+        public ActorRequestMessage(IActorRequestMessageHeader header, IActorRequestMessageBody msgBody)
         {
             this.header = header;
             this.msgBody = msgBody;
@@ -21,7 +21,7 @@ namespace Microsoft.Actions.Actors.Communication
             return this.header;
         }
 
-        public IActorMessageBody GetBody()
+        public IActorRequestMessageBody GetBody()
         {
             return this.msgBody;
         }

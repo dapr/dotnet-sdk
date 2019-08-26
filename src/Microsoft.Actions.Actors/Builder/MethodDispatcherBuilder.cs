@@ -38,7 +38,7 @@ namespace Microsoft.Actions.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
-                new[] { typeof(IActorMessageBody) },
+                new[] { typeof(IActorRequestMessageBody) },
                 null);
         }
 
@@ -160,7 +160,7 @@ namespace Microsoft.Actions.Actors.Builder
                 typeof(void),
                 typeof(int), // methodid
                 typeof(object), // remoted object
-                typeof(IActorMessageBody)); // requestBody
+                typeof(IActorRequestMessageBody)); // requestBody
 
             var ilGen = dispatchMethodImpl.GetILGenerator();
 
@@ -205,7 +205,7 @@ namespace Microsoft.Actions.Actors.Builder
             ilGen.Emit(OpCodes.Bne_Un, elseLabel);
 
             // Check If its Wrapped , then call getparam
-            var requestBody = typeof(IActorMessageBody);
+            var requestBody = typeof(IActorRequestMessageBody);
 
             // now invoke the method on the casted object
             ilGen.Emit(OpCodes.Ldloc, castedObject);
@@ -237,10 +237,10 @@ namespace Microsoft.Actions.Actors.Builder
             var dispatchMethodImpl = CodeBuilderUtils.CreateProtectedMethodBuilder(
                 classBuilder,
                 "OnDispatchAsync",
-                typeof(Task<IActorMessageBody>),
+                typeof(Task<IActorResponseMessageBody>),
                 typeof(int), // methodid
                 typeof(object), // remoted object
-                typeof(IActorMessageBody), // requestBody
+                typeof(IActorRequestMessageBody), // requestBody
                 typeof(IActorMessageBodyFactory), // remotingmessageBodyFactory
                 typeof(CancellationToken)); // CancellationToken
 
@@ -287,7 +287,7 @@ namespace Microsoft.Actions.Actors.Builder
             ilGen.Emit(OpCodes.Bne_Un, elseLabel);
 
             var invokeTask = ilGen.DeclareLocal(methodDescription.ReturnType);
-            var requestBody = typeof(IActorMessageBody);
+            var requestBody = typeof(IActorRequestMessageBody);
 
             // now invoke the method on the casted object
             ilGen.Emit(OpCodes.Ldloc, castedObject);
