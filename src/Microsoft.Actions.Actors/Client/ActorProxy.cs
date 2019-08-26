@@ -22,9 +22,9 @@ namespace Microsoft.Actions.Actors.Client
     {
         internal static readonly ActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();
         private static ActionsHttpInteractor actionsHttpInteractor = new ActionsHttpInteractor();
+        private readonly string actorType;
+        private readonly ActorId actorId;
         private ActorCommunicationClient actorCommunicationClient;
-        private string actorType;
-        private ActorId actorId;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxy"/> class.
