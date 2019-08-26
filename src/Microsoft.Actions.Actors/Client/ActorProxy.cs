@@ -56,6 +56,15 @@ namespace Microsoft.Actions.Actors.Client
             }
         }
 
+        /// <inheritdoc/>
+        public string ActorType
+        {
+            get
+            {
+                return this.actorCommunicationClient.ActorType;
+            }
+        }
+
         /// <summary>
         /// Gets the <see cref="IActorCommunicationClient"/> interface that this proxy is using to communicate with the actor.
         /// </summary>

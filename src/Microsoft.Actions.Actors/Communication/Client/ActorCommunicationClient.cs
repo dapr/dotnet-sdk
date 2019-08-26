@@ -29,17 +29,16 @@ namespace Microsoft.Actions.Actors.Communication.Client
         }
 
         /// <summary>
-        /// Gets the Actor id. Actor id is used to identify the partition of the service that this actor
-        /// belongs to.
+        /// Gets the Actor id.
         /// </summary>
         /// <value>actor id.</value>
         public ActorId ActorId { get; }
 
         /// <summary>
-        /// Gets the Actor Type that this actor
+        /// Gets the Actor implementation type name for the actor.
         /// belongs to.
         /// </summary>
-        /// <value>actor id.</value>
+        /// <value>Actor implementation type name.</value>
         public string ActorType { get; }
 
         public async Task<IActorResponseMessage> InvokeAsync(

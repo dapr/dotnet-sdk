@@ -17,5 +17,11 @@ namespace Microsoft.Actions.Actors.Client
         /// </summary>
         /// <value><see cref="Actions.Actors.ActorId"/> associated with the proxy object.</value>
         ActorId ActorId { get; }
+
+        /// <summary>
+        /// Gets actor implementation type of the actor associated with the proxy object.
+        /// </summary>
+        /// <value>Actor implementation type of the actor associated with the proxy object.</value>
+        string ActorType { get; }
     }
 }
