@@ -62,10 +62,7 @@ namespace Microsoft.Actions.Actors
         /// <returns>An actor proxy object that implements <see cref="IActorProxy"/> and TActorInterface.</returns>
         public object Bind(Type actorInterfaceType)
         {
-            // TODO: Enable Creation of Actor Proxy from Actor Reference.
-            return null;
-
-            // return ActorProxy.DefaultProxyFactory.CreateActorProxy(this.ActorId, actorInterfaceType, actorType);
+            return ActorProxy.DefaultProxyFactory.CreateActorProxy(this.ActorId, actorInterfaceType, this.ActorType);
         }
 
         private static ActorReference GetActorReference(object actor)

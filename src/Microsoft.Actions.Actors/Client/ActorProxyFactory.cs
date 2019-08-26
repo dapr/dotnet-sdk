@@ -35,8 +35,18 @@ namespace Microsoft.Actions.Actors.Client
         public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType) 
             where TActorInterface : IActor
         {
-            var actorInterfaceType = typeof(TActorInterface);
+            return (TActorInterface)this.CreateActorProxy(actorId, typeof(TActorInterface), actorType);
+        }
 
+        /// <summary>
+        /// Create a proxy, this method is also sued by ACtorReference also to create proxy.
+        /// </summary>
+        /// <param name="actorId">Actor Id.</param>
+        /// <param name="actorInterfaceType">Actor Interface Type.</param>
+        /// <param name="actorType">Actor implementation Type.</param>
+        /// <returns>Returns Actor Proxy.</returns>
+        internal object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType)
+        {
             var factory = this.GetOrCreateActorCommunicationClientFactory();
 
             // TODO factory level settings or method level parameter, default http
@@ -47,21 +57,9 @@ namespace Microsoft.Actions.Actors.Client
 
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
 
-            return (TActorInterface)(object)proxyGenerator.CreateActorProxy(
+            return proxyGenerator.CreateActorProxy(
                 actorCommunicationClient,
                 factory.GetRemotingMessageBodyFactory());
-        }
-
-        /// <summary>
-        /// Used by ActorReference to create a proxy.
-        /// </summary>
-        /// <param name="actorId">Actor Id.</param>
-        /// <param name="actorInterfaceType">Actor Interface Type.</param>
-        /// <param name="actorType">Actor implementation Type.</param>
-        /// <returns>Returns Actor Proxy.</returns>
-        internal ActorProxy CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType)
-        {
-            throw new NotImplementedException();
         }
 
         private IActorCommunicationClientFactory GetOrCreateActorCommunicationClientFactory()

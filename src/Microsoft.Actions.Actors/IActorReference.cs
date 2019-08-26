@@ -18,8 +18,8 @@ namespace Microsoft.Actions.Actors
         ///     <see cref="ActorProxyFactory.CreateActorProxy(ActorId, Type, string)"/>
         /// method.
         /// </summary>
-        /// <param name="actorType">Actor interface for the created <see cref="ActorProxy"/> to implement.</param>
+        /// <param name="actorInterfaceType">Actor interface for the created <see cref="ActorProxy"/> to implement.</param>
         /// <returns>An actor proxy object that implements <see cref="IActorProxy"/> and TActorInterface.</returns>
-        object Bind(Type actorType);
+        object Bind(Type actorInterfaceType);
     }
 }
