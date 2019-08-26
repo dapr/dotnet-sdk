@@ -19,29 +19,157 @@ stages:
           configuration: release
     steps:
       - task: DotNetCoreCLI@2
+        displayName: 'Build solution - $(Configuration)'
         inputs:
           command: 'build'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
       - task: DotNetCoreCLI@2
+        displayName: 'Test - $(Configuration)'
         inputs:
           command: 'test'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
+      - task: EsrpCodeSigning@1
+        displayName: 'ESRP CodeSign'
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        inputs:
+          ConnectedServiceName: 'ActionsSigning'
+          FolderPath: 'bin/$(Configuration)'
+          Pattern: 'Microsoft.Actions*.dll'
+          UseMinimatch: true
+          signConfigType: 'inlineSignParams'
+          inlineOperation: |
+            [
+                {
+                    "keyCode": "$(ESRP_CODESIGN_KEYCODE)",
+                    "operationSetCode": "StrongNameSign",
+                    "parameters": [ ],
+                    "toolName": "sign",
+                    "toolVersion": "1.0"
+                },
+                {
+                    "keyCode": "$(ESRP_CODESIGN_KEYCODE)",
+                    "operationSetCode": "StrongNameVerify",
+                    "parameters": [ ],
+                    "toolName": "sign",
+                    "toolVersion": "1.0"
+                }
+            ]
+          SessionTimeout: '20'
+          MaxConcurrency: '50'
+          MaxRetryAttempts: '5'
+      - task: EsrpCodeSigning@1
+        displayName: 'ESRP Authenticode CodeSign'
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        inputs:
+          ConnectedServiceName: 'ActionsSigning'
+          FolderPath: 'bin/$(Configuration)'
+          Pattern: 'Microsoft.Actions*.dll'
+          UseMinimatch: true
+          signConfigType: 'inlineSignParams'
+          inlineOperation: |
+            [
+              {
+                "keyCode": "$(ESRP_AUTHENTICODE_SIGN)",
+                "operationSetCode": "SigntoolSign",
+                "parameters": [{
+                        "parameterName": "OpusName",
+                        "parameterValue": "Microsoft"
+                    },
+                    {
+                        "parameterName": "OpusInfo",
+                        "parameterValue": "http://www.microsoft.com"
+                    },
+                    {
+                        "parameterName": "FileDigest",
+                        "parameterValue": "/fd \"SHA256\""
+                    },
+                    {
+                        "parameterName": "PageHash",
+                        "parameterValue": "/NPH"
+                    },
+                    {
+                        "parameterName": "TimeStamp",
+                        "parameterValue": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+                    }
+                ],
+                "toolName": "sign",
+                "toolVersion": "1.0"
+              },
+              {
+                  "keyCode": "$(ESRP_AUTHENTICODE_SIGN)",
+                  "operationSetCode": "SigntoolVerify",
+                  "parameters": [],
+                  "toolName": "sign",
+                  "toolVersion": "1.0"
+              }
+            ]
+          SessionTimeout: '20'
+          MaxConcurrency: '50'
+          MaxRetryAttempts: '5'
       - task: DotNetCoreCLI@2
+        displayName: 'Package nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
           packagesToPack: 'src/Microsoft.Actions.Actors/Microsoft.Actions.Actors.csproj'
           nobuild: true
           versioningScheme: 'off'
+      - task: EsrpCodeSigning@1
+        displayName: 'ESRP CodeSign - Nuget Package'
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        inputs:
+          ConnectedServiceName: 'ActionsSigning'
+          FolderPath: '$(Build.ArtifactStagingDirectory)'
+          Pattern: 'Microsoft.Actions*.nupkg'
+          UseMinimatch: true
+          signConfigType: 'inlineSignParams'
+          inlineOperation: |
+            [
+                {
+                    "keyCode": "$(ESRP_CODESIGN_NUPKG)",
+                    "operationSetCode": "NuGetSign",
+                    "parameters": [ ],
+                    "toolName": "sign",
+                    "toolVersion": "1.0"
+                },
+                {
+                    "keyCode": "$(ESRP_CODESIGN_NUPKG)",
+                    "operationSetCode": "NuGetVerify",
+                    "parameters": [ ],
+                    "toolName": "sign",
+                    "toolVersion": "1.0"
+                }
+            ]
+          SessionTimeout: '20'
+          MaxConcurrency: '50'
+          MaxRetryAttempts: '5'
       - task: CopyFiles@2
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
           SourceFolder: 'bin/$(Configuration)'
           Contents: '**'
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
-      - task: PublishPipelineArtifact@1
+      - task: NuGetCommand@2
+        displayName: 'Publish nuget package to feed'
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
+        inputs:
+          command: 'push'
+          packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+          nuGetFeedType: 'internal'
+          publishVstsFeed: 'b3bbc81a-4160-49ac-9a5f-5a27eda7ce5b'
+          allowPackageConflicts: true
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish binaries to artifact'
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
-          targetPath: '$(Build.ArtifactStagingDirectory)'
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          ArtifactName: '$(Configuration)_drop'
+          publishLocation: 'Container'
+      - task: CmdLine@2
+        displayName: 'Add release tag for release branch'
+        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
+        inputs:
+          script: 'echo "##vso[build.addbuildtag]release"'
+          workingDirectory: '$(Build.ArtifactStagingDirectory)'
