@@ -98,25 +98,13 @@ namespace Microsoft.Actions.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with provided json payload.
-        /// </summary>
-        /// <param name="method">Actor method name.</param>
-        /// <param name="json">Json payload for actor method.</param>
-        /// <returns>Json response form server.</returns>
-        public async Task<string> InvokeAsync(string method, string json)
-        {
-            await Task.CompletedTask;
-            return string.Empty;
-        }
-
-        /// <summary>
         /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
         /// </summary>
         /// <typeparam name="T">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
-        /// <returns>Json response form server.</returns>
+        /// <returns>Response form server.</returns>
         public async Task<T> InvokeAsync<T>(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
         {
             // TODO: Allow users to provide a custom Serializer.
@@ -139,7 +127,7 @@ namespace Microsoft.Actions.Actors.Client
         /// <param name="method">Actor method name.</param>
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
-        /// <returns>Json response form server.</returns>
+        /// <returns>Response form server.</returns>
         public Task InvokeAsync(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
         {
             // TODO: Allow users to provide a custom Serializer.
@@ -149,12 +137,12 @@ namespace Microsoft.Actions.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// Invokes the specified method for the actor with argument.
         /// </summary>
         /// <typeparam name="T">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
-        /// <returns>Json response form server.</returns>
+        /// <returns>Response form server.</returns>
         public async Task<T> InvokeAsync<T>(string method, CancellationToken cancellationToken = default(CancellationToken))
         {
             var response = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, null, cancellationToken);
@@ -170,11 +158,11 @@ namespace Microsoft.Actions.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// Invokes the specified method for the actor with argument.
         /// </summary>
         /// <param name="method">Actor method name.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
-        /// <returns>Json response form server.</returns>
+        /// <returns>Response form server.</returns>
         public async Task InvokeAsync(string method, CancellationToken cancellationToken = default(CancellationToken))
         {
             await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, null, cancellationToken);

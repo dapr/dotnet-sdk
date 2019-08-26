@@ -48,14 +48,18 @@ namespace Microsoft.Actions.Actors
 
         /// <summary>
         /// Creates an <see cref="ActorProxy"/> that implements an actor interface for the actor using the
-        ///     <see cref="ActorProxyFactory.CreateActorProxy(Microsoft.Actions.Actors.ActorId, System.Type)"/>
+        ///     <see cref="ActorProxyFactory.CreateActorProxy(Microsoft.Actions.Actors.ActorId, System.Type, string)"/>
         /// method.
         /// </summary>
         /// <param name="actorInterfaceType">Actor interface for the created <see cref="ActorProxy"/> to implement.</param>
         /// <returns>An actor proxy object that implements <see cref="IActorProxy"/> and TActorInterface.</returns>
         public object Bind(Type actorInterfaceType)
         {
-            return ActorProxy.DefaultProxyFactory.CreateActorProxy(this.ActorId, actorInterfaceType);
+            // TODO: Deserialization of ActorReference to proxy is currently not implemented as proxy generation needs actor implementation type 
+            // but serialization of proxy object only serializes inerface type. Once that is fixed pass actor type below and uncomment.
+            return null;
+
+            // return ActorProxy.DefaultProxyFactory.CreateActorProxy(this.ActorId, actorInterfaceType, actorType);
         }
 
         private static ActorReference GetActorReference(object actor)

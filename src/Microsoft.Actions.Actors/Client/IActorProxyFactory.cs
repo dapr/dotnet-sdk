@@ -27,16 +27,5 @@ namespace Microsoft.Actions.Actors.Client
             ActorId actorId,
             string actorType)
             where TActorInterface : IActor;
-
-        /// <summary>
-        /// Creates a proxy to the actor object that doesnt implement the actor interface.
-        /// </summary>
-        /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
-        /// being sent to the actor with this ID.</param>
-        /// <param name="actorType">
-        /// Type of actor implementation.
-        /// </param>
-        /// <returns>Actor Proxy object.</returns>
-        ActorProxy CreateActorProxy(ActorId actorId, Type actorType);
     }
 }

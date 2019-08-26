@@ -15,7 +15,7 @@ namespace Microsoft.Actions.Actors
     {
         /// <summary>
         /// Creates an <see cref="ActorProxy"/> that implements an actor interface for the actor using the
-        ///     <see cref="ActorProxyFactory.CreateActorProxy(ActorId, Type)"/>
+        ///     <see cref="ActorProxyFactory.CreateActorProxy(ActorId, Type, string)"/>
         /// method.
         /// </summary>
         /// <param name="actorType">Actor interface for the created <see cref="ActorProxy"/> to implement.</param>

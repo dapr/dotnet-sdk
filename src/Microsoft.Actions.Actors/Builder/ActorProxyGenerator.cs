@@ -25,12 +25,12 @@ namespace Microsoft.Actions.Actors.Builder
         public Type ProxyInterfaceType { get; }
 
         public ActorProxy CreateActorProxy(
-            ActorCommunicationClient remotingPartitionClient,
+            ActorCommunicationClient communicationClient,
             IActorMessageBodyFactory remotingMessageBodyFactory)
         {
-            var serviceProxy = (ActorProxy)this.proxyActivator.CreateInstance();
-            serviceProxy.Initialize(remotingPartitionClient, remotingMessageBodyFactory);
-            return serviceProxy;
+            var actorProxy = (ActorProxy)this.proxyActivator.CreateInstance();
+            actorProxy.Initialize(communicationClient, remotingMessageBodyFactory);
+            return actorProxy;
         }
     }
 }

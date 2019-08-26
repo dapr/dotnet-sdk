@@ -14,7 +14,7 @@ namespace Microsoft.Actions.Actors.Client
     /// <summary>
     /// Represents a factory class to create a proxy to the remote actor objects.
     /// </summary>
-    public class ActorProxyFactory : IActorProxyFactory
+    internal class ActorProxyFactory : IActorProxyFactory
     {
         private readonly object thisLock;
 
@@ -26,15 +26,10 @@ namespace Microsoft.Actions.Actors.Client
         /// </summary>
         public ActorProxyFactory()
         {
-            // TODO: Configure HttpClient properties.
-            this.HttpClient = new HttpClient();
-
             this.thisLock = new object();
 
             this.actorCommunicationClientFactory = null;
         }
-
-        internal HttpClient HttpClient { get; }
 
         /// <inheritdoc/>
         public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType) 
@@ -57,8 +52,14 @@ namespace Microsoft.Actions.Actors.Client
                 factory.GetRemotingMessageBodyFactory());
         }
 
-        /// <inheritdoc/>
-        public ActorProxy CreateActorProxy(ActorId actorId, Type actorType)
+        /// <summary>
+        /// Used by ActorReference to create a proxy.
+        /// </summary>
+        /// <param name="actorId">Actor Id.</param>
+        /// <param name="actorInterfaceType">Actor Interface Type.</param>
+        /// <param name="actorType">Actor implementation Type.</param>
+        /// <returns>Returns Actor Proxy.</returns>
+        internal ActorProxy CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType)
         {
             throw new NotImplementedException();
         }
