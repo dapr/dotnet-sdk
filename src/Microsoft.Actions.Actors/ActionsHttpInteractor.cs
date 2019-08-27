@@ -17,7 +17,6 @@ namespace Microsoft.Actions.Actors
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
-    using Microsoft.Actions.Actors.Runtime;
     using Newtonsoft.Json;
 
     /// <summary>

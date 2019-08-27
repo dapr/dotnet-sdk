@@ -5,10 +5,6 @@
 
 namespace Microsoft.Actions.Actors.Communication.Client
 {
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.Actions.Actors.Runtime;
-
     /// <summary>
     /// A factory for creating <see cref="IActorCommunicationClient">actions communication clients.</see>.
     /// </summary>
@@ -21,12 +17,11 @@ namespace Microsoft.Actions.Actors.Communication.Client
         IActorMessageBodyFactory GetRemotingMessageBodyFactory();
 
         /// <summary>
-        /// Get a communication client.
+        /// Gets actor communication client.
         /// </summary>
-        /// <returns>
-        /// A <see cref="System.Threading.Tasks.Task">Task</see> that represents outstanding operation. The result of the Task is
-        /// the CommunicationClient(<see cref="IActorCommunicationClient" />) object.
-        /// </returns>
-        Task<IActionsInteractor> GetClientAsync();
+        /// <param name="actorId"> Actor Id.</param>
+        /// <param name="actorType"> Actor Type.</param>
+        /// <returns>A factory for creating the remoting message bodies.</returns>
+        ActorCommunicationClient GetClient(ActorId actorId, string actorType);
     }
 }

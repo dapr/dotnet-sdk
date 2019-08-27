@@ -5,24 +5,19 @@
 
 namespace Microsoft.Actions.Actors.Communication.Client
 {
-    using System;
-    using System.Globalization;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.Actions.Actors.Runtime;
-
     /// <summary>
     /// An <see cref="IActorCommunicationClientFactory"/> that uses
     /// http protocol to create <see cref="IActorCommunicationClient"/> that communicate with actors.
     /// </summary>
     internal class ActorCommunicationClientFactory : IActorCommunicationClientFactory
     {
+        private static readonly IActionsInteractor ActionsInteractor = new ActionsHttpInteractor();
         private readonly ActorMessageSerializersManager serializersManager;
-        private readonly IActorMessageBodyFactory remotingMessageBodyFactory = null;
+        private readonly IActorMessageBodyFactory actorMessageBodyFactory = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorCommunicationClientFactory"/> class.
-        ///     Constructs a fabric transport based service remoting client factory.
+        /// Constructs actor remoting communication client factory.
         /// </summary>
         /// <param name="serializationProvider">IActorCommunicationMessageSerializationProvider provider.</param>
         public ActorCommunicationClientFactory(
@@ -30,19 +25,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
         {
             // TODO  Add settings, exception handlers, serialization provider
             this.serializersManager = IntializeSerializationManager(serializationProvider);
-            this.remotingMessageBodyFactory = this.serializersManager.GetSerializationProvider().CreateMessageBodyFactory();
-        }
-
-        /// <summary>
-        /// Returns a client to communicate.
-        /// </summary>
-        /// <returns>
-        /// A <see cref="System.Threading.Tasks.Task">Task</see> that represents outstanding operation. The result of the Task is
-        /// the CommunicationClient(<see cref="IActorCommunicationClient" />) object.
-        /// </returns>
-        public async Task<IActionsInteractor> GetClientAsync()
-        {
-            return await this.CreateClientAsync();
+            this.actorMessageBodyFactory = this.serializersManager.GetSerializationProvider().CreateMessageBodyFactory();
         }
 
         /// <summary>
@@ -51,7 +34,12 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// <returns>A factory for creating the remoting message bodies.</returns>
         public IActorMessageBodyFactory GetRemotingMessageBodyFactory()
         {
-            return this.remotingMessageBodyFactory;
+            return this.actorMessageBodyFactory;
+        }
+
+        public ActorCommunicationClient GetClient(ActorId actorId, string actorType)
+        {
+            return new ActorCommunicationClient(ActionsInteractor, actorId, actorType);
         }
 
         private static ActorMessageSerializersManager IntializeSerializationManager(
@@ -61,29 +49,6 @@ namespace Microsoft.Actions.Actors.Communication.Client
             return new ActorMessageSerializersManager(
                 serializationProvider,
                 new ActorMessageHeaderSerializer());
-        }
-
-        /// <summary>
-        /// Creates a communication client for the given endpoint address.
-        /// </summary>
-        /// <returns>The communication client that was created.</returns>
-        private Task<IActionsInteractor> CreateClientAsync()
-        {
-            try
-            {
-                // TODO add retries and error handling - add CreateClientWithRetriesAsync version
-                var client = new ActionsHttpInteractor(
-                    this.serializersManager);
-                return Task.FromResult((IActionsInteractor)client);
-            }
-            catch (Exception ex)
-            {
-                // TODO specific error handling
-                throw new Exception(
-                    string.Format(
-                        CultureInfo.CurrentCulture,
-                        ex.ToString()));
-            }
         }
     }
 }
