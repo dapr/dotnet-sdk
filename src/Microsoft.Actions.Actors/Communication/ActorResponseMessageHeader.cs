@@ -15,7 +15,7 @@ namespace Microsoft.Actions.Actors.Communication
     internal class ActorResponseMessageHeader : IActorResponseMessageHeader
     {
         [DataMember(Name = "Headers", IsRequired = true, Order = 2)]
-        private Dictionary<string, byte[]> headers;
+        private readonly Dictionary<string, byte[]> headers;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorResponseMessageHeader"/> class.
