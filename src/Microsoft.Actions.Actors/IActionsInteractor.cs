@@ -58,7 +58,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="data">Json data with state changes as per the actions spec for transaction state update.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateTransationallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken));
+        Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Saves a state to Actions.

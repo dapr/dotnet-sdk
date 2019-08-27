@@ -90,7 +90,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 content = sw.ToString();
             }
 
-            return ActorRuntime.ActionsInteractor.SaveStateTransationallyAsync(actorType, actorId, content, cancellationToken);
+            return ActorRuntime.ActionsInteractor.SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
         }
 
         /// <summary>

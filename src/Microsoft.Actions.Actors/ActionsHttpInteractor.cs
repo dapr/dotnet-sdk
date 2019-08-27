@@ -108,7 +108,7 @@ namespace Microsoft.Actions.Actors
             var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public Task SaveStateTransationallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken))
+        public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken))
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
             var requestId = Guid.NewGuid().ToString();
