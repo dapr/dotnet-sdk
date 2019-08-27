@@ -21,11 +21,12 @@ namespace Microsoft.Actions.Actors
     using Newtonsoft.Json;
 
     /// <summary>
-    /// Class to interact with actions runtime over http.
+    /// Class to interact with actions runtisme over http.
     /// </summary>
     internal class ActionsHttpInteractor : IActionsInteractor
     {
         private const string ActionsEndpoint = Constants.ActionsDefaultEndpoint;
+        private const string TraceType = "ActionsHttpInteractor";
         private readonly string actionsPort = Constants.ActionsDefaultPort;
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
@@ -463,14 +464,12 @@ namespace Microsoft.Actions.Actors
             }
             catch (AuthenticationException ex)
             {
-                // TODO Log.
-                Console.WriteLine(ex.ToString());
+                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
                 throw;
             }
             catch (HttpRequestException ex)
             {
-                // TODO Log.
-                Console.WriteLine(ex.ToString());
+                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
                 throw;
             }
 
