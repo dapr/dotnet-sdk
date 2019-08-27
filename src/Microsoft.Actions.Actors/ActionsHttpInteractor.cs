@@ -433,7 +433,7 @@ namespace Microsoft.Actions.Actors
                     // Handle NotFound 404, without any ErrorCode.
                     if (response.StatusCode.Equals(HttpStatusCode.NotFound))
                     {
-                        throw new ActionsException("ErrorMessageHTTP404", ActionsErrorCodes.ACTIONS_E_DOES_NOT_EXIST, false);
+                        throw new ActionsException("ErrorMessageHTTP404", ActionsErrorCodes.ERR_DOES_NOT_EXIST, false);
                     }
                 }
             }
