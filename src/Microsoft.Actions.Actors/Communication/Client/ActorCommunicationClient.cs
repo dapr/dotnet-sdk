@@ -11,16 +11,21 @@ namespace Microsoft.Actions.Actors.Communication.Client
 
     internal class ActorCommunicationClient : IActorCommunicationClient
     {
-        private readonly IActionsInteractor actionsInteractor;
+        private readonly SemaphoreSlim communicationClientLock;
+        private readonly IActorCommunicationClientFactory communicationClientFactory;
+        private readonly IActorMessageBodyFactory messageBodyFactory;
+        private IActionsInteractor actionsInteractor;
 
         public ActorCommunicationClient(
-            IActionsInteractor actionsInteractor,
+            IActorCommunicationClientFactory remotingClientFactory,
             ActorId actorId,
             string actorType)
         {
             this.ActorId = actorId;
             this.ActorType = actorType;
-            this.actionsInteractor = actionsInteractor;
+            this.communicationClientFactory = remotingClientFactory;
+            this.communicationClientLock = new SemaphoreSlim(1);
+            this.messageBodyFactory = remotingClientFactory.GetRemotingMessageBodyFactory();
         }
 
         /// <summary>
@@ -41,7 +46,33 @@ namespace Microsoft.Actions.Actors.Communication.Client
             string methodName,
             CancellationToken cancellationToken)
         {
-              return await this.actionsInteractor.InvokeActorMethodWithRemotingAsync(remotingRequestMessage);
+              var client = await this.GetCommunicationClientAsync(cancellationToken);
+              return await client.InvokeActorMethodWithRemotingAsync(remotingRequestMessage);
+        }
+
+        private async Task<IActionsInteractor> GetCommunicationClientAsync(CancellationToken cancellationToken)
+        {
+            IActionsInteractor client;
+            await this.communicationClientLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (this.actionsInteractor == null)
+                {
+                    this.actionsInteractor = await this.communicationClientFactory.GetClientAsync();
+                }
+
+                client = this.actionsInteractor;
+            }
+            finally
+            {
+                // Release the lock incase of exceptions from the GetClientAsync method, which can
+                // happen if there are non retriable exceptions in that method. Eg: There can be
+                // ServiceNotFoundException if the GetClientAsync client is called before the
+                // service creation completes.
+                this.communicationClientLock.Release();
+            }
+
+            return client;
         }
     }
 }
