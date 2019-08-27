@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document describes how to create an Actor(`MyActor`) and invoke its methods on the client application. We will create 3 projects under MyActor solution:
+This document describes how to create an Actor(`MyActor`) and invoke its methods on the client application. 
 
 ```
 MyActor --- MyActor.Interfaces
@@ -290,6 +290,8 @@ namespace MyActorClient
             });
 
             await proxy.RegisterTimer();
+
+            Console.WriteLine(echoResult);
         }
     ...
 }
@@ -326,6 +328,8 @@ namespace MyActorClient
             });
 
             await proxy.InvokeAsync("RegisterTimer");
+
+            Console.WriteLine(echoResult);
         }
     ...
 }
