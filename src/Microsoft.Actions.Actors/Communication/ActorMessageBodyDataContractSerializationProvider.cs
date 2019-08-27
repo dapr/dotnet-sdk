@@ -100,9 +100,9 @@ namespace Microsoft.Actions.Actors.Communication
         ///     An <see cref="System.Xml.XmlDictionaryWriter" /> using which the serializer will write the object on the
         ///     stream.
         /// </returns>
-        internal XmlDictionaryWriter CreateXmlDictionaryWriter(Stream outputStream)
+        internal XmlWriter CreateXmlDictionaryWriter(Stream outputStream)
         {
-            return XmlDictionaryWriter.CreateTextWriter(outputStream);
+            return XmlWriter.Create(outputStream);
         }
 
         /// <summary>
@@ -114,9 +114,9 @@ namespace Microsoft.Actions.Actors.Communication
         ///     An <see cref="System.Xml.XmlDictionaryReader" /> using which the serializer will read the object from the
         ///     stream.
         /// </returns>
-        internal XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
+        internal XmlReader CreateXmlDictionaryReader(Stream inputStream)
         {
-            return XmlDictionaryReader.CreateTextReader(inputStream, XmlDictionaryReaderQuotas.Max);
+            return XmlReader.Create(inputStream);
         }
 
         /// <summary>
@@ -162,8 +162,7 @@ namespace Microsoft.Actions.Actors.Communication
                 this.serializer = serializer;
             }
 
-            byte[] IActorRequestMessageBodySerializer.Serialize(
-                IActorRequestMessageBody actorRequestMessageBody)
+            byte[] IActorRequestMessageBodySerializer.Serialize(IActorRequestMessageBody actorRequestMessageBody)
             {
                 if (actorRequestMessageBody == null)
                 {
@@ -182,16 +181,24 @@ namespace Microsoft.Actions.Actors.Communication
                 }
             }
 
-            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(
-                Stream messageBody)
+            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(Stream messageBody)
             {
                 if (messageBody == null)
                 {
                     return null;
                 }
 
-                using (var stream = new DisposableStream(messageBody))
+                // TODO check performance
+                using (var stream = new MemoryStream())
                 {
+                    messageBody.CopyTo(stream);
+                    stream.Position = 0;
+
+                    if (stream.Capacity == 0)
+                    {
+                        return null;
+                    }
+
                     using (var reader = this.CreateXmlDictionaryReader(stream))
                     {
                         return (TRequest)this.serializer.ReadObject(reader);
@@ -225,8 +232,17 @@ namespace Microsoft.Actions.Actors.Communication
                     return null;
                 }
 
-                using (var stream = new DisposableStream(messageBody))
+                // TODO check performance
+                using (var stream = new MemoryStream())
                 {
+                    messageBody.CopyTo(stream);
+                    stream.Position = 0;
+
+                    if (stream.Capacity == 0)
+                    {
+                        return null;
+                    }
+
                     using (var reader = this.CreateXmlDictionaryReader(stream))
                     {
                         return (TResponse)this.serializer.ReadObject(reader);
@@ -243,7 +259,7 @@ namespace Microsoft.Actions.Actors.Communication
             ///     An <see cref="System.Xml.XmlDictionaryWriter" /> using which the serializer will write the object on the
             ///     stream.
             /// </returns>
-            private XmlDictionaryWriter CreateXmlDictionaryWriter(Stream outputStream)
+            private XmlWriter CreateXmlDictionaryWriter(Stream outputStream)
             {
                 return this.serializationProvider.CreateXmlDictionaryWriter(outputStream);
             }
@@ -257,7 +273,7 @@ namespace Microsoft.Actions.Actors.Communication
             ///     An <see cref="System.Xml.XmlDictionaryReader" /> using which the serializer will read the object from the
             ///     stream.
             /// </returns>
-            private XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
+            private XmlReader CreateXmlDictionaryReader(Stream inputStream)
             {
                 return this.serializationProvider.CreateXmlDictionaryReader(inputStream);
             }

@@ -162,11 +162,16 @@ namespace Microsoft.Actions.Actors
                 var request = new HttpRequestMessage()
                 {
                     Method = HttpMethod.Put,
-                    Content = new ByteArrayContent(serializedMsgBody),
                 };
 
+                if (serializedMsgBody != null)
+                {
+                    request.Content = new ByteArrayContent(serializedMsgBody);
+                    request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
+                }
+
                 request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeader, 0, serializedHeader.Length));
-                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
+
                 return request;
             }
 
