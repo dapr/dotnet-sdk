@@ -18,7 +18,7 @@ namespace Microsoft.Actions.Actors.Runtime
     /// </summary>
     internal class ActionsStateProvider
     {
-        private ActorStateProviderSerializer actorStateSerializer;
+        private readonly ActorStateProviderSerializer actorStateSerializer;
 
         public ActionsStateProvider(ActorStateProviderSerializer actorStateSerializer)
         {

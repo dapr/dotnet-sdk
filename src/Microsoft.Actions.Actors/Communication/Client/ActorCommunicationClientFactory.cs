@@ -18,7 +18,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
     internal class ActorCommunicationClientFactory : IActorCommunicationClientFactory
     {
         private readonly ActorMessageSerializersManager serializersManager;
-        private IActorMessageBodyFactory remotingMessageBodyFactory = null;
+        private readonly IActorMessageBodyFactory remotingMessageBodyFactory = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorCommunicationClientFactory"/> class.

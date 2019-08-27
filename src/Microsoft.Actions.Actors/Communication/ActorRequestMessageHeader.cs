@@ -53,7 +53,7 @@ namespace Microsoft.Actions.Actors.Communication
         [DataMember(Name = "Headers", IsRequired = true, Order = 5)]
 
 #pragma warning disable SA1201 // Elements should appear in the correct order. Increases readbility when fields kept in order.
-        private Dictionary<string, byte[]> headers;
+        private readonly Dictionary<string, byte[]> headers;
 #pragma warning restore SA1201 // Elements should appear in the correct order
 
         /// <summary>

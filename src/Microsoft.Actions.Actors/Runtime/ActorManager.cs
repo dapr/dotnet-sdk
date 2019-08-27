@@ -30,13 +30,13 @@ namespace Microsoft.Actions.Actors.Runtime
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMethodContext timerMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
-        private IActorMessageBodyFactory messageBodyFactory;
+        private readonly IActorMessageBodyFactory messageBodyFactory;
 
         // method dispatchermap used by remoting calls.
-        private ActorMethodDispatcherMap methodDispatcherMap;
+        private readonly ActorMethodDispatcherMap methodDispatcherMap;
 
         // method info map used by non-remoting calls.
-        private ActorMethodInfoMap actorMethodInfoMap;
+        private readonly ActorMethodInfoMap actorMethodInfoMap;
 
         internal ActorManager(ActorService actorService)
         {

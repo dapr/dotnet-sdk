@@ -16,6 +16,8 @@
     <tags>Microsoft Azure Actions Actors</tags>
     <dependencies>
       <dependency id="Microsoft.Actions.Actors" version="[$version$]" />
+      <dependency id="Microsoft.AspNetCore.Hosting.Abstractions" version="2.2.0" />
+      <dependency id="Microsoft.AspNetCore.Routing" version="2.2.0" />
     </dependencies>
   </metadata>
   <files>

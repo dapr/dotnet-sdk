@@ -14,7 +14,7 @@ namespace Microsoft.Actions.Actors.Runtime
     /// </summary>
     internal class ActorMethodInfoMap
     {
-        private Dictionary<string, MethodInfo> methods;
+        private readonly Dictionary<string, MethodInfo> methods;
 
         public ActorMethodInfoMap(IEnumerable<Type> interfaceTypes)
         {

@@ -180,10 +180,8 @@ namespace Microsoft.Actions.Actors
             IActorResponseMessageHeader actorResponseMessageHeader = null;
             if (retval != null && retval.Headers != null)
             {
-                IEnumerable<string> headerValues = null;
-
                 // TODO Assert if expected header is not there
-                if (retval.Headers.TryGetValues(Constants.RequestHeaderName, out headerValues))
+                if (retval.Headers.TryGetValues(Constants.RequestHeaderName, out IEnumerable<string> headerValues))
                 {
                     var header = headerValues.First();
 

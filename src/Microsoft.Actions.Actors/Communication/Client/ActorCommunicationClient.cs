@@ -13,7 +13,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
     {
         private readonly SemaphoreSlim communicationClientLock;
         private readonly IActorCommunicationClientFactory communicationClientFactory;
-        private IActorMessageBodyFactory messageBodyFactory;
+        private readonly IActorMessageBodyFactory messageBodyFactory;
         private IActionsInteractor actionsInteractor;
 
         public ActorCommunicationClient(
