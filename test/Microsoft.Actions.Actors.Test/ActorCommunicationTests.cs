@@ -7,8 +7,8 @@ namespace Microsoft.Actions.Actors.Test
 {
     using System.Threading;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
-    using Microsoft.Actions.Actors.Client;
     using Microsoft.Actions.Actors.Communication.Client;
+    using Microsoft.Actions.Actors.Client;
 
     [TestClass]
     public class ActorCommunicationTests

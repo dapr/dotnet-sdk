@@ -5,13 +5,10 @@
 
 namespace Microsoft.Actions.Actors
 {
-    using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
-    using Microsoft.Actions.Actors.Runtime;
 
     /// <summary>
     /// Interface for interacting with Actions runtime.
