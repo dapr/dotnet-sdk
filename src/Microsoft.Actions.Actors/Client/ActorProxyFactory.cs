@@ -62,10 +62,9 @@ namespace Microsoft.Actions.Actors.Client
                 actorType);
 
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
-
-            return proxyGenerator.CreateActorProxy(
-                actorCommunicationClient,
-                factory.GetRemotingMessageBodyFactory());
+            var actorProxy = proxyGenerator.CreateActorProxy();
+            actorProxy.Initialize(actorCommunicationClient, factory.GetRemotingMessageBodyFactory());
+            return actorProxy;
         }
 
         private IActorCommunicationClientFactory GetOrCreateActorCommunicationClientFactory()
