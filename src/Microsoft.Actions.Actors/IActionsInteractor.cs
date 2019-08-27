@@ -73,10 +73,11 @@ namespace Microsoft.Actions.Actors
         /// <summary>
         /// Invokes Actor method.
         /// </summary>
+        /// <param name="serializersManager">Serializers manager for remoting calls.</param>
         /// <param name="remotingRequestRequestMessage">Actor Request Message.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
+        Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Register a reminder.

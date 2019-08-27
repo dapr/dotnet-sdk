@@ -29,15 +29,13 @@ namespace Microsoft.Actions.Actors
         private readonly string actionsPort = Constants.ActionsDefaultPort;
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
-        private readonly HttpClientSettings clientSettings;
-        private readonly ActorMessageSerializersManager serializersManager;
+        private readonly ClientSettings clientSettings;
         private HttpClient httpClient = null;
         private bool disposed = false;
 
         public ActionsHttpInteractor(
-            ActorMessageSerializersManager serializersManager = null,
             HttpClientHandler innerHandler = null,
-            HttpClientSettings clientSettings = null,
+            ClientSettings clientSettings = null,
             params DelegatingHandler[] delegateHandlers)
         {
             // Get Actions port from Environment Variable if it has been overridden.
@@ -52,15 +50,6 @@ namespace Microsoft.Actions.Actors
             this.clientSettings = clientSettings;
 
             this.httpClient = this.CreateHttpClient();
-
-            if (serializersManager != null)
-            {
-                this.serializersManager = serializersManager;
-            }
-            else
-            {
-                this.serializersManager = IntializeSerializationManager(null);
-            }
         }
 
         public async Task<byte[]> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
@@ -138,7 +127,7 @@ namespace Microsoft.Actions.Actors
             return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestMessageHeader = remotingRequestRequestMessage.GetHeader();
 
@@ -147,10 +136,10 @@ namespace Microsoft.Actions.Actors
             var actorType = requestMessageHeader.ActorType;
             var interfaceId = requestMessageHeader.InterfaceId;
 
-            var serializedHeader = this.serializersManager.GetHeaderSerializer()
+            var serializedHeader = serializersManager.GetHeaderSerializer()
                 .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
 
-            var msgBodySeriaizer = this.serializersManager.GetRequestMessageBodySerializer(interfaceId);
+            var msgBodySeriaizer = serializersManager.GetRequestMessageBodySerializer(interfaceId);
             var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
 
             // Send Request
@@ -187,7 +176,7 @@ namespace Microsoft.Actions.Actors
 
                     // DeSerialize Actor Response Message Header
                     actorResponseMessageHeader =
-                        this.serializersManager.GetHeaderSerializer()
+                        serializersManager.GetHeaderSerializer()
                             .DeserializeResponseHeaders(
                                 new MemoryStream(Encoding.ASCII.GetBytes(header)));
                 }
@@ -200,7 +189,7 @@ namespace Microsoft.Actions.Actors
                 var responseMessageBody = await retval.Content.ReadAsStreamAsync();
 
                 // Deserialize Actor Response Message Body
-                var responseBodySerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
+                var responseBodySerializer = serializersManager.GetResponseMessageBodySerializer(interfaceId);
 
                 actorResponseMessageBody = responseBodySerializer.Deserialize(responseMessageBody);
             }
