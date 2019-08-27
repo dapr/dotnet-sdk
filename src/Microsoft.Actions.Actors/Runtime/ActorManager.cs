@@ -56,7 +56,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
 
-        internal Task<Tuple<string, string>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             
@@ -74,7 +74,7 @@ namespace Microsoft.Actions.Actors.Runtime
             var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
 
             // Create a Func to be invoked by common method.
-            async Task<Tuple<string, string>> RequestFunc(Actor actor, CancellationToken ct)
+            async Task<Tuple<string, byte[]>> RequestFunc(Actor actor, CancellationToken ct)
             {
                 IActorResponseMessageBody responseMsgBody = null;
                 var actorResponseMessageHeader = new ActorResponseMessageHeader();
@@ -100,7 +100,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 return responseMessage;
             }
 
-            return this.DispatchInternalAsync<Tuple<string, string>>(actorId, actorMethodContext, RequestFunc, cancellationToken);
+            return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
@@ -259,7 +259,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return retval;
         }
 
-        private Tuple<string, string> CreateResponseMessage(IActorResponseMessageHeader header, IActorResponseMessageBody msgBody, int interfaceId)
+        private Tuple<string, byte[]> CreateResponseMessage(IActorResponseMessageHeader header, IActorResponseMessageBody msgBody, int interfaceId)
         {
             string responseHeader = string.Empty;
             if (header != null)
@@ -272,16 +272,14 @@ namespace Microsoft.Actions.Actors.Runtime
                 }
             }
 
-            string responseMsgBody = string.Empty;
+            var responseMsgBodyBytes = new byte[0];
             if (msgBody != null)
             {
                 var responseSerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
-
-                var responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
-                responseMsgBody = Encoding.UTF8.GetString(responseMsgBodyBytes, 0, responseMsgBodyBytes.Length);
+                responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
             }
 
-            return new Tuple<string, string>(responseHeader, responseMsgBody);
+            return new Tuple<string, byte[]>(responseHeader, responseMsgBodyBytes);
         }
     }
 }

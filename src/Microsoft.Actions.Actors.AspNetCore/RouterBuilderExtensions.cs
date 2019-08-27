@@ -68,13 +68,13 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 {
                     var actionsActorheader = request.Headers[Constants.RequestHeaderName];
                     return ActorRuntime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, request.Body)
-                        .ContinueWith(t =>
+                        .ContinueWith(async t =>
                         {
                             var result = t.GetAwaiter().GetResult();
 
                             // Item 1 is header , Item 2 is body
                             response.Headers.Add(Constants.ErrorResponseHeaderName, result.Item1); // add header
-                            response.WriteAsync(result.Item2); // add response message body
+                            await response.Body.WriteAsync(result.Item2, 0, result.Item2.Length); // add response message body
                         });
                 }
                 else

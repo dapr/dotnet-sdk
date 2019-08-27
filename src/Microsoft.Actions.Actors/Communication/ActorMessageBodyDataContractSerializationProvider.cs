@@ -100,9 +100,9 @@ namespace Microsoft.Actions.Actors.Communication
         ///     An <see cref="System.Xml.XmlDictionaryWriter" /> using which the serializer will write the object on the
         ///     stream.
         /// </returns>
-        internal XmlWriter CreateXmlDictionaryWriter(Stream outputStream)
+        internal XmlDictionaryWriter CreateXmlDictionaryWriter(Stream outputStream)
         {
-            return XmlWriter.Create(outputStream);
+            return XmlDictionaryWriter.CreateBinaryWriter(outputStream);
         }
 
         /// <summary>
@@ -114,9 +114,9 @@ namespace Microsoft.Actions.Actors.Communication
         ///     An <see cref="System.Xml.XmlDictionaryReader" /> using which the serializer will read the object from the
         ///     stream.
         /// </returns>
-        internal XmlReader CreateXmlDictionaryReader(Stream inputStream)
+        internal XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
         {
-            return XmlReader.Create(inputStream);
+            return XmlDictionaryReader.CreateBinaryReader(inputStream, XmlDictionaryReaderQuotas.Max);
         }
 
         /// <summary>
@@ -259,7 +259,7 @@ namespace Microsoft.Actions.Actors.Communication
             ///     An <see cref="System.Xml.XmlDictionaryWriter" /> using which the serializer will write the object on the
             ///     stream.
             /// </returns>
-            private XmlWriter CreateXmlDictionaryWriter(Stream outputStream)
+            private XmlDictionaryWriter CreateXmlDictionaryWriter(Stream outputStream)
             {
                 return this.serializationProvider.CreateXmlDictionaryWriter(outputStream);
             }
@@ -273,7 +273,7 @@ namespace Microsoft.Actions.Actors.Communication
             ///     An <see cref="System.Xml.XmlDictionaryReader" /> using which the serializer will read the object from the
             ///     stream.
             /// </returns>
-            private XmlReader CreateXmlDictionaryReader(Stream inputStream)
+            private XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
             {
                 return this.serializationProvider.CreateXmlDictionaryReader(inputStream);
             }
