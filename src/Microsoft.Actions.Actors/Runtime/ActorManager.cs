@@ -15,7 +15,6 @@ namespace Microsoft.Actions.Actors.Runtime
     using Microsoft.Actions.Actors;
     using Microsoft.Actions.Actors.Builder;
     using Microsoft.Actions.Actors.Communication;
-    using Microsoft.Actions.Actors.Runtime.Communication;
     using Newtonsoft.Json;
 
     /// <summary>

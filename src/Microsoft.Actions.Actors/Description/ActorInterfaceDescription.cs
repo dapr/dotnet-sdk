@@ -10,6 +10,7 @@ namespace Microsoft.Actions.Actors.Description
     using System.Reflection;
     using Microsoft.Actions.Actors;
     using Microsoft.Actions.Actors.Resources;
+    using Microsoft.Actions.Actors.Runtime;
 
     internal class ActorInterfaceDescription : InterfaceDescription
     {

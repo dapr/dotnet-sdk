@@ -9,6 +9,7 @@ namespace Microsoft.Actions.Actors.Builder
     using System.Collections.Generic;
     using System.Linq;
     using Microsoft.Actions.Actors.Description;
+    using Microsoft.Actions.Actors.Runtime;
 
     internal class ActorCodeBuilder : ICodeBuilder
     {

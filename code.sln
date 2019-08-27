@@ -9,10 +9,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Actions.Actors.Te
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Actions.Actors.AspNetCore", "src\Microsoft.Actions.Actors.AspNetCore\Microsoft.Actions.Actors.AspNetCore.csproj", "{B9C12532-0969-4DAC-A2F8-CA9208D7A901}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Actions.Actors.Runtime", "src\Microsoft.Actions.Actors.Runtime\Microsoft.Actions.Actors.Runtime.csproj", "{9C8F2117-AA75-4593-A743-FE3C99FE5F0C}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Actions.Actors.Client", "src\Microsoft.Actions.Actors.Client\Microsoft.Actions.Actors.Client.csproj", "{69F34D37-3BB4-4821-BFA5-3DD596544A83}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,14 +27,6 @@ Global
 		{B9C12532-0969-4DAC-A2F8-CA9208D7A901}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B9C12532-0969-4DAC-A2F8-CA9208D7A901}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B9C12532-0969-4DAC-A2F8-CA9208D7A901}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9C8F2117-AA75-4593-A743-FE3C99FE5F0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9C8F2117-AA75-4593-A743-FE3C99FE5F0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9C8F2117-AA75-4593-A743-FE3C99FE5F0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9C8F2117-AA75-4593-A743-FE3C99FE5F0C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{69F34D37-3BB4-4821-BFA5-3DD596544A83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{69F34D37-3BB4-4821-BFA5-3DD596544A83}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{69F34D37-3BB4-4821-BFA5-3DD596544A83}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{69F34D37-3BB4-4821-BFA5-3DD596544A83}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

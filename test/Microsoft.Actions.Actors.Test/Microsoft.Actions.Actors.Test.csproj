@@ -15,7 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Microsoft.Actions.Actors.Client\Microsoft.Actions.Actors.Client.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Actions.Actors\Microsoft.Actions.Actors.csproj" />
   </ItemGroup>
 
