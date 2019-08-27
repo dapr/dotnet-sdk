@@ -38,6 +38,12 @@ namespace Microsoft.Actions.Actors.Client
             return (TActorInterface)this.CreateActorProxy(actorId, typeof(TActorInterface), actorType);
         }
 
+        /// <inheritdoc/>
+        public ActorProxy Create(ActorId actorId, string actorType)
+        {
+            return new ActorProxy(actorId, actorType);
+        }
+
         /// <summary>
         /// Create a proxy, this method is also sued by ACtorReference also to create proxy.
         /// </summary>

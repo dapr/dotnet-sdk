@@ -22,9 +22,21 @@ namespace Microsoft.Actions.Actors.Client
     {
         internal static readonly ActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();
         private static ActionsHttpInteractor actionsHttpInteractor = new ActionsHttpInteractor();
-        private readonly string actorType;
-        private readonly ActorId actorId;
         private ActorCommunicationClient actorCommunicationClient;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActorProxy"/> class.  Thsi is used for making non-remoting calls.
+        /// </summary>
+        /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
+        /// being sent to the actor with this ID.</param>
+        /// <param name="actorType">
+        /// Type of actor implementation.
+        /// </param>
+        internal ActorProxy(ActorId actorId, string actorType)
+        {
+            this.ActorType = actorType;
+            this.ActorId = actorId;
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxy"/> class.
@@ -33,37 +45,11 @@ namespace Microsoft.Actions.Actors.Client
         {
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ActorProxy"/> class.
-        /// </summary>
-        /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
-        /// being sent to the actor with this ID.</param>
-        /// <param name="actorType">
-        /// Type of actor implementation.
-        /// </param>
-        protected ActorProxy(ActorId actorId, string actorType)
-        {
-            this.actorType = actorType;
-            this.actorId = actorId;
-        }
+        /// <inheritdoc/>
+        public ActorId ActorId { get; private set; }
 
         /// <inheritdoc/>
-        public ActorId ActorId
-        {
-            get
-            {
-                return this.actorCommunicationClient.ActorId;
-            }
-        }
-
-        /// <inheritdoc/>
-        public string ActorType
-        {
-            get
-            {
-                return this.actorCommunicationClient.ActorType;
-            }
-        }
+        public string ActorType { get; private set; }
 
         /// <summary>
         /// Gets the <see cref="IActorCommunicationClient"/> interface that this proxy is using to communicate with the actor.
@@ -96,14 +82,14 @@ namespace Microsoft.Actions.Actors.Client
         }
 
         /// <summary>
-        /// Creates an Actor Proxy.
+        /// Creates an Actor Proxy for making calls without Remoting.
         /// </summary>
         /// <param name="actorId">Actor Id.</param>
         /// <param name="actorType">Type of actor.</param>
         /// <returns>Actor proxy to interact with remote actor object.</returns>
         public static ActorProxy Create(ActorId actorId, string actorType)
         {
-            return new ActorProxy(actorId, actorType);
+            return DefaultProxyFactory.Create(actorId, actorType);
         }
 
         /// <summary>
@@ -119,7 +105,7 @@ namespace Microsoft.Actions.Actors.Client
             // TODO: Allow users to provide a custom Serializer.
             var serializer = new JsonSerializer();
             var jsonPayload = JsonConvert.SerializeObject(data);
-            var response = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, jsonPayload, cancellationToken);
+            var response = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
 
             using (var streamReader = new StreamReader(response))
             {
@@ -142,7 +128,7 @@ namespace Microsoft.Actions.Actors.Client
             // TODO: Allow users to provide a custom Serializer.
             var jsonPayload = JsonConvert.SerializeObject(data);
 
-            return actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, jsonPayload, cancellationToken);
+            return actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
         }
 
         /// <summary>
@@ -154,7 +140,7 @@ namespace Microsoft.Actions.Actors.Client
         /// <returns>Response form server.</returns>
         public async Task<T> InvokeAsync<T>(string method, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var response = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, null, cancellationToken);
+            var response = await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
             var serializer = new JsonSerializer();
 
             using (var streamReader = new StreamReader(response))
@@ -174,7 +160,7 @@ namespace Microsoft.Actions.Actors.Client
         /// <returns>Response form server.</returns>
         public async Task InvokeAsync(string method, CancellationToken cancellationToken = default(CancellationToken))
         {
-            await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.actorType, this.actorId.ToString(), method, null, cancellationToken);
+            await actionsHttpInteractor.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
         }
 
         internal void Initialize(
@@ -182,6 +168,8 @@ namespace Microsoft.Actions.Actors.Client
           IActorMessageBodyFactory actorMessageBodyFactory)
         {
             this.actorCommunicationClient = client;
+            this.ActorId = this.actorCommunicationClient.ActorId;
+            this.ActorType = this.actorCommunicationClient.ActorType;
             this.ActorMessageBodyFactory = actorMessageBodyFactory;
         }
 
