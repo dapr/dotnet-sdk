@@ -3,8 +3,7 @@
 ## Prerequistes
 * [.Net Core SDK 2.2](https://dotnet.microsoft.com/download)
 * [Actions CLI](https://github.com/actionscore/cli/releases)
-* [Actions DotNet SDK](https://github.com/actionscore/cs-sdk/packages)
-  - Download nuget file from [Release]() to local disk (e.g. ~/tmp/nugets)
+* [Actions DotNet SDK](https://github.com/actionscore/dotnet-sdk/packages)
 
 ## Overview
 
@@ -191,14 +190,18 @@ namespace MyActorService
 
         public async Task RegisterReminder()
         {
-            this.reminder =  await this.RegisterReminderAsync("Test", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            // Register the reminder 
+            this.reminder =  await this.RegisterReminderAsync("MyReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
 
         public Task UnregisterReminder()
         {
-            return this.UnregisterReminderAsync("Test");
+            return this.UnregisterReminderAsync("MyReminder");
         }
 
+        /// <summary>
+        /// This method is called whenever an actor is deactivated after a period of inactivity.
+        /// </summary>
         public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
             return Task.CompletedTask;
@@ -206,12 +209,13 @@ namespace MyActorService
 
         public Task RegisterTimer()
         {
-            return this.RegisterTimerAsync("Test", this.TimerCallBack, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            // Register timer
+            return this.RegisterTimerAsync("MyTimer", this.TimerCallBack, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
 
         public Task UnregisterTimer()
         {
-            return this.UnregisterTimerAsync("Test");
+            return this.UnregisterTimerAsync("MyTimer");
         }
 
         private Task TimerCallBack(object data)
@@ -262,7 +266,7 @@ dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
 
 ### Invoke Actor method via a proxy to actor object
 
-We highly recommend to use the proxy to actor object because `ActorProxy.Create<IMyActor>(actorID, actorType)` returns the actual actor object and allows to call the methods in actor object like a normal RPC call.
+We recommend to use the proxy to actor object because `ActorProxy.Create<IMyActor>(actorID, actorType)` returns the actor instance which allows to call the methods like an RPC call.
 
 ```csharp
 namespace MyActorClient
@@ -299,7 +303,7 @@ namespace MyActorClient
 
 ### Invoke Actor method with ActorProxy client
 
-`ActorProxy.Create(actorID, actorType)` returns ActorProxy and allow to use the raw http client to invoke the method defined in `IMyActor`.
+`ActorProxy.Create(actorID, actorType)` returns ActorProxy instance and allow to use the raw http client to invoke the method defined in `IMyActor`.
 
 
 ```csharp
