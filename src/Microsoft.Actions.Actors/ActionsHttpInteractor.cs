@@ -17,11 +17,11 @@ namespace Microsoft.Actions.Actors
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
-    using Microsoft.Actions.Actors.Runtime;
+    using Microsoft.Actions.Actors.Resources;
     using Newtonsoft.Json;
 
     /// <summary>
-    /// Class to interact with actions runtisme over http.
+    /// Class to interact with actions runtime over http.
     /// </summary>
     internal class ActionsHttpInteractor : IActionsInteractor
     {
@@ -170,8 +170,7 @@ namespace Microsoft.Actions.Actors
             IActorResponseMessageHeader actorResponseMessageHeader = null;
             if (retval != null && retval.Headers != null)
             {
-                // TODO Assert if expected header is not there
-                if (retval.Headers.TryGetValues(Constants.RequestHeaderName, out IEnumerable<string> headerValues))
+                if (retval.Headers.TryGetValues(Constants.ErrorResponseHeaderName, out IEnumerable<string> headerValues))
                 {
                     var header = headerValues.First();
 
@@ -190,12 +189,32 @@ namespace Microsoft.Actions.Actors
                 var responseMessageBody = await retval.Content.ReadAsStreamAsync();
 
                 // Deserialize Actor Response Message Body
+                // Deserialize to RemoteException when there is response header otherwise normal path
                 var responseBodySerializer = serializersManager.GetResponseMessageBodySerializer(interfaceId);
+
+                // actorResponseMessageHeader is not null, it means there is remote exception
+                if (actorResponseMessageHeader != null)
+                {
+                    var isDeserialzied =
+                            RemoteException.ToException(
+                                responseMessageBody,
+                                out var e);
+                    if (isDeserialzied)
+                    {
+                        throw new AggregateException(e);
+                    }
+                    else
+                    {
+                        throw new ServiceException(e.GetType().FullName, string.Format(
+                            CultureInfo.InvariantCulture,
+                            SR.ErrorDeserializationFailure,
+                            e.ToString()));
+                    }
+                }
 
                 actorResponseMessageBody = responseBodySerializer.Deserialize(responseMessageBody);
             }
 
-            // TODO Either throw exception or return response body with null header and message body
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
         }
 

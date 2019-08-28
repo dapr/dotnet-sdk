@@ -73,7 +73,12 @@ namespace Microsoft.Actions.Actors.AspNetCore
                             var result = t.GetAwaiter().GetResult();
 
                             // Item 1 is header , Item 2 is body
-                            response.Headers.Add(Constants.ErrorResponseHeaderName, result.Item1); // add header
+                            if (result.Item1 != string.Empty)
+                            {
+                                // exception case
+                                response.Headers.Add(Constants.ErrorResponseHeaderName, result.Item1); // add error header
+                            }
+                            
                             await response.Body.WriteAsync(result.Item2, 0, result.Item2.Length); // add response message body
                         });
                 }
