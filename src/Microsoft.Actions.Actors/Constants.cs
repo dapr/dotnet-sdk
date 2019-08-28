@@ -8,21 +8,47 @@ namespace Microsoft.Actions.Actors
     /// <summary>
     /// Contains Constant string values used by the library.
     /// </summary>
-    internal class Constants
+    internal static class Constants
     {
-        /// <summary>
-        /// Constant string for request id in header.
-        /// </summary>
         public const string RequestIdHeaderName = "X-ActionsRequestId";
-
-        /// <summary>
-        /// Constant string for Environment Variable for Actions port.
-        /// </summary>
+        public const string RequestHeaderName = "X-ActionsRequestHeader";
+        public const string ErrorResponseHeaderName = "X-ActionsErrorResponseHeader";
         public const string ActionsPortEnvironmentVariable = "ACTIONSPORT";
+        public const string Actions = "actions";
+        public const string Config = "config";
+        public const string State = "state";
+        public const string Actors = "actors";
+        public const string Namespace = "urn:actors";
+        public const string ActionsDefaultEndpoint = "localhost";
+        public const string ActionsDefaultPort = "3500";
+        public const string ActionsVersion = "v1.0";
+        public const string Method = "method";
+        public const string Reminders = "reminders";
+        public const string Timers = "timers";
 
         /// <summary>
-        /// Constant string for Actors state management relative url.
+        /// Gets string format for Actors state management relative url.
         /// </summary>
-        public const string ActorStateManagementRelativeUrl = "actions/state";
+        public static string ActorStateKeyRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{State}/{{2}}";
+
+        /// <summary>
+        /// Gets string format for Actors state management relative url.
+        /// </summary>
+        public static string ActorStateRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{State}";
+
+        /// <summary>
+        /// Gets string format for Actors method invocation relative url.
+        /// </summary>
+        public static string ActorMethodRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{Method}/{{2}}";
+
+        /// <summary>
+        /// Gets string format for Actors reminder registration relative url..
+        /// </summary>
+        public static string ActorReminderRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{Reminders}/{{2}}";
+
+        /// <summary>
+        /// Gets string format for Actors timer registration relative url..
+        /// </summary>
+        public static string ActorTimerRelativeUrlFormat => $"{ActionsVersion}/{Actors}/{{0}}/{{1}}/{Timers}/{{2}}";
     }
 }

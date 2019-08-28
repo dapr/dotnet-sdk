@@ -33,8 +33,7 @@
   <!-- Enable delay signing with Key.snk -->
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
-    <DelaySign>true</DelaySign>
-    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Key.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)cs_sdk.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   
   <PropertyGroup>
