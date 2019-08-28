@@ -31,35 +31,6 @@ stages:
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
       - task: EsrpCodeSigning@1
-        displayName: 'ESRP CodeSign'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
-        inputs:
-          ConnectedServiceName: 'ActionsSigning'
-          FolderPath: 'bin/$(Configuration)'
-          Pattern: 'Microsoft.Actions*.dll'
-          UseMinimatch: true
-          signConfigType: 'inlineSignParams'
-          inlineOperation: |
-            [
-                {
-                    "keyCode": "$(ESRP_CODESIGN_KEYCODE)",
-                    "operationSetCode": "StrongNameSign",
-                    "parameters": [ ],
-                    "toolName": "sign",
-                    "toolVersion": "1.0"
-                },
-                {
-                    "keyCode": "$(ESRP_CODESIGN_KEYCODE)",
-                    "operationSetCode": "StrongNameVerify",
-                    "parameters": [ ],
-                    "toolName": "sign",
-                    "toolVersion": "1.0"
-                }
-            ]
-          SessionTimeout: '20'
-          MaxConcurrency: '50'
-          MaxRetryAttempts: '5'
-      - task: EsrpCodeSigning@1
         displayName: 'ESRP Authenticode CodeSign'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
         inputs:
@@ -109,11 +80,19 @@ stages:
           MaxConcurrency: '50'
           MaxRetryAttempts: '5'
       - task: DotNetCoreCLI@2
-        displayName: 'Package nuget - $(Configuration)'
+        displayName: 'Package Microsoft.Actions.Actors nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
           packagesToPack: 'src/Microsoft.Actions.Actors/Microsoft.Actions.Actors.csproj'
+          nobuild: true
+          versioningScheme: 'off'
+      - task: DotNetCoreCLI@2
+        displayName: 'Package Microsoft.Actions.Actors.AspNetCore nuget - $(Configuration)'
+        inputs:
+          command: 'pack'
+          arguments: '--configuration $(Configuration)'
+          packagesToPack: 'src/Microsoft.Actions.Actors.AspNetCore/Microsoft.Actions.Actors.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1

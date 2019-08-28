@@ -25,18 +25,15 @@ namespace Microsoft.Actions.Actors.Client
         /// <returns>An actor proxy object that implements IActorProxy and TActorInterface.</returns>
         TActorInterface CreateActorProxy<TActorInterface>(
             ActorId actorId,
-            Type actorType)
+            string actorType)
             where TActorInterface : IActor;
 
         /// <summary>
-        /// Creates a proxy to the actor object that doesnt implement the actor interface.
+        /// Creates an Actor Proxy for making calls without Remoting.
         /// </summary>
-        /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
-        /// being sent to the actor with this ID.</param>
-        /// <param name="actorType">
-        /// Type of actor implementation.
-        /// </param>
-        /// <returns>Actor Proxy object.</returns>
-        ActorProxy CreateActorProxy(ActorId actorId, Type actorType);
+        /// <param name="actorId">Actor Id.</param>
+        /// <param name="actorType">Type of actor.</param>
+        /// <returns>Actor proxy to interact with remote actor object.</returns>
+        ActorProxy Create(ActorId actorId, string actorType);
     }
 }
