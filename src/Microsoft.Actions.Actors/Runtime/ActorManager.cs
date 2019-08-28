@@ -8,12 +8,10 @@ namespace Microsoft.Actions.Actors.Runtime
     using System;
     using System.Collections.Concurrent;
     using System.IO;
-    using System.Reflection;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors;
-    using Microsoft.Actions.Actors.Builder;
     using Microsoft.Actions.Actors.Communication;
     using Newtonsoft.Json;
 
@@ -77,7 +75,6 @@ namespace Microsoft.Actions.Actors.Runtime
             async Task<Tuple<string, string>> RequestFunc(Actor actor, CancellationToken ct)
             {
                 IActorResponseMessageBody responseMsgBody = null;
-                var actorResponseMessageHeader = new ActorResponseMessageHeader();
 
                 try
                 {
@@ -87,17 +84,14 @@ namespace Microsoft.Actions.Actors.Runtime
                         actorMessageBody,
                         this.messageBodyFactory,
                         ct);
+
+                    return this.CreateResponseMessage(responseMsgBody, interfaceId);
                 }
                 catch (Exception exception)
                 {
-                    // set response header for error
-                    // TODO come up with error messages translation layer
-                    actorResponseMessageHeader.AddHeader(Constants.ErrorResponseHeaderName, Encoding.ASCII.GetBytes(exception.Message));
+                    // return exception response message
+                    return this.CreateExceptionResponseMessage(exception);
                 }
-
-                var responseMessage = this.CreateResponseMessage(actorResponseMessageHeader, responseMsgBody, interfaceId);
-
-                return responseMessage;
             }
 
             return this.DispatchInternalAsync<Tuple<string, string>>(actorId, actorMethodContext, RequestFunc, cancellationToken);
@@ -259,19 +253,8 @@ namespace Microsoft.Actions.Actors.Runtime
             return retval;
         }
 
-        private Tuple<string, string> CreateResponseMessage(IActorResponseMessageHeader header, IActorResponseMessageBody msgBody, int interfaceId)
+        private Tuple<string, string> CreateResponseMessage(IActorResponseMessageBody msgBody, int interfaceId)
         {
-            string responseHeader = string.Empty;
-            if (header != null)
-            {
-                var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(header);
-
-                if (responseHeaderBytes != null)
-                {
-                    responseHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
-                }
-            }
-
             string responseMsgBody = string.Empty;
             if (msgBody != null)
             {
@@ -281,7 +264,19 @@ namespace Microsoft.Actions.Actors.Runtime
                 responseMsgBody = Encoding.UTF8.GetString(responseMsgBodyBytes, 0, responseMsgBodyBytes.Length);
             }
 
-            return new Tuple<string, string>(responseHeader, responseMsgBody);
+            return new Tuple<string, string>(string.Empty, responseMsgBody);
+        }
+
+        private Tuple<string, string> CreateExceptionResponseMessage(Exception ex)
+        {
+            var responseHeader = new ActorResponseMessageHeader();
+            responseHeader.AddHeader("HasRemoteException", new byte[0]);
+            var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
+            var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
+
+            var serializedMsg = RemoteException.FromException(ex);
+            var responseMsgBody = Encoding.UTF8.GetString(serializedMsg, 0, serializedMsg.Length);
+            return new Tuple<string, string>(serializedHeader, responseMsgBody);
         }
     }
 }
