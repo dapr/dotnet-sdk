@@ -2,8 +2,8 @@
 
 ## Prerequistes
 * [.Net Core SDK 2.2](https://dotnet.microsoft.com/download)
-* [Actions CLI](https://github.com/actionscore/cli/releases)
-* [Actions DotNet SDK](https://github.com/actionscore/dotnet-sdk/packages)
+* [Actions CLI](https://github.com/actionscore/cli)
+* [Actions DotNet SDK](https://github.com/actionscore/dotnet-sdk)
 
 ## Overview
 
