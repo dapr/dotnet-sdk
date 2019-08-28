@@ -36,7 +36,19 @@ Each project can also be built individually directly through Visual Studio.
 
 ## Releases
 
-Binaries in the build are delay signed, these are fully signed in the official builds released by Microsoft. For [Preview Kit](https://github.com/actionscore/previewkit), you can use nuget packages signed by Microsoft in [Preview Kit release](https://github.com/actionscore/previewkit/releases).
+Until we publish nuget packages to nuget.org, you can download the latest nuget packages delay-signed by Microsoft from [Preview Kit release](https://github.com/actionscore/previewkit/releases).
+
+## Add nuget to your project
+
+Assume that you download nuget packages to you local disk, /pkg/nugets/.
+
+```bash
+# Add Microsoft.Actions.Actors nuget package
+dotnet add package Microsoft.Actions.Actors -v 1.0.0-preview001 -s /pkg/nugets/
+
+# Add Microsoft.Actions.Actors.AspNetCore nuget package
+dotnet add package Microsoft.Actions.Actors.AspNetCore -v 1.0.0-preview001 -s /pkg/nugets/
+```
 
 ## Documentation
 
