@@ -356,7 +356,7 @@ In order to validate and debug actor service and client, we need to run actor se
    INFO[0000] application protocol: http. waiting on port 3000
    ```
 
-2. Run MyActorService on debugger
+2. Run MyActorService
 
    After executing MyActorService via actions runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
 
@@ -383,9 +383,9 @@ In order to validate and debug actor service and client, we need to run actor se
     INFO[0000] actors: placement order received: unlock
    ```
 
-3. Run MyActorClient on debugger
+3. Run MyActorClient
 
-   Return IMyActor.Echo() result if MyActorClient calls actor hosted in MyActorService successfully.
+   Print IMyActor.Echo() result if MyActorClient calls actor hosted in MyActorService successfully.
 
    ```bash
    PropertyA: ValueA, PropertyB: ValueB
