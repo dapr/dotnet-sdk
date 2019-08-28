@@ -56,18 +56,13 @@ namespace MyActor.Interfaces
 {
     public interface IMyActor : IActor
     {
-        // Return type must be `Task<string>`
-        // string ProcessStringData(string data);
+        // Disallow multiple arguments
+        //   e.g. Task<string> SetMyDataAsync(MyData data, int num);
+        // Return Type must be `Task`
+        //   e.g. string SetMyDataAsync(MyData data);
 
-        // Disallow 1+ arguments
-        // Task<string> ProcessStringData(string data, string data2);
-
-        Task<string> ProcessData(MyData data);
-        Task<string> ProcessStringData(string data);
-        Task<MyData> Echo(MyData data);
-        Task<MyData> GetData();
-        Task NoReturnTypeNoArg();
-        Task ThrowException();
+        Task<string> SetMyDataAsync(MyData data);
+        Task<MyData> GetMyDataAsync();
         Task RegisterReminder();
         Task UnregisterReminder();
         Task RegisterTimer();
@@ -83,7 +78,6 @@ namespace MyActor.Interfaces
         {
             var propAValue = this.PropertyA == null ? "null" : this.PropertyA;
             var propBValue = this.PropertyB == null ? "null" : this.PropertyB;
-
             return $"PropertyA: {propAValue}, PropertyB: {propBValue}";
         }
     }
@@ -130,6 +124,16 @@ namespace MyActorService
         private IActorReminder reminder;
 
         /// <summary>
+        /// Initializes a new instance of MyActor
+        /// </summary>
+        /// <param name="actorService">The Microsoft.Actions.Actors.Runtime.ActorService that will host this actor instance.</param>
+        /// <param name="actorId">The Microsoft.Actions.Actors.ActorId for this actor instance.</param>
+        public MyActor(ActorService actorService, ActorId actorId)
+            : base(actorService, actorId)
+        {
+        }
+
+        /// <summary>
         /// This method is called whenever an actor is activated.
         /// An actor is activated the first time any of its methods are invoked.
         /// </summary>
@@ -137,6 +141,7 @@ namespace MyActorService
         {
             // Provides opportunity to perform some optional setup.
             Console.WriteLine($"Activating actor id: {this.Id}");
+
             return Task.CompletedTask;
         }
 
@@ -147,79 +152,96 @@ namespace MyActorService
         {
             // Provides Opporunity to perform optional cleanup.
             Console.WriteLine($"Dectivating actor id: {this.Id}");
+
             return Task.CompletedTask;
         }
 
-        public MyActor(ActorService service, ActorId actorId) : base(service, actorId)
-        {
-            // Actor intiailization
-        }
-
-        public async Task<string> ProcessData(MyData data)
+        /// <summary>
+        /// Set MyData into actor's private state store
+        /// </summary>
+        /// <param name="data">the user-defined MyData which will be stored into state store as "my_data" state</param>
+        public async Task<string> SetMyDataAsync(MyData data)
         {
             Console.WriteLine($"This is Actor id {this.Id}  with data {data.ToString()}");
-            await this.StateManager.SetStateAsync<MyData>("my_data", data);
+
+            await this.StateManager.SetStateAsync<MyData>(
+                "my_data",  // state name
+                data);      // serializable data for state value
+
             return "Success";
         }
 
-        public Task<MyData> Echo(MyData data)
-        {
-            return Task.FromResult(data);
-        }
-
-        public Task<MyData> GetData()
+        /// <summary>
+        /// Get MyData from actor's private state store
+        /// </summary>
+        /// <return>the user-defined MyData which is stored into state store as "my_data" state</return>
+        public Task<MyData> GetMyDataAsync()
         {
             return this.StateManager.GetStateAsync<MyData>("my_data");
         }
 
-        public Task<string> ProcessStringData(string data)
-        {
-            Console.WriteLine($"This is Actor id {this.Id}  with data {data}");
-            return Task.FromResult("Success");
-        }
-
-        public Task NoReturnTypeNoArg()
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task ThrowException()
-        {
-            throw new NotImplementedException();
-        }
-
+        /// <summary>
+        /// Register MyReminder reminder with the actor
+        /// </summary>
         public async Task RegisterReminder()
         {
-            // Register the reminder 
-            this.reminder =  await this.RegisterReminderAsync("MyReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
-        }
-
-        public Task UnregisterReminder()
-        {
-            return this.UnregisterReminderAsync("MyReminder");
+            this.reminder =  await this.RegisterReminderAsync(
+                "MyReminder",              // The name of the reminder
+                null,                      // User state passed to IRemindable.ReceiveReminderAsync()
+                TimeSpan.FromSeconds(5),   // Time to delay before invoking the reminder for the first time
+                TimeSpan.FromSeconds(5));  // Time interval between reminder invocations after the first invocation
         }
 
         /// <summary>
-        /// This method is called whenever an actor is deactivated after a period of inactivity.
+        /// Unregister MyReminder reminder with the actor
         /// </summary>
+        public Task UnregisterReminder()
+        {
+            Console.WriteLine("Unregistering MyReminder...");
+
+            return this.UnregisterReminderAsync("MyReminder");
+        }
+
+        // <summary>
+        // Implement IRemindeable.ReceiveReminderAsync() which is call back invoked when an actor reminder is triggered.
+        // </summary>
         public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
+            Console.WriteLine("ReceiveReminderAsync is called!");
+
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Register MyTimer timer with the actor
+        /// </summary>
         public Task RegisterTimer()
         {
-            // Register timer
-            return this.RegisterTimerAsync("MyTimer", this.TimerCallBack, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            return this.RegisterTimerAsync(
+                "MyTimer",                  // The name of the timer
+                this.OnTimerCallBack,       // Timer callback
+                null,                       // User state passed to OnTimerCallback()
+                TimeSpan.FromSeconds(5),    // Time to delay before the async callback is first invoked
+                TimeSpan.FromSeconds(5));   // Time interval between invocations of the async callback
         }
 
+        /// <summary>
+        /// Unregister MyTimer timer with the actor
+        /// </summary>
         public Task UnregisterTimer()
         {
+            Console.WriteLine("Unregistering MyTimer...");
+
             return this.UnregisterTimerAsync("MyTimer");
         }
 
-        private Task TimerCallBack(object data)
+        /// <summary>
+        /// Timer callback once timer is expired
+        /// </summary>
+        private Task OnTimerCallBack(object data)
         {
+            Console.WriteLine("OnTimerCallBack is called!");
+
             return Task.CompletedTask;
         }
     }
@@ -264,9 +286,9 @@ dotnet add package Microsoft.Actions.Actors -v 1.0.0-preview001 -s ~/tmp/nugets/
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
 ```
 
-### Invoke Actor method via a proxy to actor object
+### Invoke Actor method with Actor Service Remoting
 
-We recommend to use the proxy to actor object because `ActorProxy.Create<IMyActor>(actorID, actorType)` returns the actor instance which allows to call the methods like an RPC call.
+We recommend to use the local proxy to actor instance because `ActorProxy.Create<IMyActor>(actorID, actorType)` returns strongly-typed actor instance to set up the remote procedure call.
 
 ```csharp
 namespace MyActorClient
@@ -280,31 +302,26 @@ namespace MyActorClient
     ...
         static async Task InvokeActorMethodWithRemotingAsync()
         {
-            var actorType = "MyActor"; // Registered Actor Type in Actor Service
+            var actorType = "MyActor";      // Registered Actor Type in Actor Service
             var actorID = new ActorId("1");
 
-            // Create the proxy to actor object: IMyActor
+            // Create the local proxy by using the same interface that the service implements
+            // By using this proxy, you can call strongly typed methods on the interface remotely
             var proxy = ActorProxy.Create<IMyActor>(actorID, actorType);
-
-            // Invoke actor methods like normal method call
-            var echoResult = await proxy.Echo(new MyData()
+            var response = await proxy.SetMyDataAsync(new MyData()
             {
                 PropertyA = "ValueA",
                 PropertyB = "ValueB",
             });
-
-            await proxy.RegisterTimer();
-
-            Console.WriteLine(echoResult);
+            Console.WriteLine(response);
         }
     ...
 }
 ```
 
-### Invoke Actor method with ActorProxy client
+### Invoke Actor method without Actor Service Remoting
 
 `ActorProxy.Create(actorID, actorType)` returns ActorProxy instance and allow to use the raw http client to invoke the method defined in `IMyActor`.
-
 
 ```csharp
 namespace MyActorClient
@@ -318,22 +335,21 @@ namespace MyActorClient
     ...
         static async Task InvokeActorMethodWithoutRemotingAsync()
         {
-            var actorType = "MyActor"; // Registered Actor Type in Actor Service
+            var actorType = "MyActor";
             var actorID = new ActorId("1");
 
-            // Create Actor Proxy client: ActorProxy
+            // Create Actor Proxy instance to invoke the methods defined in the interface
             var proxy = ActorProxy.Create(actorID, actorType);
-
-            // Invoke actor methods with raw http call
-            var echoResult = await proxy.InvokeAsync<MyData>("Echo", new MyData()
+            // Need to specify the method name and response type explicitly
+            var response = await proxy.InvokeAsync<string>("SetMyDataAsync", new MyData()
             {
                 PropertyA = "ValueA",
                 PropertyB = "ValueB",
             });
+            Console.WriteLine(response);
 
-            await proxy.InvokeAsync("RegisterTimer");
-
-            Console.WriteLine(echoResult);
+            var savedData = await proxy.InvokeAsync<MyData>("GetMyDataAsync");
+            Console.WriteLine(savedData);
         }
     ...
 }
@@ -392,5 +408,6 @@ In order to validate and debug actor service and client, we need to run actor se
    Print IMyActor.Echo() result if MyActorClient calls actor hosted in MyActorService successfully.
 
    ```bash
+   Success
    PropertyA: ValueA, PropertyB: ValueB
    ```
