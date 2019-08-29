@@ -244,9 +244,10 @@ namespace Microsoft.Actions.Actors.Runtime
                 retval = await actorFunc.Invoke(actor, cancellationToken);
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
-            catch
+            catch (Exception ex)
             {
                 actor.OnInvokeFailed();
+                ActorTrace.Instance.WriteError(TraceType, $"Got exception from actor method invocation: {ex}");
                 throw;
             }
 
