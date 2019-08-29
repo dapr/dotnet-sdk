@@ -4,7 +4,6 @@ trigger:
   branches:
     include:
     - master
-    - release-*
 
 stages:
 - stage: Build
@@ -143,6 +142,7 @@ stages:
           allowPackageConflicts: true
       - task: PublishBuildArtifacts@1
         displayName: 'Publish binaries to artifact'
+        condition: false
         inputs:
           PathtoPublish: '$(Build.ArtifactStagingDirectory)'
           ArtifactName: '$(Configuration)_drop'
