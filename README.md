@@ -36,7 +36,7 @@ Each project can also be built individually directly through Visual Studio.
 
 ## Releases
 
-Until we publish nuget packages to nuget.org, you can download the latest nuget packages delay-signed by Microsoft from [Preview Kit release](https://github.com/actionscore/previewkit/releases).
+Until we publish nuget packages to nuget.org, you can download the latest nuget packages signed by Microsoft from [Preview Kit release](https://github.com/actionscore/previewkit/releases).
 
 ## Add nuget to your project
 

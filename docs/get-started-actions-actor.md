@@ -56,11 +56,8 @@ namespace MyActor.Interfaces
 {
     public interface IMyActor : IActor
     {
-        // Disallow multiple arguments
-        //   e.g. Task<string> SetMyDataAsync(MyData data, int num);
-        // Return Type must be `Task`
-        //   e.g. string SetMyDataAsync(MyData data);
-
+        // Return Type must be `Task` or Task<T>.
+        // Arguments and return type must be Datacontract serializable when making actor method calls using Remoting.
         Task<string> SetMyDataAsync(MyData data);
         Task<MyData> GetMyDataAsync();
         Task RegisterReminder();
@@ -108,7 +105,7 @@ dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
 
 ### Add Actor implementation
 
-Implement IMyActor interface and derive from `Microsoft.Actions.Actors.Actor` class.
+Implement IMyActor interface and derive from `Microsoft.Actions.Actors.Actor` class. Following example shows how to use Actor Reminders as well. For Actors to use Reminders, it must derive from IRemindable. If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder specific methods which are shown in the code below.
 
 ```csharp
 using Microsoft.Actions.Actors;
@@ -121,8 +118,6 @@ namespace MyActorService
 {
     internal class MyActor : Actor, IMyActor, IRemindable
     {
-        private IActorReminder reminder;
-
         /// <summary>
         /// Initializes a new instance of MyActor
         /// </summary>
@@ -141,7 +136,6 @@ namespace MyActorService
         {
             // Provides opportunity to perform some optional setup.
             Console.WriteLine($"Activating actor id: {this.Id}");
-
             return Task.CompletedTask;
         }
 
@@ -151,8 +145,7 @@ namespace MyActorService
         protected override Task OnDeactivateAsync()
         {
             // Provides Opporunity to perform optional cleanup.
-            Console.WriteLine($"Dectivating actor id: {this.Id}");
-
+            Console.WriteLine($"Deactivating actor id: {this.Id}");
             return Task.CompletedTask;
         }
 
@@ -162,11 +155,12 @@ namespace MyActorService
         /// <param name="data">the user-defined MyData which will be stored into state store as "my_data" state</param>
         public async Task<string> SetMyDataAsync(MyData data)
         {
-            Console.WriteLine($"This is Actor id {this.Id}  with data {data.ToString()}");
-
+            // Data is saved to configured state store implicitly after each method execution by Actor's runtime.
+            // Data can also be saved explicitly by calling this.StateManager.SaveStateAsync();
+            // State to be saved must be DataContract serialziable.
             await this.StateManager.SetStateAsync<MyData>(
                 "my_data",  // state name
-                data);      // serializable data for state value
+                data);      // data saved for the named state "my_data"
 
             return "Success";
         }
@@ -177,6 +171,7 @@ namespace MyActorService
         /// <return>the user-defined MyData which is stored into state store as "my_data" state</return>
         public Task<MyData> GetMyDataAsync()
         {
+            // Gets state from the state store.
             return this.StateManager.GetStateAsync<MyData>("my_data");
         }
 
@@ -198,7 +193,6 @@ namespace MyActorService
         public Task UnregisterReminder()
         {
             Console.WriteLine("Unregistering MyReminder...");
-
             return this.UnregisterReminderAsync("MyReminder");
         }
 
@@ -208,7 +202,6 @@ namespace MyActorService
         public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
             Console.WriteLine("ReceiveReminderAsync is called!");
-
             return Task.CompletedTask;
         }
 
@@ -231,7 +224,6 @@ namespace MyActorService
         public Task UnregisterTimer()
         {
             Console.WriteLine("Unregistering MyTimer...");
-
             return this.UnregisterTimerAsync("MyTimer");
         }
 
@@ -241,7 +233,6 @@ namespace MyActorService
         private Task OnTimerCallBack(object data)
         {
             Console.WriteLine("OnTimerCallBack is called!");
-
             return Task.CompletedTask;
         }
     }
@@ -306,7 +297,7 @@ namespace MyActorClient
             var actorID = new ActorId("1");
 
             // Create the local proxy by using the same interface that the service implements
-            // By using this proxy, you can call strongly typed methods on the interface remotely
+            // By using this proxy, you can call strongly typed methods on the interface using Remoting.
             var proxy = ActorProxy.Create<IMyActor>(actorID, actorType);
             var response = await proxy.SetMyDataAsync(new MyData()
             {
@@ -320,6 +311,8 @@ namespace MyActorClient
 ```
 
 ### Invoke Actor method without Actor Service Remoting
+You can invoke Actor methods without remoting (directly over http or using helper methods provided in ActorProxy), if Actor method accepts at-most one argument. Actor runtime will deserialize the incoming request body from client and use it as method argument to invoke the actor method.
+When making non-remoting calls Actor method arguments and return types are serialized, deserialized as json.
 
 `ActorProxy.Create(actorID, actorType)` returns ActorProxy instance and allow to use the raw http client to invoke the method defined in `IMyActor`.
 
