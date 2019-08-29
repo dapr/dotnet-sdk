@@ -13,7 +13,7 @@ namespace Microsoft.Actions.Actors
         public const string RequestIdHeaderName = "X-ActionsRequestId";
         public const string RequestHeaderName = "X-ActionsRequestHeader";
         public const string ErrorResponseHeaderName = "X-ActionsErrorResponseHeader";
-        public const string ActionsPortEnvironmentVariable = "ACTIONSPORT";
+        public const string ActionsPortEnvironmentVariable = "ACTIONS_PORT";
         public const string Actions = "actions";
         public const string Config = "config";
         public const string State = "state";

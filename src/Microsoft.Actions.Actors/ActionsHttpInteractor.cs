@@ -201,7 +201,7 @@ namespace Microsoft.Actions.Actors
                                 out var e);
                     if (isDeserialzied)
                     {
-                        throw new AggregateException(e);
+                        throw e;
                     }
                     else
                     {
