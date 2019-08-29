@@ -133,7 +133,7 @@ stages:
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
       - task: NuGetCommand@2
         displayName: 'Publish nuget package to feed'
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
+        condition: false
         inputs:
           command: 'push'
           packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
@@ -142,7 +142,6 @@ stages:
           allowPackageConflicts: true
       - task: PublishBuildArtifacts@1
         displayName: 'Publish binaries to artifact'
-        condition: false
         inputs:
           PathtoPublish: '$(Build.ArtifactStagingDirectory)'
           ArtifactName: '$(Configuration)_drop'
