@@ -305,6 +305,9 @@ namespace MyActorClient
                 PropertyB = "ValueB",
             });
             Console.WriteLine(response);
+
+            var savedData = await proxy.GetMyDataAsync();
+            Console.WriteLine(savedData);
         }
     ...
 }
@@ -398,7 +401,9 @@ In order to validate and debug actor service and client, we need to run actor se
 
 3. Run MyActorClient
 
-   Print IMyActor.Echo() result if MyActorClient calls actor hosted in MyActorService successfully.
+   MyActorClient will console out if it calls actor hosted in MyActorService successfully.
+
+   > If you specify the different actions runtime http port (default port: 3500), you need to set ACTIONS_PORT environment variable before running the client.
 
    ```bash
    Success
