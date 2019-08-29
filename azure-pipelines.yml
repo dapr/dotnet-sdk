@@ -4,7 +4,6 @@ trigger:
   branches:
     include:
     - master
-    - release-*
 
 stages:
 - stage: Build
@@ -134,7 +133,7 @@ stages:
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
       - task: NuGetCommand@2
         displayName: 'Publish nuget package to feed'
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
+        condition: false
         inputs:
           command: 'push'
           packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
