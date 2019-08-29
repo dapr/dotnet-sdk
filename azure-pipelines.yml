@@ -1,8 +1,10 @@
 # actionscore/dotnet-sdk pipeline
 
 trigger:
-- master
-- release-*
+  branches:
+    include:
+    - master
+    - release-*
 
 stages:
 - stage: Build
@@ -149,5 +151,5 @@ stages:
         displayName: 'Add release tag for release branch'
         condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
         inputs:
-          script: 'echo "##vso[build.addbuildtag]release"'
+          script: 'echo "##vso[build.addbuildtag]release'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
