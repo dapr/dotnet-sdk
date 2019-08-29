@@ -1,4 +1,4 @@
-# actionscore/cs-sdk pipeline
+# actionscore/dotnet-sdk pipeline
 
 trigger:
 - master
@@ -141,7 +141,6 @@ stages:
           allowPackageConflicts: true
       - task: PublishBuildArtifacts@1
         displayName: 'Publish binaries to artifact'
-        condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:
           PathtoPublish: '$(Build.ArtifactStagingDirectory)'
           ArtifactName: '$(Configuration)_drop'
