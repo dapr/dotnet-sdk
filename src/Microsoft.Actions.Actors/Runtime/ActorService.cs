@@ -12,7 +12,7 @@ namespace Microsoft.Actions.Actors.Runtime
     /// </summary>
     public class ActorService : IActorService
     {
-        private Func<ActorService, ActorId, Actor> actorFactory;
+        private readonly Func<ActorService, ActorId, Actor> actorFactory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorService"/> class.

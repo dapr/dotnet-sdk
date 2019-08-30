@@ -8,12 +8,10 @@ namespace Microsoft.Actions.Actors.Runtime
     using System;
     using System.Collections.Concurrent;
     using System.IO;
-    using System.Reflection;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors;
-    using Microsoft.Actions.Actors.Builder;
     using Microsoft.Actions.Actors.Communication;
     using Newtonsoft.Json;
 
@@ -30,13 +28,13 @@ namespace Microsoft.Actions.Actors.Runtime
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMethodContext timerMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
-        private IActorMessageBodyFactory messageBodyFactory;
+        private readonly IActorMessageBodyFactory messageBodyFactory;
 
         // method dispatchermap used by remoting calls.
-        private ActorMethodDispatcherMap methodDispatcherMap;
+        private readonly ActorMethodDispatcherMap methodDispatcherMap;
 
         // method info map used by non-remoting calls.
-        private ActorMethodInfoMap actorMethodInfoMap;
+        private readonly ActorMethodInfoMap actorMethodInfoMap;
 
         internal ActorManager(ActorService actorService)
         {
@@ -56,7 +54,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
 
-        internal Task<Tuple<string, string>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             
@@ -74,10 +72,9 @@ namespace Microsoft.Actions.Actors.Runtime
             var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
 
             // Create a Func to be invoked by common method.
-            async Task<Tuple<string, string>> RequestFunc(Actor actor, CancellationToken ct)
+            async Task<Tuple<string, byte[]>> RequestFunc(Actor actor, CancellationToken ct)
             {
                 IActorResponseMessageBody responseMsgBody = null;
-                var actorResponseMessageHeader = new ActorResponseMessageHeader();
 
                 try
                 {
@@ -87,20 +84,17 @@ namespace Microsoft.Actions.Actors.Runtime
                         actorMessageBody,
                         this.messageBodyFactory,
                         ct);
+
+                    return this.CreateResponseMessage(responseMsgBody, interfaceId);
                 }
                 catch (Exception exception)
                 {
-                    // set response header for error
-                    // TODO come up with error messages translation layer
-                    actorResponseMessageHeader.AddHeader(Constants.ErrorResponseHeaderName, Encoding.ASCII.GetBytes(exception.Message));
+                    // return exception response message
+                    return this.CreateExceptionResponseMessage(exception);
                 }
-
-                var responseMessage = this.CreateResponseMessage(actorResponseMessageHeader, responseMsgBody, interfaceId);
-
-                return responseMessage;
             }
 
-            return this.DispatchInternalAsync<Tuple<string, string>>(actorId, actorMethodContext, RequestFunc, cancellationToken);
+            return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
@@ -250,38 +244,38 @@ namespace Microsoft.Actions.Actors.Runtime
                 retval = await actorFunc.Invoke(actor, cancellationToken);
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
-            catch
+            catch (Exception ex)
             {
                 actor.OnInvokeFailed();
+                ActorTrace.Instance.WriteError(TraceType, $"Got exception from actor method invocation: {ex}");
                 throw;
             }
 
             return retval;
         }
 
-        private Tuple<string, string> CreateResponseMessage(IActorResponseMessageHeader header, IActorResponseMessageBody msgBody, int interfaceId)
+        private Tuple<string, byte[]> CreateResponseMessage(IActorResponseMessageBody msgBody, int interfaceId)
         {
-            string responseHeader = string.Empty;
-            if (header != null)
-            {
-                var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(header);
-
-                if (responseHeaderBytes != null)
-                {
-                    responseHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
-                }
-            }
-
-            string responseMsgBody = string.Empty;
+            var responseMsgBodyBytes = new byte[0];
             if (msgBody != null)
             {
                 var responseSerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
-
-                var responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
-                responseMsgBody = Encoding.UTF8.GetString(responseMsgBodyBytes, 0, responseMsgBodyBytes.Length);
+                responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
             }
 
-            return new Tuple<string, string>(responseHeader, responseMsgBody);
+            return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
+        }
+
+        private Tuple<string, byte[]> CreateExceptionResponseMessage(Exception ex)
+        {
+            var responseHeader = new ActorResponseMessageHeader();
+            responseHeader.AddHeader("HasRemoteException", new byte[0]);
+            var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
+            var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
+
+            var responseMsgBody = RemoteException.FromException(ex);
+            
+            return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }
     }
 }

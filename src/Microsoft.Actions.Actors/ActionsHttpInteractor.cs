@@ -17,7 +17,7 @@ namespace Microsoft.Actions.Actors
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Actions.Actors.Communication;
-    using Microsoft.Actions.Actors.Runtime;
+    using Microsoft.Actions.Actors.Resources;
     using Newtonsoft.Json;
 
     /// <summary>
@@ -26,18 +26,17 @@ namespace Microsoft.Actions.Actors
     internal class ActionsHttpInteractor : IActionsInteractor
     {
         private const string ActionsEndpoint = Constants.ActionsDefaultEndpoint;
+        private const string TraceType = "ActionsHttpInteractor";
         private readonly string actionsPort = Constants.ActionsDefaultPort;
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
-        private readonly HttpClientSettings clientSettings;
-        private readonly ActorMessageSerializersManager serializersManager;
+        private readonly ClientSettings clientSettings;
         private HttpClient httpClient = null;
         private bool disposed = false;
 
         public ActionsHttpInteractor(
-            ActorMessageSerializersManager serializersManager = null,
             HttpClientHandler innerHandler = null,
-            HttpClientSettings clientSettings = null,
+            ClientSettings clientSettings = null,
             params DelegatingHandler[] delegateHandlers)
         {
             // Get Actions port from Environment Variable if it has been overridden.
@@ -52,15 +51,6 @@ namespace Microsoft.Actions.Actors
             this.clientSettings = clientSettings;
 
             this.httpClient = this.CreateHttpClient();
-
-            if (serializersManager != null)
-            {
-                this.serializersManager = serializersManager;
-            }
-            else
-            {
-                this.serializersManager = IntializeSerializationManager(null);
-            }
         }
 
         public async Task<byte[]> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
@@ -119,7 +109,7 @@ namespace Microsoft.Actions.Actors
             var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public Task SaveStateTransationallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken))
+        public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken))
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
             var requestId = Guid.NewGuid().ToString();
@@ -138,7 +128,7 @@ namespace Microsoft.Actions.Actors
             return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestMessageHeader = remotingRequestRequestMessage.GetHeader();
 
@@ -147,10 +137,10 @@ namespace Microsoft.Actions.Actors
             var actorType = requestMessageHeader.ActorType;
             var interfaceId = requestMessageHeader.InterfaceId;
 
-            var serializedHeader = this.serializersManager.GetHeaderSerializer()
+            var serializedHeader = serializersManager.GetHeaderSerializer()
                 .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
 
-            var msgBodySeriaizer = this.serializersManager.GetRequestMessageBodySerializer(interfaceId);
+            var msgBodySeriaizer = serializersManager.GetRequestMessageBodySerializer(interfaceId);
             var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
 
             // Send Request
@@ -162,11 +152,16 @@ namespace Microsoft.Actions.Actors
                 var request = new HttpRequestMessage()
                 {
                     Method = HttpMethod.Put,
-                    Content = new ByteArrayContent(serializedMsgBody),
                 };
 
+                if (serializedMsgBody != null)
+                {
+                    request.Content = new ByteArrayContent(serializedMsgBody);
+                    request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
+                }
+
                 request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeader, 0, serializedHeader.Length));
-                request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream; charset=utf-8");
+
                 return request;
             }
 
@@ -175,16 +170,13 @@ namespace Microsoft.Actions.Actors
             IActorResponseMessageHeader actorResponseMessageHeader = null;
             if (retval != null && retval.Headers != null)
             {
-                IEnumerable<string> headerValues = null;
-
-                // TODO Assert if expected header is not there
-                if (retval.Headers.TryGetValues(Constants.RequestHeaderName, out headerValues))
+                if (retval.Headers.TryGetValues(Constants.ErrorResponseHeaderName, out IEnumerable<string> headerValues))
                 {
                     var header = headerValues.First();
 
                     // DeSerialize Actor Response Message Header
                     actorResponseMessageHeader =
-                        this.serializersManager.GetHeaderSerializer()
+                        serializersManager.GetHeaderSerializer()
                             .DeserializeResponseHeaders(
                                 new MemoryStream(Encoding.ASCII.GetBytes(header)));
                 }
@@ -197,12 +189,32 @@ namespace Microsoft.Actions.Actors
                 var responseMessageBody = await retval.Content.ReadAsStreamAsync();
 
                 // Deserialize Actor Response Message Body
-                var responseBodySerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
+                // Deserialize to RemoteException when there is response header otherwise normal path
+                var responseBodySerializer = serializersManager.GetResponseMessageBodySerializer(interfaceId);
+
+                // actorResponseMessageHeader is not null, it means there is remote exception
+                if (actorResponseMessageHeader != null)
+                {
+                    var isDeserialzied =
+                            RemoteException.ToException(
+                                responseMessageBody,
+                                out var e);
+                    if (isDeserialzied)
+                    {
+                        throw e;
+                    }
+                    else
+                    {
+                        throw new ServiceException(e.GetType().FullName, string.Format(
+                            CultureInfo.InvariantCulture,
+                            SR.ErrorDeserializationFailure,
+                            e.ToString()));
+                    }
+                }
 
                 actorResponseMessageBody = responseBodySerializer.Deserialize(responseMessageBody);
             }
 
-            // TODO Either throw exception or return response body with null header and message body
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
         }
 
@@ -441,7 +453,7 @@ namespace Microsoft.Actions.Actors
                     // Handle NotFound 404, without any ErrorCode.
                     if (response.StatusCode.Equals(HttpStatusCode.NotFound))
                     {
-                        throw new ActionsException("ErrorMessageHTTP404", ActionsErrorCodes.ACTIONS_E_DOES_NOT_EXIST, false);
+                        throw new ActionsException("ErrorMessageHTTP404", ActionsErrorCodes.ERR_DOES_NOT_EXIST, false);
                     }
                 }
             }
@@ -471,14 +483,12 @@ namespace Microsoft.Actions.Actors
             }
             catch (AuthenticationException ex)
             {
-                // TODO Log.
-                Console.WriteLine(ex.ToString());
+                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
                 throw;
             }
             catch (HttpRequestException ex)
             {
-                // TODO Log.
-                Console.WriteLine(ex.ToString());
+                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
                 throw;
             }
 

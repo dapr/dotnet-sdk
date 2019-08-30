@@ -24,13 +24,9 @@ namespace Microsoft.Actions.Actors.Builder
 
         public Type ProxyInterfaceType { get; }
 
-        public ActorProxy CreateActorProxy(
-            ActorCommunicationClient communicationClient,
-            IActorMessageBodyFactory remotingMessageBodyFactory)
+        public ActorProxy CreateActorProxy()
         {
-            var actorProxy = (ActorProxy)this.proxyActivator.CreateInstance();
-            actorProxy.Initialize(communicationClient, remotingMessageBodyFactory);
-            return actorProxy;
+            return (ActorProxy)this.proxyActivator.CreateInstance();
         }
     }
 }

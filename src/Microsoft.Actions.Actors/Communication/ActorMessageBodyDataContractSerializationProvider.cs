@@ -102,7 +102,7 @@ namespace Microsoft.Actions.Actors.Communication
         /// </returns>
         internal XmlDictionaryWriter CreateXmlDictionaryWriter(Stream outputStream)
         {
-            return XmlDictionaryWriter.CreateTextWriter(outputStream);
+            return XmlDictionaryWriter.CreateBinaryWriter(outputStream);
         }
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace Microsoft.Actions.Actors.Communication
         /// </returns>
         internal XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
         {
-            return XmlDictionaryReader.CreateTextReader(inputStream, XmlDictionaryReaderQuotas.Max);
+            return XmlDictionaryReader.CreateBinaryReader(inputStream, XmlDictionaryReaderQuotas.Max);
         }
 
         /// <summary>
@@ -162,8 +162,7 @@ namespace Microsoft.Actions.Actors.Communication
                 this.serializer = serializer;
             }
 
-            byte[] IActorRequestMessageBodySerializer.Serialize(
-                IActorRequestMessageBody actorRequestMessageBody)
+            byte[] IActorRequestMessageBodySerializer.Serialize(IActorRequestMessageBody actorRequestMessageBody)
             {
                 if (actorRequestMessageBody == null)
                 {
@@ -182,16 +181,24 @@ namespace Microsoft.Actions.Actors.Communication
                 }
             }
 
-            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(
-                Stream messageBody)
+            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(Stream messageBody)
             {
                 if (messageBody == null)
                 {
                     return null;
                 }
 
-                using (var stream = new DisposableStream(messageBody))
+                // TODO check performance
+                using (var stream = new MemoryStream())
                 {
+                    messageBody.CopyTo(stream);
+                    stream.Position = 0;
+
+                    if (stream.Capacity == 0)
+                    {
+                        return null;
+                    }
+
                     using (var reader = this.CreateXmlDictionaryReader(stream))
                     {
                         return (TRequest)this.serializer.ReadObject(reader);
@@ -225,8 +232,17 @@ namespace Microsoft.Actions.Actors.Communication
                     return null;
                 }
 
-                using (var stream = new DisposableStream(messageBody))
+                // TODO check performance
+                using (var stream = new MemoryStream())
                 {
+                    messageBody.CopyTo(stream);
+                    stream.Position = 0;
+
+                    if (stream.Capacity == 0)
+                    {
+                        return null;
+                    }
+
                     using (var reader = this.CreateXmlDictionaryReader(stream))
                     {
                         return (TResponse)this.serializer.ReadObject(reader);

@@ -13,7 +13,7 @@ namespace Microsoft.Actions.Actors.Communication
     internal class ActorRequestMessageBody : IActorRequestMessageBody
     {
         [DataMember]
-        private Dictionary<string, object> parameters;
+        private readonly Dictionary<string, object> parameters;
 
         public ActorRequestMessageBody(int parameterInfos)
         {

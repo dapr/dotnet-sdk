@@ -16,9 +16,7 @@ namespace Microsoft.Actions.Actors.Client
     /// </summary>
     internal class ActorProxyFactory : IActorProxyFactory
     {
-        private readonly object thisLock;
-
-        private volatile IActorCommunicationClientFactory actorCommunicationClientFactory;
+        private readonly IActionsInteractor actionsInteractor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
@@ -26,9 +24,8 @@ namespace Microsoft.Actions.Actors.Client
         /// </summary>
         public ActorProxyFactory()
         {
-            this.thisLock = new object();
-
-            this.actorCommunicationClientFactory = null;
+            // TODO: Allow configuration of serialization and client settings.
+            this.actionsInteractor = new ActionsHttpInteractor();
         }
 
         /// <inheritdoc/>
@@ -36,6 +33,16 @@ namespace Microsoft.Actions.Actors.Client
             where TActorInterface : IActor
         {
             return (TActorInterface)this.CreateActorProxy(actorId, typeof(TActorInterface), actorType);
+        }
+
+        /// <inheritdoc/>
+        public ActorProxy Create(ActorId actorId, string actorType)
+        {
+            var actorProxy = new ActorProxy();
+            var nonRemotingClient = new ActorNonRemotingClient(this.actionsInteractor);
+            actorProxy.Initialize(nonRemotingClient, actorId, actorType);
+
+            return actorProxy;
         }
 
         /// <summary>
@@ -47,49 +54,12 @@ namespace Microsoft.Actions.Actors.Client
         /// <returns>Returns Actor Proxy.</returns>
         internal object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType)
         {
-            var factory = this.GetOrCreateActorCommunicationClientFactory();
-
-            // TODO factory level settings or method level parameter, default http
-            var actorCommunicationClient = new ActorCommunicationClient(
-                factory,
-                actorId,
-                actorType);
-
+            var remotingClient = new ActorRemotingClient(this.actionsInteractor);
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
+            var actorProxy = proxyGenerator.CreateActorProxy();
+            actorProxy.Initialize(remotingClient, actorId, actorType);
 
-            return proxyGenerator.CreateActorProxy(
-                actorCommunicationClient,
-                factory.GetRemotingMessageBodyFactory());
-        }
-
-        private IActorCommunicationClientFactory GetOrCreateActorCommunicationClientFactory()
-        {
-            if (this.actorCommunicationClientFactory != null)
-            {
-                return this.actorCommunicationClientFactory;
-            }
-
-            lock (this.thisLock)
-            {
-                if (this.actorCommunicationClientFactory == null)
-                {
-                    this.actorCommunicationClientFactory = this.CreateActorCommunicationClientFactory();
-                }
-            }
-
-            return this.actorCommunicationClientFactory;
-        }
-
-        private IActorCommunicationClientFactory CreateActorCommunicationClientFactory()
-        {
-            // TODO factory settings
-            var factory = new ActorCommunicationClientFactory();
-            if (factory == null)
-            {
-                throw new NotSupportedException("ClientFactory can't be null");
-            }
-
-            return factory;
-        }
+            return actorProxy;
+        }        
     }
 }

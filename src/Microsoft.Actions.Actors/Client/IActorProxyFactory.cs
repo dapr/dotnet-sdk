@@ -27,5 +27,13 @@ namespace Microsoft.Actions.Actors.Client
             ActorId actorId,
             string actorType)
             where TActorInterface : IActor;
+
+        /// <summary>
+        /// Creates an Actor Proxy for making calls without Remoting.
+        /// </summary>
+        /// <param name="actorId">Actor Id.</param>
+        /// <param name="actorType">Type of actor.</param>
+        /// <returns>Actor proxy to interact with remote actor object.</returns>
+        ActorProxy Create(ActorId actorId, string actorType);
     }
 }

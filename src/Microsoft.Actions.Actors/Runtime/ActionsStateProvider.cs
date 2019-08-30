@@ -18,7 +18,7 @@ namespace Microsoft.Actions.Actors.Runtime
     /// </summary>
     internal class ActionsStateProvider
     {
-        private ActorStateProviderSerializer actorStateSerializer;
+        private readonly ActorStateProviderSerializer actorStateSerializer;
 
         public ActionsStateProvider(ActorStateProviderSerializer actorStateSerializer)
         {
@@ -90,7 +90,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 content = sw.ToString();
             }
 
-            return ActorRuntime.ActionsInteractor.SaveStateTransationallyAsync(actorType, actorId, content, cancellationToken);
+            return ActorRuntime.ActionsInteractor.SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
         }
 
         /// <summary>

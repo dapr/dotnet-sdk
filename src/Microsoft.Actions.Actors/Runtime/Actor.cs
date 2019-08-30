@@ -26,7 +26,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <summary>
         /// Contains timers to be invoked.
         /// </summary>
-        private Dictionary<string, IActorTimer> timers = new Dictionary<string, IActorTimer>();
+        private readonly Dictionary<string, IActorTimer> timers = new Dictionary<string, IActorTimer>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Actor"/> class.
