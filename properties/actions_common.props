@@ -13,13 +13,17 @@
     <MinorVersion>0</MinorVersion>
     <BuildVersion>0</BuildVersion>
     <Revision>0</Revision>
-    <PreviewTag>-preview01</PreviewTag>
-
     <Version>$(MajorVersion).$(MinorVersion).$(BuildVersion).$(Revision)</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <AssemblyFileVersion>$(Version)</AssemblyFileVersion>
     <FileVersion>$(MajorVersion).$(MinorVersion).$(BuildVersion).$(Revision)</FileVersion>
-    <NupkgVersion>$(MajorVersion).$(MinorVersion).$(BuildVersion)$(PreviewTag)</NupkgVersion>
+
+    <!-- Nuget package versions -->
+    <NupkgMajorVersion>0</NupkgMajorVersion>
+    <NupkgMinorVersion>3</NupkgMinorVersion>
+    <NupkgPatchVersion>0</NupkgPatchVersion>
+    <NupkgPreviewTag>-preview01</NupkgPreviewTag>
+    <NupkgVersion>$(NupkgMajorVersion).$(NupkgMinorVersion).$(NupkgPatchVersion)$(NupkgPreviewTag)</NupkgVersion>
   </PropertyGroup>
   
 </Project>
