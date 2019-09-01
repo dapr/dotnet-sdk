@@ -53,7 +53,7 @@ namespace Microsoft.Actions.Actors
             this.httpClient = this.CreateHttpClient();
         }
 
-        public async Task<byte[]> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
@@ -68,8 +68,8 @@ namespace Microsoft.Actions.Actors
             }
 
             var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
-            var bytes = await response.Content.ReadAsByteArrayAsync();
-            return bytes;
+            var stringResponse = await response.Content.ReadAsStringAsync();
+            return stringResponse;
         }
         
         public async Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default(CancellationToken))
