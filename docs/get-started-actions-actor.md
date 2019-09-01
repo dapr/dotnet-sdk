@@ -41,7 +41,7 @@ Actor interface is defined with the below requirements:
 dotnet new classlib -o MyActor.Interfaces
 
 # Add Microsoft.Actions.Actors nuget package
-dotnet add package Microsoft.Actions.Actors -v 1.0.0-preview001 -s ~/tmp/nugets/
+dotnet add package Microsoft.Actions.Actors -v 0.3.0-preview1 -s ~/tmp/nugets/
 ```
 
 ### Implement IMyActor Interface
@@ -94,10 +94,10 @@ dotnet new webapi -o MyActor
 cd MyActor
 
 # Add Microsoft.Actions.Actors nuget package
-dotnet add package Microsoft.Actions.Actors -v 1.0.0-preview001 -s ~/tmp/nugets/
+dotnet add package Microsoft.Actions.Actors -v 0.3.0-preview1 -s ~/tmp/nugets/
 
 # Add Microsoft.Actions.Actors.AspNetCore nuget package
-dotnet add package Microsoft.Actions.Actors.AspNetCore -v 1.0.0-preview001 -s ~/tmp/nugets/
+dotnet add package Microsoft.Actions.Actors.AspNetCore -v 0.3.0-preview1 -s ~/tmp/nugets/
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -271,7 +271,7 @@ dotnet new console -o MyActorClient
 cd MyActorClient
 
 # Add Microsoft.Actions.Actors nuget package
-dotnet add package Microsoft.Actions.Actors -v 1.0.0-preview001 -s ~/tmp/nugets/
+dotnet add package Microsoft.Actions.Actors -v 0.3.0-preview1 -s ~/tmp/nugets/
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -351,28 +351,15 @@ namespace MyActorClient
 }
 ```
 
-## Run and debug Actor
+## Run Actor
 
 In order to validate and debug actor service and client, we need to run actor services via actions cli first.
 
 1. Run Actions Runtime via Actions cli
 
    ```bash
-   $ actions run --app-id myactions --app-port 3000
+   $ actions run --app-id myactions --app-port 3000 dotnet MyActorService.dll
    ```
-
-   Actions runtime will wait until app's http port is available
-
-   ```
-   INFO[0000] starting Actions Runtime -- version  -- commit
-   INFO[0000] log level set to: info
-   INFO[0000] standalone mode configured
-   INFO[0000] action id: myactions
-   INFO[0000] loaded component statestore (state.redis)
-   INFO[0000] application protocol: http. waiting on port 3000
-   ```
-
-2. Run MyActorService
 
    After executing MyActorService via actions runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
 
@@ -397,9 +384,10 @@ In order to validate and debug actor service and client, we need to run actor se
     INFO[0000] actors: placement order received: update
     INFO[0000] actors: placement tables updated
     INFO[0000] actors: placement order received: unlock
+    ...
    ```
 
-3. Run MyActorClient
+2. Run MyActorClient
 
    MyActorClient will console out if it calls actor hosted in MyActorService successfully.
 

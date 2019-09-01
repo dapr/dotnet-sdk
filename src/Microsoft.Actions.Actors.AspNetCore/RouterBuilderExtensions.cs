@@ -5,6 +5,7 @@
 
 namespace Microsoft.Actions.Actors.AspNetCore
 {
+    using System;
     using System.Linq;
     using Microsoft.Actions.Actors.Runtime;
     using Microsoft.AspNetCore.Http;
@@ -84,7 +85,16 @@ namespace Microsoft.Actions.Actors.AspNetCore
                 }
                 else
                 {
-                    return ActorRuntime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, request.Body, response.Body);
+                    // write exception info in response.
+                    try
+                    {
+                        return ActorRuntime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, request.Body, response.Body);
+                    }
+                    catch (Exception e)
+                    {
+                        return response.WriteAsync(e.ToString());
+                        throw;
+                    }
                 }
             });
         }
