@@ -28,10 +28,11 @@ namespace Microsoft.Actions.Actors.Runtime
         public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
         {
             var result = new ConditionalValue<T>(false, default(T));
-            var byteResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
+            var stringResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
 
-            if (byteResult.Length != 0)
+            if (stringResult.Length != 0)
             {
+                var byteResult = Convert.FromBase64String(stringResult.Trim('"'));
                 var typedResult = this.actorStateSerializer.Deserialize<T>(byteResult);
                 result = new ConditionalValue<T>(true, typedResult);
             }
@@ -151,7 +152,6 @@ namespace Microsoft.Actions.Actors.Runtime
                 case StateChangeKind.Update:
                     writer.WriteProperty(stateChange.StateName, "key", JsonWriterExtensions.WriteStringValue);
                     var buffer = this.actorStateSerializer.Serialize(stateChange.Type, stateChange.Value);
-
                     writer.WriteProperty(Convert.ToBase64String(buffer), "value", JsonWriterExtensions.WriteStringValue);
                     break;
                 default:

@@ -68,7 +68,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="keyName">Name of key to get value for.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<byte[]> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Invokes Actor method.
