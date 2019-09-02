@@ -17,7 +17,7 @@ namespace Microsoft.Actions.Actors
         /// Initializes a new instance of the <see cref="ActorMethodInvocationException"/> class.
         /// </summary>
         public ActorMethodInvocationException()
-            : base()
+            : base(ActionsErrorCodes.ERR_INVOKE_ACTOR, false)
         {
         }
 
@@ -25,8 +25,9 @@ namespace Microsoft.Actions.Actors
         /// Initializes a new instance of the <see cref="ActorMethodInvocationException"/> class.
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
-        public ActorMethodInvocationException(string message)
-            : base(message)
+        /// <param name="isTransient">True, if the exception is to be treated as an transient exception.</param>
+        public ActorMethodInvocationException(string message, bool isTransient)
+            : base(message, ActionsErrorCodes.ERR_INVOKE_ACTOR, isTransient)
         {
         }
 
@@ -36,8 +37,9 @@ namespace Microsoft.Actions.Actors
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public ActorMethodInvocationException(string message, Exception innerException)
-            : base(message, innerException)
+        /// <param name="isTransient">True, if the exception is to be treated as an transient exception.</param>
+        public ActorMethodInvocationException(string message, Exception innerException, bool isTransient)
+            : base(message, innerException, ActionsErrorCodes.ERR_INVOKE_ACTOR, isTransient)
         {
         }
     }
