@@ -198,17 +198,20 @@ namespace Microsoft.Actions.Actors
                     var isDeserialzied =
                             RemoteException.ToException(
                                 responseMessageBody,
-                                out var e);
+                                out var remoteMethodException);
                     if (isDeserialzied)
                     {
-                        throw e;
+                        throw new ActorMethodInvocationException(
+                            "Remote Actor Method Exception",
+                            remoteMethodException,
+                            false /* non transient */);
                     }
                     else
                     {
-                        throw new ServiceException(e.GetType().FullName, string.Format(
+                        throw new ServiceException(remoteMethodException.GetType().FullName, string.Format(
                             CultureInfo.InvariantCulture,
                             SR.ErrorDeserializationFailure,
-                            e.ToString()));
+                            remoteMethodException.ToString()));
                     }
                 }
 
