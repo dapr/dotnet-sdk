@@ -4,6 +4,9 @@ trigger:
   branches:
     include:
     - master
+  tags:
+    include:
+    - v*
 
 stages:
 - stage: Build
@@ -33,7 +36,7 @@ stages:
           projects: 'code.sln'
       - task: EsrpCodeSigning@1
         displayName: 'ESRP Authenticode CodeSign'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: 'bin/$(Configuration)'
@@ -98,7 +101,7 @@ stages:
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1
         displayName: 'ESRP CodeSign - Nuget Package'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: '$(Build.ArtifactStagingDirectory)'
@@ -148,7 +151,7 @@ stages:
           publishLocation: 'Container'
       - task: CmdLine@2
         displayName: 'Add release tag for release branch'
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
+        condition: and(eq(variables['Configuration'], 'release'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
         inputs:
           script: 'echo "##vso[build.addbuildtag]release'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
