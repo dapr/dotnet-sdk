@@ -7,20 +7,24 @@ namespace Microsoft.Actions.Actors.Test
 {
     using System;
     using System.IO;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
-    using Microsoft.Actions.Actors.Communication;
     using FluentAssertions;
+    using Microsoft.Actions.Actors.Communication;
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+    /// <summary>
+    /// Contains tests for Acttoe emthod invocation exceptions.
+    /// </summary>
     [TestClass]
     public class ActorMethodInvocationExceptionTests
     {
+        /// <summary>
+        /// This test will verify:
+        /// 1) the path for serialization and deserialization of the remote exception
+        /// 2) and validating the inner exception.
+        /// </summary>
         [TestMethod]
         public void TestThrowActorMethodInvocationException()
         {
-            // This test will test 
-            // 1) the path for serialization and deserialization of the remote exception
-            // 2) and validating the inner exception
-
             // Create Remote Actor Method test Exception
             var exception = new InvalidOperationException();
             var message = "Remote Actor Exception";
@@ -33,7 +37,7 @@ namespace Microsoft.Actions.Actors.Test
                                                      new MemoryStream(serializedException),
                                                      out var remoteMethodException);
             isDeserialzied.Should().BeTrue();
-            var ex = ThrowRemoteException(message, remoteMethodException);
+            var ex = this.ThrowRemoteException(message, remoteMethodException);
             ex.Should().BeOfType<ActorMethodInvocationException>();
             ex.InnerException.Should().BeOfType<InvalidOperationException>();
             ex.Message.Should().Be(message);

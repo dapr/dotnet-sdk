@@ -5,12 +5,18 @@
 
 namespace Microsoft.Actions.Actors.Test
 {
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
     using Microsoft.Actions.Actors.Builder;
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+    /// <summary>
+    /// Test class for Actor Code builder.
+    /// </summary>
     [TestClass]
     public class ActorCodeBuilderTests
     {
+        /// <summary>
+        /// Tests Proxy Generation.
+        /// </summary>
         [TestMethod]
         public void TestBuildActorProxyGenerator()
         {
