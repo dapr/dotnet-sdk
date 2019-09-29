@@ -148,7 +148,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 }
                 else
                 {
-                    return default(object);
+                    return default;
                 }
             }
 
@@ -157,7 +157,7 @@ namespace Microsoft.Actions.Actors.Runtime
             await responseBodyStream.WriteAsync(Encoding.UTF8.GetBytes(json));
         }
 
-        internal Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default(CancellationToken))
+        internal Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
@@ -183,7 +183,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return Task.CompletedTask;
         }
 
-        internal Task FireTimerAsync(ActorId actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken))
+        internal Task FireTimerAsync(ActorId actorId, string timerName, CancellationToken cancellationToken = default)
         {
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)

@@ -25,9 +25,9 @@ namespace Microsoft.Actions.Actors.Runtime
             this.actorStateSerializer = actorStateSerializer;
         }
 
-        public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
-            var result = new ConditionalValue<T>(false, default(T));
+            var result = new ConditionalValue<T>(false, default);
             var stringResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
 
             if (stringResult.Length != 0)
@@ -40,18 +40,18 @@ namespace Microsoft.Actions.Actors.Runtime
             return result;
         }
 
-        public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
             var byteResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
             return byteResult.Length != 0;
         }
 
-        public async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
         {
             await this.DoStateChangesTransactionallyAsync(actorType, actorId, stateChanges, cancellationToken);
         }
 
-        private Task DoStateChangesTransactionallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        private Task DoStateChangesTransactionallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
         {
             // Transactional state update request body:
             /*
@@ -97,7 +97,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <summary>
         /// Save state individually. Actions runtime has added Tranaction save state. Use that instead. This method exists for debugging and testing of save state individually.
         /// </summary>
-        private async Task DoStateChangesIndividuallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default(CancellationToken))
+        private async Task DoStateChangesIndividuallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
         {
             foreach (var stateChange in stateChanges)
             {

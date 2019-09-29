@@ -41,7 +41,7 @@ namespace Microsoft.Actions.Actors.Runtime
         {
             if ((buffer == null) || (buffer.Length == 0))
             {
-                return default(T);
+                return default;
             }
 
             var serializer = this.actorStateSerializerCache.GetOrAdd(

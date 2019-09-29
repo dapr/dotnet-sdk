@@ -35,7 +35,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default(CancellationToken));
+        Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets an actor state with specified state name.
@@ -56,7 +56,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> GetStateAsync<T>(string stateName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<T> GetStateAsync<T>(string stateName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sets an actor state with given state name to specified value.
@@ -75,7 +75,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task SetStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default(CancellationToken));
+        Task SetStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes an actor state with specified state name.
@@ -88,7 +88,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// </exception>
         /// <exception cref="ArgumentNullException"> The specified state name is null. </exception>
         /// <exception cref="OperationCanceledException">The operation was canceled.</exception>
-        Task RemoveStateAsync(string stateName, CancellationToken cancellationToken = default(CancellationToken));
+        Task RemoveStateAsync(string stateName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Attempts to add an actor state with given state name and value. Returns false if an actor state with
@@ -111,7 +111,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<bool> TryAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default(CancellationToken));
+        Task<bool> TryAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Attempts to get an actor state with specified state name.
@@ -130,7 +130,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<ConditionalValue<T>> TryGetStateAsync<T>(string stateName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<ConditionalValue<T>> TryGetStateAsync<T>(string stateName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Attempts to remove an actor state with specified state name.
@@ -143,7 +143,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// </returns>
         /// <exception cref="ArgumentNullException"> The specified state name is null.</exception>
         /// <exception cref="OperationCanceledException">The operation was canceled.</exception>
-        Task<bool> TryRemoveStateAsync(string stateName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<bool> TryRemoveStateAsync(string stateName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Checks if an actor state with specified name exists.
@@ -156,7 +156,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// </returns>
         /// <exception cref="ArgumentNullException"> The specified state name is null.</exception>
         /// <exception cref="OperationCanceledException">The operation was canceled.</exception>
-        Task<bool> ContainsStateAsync(string stateName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<bool> ContainsStateAsync(string stateName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets an actor state with the given state name if it exists. If it does not
@@ -178,7 +178,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> GetOrAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default(CancellationToken));
+        Task<T> GetOrAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Adds an actor state with given state name, if it does not already exist or updates
@@ -199,7 +199,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> AddOrUpdateStateAsync<T>(string stateName, T addValue, Func<string, T, T> updateValueFactory, CancellationToken cancellationToken = default(CancellationToken));
+        Task<T> AddOrUpdateStateAsync<T>(string stateName, T addValue, Func<string, T, T> updateValueFactory, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Creates an enumerable of all actor state names for current actor.
@@ -210,7 +210,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// parameter is an enumerable of all actor state names.
         /// </returns>
         /// <exception cref="OperationCanceledException">The operation was canceled.</exception>
-        Task<IEnumerable<string>> GetStateNamesAsync(CancellationToken cancellationToken = default(CancellationToken));
+        Task<IEnumerable<string>> GetStateNamesAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Clears all the cached actor states and any operation(s) performed on <see cref="IActorStateManager"/>
@@ -224,7 +224,7 @@ namespace Microsoft.Actions.Actors.Runtime
         /// All the operation(s) performed on <see cref="IActorStateManager"/>  since last save operation are cleared on
         /// clearing the cache and will not be included in next save operation.
         /// </remarks>
-        Task ClearCacheAsync(CancellationToken cancellationToken = default(CancellationToken));
+        Task ClearCacheAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Saves all the cached state changes (add/update/remove) that were made since last call to
@@ -234,6 +234,6 @@ namespace Microsoft.Actions.Actors.Runtime
         /// <returns>
         /// A task that represents the asynchronous save operation.
         /// </returns>
-        Task SaveStateAsync(CancellationToken cancellationToken = default(CancellationToken));
+        Task SaveStateAsync(CancellationToken cancellationToken = default);
     }
 }

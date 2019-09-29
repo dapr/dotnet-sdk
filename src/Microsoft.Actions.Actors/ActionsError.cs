@@ -18,7 +18,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="message">Error Message.</param>
         public ActionsError(
             ActionsErrorCodes? errorCode,
-            string message = default(string))
+            string message = default)
         {
             errorCode.ThrowIfNull(nameof(errorCode));
             this.ErrorCode = errorCode;
