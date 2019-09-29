@@ -11,7 +11,7 @@ namespace Microsoft.Actions.Actors.Test
     /// <summary>
     /// Interface for test actor.
     /// </summary>
-    internal interface ITestActor : IActor
+    public interface ITestActor : IActor
     {
         /// <summary>
         /// GetCount method for TestActor.
@@ -29,13 +29,18 @@ namespace Microsoft.Actions.Actors.Test
         Task SetCountAsync(int count, CancellationToken cancellationToken);
     }
 
-    internal class TestActor : ITestActor
+    /// <summary>
+    /// Test Actor Class.
+    /// </summary>
+    public class TestActor : ITestActor
     {
+        /// <inheritdoc/>
         public Task<int> GetCountAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult(5);
         }
 
+        /// <inheritdoc/>
         public Task SetCountAsync(int count, CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
