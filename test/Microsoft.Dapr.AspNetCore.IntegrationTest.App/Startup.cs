@@ -1,15 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// ------------------------------------------------------------
+
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Dapr.AspNetCore.IntegrationTest.App
 {
@@ -22,13 +21,15 @@ namespace Microsoft.Dapr.AspNetCore.IntegrationTest.App
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddDapr();
+
+            // Will be replaced by integration tests
+            services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
@@ -36,15 +37,24 @@ namespace Microsoft.Dapr.AspNetCore.IntegrationTest.App
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
-
             app.UseRouting();
 
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapSubscribeHandler();
                 endpoints.MapControllers();
+
+                endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("A");
+
+                endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
+                {
+                    var stateClient = context.RequestServices.GetRequiredService<StateClient>();
+                    var state = await stateClient.GetStateEntryAsync<Widget>((string)context.Request.RouteValues["widget"]);
+                    state.Value.Count++;
+                    await state.SaveAsync();
+                });
             });
         }
     }

@@ -28,6 +28,15 @@ namespace Microsoft.Dapr
         /// Initializes a new instance of <see cref="StateHttpClient" />.
         /// </summary>
         /// <param name="client">The <see cref="HttpClient" />.</param>
+        public StateHttpClient(HttpClient client)
+            : this(client, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="StateHttpClient" />.
+        /// </summary>
+        /// <param name="client">The <see cref="HttpClient" />.</param>
         /// <param name="serializerOptions">The <see cref="JsonSerializerOptions" />.</param>
         public StateHttpClient(HttpClient client, JsonSerializerOptions serializerOptions)
         {

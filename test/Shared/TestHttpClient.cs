@@ -5,6 +5,7 @@
 
 namespace Microsoft.Dapr
 {
+    using System;
     using System.Collections.Concurrent;
     using System.Net;
     using System.Net.Http;
@@ -32,6 +33,12 @@ namespace Microsoft.Dapr
 
         public ConcurrentQueue<Entry> Requests => this.handler.Requests;
 
+        public Action<Entry> Handler
+        {
+            get => this.handler.Handler;
+            set => this.handler.Handler = value;
+        }
+
         public class Entry
         {
             public Entry(HttpRequestMessage request)
@@ -44,6 +51,10 @@ namespace Microsoft.Dapr
             public TaskCompletionSource<HttpResponseMessage> Completion { get; }
 
             public HttpRequestMessage Request { get; }
+
+            public bool IsGetStateRequest => Request.Method == HttpMethod.Get;
+
+            public bool IsSetStateRequest => Request.Method == HttpMethod.Post;
 
             public void Respond(HttpResponseMessage response)
             {
@@ -71,9 +82,12 @@ namespace Microsoft.Dapr
 
             public ConcurrentQueue<Entry> Requests { get; }
 
+            public Action<Entry> Handler { get; set; }
+
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 var entry = new Entry(request);
+                Handler?.Invoke(entry); 
                 Requests.Enqueue(entry);
 
                 using (cancellationToken.Register(() => entry.Completion.TrySetCanceled()))
