@@ -28,7 +28,7 @@ namespace Microsoft.Actions.Actors.Runtime
         public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
             var result = new ConditionalValue<T>(false, default);
-            var stringResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
+            var stringResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
 
             if (stringResult.Length != 0)
             {
@@ -42,7 +42,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
-            var byteResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName);
+            var byteResult = await ActorRuntime.ActionsInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
             return byteResult.Length != 0;
         }
 

@@ -121,8 +121,7 @@ namespace Microsoft.Actions.Actors
                 case JsonToken.Float:
                 case JsonToken.Boolean:
                 case JsonToken.Date:
-                    var formattable = reader.Value as IFormattable;
-                    if (formattable != null)
+                    if (reader.Value is IFormattable formattable)
                     {
                         value = formattable.ToString();
                     }
