@@ -75,3 +75,6 @@ bld/
 *.vsp
 *.vspx
 /drop
+
+# VS Code
+.vscode/
