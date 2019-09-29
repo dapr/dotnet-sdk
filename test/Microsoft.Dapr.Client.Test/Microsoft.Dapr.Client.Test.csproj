@@ -14,4 +14,8 @@
     <ProjectReference Include="..\..\src\Microsoft.Dapr.Client\Microsoft.Dapr.Client.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\TestHttpClient.cs" />
+  </ItemGroup>
+
 </Project>
