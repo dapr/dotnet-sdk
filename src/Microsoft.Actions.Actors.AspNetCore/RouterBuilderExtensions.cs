@@ -124,21 +124,19 @@ namespace Microsoft.Actions.Actors.AspNetCore
 
         private static async Task WriteSupportedActorTypesAsJsonAsync(IBufferWriter<byte> output)
         {
-            using (var writer = new Utf8JsonWriter(output))
+            using Utf8JsonWriter writer = new Utf8JsonWriter(output);
+            writer.WriteStartObject();
+            writer.WritePropertyName("entities");
+            writer.WriteStartArray();
+
+            foreach (var actorType in ActorRuntime.RegisteredActorTypes)
             {
-                writer.WriteStartObject();
-                writer.WritePropertyName("entities");
-                writer.WriteStartArray();
-
-                foreach (var actorType in ActorRuntime.RegisteredActorTypes)
-                {
-                    writer.WriteStringValue(actorType);
-                }
-
-                writer.WriteEndArray();
-                writer.WriteEndObject();
-                await writer.FlushAsync();
+                writer.WriteStringValue(actorType);
             }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+            await writer.FlushAsync();
         }
     }
 }

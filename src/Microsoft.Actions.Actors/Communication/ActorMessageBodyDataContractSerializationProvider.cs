@@ -169,16 +169,12 @@ namespace Microsoft.Actions.Actors.Communication
                     return null;
                 }
 
-                using (var stream = new MemoryStream())
-                {
-                    using (var writer = this.CreateXmlDictionaryWriter(stream))
-                    {
-                        this.serializer.WriteObject(writer, actorRequestMessageBody);
-                        writer.Flush();
+                using var stream = new MemoryStream();
+                using var writer = this.CreateXmlDictionaryWriter(stream);
+                this.serializer.WriteObject(writer, actorRequestMessageBody);
+                writer.Flush();
 
-                        return stream.ToArray();
-                    }
-                }
+                return stream.ToArray();
             }
 
             IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(Stream stream)
@@ -194,10 +190,8 @@ namespace Microsoft.Actions.Actors.Communication
                 }
 
                 stream.Position = 0;
-                using (var reader = this.CreateXmlDictionaryReader(stream))
-                {
-                    return (TRequest)this.serializer.ReadObject(reader);
-                }
+                using var reader = this.CreateXmlDictionaryReader(stream);
+                return (TRequest)this.serializer.ReadObject(reader);
             }
 
             byte[] IActorResponseMessageBodySerializer.Serialize(IActorResponseMessageBody actorResponseMessageBody)
@@ -207,16 +201,12 @@ namespace Microsoft.Actions.Actors.Communication
                     return null;
                 }
 
-                using (var stream = new MemoryStream())
-                {
-                    using (var writer = this.CreateXmlDictionaryWriter(stream))
-                    {
-                        this.serializer.WriteObject(writer, actorResponseMessageBody);
-                        writer.Flush();
+                using var stream = new MemoryStream();
+                using var writer = this.CreateXmlDictionaryWriter(stream);
+                this.serializer.WriteObject(writer, actorResponseMessageBody);
+                writer.Flush();
 
-                        return stream.ToArray();
-                    }
-                }
+                return stream.ToArray();
             }
 
             IActorResponseMessageBody IActorResponseMessageBodySerializer.Deserialize(Stream messageBody)
@@ -227,21 +217,17 @@ namespace Microsoft.Actions.Actors.Communication
                 }
 
                 // TODO check performance
-                using (var stream = new MemoryStream())
+                using var stream = new MemoryStream();
+                messageBody.CopyTo(stream);
+                stream.Position = 0;
+
+                if (stream.Capacity == 0)
                 {
-                    messageBody.CopyTo(stream);
-                    stream.Position = 0;
-
-                    if (stream.Capacity == 0)
-                    {
-                        return null;
-                    }
-
-                    using (var reader = this.CreateXmlDictionaryReader(stream))
-                    {
-                        return (TResponse)this.serializer.ReadObject(reader);
-                    }
+                    return null;
                 }
+
+                using var reader = this.CreateXmlDictionaryReader(stream);
+                return (TResponse)this.serializer.ReadObject(reader);
             }
 
             /// <summary>

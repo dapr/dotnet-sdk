@@ -40,13 +40,9 @@ namespace Microsoft.Actions.Actors.Runtime
         internal static ReminderInfo Deserialize(Stream stream)
         {
             // Deserialize using JsonReader as we know the property names in response. Deserializing using JsonReader is most performant.
-            using (var streamReader = new StreamReader(stream))
-            {
-                using (var reader = new JsonTextReader(streamReader))
-                {
-                    return reader.Deserialize(GetFromJsonProperties);
-                }
-            }
+            using var streamReader = new StreamReader(stream);
+            using var reader = new JsonTextReader(streamReader);
+            return reader.Deserialize(GetFromJsonProperties);
         }
 
         internal string SerializeToJson()
@@ -54,28 +50,26 @@ namespace Microsoft.Actions.Actors.Runtime
             string content;
             using (var sw = new StringWriter())
             {
-                using (var writer = new JsonTextWriter(sw))
+                using var writer = new JsonTextWriter(sw);
+                writer.WriteStartObject();
+                if (this.DueTime != null)
                 {
-                    writer.WriteStartObject();
-                    if (this.DueTime != null)
-                    {
-                        writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
-                    }
-
-                    if (this.Period != null)
-                    {
-                        writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
-                    }
-
-                    if (this.Data != null)
-                    {
-                        writer.WriteProperty(Convert.ToBase64String(this.Data), "data", JsonWriterExtensions.WriteStringValue);
-                    }
-
-                    writer.WriteEndObject();
-
-                    content = sw.ToString();
+                    writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
                 }
+
+                if (this.Period != null)
+                {
+                    writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
+                }
+
+                if (this.Data != null)
+                {
+                    writer.WriteProperty(Convert.ToBase64String(this.Data), "data", JsonWriterExtensions.WriteStringValue);
+                }
+
+                writer.WriteEndObject();
+
+                content = sw.ToString();
             }
 
             return content;

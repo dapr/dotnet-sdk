@@ -86,13 +86,9 @@ namespace Microsoft.Actions.Actors.Client
             var jsonPayload = JsonConvert.SerializeObject(data);
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
 
-            using (var streamReader = new StreamReader(response))
-            {
-                using (var reader = new JsonTextReader(streamReader))
-                {
-                    return serializer.Deserialize<T>(reader);
-                }
-            }
+            using var streamReader = new StreamReader(response);
+            using var reader = new JsonTextReader(streamReader);
+            return serializer.Deserialize<T>(reader);
         }
 
         /// <summary>
@@ -120,13 +116,9 @@ namespace Microsoft.Actions.Actors.Client
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
             var serializer = new JsonSerializer();
 
-            using (var streamReader = new StreamReader(response))
-            {
-                using (var reader = new JsonTextReader(streamReader))
-                {
-                    return serializer.Deserialize<T>(reader);
-                }
-            }
+            using var streamReader = new StreamReader(response);
+            using var reader = new JsonTextReader(streamReader);
+            return serializer.Deserialize<T>(reader);
         }
 
         /// <summary>

@@ -127,10 +127,8 @@ namespace Microsoft.Actions.Actors.Runtime
                     var deserializedType = default(object);
                     using (var streamReader = new StreamReader(requestBodyStream))
                     {
-                        using (var reader = new JsonTextReader(streamReader))
-                        {
-                            deserializedType = serializer.Deserialize(reader, type);
-                        }
+                        using var reader = new JsonTextReader(streamReader);
+                        deserializedType = serializer.Deserialize(reader, type);
                     }
 
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });

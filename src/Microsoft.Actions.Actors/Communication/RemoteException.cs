@@ -57,12 +57,10 @@ namespace Microsoft.Actions.Actors.Communication
         {
             try
             {
-                using (var stream = new MemoryStream())
-                {
-                    binaryFormatter.Serialize(stream, exception);
-                    stream.Flush();
-                    return stream.ToArray();
-                }
+                using var stream = new MemoryStream();
+                binaryFormatter.Serialize(stream, exception);
+                stream.Flush();
+                return stream.ToArray();
             }
             catch (Exception e)
             {
@@ -192,10 +190,8 @@ namespace Microsoft.Actions.Actors.Communication
                 return null;
             }
 
-            using (var reader = XmlDictionaryReader.CreateBinaryReader(buffer, XmlDictionaryReaderQuotas.Max))
-            {
-                return ServiceExceptionDataSerializer.ReadObject(reader);
-            }
+            using var reader = XmlDictionaryReader.CreateBinaryReader(buffer, XmlDictionaryReaderQuotas.Max);
+            return ServiceExceptionDataSerializer.ReadObject(reader);
         }
 
         private static byte[] SerializeServiceExceptionData(ServiceExceptionData msg)
@@ -205,15 +201,11 @@ namespace Microsoft.Actions.Actors.Communication
                 return null;
             }
 
-            using (var stream = new MemoryStream())
-            {
-                using (var writer = XmlDictionaryWriter.CreateBinaryWriter(stream))
-                {
-                    ServiceExceptionDataSerializer.WriteObject(writer, msg);
-                    writer.Flush();
-                    return stream.ToArray();
-                }
-            }
+            using var stream = new MemoryStream();
+            using var writer = XmlDictionaryWriter.CreateBinaryWriter(stream);
+            ServiceExceptionDataSerializer.WriteObject(writer, msg);
+            writer.Flush();
+            return stream.ToArray();
         }
     }
 }

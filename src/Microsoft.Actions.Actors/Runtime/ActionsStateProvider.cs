@@ -75,19 +75,22 @@ namespace Microsoft.Actions.Actors.Runtime
             string content;
             using (var sw = new StringWriter())
             {
-                var writer = new JsonTextWriter(sw);
-                writer.WriteStartArray();
-
-                foreach (var stateChange in stateChanges)
+                using (var writer = new JsonTextWriter(sw))
                 {
-                    writer.WriteStartObject();
-                    var operation = this.GetActionsStateOperation(stateChange.ChangeKind);
-                    writer.WriteProperty(operation, "operation", JsonWriterExtensions.WriteStringValue);
-                    writer.WriteProperty(stateChange, "request", this.SerializeStateChangeRequest);
-                    writer.WriteEndObject();
+                    writer.WriteStartArray();
+
+                    foreach (var stateChange in stateChanges)
+                    {
+                        writer.WriteStartObject();
+                        var operation = this.GetActionsStateOperation(stateChange.ChangeKind);
+                        writer.WriteProperty(operation, "operation", JsonWriterExtensions.WriteStringValue);
+                        writer.WriteProperty(stateChange, "request", this.SerializeStateChangeRequest);
+                        writer.WriteEndObject();
+                    }
+
+                    writer.WriteEndArray();
                 }
 
-                writer.WriteEndArray();
                 content = sw.ToString();
             }
 

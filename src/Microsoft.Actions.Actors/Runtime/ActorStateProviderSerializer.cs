@@ -26,15 +26,11 @@ namespace Microsoft.Actions.Actors.Runtime
                 stateType,
                 CreateDataContractSerializer);
 
-            using (var stream = new MemoryStream())
-            {
-                using (var writer = XmlDictionaryWriter.CreateBinaryWriter(stream))
-                {
-                    serializer.WriteObject(writer, state);
-                    writer.Flush();
-                    return stream.ToArray();
-                }
-            }
+            using var stream = new MemoryStream();
+            using var writer = XmlDictionaryWriter.CreateBinaryWriter(stream);
+            serializer.WriteObject(writer, state);
+            writer.Flush();
+            return stream.ToArray();
         }
 
         internal T Deserialize<T>(byte[] buffer)
@@ -48,13 +44,9 @@ namespace Microsoft.Actions.Actors.Runtime
                 typeof(T),
                 CreateDataContractSerializer);
 
-            using (var stream = new MemoryStream(buffer))
-            {
-                using (var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max))
-                {
-                    return (T)serializer.ReadObject(reader);
-                }
-            }
+            using var stream = new MemoryStream(buffer);
+            using var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+            return (T)serializer.ReadObject(reader);
         }
 
         private static DataContractSerializer CreateDataContractSerializer(Type actorStateType)

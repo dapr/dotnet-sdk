@@ -435,11 +435,9 @@ namespace Microsoft.Actions.Actors
                     var contentStream = await response.Content.ReadAsStreamAsync();
                     if (contentStream.Length != 0)
                     {
-                        using (var streamReader = new StreamReader(contentStream))
-                        {
-                            var json = await streamReader.ReadToEndAsync();
-                            error = JsonConvert.DeserializeObject<ActionsError>(json);
-                        }
+                        using var streamReader = new StreamReader(contentStream);
+                        var json = await streamReader.ReadToEndAsync();
+                        error = JsonConvert.DeserializeObject<ActionsError>(json);
                     }
                 }
                 catch (Exception ex)
