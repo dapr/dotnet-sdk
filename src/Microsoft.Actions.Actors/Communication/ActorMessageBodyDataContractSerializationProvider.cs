@@ -181,28 +181,22 @@ namespace Microsoft.Actions.Actors.Communication
                 }
             }
 
-            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(Stream messageBody)
+            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(Stream stream)
             {
-                if (messageBody == null)
+                if (stream == null)
                 {
                     return null;
                 }
 
-                // TODO check performance
-                using (var stream = new MemoryStream())
+                if (stream.Length == 0)
                 {
-                    messageBody.CopyTo(stream);
-                    stream.Position = 0;
+                    return null;
+                }
 
-                    if (stream.Capacity == 0)
-                    {
-                        return null;
-                    }
-
-                    using (var reader = this.CreateXmlDictionaryReader(stream))
-                    {
-                        return (TRequest)this.serializer.ReadObject(reader);
-                    }
+                stream.Position = 0;
+                using (var reader = this.CreateXmlDictionaryReader(stream))
+                {
+                    return (TRequest)this.serializer.ReadObject(reader);
                 }
             }
 

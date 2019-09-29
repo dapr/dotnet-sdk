@@ -6,11 +6,12 @@
 namespace Microsoft.Actions.Actors.Communication
 {
     using System.IO;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Defines the interface that must be implemented to provide a serializer/deserializer for remoting request message body.
     /// </summary>
-    public interface IActorRequestMessageBodySerializer
+    internal interface IActorRequestMessageBodySerializer
     {
         /// <summary>
         /// Serialize the remoting request body object to a message body that can be sent over the wire.

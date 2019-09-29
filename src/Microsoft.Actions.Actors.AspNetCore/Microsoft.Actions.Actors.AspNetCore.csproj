@@ -3,17 +3,15 @@
   <Import Project="..\..\properties\actions_managed_stylecop.props" />
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
-    <AssemblyName>Microsoft.Actions.Actors.AspNetCore</AssemblyName>
-    <RootNamespace>$(AssemblyName)</RootNamespace>
     <DocumentationFile>$(OutputPath)\$(AssemblyName).xml</DocumentationFile>
 
     <!-- Nuget package properties when packed using dotnet pack. -->
     <NuspecFile>nuspec\Microsoft.Actions.Actors.AspNetCore.nuspec</NuspecFile>
     <NuspecProperties>version=$(NupkgVersion);Configuration=$(Configuration)</NuspecProperties>
+    <!-- Disabling NU5128 Warning, https://docs.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5128 -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
-  </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

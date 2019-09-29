@@ -13,9 +13,10 @@ This repo builds the following packages:
 
 ### Prerequesites
 
-Each project is a normal C# Visual Studio 2019 project. At minimum, you need [.NET Core SDK 2.2](https://www.microsoft.com/net/download/windows) to build and generate NuGet packages.
+Each project is a normal C# Visual Studio 2019 project. At minimum, you need [.NET Core SDK 3.0](https://dotnet.microsoft.com/download/dotnet-core/3.0) to build and generate NuGet packages.
 
-We recommend installing [Visual Studio 2019](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
+We recommend installing [Visual Studio 2019 v16.3 or later ](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
+Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio). To find a version of .NET Core that can be used with earlier versions of Visual Studio, see [].NET SDKs for Visual Studio](https://dotnet.microsoft.com/download/visual-studio-sdks).
 
 ### Build
 
@@ -44,10 +45,10 @@ Assume that you download nuget packages to you local disk, /pkg/nugets/.
 
 ```bash
 # Add Microsoft.Actions.Actors nuget package
-dotnet add package Microsoft.Actions.Actors -v 1.0.0-preview001 -s /pkg/nugets/
+dotnet add package Microsoft.Actions.Actors -v 0.4.0-preview01 -s /pkg/nugets/
 
 # Add Microsoft.Actions.Actors.AspNetCore nuget package
-dotnet add package Microsoft.Actions.Actors.AspNetCore -v 1.0.0-preview001 -s /pkg/nugets/
+dotnet add package Microsoft.Actions.Actors.AspNetCore -v 0.4.0-preview01 -s /pkg/nugets/
 ```
 
 ## Documentation

@@ -3,10 +3,8 @@
   <Import Project="..\..\properties\actions_managed_stylecop.props" />
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
-
     <IsPackable>false</IsPackable>
-
-    <SignAssembly>true</SignAssembly>
+    <DocumentationFile>$(OutputPath)\$(AssemblyName).xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
