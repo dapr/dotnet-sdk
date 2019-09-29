@@ -36,9 +36,9 @@ namespace Microsoft.Actions.Actors.AspNetCore
         {
             routeBuilder.MapPost("actors/{actorTypeName}/{actorId}", async context =>
             {
-                var routeData = context.GetRouteData();
-                var actorTypeName = (string)routeData.Values["actorTypeName"];
-                var actorId = (string)routeData.Values["actorId"];
+                var routeValues = context.Request.RouteValues;
+                var actorTypeName = (string)routeValues["actorTypeName"];
+                var actorId = (string)routeValues["actorId"];
                 await ActorRuntime.ActivateAsync(actorTypeName, actorId);
             });
         }
@@ -47,9 +47,9 @@ namespace Microsoft.Actions.Actors.AspNetCore
         {
             routeBuilder.MapDelete("actors/{actorTypeName}/{actorId}", async context =>
             {
-                var routeData = context.GetRouteData();
-                var actorTypeName = (string)routeData.Values["actorTypeName"];
-                var actorId = (string)routeData.Values["actorId"];
+                var routeValues = context.Request.RouteValues;
+                var actorTypeName = (string)routeValues["actorTypeName"];
+                var actorId = (string)routeValues["actorId"];
                 await ActorRuntime.DeactivateAsync(actorTypeName, actorId);
             });
         }
@@ -58,25 +58,25 @@ namespace Microsoft.Actions.Actors.AspNetCore
         {
             routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
             {
-                var routeData = context.GetRouteData();
-                var actorTypeName = (string)routeData.Values["actorTypeName"];
-                var actorId = (string)routeData.Values["actorId"];
-                var methodName = (string)routeData.Values["methodName"];
+                var routeValues = context.Request.RouteValues;
+                var actorTypeName = (string)routeValues["actorTypeName"];
+                var actorId = (string)routeValues["actorId"];
+                var methodName = (string)routeValues["methodName"];
 
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.
                 if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
                     var actionsActorheader = context.Request.Headers[Constants.RequestHeaderName];
-                    var result = await ActorRuntime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, context.Request.Body);
+                    var (header, body) = await ActorRuntime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, actionsActorheader, context.Request.Body);
 
                     // Item 1 is header , Item 2 is body
-                    if (result.Item1 != string.Empty)
+                    if (header != string.Empty)
                     {
                         // exception case
-                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, result.Item1); // add error header
+                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
                     }
 
-                    await context.Response.Body.WriteAsync(result.Item2, 0, result.Item2.Length); // add response message body
+                    await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
                 }
                 else
                 {
@@ -98,10 +98,10 @@ namespace Microsoft.Actions.Actors.AspNetCore
         {
             routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/remind/{reminderName}", async context =>
             {
-                var routeData = context.GetRouteData();
-                var actorTypeName = (string)routeData.Values["actorTypeName"];
-                var actorId = (string)routeData.Values["actorId"];
-                var reminderName = (string)routeData.Values["reminderName"];
+                var routeValues = context.Request.RouteValues;
+                var actorTypeName = (string)routeValues["actorTypeName"];
+                var actorId = (string)routeValues["actorId"];
+                var reminderName = (string)routeValues["reminderName"];
 
                 // read dueTime, period and data from Request Body.
                 await ActorRuntime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body);
@@ -112,10 +112,10 @@ namespace Microsoft.Actions.Actors.AspNetCore
         {
             routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", async context =>
             {
-                var routeData = context.GetRouteData();
-                var actorTypeName = (string)routeData.Values["actorTypeName"];
-                var actorId = (string)routeData.Values["actorId"];
-                var timerName = (string)routeData.Values["timerName"];
+                var routeValues = context.Request.RouteValues;
+                var actorTypeName = (string)routeValues["actorTypeName"];
+                var actorId = (string)routeValues["actorId"];
+                var timerName = (string)routeValues["timerName"];
 
                 // read dueTime, period and data from Request Body.
                 await ActorRuntime.FireTimerAsync(actorTypeName, actorId, timerName);
