@@ -12,7 +12,7 @@ namespace Microsoft.Actions.Actors.Test
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
     /// <summary>
-    /// Contains tests for Acttoe emthod invocation exceptions.
+    /// Contains tests for Actor method invocation exceptions.
     /// </summary>
     [TestClass]
     public class ActorMethodInvocationExceptionTests
