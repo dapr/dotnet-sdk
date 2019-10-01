@@ -28,7 +28,7 @@ namespace Microsoft.Actions.Actors.Communication.Client
         /// <param name="jsonPayload">Serialized body.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
+        public Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)
         {
             return this.actionsInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, jsonPayload, cancellationToken);
         }

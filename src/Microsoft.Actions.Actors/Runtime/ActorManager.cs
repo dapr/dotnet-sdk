@@ -54,7 +54,7 @@ namespace Microsoft.Actions.Actors.Runtime
 
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
 
-        internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
+        internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string actionsActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
             
@@ -66,7 +66,13 @@ namespace Microsoft.Actions.Actors.Runtime
 
             // Get the deserialized Body.
             var msgBodySerializer = this.serializersManager.GetRequestMessageBodySerializer(actorMessageHeader.InterfaceId);
-            var actorMessageBody = msgBodySerializer.Deserialize(data);
+
+            IActorRequestMessageBody actorMessageBody;
+            using (var stream = new MemoryStream())
+            {
+                await data.CopyToAsync(stream);
+                actorMessageBody = msgBodySerializer.Deserialize(stream);
+            }
 
             // Call the method on the method dispatcher using the Func below.
             var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
@@ -94,7 +100,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 }
             }
 
-            return this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+            return await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
@@ -121,10 +127,8 @@ namespace Microsoft.Actions.Actors.Runtime
                     var deserializedType = default(object);
                     using (var streamReader = new StreamReader(requestBodyStream))
                     {
-                        using (var reader = new JsonTextReader(streamReader))
-                        {
-                            deserializedType = serializer.Deserialize(reader, type);
-                        }
+                        using var reader = new JsonTextReader(streamReader);
+                        deserializedType = serializer.Deserialize(reader, type);
                     }
 
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
@@ -142,22 +146,16 @@ namespace Microsoft.Actions.Actors.Runtime
                 }
                 else
                 {
-                    return default(object);
+                    return default;
                 }
             }
 
             var result = await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
-
-            using (var streamWriter = new StreamWriter(responseBodyStream))
-            {
-                using (var writer = new JsonTextWriter(streamWriter))
-                {
-                    serializer.Serialize(writer, result);
-                }
-            }
+            var json = JsonConvert.SerializeObject(result);
+            await responseBodyStream.WriteAsync(Encoding.UTF8.GetBytes(json));
         }
 
-        internal Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default(CancellationToken))
+        internal Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
@@ -183,7 +181,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return Task.CompletedTask;
         }
 
-        internal Task FireTimerAsync(ActorId actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken))
+        internal Task FireTimerAsync(ActorId actorId, string timerName, CancellationToken cancellationToken = default)
         {
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)

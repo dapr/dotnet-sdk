@@ -79,20 +79,16 @@ namespace Microsoft.Actions.Actors.Client
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public async Task<T> InvokeAsync<T>(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<T> InvokeAsync<T>(string method, object data, CancellationToken cancellationToken = default)
         {
             // TODO: Allow users to provide a custom Serializer.
             var serializer = new JsonSerializer();
             var jsonPayload = JsonConvert.SerializeObject(data);
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
 
-            using (var streamReader = new StreamReader(response))
-            {
-                using (var reader = new JsonTextReader(streamReader))
-                {
-                    return serializer.Deserialize<T>(reader);
-                }
-            }
+            using var streamReader = new StreamReader(response);
+            using var reader = new JsonTextReader(streamReader);
+            return serializer.Deserialize<T>(reader);
         }
 
         /// <summary>
@@ -102,7 +98,7 @@ namespace Microsoft.Actions.Actors.Client
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public Task InvokeAsync(string method, object data, CancellationToken cancellationToken = default(CancellationToken))
+        public Task InvokeAsync(string method, object data, CancellationToken cancellationToken = default)
         {
             var jsonPayload = JsonConvert.SerializeObject(data);
             return this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
@@ -115,18 +111,14 @@ namespace Microsoft.Actions.Actors.Client
         /// <param name="method">Actor method name.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public async Task<T> InvokeAsync<T>(string method, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<T> InvokeAsync<T>(string method, CancellationToken cancellationToken = default)
         {
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
             var serializer = new JsonSerializer();
 
-            using (var streamReader = new StreamReader(response))
-            {
-                using (var reader = new JsonTextReader(streamReader))
-                {
-                    return serializer.Deserialize<T>(reader);
-                }
-            }
+            using var streamReader = new StreamReader(response);
+            using var reader = new JsonTextReader(streamReader);
+            return serializer.Deserialize<T>(reader);
         }
 
         /// <summary>
@@ -135,7 +127,7 @@ namespace Microsoft.Actions.Actors.Client
         /// <param name="method">Actor method name.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public Task InvokeAsync(string method, CancellationToken cancellationToken = default(CancellationToken))
+        public Task InvokeAsync(string method, CancellationToken cancellationToken = default)
         {
             return this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
         }

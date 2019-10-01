@@ -82,7 +82,7 @@ namespace Microsoft.Actions.Actors.Runtime
                 // Check if the property was marked as remove in the cache
                 if (stateMetadata.ChangeKind == StateChangeKind.Remove)
                 {
-                    return new ConditionalValue<T>(false, default(T));
+                    return new ConditionalValue<T>(false, default);
                 }
 
                 return new ConditionalValue<T>(true, (T)stateMetadata.Value);
@@ -199,7 +199,7 @@ namespace Microsoft.Actions.Actors.Runtime
             string stateName,
             T addValue,
             Func<string, T, T> updateValueFactory,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
@@ -238,7 +238,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return addValue;
         }
 
-        public async Task<IEnumerable<string>> GetStateNamesAsync(CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<IEnumerable<string>> GetStateNamesAsync(CancellationToken cancellationToken = default)
         {
             // TODO: Get all state names from Actions once implemented.
             // var namesFromStateProvider = await this.stateProvider.EnumerateStateNamesAsync(this.actor.Id, cancellationToken);
@@ -269,7 +269,7 @@ namespace Microsoft.Actions.Actors.Runtime
             return Task.CompletedTask;
         }
 
-        public async Task SaveStateAsync(CancellationToken cancellationToken = default(CancellationToken))
+        public async Task SaveStateAsync(CancellationToken cancellationToken = default)
         {
             if (this.stateChangeTracker.Count > 0)
             {

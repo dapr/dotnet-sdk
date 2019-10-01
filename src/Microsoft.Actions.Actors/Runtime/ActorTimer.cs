@@ -47,23 +47,21 @@ namespace Microsoft.Actions.Actors.Runtime
             string content;
             using (var sw = new StringWriter())
             {
-                using (var writer = new JsonTextWriter(sw))
+                using var writer = new JsonTextWriter(sw);
+                writer.WriteStartObject();
+                if (this.DueTime != null)
                 {
-                    writer.WriteStartObject();
-                    if (this.DueTime != null)
-                    {
-                        writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
-                    }
-
-                    if (this.Period != null)
-                    {
-                        writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
-                    }
-
-                    // Do not serialize state and call back, it will be kept with actor instance.
-                    writer.WriteEndObject();
-                    content = sw.ToString();
+                    writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
                 }
+
+                if (this.Period != null)
+                {
+                    writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueActionsFormat);
+                }
+
+                // Do not serialize state and call back, it will be kept with actor instance.
+                writer.WriteEndObject();
+                content = sw.ToString();
             }
 
             return content;

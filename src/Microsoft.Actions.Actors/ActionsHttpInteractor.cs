@@ -53,7 +53,7 @@ namespace Microsoft.Actions.Actors
             this.httpClient = this.CreateHttpClient();
         }
 
-        public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
@@ -72,7 +72,7 @@ namespace Microsoft.Actions.Actors
             return stringResponse;
         }
         
-        public async Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
@@ -91,7 +91,7 @@ namespace Microsoft.Actions.Actors
             var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public async Task RemoveStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task RemoveStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
             var requestId = Guid.NewGuid().ToString();
@@ -109,7 +109,7 @@ namespace Microsoft.Actions.Actors
             var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken))
+        public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
             var requestId = Guid.NewGuid().ToString();
@@ -128,7 +128,7 @@ namespace Microsoft.Actions.Actors
             return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default)
         {
             var requestMessageHeader = remotingRequestRequestMessage.GetHeader();
 
@@ -221,7 +221,7 @@ namespace Microsoft.Actions.Actors
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
         }
 
-        public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
             var requestId = Guid.NewGuid().ToString();
@@ -247,7 +247,7 @@ namespace Microsoft.Actions.Actors
             return byteArray;
         }
 
-        public Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default(CancellationToken))
+        public Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
             var requestId = Guid.NewGuid().ToString();
@@ -267,7 +267,7 @@ namespace Microsoft.Actions.Actors
             return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default(CancellationToken))
+        public Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
             var requestId = Guid.NewGuid().ToString();
@@ -285,7 +285,7 @@ namespace Microsoft.Actions.Actors
             return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default(CancellationToken))
+        public Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
             var requestId = Guid.NewGuid().ToString();
@@ -305,7 +305,7 @@ namespace Microsoft.Actions.Actors
             return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
-        public Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken))
+        public Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.Timers, actorType, actorId, timerName);
             var requestId = Guid.NewGuid().ToString();
@@ -435,11 +435,9 @@ namespace Microsoft.Actions.Actors
                     var contentStream = await response.Content.ReadAsStreamAsync();
                     if (contentStream.Length != 0)
                     {
-                        using (var streamReader = new StreamReader(contentStream))
-                        {
-                            var json = await streamReader.ReadToEndAsync();
-                            error = JsonConvert.DeserializeObject<ActionsError>(json);
-                        }
+                        using var streamReader = new StreamReader(contentStream);
+                        var json = await streamReader.ReadToEndAsync();
+                        error = JsonConvert.DeserializeObject<ActionsError>(json);
                     }
                 }
                 catch (Exception ex)

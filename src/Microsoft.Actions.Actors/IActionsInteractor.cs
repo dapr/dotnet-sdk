@@ -27,7 +27,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="jsonPayload">Serialized body.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default(CancellationToken));
+        Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Saves Actor state. This is temporary until the Actions runtime implements the Batch state update.
@@ -38,7 +38,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="data">State to be saved.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default(CancellationToken));
+        Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes Actor state. This is temporary until the Actions runtime implements the Batch state update.
@@ -48,7 +48,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="keyName">state name.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task RemoveStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
+        Task RemoveStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Saves state batch to Actions.
@@ -58,7 +58,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="data">Json data with state changes as per the actions spec for transaction state update.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default(CancellationToken));
+        Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Saves a state to Actions.
@@ -68,7 +68,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="keyName">Name of key to get value for.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default(CancellationToken));
+        Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes Actor method.
@@ -77,7 +77,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="remotingRequestRequestMessage">Actor Request Message.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default(CancellationToken));
+        Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Register a reminder.
@@ -88,7 +88,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="data">Json reminder data as per the actions spec.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default(CancellationToken));
+        Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Unregisters a reminder.
@@ -98,7 +98,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="reminderName">Name of reminder to unregister.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default(CancellationToken));
+        Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Registers a timer.
@@ -109,7 +109,7 @@ namespace Microsoft.Actions.Actors
         /// <param name="data">Json reminder data as per the actions spec.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default(CancellationToken));
+        Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Unegisters a timer.
@@ -119,6 +119,6 @@ namespace Microsoft.Actions.Actors
         /// <param name="timerName">Name of timer to register.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default(CancellationToken));
+        Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default);
     }
 }
