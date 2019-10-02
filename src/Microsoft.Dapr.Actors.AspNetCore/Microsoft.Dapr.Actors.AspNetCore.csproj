@@ -6,7 +6,7 @@
     <DocumentationFile>$(OutputPath)\$(AssemblyName).xml</DocumentationFile>
 
     <!-- Nuget package properties when packed using dotnet pack. -->
-    <NuspecFile>nuspec\Microsoft.Actions.Actors.AspNetCore.nuspec</NuspecFile>
+    <NuspecFile>nuspec\Microsoft.Dapr.Actors.AspNetCore.nuspec</NuspecFile>
     <NuspecProperties>version=$(NupkgVersion);Configuration=$(Configuration)</NuspecProperties>
     <!-- Disabling NU5128 Warning, https://docs.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5128 -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
