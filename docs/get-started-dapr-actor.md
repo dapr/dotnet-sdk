@@ -1,9 +1,9 @@
-# Getting started with Actions Actor
+# Getting started with Actors
 
 ## Prerequistes
 * [.Net Core SDK 2.2](https://dotnet.microsoft.com/download)
-* [Actions CLI](https://github.com/actionscore/cli)
-* [Actions DotNet SDK](https://github.com/actionscore/dotnet-sdk)
+* [Dapr CLI](https://github.com/dapr/cli)
+* [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
 
 ## Overview
 
@@ -30,7 +30,7 @@ Actor interface defines the actor contract that is shared by the actor implement
 
 Actor interface is defined with the below requirements:
 
-* Actor interface must inherit `Microsoft.Actions.Actors.IActor` interface
+* Actor interface must inherit `Microsoft.Dapr.Actors.IActor` interface
 * The return type of Actor method must be `Task` or `Task<object>`
 * Actor method can have one argument at a maximum
 
@@ -40,8 +40,8 @@ Actor interface is defined with the below requirements:
 # Create Actor Interfaces
 dotnet new classlib -o MyActor.Interfaces
 
-# Add Microsoft.Actions.Actors nuget package
-dotnet add package Microsoft.Actions.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
+# Add Microsoft.Dapr.Actors nuget package
+dotnet add package Microsoft.Dapr.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
 ```
 
 ### Implement IMyActor Interface
@@ -49,7 +49,7 @@ dotnet add package Microsoft.Actions.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
 Define IMyActor Interface and MyData data object.
 
 ```csharp
-using Microsoft.Actions.Actors;
+using Microsoft.Dapr.Actors;
 using System.Threading.Tasks;
 
 namespace MyActor.Interfaces
@@ -83,21 +83,21 @@ namespace MyActor.Interfaces
 
 ## STEP 2 - Create Actor Service
 
-Actions uses ASP.NET web service to host Actor service. This section will implement `IMyActor` actor interface and register Actor to Actions Runtime.
+Dapr uses ASP.NET web service to host Actor service. This section will implement `IMyActor` actor interface and register Actor to Dapr Runtime.
 
 ### Create project and add dependencies
 
 ```bash
-# Create ASP.Net Web service to host Actions actor
+# Create ASP.Net Web service to host Dapr actor
 dotnet new webapi -o MyActor
 
 cd MyActor
 
-# Add Microsoft.Actions.Actors nuget package
-dotnet add package Microsoft.Actions.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
+# Add Microsoft.Dapr.Actors nuget package
+dotnet add package Microsoft.Dapr.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
 
-# Add Microsoft.Actions.Actors.AspNetCore nuget package
-dotnet add package Microsoft.Actions.Actors.AspNetCore -v 0.3.0-preview01 -s ~/tmp/nugets/
+# Add Microsoft.Dapr.Actors.AspNetCore nuget package
+dotnet add package Microsoft.Dapr.Actors.AspNetCore -v 0.3.0-preview01 -s ~/tmp/nugets/
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -105,11 +105,11 @@ dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
 
 ### Add Actor implementation
 
-Implement IMyActor interface and derive from `Microsoft.Actions.Actors.Actor` class. Following example shows how to use Actor Reminders as well. For Actors to use Reminders, it must derive from IRemindable. If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder specific methods which are shown in the code below.
+Implement IMyActor interface and derive from `Microsoft.Dapr.Actors.Actor` class. Following example shows how to use Actor Reminders as well. For Actors to use Reminders, it must derive from IRemindable. If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder specific methods which are shown in the code below.
 
 ```csharp
-using Microsoft.Actions.Actors;
-using Microsoft.Actions.Actors.Runtime;
+using Microsoft.Dapr.Actors;
+using Microsoft.Dapr.Actors.Runtime;
 using MyActor.Interfaces;
 using System;
 using System.Threading.Tasks;
@@ -121,8 +121,8 @@ namespace MyActorService
         /// <summary>
         /// Initializes a new instance of MyActor
         /// </summary>
-        /// <param name="actorService">The Microsoft.Actions.Actors.Runtime.ActorService that will host this actor instance.</param>
-        /// <param name="actorId">The Microsoft.Actions.Actors.ActorId for this actor instance.</param>
+        /// <param name="actorService">The Microsoft.Dapr.Actors.Runtime.ActorService that will host this actor instance.</param>
+        /// <param name="actorId">The Microsoft.Dapr.Actors.ActorId for this actor instance.</param>
         public MyActor(ActorService actorService, ActorId actorId)
             : base(actorService, actorId)
         {
@@ -239,9 +239,9 @@ namespace MyActorService
 }
 ```
 
-### Register Actor to Actions Runtime
+### Register Actor to Dapr Runtime
 
-Register `MyActor` actor type to actor runtime and set the localhost port (`https://localhost:3000`) which Actions Runtime can call Actor through.
+Register `MyActor` actor type to actor runtime and set the localhost port (`https://localhost:3000`) which Dapr Runtime can call Actor through.
 
 ```csharp
         private const int AppChannelHttpPort = 3000;
@@ -249,7 +249,7 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseActionsActors(actorRuntime =>
+                .UseDaprActors(actorRuntime =>
                 {
                     // Register MyActor actor type
                     actorRuntime.RegisterActor<MyActor>();
@@ -260,7 +260,7 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
 
 ## STEP 3 - Add a client
 
-Create a simple console app to call the actor service. Actions SDK provides Actor Proxy client to invoke actor methods defined in Actor Interface.
+Create a simple console app to call the actor service. Dapr SDK provides Actor Proxy client to invoke actor methods defined in Actor Interface.
 
 ### Create project and add dependencies
 
@@ -270,8 +270,8 @@ dotnet new console -o MyActorClient
 
 cd MyActorClient
 
-# Add Microsoft.Actions.Actors nuget package
-dotnet add package Microsoft.Actions.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
+# Add Microsoft.Dapr.Actors nuget package
+dotnet add package Microsoft.Dapr.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -284,8 +284,8 @@ We recommend to use the local proxy to actor instance because `ActorProxy.Create
 ```csharp
 namespace MyActorClient
 {
-    using Microsoft.Actions.Actors;
-    using Microsoft.Actions.Actors.Client;
+    using Microsoft.Dapr.Actors;
+    using Microsoft.Dapr.Actors.Client;
     using MyActor.Interfaces;
     using System;
     using System.Threading.Tasks;
@@ -322,8 +322,8 @@ When making non-remoting calls Actor method arguments and return types are seria
 ```csharp
 namespace MyActorClient
 {
-    using Microsoft.Actions.Actors;
-    using Microsoft.Actions.Actors.Client;
+    using Microsoft.Dapr.Actors;
+    using Microsoft.Dapr.Actors.Client;
     using MyActor.Interfaces;
     using System;
     using System.Threading.Tasks;
@@ -353,21 +353,21 @@ namespace MyActorClient
 
 ## Run Actor
 
-In order to validate and debug actor service and client, we need to run actor services via actions cli first.
+In order to validate and debug actor service and client, we need to run actor services via dapr cli first.
 
-1. Run Actions Runtime via Actions cli
+1. Run Dapr Runtime via Dapr cli
 
    ```bash
-   $ actions run --app-id myactions --app-port 3000 dotnet MyActorService.dll
+   $ dapr run --app-id myapp --app-port 3000 dotnet MyActorService.dll
    ```
 
-   After executing MyActorService via actions runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
+   After executing MyActorService via dapr runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
 
    ```bash
-    INFO[0000] starting Actions Runtime -- version  -- commit
+    INFO[0000] starting Dapr Runtime -- version  -- commit
     INFO[0000] log level set to: info
     INFO[0000] standalone mode configured
-    INFO[0000] action id: myactions
+    INFO[0000] action id: myapp
     INFO[0000] loaded component statestore (state.redis)
     INFO[0000] application protocol: http. waiting on port 3000
     INFO[0000] application discovered on port 3000
@@ -378,7 +378,7 @@ In order to validate and debug actor service and client, we need to run actor se
     INFO[0000] actors: starting connection attempt to placement service at localhost:50005
     INFO[0000] http server is running on port 3500
     INFO[0000] gRPC server is running on port 50001
-    INFO[0000] actions initialized. Status: Running. Init Elapsed 19.699438ms
+    INFO[0000] dapr initialized. Status: Running. Init Elapsed 19.699438ms
     INFO[0000] actors: established connection to placement service at localhost:50005
     INFO[0000] actors: placement order received: lock
     INFO[0000] actors: placement order received: update
@@ -391,7 +391,7 @@ In order to validate and debug actor service and client, we need to run actor se
 
    MyActorClient will console out if it calls actor hosted in MyActorService successfully.
 
-   > If you specify the different actions runtime http port (default port: 3500), you need to set ACTIONS_PORT environment variable before running the client.
+   > If you specify the different dapr runtime http port (default port: 3500), you need to set DAPR_PORT environment variable before running the client.
 
    ```bash
    Success
