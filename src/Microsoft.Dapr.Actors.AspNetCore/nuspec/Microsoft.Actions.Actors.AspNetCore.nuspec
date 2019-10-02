@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
+  <metadata>
+    <id>Microsoft.Dapr.Actors.AspNetCore</id>
+    <version>$version$</version>
+    <title>Microsoft.Dapr.Actors.AspNetCore</title>
+    <authors>Microsoft</authors>
+    <owners>Microsoft,Actions,Actors</owners>
+    <license type="expression">MIT</license>
+    <projectUrl>http://aka.ms/actions</projectUrl>
+    <icon>images\nuget_icon_ms.png</icon>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <description>This package contains the reference assemblies for developing Actor services using dapr and AspNetCore.</description>
+    <summary>This package contains the reference assemblies for developing Actor services using dapr.</summary>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
+    <tags>Microsoft Azure Dapr Actors</tags>
+    <dependencies>
+      <dependency id="Microsoft.Dapr.Actors" version="[$version$]" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\..\..\properties\nuget_icon_ms.png" target="images\" />
+    <file src="..\..\..\bin\$Configuration$\Microsoft.Actions.Actors.AspNetCore.dll" target="lib\netcoreapp3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Microsoft.Actions.Actors.AspNetCore.xml" target="lib\netcoreapp3.0" exclude="" />
+  </files>
+</package>
