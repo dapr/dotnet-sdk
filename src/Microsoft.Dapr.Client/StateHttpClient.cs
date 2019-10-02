@@ -23,22 +23,13 @@ namespace Microsoft.Dapr
     {
         private readonly HttpClient client;
         private readonly JsonSerializerOptions serializerOptions;
-        
-        /// <summary>
-        /// Initializes a new instance of <see cref="StateHttpClient" />.
-        /// </summary>
-        /// <param name="client">The <see cref="HttpClient" />.</param>
-        public StateHttpClient(HttpClient client)
-            : this(client, null)
-        {
-        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="StateHttpClient" />.
         /// </summary>
         /// <param name="client">The <see cref="HttpClient" />.</param>
         /// <param name="serializerOptions">The <see cref="JsonSerializerOptions" />.</param>
-        public StateHttpClient(HttpClient client, JsonSerializerOptions serializerOptions)
+        public StateHttpClient(HttpClient client, JsonSerializerOptions serializerOptions = null)
         {
             if (client is null)
             {
