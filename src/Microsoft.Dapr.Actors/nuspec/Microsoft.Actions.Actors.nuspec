@@ -20,7 +20,7 @@
   </metadata>
   <files>
     <file src="..\..\..\properties\nuget_icon_ms.png" target="images\" />
-    <file src="..\..\..\bin\$Configuration$\Microsoft.Actions.Actors.dll" target="lib\netcoreapp3.0" exclude="" />
-    <file src="..\..\..\bin\$Configuration$\Microsoft.Actions.Actors.xml" target="lib\netcoreapp3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Microsoft.Dapr.Actors.dll" target="lib\netcoreapp3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Microsoft.Dapr.Actors.xml" target="lib\netcoreapp3.0" exclude="" />
   </files>
 </package>

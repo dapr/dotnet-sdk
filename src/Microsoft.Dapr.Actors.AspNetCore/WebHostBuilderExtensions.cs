@@ -23,7 +23,7 @@ namespace Microsoft.Dapr.Actors.AspNetCore
         /// <param name="hostBuilder">The Microsoft.AspNetCore.Hosting.IWebHostBuilder to configure.</param>
         /// <param name="configureActorRuntime">Adds a delegate to configure Actor runtime..</param>
         /// <returns>The Microsoft.AspNetCore.Hosting.IWebHostBuilder.</returns>
-        public static IWebHostBuilder UseDaprActors(this IWebHostBuilder hostBuilder, Action<ActorRuntime> configureActorRuntime)
+        public static IWebHostBuilder UseActors(this IWebHostBuilder hostBuilder, Action<ActorRuntime> configureActorRuntime)
         {
             if (hostBuilder == null)
             {

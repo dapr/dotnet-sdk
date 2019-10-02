@@ -249,7 +249,7 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseDaprActors(actorRuntime =>
+                .UseActors(actorRuntime =>
                 {
                     // Register MyActor actor type
                     actorRuntime.RegisterActor<MyActor>();
