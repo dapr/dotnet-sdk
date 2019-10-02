@@ -16,32 +16,32 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class DaprServiceCollectionExtensions
     {
         /// <summary>
-        /// Adds Dapr services to the provided <see cref="IServiceCollection" />.
+        /// Adds Dapr client services to the provided <see cref="IServiceCollection" />. This does not include integration
+        /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration.
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection" />.</param>
-        public static void AddDapr(this IServiceCollection services)
+        public static void AddDaprClient(this IServiceCollection services)
         {
             if (services is null)
             {
                 throw new ArgumentNullException(nameof(services));
             }
 
-            // This pattern prevents registering services multiple times in the case AddDapr is called
+            // This pattern prevents registering services multiple times in the case AddDaprClient is called
             // by non-user-code.
-            if (services.Contains(ServiceDescriptor.Singleton<DaprMarkerService, DaprMarkerService>()))
+            if (services.Contains(ServiceDescriptor.Singleton<DaprClientMarkerService, DaprClientMarkerService>()))
             {
                 return;
             }
 
-            services.AddSingleton<DaprMarkerService>();
-            services.AddSingleton<IApplicationModelProvider, StateEntryApplicationModelProvider>();
-            services.Configure<MvcOptions>(options =>
-            {
-                options.ModelBinderProviders.Insert(0, new StateEntryModelBinderProvider());
-            });
+            services.AddSingleton<DaprClientMarkerService>();
+
+            // StateHttpClient can be used with or without JsonSerializerOptions registered
+            // in DI. If the user registers JsonSerializerOptions, it will be picked up by the client automatically.
+            services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
         }
 
-        private class DaprMarkerService
+        private class DaprClientMarkerService
         {
         }
     }

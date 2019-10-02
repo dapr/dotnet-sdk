@@ -23,11 +23,7 @@ namespace Microsoft.Dapr.AspNetCore.IntegrationTest.App
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
-            services.AddDapr();
-
-            // Will be replaced by integration tests
-            services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
+            services.AddControllers().AddDapr();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

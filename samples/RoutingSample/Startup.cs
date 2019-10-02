@@ -21,7 +21,7 @@ namespace RoutingSample
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
+            services.AddDaprClient();
 
             services.AddSingleton(new JsonSerializerOptions()
             {

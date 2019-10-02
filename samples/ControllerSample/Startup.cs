@@ -19,10 +19,7 @@ namespace ControllerSample
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
-            services.AddDapr();
-
-            services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
+            services.AddControllers().AddDapr();
 
             services.AddSingleton(new JsonSerializerOptions()
             {
