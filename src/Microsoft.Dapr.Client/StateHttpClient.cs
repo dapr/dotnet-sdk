@@ -55,8 +55,8 @@ namespace Microsoft.Dapr
         /// <param name="key">The state key.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
-        /// <returns>A <see cref="Task" /> that will return the value when the operation has completed.</returns>
-        public async override Task<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default)
+        /// <returns>A <see cref="ValueTask" /> that will return the value when the operation has completed.</returns>
+        public async override ValueTask<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key))
             {
@@ -102,8 +102,8 @@ namespace Microsoft.Dapr
         /// <param name="value">The value to save.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
-        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public async override Task SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default)
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        public async override ValueTask SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(key))
             {

@@ -13,19 +13,19 @@ namespace Microsoft.Dapr
     {
         public Dictionary<string, object> State { get; } = new Dictionary<string, object>();
 
-        public override Task<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default)
+        public override ValueTask<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default)
         {
             if (State.TryGetValue(key, out var obj))
             {
-                return Task.FromResult((TValue)obj);
+                return new ValueTask<TValue>((TValue)obj);
             }
             else
             {
-                return Task.FromResult<TValue>(default);
+                return new ValueTask<TValue>(default(TValue));
             }
         }
 
-        public override Task SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default)
+        public override ValueTask SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default)
         {
             if (value == null)
             {
@@ -36,7 +36,7 @@ namespace Microsoft.Dapr
                 State[key] = value;
             }
 
-            return Task.CompletedTask;
+            return new ValueTask(Task.CompletedTask);
         }
     }
 }

@@ -60,7 +60,7 @@ namespace Microsoft.Dapr
         /// </summary>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public Task SaveAsync(CancellationToken cancellationToken = default)
+        public ValueTask SaveAsync(CancellationToken cancellationToken = default)
         {
             return this.client.SaveStateAsync(this.Key, this.Value, cancellationToken);
         }
