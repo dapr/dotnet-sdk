@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.645
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29318.209
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Actions.Actors", "src\Microsoft.Actions.Actors\Microsoft.Actions.Actors.csproj", "{C2DB4B64-B7C3-4FED-8753-C040F677C69A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Actors", "src\Microsoft.Dapr.Actors\Microsoft.Dapr.Actors.csproj", "{C2DB4B64-B7C3-4FED-8753-C040F677C69A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Actions.Actors.Test", "test\Microsoft.Actions.Actors.Test\Microsoft.Actions.Actors.Test.csproj", "{41BF4392-54BD-4FE7-A3EB-CD045F88CA9A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Actors.Test", "test\Microsoft.Dapr.Actors.Test\Microsoft.Dapr.Actors.Test.csproj", "{41BF4392-54BD-4FE7-A3EB-CD045F88CA9A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Actions.Actors.AspNetCore", "src\Microsoft.Actions.Actors.AspNetCore\Microsoft.Actions.Actors.AspNetCore.csproj", "{B9C12532-0969-4DAC-A2F8-CA9208D7A901}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Actors.AspNetCore", "src\Microsoft.Dapr.Actors.AspNetCore\Microsoft.Dapr.Actors.AspNetCore.csproj", "{B9C12532-0969-4DAC-A2F8-CA9208D7A901}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

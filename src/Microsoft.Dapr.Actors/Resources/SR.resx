@@ -1,0 +1,231 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ActorStateAlreadyExists" xml:space="preserve">
+    <value>The actor state name '{0}' already exist.</value>
+  </data>
+  <data name="ErrorClientCallbackChannelNotFound" xml:space="preserve">
+    <value>CallBack Channel Not Found for this ClientId  : '{0}'</value>
+  </data>
+  <data name="ErrorDeserializationFailure" xml:space="preserve">
+    <value>Failed to deserialize and get remote exception  {0}</value>
+  </data>
+  <data name="ErrorEventInterfaceMustBeIActorEvents" xml:space="preserve">
+    <value>The type '{0} is not an actor events interface. The actor event interface must only derive from '{1}'.</value>
+  </data>
+  <data name="ErrorExceptionSerializationFailed1" xml:space="preserve">
+    <value>The exception {0} was unhandled on the service and could not be serialized for transferring to the client.</value>
+  </data>
+  <data name="ErrorExceptionSerializationFailed2" xml:space="preserve">
+    <value>Detailed Remote Exception Information: {0}</value>
+  </data>
+  <data name="ErrorHeaderAlreadyExists" xml:space="preserve">
+    <value>Header with name '{0}' already exists</value>
+  </data>
+  <data name="ErrorInterfaceNotImplemented" xml:space="preserve">
+    <value>Interface id '{0}' is not implemented by object '{1}'</value>
+  </data>
+  <data name="ErrorInvalidAddress" xml:space="preserve">
+    <value>Client is trying to connect to invalid address {0}.</value>
+  </data>
+  <data name="ErrorMessageHTTP404" xml:space="preserve">
+    <value>The requested resource/content/path does not exist on the server.</value>
+  </data>
+  <data name="ErrorMethodNotImplemented" xml:space="preserve">
+    <value>The object of type '{0}' does support the method '{1}'</value>
+  </data>
+  <data name="ErrorMethodNotSupportedInRemotingV1" xml:space="preserve">
+    <value>Method '{0}' of interface '{1}' is not supported in remoting V1.</value>
+  </data>
+  <data name="ErrorMissingMethod" xml:space="preserve">
+    <value>Method Id '{0}' for interface Id '{1}' not found in service implementation. If a new method is added to interface and client &amp; service are being upgraded at the same time, its possible that client got upgraded before the service. If a method is removed from the interface and client &amp; service are being upgraded at the same time, its possible that service got upgraded before the client. Addition or removal of methods to an interface should be performed as a phased upgrade.</value>
+  </data>
+  <data name="ErrorNamedActorStateNotFound" xml:space="preserve">
+    <value>Actor State with name {0} was not found.</value>
+  </data>
+  <data name="ErrorNoServiceInterfaceFound" xml:space="preserve">
+    <value>The service type '{0}' does not implement any service interfaces or one of the interfaces implemented is not a service interface. All interfaces(including its parent interface) implemented by service type must be service interface. A service interface is the one that ultimately derives from '{1}' type.</value>
+  </data>
+  <data name="ErrorNotAnActorInterface_DerivationCheck1" xml:space="preserve">
+    <value>The type '{0}' is not an actor interface as it does not derive from the interface '{1}'.</value>
+  </data>
+  <data name="ErrorNotAnActorInterface_DerivationCheck2" xml:space="preserve">
+    <value>The type '{0}' is not an actor interface as it derive from a non actor interface '{1}'. All actor interfaces must derive from '{2}'.</value>
+  </data>
+  <data name="ErrorNotAnActorInterface_InterfaceCheck" xml:space="preserve">
+    <value>The type '{0}' is not an Actor interface as it is not an interface.</value>
+  </data>
+  <data name="ErrorNotAServiceInterface_DerivationCheck1" xml:space="preserve">
+    <value>The type '{0}' is not an service interface as it does not derive from the interface '{1}'.</value>
+  </data>
+  <data name="ErrorNotAServiceInterface_DerivationCheck2" xml:space="preserve">
+    <value>The type '{0}' is not an service interface as it derive from a non service interface '{1}'. All service interfaces must derive from '{2}'.</value>
+  </data>
+  <data name="ErrorNotAServiceInterface_InterfaceCheck" xml:space="preserve">
+    <value>The type '{0}' is not a service interface as it is not an interface. </value>
+  </data>
+  <data name="ErrorRemotedInterfaceIsGeneric" xml:space="preserve">
+    <value>The  {0} interface '{1}' is using generics. Generic interfaces cannot be remoted.</value>
+  </data>
+  <data name="ErrorRemotedMethodCancellationTokenOutOfOrder" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' has '{4}' parameter '{3}', and it is not the last parameter. If a method of the {0} interface has parameter of type '{4}' it must be the last parameter.</value>
+  </data>
+  <data name="ErrorRemotedMethodDoesNotReturnTask" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' does not return Task or Task&lt;&gt;. The {0} interface methods must be async and must return either Task or Task&lt;&gt;.</value>
+  </data>
+  <data name="ErrorRemotedMethodDoesNotReturnVoid" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' returns '{3}'. The {0} interface methods must have a return of type '{4}'.</value>
+  </data>
+  <data name="ErrorRemotedMethodHasGenerics" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' is using generics. The {0} interface methods cannot use generics.</value>
+  </data>
+  <data name="ErrorRemotedMethodHasOutRefOptionalParameter" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' has out/ref/optional parameter '{3}'. The {0} interface methods must not have out, ref or optional parameters.</value>
+  </data>
+  <data name="ErrorRemotedMethodHasVaArgParameter" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' has variable length parameter '{3}'. The {0} interface methods must not have variable length parameters.</value>
+  </data>
+  <data name="ErrorRemotedMethodHasVaArgs" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' is using a variable argument list. The {0} interface methods cannot have a variable argument list.</value>
+  </data>
+  <data name="ErrorRemotedMethodsIsOverloaded" xml:space="preserve">
+    <value>Method '{1}' of {0} interface '{2}' is overloaded. The {0} interface methods cannot be overloaded.</value>
+  </data>
+  <data name="Error_InvalidOperation" xml:space="preserve">
+    <value>Invalid Client for remoting.</value>
+  </data>
+  <data name="InvalidActorKind" xml:space="preserve">
+    <value>The method '{0}' is not valid for '{1}' ActorId.</value>
+  </data>
+  <data name="ServerErrorNoMeaningFulResponse" xml:space="preserve">
+    <value>Server returned error while processing the request, but did not provide a meaningful error response. Response Error Code {0}</value>
+  </data>
+  <data name="ErrorMethodDispatcherNotFound" xml:space="preserve">
+    <value>No MethodDispatcher is found for interface id '{0}'</value>
+  </data>
+  <data name="ErrorNoActorInterfaceFound" xml:space="preserve">
+    <value>The actor type '{0}' does not implement any actor interfaces or one of the interfaces implemented is not an actor interface. All interfaces(including its parent interface) implemented by actor type must be actor interface. An actor interface is the one that ultimately derives from '{1}' type.</value>
+  </data>
+  <data name="ErrorNotAnActor" xml:space="preserve">
+    <value>The type '{0}' is not an Actor. An actor type must derive from '{1}'.</value>
+  </data>
+  <data name="TimerArgumentOutOfRange" xml:space="preserve">
+    <value>TimeSpan TotalMilliseconds specified value must be between {0} and {1} </value>
+  </data>
+</root>

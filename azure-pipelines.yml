@@ -4,6 +4,9 @@ trigger:
   branches:
     include:
     - master
+  tags:
+    include:
+    - v*
 
 stages:
 - stage: Build
@@ -19,6 +22,12 @@ stages:
         release:
           configuration: release
     steps:
+      - task: UseDotNet@2
+        displayName: 'Install dotnet SDK 3.0'
+        inputs:
+          packageType: sdk
+          version: 3.0.100
+          installationPath: $(Agent.ToolsDirectory)/dotnet
       - task: DotNetCoreCLI@2
         displayName: 'Build solution - $(Configuration)'
         inputs:
@@ -33,11 +42,11 @@ stages:
           projects: 'code.sln'
       - task: EsrpCodeSigning@1
         displayName: 'ESRP Authenticode CodeSign'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: 'bin/$(Configuration)'
-          Pattern: 'Microsoft.Actions*.dll'
+          Pattern: 'Microsoft.Dapr*.dll'
           UseMinimatch: true
           signConfigType: 'inlineSignParams'
           inlineOperation: |
@@ -81,28 +90,28 @@ stages:
           MaxConcurrency: '50'
           MaxRetryAttempts: '5'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Actions.Actors nuget - $(Configuration)'
+        displayName: 'Package Microsoft.Dapr.Actors nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Actions.Actors/Microsoft.Actions.Actors.csproj'
+          packagesToPack: 'src/Microsoft.Dapr.Actors/Microsoft.Dapr.Actors.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Actions.Actors.AspNetCore nuget - $(Configuration)'
+        displayName: 'Package Microsoft.Dapr.Actors.AspNetCore nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Actions.Actors.AspNetCore/Microsoft.Actions.Actors.AspNetCore.csproj'
+          packagesToPack: 'src/Microsoft.Dapr.Actors.AspNetCore/Microsoft.Dapr.Actors.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1
         displayName: 'ESRP CodeSign - Nuget Package'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), contains(variables['Build.SourceBranch'], 'refs/heads/release')))
+        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: '$(Build.ArtifactStagingDirectory)'
-          Pattern: 'Microsoft.Actions*.nupkg'
+          Pattern: 'Microsoft.Dapr*.nupkg'
           UseMinimatch: true
           signConfigType: 'inlineSignParams'
           inlineOperation: |
@@ -148,7 +157,7 @@ stages:
           publishLocation: 'Container'
       - task: CmdLine@2
         displayName: 'Add release tag for release branch'
-        condition: and(eq(variables['Configuration'], 'release'), contains(variables['Build.SourceBranch'], 'refs/heads/release-'))
+        condition: and(eq(variables['Configuration'], 'release'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
         inputs:
           script: 'echo "##vso[build.addbuildtag]release'
           workingDirectory: '$(Build.ArtifactStagingDirectory)'
