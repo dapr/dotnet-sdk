@@ -24,14 +24,6 @@ namespace Microsoft.Dapr.Actors.AspNetCore
             });
         }
 
-        public static void AddGetSupportedActorTypesRoute(this IRouteBuilder routeBuilder)
-        {
-            routeBuilder.MapGet("actors", async context =>
-            {
-                await WriteSupportedActorTypesAsJsonAsync(context.Response.BodyWriter);
-            });
-        }
-
         public static void AddActorActivationRoute(this IRouteBuilder routeBuilder)
         {
             routeBuilder.MapPost("actors/{actorTypeName}/{actorId}", async context =>
