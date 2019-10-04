@@ -40,6 +40,12 @@ stages:
           command: 'test'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
+      - task: UseDotNet@2
+        displayName: 'Install dotnet SDK 2.0'
+        inputs:
+          packageType: sdk
+          version: 2.2.x
+          installationPath: $(Agent.ToolsDirectory)/dotnet
       - task: EsrpCodeSigning@1
         displayName: 'ESRP Authenticode CodeSign'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
