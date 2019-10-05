@@ -40,6 +40,13 @@ stages:
           command: 'test'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
+        # ESRP Code Signing does not work with dotnet core 3.0
+      - task: UseDotNet@2
+        displayName: 'Install dotnet SDK 2.0 for ESRP'
+        inputs:
+          packageType: sdk
+          version: 2.0.x
+          installationPath: $(Agent.ToolsDirectory)/dotnet
       - task: EsrpCodeSigning@1
         displayName: 'ESRP Authenticode CodeSign'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
