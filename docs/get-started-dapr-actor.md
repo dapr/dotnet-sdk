@@ -1,7 +1,7 @@
 # Getting started with Actors
 
 ## Prerequistes
-* [.Net Core SDK 2.2](https://dotnet.microsoft.com/download)
+* [.Net Core SDK 3.3](https://dotnet.microsoft.com/download)
 * [Dapr CLI](https://github.com/dapr/cli)
 * [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
 
@@ -55,11 +55,9 @@ using System.Threading.Tasks;
 namespace MyActor.Interfaces
 {
     public interface IMyActor : IActor
-    {
-        // Return Type must be `Task` or Task<T>.
-        // Arguments and return type must be Datacontract serializable when making actor method calls using Remoting.
-        Task<string> SetMyDataAsync(MyData data);
-        Task<MyData> GetMyDataAsync();
+    {       
+        Task<string> SetDataAsync(MyData data);
+        Task<MyData> GetDataAsync();
         Task RegisterReminder();
         Task UnregisterReminder();
         Task RegisterTimer();
@@ -153,7 +151,7 @@ namespace MyActorService
         /// Set MyData into actor's private state store
         /// </summary>
         /// <param name="data">the user-defined MyData which will be stored into state store as "my_data" state</param>
-        public async Task<string> SetMyDataAsync(MyData data)
+        public async Task<string> SetDataAsync(MyData data)
         {
             // Data is saved to configured state store implicitly after each method execution by Actor's runtime.
             // Data can also be saved explicitly by calling this.StateManager.SaveStateAsync();
@@ -169,7 +167,7 @@ namespace MyActorService
         /// Get MyData from actor's private state store
         /// </summary>
         /// <return>the user-defined MyData which is stored into state store as "my_data" state</return>
-        public Task<MyData> GetMyDataAsync()
+        public Task<MyData> GetDataAsync()
         {
             // Gets state from the state store.
             return this.StateManager.GetStateAsync<MyData>("my_data");
@@ -299,14 +297,14 @@ namespace MyActorClient
             // Create the local proxy by using the same interface that the service implements
             // By using this proxy, you can call strongly typed methods on the interface using Remoting.
             var proxy = ActorProxy.Create<IMyActor>(actorID, actorType);
-            var response = await proxy.SetMyDataAsync(new MyData()
+            var response = await proxy.SetDataAsync(new MyData()
             {
                 PropertyA = "ValueA",
                 PropertyB = "ValueB",
             });
             Console.WriteLine(response);
 
-            var savedData = await proxy.GetMyDataAsync();
+            var savedData = await proxy.GetDataAsync();
             Console.WriteLine(savedData);
         }
     ...
