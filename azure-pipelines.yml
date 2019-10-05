@@ -40,8 +40,9 @@ stages:
           command: 'test'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
+        # ESRP Code Signing does not work with dotnet core 3.0
       - task: UseDotNet@2
-        displayName: 'Install dotnet SDK 2.0'
+        displayName: 'Install dotnet SDK 2.0 for ESRP'
         inputs:
           packageType: sdk
           version: 2.0.x
