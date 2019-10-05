@@ -11,25 +11,25 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Actors.AspNe
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{27C5D71D-0721-4221-9286-B94AB07B58CF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Dapr.Client", "src\Microsoft.Dapr.Client\Microsoft.Dapr.Client.csproj", "{62E41317-ED5D-4AA4-B129-C9E56C27354C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Client", "src\Microsoft.Dapr.Client\Microsoft.Dapr.Client.csproj", "{62E41317-ED5D-4AA4-B129-C9E56C27354C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Dapr.AspNetCore", "src\Microsoft.Dapr.AspNetCore\Microsoft.Dapr.AspNetCore.csproj", "{08D602F6-7C11-4653-B70B-B56333BF6FD2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore", "src\Microsoft.Dapr.AspNetCore\Microsoft.Dapr.AspNetCore.csproj", "{08D602F6-7C11-4653-B70B-B56333BF6FD2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{B2DB41EE-45F5-447B-95E8-38E1E8B70C4E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ControllerSample", "samples\ControllerSample\ControllerSample.csproj", "{2B015C86-32FB-4178-8F8A-26749B6FCE11}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ControllerSample", "samples\ControllerSample\ControllerSample.csproj", "{2B015C86-32FB-4178-8F8A-26749B6FCE11}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoutingSample", "samples\RoutingSample\RoutingSample.csproj", "{1FBDE4EF-D8B0-4BFE-B393-3CA4FE1944A2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoutingSample", "samples\RoutingSample\RoutingSample.csproj", "{1FBDE4EF-D8B0-4BFE-B393-3CA4FE1944A2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{DD020B34-460F-455F-8D17-CF4A949F100B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Dapr.Client.Test", "test\Microsoft.Dapr.Client.Test\Microsoft.Dapr.Client.Test.csproj", "{383609C1-F43F-49EB-85E4-1964EE7F0F14}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Client.Test", "test\Microsoft.Dapr.Client.Test\Microsoft.Dapr.Client.Test.csproj", "{383609C1-F43F-49EB-85E4-1964EE7F0F14}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Dapr.AspNetCore.Test", "test\Microsoft.Dapr.AspNetCore.Test\Microsoft.Dapr.AspNetCore.Test.csproj", "{B314AD5E-10AC-418A-B021-D4206BF37ACF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore.Test", "test\Microsoft.Dapr.AspNetCore.Test\Microsoft.Dapr.AspNetCore.Test.csproj", "{B314AD5E-10AC-418A-B021-D4206BF37ACF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Dapr.AspNetCore.IntegrationTest", "test\Microsoft.Dapr.AspNetCore.IntegrationTest\Microsoft.Dapr.AspNetCore.IntegrationTest.csproj", "{0CD1912D-5E27-4A2A-A998-164792E0D006}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore.IntegrationTest", "test\Microsoft.Dapr.AspNetCore.IntegrationTest\Microsoft.Dapr.AspNetCore.IntegrationTest.csproj", "{0CD1912D-5E27-4A2A-A998-164792E0D006}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Dapr.AspNetCore.IntegrationTest.App", "test\Microsoft.Dapr.AspNetCore.IntegrationTest.App\Microsoft.Dapr.AspNetCore.IntegrationTest.App.csproj", "{342783B5-F75B-4752-A3E2-B8CB7D09C080}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore.IntegrationTest.App", "test\Microsoft.Dapr.AspNetCore.IntegrationTest.App\Microsoft.Dapr.AspNetCore.IntegrationTest.App.csproj", "{342783B5-F75B-4752-A3E2-B8CB7D09C080}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -85,10 +85,10 @@ Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
-	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{C2DB4B64-B7C3-4FED-8753-C040F677C69A} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{41BF4392-54BD-4FE7-A3EB-CD045F88CA9A} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+		{B9C12532-0969-4DAC-A2F8-CA9208D7A901} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{62E41317-ED5D-4AA4-B129-C9E56C27354C} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{08D602F6-7C11-4653-B70B-B56333BF6FD2} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{2B015C86-32FB-4178-8F8A-26749B6FCE11} = {B2DB41EE-45F5-447B-95E8-38E1E8B70C4E}
@@ -97,5 +97,8 @@ Global
 		{B314AD5E-10AC-418A-B021-D4206BF37ACF} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{0CD1912D-5E27-4A2A-A998-164792E0D006} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{342783B5-F75B-4752-A3E2-B8CB7D09C080} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
 	EndGlobalSection
 EndGlobal

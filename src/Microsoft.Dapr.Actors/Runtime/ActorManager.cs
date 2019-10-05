@@ -106,7 +106,6 @@ namespace Microsoft.Dapr.Actors.Runtime
         internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
-            var serializer = new JsonSerializer();
 
             // Create a Func to be invoked by common method.
             var methodInfo = this.actorMethodInfoMap.LookupActorMethodInfo(actorMethodName);
@@ -127,8 +126,8 @@ namespace Microsoft.Dapr.Actors.Runtime
                     var deserializedType = default(object);
                     using (var streamReader = new StreamReader(requestBodyStream))
                     {
-                        using var reader = new JsonTextReader(streamReader);
-                        deserializedType = serializer.Deserialize(reader, type);
+                        var json = await streamReader.ReadToEndAsync();
+                        deserializedType = JsonConvert.DeserializeObject(json, type);
                     }
 
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
