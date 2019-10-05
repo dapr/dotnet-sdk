@@ -44,7 +44,7 @@ stages:
         displayName: 'Install dotnet SDK 2.0'
         inputs:
           packageType: sdk
-          version: 2.2.x
+          version: 2.0.x
           installationPath: $(Agent.ToolsDirectory)/dotnet
       - task: EsrpCodeSigning@1
         displayName: 'ESRP Authenticode CodeSign'
