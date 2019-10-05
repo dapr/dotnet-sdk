@@ -41,7 +41,7 @@ Actor interface is defined with the below requirements:
 dotnet new classlib -o MyActor.Interfaces
 
 # Add Microsoft.Dapr.Actors nuget package
-dotnet add package Microsoft.Dapr.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
+dotnet add package Microsoft.Dapr.Actors
 ```
 
 ### Implement IMyActor Interface
@@ -92,10 +92,10 @@ dotnet new webapi -o MyActor
 cd MyActor
 
 # Add Microsoft.Dapr.Actors nuget package
-dotnet add package Microsoft.Dapr.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
+dotnet add package Microsoft.Dapr.Actors
 
 # Add Microsoft.Dapr.Actors.AspNetCore nuget package
-dotnet add package Microsoft.Dapr.Actors.AspNetCore -v 0.3.0-preview01 -s ~/tmp/nugets/
+dotnet add package Microsoft.Dapr.Actors.AspNetCore
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -269,7 +269,7 @@ dotnet new console -o MyActorClient
 cd MyActorClient
 
 # Add Microsoft.Dapr.Actors nuget package
-dotnet add package Microsoft.Dapr.Actors -v 0.3.0-preview01 -s ~/tmp/nugets/
+dotnet add package Microsoft.Dapr.Actors
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
