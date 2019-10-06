@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Builder
     public static class DaprEndpointRouteBuilderExtensions
     {
         /// <summary>
-        /// Maps an endpoint that will respond to requests to <c>/actions/subscribe</c> from the
+        /// Maps an endpoint that will respond to requests to <c>/dapr/subscribe</c> from the
         /// Dapr runtime.
         /// </summary>
         /// <param name="endpoints">The <see cref="IEndpointRouteBuilder" />.</param>
@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Builder
                 throw new System.ArgumentNullException(nameof(endpoints));
             }
 
-            return endpoints.MapGet("actions/subscribe", async context =>
+            return endpoints.MapGet("dapr/subscribe", async context =>
             {
                 var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
                 var entries = dataSource.Endpoints
