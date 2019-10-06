@@ -48,7 +48,7 @@ curl -X POST http://localhost:5000/withdraw \
 
  ---
 
-**Deposit Money**
+**Get Balance**
 
 ```sh
 curl http://localhost:5000/17
