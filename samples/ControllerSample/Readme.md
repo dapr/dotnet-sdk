@@ -13,7 +13,7 @@ The application also registers for pub-sub with the `deposit` and `withdraw` top
 
  To run the sample locally run this comment in this directory:
  ```sh
- actions run --app-id routing --app-port 5000 dotnet run
+ dapr run --app-id routing --app-port 5000 dotnet run
  ```
 
  The application will listen on port 5000 for HTTP.
@@ -63,7 +63,7 @@ curl http://localhost:5000/17
  **Withdraw Money (pubsub)**
 
 ```sh
-actions publish -t withdraw -p '{"id": "17", "amount": 15 }'
+dapr publish -t withdraw -p '{"id": "17", "amount": 15 }'
 ```
 
  ---
@@ -71,7 +71,7 @@ actions publish -t withdraw -p '{"id": "17", "amount": 15 }'
 **Deposit Money (pubsub)**
 
 ```sh
-actions publish -t deposit -p '{"id": "17", "amount": 15 }'
+dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
 ```
 
  ---

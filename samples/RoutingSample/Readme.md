@@ -63,7 +63,7 @@ curl http://localhost:5000/17
  **Withdraw Money (pubsub)**
 
 ```sh
-actions publish -t withdraw -p '{"id": "17", "amount": 15 }'
+dapr publish -t withdraw -p '{"id": "17", "amount": 15 }'
 ```
 
  ---
