@@ -365,7 +365,7 @@ In order to validate and debug actor service and client, we need to run actor se
     INFO[0000] starting Dapr Runtime -- version  -- commit
     INFO[0000] log level set to: info
     INFO[0000] standalone mode configured
-    INFO[0000] action id: myapp
+    INFO[0000] dapr id: myapp
     INFO[0000] loaded component statestore (state.redis)
     INFO[0000] application protocol: http. waiting on port 3000
     INFO[0000] application discovered on port 3000
