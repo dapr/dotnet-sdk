@@ -5,9 +5,9 @@
     <version>$version$</version>
     <title>Microsoft.Dapr.Actors.AspNetCore</title>
     <authors>Microsoft</authors>
-    <owners>Microsoft,Actions,Actors</owners>
+    <owners>Microsoft,Dapr,Actors</owners>
     <license type="expression">MIT</license>
-    <projectUrl>http://aka.ms/actions</projectUrl>
+    <projectUrl>http://aka.ms/dapr</projectUrl>
     <icon>images\nuget_icon_ms.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>This package contains the reference assemblies for developing Actor services using dapr and AspNetCore.</description>

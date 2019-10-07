@@ -37,7 +37,7 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <Product>Microsoft Actions</Product>
+    <Product>Microsoft Dapr</Product>
     <Copyright>Copyright (c) Microsoft Corporation.  All rights reserved.</Copyright>
     <Company>Microsoft</Company>
     <Authors>Microsoft</Authors>
