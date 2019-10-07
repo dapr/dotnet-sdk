@@ -7,7 +7,7 @@
     <authors>Microsoft</authors>
     <owners>Microsoft,Dapr</owners>
     <license type="expression">MIT</license>
-    <projectUrl>http://aka.ms/dapr</projectUrl>
+    <projectUrl>https://github.com/dapr/previewkit</projectUrl>
     <icon>images\nuget_icon_ms.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>This package contains the reference assemblies for developing services using Dapr and AspNetCore.</description>
