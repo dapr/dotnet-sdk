@@ -23,6 +23,7 @@ namespace ControllerSample.Controllers
         public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] StateClient stateClient)
         {
             var state = await stateClient.GetStateEntryAsync<Account>(transaction.Id);
+            state.Value ??= new Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
             await state.SaveAsync();
             return state.Value;
@@ -33,6 +34,12 @@ namespace ControllerSample.Controllers
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] StateClient stateClient)
         {
             var state = await stateClient.GetStateEntryAsync<Account>(transaction.Id);
+
+            if (state.Value == null)
+            {
+                return NotFound();
+            }
+
             state.Value.Balance -= transaction.Amount;
             await state.SaveAsync();
             return state.Value;
