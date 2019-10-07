@@ -1,4 +1,4 @@
-# actionscore/dotnet-sdk pipeline
+# dapr/dotnet-sdk pipeline
 
 trigger:
   branches:

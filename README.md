@@ -1,4 +1,4 @@
-# Actions SDK for .NET
+# Dapr SDK for .NET
 
 Dapr is a programming model for writing cloud-native applications which are distributed, dynamically scaled, and loosely coupled in nature.
 
