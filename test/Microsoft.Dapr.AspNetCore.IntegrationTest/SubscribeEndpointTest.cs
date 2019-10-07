@@ -22,7 +22,7 @@ namespace Microsoft.Dapr.AspNetCore.IntegrationTest
             {
                 var httpClient = factory.CreateClient();
 
-                var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/actions/subscribe");
+                var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/dapr/subscribe");
                 var response = await httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 
