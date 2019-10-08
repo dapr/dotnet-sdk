@@ -1,10 +1,10 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.Client
-{    
+{
     using System;
     using System.IO;
     using System.Text;
@@ -20,7 +20,7 @@ namespace Microsoft.Dapr.Actors.Client
     /// </summary>
     public class ActorProxy : IActorProxy
     {
-        internal static readonly ActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();        
+        internal static readonly ActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();
         private ActorRemotingClient actorRemotingClient;
         private ActorNonRemotingClient actorNonRemotingClient;
 
@@ -54,7 +54,7 @@ namespace Microsoft.Dapr.Actors.Client
         /// Type of actor implementation.
         /// </param>
         /// <returns>Proxy to the actor object.</returns>
-        public static TActorInterface Create<TActorInterface>(ActorId actorId, string actorType) 
+        public static TActorInterface Create<TActorInterface>(ActorId actorId, string actorType)
             where TActorInterface : IActor
         {
             return DefaultProxyFactory.CreateActorProxy<TActorInterface>(actorId, actorType);

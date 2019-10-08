@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr
@@ -43,22 +43,22 @@ namespace Microsoft.Dapr
         {
             public Entry(HttpRequestMessage request)
             {
-                Request = request;
+                this.Request = request;
 
-                Completion = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+                this.Completion = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
 
             public TaskCompletionSource<HttpResponseMessage> Completion { get; }
 
             public HttpRequestMessage Request { get; }
 
-            public bool IsGetStateRequest => Request.Method == HttpMethod.Get;
+            public bool IsGetStateRequest => this.Request.Method == HttpMethod.Get;
 
-            public bool IsSetStateRequest => Request.Method == HttpMethod.Post;
+            public bool IsSetStateRequest => this.Request.Method == HttpMethod.Post;
 
             public void Respond(HttpResponseMessage response)
             {
-                Completion.SetResult(response);
+                this.Completion.SetResult(response);
             }
 
             public void RespondWithJson<TValue>(TValue value, JsonSerializerOptions options = null)
@@ -69,7 +69,7 @@ namespace Microsoft.Dapr
                 response.Content = new ByteArrayContent(bytes);
                 response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "UTF-8", };
 
-                Completion.SetResult(response);
+                this.Completion.SetResult(response);
             }
         }
 
@@ -77,7 +77,7 @@ namespace Microsoft.Dapr
         {
             public TestHttpClientHandler()
             {
-                Requests = new ConcurrentQueue<Entry>();
+                this.Requests = new ConcurrentQueue<Entry>();
             }
 
             public ConcurrentQueue<Entry> Requests { get; }
@@ -87,8 +87,8 @@ namespace Microsoft.Dapr
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 var entry = new Entry(request);
-                Handler?.Invoke(entry); 
-                Requests.Enqueue(entry);
+                this.Handler?.Invoke(entry);
+                this.Requests.Enqueue(entry);
 
                 using (cancellationToken.Register(() => entry.Completion.TrySetCanceled()))
                 {

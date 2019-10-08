@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors
@@ -15,7 +15,7 @@ namespace Microsoft.Dapr.Actors
     public class DaprException : Exception
     {
         /// <summary>
-        /// <para>Initializes a new instance of <see cref="DaprException" /> class with error code <see cref="DaprErrorCodes.UNKNOWN"/>.</para>
+        /// Initializes a new instance of the <see cref="DaprException"/> class with error code <see cref="DaprErrorCodes.UNKNOWN"/>.
         /// </summary>
         public DaprException()
             : this(DaprErrorCodes.UNKNOWN, false)
@@ -23,7 +23,7 @@ namespace Microsoft.Dapr.Actors
         }
 
         /// <summary>
-        /// <para>Initializes a new instance of <see cref="DaprException" /> class with error code <see cref="DaprErrorCodes.UNKNOWN"/> and a specified error message.</para>
+        /// Initializes a new instance of the <see cref="DaprException"/> class with error code <see cref="DaprErrorCodes.UNKNOWN"/> and a specified error message.
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         public DaprException(string message)
@@ -43,7 +43,7 @@ namespace Microsoft.Dapr.Actors
         }
 
         /// <summary>
-        /// <para>Initializes a new instance of <see cref="DaprException" /> class with a specified error code.</para>
+        /// Initializes a new instance of the <see cref="DaprException"/> class with a specified error code.
         /// </summary>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">True, if the exception is to be treated as an transient exception.</param>
@@ -53,7 +53,7 @@ namespace Microsoft.Dapr.Actors
         }
 
         /// <summary>
-        /// <para>Initializes a new instance of <see cref="DaprException" /> class with specified error message and error code.</para>
+        /// Initializes a new instance of the <see cref="DaprException"/> class with specified error message and error code.
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="errorCode">The error code associated with the exception.</param>
@@ -64,6 +64,7 @@ namespace Microsoft.Dapr.Actors
         }
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="DaprException"/> class.
         /// Initializes a new instance of <see cref="DaprException" /> class
         /// with a specified error message, a reference to the inner exception that is the cause of this exception, and a specified error code.
         /// </summary>
@@ -79,7 +80,7 @@ namespace Microsoft.Dapr.Actors
         }
 
         /// <summary>
-        /// <para>Initializes a new instance of <see cref="DaprException" /> class from a serialized object data, with a specified context.</para>
+        /// Initializes a new instance of the <see cref="DaprException"/> class with a specified context.
         /// </summary>
         /// <param name="info">The <see cref="System.Runtime.Serialization.SerializationInfo" /> object that contains serialized object data of the exception being thrown.</param>
         /// <param name="context">The <see cref="System.Runtime.Serialization.StreamingContext" /> object that contains contextual information about the source or destination. The context parameter is reserved for future use and can be null.</param>

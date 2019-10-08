@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.Runtime
@@ -12,7 +12,7 @@ namespace Microsoft.Dapr.Actors.Runtime
     public struct ConditionalValue<TValue>
     {
         /// <summary>
-        /// Initializes a new instance of the <cref name="ConditionalValue{TValue}"/> class with the given value.
+        /// Initializes a new instance of the <see cref="ConditionalValue{TValue}"/> struct with the given value.
         /// </summary>
         /// <param name="hasValue">Indicates whether the value is valid.</param>
         /// <param name="value">The value.</param>

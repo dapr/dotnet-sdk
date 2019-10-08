@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.AspNetCore.Builder
@@ -19,8 +19,8 @@ namespace Microsoft.AspNetCore.Builder
         /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>
         /// <param name="name">The topic name.</param>
         /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
-        /// <returns>The <see cref="IEndpointConventionBuilder" />.</returns>
-        public static T WithTopic<T>(this T builder, string name) 
+        /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
+        public static T WithTopic<T>(this T builder, string name)
             where T : IEndpointConventionBuilder
         {
             if (builder is null)

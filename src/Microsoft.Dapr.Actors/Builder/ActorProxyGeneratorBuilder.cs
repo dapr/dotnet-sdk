@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.Builder
@@ -361,8 +361,8 @@ namespace Microsoft.Dapr.Actors.Builder
 
             // call the base method to get the continuation task and
             // convert the response body to return value when the task is finished
-            if ((TypeUtility.IsTaskType(methodDescription.ReturnType) &&
-                 methodDescription.ReturnType.GetTypeInfo().IsGenericType))
+            if (TypeUtility.IsTaskType(methodDescription.ReturnType) &&
+                 methodDescription.ReturnType.GetTypeInfo().IsGenericType)
             {
                 var retvalType = methodDescription.ReturnType.GetGenericArguments()[0];
 

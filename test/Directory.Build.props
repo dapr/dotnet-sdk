@@ -1,7 +1,13 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_stylecop.props" />
 
   <PropertyGroup>
+    <!-- Stylecop needs the documentation file to exist -->
+    <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
     <IsPackable>false</IsPackable>
+
+    <NoWarn>$(NoWarn),1573,1591,1712</NoWarn>
+    <StylecopSuppressionsFile>$(StylecopSuppressionsFile);$(MSBuildThisFileDirectory)..\properties\stylecop\TestStylecopSuppressions.cs</StylecopSuppressionsFile>
   </PropertyGroup>
 </Project>

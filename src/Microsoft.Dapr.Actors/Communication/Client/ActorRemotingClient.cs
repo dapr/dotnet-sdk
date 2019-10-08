@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.Communication.Client
@@ -10,8 +10,8 @@ namespace Microsoft.Dapr.Actors.Communication.Client
     using System.Threading.Tasks;
 
     internal class ActorRemotingClient
-    {                
-        private readonly ActorMessageSerializersManager serializersManager;        
+    {
+        private readonly ActorMessageSerializersManager serializersManager;
         private readonly IActorMessageBodyFactory remotingMessageBodyFactory = null;
         private readonly IDaprInteractor daprInteractor;
 
@@ -44,7 +44,7 @@ namespace Microsoft.Dapr.Actors.Communication.Client
         private static ActorMessageSerializersManager IntializeSerializationManager(
             IActorMessageBodySerializationProvider serializationProvider)
         {
-            // TODO serializer settings 
+            // TODO serializer settings
             return new ActorMessageSerializersManager(
                 serializationProvider,
                 new ActorMessageHeaderSerializer());

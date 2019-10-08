@@ -1,7 +1,11 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_stylecop.props" />
 
   <PropertyGroup>
+    <!-- Stylecop needs the documentation file to exist -->
+    <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
+    
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>

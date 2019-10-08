@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors
@@ -8,7 +8,7 @@ namespace Microsoft.Dapr.Actors
     using System;
 
     /// <summary>
-    /// A utility class to perform argument validations. 
+    /// A utility class to perform argument validations.
     /// </summary>
     internal static class ArgumentVerifier
     {

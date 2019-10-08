@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors
@@ -45,7 +45,7 @@ namespace Microsoft.Dapr.Actors
             /// </summary>
             /// <param name="errorText">Text to trace.</param>
             void WriteError(string errorText);
-        }        
+        }
 
         internal void WriteInfo(string type, string format, params object[] args)
         {

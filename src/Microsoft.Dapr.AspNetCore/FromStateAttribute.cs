@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.AspNetCore.Mvc
@@ -17,14 +17,14 @@ namespace Microsoft.AspNetCore.Mvc
     public class FromStateAttribute : Attribute, IBindingSourceMetadata
     {
         /// <summary>
-        /// Initializes a new instance of <see cref="FromStateAttribute" />.
+        /// Initializes a new instance of the <see cref="FromStateAttribute"/> class.
         /// </summary>
         public FromStateAttribute()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="FromStateAttribute" />.
+        /// Initializes a new instance of the <see cref="FromStateAttribute"/> class.
         /// </summary>
         /// <param name="key">The state key.</param>
         public FromStateAttribute(string key)
