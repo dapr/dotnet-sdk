@@ -389,7 +389,7 @@ In order to validate and debug actor service and client, we need to run actor se
 
    MyActorClient will console out if it calls actor hosted in MyActorService successfully.
 
-   > If you specify the different dapr runtime http port (default port: 3500), you need to set DAPR_PORT environment variable before running the client.
+   > If you specify the different dapr runtime http port (default port: 3500), you need to set DAPR_HTTP_PORT environment variable before running the client.
 
    ```bash
    Success
