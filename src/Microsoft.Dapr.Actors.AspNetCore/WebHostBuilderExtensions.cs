@@ -1,10 +1,10 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.AspNetCore
-{    
+{
     using System;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Dapr.Actors.Runtime;

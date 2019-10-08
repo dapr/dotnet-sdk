@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors
@@ -12,7 +12,7 @@ namespace Microsoft.Dapr.Actors
     public class DaprError
     {
         /// <summary>
-        /// Initializes a new instance of the DaprError class.
+        /// Initializes a new instance of the <see cref="DaprError"/> class.
         /// </summary>
         /// <param name="errorCode">Error code.</param>
         /// <param name="message">Error Message.</param>

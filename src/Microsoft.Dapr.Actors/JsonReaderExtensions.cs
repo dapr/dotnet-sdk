@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors
@@ -435,7 +435,7 @@ namespace Microsoft.Dapr.Actors
 
             reader.Read();
             return value;
-        }    
+        }
 
         /// <summary>
         /// Gets the value of current JSON token as <see cref="System.Guid"/> and moves to next token".

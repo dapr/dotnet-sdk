@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr
@@ -25,7 +25,7 @@ namespace Microsoft.Dapr
         private readonly JsonSerializerOptions serializerOptions;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="StateHttpClient" />.
+        /// Initializes a new instance of the <see cref="StateHttpClient"/> class.
         /// </summary>
         /// <param name="client">The <see cref="HttpClient" />.</param>
         /// <param name="serializerOptions">The <see cref="JsonSerializerOptions" />.</param>
@@ -119,7 +119,7 @@ namespace Microsoft.Dapr
             else
             {
                 return;
-            } 
+            }
         }
 
         private static AsyncJsonContent<T> CreateContent<T>(T obj, JsonSerializerOptions serializerOptions)

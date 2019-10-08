@@ -1,10 +1,10 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.Runtime
-{    
+{
     using System;
     using System.Collections.Concurrent;
     using System.IO;
@@ -57,7 +57,7 @@ namespace Microsoft.Dapr.Actors.Runtime
         internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
-            
+
             // Get the serialized header
             var actorMessageHeader = this.serializersManager.GetHeaderSerializer()
                 .DeserializeRequestHeaders(new MemoryStream(Encoding.ASCII.GetBytes(daprActorheader)));
@@ -216,7 +216,7 @@ namespace Microsoft.Dapr.Actors.Runtime
         private static ActorMessageSerializersManager IntializeSerializationManager(
             IActorMessageBodySerializationProvider serializationProvider)
         {
-            // TODO serializer settings 
+            // TODO serializer settings
             return new ActorMessageSerializersManager(
                 serializationProvider,
                 new ActorMessageHeaderSerializer());
@@ -271,7 +271,7 @@ namespace Microsoft.Dapr.Actors.Runtime
             var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
 
             var responseMsgBody = RemoteException.FromException(ex);
-            
+
             return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }
     }

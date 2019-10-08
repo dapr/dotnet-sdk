@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors
@@ -71,7 +71,7 @@ namespace Microsoft.Dapr.Actors
             var stringResponse = await response.Content.ReadAsStringAsync();
             return stringResponse;
         }
-        
+
         public async Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);

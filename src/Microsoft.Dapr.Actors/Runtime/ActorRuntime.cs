@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.Runtime
@@ -145,7 +145,7 @@ namespace Microsoft.Dapr.Actors.Runtime
         private static ActorManager GetActorManager(string actorTypeName)
         {
             if (!actorManagers.TryGetValue(actorTypeName, out var actorManager))
-            {                
+            {
                 var errorMsg = $"Actor type {actorTypeName} is not registerd with Actor runtime.";
                 ActorTrace.Instance.WriteError(TraceType, errorMsg);
                 throw new InvalidOperationException(errorMsg);

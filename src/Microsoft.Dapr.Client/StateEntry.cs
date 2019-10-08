@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr
@@ -18,13 +18,13 @@ namespace Microsoft.Dapr
         private readonly StateClient client;
 
         /// <summary>
-        /// Initializes a new <see cref="StateEntry{T}" /> instance.
+        /// Initializes a new instance of the <see cref="StateEntry{TValue}"/> class.
         /// </summary>
         /// <param name="client">The <see cref="StateClient" /> instance used to retrieve the value.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value.</param>
         /// <remarks>
-        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use 
+        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use
         /// <see cref="StateClient.GetStateEntryAsync{TValue}(string, CancellationToken)" /> to access
         /// state entries.
         /// </remarks>
@@ -49,7 +49,7 @@ namespace Microsoft.Dapr
         /// Gets the state key.
         /// </summary>
         public string Key { get; }
-        
+
         /// <summary>
         /// Gets or sets the value.
         /// </summary>

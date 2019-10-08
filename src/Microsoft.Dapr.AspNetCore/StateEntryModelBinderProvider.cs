@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr
@@ -41,7 +41,7 @@ namespace Microsoft.Dapr
 
         private static Type Unwrap(Type type)
         {
-            if (type.IsGenericType && 
+            if (type.IsGenericType &&
                 type.GetGenericTypeDefinition() == typeof(StateEntry<>))
             {
                 return type.GetGenericArguments()[0];

@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr
@@ -15,7 +15,7 @@ namespace Microsoft.Dapr
 
         public override ValueTask<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default)
         {
-            if (State.TryGetValue(key, out var obj))
+            if (this.State.TryGetValue(key, out var obj))
             {
                 return new ValueTask<TValue>((TValue)obj);
             }
@@ -29,11 +29,11 @@ namespace Microsoft.Dapr
         {
             if (value == null)
             {
-                State.Remove(key);
+                this.State.Remove(key);
             }
             else
             {
-                State[key] = value;
+                this.State[key] = value;
             }
 
             return new ValueTask(Task.CompletedTask);

@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.Actors.Client
@@ -29,7 +29,7 @@ namespace Microsoft.Dapr.Actors.Client
         }
 
         /// <inheritdoc/>
-        public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType) 
+        public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType)
             where TActorInterface : IActor
         {
             return (TActorInterface)this.CreateActorProxy(actorId, typeof(TActorInterface), actorType);
@@ -60,6 +60,6 @@ namespace Microsoft.Dapr.Actors.Client
             actorProxy.Initialize(remotingClient, actorId, actorType);
 
             return actorProxy;
-        }        
+        }
     }
 }

@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr
@@ -10,7 +10,7 @@ namespace Microsoft.Dapr
 
     internal class FromStateBindingSource : BindingSource
     {
-        public FromStateBindingSource(string key) 
+        public FromStateBindingSource(string key)
             : base("state", "Dapr state store", isGreedy: true, isFromRequest: false)
         {
             this.Key = key;

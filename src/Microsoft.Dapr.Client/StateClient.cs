@@ -1,6 +1,6 @@
 ﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr
@@ -24,12 +24,12 @@ namespace Microsoft.Dapr
         public abstract ValueTask<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets a <see cref="StateEntry{T}" /> for the current value associated with the <paramref name="key" /> from 
+        /// Gets a <see cref="StateEntry{T}" /> for the current value associated with the <paramref name="key" /> from
         /// the Dapr state store.
         /// </summary>
         /// <param name="key">The state key.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type.</typeparam> 
+        /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
         public async ValueTask<StateEntry<TValue>> GetStateEntryAsync<TValue>(string key, CancellationToken cancellationToken = default)
         {

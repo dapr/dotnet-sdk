@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License (MIT). See License.txt in the repo root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Microsoft.Dapr.AspNetCore.IntegrationTest
@@ -37,6 +37,7 @@ namespace Microsoft.Dapr.AspNetCore.IntegrationTest
                     {
                         topics.Add(element.GetString());
                     }
+
                     topics.Should().Contain("A");
                     topics.Should().Contain("B");
                 }
