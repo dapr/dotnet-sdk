@@ -6,7 +6,7 @@
 namespace RoutingSample
 {
     /// <summary>
-    /// Rpresents a transaction used by sample code.
+    /// Represents a transaction used by sample code.
     /// </summary>
     public class Transaction
     {

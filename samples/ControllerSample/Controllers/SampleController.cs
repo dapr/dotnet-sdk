@@ -10,7 +10,7 @@ namespace ControllerSample.Controllers
     using Microsoft.Dapr;
 
     /// <summary>
-    /// Sample showinng Dapr integration with controller.
+    /// Sample showing Dapr integration with controller.
     /// </summary>
     [ApiController]
     public class SampleController : ControllerBase
@@ -18,8 +18,8 @@ namespace ControllerSample.Controllers
         /// <summary>
         /// Gets the account information as specified by the id.
         /// </summary>
-        /// <param name="account">Account information for the id from Dapr state store..</param>
-        /// <returns>Account infromation.</returns>
+        /// <param name="account">Account information for the id from Dapr state store.</param>
+        /// <returns>Account information.</returns>
         [HttpGet("{account}")]
         public ActionResult<Account> Get(StateEntry<Account> account)
         {
@@ -32,7 +32,7 @@ namespace ControllerSample.Controllers
         }
 
         /// <summary>
-        /// Method for depsoiting to account as psecified in transaction.
+        /// Method for depositing to account as psecified in transaction.
         /// </summary>
         /// <param name="transaction">Transaction info.</param>
         /// <param name="stateClient">State client to interact with dapr runtime.</param>
@@ -49,7 +49,7 @@ namespace ControllerSample.Controllers
         }
 
         /// <summary>
-        /// Method for withdrawing from account as psecified in transaction.
+        /// Method for withdrawing from account as specified in transaction.
         /// </summary>
         /// <param name="transaction">Transaction info.</param>
         /// <param name="stateClient">State client to interact with dapr runtime.</param>
