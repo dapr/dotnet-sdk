@@ -40,7 +40,7 @@ namespace Microsoft.Dapr.Actors
             params DelegatingHandler[] delegateHandlers)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
-            var daprPort = Environment.GetEnvironmentVariable(Constants.DaprPortEnvironmentVariable);
+            var daprPort = Environment.GetEnvironmentVariable(Constants.DaprHttpPortEnvironmentVariable);
             if (daprPort != null)
             {
                 this.daprPort = daprPort;

@@ -11,6 +11,6 @@ namespace Microsoft.Dapr
     {
         public const string StatePath = "/v1.0/state";
 
-        public static string DefaultPort => Environment.GetEnvironmentVariable("DAPR_PORT") ?? "3500";
+        public static string DefaultPort => Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? "3500";
     }
 }
