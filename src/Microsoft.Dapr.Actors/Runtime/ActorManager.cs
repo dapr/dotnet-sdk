@@ -239,11 +239,13 @@ namespace Microsoft.Dapr.Actors.Runtime
                 // invoke the function of the actor
                 await actor.OnPreActorMethodAsyncInternal(actorMethodContext);
                 retval = await actorFunc.Invoke(actor, cancellationToken);
+
+                // PostActivate will save the state, its not invoked when actorFunc invocation throws.
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
             catch (Exception ex)
             {
-                actor.OnInvokeFailed();
+                await actor.OnInvokeFailedAsync();
                 ActorTrace.Instance.WriteError(TraceType, $"Got exception from actor method invocation: {ex}");
                 throw;
             }

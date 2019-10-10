@@ -93,20 +93,22 @@ namespace Microsoft.Dapr.Actors.Runtime
             await this.SaveStateAsync();
         }
 
-        internal void OnInvokeFailed()
+        internal Task OnInvokeFailedAsync()
         {
-            this.IsDirty = true;
-        }
-
-        internal Task ResetStateAsync()
-        {
-            return this.StateManager.ClearCacheAsync();
+            // Exception has been thrown by user code, reset the state in state manager.
+            return this.ResetStateAsync();
         }
 
         internal Task FireTimerAsync(string timerName)
         {
             var timer = this.timers[timerName];
             return timer.AsyncCallback.Invoke(timer.State);
+        }
+
+        internal Task ResetStateAsync()
+        {
+            // Exception has been thrown by user code, reset the state in state manager.
+            return this.StateManager.ClearCacheAsync();
         }
 
         /// <summary>
@@ -117,10 +119,7 @@ namespace Microsoft.Dapr.Actors.Runtime
         /// <returns>A task that represents the asynchronous save operation.</returns>
         protected async Task SaveStateAsync()
         {
-            if (!this.IsDirty)
-            {
-                await this.StateManager.SaveStateAsync();
-            }
+            await this.StateManager.SaveStateAsync();
         }
 
         /// <summary>

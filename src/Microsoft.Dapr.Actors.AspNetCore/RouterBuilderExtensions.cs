@@ -79,11 +79,11 @@ namespace Microsoft.Dapr.Actors.AspNetCore
                     }
                     catch (Exception e)
                     {
+                        context.Response.Headers.Add("Connection: close", default(string));
                         context.Response.ContentType = "application/json";
                         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                         await context.Response.WriteAsync(e.ToString());
                         await context.Response.CompleteAsync();
-                        context.Response.Headers.Add("Connection: close", string.Empty);
                     }
                 }
             });
