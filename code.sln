@@ -3,17 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29318.209
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Actors", "src\Microsoft.Dapr.Actors\Microsoft.Dapr.Actors.csproj", "{C2DB4B64-B7C3-4FED-8753-C040F677C69A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors", "src\Dapr.Actors\Dapr.Actors.csproj", "{C2DB4B64-B7C3-4FED-8753-C040F677C69A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Actors.Test", "test\Microsoft.Dapr.Actors.Test\Microsoft.Dapr.Actors.Test.csproj", "{41BF4392-54BD-4FE7-A3EB-CD045F88CA9A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.Test", "test\Dapr.Actors.Test\Dapr.Actors.Test.csproj", "{41BF4392-54BD-4FE7-A3EB-CD045F88CA9A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Actors.AspNetCore", "src\Microsoft.Dapr.Actors.AspNetCore\Microsoft.Dapr.Actors.AspNetCore.csproj", "{B9C12532-0969-4DAC-A2F8-CA9208D7A901}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.AspNetCore", "src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj", "{B9C12532-0969-4DAC-A2F8-CA9208D7A901}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{27C5D71D-0721-4221-9286-B94AB07B58CF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Client", "src\Microsoft.Dapr.Client\Microsoft.Dapr.Client.csproj", "{62E41317-ED5D-4AA4-B129-C9E56C27354C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client", "src\Dapr.Client\Dapr.Client.csproj", "{62E41317-ED5D-4AA4-B129-C9E56C27354C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore", "src\Microsoft.Dapr.AspNetCore\Microsoft.Dapr.AspNetCore.csproj", "{08D602F6-7C11-4653-B70B-B56333BF6FD2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore", "src\Dapr.AspNetCore\Dapr.AspNetCore.csproj", "{08D602F6-7C11-4653-B70B-B56333BF6FD2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{B2DB41EE-45F5-447B-95E8-38E1E8B70C4E}"
 EndProject
@@ -23,13 +23,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoutingSample", "samples\Ro
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{DD020B34-460F-455F-8D17-CF4A949F100B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.Client.Test", "test\Microsoft.Dapr.Client.Test\Microsoft.Dapr.Client.Test.csproj", "{383609C1-F43F-49EB-85E4-1964EE7F0F14}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Test", "test\Dapr.Client.Test\Dapr.Client.Test.csproj", "{383609C1-F43F-49EB-85E4-1964EE7F0F14}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore.Test", "test\Microsoft.Dapr.AspNetCore.Test\Microsoft.Dapr.AspNetCore.Test.csproj", "{B314AD5E-10AC-418A-B021-D4206BF37ACF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.Test", "test\Dapr.AspNetCore.Test\Dapr.AspNetCore.Test.csproj", "{B314AD5E-10AC-418A-B021-D4206BF37ACF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore.IntegrationTest", "test\Microsoft.Dapr.AspNetCore.IntegrationTest\Microsoft.Dapr.AspNetCore.IntegrationTest.csproj", "{0CD1912D-5E27-4A2A-A998-164792E0D006}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.IntegrationTest", "test\Dapr.AspNetCore.IntegrationTest\Dapr.AspNetCore.IntegrationTest.csproj", "{0CD1912D-5E27-4A2A-A998-164792E0D006}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Dapr.AspNetCore.IntegrationTest.App", "test\Microsoft.Dapr.AspNetCore.IntegrationTest.App\Microsoft.Dapr.AspNetCore.IntegrationTest.App.csproj", "{342783B5-F75B-4752-A3E2-B8CB7D09C080}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.IntegrationTest.App", "test\Dapr.AspNetCore.IntegrationTest.App\Dapr.AspNetCore.IntegrationTest.App.csproj", "{342783B5-F75B-4752-A3E2-B8CB7D09C080}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

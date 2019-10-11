@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Microsoft.Dapr
+namespace Dapr
 {
     using System;
     using System.Collections.Concurrent;

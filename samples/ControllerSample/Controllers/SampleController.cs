@@ -6,8 +6,8 @@
 namespace ControllerSample.Controllers
 {
     using System.Threading.Tasks;
+    using Dapr;
     using Microsoft.AspNetCore.Mvc;
-    using Microsoft.Dapr;
 
     /// <summary>
     /// Sample showing Dapr integration with controller.

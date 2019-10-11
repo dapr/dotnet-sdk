@@ -30,7 +30,7 @@ Actor interface defines the actor contract that is shared by the actor implement
 
 Actor interface is defined with the below requirements:
 
-* Actor interface must inherit `Microsoft.Dapr.Actors.IActor` interface
+* Actor interface must inherit `Dapr.Actors.IActor` interface
 * The return type of Actor method must be `Task` or `Task<object>`
 * Actor method can have one argument at a maximum
 
@@ -40,8 +40,8 @@ Actor interface is defined with the below requirements:
 # Create Actor Interfaces
 dotnet new classlib -o MyActor.Interfaces
 
-# Add Microsoft.Dapr.Actors nuget package
-dotnet add package Microsoft.Dapr.Actors
+# Add Dapr.Actors nuget package
+dotnet add package Dapr.Actors
 ```
 
 ### Implement IMyActor Interface
@@ -49,7 +49,7 @@ dotnet add package Microsoft.Dapr.Actors
 Define IMyActor Interface and MyData data object.
 
 ```csharp
-using Microsoft.Dapr.Actors;
+using Dapr.Actors;
 using System.Threading.Tasks;
 
 namespace MyActor.Interfaces
@@ -91,11 +91,11 @@ dotnet new webapi -o MyActor
 
 cd MyActor
 
-# Add Microsoft.Dapr.Actors nuget package
-dotnet add package Microsoft.Dapr.Actors
+# Add Dapr.Actors nuget package
+dotnet add package Dapr.Actors
 
-# Add Microsoft.Dapr.Actors.AspNetCore nuget package
-dotnet add package Microsoft.Dapr.Actors.AspNetCore
+# Add Dapr.Actors.AspNetCore nuget package
+dotnet add package Dapr.Actors.AspNetCore
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -103,11 +103,11 @@ dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
 
 ### Add Actor implementation
 
-Implement IMyActor interface and derive from `Microsoft.Dapr.Actors.Actor` class. Following example shows how to use Actor Reminders as well. For Actors to use Reminders, it must derive from IRemindable. If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder specific methods which are shown in the code below.
+Implement IMyActor interface and derive from `Dapr.Actors.Actor` class. Following example shows how to use Actor Reminders as well. For Actors to use Reminders, it must derive from IRemindable. If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder specific methods which are shown in the code below.
 
 ```csharp
-using Microsoft.Dapr.Actors;
-using Microsoft.Dapr.Actors.Runtime;
+using Dapr.Actors;
+using Dapr.Actors.Runtime;
 using MyActor.Interfaces;
 using System;
 using System.Threading.Tasks;
@@ -119,8 +119,8 @@ namespace MyActorService
         /// <summary>
         /// Initializes a new instance of MyActor
         /// </summary>
-        /// <param name="actorService">The Microsoft.Dapr.Actors.Runtime.ActorService that will host this actor instance.</param>
-        /// <param name="actorId">The Microsoft.Dapr.Actors.ActorId for this actor instance.</param>
+        /// <param name="actorService">The Dapr.Actors.Runtime.ActorService that will host this actor instance.</param>
+        /// <param name="actorId">The Dapr.Actors.ActorId for this actor instance.</param>
         public MyActor(ActorService actorService, ActorId actorId)
             : base(actorService, actorId)
         {
@@ -268,8 +268,8 @@ dotnet new console -o MyActorClient
 
 cd MyActorClient
 
-# Add Microsoft.Dapr.Actors nuget package
-dotnet add package Microsoft.Dapr.Actors
+# Add Dapr.Actors nuget package
+dotnet add package Dapr.Actors
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -282,8 +282,8 @@ We recommend to use the local proxy to actor instance because `ActorProxy.Create
 ```csharp
 namespace MyActorClient
 {
-    using Microsoft.Dapr.Actors;
-    using Microsoft.Dapr.Actors.Client;
+    using Dapr.Actors;
+    using Dapr.Actors.Client;
     using MyActor.Interfaces;
     using System;
     using System.Threading.Tasks;
@@ -320,8 +320,8 @@ When making non-remoting calls Actor method arguments and return types are seria
 ```csharp
 namespace MyActorClient
 {
-    using Microsoft.Dapr.Actors;
-    using Microsoft.Dapr.Actors.Client;
+    using Dapr.Actors;
+    using Dapr.Actors.Client;
     using MyActor.Interfaces;
     using System;
     using System.Threading.Tasks;

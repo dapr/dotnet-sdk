@@ -53,7 +53,7 @@ stages:
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: 'bin/$(Configuration)'
-          Pattern: 'Microsoft.Dapr*.dll'
+          Pattern: 'Dapr*.dll'
           UseMinimatch: true
           signConfigType: 'inlineSignParams'
           inlineOperation: |
@@ -97,35 +97,35 @@ stages:
           MaxConcurrency: '50'
           MaxRetryAttempts: '5'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Actors nuget - $(Configuration)'
+        displayName: 'Package Dapr.Actors nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Actors/Microsoft.Dapr.Actors.csproj'
+          packagesToPack: 'src/Dapr.Actors/Dapr.Actors.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Actors.AspNetCore nuget - $(Configuration)'
+        displayName: 'Package Dapr.Actors.AspNetCore nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Actors.AspNetCore/Microsoft.Dapr.Actors.AspNetCore.csproj'
+          packagesToPack: 'src/Dapr.Actors.AspNetCore/Dapr.Actors.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Client nuget - $(Configuration)'
+        displayName: 'Package Dapr.Client nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Client/Microsoft.Dapr.Client.csproj'
+          packagesToPack: 'src/Dapr.Client/Dapr.Client.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.AspNetCore nuget - $(Configuration)'
+        displayName: 'Package Dapr.AspNetCore nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.AspNetCore/Microsoft.Dapr.AspNetCore.csproj'
+          packagesToPack: 'src/Dapr.AspNetCore/Dapr.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1
@@ -134,7 +134,7 @@ stages:
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: '$(Build.ArtifactStagingDirectory)'
-          Pattern: 'Microsoft.Dapr*.nupkg'
+          Pattern: 'Dapr*.nupkg'
           UseMinimatch: true
           signConfigType: 'inlineSignParams'
           inlineOperation: |
