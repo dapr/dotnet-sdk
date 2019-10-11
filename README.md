@@ -41,12 +41,14 @@ We publish nuget packages to nuget.org for each release.
 
 ## Using nugets built locally in your project
 
+<RepoRoot> is the path where you cloned this repository.
+
 ```bash
 # Add Dapr.Actors nuget package
-dotnet add package Dapr.Actors -s /<RepoRoot>/bin/<Debug|Release>/
+dotnet add package Dapr.Actors -s <RepoRoot>/bin/<Debug|Release>/
 
 # Add Dapr.Actors.AspNetCore nuget package
-dotnet add package Dapr.Actors.AspNetCore -s /<RepoRoot>/bin/<Debug|Release>/
+dotnet add package Dapr.Actors.AspNetCore -s <RepoRoot>/bin/<Debug|Release>/
 ```
 
 ## Documentation
