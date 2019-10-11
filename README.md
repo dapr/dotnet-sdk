@@ -6,8 +6,8 @@ Dapr SDK for .NET allows you to implement the Virtual Actor model, based on the 
 
 This repo builds the following packages:
 
-- Microsoft.Dapr.Actors
-- Microsoft.Dapr.Actors.AspNetCore
+- Dapr.Actors
+- Dapr.Actors.AspNetCore
 
 ## Getting Started
 
@@ -37,18 +37,16 @@ Each project can also be built individually directly through Visual Studio.
 
 ## Releases
 
-Until we publish nuget packages to nuget.org, you can download the latest nuget packages signed by Microsoft from [Preview Kit release](https://github.com/dapr/previewkit/releases).
+We publish nuget packages to nuget.org for each release.
 
-## Add nuget to your project
-
-Assume that you download nuget packages to you local disk, /pkg/nugets/.
+## Using nugets built locally in your project
 
 ```bash
-# Add Microsoft.Dapr.Actors nuget package
-dotnet add package Microsoft.Dapr.Actors -v 0.4.0-preview01 -s /pkg/nugets/
+# Add Dapr.Actors nuget package
+dotnet add package Dapr.Actors -s /<RepoRoot>/bin/<Debug|Release>/
 
-# Add Microsoft.Dapr.Actors.AspNetCore nuget package
-dotnet add package Microsoft.Dapr.Actors.AspNetCore -v 0.4.0-preview01 -s /pkg/nugets/
+# Add Dapr.Actors.AspNetCore nuget package
+dotnet add package Dapr.Actors.AspNetCore -s /<RepoRoot>/bin/<Debug|Release>/
 ```
 
 ## Documentation

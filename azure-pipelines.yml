@@ -39,124 +39,39 @@ stages:
         inputs:
           command: 'test'
           arguments: '--configuration $(Configuration)'
-          projects: 'code.sln'
-        # ESRP Code Signing does not work with dotnet core 3.0
-      - task: UseDotNet@2
-        displayName: 'Install dotnet SDK 2.0 for ESRP'
-        inputs:
-          packageType: sdk
-          version: 2.0.x
-          installationPath: $(Agent.ToolsDirectory)/dotnet
-      - task: EsrpCodeSigning@1
-        displayName: 'ESRP Authenticode CodeSign'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
-        inputs:
-          ConnectedServiceName: 'ActionsSigning'
-          FolderPath: 'bin/$(Configuration)'
-          Pattern: 'Microsoft.Dapr*.dll'
-          UseMinimatch: true
-          signConfigType: 'inlineSignParams'
-          inlineOperation: |
-            [
-              {
-                "keyCode": "$(ESRP_AUTHENTICODE_SIGN)",
-                "operationSetCode": "SigntoolSign",
-                "parameters": [{
-                        "parameterName": "OpusName",
-                        "parameterValue": "Microsoft"
-                    },
-                    {
-                        "parameterName": "OpusInfo",
-                        "parameterValue": "http://www.microsoft.com"
-                    },
-                    {
-                        "parameterName": "FileDigest",
-                        "parameterValue": "/fd \"SHA256\""
-                    },
-                    {
-                        "parameterName": "PageHash",
-                        "parameterValue": "/NPH"
-                    },
-                    {
-                        "parameterName": "TimeStamp",
-                        "parameterValue": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
-                    }
-                ],
-                "toolName": "sign",
-                "toolVersion": "1.0"
-              },
-              {
-                  "keyCode": "$(ESRP_AUTHENTICODE_SIGN)",
-                  "operationSetCode": "SigntoolVerify",
-                  "parameters": [],
-                  "toolName": "sign",
-                  "toolVersion": "1.0"
-              }
-            ]
-          SessionTimeout: '20'
-          MaxConcurrency: '50'
-          MaxRetryAttempts: '5'
+          projects: 'code.sln'      
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Actors nuget - $(Configuration)'
+        displayName: 'Package Dapr.Actors nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Actors/Microsoft.Dapr.Actors.csproj'
+          packagesToPack: 'src/Dapr.Actors/Dapr.Actors.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Actors.AspNetCore nuget - $(Configuration)'
+        displayName: 'Package Dapr.Actors.AspNetCore nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Actors.AspNetCore/Microsoft.Dapr.Actors.AspNetCore.csproj'
+          packagesToPack: 'src/Dapr.Actors.AspNetCore/Dapr.Actors.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Client nuget - $(Configuration)'
+        displayName: 'Package Dapr.Client nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Client/Microsoft.Dapr.Client.csproj'
+          packagesToPack: 'src/Dapr.Client/Dapr.Client.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.AspNetCore nuget - $(Configuration)'
+        displayName: 'Package Dapr.AspNetCore nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.AspNetCore/Microsoft.Dapr.AspNetCore.csproj'
+          packagesToPack: 'src/Dapr.AspNetCore/Dapr.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'
-      - task: EsrpCodeSigning@1
-        displayName: 'ESRP CodeSign - Nuget Package'
-        condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
-        inputs:
-          ConnectedServiceName: 'ActionsSigning'
-          FolderPath: '$(Build.ArtifactStagingDirectory)'
-          Pattern: 'Microsoft.Dapr*.nupkg'
-          UseMinimatch: true
-          signConfigType: 'inlineSignParams'
-          inlineOperation: |
-            [
-                {
-                    "keyCode": "$(ESRP_CODESIGN_NUPKG)",
-                    "operationSetCode": "NuGetSign",
-                    "parameters": [ ],
-                    "toolName": "sign",
-                    "toolVersion": "1.0"
-                },
-                {
-                    "keyCode": "$(ESRP_CODESIGN_NUPKG)",
-                    "operationSetCode": "NuGetVerify",
-                    "parameters": [ ],
-                    "toolName": "sign",
-                    "toolVersion": "1.0"
-                }
-            ]
-          SessionTimeout: '20'
-          MaxConcurrency: '50'
-          MaxRetryAttempts: '5'
       - task: CopyFiles@2
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:

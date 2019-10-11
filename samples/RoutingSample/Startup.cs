@@ -7,10 +7,10 @@ namespace RoutingSample
 {
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Dapr;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Http;
-    using Microsoft.Dapr;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
