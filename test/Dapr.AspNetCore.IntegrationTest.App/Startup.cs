@@ -37,6 +37,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
             app.UseAuthorization();
 
+            app.UseCloudEvents();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapSubscribeHandler();

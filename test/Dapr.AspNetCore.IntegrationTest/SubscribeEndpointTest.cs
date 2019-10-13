@@ -31,7 +31,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
                     json.ValueKind.Should().Be(JsonValueKind.Array);
-                    json.GetArrayLength().Should().Be(2);
+                    json.GetArrayLength().Should().Be(3);
                     var topics = new List<string>();
                     foreach (var element in json.EnumerateArray())
                     {
@@ -40,6 +40,7 @@ namespace Dapr.AspNetCore.IntegrationTest
 
                     topics.Should().Contain("A");
                     topics.Should().Contain("B");
+                    topics.Should().Contain("register-user");
                 }
             }
         }

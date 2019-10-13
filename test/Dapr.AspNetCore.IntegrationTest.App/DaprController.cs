@@ -13,9 +13,16 @@ namespace Dapr.AspNetCore.IntegrationTest.App
     public class DaprController : ControllerBase
     {
         [Topic("B")]
-        [HttpPost("/topic-b")]
+        [HttpPost("/B")]
         public void TopicB()
         {
+        }
+
+        [Topic("register-user")]
+        [HttpPost("/register-user")]
+        public ActionResult<UserInfo> RegisterUser(UserInfo user)
+        {
+            return user; // echo back the user for testing
         }
 
         [HttpPost("/controllerwithoutstateentry/{widget}")]
