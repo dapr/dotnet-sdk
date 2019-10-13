@@ -5,7 +5,6 @@
 
 namespace Dapr
 {
-    using System.Collections.Generic;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
 
     internal class FromStateBindingSource : BindingSource
