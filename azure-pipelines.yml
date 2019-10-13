@@ -1,4 +1,4 @@
-# actionscore/dotnet-sdk pipeline
+# dapr/dotnet-sdk pipeline
 
 trigger:
   branches:
@@ -40,13 +40,20 @@ stages:
           command: 'test'
           arguments: '--configuration $(Configuration)'
           projects: 'code.sln'
+        # ESRP Code Signing does not work with dotnet core 3.0
+      - task: UseDotNet@2
+        displayName: 'Install dotnet SDK 2.0 for ESRP'
+        inputs:
+          packageType: sdk
+          version: 2.0.x
+          installationPath: $(Agent.ToolsDirectory)/dotnet
       - task: EsrpCodeSigning@1
         displayName: 'ESRP Authenticode CodeSign'
         condition: and(eq(variables['Configuration'], 'release'), or(contains(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: 'bin/$(Configuration)'
-          Pattern: 'Microsoft.Dapr*.dll'
+          Pattern: 'Dapr*.dll'
           UseMinimatch: true
           signConfigType: 'inlineSignParams'
           inlineOperation: |
@@ -90,19 +97,35 @@ stages:
           MaxConcurrency: '50'
           MaxRetryAttempts: '5'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Actors nuget - $(Configuration)'
+        displayName: 'Package Dapr.Actors nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Actors/Microsoft.Dapr.Actors.csproj'
+          packagesToPack: 'src/Dapr.Actors/Dapr.Actors.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: DotNetCoreCLI@2
-        displayName: 'Package Microsoft.Dapr.Actors.AspNetCore nuget - $(Configuration)'
+        displayName: 'Package Dapr.Actors.AspNetCore nuget - $(Configuration)'
         inputs:
           command: 'pack'
           arguments: '--configuration $(Configuration)'
-          packagesToPack: 'src/Microsoft.Dapr.Actors.AspNetCore/Microsoft.Dapr.Actors.AspNetCore.csproj'
+          packagesToPack: 'src/Dapr.Actors.AspNetCore/Dapr.Actors.AspNetCore.csproj'
+          nobuild: true
+          versioningScheme: 'off'
+      - task: DotNetCoreCLI@2
+        displayName: 'Package Dapr.Client nuget - $(Configuration)'
+        inputs:
+          command: 'pack'
+          arguments: '--configuration $(Configuration)'
+          packagesToPack: 'src/Dapr.Client/Dapr.Client.csproj'
+          nobuild: true
+          versioningScheme: 'off'
+      - task: DotNetCoreCLI@2
+        displayName: 'Package Dapr.AspNetCore nuget - $(Configuration)'
+        inputs:
+          command: 'pack'
+          arguments: '--configuration $(Configuration)'
+          packagesToPack: 'src/Dapr.AspNetCore/Dapr.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'
       - task: EsrpCodeSigning@1
@@ -111,7 +134,7 @@ stages:
         inputs:
           ConnectedServiceName: 'ActionsSigning'
           FolderPath: '$(Build.ArtifactStagingDirectory)'
-          Pattern: 'Microsoft.Dapr*.nupkg'
+          Pattern: 'Dapr*.nupkg'
           UseMinimatch: true
           signConfigType: 'inlineSignParams'
           inlineOperation: |
