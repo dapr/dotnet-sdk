@@ -6,7 +6,6 @@
 namespace Microsoft.AspNetCore.Mvc
 {
     using System;
-    using System.Collections.Generic;
     using Dapr;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
 

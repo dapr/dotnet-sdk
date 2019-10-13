@@ -7,8 +7,6 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
     using Dapr;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.ApplicationModels;
 
     /// <summary>
     /// Provides extension methods for <see cref="IServiceCollection" />.
