@@ -94,6 +94,14 @@ dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
 ---
 
 ```C#
+app.UseCloudEvents();
+```
+
+`UseCloudEvents()` registers the Cloud Events middleware in the request processing pipeline. This middleware will unwrap requests with Content-Type `application/cloudevents+json` so that model binding can access the event payload in the request body directly. This is recommended when using pub/sub unless you have a need to process the event metadata yourself.
+
+---
+
+```C#
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapSubscribeHandler();

@@ -61,6 +61,8 @@ namespace ControllerSample
 
             app.UseRouting();
 
+            app.UseCloudEvents();
+
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

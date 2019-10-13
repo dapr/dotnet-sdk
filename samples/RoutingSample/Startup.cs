@@ -64,6 +64,8 @@ namespace RoutingSample
 
             app.UseRouting();
 
+            app.UseCloudEvents();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapSubscribeHandler();

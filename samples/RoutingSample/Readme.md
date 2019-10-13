@@ -81,7 +81,7 @@ dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
 *All of the interesting code in this sample is in Startup.cs*
 
  ```C#
- public void ConfigureServices(IServiceCollection services)
+public void ConfigureServices(IServiceCollection services)
 {
     services.AddDaprClient();
 
@@ -90,6 +90,14 @@ dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
  ```
 
  `AddDaprClient()` registers the `StateClient` service with the dependency injection container. This service can be used to interact with the Dapr state-store.
+
+---
+
+```C#
+app.UseCloudEvents();
+```
+
+`UseCloudEvents()` registers the Cloud Events middleware in the request processing pipeline. This middleware will unwrap requests with Content-Type `application/cloudevents+json` so that application code can access the event payload in the request body directly. This is recommended when using pub/sub unless you have a need to process the event metadata yourself.
 
 ---
 
