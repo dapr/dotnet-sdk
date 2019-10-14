@@ -7,8 +7,8 @@
     <authors>Microsoft</authors>
     <owners>Microsoft,Dapr</owners>
     <license type="expression">MIT</license>
-    <projectUrl>https://github.com/dapr/previewkit</projectUrl>
-    <icon>images\nuget_icon_ms.png</icon>
+    <projectUrl>https://github.com/dapr/dotnet-sdk</projectUrl>
+    <icon>images\logo-transparent.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>This package contains the reference assemblies for developing services using Dapr.</description>
     <summary>This package contains the reference assemblies for developing services using Dapr.</summary>
@@ -16,7 +16,7 @@
     <tags>Microsoft Azure Dapr</tags>
   </metadata>
   <files>
-    <file src="..\..\..\properties\nuget_icon_ms.png" target="images\" />
+    <file src="..\..\..\properties\logo-transparent.png" target="images\" />
     <file src="..\..\..\bin\$Configuration$\Dapr.Client.dll" target="lib\netstandard2.0" exclude="" />
     <file src="..\..\..\bin\$Configuration$\Dapr.Client.xml" target="lib\netstandard2.0" exclude="" />
   </files>
