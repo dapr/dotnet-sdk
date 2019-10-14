@@ -7,6 +7,9 @@
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
     <IsPackable>false</IsPackable>
 
+    <!-- Set Output Path for tests-->
+    <OutputPath>$(RepoRoot)bin\$(Configuration)\test</OutputPath>
+
     <NoWarn>$(NoWarn),1573,1591,1712</NoWarn>
     <StylecopSuppressionsFile>$(StylecopSuppressionsFile);$(MSBuildThisFileDirectory)..\properties\stylecop\TestStylecopSuppressions.cs</StylecopSuppressionsFile>
   </PropertyGroup>
