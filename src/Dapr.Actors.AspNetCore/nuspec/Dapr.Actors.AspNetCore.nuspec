@@ -8,7 +8,7 @@
     <owners>Microsoft,Dapr</owners>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/dapr/previewkit</projectUrl>
-    <icon>images\nuget_icon_ms.png</icon>
+    <icon>images\logo-transparent.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>This package contains the reference assemblies for developing Actor services using dapr and AspNetCore.</description>
     <summary>This package contains the reference assemblies for developing Actor services using dapr.</summary>
@@ -19,7 +19,7 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="..\..\..\properties\nuget_icon_ms.png" target="images\" />
+    <file src="..\..\..\properties\logo-transparent.png" target="images\" />
     <file src="..\..\..\bin\$Configuration$\Dapr.Actors.AspNetCore.dll" target="lib\netcoreapp3.0" exclude="" />
     <file src="..\..\..\bin\$Configuration$\Dapr.Actors.AspNetCore.xml" target="lib\netcoreapp3.0" exclude="" />
   </files>
