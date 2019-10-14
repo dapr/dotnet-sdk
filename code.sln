@@ -17,9 +17,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore", "src\Dapr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{B2DB41EE-45F5-447B-95E8-38E1E8B70C4E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ControllerSample", "samples\ControllerSample\ControllerSample.csproj", "{2B015C86-32FB-4178-8F8A-26749B6FCE11}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ControllerSample", "samples\AspNetCore\ControllerSample\ControllerSample.csproj", "{2B015C86-32FB-4178-8F8A-26749B6FCE11}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoutingSample", "samples\RoutingSample\RoutingSample.csproj", "{1FBDE4EF-D8B0-4BFE-B393-3CA4FE1944A2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoutingSample", "samples\AspNetCore\RoutingSample\RoutingSample.csproj", "{1FBDE4EF-D8B0-4BFE-B393-3CA4FE1944A2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{DD020B34-460F-455F-8D17-CF4A949F100B}"
 EndProject
