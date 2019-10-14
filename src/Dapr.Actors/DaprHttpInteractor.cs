@@ -27,7 +27,7 @@ namespace Dapr.Actors
     {
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
         private const string TraceType = "DaprHttpInteractor";
-        private readonly string daprPort = Constants.DaprDefaultPort;
+        private readonly string daprPort;
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
         private readonly ClientSettings clientSettings;
@@ -40,11 +40,7 @@ namespace Dapr.Actors
             params DelegatingHandler[] delegateHandlers)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
-            var daprPort = Environment.GetEnvironmentVariable(Constants.DaprHttpPortEnvironmentVariable);
-            if (daprPort != null)
-            {
-                this.daprPort = daprPort;
-            }
+            this.daprPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? Constants.DaprDefaultPort;
 
             this.innerHandler = innerHandler ?? new HttpClientHandler();
             this.delegateHandlers = delegateHandlers;

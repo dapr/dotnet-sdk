@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Microsoft.Actions.Actors\Microsoft.Actions.Actors.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
     <ProjectReference Include="..\IDemoActor\IDemoActor.csproj" />
   </ItemGroup>
 
