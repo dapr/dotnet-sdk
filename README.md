@@ -44,7 +44,7 @@ We publish nuget packages to nuget.org for each release.
 
 ## Using nugets built locally in your project
 
-<RepoRoot> is the path where you cloned this repository.
+RepoRoot is the path where you cloned this repository.
 
 ```bash
 # Add Dapr.Actors nuget package
