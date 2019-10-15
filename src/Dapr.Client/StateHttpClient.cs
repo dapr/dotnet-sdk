@@ -54,7 +54,7 @@ namespace Dapr
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultPort}{StatePath}/{key}" : $"{StatePath}{key}";
+            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}{key}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -101,7 +101,7 @@ namespace Dapr
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultPort}{StatePath}" : StatePath;
+            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}" : StatePath;
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             var obj = new object[] { new { key = key, value = value, } };
             request.Content = CreateContent(obj, this.serializerOptions);

@@ -72,6 +72,14 @@ stages:
           packagesToPack: 'src/Dapr.AspNetCore/Dapr.AspNetCore.csproj'
           nobuild: true
           versioningScheme: 'off'      
+      - task: DotNetCoreCLI@2
+        displayName: 'Package Dapr.Client.Grpc nuget - $(Configuration)'
+        inputs:
+          command: 'pack'
+          arguments: '--configuration $(Configuration)'
+          packagesToPack: 'src/Dapr.Client.Grpc/Dapr.Client.Grpc.csproj'
+          nobuild: true
+          versioningScheme: 'off'
       - task: CopyFiles@2
         condition: ne(variables['Build.Reason'], 'PullRequest')
         inputs:

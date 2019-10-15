@@ -6,6 +6,9 @@ Dapr SDK for .NET allows you to implement the Virtual Actor model, based on the 
 
 This repo builds the following packages:
 
+- Dapr.Client
+- Dapr.Client.Grpc
+- DApr.AspNetCore
 - Dapr.Actors
 - Dapr.Actors.AspNetCore
 
@@ -57,4 +60,4 @@ These articles will help get you started with Dapr runtime and Dapr Actors:
 
 - [Getting started with Dapr Actor](docs/get-started-dapr-actor.md)
 - [Dapr CLI](https://github.com/dapr/cli)
-- [Dapr API Specification](https://github.com/dapr/docs/tree/master/reference/api)
+- [Dapr API Specification](https://github.com/dapr/spec)

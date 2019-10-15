@@ -20,9 +20,9 @@
 
     <!-- Nuget package versions -->
     <NupkgMajorVersion>0</NupkgMajorVersion>
-    <NupkgMinorVersion>6</NupkgMinorVersion>
+    <NupkgMinorVersion>1</NupkgMinorVersion>
     <NupkgPatchVersion>0</NupkgPatchVersion>
-    <NupkgPreviewTag>-preview02</NupkgPreviewTag>
+    <NupkgPreviewTag>-preview01</NupkgPreviewTag>
     <NupkgVersion>$(NupkgMajorVersion).$(NupkgMinorVersion).$(NupkgPatchVersion)$(NupkgPreviewTag)</NupkgVersion>
   </PropertyGroup>
   

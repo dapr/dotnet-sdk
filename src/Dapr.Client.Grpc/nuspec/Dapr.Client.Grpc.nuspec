@@ -1,26 +1,27 @@
 <?xml version="1.0"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
   <metadata>
-    <id>Dapr.Actors</id>
+    <id>Dapr.Client.Grpc</id>
     <version>$version$</version>
-    <title>Dapr.Actors</title>
+    <title>Dapr.Client</title>
     <authors>Microsoft</authors>
     <owners>Microsoft,Dapr</owners>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/dapr/dapr</projectUrl>
     <icon>images\logo-transparent.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <description>This package contains the reference assemblies for developing Actor services using dapr.</description>
-    <summary>This package contains the reference assemblies for developing Actor services using dapr.</summary>
+    <description>This package contains the reference assemblies for making DApr client calls using Grpc.</description>
+    <summary>This package contains the reference assemblies for making DApr client calls using Grpc.</summary>
     <copyright>© Microsoft Corporation. All rights reserved.</copyright>
-    <tags>Microsoft Dapr Actors</tags>
+    <tags>Microsoft Azure Dapr</tags>
     <dependencies>
-      <dependency id="Newtonsoft.Json" version="12.0.2" />
+      <dependency id="Google.Protobuf" version="3.9.2" />
+      <dependency id="Grpc" version="2.24.0" />
     </dependencies>
   </metadata>
   <files>
     <file src="..\..\..\properties\logo-transparent.png" target="images\" />
-    <file src="..\..\..\bin\$Configuration$\Dapr.Actors.dll" target="lib\netcoreapp3.0" exclude="" />
-    <file src="..\..\..\bin\$Configuration$\Dapr.Actors.xml" target="lib\netcoreapp3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Dapr.Client.Grpc.dll" target="lib\netstandard3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Dapr.Client.Grpc.xml" target="lib\netstandard3.0" exclude="" />
   </files>
 </package>

@@ -7,7 +7,7 @@
     <authors>Microsoft</authors>
     <owners>Microsoft,Dapr</owners>
     <license type="expression">MIT</license>
-    <projectUrl>https://github.com/dapr/dotnet-sdk</projectUrl>
+    <projectUrl>https://github.com/dapr/dapr</projectUrl>
     <icon>images\logo-transparent.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>This package contains the reference assemblies for developing services using Dapr.</description>
@@ -17,7 +17,7 @@
   </metadata>
   <files>
     <file src="..\..\..\properties\logo-transparent.png" target="images\" />
-    <file src="..\..\..\bin\$Configuration$\Dapr.Client.dll" target="lib\netstandard2.0" exclude="" />
-    <file src="..\..\..\bin\$Configuration$\Dapr.Client.xml" target="lib\netstandard2.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Dapr.Client.dll" target="lib\netstandard3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Dapr.Client.xml" target="lib\netstandard3.0" exclude="" />
   </files>
 </package>
