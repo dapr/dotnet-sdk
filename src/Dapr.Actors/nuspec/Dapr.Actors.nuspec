@@ -7,7 +7,7 @@
     <authors>Microsoft</authors>
     <owners>Microsoft,Dapr</owners>
     <license type="expression">MIT</license>
-    <projectUrl>https://github.com/dapr/dapr</projectUrl>
+    <projectUrl>https://dapr.io</projectUrl>
     <icon>images\logo-transparent.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>This package contains the reference assemblies for developing Actor services using dapr.</description>
