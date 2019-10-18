@@ -34,7 +34,6 @@ namespace DaprDemoActor
             .UseActors(actorRuntime =>
             {
                 actorRuntime.RegisterActor<DemoActor>();
-            })
-            .UseUrls("http://localhost:5001/");
+            });
     }
 }
