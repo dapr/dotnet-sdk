@@ -46,15 +46,29 @@ When making non-remoting calls Actor method arguments and return types are seria
 
 
 **Save Data**
-Following curl call will save data for actor id "abc"
+Following curl call will save data for actor id "abc" 
+(below calls on MacOs, Linux & Windows are exactly the same except for escaping quotes on Windows for curl)
 
+On Linux, MacOS:
  ```sh
 curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "PropertyA": "ValueA", "ProertyB": "ValueB" }'
  ```
+ On Windows:
+ ```sh
+curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d "{ \"PropertyA\": \"ValueA\", \"ProertyB\": \"ValueB\" }"
+ ```
+ 
+ 
 
 **Get Data**
 Following curl call will get data for actor id "abc"
-
+(below calls on MacOs, Linux & Windows are exactly the same except for escaping quotes on Windows for curl)
+On Linux, MacOS:
  ```sh
 curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData -d '{ "PropertyA": "ValueA", "ProertyB": "ValueB" }'
+ ```
+ 
+ On Windows:
+ ```sh
+curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData -d "{ \"PropertyA\": \"ValueA\", \"ProertyB\": \"ValueB\" }"
  ```
