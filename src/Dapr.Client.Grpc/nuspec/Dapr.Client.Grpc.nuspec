@@ -21,7 +21,7 @@
   </metadata>
   <files>
     <file src="..\..\..\properties\logo-transparent.png" target="images\" />
-    <file src="..\..\..\bin\$Configuration$\Dapr.Client.Grpc.dll" target="lib\netstandard3.0" exclude="" />
-    <file src="..\..\..\bin\$Configuration$\Dapr.Client.Grpc.xml" target="lib\netstandard3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Dapr.Client.Grpc.dll" target="lib\netcoreapp3.0" exclude="" />
+    <file src="..\..\..\bin\$Configuration$\Dapr.Client.Grpc.xml" target="lib\netcoreapp3.0" exclude="" />
   </files>
 </package>
