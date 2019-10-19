@@ -40,6 +40,8 @@ Actor interface is defined with the below requirements:
 # Create Actor Interfaces
 dotnet new classlib -o MyActor.Interfaces
 
+cd MyActor.Interfaces
+
 # Add Dapr.Actors nuget package
 dotnet add package Dapr.Actors
 ```
