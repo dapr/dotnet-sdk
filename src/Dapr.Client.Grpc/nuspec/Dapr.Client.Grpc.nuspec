@@ -10,8 +10,8 @@
     <projectUrl>https://dapr.io</projectUrl>
     <icon>images\logo-transparent.png</icon>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <description>This package contains the reference assemblies for making DApr client calls using Grpc.</description>
-    <summary>This package contains the reference assemblies for making DApr client calls using Grpc.</summary>
+    <description>This package contains the reference assemblies for making Dapr client calls using Grpc.</description>
+    <summary>This package contains the reference assemblies for making Dapr client calls using Grpc.</summary>
     <copyright>© Microsoft Corporation. All rights reserved.</copyright>
     <tags>Microsoft Azure Dapr</tags>
     <dependencies>
