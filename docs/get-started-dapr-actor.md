@@ -258,6 +258,33 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
                 .UseUrls($"http://localhost:{AppChannelHttpPort}/");
 ```
 
+### Update Startup.cs
+
+```csharp
+    public class Startup
+    {
+        ...
+        
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddRouting();
+        }
+        
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                app.UseHsts();
+            }
+        }
+    }
+```
+
+
 ## STEP 3 - Add a client
 
 Create a simple console app to call the actor service. Dapr SDK provides Actor Proxy client to invoke actor methods defined in Actor Interface.
