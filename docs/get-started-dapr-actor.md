@@ -46,6 +46,24 @@ cd MyActor.Interfaces
 dotnet add package Dapr.Actors
 ```
 
+### Update project to .NET Core 3.0
+
+Update the csproj file to target .NET Core 3.0
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapr.Actors" Version="0.1.0-preview01" />
+  </ItemGroup>
+
+</Project>
+```
+
 ### Implement IMyActor Interface
 
 Define IMyActor Interface and MyData data object.
