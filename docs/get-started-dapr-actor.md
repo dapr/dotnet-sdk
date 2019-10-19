@@ -40,8 +40,28 @@ Actor interface is defined with the below requirements:
 # Create Actor Interfaces
 dotnet new classlib -o MyActor.Interfaces
 
+cd MyActor.Interfaces
+
 # Add Dapr.Actors nuget package
 dotnet add package Dapr.Actors
+```
+
+### Update project to .NET Core 3.0
+
+Update the csproj file to target .NET Core 3.0
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapr.Actors" Version="0.1.0-preview01" />
+  </ItemGroup>
+
+</Project>
 ```
 
 ### Implement IMyActor Interface
@@ -87,9 +107,9 @@ Dapr uses ASP.NET web service to host Actor service. This section will implement
 
 ```bash
 # Create ASP.Net Web service to host Dapr actor
-dotnet new webapi -o MyActor
+dotnet new webapi -o MyActorService
 
-cd MyActor
+cd MyActorService
 
 # Add Dapr.Actors nuget package
 dotnet add package Dapr.Actors
@@ -255,6 +275,33 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
                 )
                 .UseUrls($"http://localhost:{AppChannelHttpPort}/");
 ```
+
+### Update Startup.cs
+
+```csharp
+    public class Startup
+    {
+        ...
+        
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddRouting();
+        }
+        
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                app.UseHsts();
+            }
+        }
+    }
+```
+
 
 ## STEP 3 - Add a client
 
