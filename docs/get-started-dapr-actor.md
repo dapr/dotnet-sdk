@@ -89,9 +89,9 @@ Dapr uses ASP.NET web service to host Actor service. This section will implement
 
 ```bash
 # Create ASP.Net Web service to host Dapr actor
-dotnet new webapi -o MyActor
+dotnet new webapi -o MyActorService
 
-cd MyActor
+cd MyActorService
 
 # Add Dapr.Actors nuget package
 dotnet add package Dapr.Actors
