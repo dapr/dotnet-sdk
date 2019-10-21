@@ -6,12 +6,9 @@
 namespace ActorClient
 {
     using System;
-    using System.ComponentModel.DataAnnotations;
     using Dapr.Actors;
     using Dapr.Actors.Client;
     using IDemoActorInterface;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
 
     /// <summary>
     /// Actor Client class.

@@ -11,7 +11,6 @@ namespace GrpcClient
     using Google.Protobuf;
     using Google.Protobuf.WellKnownTypes;
     using Grpc.Core;
-    using Grpc.Net.Client;
 
     /// <summary>
     /// gRPC CLient sample class.

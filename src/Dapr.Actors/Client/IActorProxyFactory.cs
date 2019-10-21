@@ -5,8 +5,6 @@
 
 namespace Dapr.Actors.Client
 {
-    using System;
-
     /// <summary>
     /// Defines the interface containing methods to create actor proxy factory class.
     /// </summary>
