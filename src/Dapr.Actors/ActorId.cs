@@ -30,8 +30,8 @@ namespace Dapr.Actors
         /// <summary>
         /// Determines whether two specified actorIds have the same id.
         /// </summary>
-        /// <param name="id1">The first actorId to compare, or null. </param>
-        /// <param name="id2">The second actorId to compare, or null. </param>
+        /// <param name="id1">The first actorId to compare, or null.</param>
+        /// <param name="id2">The second actorId to compare, or null.</param>
         /// <returns>true if the id is same for both objects; otherwise, false.</returns>
         public static bool operator ==(ActorId id1, ActorId id2)
         {
@@ -52,8 +52,8 @@ namespace Dapr.Actors
         /// <summary>
         /// Determines whether two specified actorIds have different values for id./>.
         /// </summary>
-        /// <param name="id1">The first actorId to compare, or null. </param>
-        /// <param name="id2">The second actorId to compare, or null. </param>
+        /// <param name="id1">The first actorId to compare, or null.</param>
+        /// <param name="id2">The second actorId to compare, or null.</param>
         /// <returns>true if the id is different for both objects; otherwise, true.</returns>
         public static bool operator !=(ActorId id1, ActorId id2)
         {
@@ -61,8 +61,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Create a new instance of the <see cref="ActorId"/>./>
-        /// with a random <see cref="long"/> id value.
+        /// Create a new instance of the <see cref="ActorId"/> with a random <see cref="long"/> id value.
         /// </summary>
         /// <returns>A new ActorId object.</returns>
         /// <remarks>This method is thread-safe and generates a new random <see cref="ActorId"/> every time it is called.</remarks>
@@ -78,7 +77,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Gets id./>.
+        /// Gets id.
         /// </summary>
         /// <returns><see cref="string"/>The id value for ActorId.</returns>
         public string GetId()
@@ -108,7 +107,7 @@ namespace Dapr.Actors
         /// Determines whether this instance and a specified object, which must also be a <see cref="ActorId"/> object,
         /// have the same value. Overrides <see cref="object.Equals(object)"/>.
         /// </summary>
-        /// <param name="obj">The actorId to compare to this instance. </param>
+        /// <param name="obj">The actorId to compare to this instance.</param>
         /// <returns>true if obj is a <see cref="ActorId"/> and its value is the same as this instance;
         /// otherwise, false. If obj is null, the method returns false.</returns>
         public override bool Equals(object obj)
@@ -130,9 +129,8 @@ namespace Dapr.Actors
         /// <summary>
         /// Determines whether this instance and another specified <see cref="ActorId"/> object have the same value.
         /// </summary>
-        /// <param name="other">The actorId to compare to this instance. </param>
-        /// <returns>true if the id of the other parameter is the same as the
-        /// id of this instance; otherwise, false.
+        /// <param name="other">The actorId to compare to this instance.</param>
+        /// <returns>true if the id of the other parameter is the same as the id of this instance; otherwise, false.
         /// If other is null, the method returns false.</returns>
         public bool Equals(ActorId other)
         {
@@ -150,7 +148,7 @@ namespace Dapr.Actors
         /// Compares this instance with a specified <see cref="ActorId"/> object and indicates whether this
         /// instance precedes, follows, or appears in the same position in the sort order as the specified actorId.
         /// </summary>
-        /// <param name="other">The actorId to compare with this instance. </param>
+        /// <param name="other">The actorId to compare with this instance.</param>
         /// <returns>A 32-bit signed integer that indicates whether this instance precedes, follows, or appears
         ///  in the same position in the sort order as the other parameter.</returns>
         /// <remarks>The comparison is done based on the id if both the instances.</remarks>
