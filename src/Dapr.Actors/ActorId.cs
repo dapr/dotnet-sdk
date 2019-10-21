@@ -35,11 +35,11 @@ namespace Dapr.Actors
         /// <returns>true if the id is same for both objects; otherwise, false.</returns>
         public static bool operator ==(ActorId id1, ActorId id2)
         {
-            if (ReferenceEquals(id1, null) && ReferenceEquals(id2, null))
+            if (id1 is null && id2 is null)
             {
                 return true;
             }
-            else if (ReferenceEquals(id1, null) || ReferenceEquals(id2, null))
+            else if (id1 is null || id2 is null)
             {
                 return false;
             }
@@ -112,7 +112,7 @@ namespace Dapr.Actors
         /// otherwise, false. If obj is null, the method returns false.</returns>
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(obj, null))
+            if (obj is null)
             {
                 return false;
             }
@@ -134,7 +134,7 @@ namespace Dapr.Actors
         /// If other is null, the method returns false.</returns>
         public bool Equals(ActorId other)
         {
-            if (ReferenceEquals(other, null))
+            if (other is null)
             {
                 return false;
             }
@@ -154,7 +154,7 @@ namespace Dapr.Actors
         /// <remarks>The comparison is done based on the id if both the instances.</remarks>
         public int CompareTo(ActorId other)
         {
-            return ReferenceEquals(other, null) ? 1 : CompareContents(this, other);
+            return other is null ? 1 : CompareContents(this, other);
         }
 
         private static bool EqualsContents(ActorId id1, ActorId id2)
