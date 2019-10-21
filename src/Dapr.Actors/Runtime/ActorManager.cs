@@ -255,7 +255,7 @@ namespace Dapr.Actors.Runtime
 
         private Tuple<string, byte[]> CreateResponseMessage(IActorResponseMessageBody msgBody, int interfaceId)
         {
-            var responseMsgBodyBytes = new byte[0];
+            var responseMsgBodyBytes = Array.Empty<byte>();
             if (msgBody != null)
             {
                 var responseSerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
@@ -268,7 +268,7 @@ namespace Dapr.Actors.Runtime
         private Tuple<string, byte[]> CreateExceptionResponseMessage(Exception ex)
         {
             var responseHeader = new ActorResponseMessageHeader();
-            responseHeader.AddHeader("HasRemoteException", new byte[0]);
+            responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
             var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
             var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
 
