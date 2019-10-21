@@ -6,7 +6,6 @@
 namespace Dapr.Actors
 {
     using System;
-    using System.Globalization;
     using System.Runtime.Serialization;
 
     /// <summary>
