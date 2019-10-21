@@ -5,8 +5,6 @@
 
 namespace Dapr.Actors.Client
 {
-    using Dapr.Actors.Communication.Client;
-
     /// <summary>
     /// Provides the interface for implementation of proxy access for actor service.
     /// </summary>
