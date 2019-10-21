@@ -30,34 +30,34 @@ namespace Dapr.Actors
         /// <summary>
         /// Determines whether two specified actorIds have the same id.
         /// </summary>
-        /// <param name="x">The first actorId to compare, or null. </param>
-        /// <param name="y">The second actorId to compare, or null. </param>
+        /// <param name="id1">The first actorId to compare, or null. </param>
+        /// <param name="id2">The second actorId to compare, or null. </param>
         /// <returns>true if the id is same for both objects; otherwise, false.</returns>
-        public static bool operator ==(ActorId x, ActorId y)
+        public static bool operator ==(ActorId id1, ActorId id2)
         {
-            if (ReferenceEquals(x, null) && ReferenceEquals(y, null))
+            if (ReferenceEquals(id1, null) && ReferenceEquals(id2, null))
             {
                 return true;
             }
-            else if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
+            else if (ReferenceEquals(id1, null) || ReferenceEquals(id2, null))
             {
                 return false;
             }
             else
             {
-                return EqualsContents(x, y);
+                return EqualsContents(id1, id2);
             }
         }
 
         /// <summary>
         /// Determines whether two specified actorIds have different values for id./>.
         /// </summary>
-        /// <param name="x">The first actorId to compare, or null. </param>
-        /// <param name="y">The second actorId to compare, or null. </param>
+        /// <param name="id1">The first actorId to compare, or null. </param>
+        /// <param name="id2">The second actorId to compare, or null. </param>
         /// <returns>true if the id is different for both objects; otherwise, true.</returns>
-        public static bool operator !=(ActorId x, ActorId y)
+        public static bool operator !=(ActorId id1, ActorId id2)
         {
-            return !(x == y);
+            return !(id1 == id2);
         }
 
         /// <summary>
@@ -159,14 +159,14 @@ namespace Dapr.Actors
             return ReferenceEquals(other, null) ? 1 : CompareContents(this, other);
         }
 
-        private static bool EqualsContents(ActorId x, ActorId y)
+        private static bool EqualsContents(ActorId id1, ActorId id2)
         {
-            return string.Equals(x.stringId, y.stringId, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(id1.stringId, id2.stringId, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static int CompareContents(ActorId x, ActorId y)
+        private static int CompareContents(ActorId id1, ActorId id2)
         {
-            return string.Compare(x.stringId, y.stringId, StringComparison.OrdinalIgnoreCase);
+            return string.Compare(id1.stringId, id2.stringId, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
