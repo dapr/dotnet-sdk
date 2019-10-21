@@ -11,7 +11,7 @@ namespace Dapr.Actors.Runtime
     public enum StateChangeKind
     {
         /// <summary>
-        /// No change in state
+        /// No change in state.
         /// </summary>
         None = 0,
 
