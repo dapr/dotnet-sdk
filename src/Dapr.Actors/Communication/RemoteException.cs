@@ -15,7 +15,6 @@ namespace Dapr.Actors.Communication
     using System.Text;
     using System.Xml;
     using Dapr.Actors;
-    using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
 
     /// <summary>

@@ -5,7 +5,6 @@
 
 namespace Dapr.Actors.Communication.Client
 {
-    using System;
     using System.Threading;
     using System.Threading.Tasks;
 

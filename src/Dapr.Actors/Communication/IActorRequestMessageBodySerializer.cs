@@ -6,7 +6,6 @@
 namespace Dapr.Actors.Communication
 {
     using System.IO;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// Defines the interface that must be implemented to provide a serializer/deserializer for remoting request message body.
