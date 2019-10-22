@@ -384,11 +384,11 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="reader">Json reader.</param>
         /// <returns>A <see cref="System.TimeSpan" />.</returns>
-        public static TimeSpan? ReadValueAsTimeSpanDaprFormat(this JsonReader reader)
+        public static TimeSpan ReadValueAsTimeSpanDaprFormat(this JsonReader reader)
         {
             // TimeSpan is a string. Format returned by Dapr is: 1h4m5s4ms4us4ns
             //  acceptable values are: m, s, ms, us(micro), ns
-            TimeSpan? value = null;
+            var value = default(TimeSpan);
 
             switch (reader.TokenType)
             {
@@ -412,9 +412,9 @@ namespace Dapr.Actors
 
                         var minutes = int.Parse(valueString.Substring(hIndex + 1, mIndex - (hIndex + 1)));
                         var seconds = int.Parse(valueString.Substring(mIndex + 1, sIndex - (mIndex + 1)));
-                        var miliseconds = int.Parse(valueString.Substring(sIndex + 1, msIndex - (sIndex + 1)));
+                        var milliseconds = int.Parse(valueString.Substring(sIndex + 1, msIndex - (sIndex + 1)));
 
-                        value = new TimeSpan(days, hours, minutes, seconds, miliseconds);
+                        value = new TimeSpan(days, hours, minutes, seconds, milliseconds);
                     }
                     catch (Exception ex)
                     {

@@ -85,11 +85,11 @@ namespace Dapr.Actors.Runtime
                 var propName = reader.ReadPropertyName();
                 if (string.Compare("dueTime", propName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    dueTime = (TimeSpan)reader.ReadValueAsTimeSpanDaprFormat();
+                    dueTime = reader.ReadValueAsTimeSpanDaprFormat();
                 }
                 else if (string.Compare("period", propName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
-                    period = (TimeSpan)reader.ReadValueAsTimeSpanDaprFormat();
+                    period = reader.ReadValueAsTimeSpanDaprFormat();
                 }
                 else if (string.Compare("data", propName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
