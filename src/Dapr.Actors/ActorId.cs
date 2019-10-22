@@ -19,12 +19,12 @@ namespace Dapr.Actors
         private readonly string stringId;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ActorId"/> class with Id value of type <see cref="string"/>.
+        /// Initializes a new instance of the <see cref="ActorId"/> class with id value of type <see cref="string"/>.
         /// </summary>
         /// <param name="id">Value for actor id.</param>
         public ActorId(string id)
         {
-            this.stringId = id ?? throw new ArgumentNullException("id");
+            this.stringId = id ?? throw new ArgumentNullException(nameof(id));
         }
 
         /// <summary>
@@ -112,11 +112,7 @@ namespace Dapr.Actors
         /// otherwise, false. If obj is null, the method returns false.</returns>
         public override bool Equals(object obj)
         {
-            if (obj is null)
-            {
-                return false;
-            }
-            else if (obj.GetType() != typeof(ActorId))
+            if (obj is null || obj.GetType() != typeof(ActorId))
             {
                 return false;
             }
