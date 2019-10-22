@@ -9,12 +9,11 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
     using FluentAssertions;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
-    [TestClass]
     public class RoutingIntegrationTest
     {
-        [TestMethod]
+        [Fact]
         public async Task StateClient_CanBindFromState()
         {
             using (var factory = new AppWebApplicationFactory())
