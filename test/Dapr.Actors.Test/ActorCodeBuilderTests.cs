@@ -6,18 +6,17 @@
 namespace Dapr.Actors.Test
 {
     using Dapr.Actors.Builder;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
     /// <summary>
     /// Test class for Actor Code builder.
     /// </summary>
-    [TestClass]
     public class ActorCodeBuilderTests
     {
         /// <summary>
         /// Tests Proxy Generation.
         /// </summary>
-        [TestMethod]
+        [Fact]
         public void TestBuildActorProxyGenerator()
         {
             ActorProxyGenerator proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(typeof(ITestActor));
