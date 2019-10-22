@@ -6,10 +6,8 @@
 namespace Dapr.Actors.Client
 {
     using System;
-    using System.Net.Http;
     using Dapr.Actors.Builder;
     using Dapr.Actors.Communication.Client;
-    using Dapr.Actors.Runtime;
 
     /// <summary>
     /// Represents a factory class to create a proxy to the remote actor objects.

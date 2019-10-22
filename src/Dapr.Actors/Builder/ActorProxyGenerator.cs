@@ -7,8 +7,6 @@ namespace Dapr.Actors.Builder
 {
     using System;
     using Dapr.Actors.Client;
-    using Dapr.Actors.Communication;
-    using Dapr.Actors.Communication.Client;
 
     internal class ActorProxyGenerator
     {

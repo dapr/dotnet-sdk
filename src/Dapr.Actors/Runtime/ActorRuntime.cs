@@ -10,7 +10,6 @@ namespace Dapr.Actors.Runtime
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
 
     /// <summary>
     /// Contains methods to register actor types. Registering the types allows the runtime to create instances of the actor.
