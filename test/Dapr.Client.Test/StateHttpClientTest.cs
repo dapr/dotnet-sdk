@@ -10,12 +10,11 @@ namespace Dapr.Client.Test
     using System.Text.Json;
     using System.Threading.Tasks;
     using FluentAssertions;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
-    [TestClass]
     public class StateHttpClientTest
     {
-        [TestMethod]
+        [Fact]
         public async Task GetStateAsync_CanReadState()
         {
             var httpClient = new TestHttpClient();
@@ -33,7 +32,7 @@ namespace Dapr.Client.Test
             state.Color.Should().Be("yellow");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GetStateAsync_CanReadEmptyState_ReturnsDefault()
         {
             var httpClient = new TestHttpClient();
@@ -50,7 +49,7 @@ namespace Dapr.Client.Test
             state.Should().BeNull();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GetStateAsync_ThrowsForNonSuccess()
         {
             var httpClient = new TestHttpClient();
@@ -66,7 +65,7 @@ namespace Dapr.Client.Test
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task SaveStateAsync_CanSaveState()
         {
             var httpClient = new TestHttpClient();
@@ -94,7 +93,7 @@ namespace Dapr.Client.Test
             await task;
         }
 
-        [TestMethod]
+        [Fact]
         public async Task SaveStateAsync_CanClearState()
         {
             var httpClient = new TestHttpClient();
@@ -119,7 +118,7 @@ namespace Dapr.Client.Test
             await task;
         }
 
-        [TestMethod]
+        [Fact]
         public async Task SetStateAsync_ThrowsForNonSuccess()
         {
             var httpClient = new TestHttpClient();
@@ -136,7 +135,7 @@ namespace Dapr.Client.Test
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GetStateEntryAsync_CanReadState()
         {
             var httpClient = new TestHttpClient();
@@ -155,7 +154,7 @@ namespace Dapr.Client.Test
             state.Value.Color.Should().Be("yellow");
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GetStateEntryAsync_CanReadEmptyState_ReturnsDefault()
         {
             var httpClient = new TestHttpClient();
@@ -173,7 +172,7 @@ namespace Dapr.Client.Test
             state.Value.Should().BeNull();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task GetStateEntryAsync_CanSaveState()
         {
             var httpClient = new TestHttpClient();
