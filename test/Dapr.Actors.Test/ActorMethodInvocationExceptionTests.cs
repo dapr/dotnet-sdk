@@ -9,12 +9,11 @@ namespace Dapr.Actors.Test
     using System.IO;
     using Dapr.Actors.Communication;
     using FluentAssertions;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
     /// <summary>
     /// Contains tests for Actor method invocation exceptions.
     /// </summary>
-    [TestClass]
     public class ActorMethodInvocationExceptionTests
     {
         /// <summary>
@@ -22,7 +21,7 @@ namespace Dapr.Actors.Test
         /// 1) the path for serialization and deserialization of the remote exception
         /// 2) and validating the inner exception.
         /// </summary>
-        [TestMethod]
+        [Fact]
         public void TestThrowActorMethodInvocationException()
         {
             // Create Remote Actor Method test Exception
