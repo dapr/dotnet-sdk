@@ -14,12 +14,11 @@ namespace Dapr.AspNetCore.Test
     using Microsoft.AspNetCore.Mvc.ModelBinding;
     using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
     using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
-    [TestClass]
     public class StateEntryModelBinderTest
     {
-        [TestMethod]
+        [Fact]
         public async Task BindAsync_WithoutMatchingRouteValue_ReportsError()
         {
             var binder = new StateEntryModelBinder("test", isStateEntry: false, typeof(Widget));
@@ -35,7 +34,7 @@ namespace Dapr.AspNetCore.Test
             httpClient.Requests.Count.Should().Be(0);
         }
 
-        [TestMethod]
+        [Fact]
         public async Task BindAsync_CanBindValue()
         {
             var binder = new StateEntryModelBinder("id", isStateEntry: false, typeof(Widget));
@@ -58,7 +57,7 @@ namespace Dapr.AspNetCore.Test
             context.ValidationState[context.Result.Model].SuppressValidation.Should().BeTrue();
         }
 
-        [TestMethod]
+        [Fact]
         public async Task BindAsync_CanBindStateEntry()
         {
             var binder = new StateEntryModelBinder("id", isStateEntry: true, typeof(Widget));

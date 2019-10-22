@@ -10,12 +10,11 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Text.Json;
     using System.Threading.Tasks;
     using FluentAssertions;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
-    [TestClass]
     public class SubscribeEndpointTest
     {
-        [TestMethod]
+        [Fact]
         public async Task SubscribeEndpoint_ReportsTopics()
         {
             using (var factory = new AppWebApplicationFactory())
