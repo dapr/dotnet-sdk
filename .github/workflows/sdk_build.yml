@@ -32,3 +32,8 @@ jobs:
         run: dotnet test code.sln --configuration ${{ matrix.configuration }}
       - name: Generate Nuget Packages - ${{ matrix.configuration }}
         run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
+      - name: upload artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: dotnet-sdk-${{ matrix.configuration }}
+          path: bin
