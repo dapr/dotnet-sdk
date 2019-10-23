@@ -35,5 +35,5 @@ jobs:
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
-          name: dotnet-sdk-${{ matrix.configuration }}
-          path: bin
+          name: ${{ matrix.configuration }}_drop
+          path: bin/${{ matrix.configuration }}/*.nupkg
