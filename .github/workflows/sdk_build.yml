@@ -16,7 +16,7 @@ on:
 jobs:
   build:
     name: Build Projects
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         configuration: [release, debug]
@@ -32,8 +32,8 @@ jobs:
         run: dotnet test code.sln --configuration ${{ matrix.configuration }}
       - name: Generate Nuget Packages - ${{ matrix.configuration }}
         run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
-      - run: mkdir -p bin/artifacts
-      - run: copy bin/${{ matrix.configuration }}/*.nupkg bin/artifacts
+      - run: mkdir -p bin\artifacts
+      - run: copy bin\${{ matrix.configuration }}\*.nupkg bin\artifacts
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
