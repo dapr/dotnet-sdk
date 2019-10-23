@@ -1,0 +1,34 @@
+name: ASP.NET Core CI
+
+on: 
+  push:
+    branches:
+      - master
+      - release-*
+    tags:
+      - v*
+    
+  pull_request:
+    branches: 
+    - master
+    - release-*
+
+jobs:
+  build:
+    name: Build Projects
+    runs-on: windows-2019    
+    strategy:
+      matrix:
+        configuration: [release, debug]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.0.108
+      - name: Build solution - ${{ matrix.configuration }}
+        run: dotnet build code.sln --configuration ${{ matrix.configuration }}
+      - name: Test solution - ${{ matrix.configuration }}
+        run: dotnet test code.sln --configuration ${{ matrix.configuration }}
+      - name: Generate Nuget Packages - ${{ matrix.configuration }}
+        run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
