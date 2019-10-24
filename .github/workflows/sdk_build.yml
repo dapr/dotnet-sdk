@@ -1,4 +1,4 @@
-name: dapr_dotnet_sdk
+name: build
 
 on: 
   push:
