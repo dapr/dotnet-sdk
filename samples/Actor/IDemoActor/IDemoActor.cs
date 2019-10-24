@@ -18,13 +18,25 @@ namespace IDemoActorInterface
         /// </summary>
         /// <param name="data">DAta to save.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task<string> SaveData(MyData data);
+        Task SaveData(MyData data);
 
         /// <summary>
         /// Method to get data.
         /// </summary>
         /// <returns>A task that represents the asynchronous save operation.</returns>
         Task<MyData> GetData();
+
+        /// <summary>
+        /// A test method which throws exception.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous save operation.</returns>
+        Task TestThrowException();
+
+        /// <summary>
+        /// A test method which validates calls for methods with no arguments and no return types.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous save operation.</returns>
+        Task TestNoArgumentNoReturnType();
 
         /// <summary>
         /// Registers a reminder.
