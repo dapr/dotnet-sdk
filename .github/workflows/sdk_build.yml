@@ -1,4 +1,4 @@
-name: Dapr dotnet sdk CI
+name: dapr_dotnet_sdk
 
 on: 
   push:
@@ -32,8 +32,9 @@ jobs:
         run: dotnet test code.sln --configuration ${{ matrix.configuration }}
       - name: Generate Nuget Packages - ${{ matrix.configuration }}
         run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
-      - run: mkdir -p bin\artifacts
-      - run: copy bin\${{ matrix.configuration }}\*.nupkg bin\artifacts
+      -name: Copy nuget packages to artifacts
+       - run: mkdir -p bin\artifacts
+         run: copy bin\${{ matrix.configuration }}\*.nupkg bin\artifacts
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
