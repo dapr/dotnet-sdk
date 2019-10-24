@@ -33,13 +33,12 @@ namespace DaprDemoActor
         }
 
         /// <inheritdoc/>
-        public async Task<string> SaveData(MyData data)
+        public async Task SaveData(MyData data)
         {
             Console.WriteLine($"This is Actor id {this.Id}  with data {data.ToString()}");
 
             // Set State using StateManager, state is saved after the method execution.
             await this.StateManager.SetStateAsync<MyData>(StateName, data);
-            return "Success";
         }
 
         /// <inheritdoc/>
@@ -47,6 +46,18 @@ namespace DaprDemoActor
         {
             // Get state using StateManager.
             return this.StateManager.GetStateAsync<MyData>(StateName);
+        }
+
+        /// <inheritdoc/>
+        public Task TestThrowException()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public Task TestNoArgumentNoReturnType()
+        {
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc/>
