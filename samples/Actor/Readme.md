@@ -8,6 +8,8 @@ The Actor sample shows how to create an Actor(`DemoActor`) and invoke its method
 
 
 ## Projects in sample
+You can open the solution file code.sln in repo root to load the samples and product code.
+
 * **The interface project(\IDemoActor).** This project contains the interface definition for the actor. The interface defines the actor contract that is shared by the actor implementation and the clients calling the actor. Because client projects may depend on it, it typically makes sense to define it in an assembly that is separate from the actor implementation.
 
 * **The actor service project(\DemoService).** This project implements ASP.Net Core web service that is going to host the actor. It contains the implementation of the actor. An actor implementation is a class that derives from the base type Actor and implements the interfaces defined in the MyActor.Interfaces project. An actor class must also implement a constructor that accepts an ActorService instance and an ActorId and passes them to the base Actor class.
@@ -51,11 +53,11 @@ Following curl call will save data for actor id "abc"
 
 On Linux, MacOS:
  ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "PropertyA": "ValueA", "ProertyB": "ValueB" }'
+curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "PropertyA": "ValueA", "PropertyB": "ValueB" }'
  ```
  On Windows:
  ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d "{ \"PropertyA\": \"ValueA\", \"ProertyB\": \"ValueB\" }"
+curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d "{ \"PropertyA\": \"ValueA\", \"PropertyB\": \"ValueB\" }"
  ```
  
  
@@ -65,10 +67,10 @@ Following curl call will get data for actor id "abc"
 (below calls on MacOs, Linux & Windows are exactly the same except for escaping quotes on Windows for curl)
 On Linux, MacOS:
  ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData -d '{ "PropertyA": "ValueA", "ProertyB": "ValueB" }'
+curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData
  ```
  
  On Windows:
  ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData -d "{ \"PropertyA\": \"ValueA\", \"ProertyB\": \"ValueB\" }"
+curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData
  ```

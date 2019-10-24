@@ -36,7 +36,7 @@ dotnet test
 dotnet pack
 ```
 
-Each project can also be built individually directly through Visual Studio.
+Each project can also be built individually directly through Visual Studio. You can open the solution file code.sln in repo root to load all the projects.
 
 ## Releases
 
