@@ -1,5 +1,7 @@
 # Dapr SDK for .NET
 
+[![Build Status](https://github.com/dapr/dotnet-sdk/workflows/dapr_dotnet_sdk/badge.svg)](https://github.com/dapr/dotnet-sdk/actions?workflow=dapr_dotnet_sdk)
+
 Dapr is a programming model for writing cloud-native applications which are distributed, dynamically scaled, and loosely coupled in nature.
 
 Dapr SDK for .NET allows you to implement the Virtual Actor model, based on the actor design pattern. This SDK can run locally, in a container and in any distributed systems environment.
