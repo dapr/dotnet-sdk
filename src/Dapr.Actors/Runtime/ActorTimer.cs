@@ -47,9 +47,15 @@ namespace Dapr.Actors.Runtime
             {
                 using var writer = new JsonTextWriter(sw);
                 writer.WriteStartObject();
+                if (this.DueTime != null)
+                {
+                    writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
+                }
 
-                writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
-                writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
+                if (this.Period != null)
+                {
+                    writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
+                }
 
                 // Do not serialize state and call back, it will be kept with actor instance.
                 writer.WriteEndObject();
