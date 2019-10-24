@@ -1,4 +1,4 @@
-name: DApr dotnet sdk CI
+name: Dapr dotnet sdk CI
 
 on: 
   push:
