@@ -1,0 +1,43 @@
+name: build
+
+on: 
+  push:
+    branches:
+      - master
+      - release-*
+    tags:
+      - v*
+    
+  pull_request:
+    branches: 
+    - master
+    - release-*
+
+jobs:
+  build:
+    name: Build Projects
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        configuration: [release, debug]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.0.100
+      - name: Build solution - ${{ matrix.configuration }}
+        run: dotnet build code.sln --configuration ${{ matrix.configuration }}
+      - name: Test solution - ${{ matrix.configuration }}
+        run: dotnet test code.sln --configuration ${{ matrix.configuration }}
+      - name: Generate Nuget Packages - ${{ matrix.configuration }}
+        run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
+      - name: Copy nuget packages to artifacts
+        run: |
+          mkdir -p bin/artifacts
+          copy bin/${{ matrix.configuration }}/*.nupkg bin/artifacts
+      - name: upload artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ matrix.configuration }}_drop
+          path: bin/artifacts

@@ -9,12 +9,11 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
     using FluentAssertions;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
-    [TestClass]
     public class ControllerIntegrationTest
     {
-        [TestMethod]
+        [Fact]
         public async Task ModelBinder_CanBindFromState()
         {
             using (var factory = new AppWebApplicationFactory())
@@ -33,7 +32,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ModelBinder_CanBindFromState_WithStateEntry()
         {
             using (var factory = new AppWebApplicationFactory())
@@ -52,7 +51,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task ModelBinder_CanBindFromState_WithStateEntryAndCustomKey()
         {
             using (var factory = new AppWebApplicationFactory())

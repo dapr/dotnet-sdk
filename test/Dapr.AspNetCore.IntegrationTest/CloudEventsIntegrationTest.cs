@@ -12,9 +12,8 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
     using FluentAssertions;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
-    [TestClass]
     public class CloudEventsIntegrationTest
     {
         private readonly JsonSerializerOptions options = new JsonSerializerOptions()
@@ -23,7 +22,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             PropertyNameCaseInsensitive = true,
         };
 
-        [TestMethod]
+        [Fact]
         public async Task CanSendEmptyStructuredCloudEvent()
         {
             using (var factory = new AppWebApplicationFactory())
@@ -39,7 +38,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task CanSendStructuredCloudEvent()
         {
             using (var factory = new AppWebApplicationFactory())
@@ -67,7 +66,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             }
         }
 
-        [TestMethod]
+        [Fact]
         public async Task CanSendStructuredCloudEvent_WithContentType()
         {
             using (var factory = new AppWebApplicationFactory())
@@ -99,7 +98,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         // Yeah, I know, binary isn't a great term for this, it's what the cloudevents spec uses.
         // Basically this is here to test that an endpoint can handle requests with and without
         // an envelope.
-        [TestMethod]
+        [Fact]
         public async Task CanSendBinaryCloudEvent_WithContentType()
         {
             using (var factory = new AppWebApplicationFactory())

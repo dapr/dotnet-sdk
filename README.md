@@ -1,6 +1,14 @@
 # Dapr SDK for .NET
 
-Dapr is a programming model for writing cloud-native applications which are distributed, dynamically scaled, and loosely coupled in nature.
+Dapr is a portable, event-driven, serverless runtime for building distributed applications across cloud and edge.
+
+[![Build Status](https://github.com/dapr/dotnet-sdk/workflows/build/badge.svg)](https://github.com/dapr/dotnet-sdk/actions?workflow=build)
+[![Gitter](https://badges.gitter.im/Dapr/community.svg)](https://gitter.im/Dapr/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+- [dapr.io](https://dapr.io)
+- [@DaprDev](https://twitter.com/DaprDev)
+
 
 Dapr SDK for .NET allows you to implement the Virtual Actor model, based on the actor design pattern. This SDK can run locally, in a container and in any distributed systems environment.
 
@@ -36,7 +44,7 @@ dotnet test
 dotnet pack
 ```
 
-Each project can also be built individually directly through Visual Studio.
+Each project can also be built individually directly through Visual Studio. You can open the solution file code.sln in repo root to load all the projects.
 
 ## Releases
 

@@ -12,17 +12,16 @@ namespace Dapr.AspNetCore.Test
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Http;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Xunit;
 
-    [TestClass]
     public class CloudEventsMiddlewareTest
     {
-        [DataTestMethod]
-        [DataRow("text/plain")]
-        [DataRow("application/json")] // "binary" format
-        [DataRow("application/cloudevents")] // no format
-        [DataRow("application/cloudevents+xml")] // wrong format
-        [DataRow("application/cloudevents-batch+json")] // we don't support batch
+        [Theory]
+        [InlineData("text/plain")]
+        [InlineData("application/json")] // "binary" format
+        [InlineData("application/cloudevents")] // no format
+        [InlineData("application/cloudevents+xml")] // wrong format
+        [InlineData("application/cloudevents-batch+json")] // we don't support batch
         public async Task InvokeAsync_IgnoresOtherContentTypes(string contentType)
         {
             var app = new ApplicationBuilder(null);
@@ -45,12 +44,12 @@ namespace Dapr.AspNetCore.Test
             await pipeline.Invoke(context);
         }
 
-        [DataTestMethod]
-        [DataRow(null, null)] // assumes application/json + utf8
-        [DataRow("application/json", null)] // assumes utf8
-        [DataRow("application/json", "utf-8")]
-        [DataRow("application/json", "UTF-8")]
-        [DataRow("application/person+json", "UTF-16")] // arbitrary content type and charset
+        [Theory]
+        [InlineData(null, null)] // assumes application/json + utf8
+        [InlineData("application/json", null)] // assumes utf8
+        [InlineData("application/json", "utf-8")]
+        [InlineData("application/json", "UTF-8")]
+        [InlineData("application/person+json", "UTF-16")] // arbitrary content type and charset
         public async Task InvokeAsync_ReplacesBodyJson(string dataContentType, string charSet)
         {
             var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
@@ -78,7 +77,7 @@ namespace Dapr.AspNetCore.Test
 
         // This is a special case. S.T.Json will always output utf8, so we have to reinterpret the charset
         // of the datacontenttype.
-        [TestMethod]
+        [Fact]
         public async Task InvokeAsync_ReplacesBodyJson_NormalizesPayloadCharset()
         {
             var dataContentType = "application/person+json;charset=UTF-16";
