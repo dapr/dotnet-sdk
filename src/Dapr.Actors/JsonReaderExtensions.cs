@@ -412,9 +412,9 @@ namespace Dapr.Actors
 
                         var minutes = int.Parse(valueString.Substring(hIndex + 1, mIndex - (hIndex + 1)));
                         var seconds = int.Parse(valueString.Substring(mIndex + 1, sIndex - (mIndex + 1)));
-                        var miliseconds = int.Parse(valueString.Substring(sIndex + 1, msIndex - (sIndex + 1)));
+                        var milliseconds = int.Parse(valueString.Substring(sIndex + 1, msIndex - (sIndex + 1)));
 
-                        value = new TimeSpan(days, hours, minutes, seconds, miliseconds);
+                        value = new TimeSpan(days, hours, minutes, seconds, milliseconds);
                     }
                     catch (Exception ex)
                     {
