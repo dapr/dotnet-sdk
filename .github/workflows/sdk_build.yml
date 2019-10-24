@@ -34,8 +34,8 @@ jobs:
         run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
       - name: Copy nuget packages to artifacts
         run: |
-          mkdir -p bin\artifacts
-          copy bin\${{ matrix.configuration }}\*.nupkg bin\artifacts
+          mkdir -p bin/artifacts
+          copy bin/${{ matrix.configuration }}/*.nupkg bin/artifacts
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
