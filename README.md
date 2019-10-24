@@ -1,6 +1,6 @@
 # Dapr SDK for .NET
 
-[![Build Status](https://github.com/dapr/dotnet-sdk/workflows/dapr_dotnet_sdk/badge.svg)](https://github.com/dapr/dotnet-sdk/actions?workflow=dapr_dotnet_sdk)
+[![Build Status](https://github.com/dapr/dotnet-sdk/workflows/build/badge.svg)](https://github.com/dapr/dotnet-sdk/actions?workflow=build)
 
 Dapr is a programming model for writing cloud-native applications which are distributed, dynamically scaled, and loosely coupled in nature.
 
