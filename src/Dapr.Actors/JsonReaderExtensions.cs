@@ -384,11 +384,11 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="reader">Json reader.</param>
         /// <returns>A <see cref="System.TimeSpan" />.</returns>
-        public static TimeSpan ReadValueAsTimeSpanDaprFormat(this JsonReader reader)
+        public static TimeSpan? ReadValueAsTimeSpanDaprFormat(this JsonReader reader)
         {
             // TimeSpan is a string. Format returned by Dapr is: 1h4m5s4ms4us4ns
             //  acceptable values are: m, s, ms, us(micro), ns
-            var value = default(TimeSpan);
+            TimeSpan? value = null;
 
             switch (reader.TokenType)
             {
