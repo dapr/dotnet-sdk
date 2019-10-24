@@ -14,11 +14,11 @@ Dapr SDK for .NET allows you to implement the Virtual Actor model, based on the 
 
 This repo builds the following packages:
 
-- Dapr.Client
-- Dapr.Client.Grpc
-- Dapr.AspNetCore
-- Dapr.Actors
-- Dapr.Actors.AspNetCore
+- Dapr.Client [![NuGet](https://img.shields.io/nuget/v/FeatureToggle.svg)](https://www.nuget.org/packages/Dapr.Client)
+- Dapr.Client.Grpc [![NuGet](https://img.shields.io/nuget/v/FeatureToggle.svg)](https://www.nuget.org/packages/Dapr.Client.Grpc)
+- Dapr.AspNetCore [![NuGet](https://img.shields.io/nuget/v/FeatureToggle.svg)](https://www.nuget.org/packages/Dapr.AspNetCore)
+- Dapr.Actors [![NuGet](https://img.shields.io/nuget/v/FeatureToggle.svg)](https://www.nuget.org/packages/Dapr.Actors)
+- Dapr.Actors.AspNetCore [![NuGet](https://img.shields.io/nuget/v/FeatureToggle.svg)](https://www.nuget.org/packages/Dapr.Actors.AspNetCore)
 
 ## Getting Started
 
