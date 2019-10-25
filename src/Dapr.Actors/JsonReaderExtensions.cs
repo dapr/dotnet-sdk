@@ -394,25 +394,32 @@ namespace Dapr.Actors
             {
                 case JsonToken.String:
                     var valueString = (string)reader.Value;
+                    var spanOfValue = valueString.AsSpan();
                     try
                     {
                         // Change the value returned by Dapr runtime, so that it can be parsed with TimeSpan.
                         // Format returned by Dapr runtime: 4h15m50s60ms. It doesnt have days.
                         // Dapr runtime should handle timespans in ISO 8601 format.
-                        // Replace ms before m & s. Also aappend 0 days for parsing correctly with TimeSpan
-                        int hIndex = valueString.IndexOf('h');
-                        int mIndex = valueString.IndexOf('m');
-                        int sIndex = valueString.IndexOf('s');
-                        int msIndex = valueString.IndexOf("ms");
+                        // Replace ms before m & s. Also append 0 days for parsing correctly with TimeSpan
+                        int hIndex = spanOfValue.IndexOf('h');
+                        int mIndex = spanOfValue.IndexOf('m');
+                        int sIndex = spanOfValue.IndexOf('s');
+                        int msIndex = spanOfValue.IndexOf("ms");
 
                         // handle days from hours.
-                        var hours = int.Parse(valueString.Substring(0, hIndex));
+                        var hoursSpan = spanOfValue.Slice(0, hIndex);
+                        var hours = int.Parse(hoursSpan);
                         var days = hours / 24;
                         hours = hours % 24;
 
-                        var minutes = int.Parse(valueString.Substring(hIndex + 1, mIndex - (hIndex + 1)));
-                        var seconds = int.Parse(valueString.Substring(mIndex + 1, sIndex - (mIndex + 1)));
-                        var milliseconds = int.Parse(valueString.Substring(sIndex + 1, msIndex - (sIndex + 1)));
+                        var minutesSpan = spanOfValue.Slice(hIndex + 1, mIndex - (hIndex + 1));
+                        var minutes = int.Parse(minutesSpan);
+
+                        var secondsSpan = spanOfValue.Slice(mIndex + 1, sIndex - (mIndex + 1));
+                        var seconds = int.Parse(secondsSpan);
+
+                        var millisecondsSpan = spanOfValue.Slice(sIndex + 1, msIndex - (sIndex + 1));
+                        var milliseconds = int.Parse(millisecondsSpan);
 
                         value = new TimeSpan(days, hours, minutes, seconds, milliseconds);
                     }
