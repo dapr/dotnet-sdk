@@ -29,15 +29,11 @@ jobs:
       - name: Build solution - ${{ matrix.configuration }}
         run: dotnet build code.sln --configuration ${{ matrix.configuration }}
       - name: Test solution - ${{ matrix.configuration }}
-        run: dotnet test code.sln --configuration ${{ matrix.configuration }}
+        run: dotnet test code.sln --configuration ${{ matrix.configuration }} --include-symbols --include-source --no-build
       - name: Generate Nuget Packages - ${{ matrix.configuration }}
         run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
-      - name: Copy nuget packages to artifacts
-        run: |
-          mkdir -p bin/artifacts
-          copy bin/${{ matrix.configuration }}/*.nupkg bin/artifacts
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
           name: ${{ matrix.configuration }}_drop
-          path: bin/artifacts
+          path: bin/${{ matrix.configuration }}/nugets

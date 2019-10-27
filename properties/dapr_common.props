@@ -5,9 +5,6 @@
     <RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>
     <RequestedVerbosity Condition=" '$(RequestedVerbosity)' == '' ">minimal</RequestedVerbosity>
     
-    <!-- Set Output Paths-->
-    <OutputPath>$(RepoRoot)bin\$(Configuration)\</OutputPath>
-    
     <!-- Version for binaries, nuget packages generated from this repo. -->
     <MajorVersion>1</MajorVersion>
     <MinorVersion>0</MinorVersion>
@@ -16,7 +13,7 @@
     <Version>$(MajorVersion).$(MinorVersion).$(BuildVersion).$(Revision)</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <AssemblyFileVersion>$(Version)</AssemblyFileVersion>
-    <FileVersion>$(MajorVersion).$(MinorVersion).$(BuildVersion).$(Revision)</FileVersion>
+    <FileVersion>$(Version)</FileVersion>
 
     <!-- Nuget package versions -->
     <NupkgMajorVersion>0</NupkgMajorVersion>

@@ -31,7 +31,7 @@ Make sure you [update Visual Studio to the most recent release](https://docs.mic
 
 ### Build
 
-To build everything and generate NuGet packages, run dotnet cli commands. NuGet packages will be dropped in a *bin* directory at the repo root.
+To build everything and generate NuGet packages, run dotnet cli commands. Binaries and NuGet packages will be dropped in a *bin* directory at the repo root.
 
 ```bash
 # Build SDK
@@ -40,7 +40,7 @@ dotnet build -c Debug  # for release, -c Release
 # Run unit-test
 dotnet test
 
-# Generate nuget packages in /bin/Debug/
+# Generate nuget packages in /bin/Debug/nugets
 dotnet pack
 ```
 
@@ -52,14 +52,16 @@ We publish nuget packages to nuget.org for each release.
 
 ## Using nugets built locally in your project
 
-RepoRoot is the path where you cloned this repository.
+<RepoRoot> is the path where you cloned this repository.
+Nuget packages are dropped under *<RepoRoot>/bin/<Debug|Release>/nugets* when you build locally.
 
+Examples:
 ```bash
 # Add Dapr.Actors nuget package
-dotnet add package Dapr.Actors -s <RepoRoot>/bin/<Debug|Release>/
+dotnet add package Dapr.Actors -s <RepoRoot>/bin/<Debug|Release>/nugets
 
 # Add Dapr.Actors.AspNetCore nuget package
-dotnet add package Dapr.Actors.AspNetCore -s <RepoRoot>/bin/<Debug|Release>/
+dotnet add package Dapr.Actors.AspNetCore -s <RepoRoot>/bin/<Debug|Release>/nugets
 ```
 
 ## Documentation

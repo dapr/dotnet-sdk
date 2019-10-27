@@ -1,25 +1,12 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_stylecop.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_nuget.props" />
 
   <PropertyGroup>
-    <SignAssembly>true</SignAssembly>
+    <OutputPath>$(RepoRoot)bin\$(Configuration)\prod\$(MSBuildProjectName)\</OutputPath>
 
     <!-- Stylecop needs the documentation file to exist -->
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
-
-    <!-- Nuget package properties when packed using dotnet pack. -->
-    <NuspecFile>nuspec\$(MSBuildProjectName).nuspec</NuspecFile>
-    <NuspecProperties>version=$(NupkgVersion);Configuration=$(Configuration)</NuspecProperties>
-
-    <!-- Disabling NU5128 Warning, https://docs.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5128 -->
-    <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Update="StyleCop.Analyzers" Version="1.1.118">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 </Project>
