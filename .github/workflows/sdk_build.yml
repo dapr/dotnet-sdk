@@ -29,9 +29,9 @@ jobs:
       - name: Build solution - ${{ matrix.configuration }}
         run: dotnet build code.sln --configuration ${{ matrix.configuration }}
       - name: Test solution - ${{ matrix.configuration }}
-        run: dotnet test code.sln --configuration ${{ matrix.configuration }} --include-symbols --include-source --no-build
+        run: dotnet test code.sln --configuration ${{ matrix.configuration }}
       - name: Generate Nuget Packages - ${{ matrix.configuration }}
-        run: dotnet pack code.sln --configuration ${{ matrix.configuration }}
+        run: dotnet pack code.sln --configuration ${{ matrix.configuration }} --include-symbols --include-source --no-build
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
