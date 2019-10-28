@@ -27,11 +27,11 @@ jobs:
         with:
           dotnet-version: 3.0.100
       - name: Build solution - ${{ matrix.configuration }}
-        run: dotnet build code.sln --configuration ${{ matrix.configuration }}
+        run: dotnet build all.sln --configuration ${{ matrix.configuration }}
       - name: Test solution - ${{ matrix.configuration }}
-        run: dotnet test code.sln --configuration ${{ matrix.configuration }}
+        run: dotnet test test/test.sln --configuration ${{ matrix.configuration }}
       - name: Generate Nuget Packages - ${{ matrix.configuration }}
-        run: dotnet pack code.sln --configuration ${{ matrix.configuration }} --include-symbols --include-source --no-build
+        run: dotnet pack src/prod.sln --configuration ${{ matrix.configuration }} --include-symbols --no-build
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:

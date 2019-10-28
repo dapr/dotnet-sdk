@@ -8,7 +8,7 @@ The Actor sample shows how to create an Actor(`DemoActor`) and invoke its method
 
 
 ## Projects in sample
-You can open the solution file code.sln in repo root to load the samples and product code.
+You can open the solution file samples.sln in samples directory to load the samples and product code.
 
 * **The interface project(\IDemoActor).** This project contains the interface definition for the actor. The interface defines the actor contract that is shared by the actor implementation and the clients calling the actor. Because client projects may depend on it, it typically makes sense to define it in an assembly that is separate from the actor implementation.
 
