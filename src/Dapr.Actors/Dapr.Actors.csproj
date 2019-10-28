@@ -2,6 +2,13 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
+
+  <!-- Additional Nuget package properties. -->
+  <PropertyGroup>
+    <Description>This package contains the reference assemblies for developing Actor services using dapr.</Description>
+    <PackageTags>$(PackageTags);Actors</PackageTags>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>

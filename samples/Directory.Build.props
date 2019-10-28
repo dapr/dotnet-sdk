@@ -3,12 +3,11 @@
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_stylecop.props" />
 
   <PropertyGroup>
+    <!-- Set Output Path for samples-->
+    <OutputPath>$(RepoRoot)bin\$(Configuration)\samples\$(MSBuildProjectName)\</OutputPath>
+
     <!-- Stylecop needs the documentation file to exist -->
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
-
-    <!-- Set Output Path for samples-->
-    <OutputPath>$(RepoRoot)bin\$(Configuration)\samples</OutputPath>
-    
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>
