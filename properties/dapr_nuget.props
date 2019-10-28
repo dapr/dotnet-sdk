@@ -1,0 +1,20 @@
+<Project>
+  <!-- Nuget package properties when packed using dotnet pack. -->
+  <PropertyGroup>
+    <PackageVersion>$(NupkgVersion)</PackageVersion>
+    <Authors>dapr.io</Authors>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://dapr.io</PackageProjectUrl>
+    <PackageIcon>images\logo-transparent.png</PackageIcon>
+    <PackageTags>Dapr</PackageTags>
+    <RepositoryUrl>https://github.com/dapr/dotnet-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageOutputPath>$(RepoRoot)bin\$(Configuration)\nugets</PackageOutputPath>
+  </PropertyGroup>
+
+  <!-- Icon for nuget packages -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\properties\logo-transparent.png" Pack="true" Visible="false" PackagePath="images" />
+  </ItemGroup>
+</Project>

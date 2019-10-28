@@ -33,13 +33,13 @@ stages:
         inputs:
           command: 'build'
           arguments: '--configuration $(Configuration)'
-          projects: 'code.sln'
+          projects: 'all.sln'
       - task: DotNetCoreCLI@2
         displayName: 'Test - $(Configuration)'
         inputs:
           command: 'test'
           arguments: '--configuration $(Configuration)'
-          projects: 'code.sln'      
+          projects: 'test/test.sln'      
       - task: DotNetCoreCLI@2
         displayName: 'Package Dapr.Actors nuget - $(Configuration)'
         inputs:
