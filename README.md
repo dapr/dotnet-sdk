@@ -29,22 +29,29 @@ Each project is a normal C# Visual Studio 2019 project. At minimum, you need [.N
 We recommend installing [Visual Studio 2019 v16.3 or later ](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
 Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio). To find a version of .NET Core that can be used with earlier versions of Visual Studio, see [.NET SDKs for Visual Studio](https://dotnet.microsoft.com/download/visual-studio-sdks).
 
+### Solution Files
+The repo currently has 3 solution files:
+- *all.sln*: This includes all the sdk product, test and samples project files.
+- *src/prod.sln*: This includes all the product project files.
+- *samples/samples.sln*: This includes all the sample projects files dependencies project files.
+- *test/test.sln*: This includes all the test projects and dependencies project files.
+
 ### Build
 
-To build everything and generate NuGet packages, run dotnet cli commands. NuGet packages will be dropped in a *bin* directory at the repo root.
+To build everything and generate NuGet packages, run dotnet cli commands. Binaries and NuGet packages will be dropped in a *bin* directory at the repo root.
 
 ```bash
-# Build SDK
+# Build sdk, samples and tests.
 dotnet build -c Debug  # for release, -c Release
 
 # Run unit-test
-dotnet test
+dotnet test test/test.sln
 
-# Generate nuget packages in /bin/Debug/
-dotnet pack
+# Generate nuget packages in /bin/Debug/nugets
+dotnet pack src/prod.sln
 ```
 
-Each project can also be built individually directly through Visual Studio. You can open the solution file code.sln in repo root to load all the projects.
+Each project can also be built individually directly through Visual Studio. You can open the solution file all.sln in repo root to load all sdk, samples and test projects.
 
 ## Releases
 
@@ -52,14 +59,16 @@ We publish nuget packages to nuget.org for each release.
 
 ## Using nugets built locally in your project
 
-RepoRoot is the path where you cloned this repository.
+<RepoRoot> is the path where you cloned this repository.
+Nuget packages are dropped under *<RepoRoot>/bin/<Debug|Release>/nugets* when you build locally.
 
+Examples:
 ```bash
 # Add Dapr.Actors nuget package
-dotnet add package Dapr.Actors -s <RepoRoot>/bin/<Debug|Release>/
+dotnet add package Dapr.Actors -s <RepoRoot>/bin/<Debug|Release>/nugets
 
 # Add Dapr.Actors.AspNetCore nuget package
-dotnet add package Dapr.Actors.AspNetCore -s <RepoRoot>/bin/<Debug|Release>/
+dotnet add package Dapr.Actors.AspNetCore -s <RepoRoot>/bin/<Debug|Release>/nugets
 ```
 
 ## Documentation

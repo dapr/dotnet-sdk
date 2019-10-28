@@ -4,6 +4,11 @@
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
 
+  <!-- Additional Nuget package properties. -->
+  <PropertyGroup>
+    <Description>This package contains the reference assemblies for developing services using Dapr and AspNetCore.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
