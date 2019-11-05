@@ -20,16 +20,8 @@ namespace ActorClient
         /// Entry point.
         /// </summary>
         /// <param name="args">Arguments.</param>
-        public static void Main(string[] args)
-        {
-            MakeActorCalls().GetAwaiter().GetResult();
-        }
-
-        /// <summary>
-        /// A wrapper method which make actual calls.
-        /// </summary>
-        /// <returns>A task that represents the asynchronous save operation.</returns>
-        public static async Task MakeActorCalls()
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public static async Task Main(string[] args)
         {
             var data = new MyData()
             {

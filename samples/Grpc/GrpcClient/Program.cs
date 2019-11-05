@@ -10,7 +10,7 @@ namespace GrpcClient
     using Dapr.Client.Grpc;
     using Google.Protobuf;
     using Google.Protobuf.WellKnownTypes;
-    using Grpc.Core;
+    using Grpc.Net.Client;
 
     /// <summary>
     /// gRPC CLient sample class.
@@ -23,27 +23,31 @@ namespace GrpcClient
         /// Main entry point.
         /// </summary>
         /// <param name="args">Arguments.</param>
-        public static void Main(string[] args)
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public static async Task Main(string[] args)
         {
             // Get default port from environment, the environment is set when launched by Dapr runtime.
             var defaultPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? "52918";
 
+            // Set correct switch to make insecure gRPC service calls. This switch must be set before creating the GrpcChannel.
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
             // Create Client
-            var daprUri = $"127.0.0.1:{defaultPort}";
-            var channel = new Channel(daprUri, ChannelCredentials.Insecure);
+            var daprUri = $"http://127.0.0.1:{defaultPort}";
+            var channel = GrpcChannel.ForAddress(daprUri);
             var client = new Dapr.DaprClient(channel);
 
             // Publish an event
-            PublishEventAsync(client).GetAwaiter().GetResult();
+            await PublishEventAsync(client);
 
             // Save State
-            SaveStateAsync(client).GetAwaiter().GetResult();
+            await SaveStateAsync(client);
 
             // Read State
-            GetStateAsync(client).GetAwaiter().GetResult();
+            await GetStateAsync(client);
 
             // Delete State
-            DeleteStateAsync(client).GetAwaiter().GetResult();
+            await DeleteStateAsync(client);
         }
 
         private static async Task PublishEventAsync(Dapr.DaprClient client)
