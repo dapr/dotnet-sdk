@@ -19,7 +19,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Adds Dapr integration for MVC to the provided <see cref="IMvcBuilder" />.
         /// </summary>
         /// <param name="builder">The <see cref="IMvcBuilder" />.</param>
-        public static void AddDapr(this IMvcBuilder builder)
+        /// <returns>The <see cref="IMvcBuilder" /> builder.</returns>
+        public static IMvcBuilder AddDapr(this IMvcBuilder builder)
         {
             if (builder is null)
             {
@@ -30,7 +31,7 @@ namespace Microsoft.Extensions.DependencyInjection
             // by non-user-code.
             if (builder.Services.Contains(ServiceDescriptor.Singleton<DaprMvcMarkerService, DaprMvcMarkerService>()))
             {
-                return;
+                return builder;
             }
 
             builder.Services.AddDaprClient();
@@ -41,6 +42,8 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 options.ModelBinderProviders.Insert(0, new StateEntryModelBinderProvider());
             });
+
+            return builder;
         }
 
         private class DaprMvcMarkerService
