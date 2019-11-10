@@ -27,15 +27,13 @@ namespace Dapr
 
         public override ValueTask SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default)
         {
-            if (value == null)
-            {
-                this.State.Remove(key);
-            }
-            else
-            {
-                this.State[key] = value;
-            }
+            this.State[key] = value;
+            return new ValueTask(Task.CompletedTask);
+        }
 
+        public override ValueTask DeleteStateAsync(string key, CancellationToken cancellationToken = default)
+        {
+            this.State.Remove(key);
             return new ValueTask(Task.CompletedTask);
         }
     }

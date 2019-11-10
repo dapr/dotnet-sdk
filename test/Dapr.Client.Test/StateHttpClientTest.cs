@@ -136,6 +136,37 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task DeleteStateAsync_CanDeleteState()
+        {
+            var httpClient = new TestHttpClient();
+            var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = client.DeleteStateAsync("test");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "test"));
+
+            entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
+            await task;
+        }
+
+        [Fact]
+        public async Task DeleteStateAsync_ThrowsForNonSuccess()
+        {
+            var httpClient = new TestHttpClient();
+            var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = client.DeleteStateAsync("test");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "test"));
+
+            entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
+        }
+
+        [Fact]
         public async Task GetStateEntryAsync_CanReadState()
         {
             var httpClient = new TestHttpClient();
@@ -212,6 +243,34 @@ namespace Dapr.Client.Test
             await task;
         }
 
+        [Fact]
+        public async Task GetStateEntryAsync_CanDeleteState()
+        {
+            var httpClient = new TestHttpClient();
+            var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = client.GetStateEntryAsync<Widget>("test");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+
+            entry.RespondWithJson(new Widget() { Size = "small", Color = "yellow", });
+
+            var state = await task;
+            state.Key.Should().Be("test");
+            state.Value.Size.Should().Be("small");
+            state.Value.Color.Should().Be("yellow");
+
+            state.Value.Color = "green";
+            var task2 = state.DeleteAsync();
+
+            httpClient.Requests.TryDequeue(out entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "test"));
+
+            entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
+            await task;
+        }
+
         private static string GetStateUrl(int port, string key)
         {
             return $"http://localhost:{port}/v1.0/state/{key}";
@@ -220,6 +279,11 @@ namespace Dapr.Client.Test
         private static string SaveStateUrl(int port)
         {
             return $"http://localhost:{port}/v1.0/state";
+        }
+
+        private static string DeleteStateUrl(int port, string key)
+        {
+            return $"http://localhost:{port}/v1.0/state/{key}";
         }
 
         private class Widget

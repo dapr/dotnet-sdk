@@ -52,5 +52,13 @@ namespace Dapr
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public abstract ValueTask SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Deletes the value associated with the provided <paramref name="key" /> in the Dapr state store.
+        /// </summary>
+        /// <param name="key">The state key.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        public abstract ValueTask DeleteStateAsync(string key, CancellationToken cancellationToken = default);
     }
 }
