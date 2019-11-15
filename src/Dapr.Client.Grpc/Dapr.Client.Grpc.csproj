@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
-
-  <!-- Additional Nuget package properties. -->
   <PropertyGroup>
     <Description>This package contains the reference assemblies for making Dapr client calls using Grpc.</Description>
   </PropertyGroup>
-
+  <ItemGroup>
+    <Protobuf Include="Protos\dapr.proto" GrpcServices="Client" />
+    <Protobuf Include="Protos\daprclient.proto" GrpcServices="Client" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.10.0" />
-    <PackageReference Include="Grpc" Version="2.24.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.25.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.25.0" />
   </ItemGroup>
-  
 </Project>
