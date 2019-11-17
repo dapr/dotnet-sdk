@@ -35,7 +35,7 @@ namespace DaprDemoActor
         /// <inheritdoc/>
         public async Task SaveData(MyData data)
         {
-            Console.WriteLine($"This is Actor id {this.Id}  with data {data.ToString()}");
+            Console.WriteLine($"This is Actor id {this.Id} with data {data}.");
 
             // Set State using StateManager, state is saved after the method execution.
             await this.StateManager.SetStateAsync<MyData>(StateName, data);
