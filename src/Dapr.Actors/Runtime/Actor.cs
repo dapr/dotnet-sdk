@@ -296,7 +296,7 @@ namespace Dapr.Actors.Runtime
             // create a timer name to register with Dapr runtime.
             if (string.IsNullOrEmpty(timerName))
             {
-                timerName = $"{this.Id.ToString()}_Timer_{this.timers.Count + 1}";
+                timerName = $"{this.Id}_Timer_{this.timers.Count + 1}";
             }
 
             var actorTimer = new ActorTimer(this, timerName, asyncCallback, state, dueTime, period);
