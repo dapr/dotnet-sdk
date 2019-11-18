@@ -39,7 +39,7 @@ namespace ActorClient
             await proxy.SaveData(data);
             Console.WriteLine("Making call using actor proxy to get data.");
             var receivedData = await proxy.GetData();
-            Console.WriteLine($"Received data is {receivedData.ToString()}");
+            Console.WriteLine($"Received data is {receivedData}.");
 
             // Making some more calls to test methods.
             try
@@ -49,7 +49,7 @@ namespace ActorClient
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ERROR: Got exception while making call to method with No Argument & No Return Type. Exception: {ex.ToString()}");
+                Console.WriteLine($"ERROR: Got exception while making call to method with No Argument & No Return Type. Exception: {ex}");
             }
 
             try
@@ -64,7 +64,7 @@ namespace ActorClient
                 }
                 else
                 {
-                    Console.WriteLine($"Got Incorrect Exception from actor method invocation. Exception {ex.InnerException.ToString()}");
+                    Console.WriteLine($"Got Incorrect Exception from actor method invocation. Exception {ex.InnerException}");
                 }
             }
         }
