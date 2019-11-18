@@ -16,7 +16,7 @@ namespace Dapr.Actors
     internal static class JsonWriterExtensions
     {
         /// <summary>
-        /// Writes a DateTime value in ISO8601 foramt.
+        /// Writes a DateTime value in ISO8601 format.
         /// </summary>
         /// <param name="writer">Json writer.</param>
         /// <param name="value">Value to write.</param>
@@ -28,13 +28,13 @@ namespace Dapr.Actors
             }
             else
             {
-                // write in ISO8601 foramt.
+                // write in ISO8601 format.
                 writer.WriteValue(XmlConvert.ToString(value.Value, XmlDateTimeSerializationMode.Utc));
             }
         }
 
         /// <summary>
-        /// Writes a TimeSpan value in ISO8601 foramt.
+        /// Writes a TimeSpan value in ISO8601 format.
         /// </summary>
         /// <param name="writer">Json writer.</param>
         /// <param name="value">Value to write.</param>
@@ -46,7 +46,7 @@ namespace Dapr.Actors
             }
             else
             {
-                // write in ISO8601 foramt.
+                // write in ISO8601 format.
                 writer.WriteValue(XmlConvert.ToString(value.Value));
             }
         }
