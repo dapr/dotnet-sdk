@@ -21,7 +21,7 @@ namespace Dapr.Actors
     using Newtonsoft.Json;
 
     /// <summary>
-    /// Class to interact with dapr runtime over http.
+    /// Class to interact with Dapr runtime over http.
     /// </summary>
     internal class DaprHttpInteractor : IDaprInteractor
     {

@@ -35,7 +35,7 @@ namespace ControllerSample.Controllers
         /// Method for depositing to account as psecified in transaction.
         /// </summary>
         /// <param name="transaction">Transaction info.</param>
-        /// <param name="stateClient">State client to interact with dapr runtime.</param>
+        /// <param name="stateClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         [Topic("deposit")]
         [HttpPost("deposit")]
@@ -52,7 +52,7 @@ namespace ControllerSample.Controllers
         /// Method for withdrawing from account as specified in transaction.
         /// </summary>
         /// <param name="transaction">Transaction info.</param>
-        /// <param name="stateClient">State client to interact with dapr runtime.</param>
+        /// <param name="stateClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         [Topic("withdraw")]
         [HttpPost("withdraw")]
