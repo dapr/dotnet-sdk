@@ -21,7 +21,7 @@ namespace Dapr.Actors.Runtime
         internal ActorStateManager(Actor actor)
         {
             this.actor = actor;
-            this.actorType = actor.GetType().Name;
+            this.actorType = actor.ActorService.ActorTypeInfo.ActorTypeName;
             this.stateChangeTracker = new Dictionary<string, StateMetadata>();
         }
 

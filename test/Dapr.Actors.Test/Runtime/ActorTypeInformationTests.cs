@@ -5,12 +5,11 @@
 
 namespace Dapr.Actors.Test
 {
-    using System;
     using Dapr.Actors;
     using Dapr.Actors.Runtime;
     using Xunit;
 
-    public sealed class ActorRuntimeTests
+    public sealed class ActorTypeInformationTests
     {
         private const string RenamedActorTypeName = "MyRenamedActor";
 
@@ -22,28 +21,21 @@ namespace Dapr.Actors.Test
         public void TestInferredActorType()
         {
             var actorType = typeof(TestActor);
-            var actorRuntime = new ActorRuntime();
+            var actorTypeInformation = ActorTypeInformation.Get(actorType);
 
-            Assert.Empty(actorRuntime.RegisteredActorTypes);
-
-            actorRuntime.RegisterActor<TestActor>();
-
-            Assert.Contains(actorType.Name, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
+            Assert.Equal(actorType.Name, actorTypeInformation.ActorTypeName);
         }
 
         [Fact]
         public void TestExplicitActorType()
         {
             var actorType = typeof(RenamedActor);
-            var actorRuntime = new ActorRuntime();
 
             Assert.NotEqual(RenamedActorTypeName, actorType.Name);
 
-            Assert.Empty(actorRuntime.RegisteredActorTypes);
+            var actorTypeInformation = ActorTypeInformation.Get(actorType);
 
-            actorRuntime.RegisterActor<RenamedActor>();
-
-            Assert.Contains(RenamedActorTypeName, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
+            Assert.Equal(RenamedActorTypeName, actorTypeInformation.ActorTypeName);
         }
 
         private sealed class TestActor : Actor, ITestActor

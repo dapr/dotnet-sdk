@@ -42,22 +42,7 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <typeparam name="TActor">Type of actor.</typeparam>
         /// <param name="actorServiceFactory">An optional delegate to create actor service. This can be used for dependency injection into actors.</param>
-        /// <remarks>The name of the actor type will be inferred from TActor.</remarks>
         public void RegisterActor<TActor>(Func<ActorTypeInformation, ActorService> actorServiceFactory = null)
-            where TActor : Actor
-        {
-            var actorTypeName = typeof(TActor).Name;
-
-            this.RegisterActor<TActor>(actorTypeName, actorServiceFactory);
-        }
-
-        /// <summary>
-        /// Registers an actor with the runtime.
-        /// </summary>
-        /// <typeparam name="TActor">Type of actor.</typeparam>
-        /// <param name="actorTypeName">The name of the actor type.</param>
-        /// <param name="actorServiceFactory">An optional delegate to create actor service. This can be used for dependency injection into actors.</param>
-        public void RegisterActor<TActor>(string actorTypeName, Func<ActorTypeInformation, ActorService> actorServiceFactory = null)
             where TActor : Actor
         {
             var actorTypeInfo = ActorTypeInformation.Get(typeof(TActor));
@@ -73,7 +58,7 @@ namespace Dapr.Actors.Runtime
             }
 
             // Create ActorManagers, override existing entry if registered again.
-            this.actorManagers[actorTypeName] = new ActorManager(actorService);
+            this.actorManagers[actorTypeInfo.ActorTypeName] = new ActorManager(actorService);
         }
 
         /// <summary>
