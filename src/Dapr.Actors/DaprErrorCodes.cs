@@ -119,10 +119,5 @@ namespace Dapr.Actors
         /// Error in publishig message.
         /// </summary>
         ERR_PUBLISH_MESSAGE,
-
-        /// <summary>
-        /// Actor not found.
-        /// </summary>
-        ERR_ACTOR_INSTANCE_MISSING,
     }
 }
