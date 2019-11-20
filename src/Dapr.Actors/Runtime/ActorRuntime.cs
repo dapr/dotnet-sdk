@@ -47,20 +47,8 @@ namespace Dapr.Actors.Runtime
             where TActor : Actor
         {
             var actorTypeName = typeof(TActor).Name;
-            var actorTypeInfo = ActorTypeInformation.Get(typeof(TActor));
 
-            ActorService actorService;
-            if (actorServiceFactory != null)
-            {
-                actorService = actorServiceFactory.Invoke(actorTypeInfo);
-            }
-            else
-            {
-                actorService = new ActorService(actorTypeInfo);
-            }
-
-            // Create ActorManagers, override existing entry if registered again.
-            this.actorManagers[actorTypeName] = new ActorManager(actorService);
+            this.RegisterActor<TActor>(actorTypeName, actorServiceFactory);
         }
 
         /// <summary>
