@@ -30,6 +30,21 @@ namespace Dapr.Actors.Test
             Assert.Contains(actorTypeName, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
         }
 
+        [Fact]
+        public void TestExplicitActorType()
+        {
+            var actorRuntime = new ActorRuntime();
+
+            string actorTypeName = "MyTestActor";
+
+            Assert.NotEqual(actorTypeName, typeof(TestActor).Name);
+            Assert.DoesNotContain(actorTypeName, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
+
+            actorRuntime.RegisterActor<TestActor>(actorTypeName);
+
+            Assert.Contains(actorTypeName, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
+        }
+
         private sealed class TestActor : Actor, ITestActor
         {
             public TestActor(ActorService actorService, ActorId actorId)
