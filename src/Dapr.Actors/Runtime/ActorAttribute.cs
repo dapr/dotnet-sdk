@@ -18,6 +18,7 @@ namespace Dapr.Actors.Runtime
         /// Gets or sets the name of the actor type represented by the actor.
         /// </summary>
         /// <value>The <see cref="string"/> name of the actor type represented by the actor.</value>
+        /// <remarks>If set, this value will override the default actor type name derived from the actor implementation type.</remarks>
         public string TypeName { get; set; }
     }
 }
