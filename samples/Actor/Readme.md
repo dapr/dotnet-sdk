@@ -29,10 +29,10 @@ Actor --- IDemoActor
 
  To run the actor service locally run this comment in DemoActor directory:
  ```sh
- dapr run --port 3500 --app-id demo_actor --app-port 5001 dotnet run
+ dapr run --port 3500 --app-id demo_actor --app-port 5000 dotnet run
  ```
 
- The actor service will listen on port 5001 for HTTP.
+ The actor service will listen on port 5000 for HTTP.
 
  ### Making Client calls.
  Actor Client project shows how to make client calls for actor using Remoting which provides a strongly typed invocation experience.

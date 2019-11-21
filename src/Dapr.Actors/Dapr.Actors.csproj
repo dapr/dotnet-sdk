@@ -5,7 +5,7 @@
 
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
-    <Description>This package contains the reference assemblies for developing Actor services using dapr.</Description>
+    <Description>This package contains the reference assemblies for developing Actor services using Dapr.</Description>
     <PackageTags>$(PackageTags);Actors</PackageTags>
   </PropertyGroup>
 

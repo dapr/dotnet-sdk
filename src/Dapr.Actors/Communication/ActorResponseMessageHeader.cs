@@ -29,7 +29,7 @@ namespace Dapr.Actors.Communication
         {
             if (this.headers.ContainsKey(headerName))
             {
-                // TODO throw dapr specific translated exception type
+                // TODO throw Dapr specific translated exception type
                 throw new System.Exception(
                     string.Format(
                         CultureInfo.CurrentCulture,

@@ -410,7 +410,7 @@ namespace MyActorClient
 
 ## Run Actor
 
-In order to validate and debug actor service and client, we need to run actor services via dapr cli first.
+In order to validate and debug actor service and client, we need to run actor services via Dapr CLI first.
 
 1. Run Dapr Runtime via Dapr cli
 
@@ -418,7 +418,7 @@ In order to validate and debug actor service and client, we need to run actor se
    $ dapr run --app-id myapp --app-port 3000 dotnet MyActorService.dll
    ```
 
-   After executing MyActorService via dapr runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
+   After executing MyActorService via Dapr runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
 
    ```bash
     INFO[0000] starting Dapr Runtime -- version  -- commit
@@ -448,7 +448,7 @@ In order to validate and debug actor service and client, we need to run actor se
 
    MyActorClient will console out if it calls actor hosted in MyActorService successfully.
 
-   > If you specify the different dapr runtime http port (default port: 3500), you need to set DAPR_HTTP_PORT environment variable before running the client.
+   > If you specify the different Dapr runtime http port (default port: 3500), you need to set DAPR_HTTP_PORT environment variable before running the client.
 
    ```bash
    Success
