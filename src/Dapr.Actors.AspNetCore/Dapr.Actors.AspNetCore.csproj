@@ -8,7 +8,7 @@
 
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
-    <Description>This package contains the reference assemblies for developing Actor services using dapr and AspNetCore.</Description>
+    <Description>This package contains the reference assemblies for developing Actor services using Dapr and AspNetCore.</Description>
     <PackageTags>$(PackageTags);Actors</PackageTags>
   </PropertyGroup>
 

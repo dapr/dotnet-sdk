@@ -57,7 +57,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Creates the <see cref="ActorTypeInformation"/> from actorType.
         /// </summary>
-        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInforamtion for.</param>
+        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInformation for.</param>
         /// <param name="actorTypeInformation">When this method returns, contains ActorTypeInformation, if the creation of
         /// ActorTypeInformation from actorType succeeded, or null if the creation failed.
         /// The creation fails if the actorType parameter is null or it does not implement an actor.</param>
@@ -84,7 +84,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Creates an <see cref="ActorTypeInformation"/> from actorType.
         /// </summary>
-        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInforamtion for.</param>
+        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInformation for.</param>
         /// <returns><see cref="ActorTypeInformation"/> created from actorType.</returns>
         /// <exception cref="System.ArgumentException">
         /// <para>When <see cref="System.Type.BaseType"/> for actorType is not of type <see cref="Actor"/>.</para>

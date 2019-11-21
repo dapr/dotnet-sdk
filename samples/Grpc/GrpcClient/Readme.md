@@ -14,7 +14,7 @@ The gRPC client sample shows how to make Dapr calls to publish events, save stat
  dapr run --app-id gRPC_Client dotnet run
  ```
 
- Above command will run dapr runtime and launch the app and will show logs both form Dapr runtime and the application. The client app will make calls to dapr runtime to publish events, save state, get state and delete state using the gRPC client.
+ Above command will run Dapr runtime and launch the app and will show logs both form Dapr runtime and the application. The client app will make calls to Dapr runtime to publish events, save state, get state and delete state using the gRPC client.
  Logs form application will show following in the command window:
 ```sh
   Published Event!

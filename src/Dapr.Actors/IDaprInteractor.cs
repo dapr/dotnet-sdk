@@ -52,7 +52,7 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
         /// <param name="actorId">ActorId.</param>
-        /// <param name="data">Json data with state changes as per the dapr spec for transaction state update.</param>
+        /// <param name="data">Json data with state changes as per the Dapr spec for transaction state update.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
         Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default);
