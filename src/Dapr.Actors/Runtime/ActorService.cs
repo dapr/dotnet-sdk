@@ -8,7 +8,7 @@ namespace Dapr.Actors.Runtime
     using System;
 
     /// <summary>
-    /// Represents a host for an actor type within the aCtor runtime.
+    /// Represents a host for an actor type within the actor runtime.
     /// </summary>
     public class ActorService : IActorService
     {

@@ -6,7 +6,7 @@
 namespace Dapr.Actors.Runtime
 {
     /// <summary>
-    /// Interface for Axtor Service.
+    /// Interface for Actor Service.
     /// </summary>
     public interface IActorService
     {
