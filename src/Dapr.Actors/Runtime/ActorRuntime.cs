@@ -26,6 +26,10 @@ namespace Dapr.Actors.Runtime
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
 
+        /// <remarks>
+        /// WARNING: This type is expected to be accessed via the <see cref="Instance" /> singleton instance.
+        /// This constructor is exposed only for unit testing purposes.
+        /// </remarks>
         internal ActorRuntime()
         {
         }
