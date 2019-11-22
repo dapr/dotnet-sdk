@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------
+// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -15,7 +15,7 @@ namespace DaprDemoActor
     public class Program
     {
         /// <summary>
-        /// Entyr point.
+        /// Entry point.
         /// </summary>
         /// <param name="args">Arguments.</param>
         public static void Main(string[] args)
