@@ -18,7 +18,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes a DateTime value in ISO8601 format.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteDateTimeValueISO8601Format(this JsonWriter writer, DateTime? value)
         {
@@ -36,7 +36,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes a TimeSpan value in ISO8601 format.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteTimeSpanValueISO8601Format(this JsonWriter writer, TimeSpan? value)
         {
@@ -54,7 +54,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes a TimeSpan value in format expected by Dapr.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteTimeSpanValueDaprFormat(this JsonWriter writer, TimeSpan? value)
         {
@@ -79,7 +79,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes a string value.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteStringValue(this JsonWriter writer, string value)
         {
@@ -96,7 +96,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes integer value.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteIntValue(this JsonWriter writer, int? value)
         {
@@ -113,7 +113,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes long value.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteLongValue(this JsonWriter writer, long? value)
         {
@@ -130,7 +130,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes double value.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteDoubleValue(this JsonWriter writer, double? value)
         {
@@ -147,7 +147,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes boolean value.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteBoolValue(this JsonWriter writer, bool? value)
         {
@@ -164,7 +164,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes Guid value.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteGuidValue(this JsonWriter writer, Guid? value)
         {
@@ -181,11 +181,11 @@ namespace Dapr.Actors
         /// <summary>
         /// Writes byte value.
         /// </summary>
-        /// <param name="writer">Json writer.</param>
+        /// <param name="writer">JSON writer.</param>
         /// <param name="value">Value to write.</param>
         public static void WriteByteValue(this JsonWriter writer, byte value)
         {
-            // byte is int in json.
+            // byte is int in JSON.
             writer.WriteValue(value);
         }
 
@@ -211,7 +211,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Writes IEnumerable property as json array.
+        /// Writes IEnumerable property as JSON array.
         /// </summary>
         /// <typeparam name="T">Type of IEnumerable elements.</typeparam>
         /// <param name="writer">JsonWriter instance.</param>

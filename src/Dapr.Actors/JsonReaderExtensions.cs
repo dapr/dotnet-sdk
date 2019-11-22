@@ -17,7 +17,7 @@ namespace Dapr.Actors
     internal static class JsonReaderExtensions
     {
         /// <summary>
-        /// Moves the json reader token to next content.
+        /// Moves the JSON reader token to next content.
         /// </summary>
         /// <param name="reader">The JsonReader.</param>
         public static void MoveToContent(this JsonReader reader)
@@ -96,7 +96,7 @@ namespace Dapr.Actors
         {
             if (reader.TokenType != JsonToken.PropertyName)
             {
-                throw new JsonReaderException($"Error reading Property NameDescription from Json, unexpected JsonToken {reader.TokenType}.");
+                throw new JsonReaderException($"Error reading Property NameDescription from JSON, unexpected JsonToken {reader.TokenType}.");
             }
 
             var propName = reader.Value?.ToString();
@@ -107,7 +107,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="string"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="string" />.</returns>
         public static string ReadValueAsString(this JsonReader reader)
         {
@@ -141,7 +141,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="bool"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="bool" />.</returns>
         public static bool? ReadValueAsBool(this JsonReader reader)
         {
@@ -169,7 +169,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="int"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="int" />.</returns>
         public static int? ReadValueAsInt(this JsonReader reader)
         {
@@ -200,11 +200,11 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="byte"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="int" />.</returns>
         public static byte ReadValueAsByte(this JsonReader reader)
         {
-            // byte is int in json.
+            // byte is int in JSON.
             int value;
 
             switch (reader.TokenType)
@@ -228,7 +228,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="long"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="long" />.</returns>
         public static long? ReadValueAsLong(this JsonReader reader)
         {
@@ -256,7 +256,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="double"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="double" />.</returns>
         public static double? ReadValueAsDouble(this JsonReader reader)
         {
@@ -284,7 +284,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="System.DateTime"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="System.DateTime" />.</returns>
         public static DateTime? ReadValueAsDateTimeISO8601Format(this JsonReader reader)
         {
@@ -334,7 +334,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="System.TimeSpan"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="System.TimeSpan" />.</returns>
         public static TimeSpan? ReadValueAsTimeSpanISO8601Format(this JsonReader reader)
         {
@@ -382,7 +382,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="System.TimeSpan"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="System.TimeSpan" />.</returns>
         public static TimeSpan? ReadValueAsTimeSpanDaprFormat(this JsonReader reader)
         {
@@ -447,7 +447,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the value of current JSON token as <see cref="System.Guid"/> and moves to next token".
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         /// <returns>A <see cref="System.Guid" />.</returns>
         public static Guid? ReadValueAsGuid(this JsonReader reader)
         {
@@ -472,7 +472,7 @@ namespace Dapr.Actors
         /// <summary>
         /// Skips a property value.
         /// </summary>
-        /// <param name="reader">Json reader.</param>
+        /// <param name="reader">JSON reader.</param>
         public static void SkipPropertyValue(this JsonReader reader)
         {
             if (reader.TokenType.Equals(JsonToken.StartObject) || reader.TokenType.Equals(JsonToken.StartArray))
@@ -484,7 +484,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Reads a json array.
+        /// Reads a JSON array.
         /// </summary>
         /// <typeparam name="T">Type of list elements.</typeparam>
         /// <param name="reader">The JsonReader object.</param>
@@ -520,7 +520,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Reads a Dictionary from json.
+        /// Reads a Dictionary from JSON.
         /// </summary>
         /// <typeparam name="T">Type of Dictionary values.</typeparam>
         /// <param name="reader">The JsonReader object.</param>
@@ -558,13 +558,13 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Deserializes Json representing of type T.
+        /// Deserializes JSON representing of type T.
         /// </summary>
         /// <typeparam name="T">Type to deserialize into.</typeparam>
-        /// <param name="reader">Json Reader.</param>
-        /// <param name="getFromJsonPropertiesFunc">Delegate to parse json properties for type T.</param>
-        /// <returns>Deserialized object of type T. returns default(T) if Json Token represented by reader is null
-        /// OR its an empty Json.</returns>
+        /// <param name="reader">JSON reader.</param>
+        /// <param name="getFromJsonPropertiesFunc">Delegate to parse JSON properties for type T.</param>
+        /// <returns>Deserialized object of type T. returns default(T) if JSON Token represented by reader is null
+        /// OR its an empty JSON.</returns>
         public static T Deserialize<T>(this JsonReader reader, Func<JsonReader, T> getFromJsonPropertiesFunc)
         {
             var obj = default(T);
@@ -583,7 +583,7 @@ namespace Dapr.Actors
                 return obj;
             }
 
-            // handle Empty Json.
+            // handle Empty JSON.
             reader.ReadStartObject();
             if (reader.TokenType.Equals(JsonToken.EndObject))
             {
@@ -591,7 +591,7 @@ namespace Dapr.Actors
                 return obj;
             }
 
-            // not empty json, get value by reading properties.
+            // not empty JSON, get value by reading properties.
             obj = getFromJsonPropertiesFunc.Invoke(reader);
             reader.ReadEndObject();
             return obj;
