@@ -54,7 +54,7 @@ namespace RoutingSample
         /// </summary>
         /// <param name="app">Application builder.</param>
         /// <param name="env">Webhost environment.</param>
-        /// <param name="serializerOptions">Options for json serialization.</param>
+        /// <param name="serializerOptions">Options for JSON serialization.</param>
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, JsonSerializerOptions serializerOptions)
         {
             if (env.IsDevelopment())

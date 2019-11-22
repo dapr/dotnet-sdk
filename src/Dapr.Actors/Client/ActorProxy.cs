@@ -70,7 +70,7 @@ namespace Dapr.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as JSON.
         /// </summary>
         /// <typeparam name="T">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
@@ -90,7 +90,7 @@ namespace Dapr.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as JSON.
         /// </summary>
         /// <param name="method">Actor method name.</param>
         /// <param name="data">Object argument for actor method.</param>

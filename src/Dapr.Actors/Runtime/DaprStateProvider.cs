@@ -112,7 +112,7 @@ namespace Dapr.Actors.Runtime
                         break;
                     case StateChangeKind.Add:
                     case StateChangeKind.Update:
-                        // Currently Dapr runtime only support json serialization.
+                        // Currently Dapr runtime only support JSON serialization.
                         await ActorRuntime.DaprInteractor.SaveStateAsync(actorType, actorId, keyName, JsonConvert.SerializeObject(stateChange.Value), cancellationToken);
                         break;
                     default:

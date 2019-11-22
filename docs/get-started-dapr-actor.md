@@ -372,7 +372,7 @@ namespace MyActorClient
 
 ### Invoke Actor method without Actor Service Remoting
 You can invoke Actor methods without remoting (directly over http or using helper methods provided in ActorProxy), if Actor method accepts at-most one argument. Actor runtime will deserialize the incoming request body from client and use it as method argument to invoke the actor method.
-When making non-remoting calls Actor method arguments and return types are serialized, deserialized as json.
+When making non-remoting calls Actor method arguments and return types are serialized, deserialized as JSON.
 
 `ActorProxy.Create(actorID, actorType)` returns ActorProxy instance and allow to use the raw http client to invoke the method defined in `IMyActor`.
 
