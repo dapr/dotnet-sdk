@@ -337,7 +337,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Sends an HTTP get request to Dapr and returns the result as raw json.
+        /// Sends an HTTP get request to Dapr and returns the result as raw JSON.
         /// </summary>
         /// <param name="requestFunc">Func to create HttpRequest to send.</param>
         /// <param name="relativeUri">The relative URI.</param>
