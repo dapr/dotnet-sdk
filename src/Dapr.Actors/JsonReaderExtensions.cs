@@ -17,7 +17,7 @@ namespace Dapr.Actors
     internal static class JsonReaderExtensions
     {
         /// <summary>
-        /// Moves the json reader token to next content.
+        /// Moves the JSON reader token to next content.
         /// </summary>
         /// <param name="reader">The JsonReader.</param>
         public static void MoveToContent(this JsonReader reader)
@@ -204,7 +204,7 @@ namespace Dapr.Actors
         /// <returns>A <see cref="int" />.</returns>
         public static byte ReadValueAsByte(this JsonReader reader)
         {
-            // byte is int in json.
+            // byte is int in JSON.
             int value;
 
             switch (reader.TokenType)
@@ -484,7 +484,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Reads a json array.
+        /// Reads a JSON array.
         /// </summary>
         /// <typeparam name="T">Type of list elements.</typeparam>
         /// <param name="reader">The JsonReader object.</param>
@@ -520,7 +520,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Reads a Dictionary from json.
+        /// Reads a Dictionary from JSON.
         /// </summary>
         /// <typeparam name="T">Type of Dictionary values.</typeparam>
         /// <param name="reader">The JsonReader object.</param>
@@ -562,7 +562,7 @@ namespace Dapr.Actors
         /// </summary>
         /// <typeparam name="T">Type to deserialize into.</typeparam>
         /// <param name="reader">Json Reader.</param>
-        /// <param name="getFromJsonPropertiesFunc">Delegate to parse json properties for type T.</param>
+        /// <param name="getFromJsonPropertiesFunc">Delegate to parse JSON properties for type T.</param>
         /// <returns>Deserialized object of type T. returns default(T) if Json Token represented by reader is null
         /// OR its an empty Json.</returns>
         public static T Deserialize<T>(this JsonReader reader, Func<JsonReader, T> getFromJsonPropertiesFunc)
@@ -591,7 +591,7 @@ namespace Dapr.Actors
                 return obj;
             }
 
-            // not empty json, get value by reading properties.
+            // not empty JSON, get value by reading properties.
             obj = getFromJsonPropertiesFunc.Invoke(reader);
             reader.ReadEndObject();
             return obj;

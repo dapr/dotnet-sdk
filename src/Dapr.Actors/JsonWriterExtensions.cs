@@ -185,7 +185,7 @@ namespace Dapr.Actors
         /// <param name="value">Value to write.</param>
         public static void WriteByteValue(this JsonWriter writer, byte value)
         {
-            // byte is int in json.
+            // byte is int in JSON.
             writer.WriteValue(value);
         }
 
@@ -211,7 +211,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Writes IEnumerable property as json array.
+        /// Writes IEnumerable property as JSON array.
         /// </summary>
         /// <typeparam name="T">Type of IEnumerable elements.</typeparam>
         /// <param name="writer">JsonWriter instance.</param>
