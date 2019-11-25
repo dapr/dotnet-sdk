@@ -24,6 +24,13 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
+        /// Gets the name of the actor type represented by the actor.
+        /// </summary>
+        /// <value>The <see cref="string"/> name of the actor type represented by the actor.</value>
+        /// <remarks>Defaults to the name of the class implementing the actor. Can be overridden using the <see cref="Dapr.Actors.Runtime.ActorAttribute.TypeName" /> property.</remarks>
+        public string ActorTypeName { get; private set; }
+
+        /// <summary>
         /// Gets the type of the class implementing the actor.
         /// </summary>
         /// <value>The <see cref="System.Type"/> of the class implementing the actor.</value>
@@ -112,8 +119,13 @@ namespace Dapr.Actors.Runtime
                     "actorType");
             }
 
+            var actorAttribute = actorType.GetCustomAttribute<ActorAttribute>();
+
+            string actorTypeName = actorAttribute?.TypeName ?? actorType.Name;
+
             return new ActorTypeInformation()
             {
+                ActorTypeName = actorTypeName,
                 InterfaceTypes = actorInterfaces,
                 ImplementationType = actorType,
                 IsAbstract = actorType.GetTypeInfo().IsAbstract,

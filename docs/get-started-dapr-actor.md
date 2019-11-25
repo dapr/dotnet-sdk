@@ -257,6 +257,18 @@ namespace MyActorService
 }
 ```
 
+#### Using an explicit actor type name
+
+By default, the "type" of the actor as seen by clients is derived from the name of the actor implementation class. If desired, you can specify an explicit type name by attaching an `ActorAttribute` attribute to the actor implementation class.
+
+```csharp
+    [Actor(TypeName = "MyCustomActorTypeName")]
+    internal class MyActor : Actor, IMyActor
+    {
+        // ...
+    }
+```
+
 ### Register Actor to Dapr Runtime
 
 Register `MyActor` actor type to actor runtime and set the localhost port (`https://localhost:3000`) which Dapr Runtime can call Actor through.
