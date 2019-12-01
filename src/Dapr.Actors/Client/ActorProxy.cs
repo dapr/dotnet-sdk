@@ -14,7 +14,7 @@ namespace Dapr.Actors.Client
 
     /// <summary>
     /// Provides the base implementation for the proxy to the remote actor objects implementing <see cref="IActor"/> interfaces.
-    /// The proxy object can be used used for client-to-actor and actor-to-actor communication.
+    /// The proxy object can be used for client-to-actor and actor-to-actor communication.
     /// </summary>
     public class ActorProxy : IActorProxy
     {
