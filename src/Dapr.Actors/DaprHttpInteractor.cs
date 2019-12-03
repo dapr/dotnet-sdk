@@ -303,7 +303,7 @@ namespace Dapr.Actors
 
         public Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
-            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.Timers, actorType, actorId, timerName);
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
