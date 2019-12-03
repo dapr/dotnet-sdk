@@ -114,5 +114,30 @@ namespace Dapr.Actors
         /// Error publishing a message.
         /// </summary>
         ERR_PUBSUB_PUBLISH_MESSAGE,
+
+        /// <summary>
+        /// Error getting a reminder for an actor.
+        /// </summary>
+        ERR_ACTOR_REMINDER_GET,
+
+        /// <summary>
+        /// Error saving the state for an actor.
+        /// </summary>
+        ERR_ACTOR_STATE_SAVE,
+
+        /// <summary>
+        /// Error serializing Pub/Sub event envelope.
+        /// </summary>
+        ERR_PUBSUB_CLOUD_EVENTS_SER,
+
+        /// <summary>
+        /// Error referencing a state store with specified key not found.
+        /// </summary>
+        ERR_STATE_KEY_NOT_FOUND,
+
+        /// <summary>
+        /// Error referencing an actor instance not found.
+        /// </summary>
+        ERR_ACTOR_INSTANCE_MISSING,
     }
 }
