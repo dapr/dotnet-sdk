@@ -38,10 +38,7 @@ namespace Dapr.Actors.Runtime
 
         internal static async Task<ReminderInfo> DeserializeAsync(Stream stream)
         {
-            var serializeOptions = new JsonSerializerOptions();
-            using var streamReader = new StreamReader(stream);
-            var text = await streamReader.ReadToEndAsync();
-            var json = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(text);
+            var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
             var dueTime = default(TimeSpan);
             var period = default(TimeSpan);
