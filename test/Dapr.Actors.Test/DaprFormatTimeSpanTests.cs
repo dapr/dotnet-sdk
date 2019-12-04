@@ -8,10 +8,11 @@ namespace Dapr.Actors.Test
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using Dapr.Actors.Common;
     using Newtonsoft.Json;
     using Xunit;
 
-    public class JsonReaderExtensionTests
+    public class DaprFormatTimeSpanTests
     {
         public static readonly IEnumerable<object[]> DaprFormatTimeSpanJsonStringsAndExpectedDeserializedValues = new List<object[]>
         {
@@ -39,7 +40,8 @@ namespace Dapr.Actors.Test
                 jsonTextReader.Read();
             }
 
-            var deserializedTimeSpan = jsonTextReader.ReadValueAsTimeSpanDaprFormat();
+            var timespanString = (string)jsonTextReader.Value;
+            var deserializedTimeSpan = ConvertTimeSpanFromDaprFormat(timespanString);
 
             Assert.Equal(expectedDeserializedValue, deserializedTimeSpan);
         }

@@ -9,10 +9,10 @@ namespace Dapr.Actors.Runtime
     using System.Globalization;
     using System.IO;
     using System.Text;
+    using System.Text.Json;
     using System.Threading;
-    using Dapr.Actors;
+    using System.Threading.Tasks;
     using Dapr.Actors.Resources;
-    using Newtonsoft.Json;
 
     internal class ReminderInfo
     {
@@ -36,82 +36,62 @@ namespace Dapr.Actors.Runtime
 
         public byte[] Data { get; private set; }
 
-        internal static ReminderInfo Deserialize(Stream stream)
+        internal static async Task<ReminderInfo> DeserializeAsync(Stream stream)
         {
-            // Deserialize using JsonReader as we know the property names in response. Deserializing using JsonReader is most performant.
+            var serializeOptions = new JsonSerializerOptions();
             using var streamReader = new StreamReader(stream);
-            using var reader = new JsonTextReader(streamReader);
-            return reader.Deserialize(GetFromJsonProperties);
-        }
+            var text = await streamReader.ReadToEndAsync();
+            var json = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(text);
 
-        internal string SerializeToJson()
-        {
-            string content;
-            using (var sw = new StringWriter())
-            {
-                using var writer = new JsonTextWriter(sw);
-                writer.WriteStartObject();
-                if (this.DueTime != null)
-                {
-                    writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
-                }
-
-                if (this.Period != null)
-                {
-                    writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
-                }
-
-                if (this.Data != null)
-                {
-                    writer.WriteProperty(Convert.ToBase64String(this.Data), "data", JsonWriterExtensions.WriteStringValue);
-                }
-
-                writer.WriteEndObject();
-
-                content = sw.ToString();
-            }
-
-            return content;
-        }
-
-        private static ReminderInfo GetFromJsonProperties(JsonReader reader)
-        {
             var dueTime = default(TimeSpan);
             var period = default(TimeSpan);
             var data = default(byte[]);
 
-            do
+            if (json.TryGetProperty("dueTime", out var dueTimeProperty))
             {
-                var propName = reader.ReadPropertyName();
-                if (string.Compare("dueTime", propName, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    var dueTimeFromJson = reader.ReadValueAsTimeSpanDaprFormat();
-                    if (dueTimeFromJson != null)
-                    {
-                        dueTime = dueTimeFromJson.Value;
-                    }
-                }
-                else if (string.Compare("period", propName, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    var periodFromJson = reader.ReadValueAsTimeSpanDaprFormat();
-                    if (periodFromJson != null)
-                    {
-                        period = periodFromJson.Value;
-                    }
-                }
-                else if (string.Compare("data", propName, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    var stringData = reader.ReadValueAsString();
-                    data = stringData == null ? null : Encoding.UTF8.GetBytes(stringData);
-                }
-                else
-                {
-                    reader.SkipPropertyValue();
-                }
+                var dueTimeString = dueTimeProperty.GetString();
+                dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
             }
-            while (reader.TokenType != JsonToken.EndObject);
+
+            if (json.TryGetProperty("period", out var periodProperty))
+            {
+                var periodString = dueTimeProperty.GetString();
+                period = ConverterUtils.ConvertTimeSpanFromDaprFormat(periodString);
+            }
+
+            if (json.TryGetProperty("data", out var dataProperty))
+            {
+                var dataString = dueTimeProperty.GetString();
+                data = Encoding.UTF8.GetBytes(dataString);
+            }
 
             return new ReminderInfo(data, dueTime, period);
+        }
+
+        internal async Task<string> SerializeAsync()
+        {
+            using var stream = new MemoryStream();
+            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+
+            writer.WriteStartObject();
+            if (this.DueTime != null)
+            {
+                writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));
+            }
+
+            if (this.Period != null)
+            {
+                writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.Period));
+            }
+
+            if (this.Data != null)
+            {
+                writer.WriteString("data", Convert.ToBase64String(this.Data));
+            }
+
+            writer.WriteEndObject();
+            await writer.FlushAsync();
+            return Encoding.UTF8.GetString(stream.ToArray());
         }
 
         private void ValidateDueTime(string argName, TimeSpan value)
