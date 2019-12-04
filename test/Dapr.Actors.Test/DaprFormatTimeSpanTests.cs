@@ -8,7 +8,7 @@ namespace Dapr.Actors.Test
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using Dapr.Actors.Common;
+    using Dapr.Actors.Runtime;
     using Newtonsoft.Json;
     using Xunit;
 
@@ -41,7 +41,7 @@ namespace Dapr.Actors.Test
             }
 
             var timespanString = (string)jsonTextReader.Value;
-            var deserializedTimeSpan = ConvertTimeSpanFromDaprFormat(timespanString);
+            var deserializedTimeSpan = ConverterUtils.ConvertTimeSpanFromDaprFormat(timespanString);
 
             Assert.Equal(expectedDeserializedValue, deserializedTimeSpan);
         }
