@@ -214,7 +214,8 @@ namespace Dapr.Actors.Runtime
         {
             var reminderInfo = new ReminderInfo(state, dueTime, period);
             var reminder = new ActorReminder(this.Id, reminderName, reminderInfo);
-            await ActorRuntime.DaprInteractor.RegisterReminderAsync(this.actorImplementaionTypeName, this.Id.ToString(), reminderName, reminderInfo.SerializeToJson());
+            var serializedReminderInfo = await reminderInfo.SerializeAsync();
+            await ActorRuntime.DaprInteractor.RegisterReminderAsync(this.actorImplementaionTypeName, this.Id.ToString(), reminderName, serializedReminderInfo);
             return reminder;
         }
 
@@ -300,7 +301,8 @@ namespace Dapr.Actors.Runtime
             }
 
             var actorTimer = new ActorTimer(this, timerName, asyncCallback, state, dueTime, period);
-            await ActorRuntime.DaprInteractor.RegisterTimerAsync(this.actorImplementaionTypeName, this.Id.ToString(), timerName, actorTimer.SerializeToJson());
+            var serializedTimer = await actorTimer.SerializeAsync();
+            await ActorRuntime.DaprInteractor.RegisterTimerAsync(this.actorImplementaionTypeName, this.Id.ToString(), timerName, serializedTimer);
 
             this.timers[timerName] = actorTimer;
             return actorTimer;

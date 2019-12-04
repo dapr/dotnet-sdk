@@ -7,8 +7,9 @@ namespace Dapr.Actors.Runtime
 {
     using System;
     using System.IO;
+    using System.Text;
+    using System.Text.Json;
     using System.Threading.Tasks;
-    using Newtonsoft.Json;
 
     internal class ActorTimer : IActorTimer
     {
@@ -40,23 +41,26 @@ namespace Dapr.Actors.Runtime
 
         public Func<object, Task> AsyncCallback { get; }
 
-        internal string SerializeToJson()
+        internal async Task<string> SerializeAsync()
         {
-            string content;
-            using (var sw = new StringWriter())
+            using var stream = new MemoryStream();
+            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+
+            writer.WriteStartObject();
+
+            if (this.DueTime != null)
             {
-                using var writer = new JsonTextWriter(sw);
-                writer.WriteStartObject();
-
-                writer.WriteProperty((TimeSpan?)this.DueTime, "dueTime", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
-                writer.WriteProperty((TimeSpan?)this.Period, "period", JsonWriterExtensions.WriteTimeSpanValueDaprFormat);
-
-                // Do not serialize state and call back, it will be kept with actor instance.
-                writer.WriteEndObject();
-                content = sw.ToString();
+                writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));
             }
 
-            return content;
+            if (this.Period != null)
+            {
+                writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.Period));
+            }
+
+            writer.WriteEndObject();
+            await writer.FlushAsync();
+            return Encoding.UTF8.GetString(stream.ToArray());
         }
     }
 }

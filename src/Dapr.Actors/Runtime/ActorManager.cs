@@ -154,12 +154,12 @@ namespace Dapr.Actors.Runtime
             await responseBodyStream.WriteAsync(Encoding.UTF8.GetBytes(json));
         }
 
-        internal Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+        internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
             {
-                var reminderdata = ReminderInfo.Deserialize(requestBodyStream);
+                var reminderdata = await ReminderInfo.DeserializeAsync(requestBodyStream);
 
                 // Create a Func to be invoked by common method.
                 async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
@@ -174,10 +174,8 @@ namespace Dapr.Actors.Runtime
                     return null;
                 }
 
-                return this.DispatchInternalAsync(actorId, this.reminderMethodContext, RequestFunc, cancellationToken);
+                await this.DispatchInternalAsync(actorId, this.reminderMethodContext, RequestFunc, cancellationToken);
             }
-
-            return Task.CompletedTask;
         }
 
         internal Task FireTimerAsync(ActorId actorId, string timerName, CancellationToken cancellationToken = default)
