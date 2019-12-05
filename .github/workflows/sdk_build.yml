@@ -36,7 +36,7 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: release_drop
-          path: bin/release/nugets
+          path: bin/Release/nugets
       - name: Publish binaries to github for tags
         if: startswith(github.ref, 'refs/tags/v')
         run: |
@@ -50,7 +50,7 @@ jobs:
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           export GITHUB_TOKEN=${{ secrets.RELEASE_USER_TOKEN }}
           # Get the list of files
-          RELEASE_ARTIFACT=bin/release/nugets/*
+          RELEASE_ARTIFACT=bin/Release/nugets/*
           echo "Uploading Nuget packages to GitHub Release"
           echo "github-release upload --owner $OWNER_NAME --repo $REPO_NAME --tag "v${REL_VERSION}" --name "Dapr dotnet SDK v${REL_VERSION}" --prerelease true ${RELEASE_ARTIFACT[*]}"
           github-release upload --owner $OWNER_NAME --repo $REPO_NAME --tag "v${REL_VERSION}" --name "Dapr dotnet SDK v${REL_VERSION}" --prerelease true ${RELEASE_ARTIFACT[*]}
