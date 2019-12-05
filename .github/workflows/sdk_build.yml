@@ -16,7 +16,7 @@ on:
 jobs:
   build:
     name: Build Projects
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         configuration: [release, debug]
