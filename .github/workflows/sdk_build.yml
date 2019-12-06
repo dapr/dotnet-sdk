@@ -18,24 +18,23 @@ jobs:
     name: Build Projects
     runs-on: ubuntu-latest
     env:
-      BUILD_CONFIG: release
-      NUPKG_OUTDIR: bin/${{ env.BUILD_CONFIG }}/nugets
+      NUPKG_OUTDIR: bin/release/nugets
     steps:
       - uses: actions/checkout@v1
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 3.0.100
-      - name: Build solution - ${{ env.BUILD_CONFIG }}
-        run: dotnet build all.sln --configuration ${{ env.BUILD_CONFIG }}
-      - name: Test solution - ${{ env.BUILD_CONFIG }}
-        run: dotnet test test/test.sln --configuration ${{ env.BUILD_CONFIG }}
-      - name: Generate Nuget Packages - ${{ env.BUILD_CONFIG }}
-        run: dotnet pack src/prod.sln --configuration ${{ env.BUILD_CONFIG }} --include-symbols --no-build
+      - name: Build solution - release
+        run: dotnet build all.sln --configuration release
+      - name: Test solution - release
+        run: dotnet test test/test.sln --configuration release
+      - name: Generate Nuget Packages - release
+        run: dotnet pack src/prod.sln --configuration release --include-symbols --no-build
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
-          name: ${{ env.BUILD_CONFIG }}_drop
+          name: release_drop
           path: ${{ env.NUPKG_OUTDIR }}
       - name: Publish binaries to github for tags
         if: startswith(github.ref, 'refs/tags/v')
