@@ -43,11 +43,13 @@ jobs:
           # Parse release version and set REL_VERSION
           python ./.github/scripts/get_release_version.py
           echo "installing github-release-cli..."
+          # install github-release-cli
           sudo npm install --silent --no-progress -g github-release-cli
           # Parse repository to get owner and repo names
           OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
           OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          REL_VERSION="${{ env.REL_VERSION }}"
           export GITHUB_TOKEN=${{ secrets.RELEASE_USER_TOKEN }}
           # Get the list of files
           RELEASE_ARTIFACT=bin/Release/nugets/*
