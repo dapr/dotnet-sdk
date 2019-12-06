@@ -17,26 +17,26 @@ jobs:
   build:
     name: Build Projects
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        configuration: [release, debug]
+    env:
+      BUILD_CONFIG: release
+      NUPKG_OUTDIR: bin/${{ env.BUILD_CONFIG }}/nugets
     steps:
       - uses: actions/checkout@v1
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 3.0.100
-      - name: Build solution - release
-        run: dotnet build all.sln --configuration release
-      - name: Test solution - release
-        run: dotnet test test/test.sln --configuration release
-      - name: Generate Nuget Packages - release
-        run: dotnet pack src/prod.sln --configuration release --include-symbols --no-build
+      - name: Build solution - ${{ env.BUILD_CONFIG }}
+        run: dotnet build all.sln --configuration ${{ env.BUILD_CONFIG }}
+      - name: Test solution - ${{ env.BUILD_CONFIG }}
+        run: dotnet test test/test.sln --configuration ${{ env.BUILD_CONFIG }}
+      - name: Generate Nuget Packages - ${{ env.BUILD_CONFIG }}
+        run: dotnet pack src/prod.sln --configuration ${{ env.BUILD_CONFIG }} --include-symbols --no-build
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
-          name: release_drop
-          path: bin/Release/nugets
+          name: ${{ env.BUILD_CONFIG }}_drop
+          path: ${{ env.NUPKG_OUTDIR }}
       - name: Publish binaries to github for tags
         if: startswith(github.ref, 'refs/tags/v')
         run: |
@@ -52,7 +52,7 @@ jobs:
           REL_VERSION="${{ env.REL_VERSION }}"
           export GITHUB_TOKEN=${{ secrets.RELEASE_USER_TOKEN }}
           # Get the list of files
-          RELEASE_ARTIFACT=bin/Release/nugets/*
+          RELEASE_ARTIFACT=${{ env.NUPKG_OUTDIR }}/*
           echo "Uploading Nuget packages to GitHub Release"
           echo "github-release upload --owner $OWNER_NAME --repo $REPO_NAME --tag "v${REL_VERSION}" --name "Dapr dotnet SDK v${REL_VERSION}" --prerelease true ${RELEASE_ARTIFACT[*]}"
           github-release upload \
