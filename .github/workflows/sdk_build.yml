@@ -18,7 +18,7 @@ jobs:
     name: Build Projects
     runs-on: ubuntu-latest
     env:
-      NUPKG_OUTDIR: bin/release/nugets
+      NUPKG_OUTDIR: bin/Release/nugets
     steps:
       - uses: actions/checkout@v1
       - name: Setup .NET Core
