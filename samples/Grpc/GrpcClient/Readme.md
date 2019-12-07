@@ -14,7 +14,7 @@ The gRPC client sample shows how to make Dapr calls to publish events, save stat
  dapr run --app-id gRPC_Client dotnet run
  ```
 
- Above command will run dapr runtime and launch the app and will show logs both form Dapr runtime and the application. The client app will make calls to dapr runtime to publish events, save state, get state and delete state using the gRPC client.
+ Above command will run Dapr runtime and launch the app and will show logs both form Dapr runtime and the application. The client app will make calls to Dapr runtime to publish events, save state, get state and delete state using the gRPC client.
  Logs form application will show following in the command window:
 ```sh
   Published Event!
@@ -33,7 +33,7 @@ The gRPC client sample shows how to make Dapr calls to publish events, save stat
  ### Invoke Actor method without Remoting over Http.
 You can invoke Actor methods without remoting (directly over http), if Actor method accepts at-most one argument.
 Actor runtime will deserialize the incoming request body from client and use it as method argument to invoke the actor method.
-When making non-remoting calls Actor method arguments and return types are serialized, deserialized as json.
+When making non-remoting calls Actor method arguments and return types are serialized, deserialized as JSON.
 
 
 **Save Data**

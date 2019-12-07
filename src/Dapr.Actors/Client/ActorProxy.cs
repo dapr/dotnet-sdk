@@ -14,7 +14,7 @@ namespace Dapr.Actors.Client
 
     /// <summary>
     /// Provides the base implementation for the proxy to the remote actor objects implementing <see cref="IActor"/> interfaces.
-    /// The proxy object can be used used for client-to-actor and actor-to-actor communication.
+    /// The proxy object can be used for client-to-actor and actor-to-actor communication.
     /// </summary>
     public class ActorProxy : IActorProxy
     {
@@ -70,7 +70,7 @@ namespace Dapr.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as JSON.
         /// </summary>
         /// <typeparam name="T">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
@@ -90,7 +90,7 @@ namespace Dapr.Actors.Client
         }
 
         /// <summary>
-        /// Invokes the specified method for the actor with argument. The argument will be serialized as json.
+        /// Invokes the specified method for the actor with argument. The argument will be serialized as JSON.
         /// </summary>
         /// <param name="method">Actor method name.</param>
         /// <param name="data">Object argument for actor method.</param>

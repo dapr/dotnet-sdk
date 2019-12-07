@@ -21,7 +21,7 @@ namespace Dapr.Actors
     using Newtonsoft.Json;
 
     /// <summary>
-    /// Class to interact with dapr runtime over http.
+    /// Class to interact with Dapr runtime over http.
     /// </summary>
     internal class DaprHttpInteractor : IDaprInteractor
     {
@@ -303,7 +303,7 @@ namespace Dapr.Actors
 
         public Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
-            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.Timers, actorType, actorId, timerName);
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
             var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
@@ -337,7 +337,7 @@ namespace Dapr.Actors
         }
 
         /// <summary>
-        /// Sends an HTTP get request to Dapr and returns the result as raw json.
+        /// Sends an HTTP get request to Dapr and returns the result as raw JSON.
         /// </summary>
         /// <param name="requestFunc">Func to create HttpRequest to send.</param>
         /// <param name="relativeUri">The relative URI.</param>

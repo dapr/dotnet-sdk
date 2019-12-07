@@ -123,7 +123,7 @@ namespace Dapr.Actors.AspNetCore
             writer.WritePropertyName("entities");
             writer.WriteStartArray();
 
-            foreach (var actorType in ActorRuntime.RegisteredActorTypes)
+            foreach (var actorType in ActorRuntime.Instance.RegisteredActorTypes)
             {
                 writer.WriteStringValue(actorType);
             }

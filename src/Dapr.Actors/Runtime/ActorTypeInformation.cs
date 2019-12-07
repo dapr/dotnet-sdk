@@ -24,6 +24,13 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
+        /// Gets the name of the actor type represented by the actor.
+        /// </summary>
+        /// <value>The <see cref="string"/> name of the actor type represented by the actor.</value>
+        /// <remarks>Defaults to the name of the class implementing the actor. Can be overridden using the <see cref="Dapr.Actors.Runtime.ActorAttribute.TypeName" /> property.</remarks>
+        public string ActorTypeName { get; private set; }
+
+        /// <summary>
         /// Gets the type of the class implementing the actor.
         /// </summary>
         /// <value>The <see cref="System.Type"/> of the class implementing the actor.</value>
@@ -50,7 +57,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Creates the <see cref="ActorTypeInformation"/> from actorType.
         /// </summary>
-        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInforamtion for.</param>
+        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInformation for.</param>
         /// <param name="actorTypeInformation">When this method returns, contains ActorTypeInformation, if the creation of
         /// ActorTypeInformation from actorType succeeded, or null if the creation failed.
         /// The creation fails if the actorType parameter is null or it does not implement an actor.</param>
@@ -77,7 +84,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Creates an <see cref="ActorTypeInformation"/> from actorType.
         /// </summary>
-        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInforamtion for.</param>
+        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInformation for.</param>
         /// <returns><see cref="ActorTypeInformation"/> created from actorType.</returns>
         /// <exception cref="System.ArgumentException">
         /// <para>When <see cref="System.Type.BaseType"/> for actorType is not of type <see cref="Actor"/>.</para>
@@ -112,8 +119,13 @@ namespace Dapr.Actors.Runtime
                     "actorType");
             }
 
+            var actorAttribute = actorType.GetCustomAttribute<ActorAttribute>();
+
+            string actorTypeName = actorAttribute?.TypeName ?? actorType.Name;
+
             return new ActorTypeInformation()
             {
+                ActorTypeName = actorTypeName,
                 InterfaceTypes = actorInterfaces,
                 ImplementationType = actorType,
                 IsAbstract = actorType.GetTypeInfo().IsAbstract,

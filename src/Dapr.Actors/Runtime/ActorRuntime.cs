@@ -24,16 +24,20 @@ namespace Dapr.Actors.Runtime
         private const string TraceType = "ActorRuntime";
 
         // Map of ActorType --> ActorManager.
-        private static Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
+        private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
 
-        private ActorRuntime()
+        /// <remarks>
+        /// WARNING: This type is expected to be accessed via the <see cref="Instance" /> singleton instance.
+        /// This constructor is exposed only for unit testing purposes.
+        /// </remarks>
+        internal ActorRuntime()
         {
         }
 
         /// <summary>
         /// Gets actor type names registered with the runtime.
         /// </summary>
-        public static IEnumerable<string> RegisteredActorTypes => actorManagers.Keys;
+        public IEnumerable<string> RegisteredActorTypes => this.actorManagers.Keys;
 
         internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor();
 
@@ -45,7 +49,6 @@ namespace Dapr.Actors.Runtime
         public void RegisterActor<TActor>(Func<ActorTypeInformation, ActorService> actorServiceFactory = null)
             where TActor : Actor
         {
-            var actorTypeName = typeof(TActor).Name;
             var actorTypeInfo = ActorTypeInformation.Get(typeof(TActor));
 
             ActorService actorService;
@@ -59,7 +62,7 @@ namespace Dapr.Actors.Runtime
             }
 
             // Create ActorManagers, override existing entry if registered again.
-            actorManagers[actorTypeName] = new ActorManager(actorService);
+            this.actorManagers[actorTypeInfo.ActorTypeName] = new ActorManager(actorService);
         }
 
         /// <summary>
@@ -70,7 +73,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static async Task ActivateAsync(string actorTypeName, string actorId)
         {
-            await GetActorManager(actorTypeName).ActivateActor(new ActorId(actorId));
+            await Instance.GetActorManager(actorTypeName).ActivateActor(new ActorId(actorId));
         }
 
         /// <summary>
@@ -81,7 +84,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static async Task DeactivateAsync(string actorTypeName, string actorId)
         {
-            await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
+            await Instance.GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
         }
 
         /// <summary>
@@ -96,7 +99,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
+            return Instance.GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
         }
 
         /// <summary>
@@ -111,7 +114,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static Task DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, cancellationToken);
+            return Instance.GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, cancellationToken);
         }
 
         /// <summary>
@@ -125,7 +128,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
+            return Instance.GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
         }
 
         /// <summary>
@@ -138,12 +141,12 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal static Task FireTimerAsync(string actorTypeName, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
+            return Instance.GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
         }
 
-        private static ActorManager GetActorManager(string actorTypeName)
+        private ActorManager GetActorManager(string actorTypeName)
         {
-            if (!actorManagers.TryGetValue(actorTypeName, out var actorManager))
+            if (!this.actorManagers.TryGetValue(actorTypeName, out var actorManager))
             {
                 var errorMsg = $"Actor type {actorTypeName} is not registerd with Actor runtime.";
                 ActorTrace.Instance.WriteError(TraceType, errorMsg);
