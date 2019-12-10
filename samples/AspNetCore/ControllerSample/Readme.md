@@ -95,7 +95,6 @@ dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
 On Windows:
  ```sh
  dapr publish -t deposit -p "{\"id\": \"17\", \"amount\": 15 }"
- "
 ```
  ---
 
