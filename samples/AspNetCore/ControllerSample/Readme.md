@@ -22,12 +22,19 @@ The application also registers for pub-sub with the `deposit` and `withdraw` top
 
 **Deposit Money**
 
+On Linux, MacOS:
  ```sh
 curl -X POST http://localhost:5000/deposit \
         -H 'Content-Type: application/json' \
         -d '{ "id": "17", "amount": 12 }'
  ```
 
+ On Windows:
+ ```sh
+curl -X POST http://localhost:5000/deposit -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 12 }"
+ ```
+
+Output:
 ```txt
  {"id":"17","balance":12}
 ```
@@ -35,13 +42,18 @@ curl -X POST http://localhost:5000/deposit \
  ---
 
 **Withdraw Money**
-
+On Linux, MacOS:
  ```sh
 curl -X POST http://localhost:5000/withdraw \
         -H 'Content-Type: application/json' \
         -d '{ "id": "17", "amount": 10 }'
  ```
+On Windows:
+ ```sh
+ curl -X POST http://localhost:5000/withdraw -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 10 }"
+ ```
 
+Outpt:
 ```txt
 {"id":"17","balance":2}
 ```
@@ -53,7 +65,7 @@ curl -X POST http://localhost:5000/withdraw \
 ```sh
 curl http://localhost:5000/17
 ```
-
+Output:
 ```txt
 {"id":"17","balance":2}
 ```
@@ -61,19 +73,30 @@ curl http://localhost:5000/17
  ---
 
  **Withdraw Money (pubsub)**
-
+ 
+ Publish events using Dapr cli:
+ 
+ On Linux, MacOS:
 ```sh
 dapr publish -t withdraw -p '{"id": "17", "amount": 15 }'
 ```
-
+On Windows:
+ ```sh
+ dapr publish -t withdraw -p "{\"id\": \"17\", \"amount\": 15 }"
+ ```
  ---
 
 **Deposit Money (pubsub)**
-
+Publish events using Dapr cli:
+On Linux, MacOS:
 ```sh
 dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
 ```
-
+On Windows:
+ ```sh
+ dapr publish -t deposit -p "{\"id\": \"17\", \"amount\": 15 }"
+ "
+```
  ---
 
  ## Code Samples
