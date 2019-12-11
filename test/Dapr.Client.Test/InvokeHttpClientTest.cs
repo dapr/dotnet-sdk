@@ -15,14 +15,12 @@ namespace Dapr.Client.Test
     public class InvokeHttpClientTest
     {
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethod()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeAndData()
         {
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var invokeEnvelope = new InvokeEnvelope("test", "test", "{\"prop1\", \"data\"");
-
-            var task = invokeClient.InvokeMethodAsync<InvokedResponse>(invokeEnvelope);
+            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test", "{\"prop1\", \"data\"");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -34,14 +32,12 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethod_EmptyResponseReturnsNull()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeAndData_EmptyResponseReturnsNull()
         {
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var invokeEnvelope = new InvokeEnvelope("test", "test", "{\"prop1\", \"data\"");
-
-            var task = invokeClient.InvokeMethodAsync<InvokedResponse>(invokeEnvelope);
+            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test", "{\"prop1\", \"data\"");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -53,14 +49,12 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethod_ThrowsExceptionForNonSuccess()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeAndData_ThrowsExceptionForNonSuccess()
         {
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var invokeEnvelope = new InvokeEnvelope("test", "test", "{\"prop1\", \"data\"");
-
-            var task = invokeClient.InvokeMethodAsync<InvokedResponse>(invokeEnvelope);
+            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test", "{\"prop1\", \"data\"");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -68,6 +62,75 @@ namespace Dapr.Client.Test
             entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
 
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeNoData()
+        {
+            var httpClient = new TestHttpClient();
+            var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
+
+            entry.RespondWithJson(new InvokedResponse() { Name = "Look, I was invoked!" });
+
+            var invokedResponse = await task;
+            invokedResponse.Name.Should().Be("Look, I was invoked!");
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeNoData_ThrowsExceptionNonSuccess()
+        {
+            var httpClient = new TestHttpClient();
+            var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
+
+            entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
+        }
+
+        [Fact]
+        public Task InvokeMethodAsync_CanInvokeMethodWithNoReturnTypeAndData()
+        {
+            var httpClient = new TestHttpClient();
+            var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = invokeClient.InvokeMethodAsync("test", "test", "{\"prop1\", \"data\"");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
+
+            entry.RespondWithJson(new InvokedResponse() { Name = "Look, I was invoked!" });
+
+            FluentActions.Awaiting(async () => await task).Should().NotThrow();
+
+            return Task.FromResult(string.Empty);
+        }
+
+        [Fact]
+        public Task InvokeMethodAsync_CanInvokeMethodWithNoReturnTypeAndData_ThrowsErrorNonSuccess()
+        {
+            var httpClient = new TestHttpClient();
+            var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = invokeClient.InvokeMethodAsync("test", "test", "{\"prop1\", \"data\"");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
+
+            entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+
+            FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
+
+            return Task.FromResult(string.Empty);
         }
 
         private static string GetInvokeUrl(int port, string serviceName, string methodName)

@@ -39,23 +39,92 @@ namespace Dapr
         }
 
         /// <summary>
-        /// Invokes a method using the Dapr invoke endpoints using the properties supplied in the  <paramref name="envelope" /> variable.
+        /// Invokes a method using the Dapr invoke endpoints.
         /// </summary>
-        /// <param name="envelope">The envelope containing the invoke request parameters.</param>
+        /// <param name="serviceName">The name of the service to be called in the Dapr invoke request.</param>
+        /// <param name="methodName">THe name of the method to be called in the Dapr invoke request.</param>
+        /// <param name="data">The data to be sent within the body of the Dapr invoke request.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="Task" /> that will return a deserialized object of the reponse from the Invoke request.</returns>
-        public override async Task<TValue> InvokeMethodAsync<TValue>(InvokeEnvelope envelope, CancellationToken cancellationToken = default)
+        public override async Task<TValue> InvokeMethodAsync<TValue>(string serviceName, string methodName, string data, CancellationToken cancellationToken = default)
         {
-            if (envelope is null)
+            if (string.IsNullOrEmpty(serviceName))
             {
-                throw new ArgumentNullException("The value cannot be null or empty", nameof(envelope));
+                throw new ArgumentNullException("The value cannot be null or empty", nameof(serviceName));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{InvokePath}/{envelope.ServiceName}/method/{envelope.MethodName}" : $"{InvokePath}/{envelope.ServiceName}/method/{envelope.MethodName}";
+            if (string.IsNullOrEmpty(methodName))
+            {
+                throw new ArgumentNullException("The value cannot be null or empty", nameof(methodName));
+            }
+
+            if (data is null)
+            {
+                throw new ArgumentNullException("The value cannot be null", nameof(methodName));
+            }
+
+            var response = await this.MakeInvokeHttpRequest(serviceName, methodName, data, cancellationToken).ConfigureAwait(false);
+
+            if (response.Content == null || response.Content.Headers?.ContentLength == 0)
+            {
+                // If the invoke response is empty, then return.
+                return default;
+            }
+
+            using (var stream = await response.Content.ReadAsStreamAsync())
+            {
+                return await JsonSerializer.DeserializeAsync<TValue>(stream, this.serializerOptions, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Invokes a method using the Dapr invoke endpoints.
+        /// </summary>
+        /// <param name="serviceName">The name of the service to be called in the Dapr invoke request.</param>
+        /// <param name="methodName">THe name of the method to be called in the Dapr invoke request.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <typeparam name="TValue">The data type.</typeparam>
+        /// <returns>A <see cref="Task" /> that will return a deserialized object of the reponse from the Invoke request.</returns>
+        public override async Task<TValue> InvokeMethodAsync<TValue>(string serviceName, string methodName, CancellationToken cancellationToken = default)
+        {
+            return await this.InvokeMethodAsync<TValue>(serviceName, methodName, string.Empty, cancellationToken);
+        }
+
+        /// <summary>
+        /// Invokes a method using the Dapr invoke endpoints.
+        /// </summary>
+        /// <param name="serviceName">The name of the service to be called in the Dapr invoke request.</param>
+        /// <param name="methodName">THe name of the method to be called in the Dapr invoke request.</param>
+        /// <param name="data">The data to be sent within the body of the Dapr invoke request.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" />.</returns>
+        public override async Task InvokeMethodAsync(string serviceName, string methodName, string data, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(serviceName))
+            {
+                throw new ArgumentNullException("The value cannot be null or empty", nameof(serviceName));
+            }
+
+            if (string.IsNullOrEmpty(methodName))
+            {
+                throw new ArgumentNullException("The value cannot be null or empty", nameof(methodName));
+            }
+
+            if (data is null)
+            {
+                throw new ArgumentNullException("The value cannot be null", nameof(methodName));
+            }
+
+            var response = await this.MakeInvokeHttpRequest(serviceName, methodName, data, cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task<HttpResponseMessage> MakeInvokeHttpRequest(string serviceName, string methodName, string data, CancellationToken cancellationToken)
+        {
+            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{InvokePath}/{serviceName}/method/{methodName}" : $"{InvokePath}/{serviceName}/method/{methodName}";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
-            request.Content = new StringContent(envelope.Data);
+            request.Content = new StringContent(data);
 
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -74,16 +143,7 @@ namespace Dapr
                 throw new HttpRequestException($"Failed to invoke method with status code '{response.StatusCode}'.");
             }
 
-            if (response.Content == null || response.Content.Headers?.ContentLength == 0)
-            {
-                // The state store will return empty application/json instead of 204/404.
-                return default;
-            }
-
-            using (var stream = await response.Content.ReadAsStreamAsync())
-            {
-                return await JsonSerializer.DeserializeAsync<TValue>(stream, this.serializerOptions, cancellationToken).ConfigureAwait(false);
-            }
+            return response;
         }
     }
 }
