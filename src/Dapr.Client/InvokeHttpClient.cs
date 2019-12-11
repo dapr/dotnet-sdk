@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
-namespace Dapr.Client
+namespace Dapr
 {
     using System;
     using System.IO;
