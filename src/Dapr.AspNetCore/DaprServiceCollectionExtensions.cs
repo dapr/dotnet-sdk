@@ -37,7 +37,7 @@ namespace Microsoft.Extensions.DependencyInjection
             // StateHttpClient and InvokeHttpClient can be used with or without JsonSerializerOptions registered
             // in DI. If the user registers JsonSerializerOptions, it will be picked up by the client automatically.
             services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
-            
+
             services.AddHttpClient("invoke").AddTypedClient<InvokeClient, InvokeHttpClient>();
         }
 
