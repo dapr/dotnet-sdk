@@ -20,7 +20,7 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test", "{\"prop1\", \"data\"");
+            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -37,7 +37,7 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test", "{\"prop1\", \"data\"");
+            var task = invokeClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -54,7 +54,7 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = invokeClient.InvokeMethodAsync<InvokedResponse>("test", "test", "{\"prop1\", \"data\"");
+            var task = invokeClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -103,7 +103,7 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = invokeClient.InvokeMethodAsync("test", "test", "{\"prop1\", \"data\"");
+            var task = invokeClient.InvokeMethodAsync<InvokeRequest>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -121,7 +121,7 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var invokeClient = new InvokeHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = invokeClient.InvokeMethodAsync("test", "test", "{\"prop1\", \"data\"");
+            var task = invokeClient.InvokeMethodAsync<InvokeRequest>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetInvokeUrl(3500, "test", "test"));
@@ -136,6 +136,11 @@ namespace Dapr.Client.Test
         private static string GetInvokeUrl(int port, string serviceName, string methodName)
         {
             return $"http://localhost:{port}/v1.0/invoke/{serviceName}/method/{methodName}";
+        }
+
+        private class InvokeRequest
+        {
+            public string RequestParameter { get; set; }
         }
 
         private class InvokedResponse
