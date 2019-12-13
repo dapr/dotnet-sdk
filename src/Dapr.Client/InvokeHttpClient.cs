@@ -62,7 +62,7 @@ namespace Dapr
 
             if (data is null)
             {
-                throw new ArgumentNullException("The value cannot be null", nameof(methodName));
+                throw new ArgumentNullException("The value cannot be null", nameof(data));
             }
 
             var response = await this.MakeInvokeHttpRequest(serviceName, methodName, JsonSerializer.Serialize(data), cancellationToken).ConfigureAwait(false);
@@ -136,7 +136,7 @@ namespace Dapr
 
             if (data is null)
             {
-                throw new ArgumentNullException("The value cannot be null", nameof(methodName));
+                throw new ArgumentNullException("The value cannot be null", nameof(data));
             }
 
             await this.MakeInvokeHttpRequest(serviceName, methodName, JsonSerializer.Serialize(data), cancellationToken).ConfigureAwait(false);
