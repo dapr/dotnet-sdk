@@ -24,9 +24,9 @@ This repo builds the following packages:
 
 ### Prerequesites
 
-Each project is a normal C# Visual Studio 2019 project. At minimum, you need [.NET Core SDK 3.0](https://dotnet.microsoft.com/download/dotnet-core/3.0) to build and generate NuGet packages.
+Each project is a normal C# Visual Studio 2019 project. At minimum, you need [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) to build and generate NuGet packages.
 
-We recommend installing [Visual Studio 2019 v16.3 or later ](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
+We recommend installing [Visual Studio 2019 v16.4 or later ](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
 Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio). To find a version of .NET Core that can be used with earlier versions of Visual Studio, see [.NET SDKs for Visual Studio](https://dotnet.microsoft.com/download/visual-studio-sdks).
 
 ### Solution Files
