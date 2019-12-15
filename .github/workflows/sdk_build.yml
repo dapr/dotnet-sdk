@@ -25,7 +25,7 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.0.100
+          dotnet-version: 3.1.100
       - name: Build solution - ${{ matrix.configuration }}
         run: dotnet build all.sln --configuration ${{ matrix.configuration }}
       - name: Test solution - ${{ matrix.configuration }}
