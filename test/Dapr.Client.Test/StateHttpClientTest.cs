@@ -5,6 +5,7 @@
 
 namespace Dapr.Client.Test
 {
+    using System;
     using System.Net;
     using System.Net.Http;
     using System.Text.Json;
@@ -63,6 +64,25 @@ namespace Dapr.Client.Test
             entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
 
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
+        }
+
+        [Fact]
+        public async Task GetStateAsync_WithBaseAddress_GeneratesCorrectUrl()
+        {
+            var httpClient = new TestHttpClient()
+            {
+                BaseAddress = new Uri("http://localhost:5000"),
+            };
+            var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
+
+            var task = client.GetStateAsync<Widget>("test");
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(5000, "test"));
+
+            entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
+
+            await task;
         }
 
         [Fact]
@@ -133,6 +153,26 @@ namespace Dapr.Client.Test
             entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
 
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
+        }
+
+        [Fact]
+        public async Task SetStateAsync_WithBaseAddress_GeneratesCorrectUrl()
+        {
+            var httpClient = new TestHttpClient()
+            {
+                BaseAddress = new Uri("http://localhost:5000/"),
+            };
+            var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
+
+            var widget = new Widget() { Size = "small", Color = "yellow", };
+            var task = client.SaveStateAsync("test", widget);
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(5000));
+
+            entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
+
+            await task;
         }
 
         [Fact]
