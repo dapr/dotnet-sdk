@@ -54,7 +54,7 @@ namespace Dapr
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}{key}";
+            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
