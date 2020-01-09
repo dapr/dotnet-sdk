@@ -56,10 +56,20 @@ namespace Dapr
         public TValue Value { get; set; }
 
         /// <summary>
-        /// Saves the the current value of <see cref="Value" /> to the state store.
+        /// Deletes the entry assocated with <see cref="Key" /> in the state store.
         /// </summary>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        public ValueTask DeleteAsync(CancellationToken cancellationToken = default)
+        {
+            return this.client.DeleteStateAsync(this.Key, cancellationToken);
+        }
+
+        /// <summary>
+        /// Saves the current value of <see cref="Value" /> to the state store.
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public ValueTask SaveAsync(CancellationToken cancellationToken = default)
         {
             return this.client.SaveStateAsync(this.Key, this.Value, cancellationToken);

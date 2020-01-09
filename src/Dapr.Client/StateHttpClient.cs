@@ -122,6 +122,44 @@ namespace Dapr
             }
         }
 
+        /// <summary>
+        /// Deletes the value associated with the provided <paramref name="key" /> in the Dapr state store.
+        /// </summary>
+        /// <param name="key">The state key.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        public async override ValueTask DeleteStateAsync(string key, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(key));
+            }
+
+            // Docs: https://github.com/dapr/docs/blob/master/reference/api/state.md#delete-state
+            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
+            var request = new HttpRequestMessage(HttpMethod.Delete, url);
+
+            var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            // 200: success
+            //
+            // To avoid being overload coupled we handle a range of 2XX status codes in common use for DELETEs.
+            if ((int)response.StatusCode >= 200 && (int)response.StatusCode <= 204)
+            {
+                return;
+            }
+
+            if (response.Content != null)
+            {
+                var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                throw new HttpRequestException($"Failed to delete state with status code '{response.StatusCode}': {error}.");
+            }
+            else
+            {
+                throw new HttpRequestException($"Failed to delete state with status code '{response.StatusCode}'.");
+            }
+        }
+
         private static AsyncJsonContent<T> CreateContent<T>(T obj, JsonSerializerOptions serializerOptions)
         {
             return new AsyncJsonContent<T>(obj, serializerOptions);
