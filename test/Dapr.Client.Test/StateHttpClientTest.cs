@@ -154,7 +154,7 @@ namespace Dapr.Client.Test
 
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<HttpRequestException>();
         }
-      
+
         [Fact]
         public async Task SetStateAsync_WithBaseAddress_GeneratesCorrectUrl()
         {
@@ -174,7 +174,7 @@ namespace Dapr.Client.Test
 
             await task;
         }
-            
+
         [Fact]
         public async Task DeleteStateAsync_CanDeleteState()
         {
