@@ -52,7 +52,6 @@ jobs:
           
           export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
           echo "Uploading Nuget packages to GitHub Release"
-          echo "github-release upload --owner $OWNER_NAME --repo $REPO_NAME --tag "v${REL_VERSION}" --name "Dapr dotnet SDK v${REL_VERSION}" --prerelease true ${RELEASE_ARTIFACT[*]}"
           github-release upload \
             --owner $OWNER_NAME \
             --repo $REPO_NAME \
