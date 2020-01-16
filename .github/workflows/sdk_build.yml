@@ -55,6 +55,7 @@ jobs:
           github-release upload \
             --owner $OWNER_NAME \
             --repo $REPO_NAME \
+            --body "Release dapr dotnet SDK v${REL_VERSION}" \
             --tag "v${REL_VERSION}" \
             --name "Dapr dotnet SDK v${REL_VERSION}" \
             --prerelease true \
