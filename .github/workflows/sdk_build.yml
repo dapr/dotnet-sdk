@@ -21,6 +21,8 @@ jobs:
       NUPKG_OUTDIR: bin/Release/nugets
     steps:
       - uses: actions/checkout@v1
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
@@ -39,25 +41,22 @@ jobs:
       - name: Publish binaries to github for tags
         if: startswith(github.ref, 'refs/tags/v')
         run: |
-          # Parse release version and set REL_VERSION
-          python ./.github/scripts/get_release_version.py
-          echo "installing github-release-cli..."
-          # install github-release-cli
           sudo npm install --silent --no-progress -g github-release-cli
+          
           # Parse repository to get owner and repo names
           OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
-          OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          REL_VERSION="${{ env.REL_VERSION }}"
-          export GITHUB_TOKEN=${{ secrets.RELEASE_USER_TOKEN }}
+          
           # Get the list of files
-          RELEASE_ARTIFACT=${{ env.NUPKG_OUTDIR }}/*
+          RELEASE_ARTIFACT=(${{ env.NUPKG_OUTDIR }}/*)
+          
+          export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
           echo "Uploading Nuget packages to GitHub Release"
           echo "github-release upload --owner $OWNER_NAME --repo $REPO_NAME --tag "v${REL_VERSION}" --name "Dapr dotnet SDK v${REL_VERSION}" --prerelease true ${RELEASE_ARTIFACT[*]}"
           github-release upload \
             --owner $OWNER_NAME \
             --repo $REPO_NAME \
-            --tag "v${REL_VERSION}" 
-            --name "Dapr dotnet SDK v${REL_VERSION}" 
+            --tag "v${REL_VERSION}" \
+            --name "Dapr dotnet SDK v${REL_VERSION}" \
             --prerelease true \
             ${RELEASE_ARTIFACT[*]}
