@@ -6,7 +6,7 @@
 namespace Dapr.Actors
 {
     /// <summary>
-    /// Defines values for DaprErrorCodes.
+    /// Definitions for Dapr Error Codes.
     /// </summary>
     public enum DaprErrorCodes
     {
@@ -16,39 +16,119 @@ namespace Dapr.Actors
         UNKNOWN = 0,
 
         /// <summary>
-        /// Requested resource/content/path does not exist.
+        /// Error requesting a resource/content/path that does not exist.
         /// </summary>
         ERR_DOES_NOT_EXIST,
 
         /// <summary>
-        /// Error invoking output binding.
+        /// Error referencing an actor instance not found.
         /// </summary>
-        ERR_INVOKE_OUTPUT_BINDING,
+        ERR_ACTOR_INSTANCE_MISSING,
 
         /// <summary>
-        /// State store is not found.
+        /// Error referencing an actor runtime not found.
+        /// </summary>
+        ERR_ACTOR_RUNTIME_NOT_FOUND,
+
+        /// <summary>
+        /// Error creating a reminder for an actor.
+        /// </summary>
+        ERR_ACTOR_REMINDER_CREATE,
+
+        /// <summary>
+        /// Error deleting a reminder for an actor.
+        /// </summary>
+        ERR_ACTOR_REMINDER_DELETE,
+
+        /// <summary>
+        /// Error creating a timer for an actor.
+        /// </summary>
+        ERR_ACTOR_TIMER_CREATE,
+
+        /// <summary>
+        /// Error deleting a timer for an actor.
+        /// </summary>
+        ERR_ACTOR_TIMER_DELETE,
+
+        /// <summary>
+        /// Error getting a reminder for an actor.
+        /// </summary>
+        ERR_ACTOR_REMINDER_GET,
+
+        /// <summary>
+        /// Error invoking a method on an actor.
+        /// </summary>
+        ERR_ACTOR_INVOKE_METHOD,
+
+        /// <summary>
+        /// Error deleting the state for an actor.
+        /// </summary>
+        ERR_ACTOR_STATE_DELETE,
+
+        /// <summary>
+        /// Error getting the state for an actor.
+        /// </summary>
+        ERR_ACTOR_STATE_GET,
+
+        /// <summary>
+        /// Error saving the state for an actor.
+        /// </summary>
+        ERR_ACTOR_STATE_SAVE,
+
+        /// <summary>
+        /// Error storing actor state transactionally.
+        /// </summary>
+        ERR_ACTOR_STATE_TRANSACTION_SAVE,
+
+        /// <summary>
+        /// Error referencing a Pub/Sub not found.
+        /// </summary>
+        ERR_PUBSUB_NOT_FOUND,
+
+        /// <summary>
+        /// Error publishing a message.
+        /// </summary>
+        ERR_PUBSUB_PUBLISH_MESSAGE,
+
+        /// <summary>
+        /// Error serializing Pub/Sub event envelope.
+        /// </summary>
+        ERR_PUBSUB_CLOUD_EVENTS_SER,
+
+        /// <summary>
+        /// Error referencing a state store not found.
         /// </summary>
         ERR_STATE_STORE_NOT_FOUND,
 
         /// <summary>
-        /// Error in getting state.
+        /// Error getting a state store.
         /// </summary>
-        ERR_GET_STATE,
+        ERR_STATE_GET,
 
         /// <summary>
-        /// Error in deleting state.
+        /// Error deleting a state store.
         /// </summary>
-        ERR_DELETE_STATE,
+        ERR_STATE_DELETE,
 
         /// <summary>
-        /// Malformed request.
+        /// Error saving state store.
+        /// </summary>
+        ERR_STATE_SAVE,
+
+        /// <summary>
+        /// Error referencing a state store with specified key not found.
+        /// </summary>
+        ERR_STATE_KEY_NOT_FOUND,
+
+        /// <summary>
+        /// Error invoking an output binding.
+        /// </summary>
+        ERR_INVOKE_OUTPUT_BINDING,
+
+        /// <summary>
+        /// Error with a malformed request.
         /// </summary>
         ERR_MALFORMED_REQUEST,
-
-        /// <summary>
-        /// Error in saving state.
-        /// </summary>
-        ERR_SAVE_REQUEST,
 
         /// <summary>
         /// Error in direct invocation.
@@ -56,68 +136,8 @@ namespace Dapr.Actors
         ERR_DIRECT_INVOKE,
 
         /// <summary>
-        /// Error in invocation.
-        /// </summary>
-        ERR_INVOKE,
-
-        /// <summary>
-        /// Error when actor runtime is not found.
-        /// </summary>
-        ERR_ACTOR_RUNTIME_NOT_FOUND,
-
-        /// <summary>
-        /// Error in creating reminder for the actor.
-        /// </summary>
-        ERR_CREATE_REMINDER,
-
-        /// <summary>
-        /// Error in creating timer for the actor.
-        /// </summary>
-        ERR_CREATE_TIMER,
-
-        /// <summary>
-        /// Error in deleting reminder for the actor.
-        /// </summary>
-        ERR_DELETE_REMINDER,
-
-        /// <summary>
-        /// Error while storing actor state transactionally.
-        /// </summary>
-        ERR_ACTOR_STATE_TRANSACTION,
-
-        /// <summary>
-        /// Error in deleting timer for the actor.
-        /// </summary>
-        ERR_DELETE_TIMER,
-
-        /// <summary>
-        /// Error in invoking actor method.
-        /// </summary>
-        ERR_INVOKE_ACTOR,
-
-        /// <summary>
-        /// Error in deserializing http request body.
+        /// Error deserializing an HTTP request body.
         /// </summary>
         ERR_DESERIALIZE_HTTP_BODY,
-
-        /// <summary>
-        /// Error in getting state for the actor.
-        /// </summary>
-        ERR_ACTOR_GET_STATE,
-
-        /// <summary>
-        /// Error in deleting state for the actor.
-        /// </summary>
-        ERR_ACTOR_DELETE_STATE,
-
-        /// <summary>
-        /// Pub sub not found.
-        /// </summary>
-        ERR_PUB_SUB_NOT_FOUND,
-
-        /// <summary>
-        /// Error in publishig message.
-        /// </summary>
-        ERR_PUBLISH_MESSAGE,
     }
 }

@@ -52,14 +52,13 @@ namespace Dapr.Actors.Runtime
 
             if (json.TryGetProperty("period", out var periodProperty))
             {
-                var periodString = dueTimeProperty.GetString();
+                var periodString = periodProperty.GetString();
                 period = ConverterUtils.ConvertTimeSpanFromDaprFormat(periodString);
             }
 
-            if (json.TryGetProperty("data", out var dataProperty))
+            if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
             {
-                var dataString = dueTimeProperty.GetString();
-                data = Encoding.UTF8.GetBytes(dataString);
+                data = dataProperty.GetBytesFromBase64();
             }
 
             return new ReminderInfo(data, dueTime, period);
