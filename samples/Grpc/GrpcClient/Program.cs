@@ -18,6 +18,7 @@ namespace GrpcClient
     public class Program
     {
         private static string stateKeyName = "mykey";
+        private static string stateStoreName = "statestore";
 
         /// <summary>
         /// Main entry point.
@@ -76,6 +77,7 @@ namespace GrpcClient
             };
 
             var saveStateEnvelope = new SaveStateEnvelope();
+            saveStateEnvelope.StoreName = stateStoreName;
             saveStateEnvelope.Requests.Add(req);
             _ = await client.SaveStateAsync(saveStateEnvelope);
             Console.WriteLine("Saved State!");
@@ -85,6 +87,7 @@ namespace GrpcClient
         {
             var getStateEnvelope = new GetStateEnvelope()
             {
+                StoreName = stateStoreName,
                 Key = stateKeyName,
             };
 
@@ -96,6 +99,7 @@ namespace GrpcClient
         {
             var deleteStateEnvelope = new DeleteStateEnvelope()
             {
+                StoreName = stateStoreName,
                 Key = stateKeyName,
             };
 
