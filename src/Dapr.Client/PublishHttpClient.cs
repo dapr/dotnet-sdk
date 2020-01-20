@@ -43,15 +43,15 @@ namespace Dapr
         {
             if (string.IsNullOrEmpty(topicName))
             {
-                throw new ArgumentNullException("The value cannot be null or empty", nameof(topicName));
+                throw new ArgumentException("The value cannot be null or empty", nameof(topicName));
             }
 
             if (publishContent is null)
             {
-                throw new ArgumentNullException("The value cannot be null or empty", nameof(publishContent));
+                throw new ArgumentNullException(nameof(publishContent));
             }
 
-            await this.MakePublishHttpRequest(topicName, JsonSerializer.Serialize(publishContent), cancellationToken).ConfigureAwait(false);
+            await this.MakePublishHttpRequest<TRequest>(topicName, publishContent, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
@@ -59,25 +59,23 @@ namespace Dapr
         {
             if (string.IsNullOrEmpty(topicName))
             {
-                throw new ArgumentNullException("The value cannot be null or empty", nameof(topicName));
+                throw new ArgumentException("The value cannot be null or empty", nameof(topicName));
             }
 
-            await this.MakePublishHttpRequest(topicName, string.Empty, cancellationToken).ConfigureAwait(false);
+            await this.MakePublishHttpRequest<string>(topicName, string.Empty, cancellationToken).ConfigureAwait(false);
         }
 
-        private async Task<HttpResponseMessage> MakePublishHttpRequest(string topicName, string publishContents, CancellationToken cancellationToken)
+        private async Task<HttpResponseMessage> MakePublishHttpRequest<TRequest>(string topicName, TRequest publishContents, CancellationToken cancellationToken)
         {
             var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{PublishPath}/{topicName}" : $"{PublishPath}/{topicName}";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
-            request.Content = new StringContent(publishContents);
+            if (publishContents != null)
+            {
+                request.Content = AsyncJsonContent<TRequest>.CreateContent(publishContents, this.serializerOptions);
+            }
 
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return default;
-            }
 
             if (!response.IsSuccessStatusCode && response.Content != null)
             {

@@ -37,7 +37,7 @@ namespace Dapr.Client.Test
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             entry.Request.RequestUri.ToString().Should().Be(GetPublishUrl(3500, "test"));
 
-            (await entry.Request.Content.ReadAsStringAsync()).Should().Be(string.Empty);
+            (await entry.Request.Content.ReadAsStringAsync()).Should().Be("\"\"");
         }
 
         private static string GetPublishUrl(int port, string topicName)
