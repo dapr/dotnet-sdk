@@ -104,7 +104,7 @@ namespace Dapr
             var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}" : StatePath;
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             var obj = new object[] { new { key = key, value = value, } };
-            request.Content = CreateContent(obj, this.serializerOptions);
+            request.Content = AsyncJsonContent<object[]>.CreateContent(obj, this.serializerOptions);
 
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode && response.Content != null)
@@ -119,49 +119,6 @@ namespace Dapr
             else
             {
                 return;
-            }
-        }
-
-        private static AsyncJsonContent<T> CreateContent<T>(T obj, JsonSerializerOptions serializerOptions)
-        {
-            return new AsyncJsonContent<T>(obj, serializerOptions);
-        }
-
-        // Note: using push-streaming content here has a little higher cost for trivially-size payloads,
-        // but avoids the significant allocation overhead in the cases where the content is really large.
-        //
-        // Similar to https://github.com/aspnet/AspNetWebStack/blob/master/src/System.Net.Http.Formatting/PushStreamContent.cs
-        // but simplified because of async.
-        private class AsyncJsonContent<T> : HttpContent
-        {
-            private readonly T obj;
-            private readonly JsonSerializerOptions serializerOptions;
-
-            public AsyncJsonContent(T obj, JsonSerializerOptions serializerOptions)
-            {
-                this.obj = obj;
-                this.serializerOptions = serializerOptions;
-
-                this.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "UTF-8", };
-            }
-
-            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
-            {
-                return JsonSerializer.SerializeAsync(stream, this.obj, this.serializerOptions);
-            }
-
-            protected override bool TryComputeLength(out long length)
-            {
-                // We can't know the length of the content being pushed to the output stream without doing
-                // some writing.
-                //
-                // If we want to optimize this case, it could be done by implementing a custom stream
-                // and then doing the first write to a fixed-size pooled byte array.
-                //
-                // HTTP is slightly more efficient when you can avoid using chunking (need to know Content-Length)
-                // up front.
-                length = -1;
-                return false;
             }
         }
     }
