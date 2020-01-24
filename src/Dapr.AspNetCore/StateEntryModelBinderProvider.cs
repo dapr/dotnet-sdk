@@ -22,8 +22,9 @@ namespace Dapr
                 return null;
             }
 
+            var stateStoreName = (context.BindingInfo.BindingSource as FromStateBindingSource)?.StateStoreName;
             var key = (context.BindingInfo.BindingSource as FromStateBindingSource)?.Key;
-            return new StateEntryModelBinder(key, type != context.Metadata.ModelType, type);
+            return new StateEntryModelBinder(stateStoreName, key, type != context.Metadata.ModelType, type);
         }
 
         private static bool CanBind(ModelBinderProviderContext context, out Type type)

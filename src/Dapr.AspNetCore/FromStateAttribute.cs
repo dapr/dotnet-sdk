@@ -18,18 +18,27 @@ namespace Microsoft.AspNetCore.Mvc
         /// <summary>
         /// Initializes a new instance of the <see cref="FromStateAttribute"/> class.
         /// </summary>
-        public FromStateAttribute()
+        /// <param name="stateStoreName">The state store name.</param>
+        public FromStateAttribute(string stateStoreName)
         {
+            this.StateStoreName = stateStoreName;
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FromStateAttribute"/> class.
         /// </summary>
+        /// <param name="stateStoreName">The state store name.</param>
         /// <param name="key">The state key.</param>
-        public FromStateAttribute(string key)
+        public FromStateAttribute(string stateStoreName, string key)
         {
+            this.StateStoreName = stateStoreName;
             this.Key = key;
         }
+
+        /// <summary>
+        /// Gets the state store name.
+        /// </summary>
+        public string StateStoreName { get; }
 
         /// <summary>
         /// Gets the state store key.
@@ -43,7 +52,7 @@ namespace Microsoft.AspNetCore.Mvc
         {
             get
             {
-                return new FromStateBindingSource(this.Key);
+                return new FromStateBindingSource(this.StateStoreName, this.Key);
             }
         }
     }

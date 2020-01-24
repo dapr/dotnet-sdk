@@ -33,7 +33,7 @@ namespace Dapr
                     }
                     else if (IsStateEntryType(property.ParameterType))
                     {
-                        property.BindingInfo.BindingSource = new FromStateBindingSource(null);
+                        property.BindingInfo.BindingSource = new FromStateBindingSource(null, null);
                     }
                 }
 
@@ -47,7 +47,7 @@ namespace Dapr
                         }
                         else if (IsStateEntryType(parameter.ParameterType))
                         {
-                            parameter.BindingInfo.BindingSource = new FromStateBindingSource(null);
+                            parameter.BindingInfo.BindingSource = new FromStateBindingSource(null, null);
                         }
                     }
                 }

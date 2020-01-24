@@ -16,11 +16,13 @@ namespace Dapr
     {
         private readonly Func<StateClient, string, Task<object>> thunk;
         private readonly string key;
+        private readonly string stateStoreName;
         private readonly bool isStateEntry;
         private readonly Type type;
 
-        public StateEntryModelBinder(string key, bool isStateEntry, Type type)
+        public StateEntryModelBinder(string stateStoreName, string key, bool isStateEntry, Type type)
         {
+            this.stateStoreName = stateStoreName;
             this.key = key;
             this.isStateEntry = isStateEntry;
             this.type = type;
@@ -77,14 +79,14 @@ namespace Dapr
             });
         }
 
-        private static async Task<object> GetStateEntryAsync<T>(StateClient stateClient, string key)
+        private static async Task<object> GetStateEntryAsync<T>(StateClient stateClient, string stateStoreName, string key)
         {
-            return await stateClient.GetStateEntryAsync<T>(key);
+            return await stateClient.GetStateEntryAsync<T>(stateStoreName, key);
         }
 
-        private static async Task<object> GetStateAsync<T>(StateClient stateClient, string key)
+        private static async Task<object> GetStateAsync<T>(StateClient stateClient, string stateStoreName, string key)
         {
-            return await stateClient.GetStateAsync<T>(key);
+            return await stateClient.GetStateAsync<T>(stateStoreName, key);
         }
     }
 }
