@@ -11,6 +11,11 @@ namespace Dapr.Actors.Runtime
     {
         public static TimeSpan ConvertTimeSpanFromDaprFormat(string valueString)
         {
+            if (string.IsNullOrEmpty(valueString))
+            {
+                return default; // TODO: Should that be TimeSpan.FromMilliseconds(-1); DAPR spec says -1ms == never
+            }
+
             // TimeSpan is a string. Format returned by Dapr is: 1h4m5s4ms4us4ns
             //  acceptable values are: m, s, ms, us(micro), ns
             var spanOfValue = valueString.AsSpan();
