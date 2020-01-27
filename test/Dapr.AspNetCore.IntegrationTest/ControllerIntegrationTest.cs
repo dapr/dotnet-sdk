@@ -61,7 +61,7 @@ namespace Dapr.AspNetCore.IntegrationTest
 
                 await stateClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
 
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/controllerwithstateentryandcustomkey/test");
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/controllerwithstateentryandcustomkey/testStore/test");
                 var response = await httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 

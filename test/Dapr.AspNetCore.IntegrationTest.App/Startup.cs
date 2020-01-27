@@ -46,7 +46,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
                 endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("A");
 
-                endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
+                endpoints.MapPost("/routingwithstateentry/{testStore}/{widget}", async context =>
                 {
                     var stateClient = context.RequestServices.GetRequiredService<StateClient>();
                     var state = await stateClient.GetStateEntryAsync<Widget>("testStore", (string)context.Request.RouteValues["widget"]);

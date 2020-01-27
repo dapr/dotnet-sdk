@@ -25,21 +25,21 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             return user; // echo back the user for testing
         }
 
-        [HttpPost("/controllerwithoutstateentry/{widget}")]
+        [HttpPost("/controllerwithoutstateentry/{testStore}/{widget}")]
         public async Task AddOneWithoutStateEntry([FromServices] StateClient state, [FromState("testStore")] Widget widget)
         {
             widget.Count++;
             await state.SaveStateAsync("testStore", (string)this.HttpContext.Request.RouteValues["widget"], widget);
         }
 
-        [HttpPost("/controllerwithstateentry/{widget}")]
+        [HttpPost("/controllerwithstateentry/{testStore}/{widget}")]
         public async Task AddOneWithStateEntry([FromState("testStore")] StateEntry<Widget> widget)
         {
             widget.Value.Count++;
             await widget.SaveAsync();
         }
 
-        [HttpPost("/controllerwithstateentryandcustomkey/{widget}")]
+        [HttpPost("/controllerwithstateentryandcustomkey/{testStore}/{widget}")]
         public async Task AddOneWithStateEntryAndCustomKey([FromState("testStore", "widget")] StateEntry<Widget> state)
         {
             state.Value.Count++;
