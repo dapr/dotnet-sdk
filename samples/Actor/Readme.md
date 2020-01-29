@@ -12,7 +12,7 @@ You can open the solution file samples.sln in samples directory to load the samp
 
 * **The interface project(\IDemoActor).** This project contains the interface definition for the actor. The interface defines the actor contract that is shared by the actor implementation and the clients calling the actor. Because client projects may depend on it, it typically makes sense to define it in an assembly that is separate from the actor implementation.
 
-* **The actor service project(\DemoService).** This project implements ASP.Net Core web service that is going to host the actor. It contains the implementation of the actor. An actor implementation is a class that derives from the base type Actor and implements the interfaces defined in the MyActor.Interfaces project. An actor class must also implement a constructor that accepts an ActorService instance and an ActorId and passes them to the base Actor class.
+* **The actor service project(\DemoActor).** This project implements ASP.Net Core web service that is going to host the actor. It contains the implementation of the actor. An actor implementation is a class that derives from the base type `Actor` and implements the interfaces defined in the corresponding interfaces project. An actor class must also implement a constructor that accepts an `ActorService` instance and an `ActorId` and passes them to the base `Actor` class.
 
 * **The actor client project(\ActorClient)** This project contains the implementation of the actor client which calls DemoActor's method defined in Actor Interfaces.
 
