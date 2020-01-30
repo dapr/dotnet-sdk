@@ -23,7 +23,7 @@ namespace RoutingSample
         /// <summary>
         /// State store name.
         /// </summary>
-        public const string Storename = "testStore";
+        public const string StoreName = "testStore";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Startup"/> class.
@@ -85,7 +85,7 @@ namespace RoutingSample
                 var client = context.RequestServices.GetRequiredService<StateClient>();
 
                 var id = (string)context.Request.RouteValues["id"];
-                var account = await client.GetStateAsync<Account>(Storename, id);
+                var account = await client.GetStateAsync<Account>(StoreName, id);
                 if (account == null)
                 {
                     context.Response.StatusCode = 404;
@@ -101,7 +101,7 @@ namespace RoutingSample
                 var client = context.RequestServices.GetRequiredService<StateClient>();
 
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
-                var account = await client.GetStateAsync<Account>(Storename, transaction.Id);
+                var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
                     account = new Account() { Id = transaction.Id, };
@@ -114,7 +114,7 @@ namespace RoutingSample
                 }
 
                 account.Balance += transaction.Amount;
-                await client.SaveStateAsync(Storename, transaction.Id, account);
+                await client.SaveStateAsync(StoreName, transaction.Id, account);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
@@ -125,7 +125,7 @@ namespace RoutingSample
                 var client = context.RequestServices.GetRequiredService<StateClient>();
 
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
-                var account = await client.GetStateAsync<Account>(Storename, transaction.Id);
+                var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
                     context.Response.StatusCode = 404;
@@ -139,7 +139,7 @@ namespace RoutingSample
                 }
 
                 account.Balance -= transaction.Amount;
-                await client.SaveStateAsync(Storename, transaction.Id, account);
+                await client.SaveStateAsync(StoreName, transaction.Id, account);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);

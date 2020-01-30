@@ -9,14 +9,14 @@ namespace Dapr
 
     internal class FromStateBindingSource : BindingSource
     {
-        public FromStateBindingSource(string stateStoreName, string key)
+        public FromStateBindingSource(string storeName, string key)
             : base("state", "Dapr state store", isGreedy: true, isFromRequest: false)
         {
-            this.StateStoreName = stateStoreName;
+            this.StoreName = storeName;
             this.Key = key;
         }
 
-        public string StateStoreName { get; }
+        public string StoreName { get; }
 
         public string Key { get; }
     }

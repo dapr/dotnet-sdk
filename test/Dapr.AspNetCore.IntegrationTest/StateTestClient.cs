@@ -14,11 +14,11 @@ namespace Dapr
     {
         public Dictionary<string, object> State { get; } = new Dictionary<string, object>();
 
-        public override ValueTask<TValue> GetStateAsync<TValue>(string stateStoreName, string key, CancellationToken cancellationToken = default)
+        public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(stateStoreName))
+            if (string.IsNullOrEmpty(storeName))
             {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(stateStoreName));
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
             }
 
             if (this.State.TryGetValue(key, out var obj))
@@ -31,22 +31,22 @@ namespace Dapr
             }
         }
 
-        public override ValueTask SaveStateAsync<TValue>(string stateStoreName, string key, TValue value, CancellationToken cancellationToken = default)
+        public override ValueTask SaveStateAsync<TValue>(string storeName, string key, TValue value, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(stateStoreName))
+            if (string.IsNullOrEmpty(storeName))
             {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(stateStoreName));
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
             }
 
             this.State[key] = value;
             return new ValueTask(Task.CompletedTask);
         }
 
-        public override ValueTask DeleteStateAsync(string stateStoreName, string key, CancellationToken cancellationToken = default)
+        public override ValueTask DeleteStateAsync(string storeName, string key, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(stateStoreName))
+            if (string.IsNullOrEmpty(storeName))
             {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(stateStoreName));
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
             }
 
             this.State.Remove(key);

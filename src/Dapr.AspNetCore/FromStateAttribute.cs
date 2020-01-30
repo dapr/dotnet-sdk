@@ -6,6 +6,7 @@
 namespace Microsoft.AspNetCore.Mvc
 {
     using System;
+    using System.ComponentModel;
     using Dapr;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -18,27 +19,32 @@ namespace Microsoft.AspNetCore.Mvc
         /// <summary>
         /// Initializes a new instance of the <see cref="FromStateAttribute"/> class.
         /// </summary>
-        /// <param name="stateStoreName">The state store name.</param>
-        public FromStateAttribute(string stateStoreName)
+        /// <param name="storeName">The state store name.</param>
+        public FromStateAttribute(string storeName)
         {
-            this.StateStoreName = stateStoreName;
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
+            }
+
+            this.StoreName = storeName;
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FromStateAttribute"/> class.
         /// </summary>
-        /// <param name="stateStoreName">The state store name.</param>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
-        public FromStateAttribute(string stateStoreName, string key)
+        public FromStateAttribute(string storeName, string key)
         {
-            this.StateStoreName = stateStoreName;
+            this.StoreName = storeName;
             this.Key = key;
         }
 
         /// <summary>
         /// Gets the state store name.
         /// </summary>
-        public string StateStoreName { get; }
+        public string StoreName { get; }
 
         /// <summary>
         /// Gets the state store key.
@@ -52,7 +58,7 @@ namespace Microsoft.AspNetCore.Mvc
         {
             get
             {
-                return new FromStateBindingSource(this.StateStoreName, this.Key);
+                return new FromStateBindingSource(this.StoreName, this.Key);
             }
         }
     }

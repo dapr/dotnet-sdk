@@ -16,13 +16,13 @@ namespace Dapr
     {
         private readonly Func<StateClient, string, string, Task<object>> thunk;
         private readonly string key;
-        private readonly string stateStoreName;
+        private readonly string storeName;
         private readonly bool isStateEntry;
         private readonly Type type;
 
-        public StateEntryModelBinder(string stateStoreName, string key, bool isStateEntry, Type type)
+        public StateEntryModelBinder(string storeName, string key, bool isStateEntry, Type type)
         {
-            this.stateStoreName = stateStoreName;
+            this.storeName = storeName;
             this.key = key;
             this.isStateEntry = isStateEntry;
             this.type = type;
@@ -69,7 +69,7 @@ namespace Dapr
                 return;
             }
 
-            var obj = await this.thunk(stateClient, this.stateStoreName, key);
+            var obj = await this.thunk(stateClient, this.storeName, key);
             bindingContext.Result = ModelBindingResult.Success(obj);
 
             bindingContext.ValidationState.Add(bindingContext.Result.Model, new ValidationStateEntry()
@@ -79,14 +79,14 @@ namespace Dapr
             });
         }
 
-        private static async Task<object> GetStateEntryAsync<T>(StateClient stateClient, string stateStoreName, string key)
+        private static async Task<object> GetStateEntryAsync<T>(StateClient stateClient, string storeName, string key)
         {
-            return await stateClient.GetStateEntryAsync<T>(stateStoreName, key);
+            return await stateClient.GetStateEntryAsync<T>(storeName, key);
         }
 
-        private static async Task<object> GetStateAsync<T>(StateClient stateClient, string stateStoreName, string key)
+        private static async Task<object> GetStateAsync<T>(StateClient stateClient, string storeName, string key)
         {
-            return await stateClient.GetStateAsync<T>(stateStoreName, key);
+            return await stateClient.GetStateAsync<T>(storeName, key);
         }
     }
 }

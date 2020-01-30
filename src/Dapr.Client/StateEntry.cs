@@ -21,7 +21,7 @@ namespace Dapr
         /// Initializes a new instance of the <see cref="StateEntry{TValue}"/> class.
         /// </summary>
         /// <param name="client">The <see cref="StateClient" /> instance used to retrieve the value.</param>
-        /// <param name="stateStoreName">The state store name.</param>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value.</param>
         /// <remarks>
@@ -29,16 +29,16 @@ namespace Dapr
         /// <see cref="StateClient.GetStateEntryAsync{TValue}(string, string, CancellationToken)" /> to access
         /// state entries.
         /// </remarks>
-        public StateEntry(StateClient client, string stateStoreName, string key, TValue value)
+        public StateEntry(StateClient client, string storeName, string key, TValue value)
         {
             if (client is null)
             {
                 throw new ArgumentNullException(nameof(client));
             }
 
-            if (string.IsNullOrEmpty(stateStoreName))
+            if (string.IsNullOrEmpty(storeName))
             {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(stateStoreName));
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
             }
 
             if (string.IsNullOrEmpty(key))
@@ -46,16 +46,16 @@ namespace Dapr
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            this.StateStoreName = stateStoreName;
+            this.StoreName = storeName;
             this.Key = key;
             this.Value = value;
             this.client = client;
         }
 
         /// <summary>
-        /// Gets the stateStoreName.
+        /// Gets the State Store Name.
         /// </summary>
-        public string StateStoreName { get; }
+        public string StoreName { get; }
 
         /// <summary>
         /// Gets the state key.
@@ -74,7 +74,7 @@ namespace Dapr
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public ValueTask DeleteAsync(CancellationToken cancellationToken = default)
         {
-            return this.client.DeleteStateAsync(this.StateStoreName, this.Key, cancellationToken);
+            return this.client.DeleteStateAsync(this.StoreName, this.Key, cancellationToken);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Dapr
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public ValueTask SaveAsync(CancellationToken cancellationToken = default)
         {
-            return this.client.SaveStateAsync(this.StateStoreName, this.Key, this.Value, cancellationToken);
+            return this.client.SaveStateAsync(this.StoreName, this.Key, this.Value, cancellationToken);
         }
     }
 }
