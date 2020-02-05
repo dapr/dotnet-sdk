@@ -18,7 +18,7 @@ namespace ControllerSample.Controllers
         /// <summary>
         /// State store name.
         /// </summary>
-        public const string StoreName = "testStore";
+        public const string StoreName = "statestore";
 
         /// <summary>
         /// Gets the account information as specified by the id.
@@ -26,7 +26,7 @@ namespace ControllerSample.Controllers
         /// <param name="account">Account information for the id from Dapr state store.</param>
         /// <returns>Account information.</returns>
         [HttpGet("{account}")]
-        public ActionResult<Account> Get(StateEntry<Account> account)
+        public ActionResult<Account> Get([FromState(StoreName)]StateEntry<Account> account)
         {
             if (account.Value is null)
             {

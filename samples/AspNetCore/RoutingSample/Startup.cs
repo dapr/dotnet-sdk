@@ -23,7 +23,7 @@ namespace RoutingSample
         /// <summary>
         /// State store name.
         /// </summary>
-        public const string StoreName = "testStore";
+        public const string StoreName = "statestore";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Startup"/> class.
