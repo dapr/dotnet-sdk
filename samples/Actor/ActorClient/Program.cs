@@ -36,11 +36,6 @@ namespace ActorClient
             // DemoActor is the type registered with Dapr runtime in the service.
             var proxy = ActorProxy.Create<IDemoActor>(actorId, "DemoActor");
 
-            // Deregistering timer and reminders, just in case a previous instance of the client had registered them
-            Console.WriteLine("Deregistering timer and reminders, just in case a previous instance of the client had registered them.");
-            await proxy.UnregisterTimer();
-            await proxy.UnregisterReminder();
-
             Console.WriteLine("Making call using actor proxy to save data.");
             await proxy.SaveData(data);
             Console.WriteLine("Making call using actor proxy to get data.");
@@ -83,6 +78,11 @@ namespace ActorClient
             Console.WriteLine("Making call using actor proxy to get data after timer and reminder triggered");
             receivedData = await proxy.GetData();
             Console.WriteLine($"Received data is {receivedData}.");
+
+            Console.WriteLine("Deregistering timer. Timers would any way stop if the actor is deactivated as part of Dapr garbage collection.");
+            await proxy.UnregisterTimer();
+            Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
+            await proxy.UnregisterReminder();
         }
     }
 }
