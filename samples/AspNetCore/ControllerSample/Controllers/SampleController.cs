@@ -18,7 +18,7 @@ namespace ControllerSample.Controllers
         /// <summary>
         /// State store name.
         /// </summary>
-        public const string Storename = "testStore";
+        public const string StoreName = "testStore";
 
         /// <summary>
         /// Gets the account information as specified by the id.
@@ -46,7 +46,7 @@ namespace ControllerSample.Controllers
         [HttpPost("deposit")]
         public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] StateClient stateClient)
         {
-            var state = await stateClient.GetStateEntryAsync<Account>(Storename, transaction.Id);
+            var state = await stateClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
             state.Value ??= new Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
             await state.SaveAsync();
@@ -63,7 +63,7 @@ namespace ControllerSample.Controllers
         [HttpPost("withdraw")]
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] StateClient stateClient)
         {
-            var state = await stateClient.GetStateEntryAsync<Account>(Storename, transaction.Id);
+            var state = await stateClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
 
             if (state.Value == null)
             {
