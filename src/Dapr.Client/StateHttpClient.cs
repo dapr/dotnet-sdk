@@ -21,6 +21,7 @@ namespace Dapr
     /// </summary>
     public sealed class StateHttpClient : StateClient
     {
+        private const string DaprDefaultEndpoint = "127.0.0.1";
         private readonly HttpClient client;
         private readonly JsonSerializerOptions serializerOptions;
 
@@ -54,7 +55,7 @@ namespace Dapr
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -101,7 +102,7 @@ namespace Dapr
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}" : StatePath;
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}" : StatePath;
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             var obj = new object[] { new { key = key, value = value, } };
             request.Content = CreateContent(obj, this.serializerOptions);
@@ -136,7 +137,7 @@ namespace Dapr
             }
 
             // Docs: https://github.com/dapr/docs/blob/master/reference/api/state.md#delete-state
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
             var request = new HttpRequestMessage(HttpMethod.Delete, url);
 
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
