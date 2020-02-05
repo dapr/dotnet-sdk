@@ -13,7 +13,8 @@ namespace Dapr.Actors.Runtime
         {
             if (string.IsNullOrEmpty(valueString))
             {
-                return default; // TODO: Should that be TimeSpan.FromMilliseconds(-1); DAPR spec says -1ms == never
+                var never = TimeSpan.FromMilliseconds(-1);
+                return never;
             }
 
             // TimeSpan is a string. Format returned by Dapr is: 1h4m5s4ms4us4ns

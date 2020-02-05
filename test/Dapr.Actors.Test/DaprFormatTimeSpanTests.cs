@@ -76,8 +76,9 @@ namespace Dapr.Actors.Test
         public void DaprFormatTimespanEmpty()
         {
             Func<string, TimeSpan> convert = ConverterUtils.ConvertTimeSpanFromDaprFormat;
-            Assert.Equal<TimeSpan>(default, convert(null));
-            Assert.Equal<TimeSpan>(default, convert(string.Empty));
+            TimeSpan never = TimeSpan.FromMilliseconds(-1);
+            Assert.Equal<TimeSpan>(never, convert(null));
+            Assert.Equal<TimeSpan>(never, convert(string.Empty));
         }
     }
 }

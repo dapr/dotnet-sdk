@@ -48,7 +48,7 @@ namespace Dapr.Actors.Runtime
 
             writer.WriteStartObject();
 
-            if (this.DueTime != null && this.DueTime >= TimeSpan.Zero)
+            if (this.DueTime != null)
             {
                 writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));
             }
