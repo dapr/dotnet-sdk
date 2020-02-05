@@ -15,6 +15,8 @@ namespace Dapr.Client.Test
 
     public class StateHttpClientTest
     {
+        private const string DaprDefaultEndpoint = "127.0.0.1";
+
         [Fact]
         public async Task GetStateAsync_CanReadState()
         {
@@ -71,7 +73,7 @@ namespace Dapr.Client.Test
         {
             var httpClient = new TestHttpClient()
             {
-                BaseAddress = new Uri("http://localhost:5000"),
+                BaseAddress = new Uri($"http://{DaprDefaultEndpoint}:5000"),
             };
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
@@ -160,7 +162,7 @@ namespace Dapr.Client.Test
         {
             var httpClient = new TestHttpClient()
             {
-                BaseAddress = new Uri("http://localhost:5000/"),
+                BaseAddress = new Uri($"http://{DaprDefaultEndpoint}:5000/"),
             };
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
@@ -313,17 +315,17 @@ namespace Dapr.Client.Test
 
         private static string GetStateUrl(int port, string storeName, string key)
         {
-            return $"http://localhost:{port}/v1.0/state/{storeName}/{key}";
+            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}/{key}";
         }
 
         private static string SaveStateUrl(int port, string storeName)
         {
-            return $"http://localhost:{port}/v1.0/state/{storeName}";
+            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}";
         }
 
         private static string DeleteStateUrl(int port, string storeName, string key)
         {
-            return $"http://localhost:{port}/v1.0/state/{storeName}/{key}";
+            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}/{key}";
         }
 
         private class Widget
