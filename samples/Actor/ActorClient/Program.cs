@@ -33,8 +33,14 @@ namespace ActorClient
             var actorId = new ActorId("abc");
 
             // Make strongly typed Actor calls with Remoting.
-            // DemoACtor is the type registered with Dapr runtime in the service.
+            // DemoActor is the type registered with Dapr runtime in the service.
             var proxy = ActorProxy.Create<IDemoActor>(actorId, "DemoActor");
+
+            // Deregistering timer and reminders, just in case a previous instance of the client had registered them
+            Console.WriteLine("Deregistering timer and reminders, just in case a previous instance of the client had registered them.");
+            await proxy.UnregisterTimer();
+            await proxy.UnregisterReminder();
+
             Console.WriteLine("Making call using actor proxy to save data.");
             await proxy.SaveData(data);
             Console.WriteLine("Making call using actor proxy to get data.");
@@ -67,6 +73,16 @@ namespace ActorClient
                     Console.WriteLine($"Got Incorrect Exception from actor method invocation. Exception {ex.InnerException}");
                 }
             }
+
+            Console.WriteLine("Registering the timer and reminder");
+            await proxy.RegisterTimer();
+            await proxy.RegisterReminder();
+            Console.WriteLine("Waiting so the timer and reminder can be triggered");
+            await Task.Delay(6000);
+
+            Console.WriteLine("Making call using actor proxy to get data after timer and reminder triggered");
+            receivedData = await proxy.GetData();
+            Console.WriteLine($"Received data is {receivedData}.");
         }
     }
 }
