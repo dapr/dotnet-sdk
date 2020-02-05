@@ -19,6 +19,7 @@ namespace Dapr
     /// </summary>
     public class InvokeHttpClient : InvokeClient
     {
+        private const string DaprDefaultEndpoint = "127.0.0.1";
         private readonly HttpClient client;
         private readonly JsonSerializerOptions serializerOptions;
 
@@ -144,7 +145,7 @@ namespace Dapr
 
         private async Task<HttpResponseMessage> MakeInvokeHttpRequest(string serviceName, string methodName, string data, CancellationToken cancellationToken)
         {
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{InvokePath}/{serviceName}/method/{methodName}" : $"{InvokePath}/{serviceName}/method/{methodName}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{InvokePath}/{serviceName}/method/{methodName}" : $"{InvokePath}/{serviceName}/method/{methodName}";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
             request.Content = new StringContent(data);
