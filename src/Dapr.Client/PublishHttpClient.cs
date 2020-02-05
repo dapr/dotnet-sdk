@@ -19,6 +19,7 @@ namespace Dapr
     /// </summary>
     public class PublishHttpClient : PublishClient
     {
+        private const string DaprDefaultEndpoint = "127.0.0.1";
         private readonly HttpClient client;
         private readonly JsonSerializerOptions serializerOptions;
 
@@ -67,7 +68,7 @@ namespace Dapr
 
         private async Task<HttpResponseMessage> MakePublishHttpRequest<TRequest>(string topicName, TRequest publishContents, CancellationToken cancellationToken)
         {
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{PublishPath}/{topicName}" : $"{PublishPath}/{topicName}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{PublishPath}/{topicName}" : $"{PublishPath}/{topicName}";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
             if (publishContents != null)

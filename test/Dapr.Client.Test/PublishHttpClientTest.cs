@@ -12,6 +12,8 @@ namespace Dapr.Client.Test
 
     public class PublishHttpClientTest
     {
+        private const string DaprDefaultEndpoint = "127.0.0.1";
+
         [Fact]
         public async Task PublishEventAsync_CanPublishTopicWithContent()
         {
@@ -42,7 +44,7 @@ namespace Dapr.Client.Test
 
         private static string GetPublishUrl(int port, string topicName)
         {
-            return $"http://localhost:{port}/v1.0/publish/{topicName}";
+            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/publish/{topicName}";
         }
 
         private class PublishContent
