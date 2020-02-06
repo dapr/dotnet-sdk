@@ -44,18 +44,24 @@ namespace Dapr
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store.
         /// </summary>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will return the value when the operation has completed.</returns>
-        public async override ValueTask<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default)
+        public async override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
+            }
+
             if (string.IsNullOrEmpty(key))
             {
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{storeName}/{key}" : $"{StatePath}/{storeName}/{key}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -90,19 +96,25 @@ namespace Dapr
         /// Saves the provided <paramref name="value" /> associated with the provided <paramref name="key" /> to the Dapr state
         /// store.
         /// </summary>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value to save.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public async override ValueTask SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default)
+        public async override ValueTask SaveStateAsync<TValue>(string storeName, string key, TValue value, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
+            }
+
             if (string.IsNullOrEmpty(key))
             {
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}" : StatePath;
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{storeName}" : $"{StatePath}/{storeName}";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             var obj = new object[] { new { key = key, value = value, } };
             request.Content = AsyncJsonContent<object[]>.CreateContent(obj, this.serializerOptions);
@@ -126,18 +138,23 @@ namespace Dapr
         /// <summary>
         /// Deletes the value associated with the provided <paramref name="key" /> in the Dapr state store.
         /// </summary>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public async override ValueTask DeleteStateAsync(string key, CancellationToken cancellationToken = default)
+        public async override ValueTask DeleteStateAsync(string storeName, string key, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
+            }
+
             if (string.IsNullOrEmpty(key))
             {
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            // Docs: https://github.com/dapr/docs/blob/master/reference/api/state.md#delete-state
-            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{storeName}/{key}" : $"{StatePath}/{storeName}/{key}";
             var request = new HttpRequestMessage(HttpMethod.Delete, url);
 
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);

@@ -14,13 +14,15 @@ namespace Dapr
 
     internal class StateEntryModelBinder : IModelBinder
     {
-        private readonly Func<StateClient, string, Task<object>> thunk;
+        private readonly Func<StateClient, string, string, Task<object>> thunk;
         private readonly string key;
+        private readonly string storeName;
         private readonly bool isStateEntry;
         private readonly Type type;
 
-        public StateEntryModelBinder(string key, bool isStateEntry, Type type)
+        public StateEntryModelBinder(string storeName, string key, bool isStateEntry, Type type)
         {
+            this.storeName = storeName;
             this.key = key;
             this.isStateEntry = isStateEntry;
             this.type = type;
@@ -29,13 +31,13 @@ namespace Dapr
             {
                 var method = this.GetType().GetMethod(nameof(GetStateEntryAsync), BindingFlags.Static | BindingFlags.NonPublic);
                 method = method.MakeGenericMethod(type);
-                this.thunk = (Func<StateClient, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<StateClient, string, Task<object>>), null, method);
+                this.thunk = (Func<StateClient, string, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<StateClient, string, string, Task<object>>), null, method);
             }
             else
             {
                 var method = this.GetType().GetMethod(nameof(GetStateAsync), BindingFlags.Static | BindingFlags.NonPublic);
                 method = method.MakeGenericMethod(type);
-                this.thunk = (Func<StateClient, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<StateClient, string, Task<object>>), null, method);
+                this.thunk = (Func<StateClient, string, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<StateClient, string, string, Task<object>>), null, method);
             }
         }
 
@@ -67,7 +69,7 @@ namespace Dapr
                 return;
             }
 
-            var obj = await this.thunk(stateClient, key);
+            var obj = await this.thunk(stateClient, this.storeName, key);
             bindingContext.Result = ModelBindingResult.Success(obj);
 
             bindingContext.ValidationState.Add(bindingContext.Result.Model, new ValidationStateEntry()
@@ -77,14 +79,14 @@ namespace Dapr
             });
         }
 
-        private static async Task<object> GetStateEntryAsync<T>(StateClient stateClient, string key)
+        private static async Task<object> GetStateEntryAsync<T>(StateClient stateClient, string storeName, string key)
         {
-            return await stateClient.GetStateEntryAsync<T>(key);
+            return await stateClient.GetStateEntryAsync<T>(storeName, key);
         }
 
-        private static async Task<object> GetStateAsync<T>(StateClient stateClient, string key)
+        private static async Task<object> GetStateAsync<T>(StateClient stateClient, string storeName, string key)
         {
-            return await stateClient.GetStateAsync<T>(key);
+            return await stateClient.GetStateAsync<T>(storeName, key);
         }
     }
 }
