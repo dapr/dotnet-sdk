@@ -21,6 +21,7 @@ namespace Dapr
     /// </summary>
     public sealed class StateHttpClient : StateClient
     {
+        private const string DaprDefaultEndpoint = "127.0.0.1";
         private readonly HttpClient client;
         private readonly JsonSerializerOptions serializerOptions;
 
@@ -43,18 +44,24 @@ namespace Dapr
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store.
         /// </summary>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will return the value when the operation has completed.</returns>
-        public async override ValueTask<TValue> GetStateAsync<TValue>(string key, CancellationToken cancellationToken = default)
+        public async override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
+            }
+
             if (string.IsNullOrEmpty(key))
             {
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{storeName}/{key}" : $"{StatePath}/{storeName}/{key}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -89,22 +96,28 @@ namespace Dapr
         /// Saves the provided <paramref name="value" /> associated with the provided <paramref name="key" /> to the Dapr state
         /// store.
         /// </summary>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value to save.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public async override ValueTask SaveStateAsync<TValue>(string key, TValue value, CancellationToken cancellationToken = default)
+        public async override ValueTask SaveStateAsync<TValue>(string storeName, string key, TValue value, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
+            }
+
             if (string.IsNullOrEmpty(key))
             {
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}" : StatePath;
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{storeName}" : $"{StatePath}/{storeName}";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             var obj = new object[] { new { key = key, value = value, } };
-            request.Content = CreateContent(obj, this.serializerOptions);
+            request.Content = AsyncJsonContent<object[]>.CreateContent(obj, this.serializerOptions);
 
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode && response.Content != null)
@@ -125,18 +138,23 @@ namespace Dapr
         /// <summary>
         /// Deletes the value associated with the provided <paramref name="key" /> in the Dapr state store.
         /// </summary>
+        /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public async override ValueTask DeleteStateAsync(string key, CancellationToken cancellationToken = default)
+        public async override ValueTask DeleteStateAsync(string storeName, string key, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
+            }
+
             if (string.IsNullOrEmpty(key))
             {
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            // Docs: https://github.com/dapr/docs/blob/master/reference/api/state.md#delete-state
-            var url = this.client.BaseAddress == null ? $"http://localhost:{DefaultHttpPort}{StatePath}/{key}" : $"{StatePath}/{key}";
+            var url = this.client.BaseAddress == null ? $"http://{DaprDefaultEndpoint}:{DefaultHttpPort}{StatePath}/{storeName}/{key}" : $"{StatePath}/{storeName}/{key}";
             var request = new HttpRequestMessage(HttpMethod.Delete, url);
 
             var response = await this.client.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -157,49 +175,6 @@ namespace Dapr
             else
             {
                 throw new HttpRequestException($"Failed to delete state with status code '{response.StatusCode}'.");
-            }
-        }
-
-        private static AsyncJsonContent<T> CreateContent<T>(T obj, JsonSerializerOptions serializerOptions)
-        {
-            return new AsyncJsonContent<T>(obj, serializerOptions);
-        }
-
-        // Note: using push-streaming content here has a little higher cost for trivially-size payloads,
-        // but avoids the significant allocation overhead in the cases where the content is really large.
-        //
-        // Similar to https://github.com/aspnet/AspNetWebStack/blob/master/src/System.Net.Http.Formatting/PushStreamContent.cs
-        // but simplified because of async.
-        private class AsyncJsonContent<T> : HttpContent
-        {
-            private readonly T obj;
-            private readonly JsonSerializerOptions serializerOptions;
-
-            public AsyncJsonContent(T obj, JsonSerializerOptions serializerOptions)
-            {
-                this.obj = obj;
-                this.serializerOptions = serializerOptions;
-
-                this.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "UTF-8", };
-            }
-
-            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
-            {
-                return JsonSerializer.SerializeAsync(stream, this.obj, this.serializerOptions);
-            }
-
-            protected override bool TryComputeLength(out long length)
-            {
-                // We can't know the length of the content being pushed to the output stream without doing
-                // some writing.
-                //
-                // If we want to optimize this case, it could be done by implementing a custom stream
-                // and then doing the first write to a fixed-size pooled byte array.
-                //
-                // HTTP is slightly more efficient when you can avoid using chunking (need to know Content-Length)
-                // up front.
-                length = -1;
-                return false;
             }
         }
     }

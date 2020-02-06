@@ -21,7 +21,7 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task BindAsync_WithoutMatchingRouteValue_ReportsError()
         {
-            var binder = new StateEntryModelBinder("test", isStateEntry: false, typeof(Widget));
+            var binder = new StateEntryModelBinder("testStore", "test", isStateEntry: false, typeof(Widget));
 
             var httpClient = new TestHttpClient();
             var context = CreateContext(CreateServices(httpClient));
@@ -37,7 +37,7 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task BindAsync_CanBindValue()
         {
-            var binder = new StateEntryModelBinder("id", isStateEntry: false, typeof(Widget));
+            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
 
             var httpClient = new TestHttpClient();
             var context = CreateContext(CreateServices(httpClient));
@@ -60,7 +60,7 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task BindAsync_CanBindStateEntry()
         {
-            var binder = new StateEntryModelBinder("id", isStateEntry: true, typeof(Widget));
+            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
 
             var httpClient = new TestHttpClient();
             var context = CreateContext(CreateServices(httpClient));

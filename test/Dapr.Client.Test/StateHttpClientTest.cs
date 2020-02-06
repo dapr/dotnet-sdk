@@ -15,16 +15,18 @@ namespace Dapr.Client.Test
 
     public class StateHttpClientTest
     {
+        private const string DaprDefaultEndpoint = "127.0.0.1";
+
         [Fact]
         public async Task GetStateAsync_CanReadState()
         {
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateAsync<Widget>("test");
+            var task = client.GetStateAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "testStore", "test"));
 
             entry.RespondWithJson(new Widget() { Size = "small", Color = "yellow", });
 
@@ -39,10 +41,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateAsync<Widget>("test");
+            var task = client.GetStateAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "testStore", "test"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
 
@@ -56,10 +58,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateAsync<Widget>("test");
+            var task = client.GetStateAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "testStore", "test"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
 
@@ -71,14 +73,14 @@ namespace Dapr.Client.Test
         {
             var httpClient = new TestHttpClient()
             {
-                BaseAddress = new Uri("http://localhost:5000"),
+                BaseAddress = new Uri($"http://{DaprDefaultEndpoint}:5000"),
             };
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateAsync<Widget>("test");
+            var task = client.GetStateAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(5000, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(5000, "testStore", "test"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
 
@@ -92,10 +94,10 @@ namespace Dapr.Client.Test
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
             var widget = new Widget() { Size = "small", Color = "yellow", };
-            var task = client.SaveStateAsync("test", widget);
+            var task = client.SaveStateAsync("testStore", "test", widget);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500));
+            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500, "testStore"));
 
             using (var stream = await entry.Request.Content.ReadAsStreamAsync())
             {
@@ -119,10 +121,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.SaveStateAsync<object>("test", null);
+            var task = client.SaveStateAsync<object>("testStore", "test", null);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500));
+            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500, "testStore"));
 
             using (var stream = await entry.Request.Content.ReadAsStreamAsync())
             {
@@ -145,10 +147,10 @@ namespace Dapr.Client.Test
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
             var widget = new Widget() { Size = "small", Color = "yellow", };
-            var task = client.SaveStateAsync("test", widget);
+            var task = client.SaveStateAsync("testStore", "test", widget);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500));
+            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500, "testStore"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
 
@@ -160,15 +162,15 @@ namespace Dapr.Client.Test
         {
             var httpClient = new TestHttpClient()
             {
-                BaseAddress = new Uri("http://localhost:5000/"),
+                BaseAddress = new Uri($"http://{DaprDefaultEndpoint}:5000/"),
             };
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
             var widget = new Widget() { Size = "small", Color = "yellow", };
-            var task = client.SaveStateAsync("test", widget);
+            var task = client.SaveStateAsync("testStore", "test", widget);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(5000));
+            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(5000, "testStore"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
 
@@ -181,10 +183,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.DeleteStateAsync("test");
+            var task = client.DeleteStateAsync("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "testStore", "test"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
             await task;
@@ -196,10 +198,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.DeleteStateAsync("test");
+            var task = client.DeleteStateAsync("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "testStore", "test"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
 
@@ -212,10 +214,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateEntryAsync<Widget>("test");
+            var task = client.GetStateEntryAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "testStore", "test"));
 
             entry.RespondWithJson(new Widget() { Size = "small", Color = "yellow", });
 
@@ -231,10 +233,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateEntryAsync<Widget>("test");
+            var task = client.GetStateEntryAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "testStore", "test"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
 
@@ -249,10 +251,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateEntryAsync<Widget>("test");
+            var task = client.GetStateEntryAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "testStore", "test"));
 
             entry.RespondWithJson(new Widget() { Size = "small", Color = "yellow", });
 
@@ -265,7 +267,7 @@ namespace Dapr.Client.Test
             var task2 = state.SaveAsync();
 
             httpClient.Requests.TryDequeue(out entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500));
+            entry.Request.RequestUri.ToString().Should().Be(SaveStateUrl(3500, "testStore"));
 
             using (var stream = await entry.Request.Content.ReadAsStreamAsync())
             {
@@ -289,10 +291,10 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var client = new StateHttpClient(httpClient, new JsonSerializerOptions());
 
-            var task = client.GetStateEntryAsync<Widget>("test");
+            var task = client.GetStateEntryAsync<Widget>("testStore", "test");
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(GetStateUrl(3500, "testStore", "test"));
 
             entry.RespondWithJson(new Widget() { Size = "small", Color = "yellow", });
 
@@ -305,25 +307,25 @@ namespace Dapr.Client.Test
             var task2 = state.DeleteAsync();
 
             httpClient.Requests.TryDequeue(out entry).Should().BeTrue();
-            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "test"));
+            entry.Request.RequestUri.ToString().Should().Be(DeleteStateUrl(3500, "testStore", "test"));
 
             entry.Respond(new HttpResponseMessage(HttpStatusCode.OK));
             await task;
         }
 
-        private static string GetStateUrl(int port, string key)
+        private static string GetStateUrl(int port, string storeName, string key)
         {
-            return $"http://localhost:{port}/v1.0/state/{key}";
+            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}/{key}";
         }
 
-        private static string SaveStateUrl(int port)
+        private static string SaveStateUrl(int port, string storeName)
         {
-            return $"http://localhost:{port}/v1.0/state";
+            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}";
         }
 
-        private static string DeleteStateUrl(int port, string key)
+        private static string DeleteStateUrl(int port, string storeName, string key)
         {
-            return $"http://localhost:{port}/v1.0/state/{key}";
+            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}/{key}";
         }
 
         private class Widget

@@ -60,13 +60,13 @@ Following curl call will save data for actor id "abc"
 On Linux, MacOS:
 
 ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "PropertyA": "ValueA", "PropertyB": "ValueB" }'
+curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "PropertyA": "ValueA", "PropertyB": "ValueB" }'
 ```
 
  On Windows:
 
 ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData -d "{ \"PropertyA\": \"ValueA\", \"PropertyB\": \"ValueB\" }"
+curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d "{ \"PropertyA\": \"ValueA\", \"PropertyB\": \"ValueB\" }"
 
 ```
 
@@ -77,11 +77,11 @@ Following curl call will get data for actor id "abc"
 On Linux, MacOS:
 
 ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData
+curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
 ```
 
 On Windows:
 
 ```sh
-curl -X POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData
+curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
 ```

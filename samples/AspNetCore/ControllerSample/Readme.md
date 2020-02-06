@@ -24,14 +24,14 @@ The application also registers for pub-sub with the `deposit` and `withdraw` top
 
 On Linux, MacOS:
  ```sh
-curl -X POST http://localhost:5000/deposit \
+curl -X POST http://127.0.0.1:5000/deposit \
         -H 'Content-Type: application/json' \
         -d '{ "id": "17", "amount": 12 }'
  ```
 
  On Windows:
  ```sh
-curl -X POST http://localhost:5000/deposit -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 12 }"
+curl -X POST http://127.0.0.1:5000/deposit -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 12 }"
  ```
 
 Output:
@@ -44,13 +44,13 @@ Output:
 **Withdraw Money**
 On Linux, MacOS:
  ```sh
-curl -X POST http://localhost:5000/withdraw \
+curl -X POST http://127.0.0.1:5000/withdraw \
         -H 'Content-Type: application/json' \
         -d '{ "id": "17", "amount": 10 }'
  ```
 On Windows:
  ```sh
- curl -X POST http://localhost:5000/withdraw -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 10 }"
+ curl -X POST http://127.0.0.1:5000/withdraw -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 10 }"
  ```
 
 Outpt:
@@ -63,7 +63,7 @@ Outpt:
 **Get Balance**
 
 ```sh
-curl http://localhost:5000/17
+curl http://127.0.0.1:5000/17
 ```
 Output:
 ```txt

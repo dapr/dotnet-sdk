@@ -49,7 +49,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
                 endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
                 {
                     var stateClient = context.RequestServices.GetRequiredService<StateClient>();
-                    var state = await stateClient.GetStateEntryAsync<Widget>((string)context.Request.RouteValues["widget"]);
+                    var state = await stateClient.GetStateEntryAsync<Widget>("testStore", (string)context.Request.RouteValues["widget"]);
                     state.Value.Count++;
                     await state.SaveAsync();
                 });
