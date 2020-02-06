@@ -21,13 +21,13 @@ namespace Dapr.AspNetCore.IntegrationTest
                 var httpClient = factory.CreateClient();
                 var stateClient = factory.StateClient;
 
-                await stateClient.SaveStateAsync("test", new Widget() { Size = "small", Count = 17, });
+                await stateClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
 
                 var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/routingwithstateentry/test");
                 var response = await httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 
-                var widget = await stateClient.GetStateAsync<Widget>("test");
+                var widget = await stateClient.GetStateAsync<Widget>("testStore", "test");
                 widget.Count.Should().Be(18);
             }
         }
