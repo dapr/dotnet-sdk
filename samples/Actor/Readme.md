@@ -47,7 +47,7 @@ Run the client project from `ActorClient` directory as:
  dotnet run
  ```
 
- *Note: If you  started the actor service with dapr port other than 3500, then set the environment variable DAPR_HTTP_PORT to the value of --port specified while starting the actor service before running the client in terminal.*
+ *Note: If you started the actor service with dapr port other than 3500, then set the environment variable DAPR_HTTP_PORT to the value of --port specified while starting the actor service before running the client in terminal.*
  ```
  On Windows: set DAPR_HTTP_PORT=<port>
  On Linux, MacOS: export DAPR_HTTP_PORT=<port>
