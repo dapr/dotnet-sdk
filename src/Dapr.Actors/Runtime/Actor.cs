@@ -33,13 +33,24 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <param name="actorService">The <see cref="ActorService"/> that will host this actor instance.</param>
         /// <param name="actorId">Id for the actor.</param>
-        protected Actor(ActorService actorService, ActorId actorId)
+        /// <param name="actorStateManager">The custom implementation of the StateManager.</param>
+        protected Actor(ActorService actorService, ActorId actorId, IActorStateManager actorStateManager = default)
+            : this(actorService, actorId)
+        {
+            this.StateManager = actorStateManager ?? new ActorStateManager(this);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Actor"/> class.
+        /// </summary>
+        /// <param name="actorService">The <see cref="ActorService"/> that will host this actor instance.</param>
+        /// <param name="actorId">Id for the actor.</param>
+        private Actor(ActorService actorService, ActorId actorId)
         {
             this.Id = actorId;
             this.traceId = this.Id.ToString();
             this.IsDirty = false;
             this.ActorService = actorService;
-            this.StateManager = new ActorStateManager(this);
             this.actorImplementaionTypeName = this.ActorService.ActorTypeInfo.ImplementationType.Name;
         }
 
