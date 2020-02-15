@@ -69,6 +69,13 @@ namespace ActorClient
                 }
             }
 
+            // Making calls without Remoting, this shows method invocation using InvokeAsync methods, the method name and its payload is provided as arguments to InvokeAsync methods.
+            Console.WriteLine("Making calls without Remoting.");
+            var nonRemotingProxy = ActorProxy.Create(actorId, "DemoActor");
+            await nonRemotingProxy.InvokeAsync("TestNoArgumentNoReturnType");
+            await nonRemotingProxy.InvokeAsync("SaveData", data);
+            var res = await nonRemotingProxy.InvokeAsync<MyData>("GetData");
+
             Console.WriteLine("Registering the timer and reminder");
             await proxy.RegisterTimer();
             await proxy.RegisterReminder();
