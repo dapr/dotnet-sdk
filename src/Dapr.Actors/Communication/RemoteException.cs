@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -25,7 +25,7 @@ namespace Dapr.Actors.Communication
     {
         private static readonly DataContractSerializer ServiceExceptionDataSerializer = new DataContractSerializer(typeof(ServiceExceptionData));
 
-        private static BinaryFormatter binaryFormatter;
+        private static readonly BinaryFormatter binaryFormatter;
 
         static RemoteException()
         {

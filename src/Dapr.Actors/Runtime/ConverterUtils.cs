@@ -34,7 +34,7 @@ namespace Dapr.Actors.Runtime
             var hoursSpan = spanOfValue.Slice(0, hIndex);
             var hours = int.Parse(hoursSpan);
             var days = hours / 24;
-            hours = hours % 24;
+            hours %= 24;
 
             var minutesSpan = spanOfValue.Slice(hIndex + 1, mIndex - (hIndex + 1));
             var minutes = int.Parse(minutesSpan);

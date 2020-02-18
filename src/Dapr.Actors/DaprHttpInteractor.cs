@@ -470,8 +470,7 @@ namespace Dapr.Actors
             Func<HttpRequestMessage> requestFunc,
             CancellationToken cancellationToken)
         {
-            HttpResponseMessage response = null;
-
+            HttpResponseMessage response;
             try
             {
                 // Get the request using the Func as same request cannot be resent when retries are implemented.

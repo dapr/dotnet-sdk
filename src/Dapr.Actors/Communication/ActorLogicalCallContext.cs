@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -9,7 +9,7 @@ namespace Dapr.Actors.Communication
 
     internal static class ActorLogicalCallContext
     {
-        private static AsyncLocal<string> fabActAsyncLocal = new AsyncLocal<string>();
+        private static readonly AsyncLocal<string> fabActAsyncLocal = new AsyncLocal<string>();
 
         public static bool IsPresent()
         {
