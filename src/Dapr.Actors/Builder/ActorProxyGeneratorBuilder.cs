@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -122,7 +122,7 @@ namespace Dapr.Actors.Builder
             {
                 // Cancellation token is tracked locally and should not be serialized and sent
                 // as a part of the request body.
-                parameterLength = parameterLength - 1;
+                parameterLength -= 1;
             }
 
             if (parameterLength == 0)
@@ -143,7 +143,7 @@ namespace Dapr.Actors.Builder
                 {
                     // Cancellation token is tracked locally and should not be serialized and sent
                     // as a part of the request body.
-                    argsLength = argsLength - 1;
+                    argsLength -= 1;
                 }
 
                 for (var i = 0; i < argsLength; i++)
@@ -309,7 +309,7 @@ namespace Dapr.Actors.Builder
             {
                 // Cancellation token is tracked locally and should not be serialized and sent
                 // as a part of the request body.
-                parameterLength = parameterLength - 1;
+                parameterLength -= 1;
             }
 
             LocalBuilder requestMessage = null;

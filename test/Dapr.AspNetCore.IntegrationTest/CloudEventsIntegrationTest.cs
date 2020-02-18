@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -29,8 +29,10 @@ namespace Dapr.AspNetCore.IntegrationTest
             {
                 var httpClient = factory.CreateClient();
 
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/B");
-                request.Content = new StringContent("{}", Encoding.UTF8);
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/B")
+                {
+                    Content = new StringContent("{}", Encoding.UTF8)
+                };
                 request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
 
                 var response = await httpClient.SendAsync(request);
@@ -45,8 +47,9 @@ namespace Dapr.AspNetCore.IntegrationTest
             {
                 var httpClient = factory.CreateClient();
 
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user");
-                request.Content = new StringContent(
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
+                {
+                    Content = new StringContent(
                     JsonSerializer.Serialize(
                         new
                         {
@@ -55,7 +58,8 @@ namespace Dapr.AspNetCore.IntegrationTest
                                 name = "jimmy",
                             },
                         }),
-                    Encoding.UTF8);
+                    Encoding.UTF8)
+                };
                 request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
 
                 var response = await httpClient.SendAsync(request);
@@ -73,8 +77,9 @@ namespace Dapr.AspNetCore.IntegrationTest
             {
                 var httpClient = factory.CreateClient();
 
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user");
-                request.Content = new StringContent(
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
+                {
+                    Content = new StringContent(
                     JsonSerializer.Serialize(
                         new
                         {
@@ -84,7 +89,8 @@ namespace Dapr.AspNetCore.IntegrationTest
                             },
                             datacontenttype = "text/json",
                         }),
-                    Encoding.UTF8);
+                    Encoding.UTF8)
+                };
                 request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
 
                 var response = await httpClient.SendAsync(request);
@@ -105,14 +111,16 @@ namespace Dapr.AspNetCore.IntegrationTest
             {
                 var httpClient = factory.CreateClient();
 
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user");
-                request.Content = new StringContent(
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
+                {
+                    Content = new StringContent(
                     JsonSerializer.Serialize(
                         new
                         {
                             name = "jimmy",
                         }),
-                    Encoding.UTF8);
+                    Encoding.UTF8)
+                };
                 request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
                 var response = await httpClient.SendAsync(request);

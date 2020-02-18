@@ -228,8 +228,7 @@ namespace Dapr.Actors.Runtime
                 throw new InvalidOperationException(errorMsg);
             }
 
-            var retval = default(T);
-
+            T retval;
             try
             {
                 // invoke the function of the actor

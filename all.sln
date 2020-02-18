@@ -43,9 +43,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AspNetCore", "AspNetCore", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Grpc", "src\Dapr.Client.Grpc\Dapr.Client.Grpc.csproj", "{BCE5A721-69C5-4510-97ED-931ADE587466}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrpcClient", "samples\Grpc\GrpcClient\GrpcClient.csproj", "{576B28F7-0D86-4C11-828A-B648E11863F6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrpcClient", "samples\Grpc\GrpcClient\GrpcClient.csproj", "{576B28F7-0D86-4C11-828A-B648E11863F6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Grpc", "Grpc", "{9ED03812-9DDE-4DFE-9574-DF3671EECA25}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1BD1276E-D28A-45EA-89B1-6AD48471500D}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
