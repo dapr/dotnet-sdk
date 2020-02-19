@@ -9,11 +9,11 @@ namespace Dapr.Actors.Runtime
     using System.Collections.Concurrent;
     using System.IO;
     using System.Text;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Communication;
-    using Newtonsoft.Json;
 
     /// <summary>
     /// Manages Actors of a specific actor type.
@@ -123,20 +123,13 @@ namespace Dapr.Actors.Runtime
                 {
                     // deserialize using stream.
                     var type = parameters[0].ParameterType;
-                    var deserializedType = default(object);
-                    using (var streamReader = new StreamReader(requestBodyStream))
-                    {
-                        var json = await streamReader.ReadToEndAsync();
-                        deserializedType = JsonConvert.DeserializeObject(json, type);
-                    }
-
+                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type);
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
                 }
 
                 await awaitable;
 
-                // Write Response back if method's return type is other than Task.
-                // Serialize result if it has result (return type was not just Task.)
+                // Handle the return type of method correctly.
                 if (methodInfo.ReturnType.Name != typeof(Task).Name)
                 {
                     // already await, Getting result will be non blocking.
@@ -150,8 +143,13 @@ namespace Dapr.Actors.Runtime
             }
 
             var result = await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
-            var json = JsonConvert.SerializeObject(result);
-            await responseBodyStream.WriteAsync(Encoding.UTF8.GetBytes(json));
+
+            // Write Response back if method's return type is other than Task.
+            // Serialize result if it has result (return type was not just Task.)
+            if (methodInfo.ReturnType.Name != typeof(Task).Name)
+            {
+                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType());
+            }
         }
 
         internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
