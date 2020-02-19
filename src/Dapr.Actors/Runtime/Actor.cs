@@ -36,11 +36,11 @@ namespace Dapr.Actors.Runtime
         /// <param name="actorStateManager">The custom implementation of the StateManager.</param>
         protected Actor(ActorService actorService, ActorId actorId, IActorStateManager actorStateManager = default)
         {
-            this.StateManager = actorStateManager ?? new ActorStateManager(this);
             this.Id = actorId;
             this.traceId = this.Id.ToString();
             this.IsDirty = false;
             this.ActorService = actorService;
+            this.StateManager = actorStateManager ?? new ActorStateManager(this);
             this.actorImplementaionTypeName = this.ActorService.ActorTypeInfo.ImplementationType.Name;
         }
 
