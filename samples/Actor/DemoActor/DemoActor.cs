@@ -20,7 +20,6 @@ namespace DaprDemoActor
     public class DemoActor : Actor, IDemoActor, IRemindable
     {
         private const string StateName = "my_data";
-        private IActorReminder reminder;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DemoActor"/> class.
@@ -63,7 +62,7 @@ namespace DaprDemoActor
         /// <inheritdoc/>
         public async Task RegisterReminder()
         {
-            this.reminder = await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
 
         /// <inheritdoc/>

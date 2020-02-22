@@ -17,8 +17,8 @@ namespace GrpcClient
     /// </summary>
     public class Program
     {
-        private static string stateKeyName = "mykey";
-        private static string storeName = "statestore";
+        private static readonly string stateKeyName = "mykey";
+        private static readonly string storeName = "statestore";
 
         /// <summary>
         /// Main entry point.
@@ -53,8 +53,10 @@ namespace GrpcClient
 
         private static async Task PublishEventAsync(Dapr.DaprClient client)
         {
-            var data = new Any();
-            data.Value = ByteString.CopyFromUtf8("EventData");
+            var data = new Any
+            {
+                Value = ByteString.CopyFromUtf8("EventData")
+            };
 
             // Create PublishEventEnvelope
             var eventToPublish = new PublishEventEnvelope()
@@ -68,16 +70,20 @@ namespace GrpcClient
 
         private static async Task SaveStateAsync(Dapr.DaprClient client)
         {
-            var value = new Any();
-            value.Value = ByteString.CopyFromUtf8("my data");
+            var value = new Any
+            {
+                Value = ByteString.CopyFromUtf8("my data")
+            };
             var req = new StateRequest()
             {
                 Key = stateKeyName,
                 Value = value,
             };
 
-            var saveStateEnvelope = new SaveStateEnvelope();
-            saveStateEnvelope.StoreName = storeName;
+            var saveStateEnvelope = new SaveStateEnvelope
+            {
+                StoreName = storeName
+            };
             saveStateEnvelope.Requests.Add(req);
             _ = await client.SaveStateAsync(saveStateEnvelope);
             Console.WriteLine("Saved State!");
