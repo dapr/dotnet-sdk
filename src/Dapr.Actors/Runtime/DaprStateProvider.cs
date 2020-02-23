@@ -18,9 +18,9 @@ namespace Dapr.Actors.Runtime
     /// </summary>
     internal class DaprStateProvider
     {
-        private readonly ActorStateProviderSerializer actorStateSerializer;
+        private readonly IActorStateSerializer actorStateSerializer;
 
-        public DaprStateProvider(ActorStateProviderSerializer actorStateSerializer)
+        public DaprStateProvider(IActorStateSerializer actorStateSerializer = null)
         {
             this.actorStateSerializer = actorStateSerializer;
         }
@@ -32,8 +32,19 @@ namespace Dapr.Actors.Runtime
 
             if (stringResult.Length != 0)
             {
-                var byteResult = Convert.FromBase64String(stringResult.Trim('"'));
-                var typedResult = this.actorStateSerializer.Deserialize<T>(byteResult);
+                T typedResult = default;
+
+                // perform default json de-serialization if custom serializer was not provided.
+                if (this.actorStateSerializer != null)
+                {
+                    var byteResult = Convert.FromBase64String(stringResult.Trim('"'));
+                    typedResult = this.actorStateSerializer.Deserialize<T>(byteResult);
+                }
+                else
+                {
+                    typedResult = JsonSerializer.Deserialize<T>(stringResult);
+                }
+
                 result = new ConditionalValue<T>(true, typedResult);
             }
 
@@ -72,7 +83,7 @@ namespace Dapr.Actors.Runtime
             ]
             */
             using var stream = new MemoryStream();
-            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+            using var writer = new Utf8JsonWriter(stream);
             writer.WriteStartArray();
             foreach (var stateChange in stateChanges)
             {
@@ -91,8 +102,18 @@ namespace Dapr.Actors.Runtime
                     case StateChangeKind.Add:
                     case StateChangeKind.Update:
                         writer.WriteString("key", stateChange.StateName);
-                        var buffer = this.actorStateSerializer.Serialize(stateChange.Type, stateChange.Value);
-                        writer.WriteString("value", Convert.ToBase64String(buffer));
+
+                        // perform default json serialization if custom serializer was not provided.
+                        if (this.actorStateSerializer != null)
+                        {
+                            var buffer = this.actorStateSerializer.Serialize(stateChange.Type, stateChange.Value);
+                            writer.WriteBase64String("value", buffer);
+                        }
+                        else
+                        {
+                            writer.WritePropertyName("value");
+                            JsonSerializer.Serialize(writer, stateChange.Value, stateChange.Type);
+                        }
                         break;
                     default:
                         break;

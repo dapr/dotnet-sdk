@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -11,16 +11,22 @@ namespace Dapr.Actors.Runtime
     using System.Runtime.Serialization;
     using System.Xml;
 
-    internal class ActorStateProviderSerializer
+    /// <summary>
+    /// DataContract serializer for Actor state serialization/deserialziation.
+    /// This is the default state serializer used with Service Fabric Reliable Actors.
+    /// If there is user ask for the compatibility, this can be exposed by adding a compatibility option as an attribute on Actor type so that Service Fabric Reliable Actors state serialization behavior
+    /// can also be used using Dapr.
+    /// </summary>
+    internal class DataContractStateSerializer : IActorStateSerializer
     {
         private readonly ConcurrentDictionary<Type, DataContractSerializer> actorStateSerializerCache;
 
-        internal ActorStateProviderSerializer()
+        internal DataContractStateSerializer()
         {
             this.actorStateSerializerCache = new ConcurrentDictionary<Type, DataContractSerializer>();
         }
 
-        internal byte[] Serialize<T>(Type stateType, T state)
+        public byte[] Serialize<T>(Type stateType, T state)
         {
             var serializer = this.actorStateSerializerCache.GetOrAdd(
                 stateType,
@@ -33,7 +39,7 @@ namespace Dapr.Actors.Runtime
             return stream.ToArray();
         }
 
-        internal T Deserialize<T>(byte[] buffer)
+        public T Deserialize<T>(byte[] buffer)
         {
             if ((buffer == null) || (buffer.Length == 0))
             {

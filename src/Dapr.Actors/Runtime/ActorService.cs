@@ -25,7 +25,7 @@ namespace Dapr.Actors.Runtime
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.actorFactory = actorFactory ?? this.DefaultActorFactory;
-            this.StateProvider = new DaprStateProvider(new ActorStateProviderSerializer());
+            this.StateProvider = new DaprStateProvider();
         }
 
         /// <summary>
