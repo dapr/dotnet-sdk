@@ -158,7 +158,7 @@ namespace Dapr.Client.Test
 
             var invokeClient = new InvokeHttpClient(httpClient, jsonOptions);
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var invokeResponse = new InvokedResponse { Name = "Look, I was invoked!" };
+            var invokedResponse = new InvokedResponse { Name = "Look, I was invoked!" };
 
             var task = invokeClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest);
 
@@ -166,11 +166,11 @@ namespace Dapr.Client.Test
 
             (await entry.Request.Content.ReadAsStringAsync()).Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
 
-            entry.RespondWithJson(invokeResponse, jsonOptions);
+            entry.RespondWithJson(invokedResponse, jsonOptions);
 
-            var invokedResponse = await task;
+            var response = await task;
 
-            invokedResponse.Name.Should().Be("Look, I was invoked!");
+            response.Name.Should().Be(invokedResponse.Name);
         }
 
 
