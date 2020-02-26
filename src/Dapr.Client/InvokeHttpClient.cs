@@ -66,7 +66,7 @@ namespace Dapr
                 throw new ArgumentNullException("The value cannot be null", nameof(data));
             }
 
-            var response = await this.MakeInvokeHttpRequest(serviceName, methodName, JsonSerializer.Serialize(data), cancellationToken).ConfigureAwait(false);
+            var response = await this.MakeInvokeHttpRequest(serviceName, methodName, JsonSerializer.Serialize(data, this.serializerOptions), cancellationToken).ConfigureAwait(false);
 
             if (response.Content == null || response.Content.Headers?.ContentLength == 0)
             {
@@ -140,7 +140,7 @@ namespace Dapr
                 throw new ArgumentNullException("The value cannot be null", nameof(data));
             }
 
-            await this.MakeInvokeHttpRequest(serviceName, methodName, JsonSerializer.Serialize(data), cancellationToken).ConfigureAwait(false);
+            await this.MakeInvokeHttpRequest(serviceName, methodName, JsonSerializer.Serialize(data, this.serializerOptions), cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<HttpResponseMessage> MakeInvokeHttpRequest(string serviceName, string methodName, string data, CancellationToken cancellationToken)
