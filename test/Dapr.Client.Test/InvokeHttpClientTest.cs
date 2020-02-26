@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -49,6 +49,7 @@ namespace Dapr.Client.Test
             var invokedResponse = await task;
             invokedResponse.Should().BeNull();
         }
+
 
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeAndData_ThrowsExceptionForNonSuccess()
@@ -134,6 +135,44 @@ namespace Dapr.Client.Test
 
             return Task.FromResult(string.Empty);
         }
+
+        [Fact]
+        public async Task InvokeMethodAsync_WithNoReturnTypeAndData_UsesConfiguredJsonSerializerOptions()
+        {
+            var httpClient = new TestHttpClient();
+            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var invokeClient = new InvokeHttpClient(httpClient, jsonOptions);
+            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello" };
+
+            var task = invokeClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest);
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            (await entry.Request.Content.ReadAsStringAsync()).Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_WithReturnTypeAndData_UsesConfiguredJsonSerializerOptions()
+        {
+            var httpClient = new TestHttpClient();
+            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+            var invokeClient = new InvokeHttpClient(httpClient, jsonOptions);
+            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
+            var invokeResponse = new InvokedResponse { Name = "Look, I was invoked!" };
+
+            var task = invokeClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest);
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+
+            (await entry.Request.Content.ReadAsStringAsync()).Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
+
+            entry.RespondWithJson(invokeResponse, jsonOptions);
+
+            var invokedResponse = await task;
+
+            invokedResponse.Name.Should().Be("Look, I was invoked!");
+        }
+
 
         private static string GetInvokeUrl(int port, string serviceName, string methodName)
         {
