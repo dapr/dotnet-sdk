@@ -38,6 +38,8 @@ namespace Microsoft.Extensions.DependencyInjection
             // in DI. If the user registers JsonSerializerOptions, it will be picked up by the client automatically.
             services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
 
+            services.AddHttpClient("secret").AddTypedClient<SecretClient, SecretHttpClient>();
+
             services.AddHttpClient("invoke").AddTypedClient<InvokeClient, InvokeHttpClient>();
         }
 

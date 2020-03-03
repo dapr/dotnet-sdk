@@ -9,6 +9,7 @@ namespace Dapr
 
     internal static class DaprUris
     {
+        public const string SecretPath = "/v1.0/secrets";
         public const string StatePath = "/v1.0/state";
         public const string InvokePath = "/v1.0/invoke";
         public const string PublishPath = "/v1.0/publish";
