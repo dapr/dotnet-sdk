@@ -22,7 +22,7 @@ namespace Dapr
         /// <param name="metadata">The secret metadata.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will return the value when the operation has completed.</returns>
-        public abstract ValueTask<Dictionary<string, string>> GetSecretAsync(string storeName, string secretName, Dictionary<string, string> metadata, CancellationToken cancellationToken = default);
+        public abstract ValueTask<Dictionary<string, string>> GetSecretAsync(string storeName, string secretName, Dictionary<string, string> metadata = default(Dictionary<string, string>), CancellationToken cancellationToken = default);
 
     }
 }

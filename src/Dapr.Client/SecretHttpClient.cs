@@ -48,7 +48,7 @@ namespace Dapr
         /// <param name="metadata">The secret metadata.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will return the value when the operation has completed.</returns>
-        public async override ValueTask<Dictionary<string, string>> GetSecretAsync(string storeName, string secretName, Dictionary<string, string> metadata, CancellationToken cancellationToken = default)
+        public async override ValueTask<Dictionary<string, string>> GetSecretAsync(string storeName, string secretName, Dictionary<string, string> metadata = default(Dictionary<string, string>), CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(storeName))
             {
@@ -86,13 +86,7 @@ namespace Dapr
             }
             else if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"Failed to get secrfet with status code '{response.StatusCode}'.");
-            }
-
-            if (response.Content == null || response.Content.Headers?.ContentLength == 0)
-            {
-                // The secret store will return empty application/json instead of 204/404.
-                return default;
+                throw new HttpRequestException($"Failed to get secret with status code '{response.StatusCode}'.");
             }
 
             using (var stream = await response.Content.ReadAsStreamAsync())
