@@ -7,10 +7,10 @@ namespace GrpcClient
 {
     using System;
     using System.Threading.Tasks;
-    using Dapr.Client.Grpc;
     using Google.Protobuf;
     using Google.Protobuf.WellKnownTypes;
     using Grpc.Net.Client;
+    using Dapr.Client.Autogen.Grpc;
 
     /// <summary>
     /// gRPC CLient sample class.

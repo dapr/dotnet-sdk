@@ -8,5 +8,11 @@
   <PropertyGroup>
     <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" Version="2.27.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Dapr.Client.Grpc\Dapr.Client.Autogen.Grpc.csproj" />
+  </ItemGroup>
   
 </Project>

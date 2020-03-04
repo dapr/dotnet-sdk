@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -6,7 +6,7 @@
 namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
-    using Dapr;
+    using Dapr.Client;
 
     /// <summary>
     /// Provides extension methods for <see cref="IServiceCollection" />.
@@ -18,7 +18,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration.
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection" />.</param>
-        public static void AddDaprClient(this IServiceCollection services)
+        /// <param name="configure"></param>
+        public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder> configure = null)
         {
             if (services is null)
             {
@@ -34,11 +35,16 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddSingleton<DaprClientMarkerService>();
 
-            // StateHttpClient and InvokeHttpClient can be used with or without JsonSerializerOptions registered
-            // in DI. If the user registers JsonSerializerOptions, it will be picked up by the client automatically.
-            services.AddHttpClient("state").AddTypedClient<StateClient, StateHttpClient>();
+            services.AddSingleton(_ =>
+            {
+                var builder = new DaprClientBuilder();
+                if (configure != null)
+                {
+                    configure.Invoke(builder);
+                }
 
-            services.AddHttpClient("invoke").AddTypedClient<InvokeClient, InvokeHttpClient>();
+                return builder.Build();
+            });
         }
 
         private class DaprClientMarkerService
