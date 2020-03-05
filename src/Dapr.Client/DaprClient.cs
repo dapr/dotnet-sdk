@@ -28,10 +28,10 @@ namespace Dapr.Client
         private readonly JsonSerializerOptions jsonSerializerOptions;
 
         /// <summary>
-        /// 
+        /// Initializes a new instance of the <see cref="DaprClient"/> class.
         /// </summary>
-        /// <param name="channel"></param>
-        /// <param name="jsonSerializerOptions"></param>
+        /// <param name="channel">gRPC channel to create gRPC clients.</param>
+        /// <param name="jsonSerializerOptions">Json serialization options.</param>
         internal DaprClient(GrpcChannel channel, JsonSerializerOptions jsonSerializerOptions = null)
         {
             this.jsonSerializerOptions = jsonSerializerOptions;
@@ -77,13 +77,17 @@ namespace Dapr.Client
             {
                 using var stream = new MemoryStream();
                 await JsonSerializer.SerializeAsync(stream, publishContent, this.jsonSerializerOptions, cancellationToken);
+                await stream.FlushAsync();
+
+                // set the position to beginning of stream.
+                stream.Seek(0, SeekOrigin.Begin);
 
                 var data = new Any
                 {
                     Value = await ByteString.FromStreamAsync(stream)
                 };
 
-                eventToPublish.Data = data;
+                eventToPublish.Data = data;                
             }
 
             var callOptions = new CallOptions(cancellationToken: cancellationToken);
