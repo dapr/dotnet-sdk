@@ -54,7 +54,7 @@ namespace Dapr.Client
         /// Builds a DaprClient.
         /// </summary>
         /// <returns>A DaprClient isntance.</returns>
-        public IDaprClient Build()
+        public DaprClient Build()
         {
             var uri = new Uri(this.daprEndpoint);
             if (uri.Scheme.Equals(Uri.UriSchemeHttp))
@@ -73,7 +73,7 @@ namespace Dapr.Client
                 channel = GrpcChannel.ForAddress(this.daprEndpoint, this.gRPCChannelOptions);
             }
             
-            return new DaprClient(channel, this.jsonSerializerOptions);
+            return new DaprClientGrpc(channel, this.jsonSerializerOptions);
         }
 
         /// <summary>
