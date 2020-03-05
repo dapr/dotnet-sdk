@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -7,12 +7,23 @@ namespace Dapr
 {
     using System;
     using System.Collections.Generic;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Dapr.Client;
+    using Grpc.Net.Client;
 
-    public class StateTestClient : StateClient
+    internal class StateTestClient : DaprClientGrpc
     {
         public Dictionary<string, object> State { get; } = new Dictionary<string, object>();
+        static GrpcChannel channel = GrpcChannel.ForAddress("http://localhost");
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DaprClientGrpc"/> class.
+        /// </summary>
+        internal StateTestClient()
+            :base(channel)
+        { }
 
         public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
         {

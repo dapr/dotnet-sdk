@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -8,6 +8,7 @@ namespace Dapr
     using System;
     using System.Threading;
     using System.Threading.Tasks;
+    using Dapr.Client;
 
     /// <summary>
     /// Represents a value in the Dapr state store.
@@ -15,21 +16,21 @@ namespace Dapr
     /// <typeparam name="TValue">The data type.</typeparam>
     public sealed class StateEntry<TValue>
     {
-        private readonly StateClient client;
+        private readonly DaprClient client;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StateEntry{TValue}"/> class.
         /// </summary>
-        /// <param name="client">The <see cref="StateClient" /> instance used to retrieve the value.</param>
+        /// <param name="client">The <see cref="DaprClientGrpc" /> instance used to retrieve the value.</param>
         /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value.</param>
         /// <remarks>
         /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use
-        /// <see cref="StateClient.GetStateEntryAsync{TValue}(string, string, CancellationToken)" /> to access
+        /// <see cref="Dapr.Client.DaprClient.GetStateEntryAsync{TValue}(string, string, CancellationToken)" /> to access
         /// state entries.
         /// </remarks>
-        public StateEntry(StateClient client, string storeName, string key, TValue value)
+        public StateEntry(DaprClient client, string storeName, string key, TValue value)
         {
             if (client is null)
             {

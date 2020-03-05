@@ -14,7 +14,7 @@ namespace Dapr.Client.Test
     using Grpc.Net.Client;
     using Xunit;
 
-    public class PublishEventApiTest : DaprClientTestBase
+    public class PublishEventApiTest
     {
         [Fact]
         public async Task PublishEventAsync_CanPublishTopicWithContent()
@@ -28,7 +28,7 @@ namespace Dapr.Client.Test
             var task = daprClient.PublishEventAsync<PublishContent>("test", publishContent);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await this.GetEnvelopeFromProtobufAsync<PublishEventEnvelope>(entry.Request);
+            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<PublishEventEnvelope>(entry.Request);
             var jsonFromRequest = envelope.Data.Value.ToStringUtf8();
 
             envelope.Topic.Should().Be("test");
@@ -46,7 +46,7 @@ namespace Dapr.Client.Test
 
             var task = daprClient.PublishEventAsync("test");
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await this.GetEnvelopeFromProtobufAsync<PublishEventEnvelope>(entry.Request);
+            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<PublishEventEnvelope>(entry.Request);
             var jsonFromRequest = envelope.Data.Value.ToStringUtf8();
 
             envelope.Topic.Should().Be("test");

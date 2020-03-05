@@ -60,6 +60,11 @@ namespace Dapr
                 this.Completion.SetResult(response);
             }
 
+            public void RespondWithResponse(HttpResponseMessage response)
+            {
+                this.Completion.SetResult(response);
+            }
+
             public void RespondWithJson<TValue>(TValue value, JsonSerializerOptions options = null)
             {
                 var bytes = JsonSerializer.SerializeToUtf8Bytes(value, options);

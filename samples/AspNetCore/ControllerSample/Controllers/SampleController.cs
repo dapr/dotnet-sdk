@@ -7,6 +7,7 @@ namespace ControllerSample.Controllers
 {
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.Client;
     using Microsoft.AspNetCore.Mvc;
 
     /// <summary>
@@ -40,13 +41,13 @@ namespace ControllerSample.Controllers
         /// Method for depositing to account as specified in transaction.
         /// </summary>
         /// <param name="transaction">Transaction info.</param>
-        /// <param name="stateClient">State client to interact with Dapr runtime.</param>
+        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         [Topic("deposit")]
         [HttpPost("deposit")]
-        public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] StateClient stateClient)
+        public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] DaprClient daprClient)
         {
-            var state = await stateClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+            var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
             state.Value ??= new Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
             await state.SaveAsync();
@@ -57,13 +58,13 @@ namespace ControllerSample.Controllers
         /// Method for withdrawing from account as specified in transaction.
         /// </summary>
         /// <param name="transaction">Transaction info.</param>
-        /// <param name="stateClient">State client to interact with Dapr runtime.</param>
+        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         [Topic("withdraw")]
         [HttpPost("withdraw")]
-        public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] StateClient stateClient)
+        public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] DaprClient daprClient)
         {
-            var state = await stateClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+            var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
 
             if (state.Value == null)
             {

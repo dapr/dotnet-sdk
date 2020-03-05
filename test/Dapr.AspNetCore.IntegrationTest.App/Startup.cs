@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -6,6 +6,7 @@
 namespace Dapr.AspNetCore.IntegrationTest.App
 {
     using System.Threading.Tasks;
+    using Dapr.Client;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
@@ -48,8 +49,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
                 endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
                 {
-                    var stateClient = context.RequestServices.GetRequiredService<StateClient>();
-                    var state = await stateClient.GetStateEntryAsync<Widget>("testStore", (string)context.Request.RouteValues["widget"]);
+                    var daprClient = context.RequestServices.GetRequiredService<DaprClient>();
+                    var state = await daprClient.GetStateEntryAsync<Widget>("testStore", (string)context.Request.RouteValues["widget"]);
                     state.Value.Count++;
                     await state.SaveAsync();
                 });
