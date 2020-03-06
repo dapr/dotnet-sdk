@@ -44,10 +44,56 @@ namespace Dapr.Client
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public abstract Task InvokeBindingAsync<TRequest>(
-           string name,
-           TRequest content,
-           IReadOnlyDictionary<string, string> metadata = default,
-           CancellationToken cancellationToken = default);
+            string name,
+            TRequest content,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Invokes a method on another dapr app.
+        /// </summary>        
+        /// <param name="serviceName">The dapr app to invoke a method on.</param>
+        /// <param name="methodName">The method to invoke.</param>        
+        /// <param name="metadata">Metadata</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns></returns>
+        public abstract Task InvokeMethodAsync(
+            string serviceName,
+            string methodName,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Invokes a method on another dapr app.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of data to send.</typeparam>       
+        /// <param name="serviceName">The dapr app to invoke a method on.</param>
+        /// <param name="methodName">The method to invoke.</param>
+        /// <param name="data">Data to pass to the method</param>
+        /// <param name="metadata">Metadata</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns></returns>
+        public abstract Task InvokeMethodAsync<TRequest>(
+            string serviceName,
+            string methodName,
+            TRequest data,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Invokes a method on another dapr app.
+        /// </summary>        
+        /// <typeparam name="TResponse">The type of the object in the response.</typeparam>
+        /// <param name="serviceName">The dapr app to invoke a method on.</param>
+        /// <param name="methodName">The method to invoke.</param>        
+        /// <param name="metadata">Metadata</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <returns>Data returned from the invoked method on the other dapr app.</returns>
+        public abstract Task<TResponse> InvokeMethodAsync<TResponse>(
+            string serviceName,
+            string methodName,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes a method on another dapr app.
@@ -132,9 +178,31 @@ namespace Dapr.Client
             string storeName,
             string key,
             TValue value,
-            string etag,
-            IReadOnlyDictionary<string, string> metadata,
-            StateRequestOptions stateRequestOptions,
+            string etag = default,
+            IReadOnlyDictionary<string, string> metadata = default,
+            StateRequestOptions stateRequestOptions = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Saves the provided <paramref name="value" /> associated with the provided <paramref name="key" /> to the Dapr state
+        /// store.
+        /// </summary>
+        /// <param name="storeName">The state store name.</param>
+        /// <param name="key">The state key.</param>
+        /// <param name="value">The value to save.</param>
+        /// <param name="etag">An ETag.</param>
+        /// <param name="metadata">An ETag.</param>
+        /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <typeparam name="TValue">The data type.</typeparam>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  True means the operation succeeded.</returns>
+        public abstract ValueTask<bool> TrySaveStateAsync<TValue>(
+            string storeName,
+            string key,
+            TValue value,
+            string etag = default,
+            IReadOnlyDictionary<string, string> metadata = default,
+            StateRequestOptions stateRequestOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -146,6 +214,27 @@ namespace Dapr.Client
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public abstract ValueTask DeleteStateAsync(string storeName, string key, string etag, StateOptions stateOptions = default, CancellationToken cancellationToken = default);
+        public abstract ValueTask DeleteStateAsync(
+            string storeName,
+            string key,
+            string etag = default,
+            StateOptions stateOptions = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Deletes the value associated with the provided <paramref name="key" /> in the Dapr state store.
+        /// </summary>
+        /// <param name="storeName">The state store name.</param>
+        /// <param name="key">The state key.</param>
+        /// <param name="etag">An ETag.</param>
+        /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  True means the operation suceeded.</returns>
+        public abstract ValueTask<bool> TryDeleteStateAsync(
+            string storeName,
+            string key,
+            string etag = default,
+            StateOptions stateOptions = default,
+            CancellationToken cancellationToken = default);
     }
 }

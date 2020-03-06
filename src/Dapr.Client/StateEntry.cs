@@ -29,7 +29,8 @@ namespace Dapr
         /// <param name="value">The value.</param>
         /// <param name="etag">The etag.</param>
         /// <remarks>
-        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use        
+        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use  
+        /// <see cref="DaprClient.GetStateEntryAsync{TValue}(string, string, ConsistencyMode?, CancellationToken)" /> to access
         /// state entries.
         /// </remarks>
         public StateEntry(DaprClient client, string storeName, string key, TValue value, string etag)
@@ -96,7 +97,7 @@ namespace Dapr
         /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public ValueTask SaveAsync(IReadOnlyDictionary<string, string> metadata, StateRequestOptions stateRequestOptions, CancellationToken cancellationToken = default)
+        public ValueTask SaveAsync(IReadOnlyDictionary<string, string> metadata = default, StateRequestOptions stateRequestOptions = default, CancellationToken cancellationToken = default)
         {
             // ETag is intentionally not specified
             return this.client.SaveStateAsync(this.StoreName, this.Key, this.Value, null, metadata, stateRequestOptions, cancellationToken);
@@ -109,7 +110,7 @@ namespace Dapr
         /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public async ValueTask<bool> TrySaveAsync(IReadOnlyDictionary<string, string> metadata, StateRequestOptions stateRequestOptions, CancellationToken cancellationToken = default)
+        public async ValueTask<bool> TrySaveAsync(IReadOnlyDictionary<string, string> metadata = default, StateRequestOptions stateRequestOptions = default, CancellationToken cancellationToken = default)
         {
             try
             {

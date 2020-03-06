@@ -134,35 +134,94 @@ namespace Dapr.Client
             await client.InvokeBindingAsync(envelope, callOptions);
         }
 
-        //public override async Task InvokeMethodAsync(
-        //   string serviceName,
-        //   string methodName,           
-        //   IReadOnlyDictionary<string, string> metadata = default,
-        //   CancellationToken cancellationToken = default)
-        //{ 
-        //}
+        public override async Task InvokeMethodAsync(
+           string serviceName,
+           string methodName,
+           IReadOnlyDictionary<string, string> metadata = default,
+           CancellationToken cancellationToken = default)
+        {
+            _ = await this.MakeInvokeRequestAsync(serviceName, methodName, null, metadata, cancellationToken);
+        }
 
-        //public override async Task InvokeMethodAsync<TRequest>(
-        //   string serviceName,
-        //   string methodName,
-        //   TRequest data,
-        //   IReadOnlyDictionary<string, string> metadata = default,
-        //   CancellationToken cancellationToken = default)
-        //{ 
-        //}
+        public override async Task InvokeMethodAsync<TRequest>(
+           string serviceName,
+           string methodName,
+           TRequest data,
+           IReadOnlyDictionary<string, string> metadata = default,
+           CancellationToken cancellationToken = default)
+        {
+            Any serializedData = null;
+            if (data != null)
+            {
+                using var stream = new MemoryStream();
+                await JsonSerializer.SerializeAsync(stream, data, this.jsonSerializerOptions, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
 
-        //public override async Task<TResponse> InvokeMethodAsync<TResponse>(
-        //   string serviceName,
-        //   string methodName,        
-        //   IReadOnlyDictionary<string, string> metadata = default,
-        //   CancellationToken cancellationToken = default)
-        //{           
-        //}
+                // set the position to beginning of stream.
+                stream.Seek(0, SeekOrigin.Begin);
+
+                serializedData = new Any
+                {
+                    Value = await ByteString.FromStreamAsync(stream)
+                };
+            }
+
+            _ = await this.MakeInvokeRequestAsync(serviceName, methodName, serializedData, metadata, cancellationToken);
+        }
+
+        public override async Task<TResponse> InvokeMethodAsync<TResponse>(
+           string serviceName,
+           string methodName,
+           IReadOnlyDictionary<string, string> metadata = default,
+           CancellationToken cancellationToken = default)
+        {
+            var response = await this.MakeInvokeRequestAsync(serviceName, methodName, null, metadata, cancellationToken);
+            if (response.Data.Value.IsEmpty)
+            {
+                return default;
+            }
+
+            var responseData = response.Data.Value.ToStringUtf8();
+            return JsonSerializer.Deserialize<TResponse>(responseData, this.jsonSerializerOptions);
+        }
 
         public override async Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
             string serviceName,
             string methodName,
             TRequest data,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default)
+        {
+            Any serializedData = null;
+            if (data != null)
+            {
+                using var stream = new MemoryStream();
+                await JsonSerializer.SerializeAsync(stream, data, this.jsonSerializerOptions, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+
+                // set the position to beginning of stream.
+                stream.Seek(0, SeekOrigin.Begin);
+
+                serializedData = new Any
+                {
+                    Value = await ByteString.FromStreamAsync(stream)
+                };
+            }
+
+            var response = await this.MakeInvokeRequestAsync(serviceName, methodName, serializedData, metadata, cancellationToken);
+            if (response.Data.Value.IsEmpty)
+            {
+                return default;
+            }
+
+            var responseData = response.Data.Value.ToStringUtf8();
+            return JsonSerializer.Deserialize<TResponse>(responseData, this.jsonSerializerOptions);
+        }
+
+        private async Task<InvokeServiceResponseEnvelope> MakeInvokeRequestAsync(
+            string serviceName,
+            string methodName,
+            Any data,
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
@@ -174,19 +233,7 @@ namespace Dapr.Client
 
             if (data != null)
             {
-                using var stream = new MemoryStream();
-                await JsonSerializer.SerializeAsync(stream, data, this.jsonSerializerOptions, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
-
-                // set the position to beginning of stream.
-                stream.Seek(0, SeekOrigin.Begin);
-
-                var t = new Any
-                {
-                    Value = await ByteString.FromStreamAsync(stream)
-                };
-
-                envelope.Data = t;
+                envelope.Data = data;
             }
 
             if (metadata != null)
@@ -196,15 +243,7 @@ namespace Dapr.Client
             }
 
             var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            var response = await client.InvokeServiceAsync(envelope, callOptions);
-
-            if (response.Data.Value.IsEmpty)
-            {
-                return default;
-            }
-
-            var responseData = response.Data.Value.ToStringUtf8();
-            return JsonSerializer.Deserialize<TResponse>(responseData, this.jsonSerializerOptions);
+            return await client.InvokeServiceAsync(envelope, callOptions);
         }
 
         /// <inheritdoc/>
@@ -265,9 +304,9 @@ namespace Dapr.Client
             string storeName,
             string key,
             TValue value,
-            string etag,
-            IReadOnlyDictionary<string, string> metadata,
-            StateRequestOptions stateRequestOptions,
+            string etag = default,
+            IReadOnlyDictionary<string, string> metadata = default,
+            StateRequestOptions stateRequestOptions = default,
             CancellationToken cancellationToken = default)
         {
             // Create PublishEventEnvelope
@@ -320,7 +359,35 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async ValueTask DeleteStateAsync(string storeName, string key, string etag, StateOptions stateOptions = default, CancellationToken cancellationToken = default)
+        public override async ValueTask<bool> TrySaveStateAsync<TValue>(
+            string storeName,
+            string key,
+            TValue value,
+            string etag = default,
+            IReadOnlyDictionary<string, string> metadata = default,
+            StateRequestOptions stateRequestOptions = default,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await this.SaveStateAsync<TValue>(storeName, key, value, etag, metadata, stateRequestOptions, cancellationToken);
+                return true;
+            }
+            catch (Exception)
+            {
+                // log?
+            }
+
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public override async ValueTask DeleteStateAsync(
+            string storeName,
+            string key,
+            string etag = default,
+            StateOptions stateOptions = default,
+            CancellationToken cancellationToken = default)
         {
             var deleteStateEnvelope = new DeleteStateEnvelope()
             {
@@ -340,6 +407,26 @@ namespace Dapr.Client
 
             var callOptions = new CallOptions(cancellationToken: cancellationToken);
             await client.DeleteStateAsync(deleteStateEnvelope, callOptions);
+        }
+
+        /// <inheritdoc/>
+        public override async ValueTask<bool> TryDeleteStateAsync(
+            string storeName,
+            string key,
+            string etag = default,
+            StateOptions stateOptions = default,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await this.DeleteStateAsync(storeName, key, etag, stateOptions, cancellationToken);
+                return true;
+            }
+            catch (Exception)
+            {
+            }
+
+            return false;
         }
     }
 }

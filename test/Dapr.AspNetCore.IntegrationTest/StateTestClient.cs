@@ -11,6 +11,7 @@ namespace Dapr
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
+    using Dapr.Client.Autogen.Grpc;
     using Grpc.Net.Client;
 
     internal class StateTestClient : DaprClientGrpc
@@ -25,7 +26,7 @@ namespace Dapr
             :base(channel)
         { }
 
-        public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
+        public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(storeName))
             {
@@ -42,7 +43,14 @@ namespace Dapr
             }
         }
 
-        public override ValueTask SaveStateAsync<TValue>(string storeName, string key, TValue value, CancellationToken cancellationToken = default)
+        public override ValueTask SaveStateAsync<TValue>(
+            string storeName,
+            string key,
+            TValue value,
+            string etag = default,
+            IReadOnlyDictionary<string, string> metadata = default,
+            StateRequestOptions stateRequestOptions = default,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(storeName))
             {
@@ -53,7 +61,12 @@ namespace Dapr
             return new ValueTask(Task.CompletedTask);
         }
 
-        public override ValueTask DeleteStateAsync(string storeName, string key, CancellationToken cancellationToken = default)
+        public override ValueTask DeleteStateAsync(
+           string storeName,
+           string key,
+           string etag = default,
+           StateOptions stateOptions = default,
+           CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(storeName))
             {
