@@ -29,8 +29,7 @@ namespace Dapr
         /// <param name="value">The value.</param>
         /// <param name="etag">The etag.</param>
         /// <remarks>
-        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use
-        /// <see cref="Dapr.Client.DaprClient.GetStateEntryAsync{TValue}(string, string, ConsistencyMode?, CancellationToken)" /> to access
+        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use        
         /// state entries.
         /// </remarks>
         public StateEntry(DaprClient client, string storeName, string key, TValue value, string etag)
@@ -80,16 +79,6 @@ namespace Dapr
 
         /// <summary>
         /// Deletes the entry associated with <see cref="Key" /> in the state store.
-        /// </summary>        
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public ValueTask DeleteAsync(CancellationToken cancellationToken = default)
-        {
-            return this.DeleteAsync(cancellationToken);
-        }
-
-        /// <summary>
-        /// Deletes the entry associated with <see cref="Key" /> in the state store.
         /// </summary>
         /// <param name="stateOptions">A <see cref="StateOptions"/> object.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
@@ -98,16 +87,6 @@ namespace Dapr
         {
             // ETag is intentionally not specified
             return this.client.DeleteStateAsync(this.StoreName, this.Key, null, stateOptions, cancellationToken);
-        }
-
-        /// <summary>
-        /// Saves the current value of <see cref="Value" /> to the state store.
-        /// </summary>        
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public ValueTask SaveAsync(CancellationToken cancellationToken = default)
-        {
-            return this.SaveAsync(null, null, cancellationToken);
         }
 
         /// <summary>
@@ -121,16 +100,6 @@ namespace Dapr
         {
             // ETag is intentionally not specified
             return this.client.SaveStateAsync(this.StoreName, this.Key, this.Value, null, metadata, stateRequestOptions, cancellationToken);
-        }
-
-        /// <summary>
-        /// Saves the current value of <see cref="Value" /> to the state store.
-        /// </summary>        
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public ValueTask<bool> TrySaveAsync(CancellationToken cancellationToken = default)
-        {
-            return this.TrySaveAsync(null, null, cancellationToken);
         }
 
         /// <summary>
