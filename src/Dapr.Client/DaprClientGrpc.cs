@@ -208,6 +208,12 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
+        public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
+        {
+            return this.GetStateAsync<TValue>(storeName, key, null, cancellationToken);
+        }
+
+        /// <inheritdoc/>
         public override async ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
         {
             var getStateEnvelope = new GetStateEnvelope()
@@ -231,6 +237,12 @@ namespace Dapr.Client
 
             var responseData = response.Data.Value.ToStringUtf8();
             return JsonSerializer.Deserialize<TValue>(responseData, this.jsonSerializerOptions);
+        }
+
+        /// <inheritdoc/>
+        public override ValueTask<StateAndETag<TValue>> GetStateAndETagAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
+        {
+            return this.GetStateAndETagAsync<TValue>(storeName, key, null, cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -258,6 +270,12 @@ namespace Dapr.Client
             var responseData = response.Data.Value.ToStringUtf8();
             var deserialized = JsonSerializer.Deserialize<TValue>(responseData, this.jsonSerializerOptions);
             return new StateAndETag<TValue>(deserialized, response.Etag);
+        }
+
+        /// <inheritdoc/>
+        public override ValueTask SaveStateAsync<TValue>(string storeName, string key, TValue value, CancellationToken cancellationToken = default)
+        {
+            return this.SaveStateAsync<TValue>(storeName, key, value, null, null, null, cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -317,6 +335,12 @@ namespace Dapr.Client
             saveStateEnvelope.Requests.Add(stateRequest);
             var callOptions = new CallOptions(cancellationToken: cancellationToken);
             await client.SaveStateAsync(saveStateEnvelope, callOptions);
+        }
+
+        /// <inheritdoc/>
+        public override ValueTask DeleteStateAsync(string storeName, string key, CancellationToken cancellationToken = default)
+        {
+            return this.DeleteStateAsync(storeName, key, null, null, cancellationToken);
         }
 
         /// <inheritdoc/>
