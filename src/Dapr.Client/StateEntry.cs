@@ -6,9 +6,11 @@
 namespace Dapr
 {
     using System;
+    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
+    using Dapr.Client.Autogen.Grpc;
 
     /// <summary>
     /// Represents a value in the Dapr state store.
@@ -25,12 +27,12 @@ namespace Dapr
         /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value.</param>
+        /// <param name="etag">The etag.</param>
         /// <remarks>
-        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use
-        /// <see cref="Dapr.Client.DaprClient.GetStateEntryAsync{TValue}(string, string, CancellationToken)" /> to access
+        /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use        
         /// state entries.
         /// </remarks>
-        public StateEntry(DaprClient client, string storeName, string key, TValue value)
+        public StateEntry(DaprClient client, string storeName, string key, TValue value, string etag)
         {
             if (client is null)
             {
@@ -51,6 +53,8 @@ namespace Dapr
             this.Key = key;
             this.Value = value;
             this.client = client;
+
+            this.ETag = etag;
         }
 
         /// <summary>
@@ -69,23 +73,64 @@ namespace Dapr
         public TValue Value { get; set; }
 
         /// <summary>
+        /// The ETag.
+        /// </summary>
+        public string ETag { get; }
+
+        /// <summary>
         /// Deletes the entry associated with <see cref="Key" /> in the state store.
         /// </summary>
+        /// <param name="stateOptions">A <see cref="StateOptions"/> object.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public ValueTask DeleteAsync(CancellationToken cancellationToken = default)
+        public ValueTask DeleteAsync(StateOptions stateOptions = default, CancellationToken cancellationToken = default)
         {
-            return this.client.DeleteStateAsync(this.StoreName, this.Key, cancellationToken);
+            // ETag is intentionally not specified
+            return this.client.DeleteStateAsync(this.StoreName, this.Key, null, stateOptions, cancellationToken);
         }
 
         /// <summary>
         /// Saves the current value of <see cref="Value" /> to the state store.
         /// </summary>
+        /// <param name="metadata">Additional metadata.</param>
+        /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public ValueTask SaveAsync(CancellationToken cancellationToken = default)
+        public ValueTask SaveAsync(IReadOnlyDictionary<string, string> metadata, StateRequestOptions stateRequestOptions, CancellationToken cancellationToken = default)
         {
-            return this.client.SaveStateAsync(this.StoreName, this.Key, this.Value, cancellationToken);
+            // ETag is intentionally not specified
+            return this.client.SaveStateAsync(this.StoreName, this.Key, this.Value, null, metadata, stateRequestOptions, cancellationToken);
+        }
+
+        /// <summary>
+        /// Saves the current value of <see cref="Value" /> to the state store.
+        /// </summary>
+        /// <param name="metadata">Additional metadata.</param>
+        /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        public async ValueTask<bool> TrySaveAsync(IReadOnlyDictionary<string, string> metadata, StateRequestOptions stateRequestOptions, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await this.client.SaveStateAsync(
+                    this.StoreName, 
+                    this.Key, 
+                    this.Value, 
+                    this.ETag, 
+                    metadata, 
+                    stateRequestOptions, 
+                    cancellationToken);
+
+                return true;
+            }
+            catch (Exception)
+            {                
+                // do not throw, return false
+                // ? TODO: what type of exception is this?
+            }
+
+            return false;
         }
     }
 }
