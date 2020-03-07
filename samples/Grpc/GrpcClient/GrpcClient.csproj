@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Dapr.Client.Grpc\Dapr.Client.Autogen.Grpc.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Client.Autogen.Grpc\Dapr.Client.Autogen.Grpc.csproj" />
   </ItemGroup>
 
 </Project>

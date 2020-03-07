@@ -41,7 +41,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ActorClient", "samples\Acto
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AspNetCore", "AspNetCore", "{DCBEAB71-0BDE-42F4-8187-F576942CB038}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Autogen.Grpc", "src\Dapr.Client.Grpc\Dapr.Client.Autogen.Grpc.csproj", "{BCE5A721-69C5-4510-97ED-931ADE587466}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Autogen.Grpc", "src\Dapr.Client.Autogen.Grpc\Dapr.Client.Autogen.Grpc.csproj", "{BCE5A721-69C5-4510-97ED-931ADE587466}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrpcClient", "samples\Grpc\GrpcClient\GrpcClient.csproj", "{576B28F7-0D86-4C11-828A-B648E11863F6}"
 EndProject
