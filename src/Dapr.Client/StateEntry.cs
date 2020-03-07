@@ -15,7 +15,7 @@ namespace Dapr
     /// <summary>
     /// Represents a value in the Dapr state store.
     /// </summary>
-    /// <typeparam name="TValue">The data type.</typeparam>
+    /// <typeparam name="TValue">The data type of the value.</typeparam>
     public sealed class StateEntry<TValue>
     {
         private readonly DaprClient client;
@@ -24,10 +24,10 @@ namespace Dapr
         /// Initializes a new instance of the <see cref="StateEntry{TValue}"/> class.
         /// </summary>
         /// <param name="client">The <see cref="DaprClientGrpc" /> instance used to retrieve the value.</param>
-        /// <param name="storeName">The state store name.</param>
+        /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value.</param>
-        /// <param name="etag">The etag.</param>
+        /// <param name="etag">The ETag.</param>
         /// <remarks>
         /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use  
         /// <see cref="DaprClient.GetStateEntryAsync{TValue}(string, string, ConsistencyMode?, CancellationToken)" /> to access
@@ -69,7 +69,7 @@ namespace Dapr
         public string Key { get; }
 
         /// <summary>
-        /// Gets or sets the value.
+        /// Gets or sets the value locally.  This is not sent to the state store until an API (e.g. DeleteAsync) is called.
         /// </summary>
         public TValue Value { get; set; }
 
@@ -93,7 +93,7 @@ namespace Dapr
         /// <summary>
         /// Saves the current value of <see cref="Value" /> to the state store.
         /// </summary>
-        /// <param name="metadata">Additional metadata.</param>
+        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
         /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
@@ -106,27 +106,27 @@ namespace Dapr
         /// <summary>
         /// Saves the current value of <see cref="Value" /> to the state store.
         /// </summary>
-        /// <param name="metadata">Additional metadata.</param>
+        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
         /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
         public async ValueTask<bool> TrySaveAsync(IReadOnlyDictionary<string, string> metadata = default, StateRequestOptions stateRequestOptions = default, CancellationToken cancellationToken = default)
         {
             try
             {
                 await this.client.SaveStateAsync(
-                    this.StoreName, 
-                    this.Key, 
-                    this.Value, 
-                    this.ETag, 
-                    metadata, 
-                    stateRequestOptions, 
+                    this.StoreName,
+                    this.Key,
+                    this.Value,
+                    this.ETag,
+                    metadata,
+                    stateRequestOptions,
                     cancellationToken);
 
                 return true;
             }
             catch (Exception)
-            {                
+            {
                 // do not throw, return false
                 // ? TODO: what type of exception is this?
             }
