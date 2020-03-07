@@ -35,20 +35,9 @@ namespace Dapr
         /// </remarks>
         public StateEntry(DaprClient client, string storeName, string key, TValue value, ETag etag)
         {
-            if (client is null)
-            {
-                throw new ArgumentNullException(nameof(client));
-            }
-
-            if (string.IsNullOrEmpty(storeName))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
-            }
-
-            if (string.IsNullOrEmpty(key))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(key));
-            }
+            client.ThrowIfNull(nameof(client));
+            storeName.ThrowIfNullOrEmpty(nameof(storeName));
+            key.ThrowIfNullOrEmpty(nameof(key));
 
             this.StoreName = storeName;
             this.Key = key;

@@ -148,15 +148,8 @@ namespace Dapr.Client
         /// <returns>A <see cref="ValueTask" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
         public async ValueTask<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(storeName))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
-            }
-
-            if (string.IsNullOrEmpty(key))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(key));
-            }
+            storeName.ThrowIfNullOrEmpty(nameof(storeName));
+            key.ThrowIfNullOrEmpty(nameof(key));
 
             var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, cancellationToken);
             return new StateEntry<TValue>(this, storeName, key, state, etag);

@@ -28,10 +28,8 @@ namespace Dapr
 
         public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(storeName))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
-            }
+            storeName.ThrowIfNullOrEmpty(nameof(storeName));
+            key.ThrowIfNullOrEmpty(nameof(key));
 
             if (this.State.TryGetValue(key, out var obj))
             {
@@ -43,6 +41,21 @@ namespace Dapr
             }
         }
 
+        public override ValueTask<(TValue value, ETag eTag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
+        {
+            storeName.ThrowIfNullOrEmpty(nameof(storeName));
+            key.ThrowIfNullOrEmpty(nameof(key));
+
+            if (this.State.TryGetValue(key, out var obj))
+            {
+                return new ValueTask<(TValue value, ETag eTag)>(((TValue)obj, "test_etag"));
+            }
+            else
+            {
+                return new ValueTask<(TValue value, ETag eTag)>((default(TValue), "test_etag"));
+            }
+        }
+
         public override ValueTask SaveStateAsync<TValue>(
             string storeName,
             string key,
@@ -51,10 +64,8 @@ namespace Dapr
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(storeName))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
-            }
+            storeName.ThrowIfNullOrEmpty(nameof(storeName));
+            key.ThrowIfNullOrEmpty(nameof(key));
 
             this.State[key] = value;
             return new ValueTask(Task.CompletedTask);
@@ -66,10 +77,8 @@ namespace Dapr
            StateOptions stateOptions = default,
            CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(storeName))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(storeName));
-            }
+            storeName.ThrowIfNullOrEmpty(nameof(storeName));
+            key.ThrowIfNullOrEmpty(nameof(key));
 
             this.State.Remove(key);
             return new ValueTask(Task.CompletedTask);
