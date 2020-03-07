@@ -19,7 +19,7 @@ namespace Dapr
 
             if (data != null)
             {
-                await JsonSerializer.SerializeAsync(stream, data);
+                await JsonSerializer.SerializeAsync(stream, data, options);
             }
 
             await stream.FlushAsync();

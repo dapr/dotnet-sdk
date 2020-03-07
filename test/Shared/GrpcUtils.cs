@@ -7,13 +7,10 @@ namespace Dapr
 {
     using System;
     using System.Buffers.Binary;
-    using System.Collections.Concurrent;
     using System.IO;
     using System.Net;
     using System.Net.Http;
     using System.Net.Http.Headers;
-    using System.Text.Json;
-    using System.Threading;
     using System.Threading.Tasks;
     using Google.Protobuf;
     using Grpc.Core;

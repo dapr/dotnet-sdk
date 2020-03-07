@@ -134,7 +134,7 @@ namespace Dapr.Client
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.  This wraps the read value and an ETag.</returns>                                
-        public abstract ValueTask<StateAndETag<TValue>> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default);
+        public abstract ValueTask<(TValue value, ETag eTag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a <see cref="StateEntry{T}" /> for the current value associated with the <paramref name="key" /> from
@@ -158,8 +158,8 @@ namespace Dapr.Client
                 throw new ArgumentException("The value cannot be null or empty.", nameof(key));
             }
 
-            var stateAndETag = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, cancellationToken);
-            return new StateEntry<TValue>(this, storeName, key, stateAndETag.Data, stateAndETag.ETag);
+            var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, cancellationToken);
+            return new StateEntry<TValue>(this, storeName, key, state, etag);
         }
 
         /// <summary>
@@ -168,20 +168,18 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
-        /// <param name="value">The value to save.</param>
-        /// <param name="etag">An ETag.</param>
+        /// <param name="value">The value to save.</param>        
+        /// <param name="stateOptions">Options for performing save state operation.</param>
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
-        /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public abstract ValueTask SaveStateAsync<TValue>(
             string storeName,
             string key,
-            TValue value,
-            string etag = default,
+            TValue value,            
+            StateOptions stateOptions = default,
             IReadOnlyDictionary<string, string> metadata = default,
-            StateRequestOptions stateRequestOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -191,9 +189,9 @@ namespace Dapr.Client
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
         /// <param name="value">The value to save.</param>
-        /// <param name="etag">An ETag.</param>
+        /// <param name="etag">An ETag.</param>        
+        /// <param name="stateOptions">Options for performing save state operation.</param>
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
-        /// <param name="stateRequestOptions">A <see cref="StateRequestOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation succeeded.</returns>
@@ -201,9 +199,9 @@ namespace Dapr.Client
             string storeName,
             string key,
             TValue value,
-            string etag = default,
+            ETag etag,
+            StateOptions stateOptions = default,
             IReadOnlyDictionary<string, string> metadata = default,
-            StateRequestOptions stateRequestOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -211,14 +209,12 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
-        /// <param name="etag">An ETag.</param>
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public abstract ValueTask DeleteStateAsync(
             string storeName,
             string key,
-            string etag = default,
             StateOptions stateOptions = default,
             CancellationToken cancellationToken = default);
 
@@ -234,7 +230,7 @@ namespace Dapr.Client
         public abstract ValueTask<bool> TryDeleteStateAsync(
             string storeName,
             string key,
-            string etag = default,
+            ETag etag,
             StateOptions stateOptions = default,
             CancellationToken cancellationToken = default);
     }

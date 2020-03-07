@@ -1,13 +1,11 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Dapr.Client.Test
 {
-    using System;
     using System.Net;
-    using System.Net.Http;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc;
@@ -16,10 +14,8 @@ namespace Dapr.Client.Test
     using Grpc.Net.Client;
     using Xunit;
 
-    public class StateHttpClientTest
+    public class StateApiTest
     {
-        private const string DaprDefaultEndpoint = "127.0.0.1";
-
         [Fact]
         public async Task GetStateAsync_CanReadState()
         {
@@ -297,21 +293,6 @@ namespace Dapr.Client.Test
             var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<DeleteStateEnvelope>(entry.Request); 
             envelope.StoreName.Should().Be("testStore");
             envelope.Key.Should().Be("test");
-        }
-
-        private static string GetStateUrl(int port, string storeName, string key)
-        {
-            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}/{key}";
-        }
-
-        private static string SaveStateUrl(int port, string storeName)
-        {
-            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}";
-        }
-
-        private static string DeleteStateUrl(int port, string storeName, string key)
-        {
-            return $"http://{DaprDefaultEndpoint}:{port}/v1.0/state/{storeName}/{key}";
         }
 
         private async void SendResponseWithState<T>(T state, TestHttpClient.Entry entry)

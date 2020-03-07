@@ -5,12 +5,10 @@
 
 namespace Dapr.Client.Test
 {
-    using System.Net.Http;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc;
     using FluentAssertions;
-    using Google.Protobuf;
     using Grpc.Net.Client;
     using Xunit;
 

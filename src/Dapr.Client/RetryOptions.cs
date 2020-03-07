@@ -5,31 +5,28 @@
 
 namespace Dapr.Client
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Text;
+
     /// <summary>
-    /// 
+    /// Operation retry options when perfroming operations with Dapr.
     /// </summary>
-    /// <typeparam name="TValue"></typeparam>
-    public sealed class StateAndETag<TValue>
+    public class RetryOptions
     {
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="data"></param>
-        /// <param name="etag"></param>
-        public StateAndETag(TValue data, string etag)
-        {
-            this.Data = data;
-            this.ETag = etag;
-        }
+        public TimeSpan? RetryInterval { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        public TValue Data { get; }
+        public RetryMode? RetryMode { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        public string ETag { get; }
+        public int? RetryThreshold { get; set; }
     }
 }
