@@ -67,8 +67,12 @@ namespace Dapr.Client
                 envelope.Data = await ConvertToAnyAsync(publishContent, this.jsonSerializerOptions);
             }
 
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            await client.PublishEventAsync(envelope, callOptions);
+            await this.MakeGrpcCallHandleError(
+                (options) =>
+                {
+                    return client.PublishEventAsync(envelope, options);
+                },
+                cancellationToken);
         }
         #endregion
 
@@ -93,12 +97,15 @@ namespace Dapr.Client
 
             if (metadata != null)
             {
-                var d = metadata.ToDictionary(k => k.Key, k => k.Value);
-                envelope.Metadata.Add(d);
+                envelope.Metadata.Add((Dictionary<string, string>)metadata);
             }
 
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            await client.InvokeBindingAsync(envelope, callOptions);
+            await this.MakeGrpcCallHandleError(
+                (options) =>
+                {
+                    return client.InvokeBindingAsync(envelope, options);
+                },
+                cancellationToken);
         }
         #endregion
 
@@ -199,15 +206,18 @@ namespace Dapr.Client
 
             if (metadata != null)
             {
-                var d = metadata.ToDictionary(k => k.Key, k => k.Value);
-                envelope.Metadata.Add(d);
+                envelope.Metadata.Add((Dictionary<string, string>)metadata);
             }
 
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            return await client.InvokeServiceAsync(envelope, callOptions);
+            return await this.MakeGrpcCallHandleError(
+                (options) =>
+                {
+                    return client.InvokeServiceAsync(envelope, options);
+                },
+                cancellationToken);
         }
         #endregion
-        
+
         #region State Apis
         /// <inheritdoc/>
         public override async ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
@@ -226,8 +236,12 @@ namespace Dapr.Client
                 getStateEnvelope.Consistency = consistencyMode.ToString().ToLower();
             }
 
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            var response = await client.GetStateAsync(getStateEnvelope, callOptions);
+            var response = await this.MakeGrpcCallHandleError(
+                (options) =>
+                {
+                    return client.GetStateAsync(getStateEnvelope, options);
+                },
+                cancellationToken);
 
             if (response.Data.Value.IsEmpty)
             {
@@ -255,8 +269,12 @@ namespace Dapr.Client
                 getStateEnvelope.Consistency = consistencyMode.ToString().ToLower();
             }
 
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            var response = await client.GetStateAsync(getStateEnvelope, callOptions);
+            var response = await this.MakeGrpcCallHandleError(
+                (options) =>
+                {
+                    return client.GetStateAsync(getStateEnvelope, options);
+                },
+                cancellationToken);
 
             if (response.Data.Value.IsEmpty)
             {
@@ -338,8 +356,7 @@ namespace Dapr.Client
 
             if (metadata != null)
             {
-                var d = metadata.ToDictionary(k => k.Key, k => k.Value);
-                stateRequest.Metadata.Add(d);
+                stateRequest.Metadata.Add((Dictionary<string, string>)metadata);
             }
 
             if(eTag != null)
@@ -357,9 +374,14 @@ namespace Dapr.Client
                 stateRequest.Value = await ConvertToAnyAsync(value, this.jsonSerializerOptions);
             }
 
-            saveStateEnvelope.Requests.Add(stateRequest);
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            await client.SaveStateAsync(saveStateEnvelope, callOptions);
+            saveStateEnvelope.Requests.Add(stateRequest);            
+
+            await this.MakeGrpcCallHandleError(
+                (options) =>
+                {
+                    return client.SaveStateAsync(saveStateEnvelope, options);
+                },
+                cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -424,12 +446,32 @@ namespace Dapr.Client
             if (stateOptions != null)
             {
                 deleteStateEnvelope.Options = ToAutoGenratedStateOptions(stateOptions);
-            }
+            }            
 
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
-            await client.DeleteStateAsync(deleteStateEnvelope, callOptions);
+            await this.MakeGrpcCallHandleError(
+                (options) => 
+                {
+                    return client.DeleteStateAsync(deleteStateEnvelope, options);
+                },
+                cancellationToken);
         }
         #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Makes Grpc call using the cancellationToken and handles Errors.
+        /// All common exception handling logic willr eside here.
+        /// </summary>
+        /// <typeparam name="TResponse"></typeparam>
+        /// <param name="callFunc"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private AsyncUnaryCall<TResponse> MakeGrpcCallHandleError<TResponse>(Func<CallOptions, AsyncUnaryCall<TResponse>> callFunc, CancellationToken cancellationToken = default)
+        {
+            var callOptions = new CallOptions(cancellationToken: cancellationToken);
+            return callFunc.Invoke(callOptions);
+        }
 
         private StateRequestOptions ToAutoGeneratedStateRequestOptions(StateOptions stateOptions)
         {
@@ -444,12 +486,12 @@ namespace Dapr.Client
             {
                 if (stateOptions.Concurrency.Value.Equals(ConcurrencyMode.FirstWrite))
                 {
-                    stateRequestOptions.Concurrency = "first-write";
+                    stateRequestOptions.Concurrency = Constants.FirstWrite;
                 }
 
                 if (stateOptions.Concurrency.Value.Equals(ConcurrencyMode.LastWrite))
                 {
-                    stateRequestOptions.Concurrency = "last-write";
+                    stateRequestOptions.Concurrency = Constants.LastWrite;
                 }
             }
 
@@ -490,12 +532,12 @@ namespace Dapr.Client
             {
                 if (stateOptions.Concurrency.Value.Equals(ConcurrencyMode.FirstWrite))
                 {
-                    stateRequestOptions.Concurrency = "first-write";
+                    stateRequestOptions.Concurrency = Constants.FirstWrite;
                 }
 
                 if (stateOptions.Concurrency.Value.Equals(ConcurrencyMode.LastWrite))
                 {
-                    stateRequestOptions.Concurrency = "last-write";
+                    stateRequestOptions.Concurrency = Constants.LastWrite;
                 }
             }
 
@@ -542,5 +584,6 @@ namespace Dapr.Client
                 Value = await ByteString.FromStreamAsync(stream)
             };
         }
+        #endregion Helper Methods
     }
 }
