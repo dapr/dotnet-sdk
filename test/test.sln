@@ -25,7 +25,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.Integration
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.IntegrationTest.App", "Dapr.AspNetCore.IntegrationTest.App\Dapr.AspNetCore.IntegrationTest.App.csproj", "{342783B5-F75B-4752-A3E2-B8CB7D09C080}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Grpc", "..\src\Dapr.Client.Grpc\Dapr.Client.Grpc.csproj", "{BCE5A721-69C5-4510-97ED-931ADE587466}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Autogen.Grpc", "..\src\Dapr.Client.Autogen.Grpc\Dapr.Client.Autogen.Grpc.csproj", "{BCE5A721-69C5-4510-97ED-931ADE587466}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
