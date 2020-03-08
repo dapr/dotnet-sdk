@@ -170,7 +170,7 @@ namespace Dapr.Client
         public abstract ValueTask SaveStateAsync<TValue>(
             string storeName,
             string key,
-            TValue value,            
+            TValue value,
             StateOptions stateOptions = default,
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
