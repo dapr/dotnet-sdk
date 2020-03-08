@@ -52,7 +52,7 @@ namespace Dapr.Client
         {
             topicName.ThrowIfNullOrEmpty(nameof(topicName));
             return MakePublishRequest(topicName, string.Empty, cancellationToken);
-        }        
+        }
 
         private async Task MakePublishRequest<TRequest>(string topicName, TRequest publishContent, CancellationToken cancellationToken)
         {
@@ -299,12 +299,12 @@ namespace Dapr.Client
             key.ThrowIfNullOrEmpty(nameof(key));
 
             await this.MakeSaveStateCallAsync<TValue>(
-                storeName, 
-                key, 
-                value, 
+                storeName,
+                key,
+                value,
                 eTag: null,
-                stateOptions, 
-                metadata, 
+                stateOptions,
+                metadata,
                 cancellationToken);
         }
 
@@ -313,7 +313,7 @@ namespace Dapr.Client
             string storeName,
             string key,
             TValue value,
-            ETag etag,            
+            ETag etag,
             StateOptions stateOptions = default,
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
@@ -359,7 +359,7 @@ namespace Dapr.Client
                 stateRequest.Metadata.Add((Dictionary<string, string>)metadata);
             }
 
-            if(eTag != null)
+            if (eTag != null)
             {
                 stateRequest.Etag = eTag.Value;
             }
@@ -374,7 +374,7 @@ namespace Dapr.Client
                 stateRequest.Value = await ConvertToAnyAsync(value, this.jsonSerializerOptions);
             }
 
-            saveStateEnvelope.Requests.Add(stateRequest);            
+            saveStateEnvelope.Requests.Add(stateRequest);
 
             await this.MakeGrpcCallHandleError(
                 (options) =>
@@ -446,10 +446,10 @@ namespace Dapr.Client
             if (stateOptions != null)
             {
                 deleteStateEnvelope.Options = ToAutoGenratedStateOptions(stateOptions);
-            }            
+            }
 
             await this.MakeGrpcCallHandleError(
-                (options) => 
+                (options) =>
                 {
                     return client.DeleteStateAsync(deleteStateEnvelope, options);
                 },
@@ -536,12 +536,12 @@ namespace Dapr.Client
                     retryPolicy.Pattern = stateOptions.RetryOptions.RetryMode.Value.ToString().ToLower();
                 }
 
-                if(stateOptions.RetryOptions.RetryInterval != null)
+                if (stateOptions.RetryOptions.RetryInterval != null)
                 {
                     retryPolicy.Interval = Duration.FromTimeSpan(stateOptions.RetryOptions.RetryInterval.Value);
                 }
 
-                if(stateOptions.RetryOptions.RetryThreshold != null)
+                if (stateOptions.RetryOptions.RetryThreshold != null)
                 {
                     retryPolicy.Threshold = stateOptions.RetryOptions.RetryThreshold.Value;
                 }
