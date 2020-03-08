@@ -226,5 +226,19 @@ namespace Dapr.Client
             ETag etag,
             StateOptions stateOptions = default,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets the secret value ffrom the secret store.
+        /// </summary>
+        /// <param name="storeName">Secret store name.</param>
+        /// <param name="key">Key for the secret.</param>
+        /// <param name="metadata">An key/value pair that may be consumed by the secret store.  This depends on the secret store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>The secret.</returns>
+        public abstract ValueTask<Dictionary<string, string>> GetSecretAsync(
+            string storeName,
+            string key,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
     }
 }
