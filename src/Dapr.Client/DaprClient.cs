@@ -235,7 +235,7 @@ namespace Dapr.Client
         /// <param name="metadata">An key/value pair that may be consumed by the secret store.  This depends on the secret store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>The secret.</returns>
-        public abstract ValueTask<Dictionary<string, string>> GetSecretAsync(
+        public abstract Task<Dictionary<string, string>> GetSecretAsync(
             string storeName,
             string key,
             IReadOnlyDictionary<string, string> metadata = default,

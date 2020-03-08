@@ -459,7 +459,7 @@ namespace Dapr.Client
 
         #region Secret Apis
         /// <inheritdoc/>
-        public async override ValueTask<Dictionary<string, string>> GetSecretAsync(
+        public async override Task<Dictionary<string, string>> GetSecretAsync(
             string storeName,
             string key,
             IReadOnlyDictionary<string, string> metadata = default,
