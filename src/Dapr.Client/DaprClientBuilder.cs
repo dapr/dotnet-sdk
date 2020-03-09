@@ -14,17 +14,19 @@ namespace Dapr.Client
     /// </summary>
     public sealed class DaprClientBuilder
     {
+        const string defaultDaprGrpcPort = "52918";
         string daprEndpoint;
         JsonSerializerOptions jsonSerializerOptions;
         GrpcChannelOptions gRPCChannelOptions;
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DaprClientBuilder"/> class.
         /// </summary>
         public DaprClientBuilder()
         {
-            var defaultPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? "52918";
-            this.daprEndpoint = $"http://127.0.0.1:{defaultPort}";
+            var daprGrpcPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? defaultDaprGrpcPort;
+            this.daprEndpoint = $"http://127.0.0.1:{daprGrpcPort}";
         }
 
         /// <summary>
@@ -35,6 +37,7 @@ namespace Dapr.Client
         /// <returns>DaprClientBuilder instance.</returns>
         public DaprClientBuilder UseEndpoint(string daprEndpoint)
         {
+            daprEndpoint.ThrowIfNullOrEmpty(nameof(daprEndpoint));
             this.daprEndpoint = daprEndpoint;
             return this;
         }
@@ -63,16 +66,7 @@ namespace Dapr.Client
                 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             }
 
-            GrpcChannel channel;
-            if (this.gRPCChannelOptions == null)
-            {
-                channel = GrpcChannel.ForAddress(this.daprEndpoint);
-            }
-            else 
-            {
-                channel = GrpcChannel.ForAddress(this.daprEndpoint, this.gRPCChannelOptions);
-            }
-            
+            var channel = GrpcChannel.ForAddress(this.daprEndpoint, this.gRPCChannelOptions ?? new GrpcChannelOptions());            
             return new DaprClientGrpc(channel, this.jsonSerializerOptions);
         }
 

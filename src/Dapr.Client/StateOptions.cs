@@ -15,17 +15,17 @@ namespace Dapr.Client
     public class StateOptions
     {
         /// <summary>
-        /// 
+        /// Consistency mode for state operations with Dapr.
         /// </summary>
         public ConsistencyMode? Consistency { get; set; }
 
         /// <summary>
-        /// 
+        /// Concurrency mode for state operations with Dapr.
         /// </summary>
         public ConcurrencyMode? Concurrency { get; set; }
 
         /// <summary>
-        /// 
+        /// Retry options when perfroming operations with Dapr.
         /// </summary>
         public RetryOptions RetryOptions {get; set;}
     }
