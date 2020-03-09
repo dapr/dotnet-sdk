@@ -6,17 +6,17 @@
 namespace Dapr.Client
 {
     /// <summary>
-    /// See https://github.com/dapr/docs/blob/master/reference/api/state.md#concurrency
+    /// Concurrency mode for state operations with Dapr.
     /// </summary>
     public enum ConcurrencyMode
     {
         /// <summary>
-        /// 
+        /// State operations will be handled in a first-write-wins fashion
         /// </summary>
         FirstWrite,
 
         /// <summary>
-        /// 
+        /// State operations will be handled in a last-write-wins fashion
         /// </summary>
         LastWrite,
     }

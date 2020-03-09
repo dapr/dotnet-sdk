@@ -14,7 +14,7 @@ namespace Dapr.AspNetCore.IntegrationTest
 
     public class AppWebApplicationFactory : WebApplicationFactory<Startup>
     {
-        internal StateTestClient daprClient { get; } = new StateTestClient();
+        internal StateTestClient DaprClient { get; } = new StateTestClient();
 
         protected override IHostBuilder CreateHostBuilder()
         {
@@ -25,7 +25,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             });
             return builder.ConfigureServices((context, services) =>
             {
-                services.AddSingleton<DaprClient>(this.daprClient);
+                services.AddSingleton<DaprClient>(this.DaprClient);
             });
         }
     }

@@ -10,9 +10,9 @@ namespace Dapr.Client
     using Grpc.Net.Client;
 
     /// <summary>
-    /// Builder for building IDaprClient
+    /// Builder for building <see cref="DaprClient"/>
     /// </summary>
-    public class DaprClientBuilder
+    public sealed class DaprClientBuilder
     {
         string daprEndpoint;
         JsonSerializerOptions jsonSerializerOptions;
@@ -40,7 +40,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Uses the specified <see cref="JsonSerializerOptions"/> when serializing deserializing using System.Text.Json.
+        /// Uses the specified <see cref="JsonSerializerOptions"/> when serializing or deserializing using <see cref="System.Text.Json"/>.
         /// </summary>
         /// <param name="options">Json serialization options.</param>
         /// <returns>DaprClientBuilder instance.</returns>

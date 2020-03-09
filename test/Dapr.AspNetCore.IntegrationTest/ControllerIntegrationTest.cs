@@ -19,7 +19,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient();
-                var daprClient = factory.daprClient;
+                var daprClient = factory.DaprClient;
 
                 await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
 
@@ -38,7 +38,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient();
-                var daprClient = factory.daprClient;
+                var daprClient = factory.DaprClient;
 
                 await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
 
@@ -57,7 +57,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient();
-                var daprClient = factory.daprClient;
+                var daprClient = factory.DaprClient;
 
                 await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
 

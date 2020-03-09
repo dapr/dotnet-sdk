@@ -41,37 +41,41 @@ namespace Dapr
             }
         }
 
-        public override ValueTask<(TValue value, ETag eTag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
+        public override ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(
+            string storeName, 
+            string key, 
+            ConsistencyMode? consistencyMode = default,
+            CancellationToken cancellationToken = default)
         {
             storeName.ThrowIfNullOrEmpty(nameof(storeName));
             key.ThrowIfNullOrEmpty(nameof(key));
 
             if (this.State.TryGetValue(key, out var obj))
             {
-                return new ValueTask<(TValue value, ETag eTag)>(((TValue)obj, "test_etag"));
+                return new ValueTask<(TValue value, string etag)>(((TValue)obj, "test_etag"));
             }
             else
             {
-                return new ValueTask<(TValue value, ETag eTag)>((default(TValue), "test_etag"));
+                return new ValueTask<(TValue value, string etag)>((default(TValue), "test_etag"));
             }
         }
 
-        public override ValueTask SaveStateAsync<TValue>(
+        public override Task SaveStateAsync<TValue>(
             string storeName,
             string key,
             TValue value,            
             StateOptions stateOptions = default,
-            IReadOnlyDictionary<string, string> metadata = default,
+            Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
             storeName.ThrowIfNullOrEmpty(nameof(storeName));
             key.ThrowIfNullOrEmpty(nameof(key));
 
             this.State[key] = value;
-            return new ValueTask(Task.CompletedTask);
+            return Task.CompletedTask;
         }
 
-        public override ValueTask DeleteStateAsync(
+        public override Task DeleteStateAsync(
            string storeName,
            string key,
            StateOptions stateOptions = default,
@@ -81,7 +85,7 @@ namespace Dapr
             key.ThrowIfNullOrEmpty(nameof(key));
 
             this.State.Remove(key);
-            return new ValueTask(Task.CompletedTask);
+            return Task.CompletedTask;
         }
     }
 }

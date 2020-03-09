@@ -117,7 +117,7 @@ namespace Dapr.AspNetCore.Test
 
         private async void SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
         {
-            var stateAny = await ProtobufUtils.ConvertToAnyAsync(state);
+            var stateAny = ProtobufUtils.ConvertToAnyAsync(state);
             var stateResponse = new GetStateResponseEnvelope();
             stateResponse.Data = stateAny;
             stateResponse.Etag = "test";

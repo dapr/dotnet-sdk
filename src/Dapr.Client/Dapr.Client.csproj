@@ -9,10 +9,13 @@
     <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Grpc.Net.Client" Version="2.27.0" />
+    <Protobuf Include="Protos\dapr.proto" GrpcServices="Client" />
+    <Protobuf Include="Protos\daprclient.proto" GrpcServices="Client" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Dapr.Client.Autogen.Grpc\Dapr.Client.Autogen.Grpc.csproj" />
-  </ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.11.4" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.27.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.27.0" PrivateAssets="All" />
+  </ItemGroup>  
   
 </Project>

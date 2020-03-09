@@ -14,10 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.27.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
   </ItemGroup>
 

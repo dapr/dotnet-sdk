@@ -13,24 +13,18 @@ namespace Dapr
 
     public class ProtobufUtils
     {
-        public static async Task<Any> ConvertToAnyAsync<T>(T data, JsonSerializerOptions options = null)
+        public static Any ConvertToAnyAsync<T>(T data, JsonSerializerOptions options = null)
         {
-            using var stream = new MemoryStream();
+            var any = new Any();
 
             if (data != null)
             {
-                await JsonSerializer.SerializeAsync(stream, data, options);
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(data, options);
+                any.Value = ByteString.CopyFrom(bytes);
+
             }
 
-            await stream.FlushAsync();
-
-            // set the position to beginning of stream.
-            stream.Seek(0, SeekOrigin.Begin);
-
-            return new Any
-            {
-                Value = await ByteString.FromStreamAsync(stream)
-            };
+            return any;
         }
     }
 }

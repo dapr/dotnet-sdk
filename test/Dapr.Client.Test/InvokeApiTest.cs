@@ -288,7 +288,7 @@ namespace Dapr.Client.Test
 
         private async void SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
         {
-            var dataAny = await ProtobufUtils.ConvertToAnyAsync(data, options);
+            var dataAny = ProtobufUtils.ConvertToAnyAsync(data, options);
             var dataResponse = new InvokeServiceResponseEnvelope();
             dataResponse.Data = dataAny;
 
