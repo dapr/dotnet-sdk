@@ -149,8 +149,8 @@ namespace Dapr.Client
         /// <returns>A <see cref="ValueTask" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
         public async ValueTask<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
         {
-            storeName.ThrowIfNullOrEmpty(nameof(storeName));
-            key.ThrowIfNullOrEmpty(nameof(key));
+            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, cancellationToken);
             return new StateEntry<TValue>(this, storeName, key, state, etag);

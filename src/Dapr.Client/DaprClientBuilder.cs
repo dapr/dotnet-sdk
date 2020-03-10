@@ -37,7 +37,7 @@ namespace Dapr.Client
         /// <returns>DaprClientBuilder instance.</returns>
         public DaprClientBuilder UseEndpoint(string daprEndpoint)
         {
-            daprEndpoint.ThrowIfNullOrEmpty(nameof(daprEndpoint));
+            ArgumentVerifier.ThrowIfNullOrEmpty(daprEndpoint, nameof(daprEndpoint));
             this.daprEndpoint = daprEndpoint;
             return this;
         }

@@ -18,7 +18,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
-        public static void ThrowIfNull(this object value, string name)
+        public static void ThrowIfNull(object value, string name)
         {
             if (value == null)
             {
@@ -33,7 +33,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
-        public static void ThrowIfNullOrEmpty(this string value, string name)
+        public static void ThrowIfNullOrEmpty(string value, string name)
         {
             if (value == null)
             {

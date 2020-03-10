@@ -28,8 +28,8 @@ namespace Dapr
 
         public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
         {
-            storeName.ThrowIfNullOrEmpty(nameof(storeName));
-            key.ThrowIfNullOrEmpty(nameof(key));
+            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             if (this.State.TryGetValue(key, out var obj))
             {
@@ -47,8 +47,8 @@ namespace Dapr
             ConsistencyMode? consistencyMode = default,
             CancellationToken cancellationToken = default)
         {
-            storeName.ThrowIfNullOrEmpty(nameof(storeName));
-            key.ThrowIfNullOrEmpty(nameof(key));
+            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             if (this.State.TryGetValue(key, out var obj))
             {
@@ -68,8 +68,8 @@ namespace Dapr
             Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
-            storeName.ThrowIfNullOrEmpty(nameof(storeName));
-            key.ThrowIfNullOrEmpty(nameof(key));
+            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             this.State[key] = value;
             return Task.CompletedTask;
@@ -81,8 +81,8 @@ namespace Dapr
            StateOptions stateOptions = default,
            CancellationToken cancellationToken = default)
         {
-            storeName.ThrowIfNullOrEmpty(nameof(storeName));
-            key.ThrowIfNullOrEmpty(nameof(key));
+            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             this.State.Remove(key);
             return Task.CompletedTask;

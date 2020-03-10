@@ -35,9 +35,9 @@ namespace Dapr
         /// </remarks>
         public StateEntry(DaprClient client, string storeName, string key, TValue value, string etag)
         {
-            client.ThrowIfNull(nameof(client));
-            storeName.ThrowIfNullOrEmpty(nameof(storeName));
-            key.ThrowIfNullOrEmpty(nameof(key));
+            ArgumentVerifier.ThrowIfNull(client, nameof(client));
+            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             this.StoreName = storeName;
             this.Key = key;
