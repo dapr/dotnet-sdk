@@ -14,6 +14,15 @@ namespace Dapr.Actors
         /// <summary>
         /// Initializes a new instance of the <see cref="DaprError"/> class.
         /// </summary>
+        public DaprError()
+        {
+            this.ErrorCode = DaprErrorCodes.UNKNOWN;
+            this.Message = "UNKNOWN";
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DaprError"/> class.
+        /// </summary>
         /// <param name="errorCode">Error code.</param>
         /// <param name="message">Error Message.</param>
         public DaprError(
