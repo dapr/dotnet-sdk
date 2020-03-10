@@ -76,22 +76,38 @@ namespace GrpcClient
             Console.WriteLine("Deleted State!");
         }
 
-        internal static async Task InvokeMethodAsync(DaprClient client)
-        {
-            await client.InvokeMethodAsync("actor", "dapr/config");
-            Console.WriteLine("Deleted State!");
-        }
 
-        // This example shows how to invoke a method on a service listening on http.
-        // In such a scenario, a key value pair of http.verb and the verb must be added to the metadata parameter.
+        /// <summary>
+        /// This example shows how to invoke a method on a service listening on http.
+        /// In such a scenario, a key value pair of http.verb and the verb must be added to the metadata parameter.
+        /// By default, Dapr uses POST as the verb if not specified/
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
         internal static async Task InvokeMethodOnHttpServiceAsync(DaprClient client)
         {
             MyData data = new MyData() { Message = "mydata" };
-            Dictionary<string, string> m = new Dictionary<string, string>();
-            m.Add("http.verb", "POST");
+            
+            // Add the verb to metadata if the method is other than a POST
+            var metaData = new Dictionary<string, string>();
+            metaData.Add("http.verb", "GET");
 
-            // invokes a POST method named "hello" that takes input of type "MyData" and returns a string.
-            string s = await client.InvokeMethodAsync<MyData, string>("nodeapp", "hello", data, m);
+            // invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
+            string s = await client.InvokeMethodAsync<MyData, string>("nodeapp", "hello", data, metaData);
+            Console.WriteLine("received {0}", s);
+        }
+
+        /// <summary>
+        /// This example shows how to invoke a method on a service listening on gRPC.
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        internal static async Task InvokeMethodOnGrpcServiceAsync(DaprClient client)
+        {
+            MyData data = new MyData() { Message = "mydata" };
+
+            // invokes a method named "hello" that takes input of type "MyData" and returns a string.
+            string s = await client.InvokeMethodAsync<MyData, string>("nodeapp", "hello", data);
             Console.WriteLine("received {0}", s);
         }
 
