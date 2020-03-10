@@ -1,9 +1,9 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr.AspNetCore
 {
     using System;
     using Microsoft.AspNetCore.Mvc.ModelBinding;

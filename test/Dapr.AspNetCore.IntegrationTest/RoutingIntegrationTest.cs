@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -19,15 +19,15 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient();
-                var stateClient = factory.StateClient;
+                var daprClient = factory.DaprClient;
 
-                await stateClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
+                await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
 
                 var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/routingwithstateentry/test");
                 var response = await httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 
-                var widget = await stateClient.GetStateAsync<Widget>("testStore", "test");
+                var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
                 widget.Count.Should().Be(18);
             }
         }

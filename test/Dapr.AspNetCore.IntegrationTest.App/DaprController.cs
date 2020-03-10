@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -7,6 +7,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 {
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.Client;
     using Microsoft.AspNetCore.Mvc;
 
     [ApiController]
@@ -26,7 +27,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         }
 
         [HttpPost("/controllerwithoutstateentry/{widget}")]
-        public async Task AddOneWithoutStateEntry([FromServices] StateClient state, [FromState("testStore")] Widget widget)
+        public async Task AddOneWithoutStateEntry([FromServices] DaprClient state, [FromState("testStore")] Widget widget)
         {
             widget.Count++;
             await state.SaveStateAsync("testStore", (string)this.HttpContext.Request.RouteValues["widget"], widget);

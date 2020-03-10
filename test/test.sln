@@ -25,8 +25,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.Integration
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.IntegrationTest.App", "Dapr.AspNetCore.IntegrationTest.App\Dapr.AspNetCore.IntegrationTest.App.csproj", "{342783B5-F75B-4752-A3E2-B8CB7D09C080}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Grpc", "..\src\Dapr.Client.Grpc\Dapr.Client.Grpc.csproj", "{BCE5A721-69C5-4510-97ED-931ADE587466}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,7 +85,6 @@ Global
 		{B314AD5E-10AC-418A-B021-D4206BF37ACF} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{0CD1912D-5E27-4A2A-A998-164792E0D006} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{342783B5-F75B-4752-A3E2-B8CB7D09C080} = {DD020B34-460F-455F-8D17-CF4A949F100B}
-		{BCE5A721-69C5-4510-97ED-931ADE587466} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
