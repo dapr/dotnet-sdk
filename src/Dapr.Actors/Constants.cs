@@ -3,6 +3,8 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System.Net.NetworkInformation;
+
 namespace Dapr.Actors
 {
     /// <summary>
@@ -50,5 +52,20 @@ namespace Dapr.Actors
         /// Gets string format for Actors timer registration relative url..
         /// </summary>
         public static string ActorTimerRelativeUrlFormat => $"{DaprVersion}/{Actors}/{{0}}/{{1}}/{Timers}/{{2}}";
+
+        /// <summary>
+        /// Error code indicating there was a failure invoking an actor method.
+        /// </summary>
+        public static string ErrorActorInvokeMethod = "ERR_ACTOR_INVOKE_METHOD";
+
+        /// <summary>
+        /// Error code indicating something does not exist.
+        /// </summary>
+        public static string ErrorDoesNotExist = "ERR_DOES_NOT_EXIST";
+
+        /// <summary>
+        /// Error code indicating an unknonwn/unspecified error.
+        /// </summary>
+        public static string Unknown = "UNKNOWN";
     }
 }
