@@ -119,12 +119,18 @@ namespace Dapr.Actors.Runtime
                 {
                     awaitable = methodInfo.Invoke(actor, null);
                 }
-                else
+                else if (parameters.Length == 1)
                 {
                     // deserialize using stream.
                     var type = parameters[0].ParameterType;
                     var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type);
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
+                }
+                else
+                {
+                    var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
+                    ActorTrace.Instance.WriteError(TraceType, errorMsg);
+                    throw new ArgumentException(errorMsg);
                 }
 
                 await awaitable;
