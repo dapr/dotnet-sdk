@@ -11,6 +11,9 @@
     <Description>This package contains the reference assemblies for developing Actor services using Dapr and AspNetCore.</Description>
     <PackageTags>$(PackageTags);Actors</PackageTags>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="4.7.0" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Actors\Dapr.Actors.csproj" />
