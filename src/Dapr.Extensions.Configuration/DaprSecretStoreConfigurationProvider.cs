@@ -52,7 +52,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                 {
                     if (data.ContainsKey(key))
                     {
-                        throw new InvalidOperationException($"A duplicate key '{key}' was found in the secret store '{store}'.");
+                        throw new InvalidOperationException($"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                     }
 
                     data.Add(key, result[key]);
