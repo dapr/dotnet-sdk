@@ -46,6 +46,17 @@ namespace Dapr.Actors.Test
             Assert.Contains(RenamedActorTypeName, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
         }
 
+        [Fact]
+        public void TestRegisterOtherTypeAtRuntime()
+        {
+            var actorType = typeof(ActorRuntimeTests);
+            var actorRuntime = new ActorRuntime();
+
+            actorRuntime.RegisterActor(actorType);
+
+            Assert.DoesNotContain(actorType.Name, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
+        }
+
         private sealed class TestActor : Actor, ITestActor
         {
             public TestActor(ActorService actorService, ActorId actorId)
