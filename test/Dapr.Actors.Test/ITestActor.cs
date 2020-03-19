@@ -22,7 +22,7 @@ namespace Dapr.Actors.Test
         Task<int> GetCountAsync(CancellationToken cancellationToken);
 
         /// <summary>
-        /// SetCoutn method for test actor.
+        /// SetCount method for test actor.
         /// </summary>
         /// <param name="count">Count to set for the actor.</param>
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
@@ -35,11 +35,6 @@ namespace Dapr.Actors.Test
     /// </summary>
     public class TestActor : Actor,  ITestActor
     {
-        public TestActor(ActorService actorService, ActorId actorId, IActorStateManager actorStateManager)
-            : base(actorService, actorId, actorStateManager)
-        {
-        }
-
         /// <inheritdoc/>
         public Task<int> GetCountAsync(CancellationToken cancellationToken)
         {

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -40,19 +40,11 @@ namespace Dapr.Actors.Test
 
         private sealed class TestActor : Actor, ITestActor
         {
-            public TestActor(ActorService actorService, ActorId actorId)
-                : base(actorService, actorId)
-            {
-            }
         }
 
         [Actor(TypeName = RenamedActorTypeName)]
         private sealed class RenamedActor : Actor, ITestActor
         {
-            public RenamedActor(ActorService actorService, ActorId actorId)
-                : base(actorService, actorId)
-            {
-            }
         }
     }
 }
