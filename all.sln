@@ -54,6 +54,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Extensions.Configurati
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Extensions.Configuration.Test", "test\Dapr.Extensions.Configuration.Test\Dapr.Extensions.Configuration.Test.csproj", "{E39DC087-2521-4BB3-933E-E8AFD74AFA6F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecretStoreConfigurationProviderSample", "samples\AspNetCore\SecretStoreConfigurationProviderSample\SecretStoreConfigurationProviderSample.csproj", "{00331076-3966-486A-A761-C47F7C14873B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -128,6 +130,10 @@ Global
 		{E39DC087-2521-4BB3-933E-E8AFD74AFA6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E39DC087-2521-4BB3-933E-E8AFD74AFA6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E39DC087-2521-4BB3-933E-E8AFD74AFA6F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00331076-3966-486A-A761-C47F7C14873B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00331076-3966-486A-A761-C47F7C14873B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00331076-3966-486A-A761-C47F7C14873B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00331076-3966-486A-A761-C47F7C14873B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -153,6 +159,7 @@ Global
 		{9ED03812-9DDE-4DFE-9574-DF3671EECA25} = {B2DB41EE-45F5-447B-95E8-38E1E8B70C4E}
 		{3EFB6020-F928-4FF4-A795-6B426C3886A9} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{E39DC087-2521-4BB3-933E-E8AFD74AFA6F} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+		{00331076-3966-486A-A761-C47F7C14873B} = {DCBEAB71-0BDE-42F4-8187-F576942CB038}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
