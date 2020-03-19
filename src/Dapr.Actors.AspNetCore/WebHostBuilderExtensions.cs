@@ -41,8 +41,13 @@ namespace Dapr.Actors.AspNetCore
 
             hostBuilder.ConfigureServices(services =>
             {
+                // Configure and add the ActorRuntime
+                var runtimeConfig = new ActorRuntimeConfiguration();
+                configureActorRuntime(runtimeConfig);
+                services.AddSingleton(runtimeConfig);
+                services.RegisterActors(runtimeConfig);
+
                 services.AddSingleton<ActorRuntime>();
-                services.Configure(configureActorRuntime);
 
                 // Add routes.
                 services.AddRouting();
@@ -50,6 +55,14 @@ namespace Dapr.Actors.AspNetCore
             });
 
             return hostBuilder;
+        }
+
+        private static void RegisterActors(this IServiceCollection services, ActorRuntimeConfiguration runtimeConfig)
+        {
+            foreach (var actorRegistration in runtimeConfig.ActorRegistrations)
+            {
+                services.AddTransient(actorRegistration.ImplementationType);
+            }
         }
     }
 }

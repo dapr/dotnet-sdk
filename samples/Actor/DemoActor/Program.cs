@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -31,9 +31,9 @@ namespace DaprDemoActor
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-            .UseActors(actorRuntime =>
+            .UseActors(config =>
             {
-                actorRuntime.RegisterActor<DemoActor>();
+                config.RegisterActor<DemoActor>();
             });
     }
 }

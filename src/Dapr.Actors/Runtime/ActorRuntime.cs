@@ -23,7 +23,12 @@ namespace Dapr.Actors.Runtime
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
 
-        internal ActorRuntime(
+        /// <summary>
+        /// Creates an instance of the ActorRuntime. This should be done as Singleton through a DI container!
+        /// </summary>
+        /// <param name="serviceProvider"></param>
+        /// <param name="configuration"></param>
+        public ActorRuntime(
             IServiceProvider serviceProvider,
             ActorRuntimeConfiguration configuration)
         {
