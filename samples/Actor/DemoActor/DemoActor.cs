@@ -7,8 +7,8 @@ namespace DaprDemoActor
 {
     using System;
     using System.Threading.Tasks;
-    using Dapr.Actors;
     using Dapr.Actors.Runtime;
+    using Microsoft.Extensions.Logging;
     using IDemoActorInterface;
 
     /// <summary>
@@ -21,20 +21,20 @@ namespace DaprDemoActor
     {
         private const string StateName = "my_data";
 
+        private readonly ILogger<DemoActor> logger;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="DemoActor"/> class.
         /// </summary>
-        /// <param name="service">Actor Service hosting the actor.</param>
-        /// <param name="actorId">Actor Id.</param>
-        public DemoActor(ActorService service, ActorId actorId)
-            : base(service, actorId)
+        public DemoActor(ILogger<DemoActor> logger)
         {
+            this.logger = logger;
         }
 
         /// <inheritdoc/>
         public async Task SaveData(MyData data)
         {
-            Console.WriteLine($"This is Actor id {this.Id} with data {data}.");
+            logger.LogInformation($"This is Actor id {this.Id} with data {data}.");
 
             // Set State using StateManager, state is saved after the method execution.
             await this.StateManager.SetStateAsync<MyData>(StateName, data);
@@ -43,6 +43,8 @@ namespace DaprDemoActor
         /// <inheritdoc/>
         public Task<MyData> GetData()
         {
+            logger.LogInformation($"GetData() for Actor id {this.Id} called.");
+
             // Get state using StateManager.
             return this.StateManager.GetStateAsync<MyData>(StateName);
         }
@@ -50,30 +52,40 @@ namespace DaprDemoActor
         /// <inheritdoc/>
         public Task TestThrowException()
         {
+            logger.LogInformation($"TestThrowException() for Actor id {this.Id} called.");
+
             throw new NotImplementedException();
         }
 
         /// <inheritdoc/>
         public Task TestNoArgumentNoReturnType()
         {
+            logger.LogInformation($"TestNoArgumentNoReturnType() for Actor id {this.Id} called.");
+
             return Task.CompletedTask;
         }
 
         /// <inheritdoc/>
         public async Task RegisterReminder()
         {
+            logger.LogInformation($"RegisterReminder() for Actor id {this.Id} called.");
+
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
 
         /// <inheritdoc/>
         public Task UnregisterReminder()
         {
+            logger.LogInformation($"UnregisterReminder() for Actor id {this.Id} called.");
+
             return this.UnregisterReminderAsync("TestReminder");
         }
 
         /// <inheritdoc/>
         public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
+            logger.LogInformation($"Received reminder {reminderName} for Actor id {this.Id}.");
+
             // This method is invoked when an actor reminder is fired.
             var actorState = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             actorState.PropertyB = $"Reminder triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
@@ -84,12 +96,16 @@ namespace DaprDemoActor
         /// <inheritdoc/>
         public Task RegisterTimer()
         {
+            logger.LogInformation($"RegisterTimer() for Actor id {this.Id} called.");
+
             return this.RegisterTimerAsync("TestTimer", this.TimerCallBack, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
         /// <inheritdoc/>
         public Task UnregisterTimer()
         {
+            logger.LogInformation($"UnregisterTimer() for Actor id {this.Id} called.");
+
             return this.UnregisterTimerAsync("TestTimer");
         }
 
@@ -100,6 +116,8 @@ namespace DaprDemoActor
         /// <returns>A task that represents the asynchronous operation.</returns>
         protected override Task OnActivateAsync()
         {
+            logger.LogInformation($"Activated Actor id {this.Id}.");
+
             // Provides opportunity to perform some optional setup.
             return Task.CompletedTask;
         }
@@ -110,6 +128,8 @@ namespace DaprDemoActor
         /// <returns>A task that represents the asynchronous operation.</returns>
         protected override Task OnDeactivateAsync()
         {
+            logger.LogInformation($"Deactivated() Actor id {this.Id}.");
+
             // Provides Opportunity to perform optional cleanup.
             return Task.CompletedTask;
         }
@@ -122,6 +142,8 @@ namespace DaprDemoActor
         /// <returns>A task that represents the asynchronous operation.</returns>
         private Task TimerCallBack(object data)
         {
+            logger.LogInformation($"Received timer callback Actor id {this.Id}.");
+
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
             this.StateManager.SetStateAsync<MyData>(StateName, state);

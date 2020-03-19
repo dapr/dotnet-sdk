@@ -23,7 +23,7 @@ namespace Dapr.Actors.AspNetCore
         /// <param name="hostBuilder">The Microsoft.AspNetCore.Hosting.IWebHostBuilder to configure.</param>
         /// <param name="configureActorRuntime">Adds a delegate to configure Actor runtime..</param>
         /// <returns>The Microsoft.AspNetCore.Hosting.IWebHostBuilder.</returns>
-        public static IWebHostBuilder UseActors(this IWebHostBuilder hostBuilder, Action<ActorRuntime> configureActorRuntime)
+        public static IWebHostBuilder UseActors(this IWebHostBuilder hostBuilder, Action<ActorRuntimeConfiguration> configureActorRuntime)
         {
             if (hostBuilder == null)
             {
@@ -36,16 +36,17 @@ namespace Dapr.Actors.AspNetCore
                 return hostBuilder;
             }
 
-            configureActorRuntime.Invoke(ActorRuntime.Instance);
-
             // Set flag to prevent double service configuration
             hostBuilder.UseSetting(SettingName, true.ToString());
 
             hostBuilder.ConfigureServices(services =>
             {
+                services.AddSingleton<ActorRuntime>();
+                services.Configure(configureActorRuntime);
+
                 // Add routes.
                 services.AddRouting();
-                services.AddSingleton<IStartupFilter>(new DaprActorSetupFilter());
+                services.AddSingleton<IStartupFilter, DaprActorSetupFilter>();
             });
 
             return hostBuilder;

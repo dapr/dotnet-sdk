@@ -12,7 +12,7 @@ namespace Dapr.Actors.Runtime
     /// </summary>
     public class ActorService : IActorService
     {
-        private readonly Func<ActorService, ActorId, Actor> actorFactory;
+        private readonly Func<Actor> actorFactory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorService"/> class.
@@ -21,10 +21,10 @@ namespace Dapr.Actors.Runtime
         /// <param name="actorFactory">The factory method to create Actor objects.</param>
         public ActorService(
             ActorTypeInformation actorTypeInfo,
-            Func<ActorService, ActorId, Actor> actorFactory = null)
+            Func<Actor> actorFactory)
         {
             this.ActorTypeInfo = actorTypeInfo;
-            this.actorFactory = actorFactory ?? this.DefaultActorFactory;
+            this.actorFactory = actorFactory;
             this.StateProvider = new DaprStateProvider();
         }
 
@@ -35,17 +35,9 @@ namespace Dapr.Actors.Runtime
 
         internal DaprStateProvider StateProvider { get; }
 
-        internal Actor CreateActor(ActorId actorId)
+        internal Actor CreateActor()
         {
-            return this.actorFactory.Invoke(this, actorId);
-        }
-
-        private Actor DefaultActorFactory(ActorService actorService, ActorId actorId)
-        {
-            return (Actor)Activator.CreateInstance(
-                this.ActorTypeInfo.ImplementationType,
-                actorService,
-                actorId);
+            return this.actorFactory();
         }
     }
 }

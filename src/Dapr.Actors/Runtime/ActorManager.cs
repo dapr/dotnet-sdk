@@ -199,8 +199,8 @@ namespace Dapr.Actors.Runtime
         internal async Task ActivateActor(ActorId actorId)
         {
             // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
-            var actor = this.actorService.CreateActor(actorId);
-            await actor.OnActivateInternalAsync();
+            var actor = this.actorService.CreateActor();
+            await actor.OnActivateInternalAsync(this.actorService, actorId);
 
             // Add actor to activeActors only after OnActivate succeeds (user code can throw error from its override of Activate method.)
             // Always add the new instance.
