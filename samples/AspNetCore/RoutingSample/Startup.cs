@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -8,6 +8,7 @@ namespace RoutingSample
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.Client;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Http;
@@ -20,6 +21,11 @@ namespace RoutingSample
     /// </summary>
     public class Startup
     {
+        /// <summary>
+        /// State store name.
+        /// </summary>
+        public const string StoreName = "statestore";
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Startup"/> class.
         /// </summary>
@@ -77,10 +83,10 @@ namespace RoutingSample
 
             async Task Balance(HttpContext context)
             {
-                var client = context.RequestServices.GetRequiredService<StateClient>();
+                var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var id = (string)context.Request.RouteValues["id"];
-                var account = await client.GetStateAsync<Account>(id);
+                var account = await client.GetStateAsync<Account>(StoreName, id);
                 if (account == null)
                 {
                     context.Response.StatusCode = 404;
@@ -93,10 +99,10 @@ namespace RoutingSample
 
             async Task Deposit(HttpContext context)
             {
-                var client = context.RequestServices.GetRequiredService<StateClient>();
+                var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
-                var account = await client.GetStateAsync<Account>(transaction.Id);
+                var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
                     account = new Account() { Id = transaction.Id, };
@@ -109,7 +115,7 @@ namespace RoutingSample
                 }
 
                 account.Balance += transaction.Amount;
-                await client.SaveStateAsync(transaction.Id, account);
+                await client.SaveStateAsync(StoreName, transaction.Id, account);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
@@ -117,10 +123,10 @@ namespace RoutingSample
 
             async Task Withdraw(HttpContext context)
             {
-                var client = context.RequestServices.GetRequiredService<StateClient>();
+                var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
-                var account = await client.GetStateAsync<Account>(transaction.Id);
+                var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
                     context.Response.StatusCode = 404;
@@ -134,7 +140,7 @@ namespace RoutingSample
                 }
 
                 account.Balance -= transaction.Amount;
-                await client.SaveStateAsync(transaction.Id, account);
+                await client.SaveStateAsync(StoreName, transaction.Id, account);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);

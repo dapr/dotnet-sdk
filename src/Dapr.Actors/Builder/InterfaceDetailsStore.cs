@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -14,8 +14,6 @@ namespace Dapr.Actors.Builder
 
     internal class InterfaceDetailsStore
     {
-        private const string TraceType = "InterfaceDetailsStore";
-
         private readonly ConcurrentDictionary<int, InterfaceDetails> knownTypesMap =
             new ConcurrentDictionary<int, InterfaceDetails>();
 

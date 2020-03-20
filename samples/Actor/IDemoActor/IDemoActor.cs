@@ -81,8 +81,8 @@ namespace IDemoActorInterface
         /// <inheritdoc/>
         public override string ToString()
         {
-            var propAValue = this.PropertyA == null ? "null" : this.PropertyA;
-            var propBValue = this.PropertyB == null ? "null" : this.PropertyB;
+            var propAValue = this.PropertyA ?? "null";
+            var propBValue = this.PropertyB ?? "null";
             return $"PropertyA: {propAValue}, PropertyB: {propBValue}";
         }
     }

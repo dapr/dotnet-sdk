@@ -7,7 +7,11 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
+    using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using Newtonsoft.Json;
     using Xunit;
@@ -44,6 +48,37 @@ namespace Dapr.Actors.Test
             var deserializedTimeSpan = ConverterUtils.ConvertTimeSpanFromDaprFormat(timespanString);
 
             Assert.Equal(expectedDeserializedValue, deserializedTimeSpan);
+        }
+
+        [Fact]
+        public async Task ConverterUtilsTestEndToEndAsync()
+        {
+            static Task<string> SerializeAsync(TimeSpan dueTime, TimeSpan period)
+            {
+                var timer = new ActorTimer(
+                    owner: null,
+                    timerName: "SomeTimer",
+                    asyncCallback: state => Task.CompletedTask,
+                    state: Encoding.UTF8.GetBytes("Some state value"),
+                    dueTime: dueTime,
+                    period: period);
+                return timer.SerializeAsync();
+            }
+
+            var inTheFuture = TimeSpan.FromMilliseconds(20);
+            var never = TimeSpan.FromMilliseconds(-1);
+            Assert.Equal(
+               "{\"dueTime\":\"0h0m0s20ms\"}",
+               await SerializeAsync(inTheFuture, never));
+        }
+
+        [Fact]
+        public void DaprFormatTimespanEmpty()
+        {
+            Func<string, TimeSpan> convert = ConverterUtils.ConvertTimeSpanFromDaprFormat;
+            TimeSpan never = TimeSpan.FromMilliseconds(-1);
+            Assert.Equal<TimeSpan>(never, convert(null));
+            Assert.Equal<TimeSpan>(never, convert(string.Empty));
         }
     }
 }

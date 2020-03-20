@@ -25,7 +25,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.Integration
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.AspNetCore.IntegrationTest.App", "Dapr.AspNetCore.IntegrationTest.App\Dapr.AspNetCore.IntegrationTest.App.csproj", "{342783B5-F75B-4752-A3E2-B8CB7D09C080}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Client.Grpc", "..\src\Dapr.Client.Grpc\Dapr.Client.Grpc.csproj", "{BCE5A721-69C5-4510-97ED-931ADE587466}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Extensions.Configuration.Test", "Dapr.Extensions.Configuration.Test\Dapr.Extensions.Configuration.Test.csproj", "{F676A444-9099-4382-9399-16C6F9A02AD1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,10 +69,10 @@ Global
 		{342783B5-F75B-4752-A3E2-B8CB7D09C080}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{342783B5-F75B-4752-A3E2-B8CB7D09C080}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{342783B5-F75B-4752-A3E2-B8CB7D09C080}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BCE5A721-69C5-4510-97ED-931ADE587466}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BCE5A721-69C5-4510-97ED-931ADE587466}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BCE5A721-69C5-4510-97ED-931ADE587466}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BCE5A721-69C5-4510-97ED-931ADE587466}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F676A444-9099-4382-9399-16C6F9A02AD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F676A444-9099-4382-9399-16C6F9A02AD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F676A444-9099-4382-9399-16C6F9A02AD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F676A444-9099-4382-9399-16C6F9A02AD1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -87,7 +87,6 @@ Global
 		{B314AD5E-10AC-418A-B021-D4206BF37ACF} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{0CD1912D-5E27-4A2A-A998-164792E0D006} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{342783B5-F75B-4752-A3E2-B8CB7D09C080} = {DD020B34-460F-455F-8D17-CF4A949F100B}
-		{BCE5A721-69C5-4510-97ED-931ADE587466} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}

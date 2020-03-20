@@ -14,11 +14,11 @@ namespace Dapr.Actors
     using System.Net.Http;
     using System.Security.Authentication;
     using System.Text;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
-    using Newtonsoft.Json;
 
     /// <summary>
     /// Class to interact with Dapr runtime over http.
@@ -431,9 +431,12 @@ namespace Dapr.Actors
                     var contentStream = await response.Content.ReadAsStreamAsync();
                     if (contentStream.Length != 0)
                     {
-                        using var streamReader = new StreamReader(contentStream);
-                        var json = await streamReader.ReadToEndAsync();
-                        error = JsonConvert.DeserializeObject<DaprError>(json);
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        error = await JsonSerializer.DeserializeAsync<DaprError>(contentStream, options);
                     }
                 }
                 catch (Exception ex)
@@ -443,14 +446,14 @@ namespace Dapr.Actors
 
                 if (error != null)
                 {
-                    throw new DaprException(error.Message, error.ErrorCode ?? DaprErrorCodes.UNKNOWN, false);
+                    throw new DaprException(error.Message, error.ErrorCode ?? Constants.Unknown, false);
                 }
                 else
                 {
                     // Handle NotFound 404, without any ErrorCode.
                     if (response.StatusCode.Equals(HttpStatusCode.NotFound))
                     {
-                        throw new DaprException("ErrorMessageHTTP404", DaprErrorCodes.ERR_DOES_NOT_EXIST, false);
+                        throw new DaprException("ErrorMessageHTTP404", Constants.ErrorDoesNotExist, false);
                     }
                 }
             }
@@ -470,8 +473,7 @@ namespace Dapr.Actors
             Func<HttpRequestMessage> requestFunc,
             CancellationToken cancellationToken)
         {
-            HttpResponseMessage response = null;
-
+            HttpResponseMessage response;
             try
             {
                 // Get the request using the Func as same request cannot be resent when retries are implemented.

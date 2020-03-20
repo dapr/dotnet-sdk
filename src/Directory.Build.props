@@ -1,6 +1,5 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
-  <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_stylecop.props" />
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_nuget.props" />
 
   <PropertyGroup>

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -7,6 +7,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 {
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.Client;
     using Microsoft.AspNetCore.Mvc;
 
     [ApiController]
@@ -26,21 +27,21 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         }
 
         [HttpPost("/controllerwithoutstateentry/{widget}")]
-        public async Task AddOneWithoutStateEntry([FromServices]StateClient state, [FromState] Widget widget)
+        public async Task AddOneWithoutStateEntry([FromServices] DaprClient state, [FromState("testStore")] Widget widget)
         {
             widget.Count++;
-            await state.SaveStateAsync((string)this.HttpContext.Request.RouteValues["widget"], widget);
+            await state.SaveStateAsync("testStore", (string)this.HttpContext.Request.RouteValues["widget"], widget);
         }
 
         [HttpPost("/controllerwithstateentry/{widget}")]
-        public async Task AddOneWithStateEntry(StateEntry<Widget> widget)
+        public async Task AddOneWithStateEntry([FromState("testStore")] StateEntry<Widget> widget)
         {
             widget.Value.Count++;
             await widget.SaveAsync();
         }
 
         [HttpPost("/controllerwithstateentryandcustomkey/{widget}")]
-        public async Task AddOneWithStateEntryAndCustomKey([FromState("widget")] StateEntry<Widget> state)
+        public async Task AddOneWithStateEntryAndCustomKey([FromState("testStore", "widget")] StateEntry<Widget> state)
         {
             state.Value.Count++;
             await state.SaveAsync();

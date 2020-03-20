@@ -1,9 +1,9 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr.AspNetCore
 {
     using System;
     using System.Reflection;
@@ -11,16 +11,19 @@ namespace Dapr
     using Microsoft.AspNetCore.Mvc.ModelBinding;
     using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
     using Microsoft.Extensions.DependencyInjection;
+    using Dapr.Client;
 
     internal class StateEntryModelBinder : IModelBinder
     {
-        private readonly Func<StateClient, string, Task<object>> thunk;
+        private readonly Func<DaprClient, string, string, Task<object>> thunk;
         private readonly string key;
+        private readonly string storeName;
         private readonly bool isStateEntry;
         private readonly Type type;
 
-        public StateEntryModelBinder(string key, bool isStateEntry, Type type)
+        public StateEntryModelBinder(string storeName, string key, bool isStateEntry, Type type)
         {
+            this.storeName = storeName;
             this.key = key;
             this.isStateEntry = isStateEntry;
             this.type = type;
@@ -29,13 +32,13 @@ namespace Dapr
             {
                 var method = this.GetType().GetMethod(nameof(GetStateEntryAsync), BindingFlags.Static | BindingFlags.NonPublic);
                 method = method.MakeGenericMethod(type);
-                this.thunk = (Func<StateClient, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<StateClient, string, Task<object>>), null, method);
+                this.thunk = (Func<DaprClient, string, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<DaprClient, string, string, Task<object>>), null, method);
             }
             else
             {
                 var method = this.GetType().GetMethod(nameof(GetStateAsync), BindingFlags.Static | BindingFlags.NonPublic);
                 method = method.MakeGenericMethod(type);
-                this.thunk = (Func<StateClient, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<StateClient, string, Task<object>>), null, method);
+                this.thunk = (Func<DaprClient, string, string, Task<object>>)Delegate.CreateDelegate(typeof(Func<DaprClient, string, string, Task<object>>), null, method);
             }
         }
 
@@ -46,7 +49,7 @@ namespace Dapr
                 throw new ArgumentNullException(nameof(bindingContext));
             }
 
-            var stateClient = bindingContext.HttpContext.RequestServices.GetRequiredService<StateClient>();
+            var daprClient = bindingContext.HttpContext.RequestServices.GetRequiredService<DaprClient>();
 
             // Look up route values to use for keys into state.
             bool missingKey = false;
@@ -67,7 +70,7 @@ namespace Dapr
                 return;
             }
 
-            var obj = await this.thunk(stateClient, key);
+            var obj = await this.thunk(daprClient, this.storeName, key);
             bindingContext.Result = ModelBindingResult.Success(obj);
 
             bindingContext.ValidationState.Add(bindingContext.Result.Model, new ValidationStateEntry()
@@ -77,14 +80,14 @@ namespace Dapr
             });
         }
 
-        private static async Task<object> GetStateEntryAsync<T>(StateClient stateClient, string key)
+        private static async Task<object> GetStateEntryAsync<T>(DaprClient daprClient, string storeName, string key)
         {
-            return await stateClient.GetStateEntryAsync<T>(key);
+            return await daprClient.GetStateEntryAsync<T>(storeName, key);
         }
 
-        private static async Task<object> GetStateAsync<T>(StateClient stateClient, string key)
+        private static async Task<object> GetStateAsync<T>(DaprClient daprClient, string storeName, string key)
         {
-            return await stateClient.GetStateAsync<T>(key);
+            return await daprClient.GetStateAsync<T>(storeName, key);
         }
     }
 }

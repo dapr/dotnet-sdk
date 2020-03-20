@@ -12,27 +12,13 @@ namespace Dapr.Actors
     public class DaprError
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="DaprError"/> class.
-        /// </summary>
-        /// <param name="errorCode">Error code.</param>
-        /// <param name="message">Error Message.</param>
-        public DaprError(
-            DaprErrorCodes? errorCode,
-            string message = default)
-        {
-            errorCode.ThrowIfNull(nameof(errorCode));
-            this.ErrorCode = errorCode;
-            this.Message = message;
-        }
-
-        /// <summary>
         /// Gets ErrorCode.
-        /// </summary>
-        public DaprErrorCodes? ErrorCode { get; }
+        /// </summary>        
+        public string ErrorCode { get; set; }
 
         /// <summary>
         /// Gets error message.
-        /// </summary>
-        public string Message { get; }
+        /// </summary>        
+        public string Message { get; set; }
     }
 }

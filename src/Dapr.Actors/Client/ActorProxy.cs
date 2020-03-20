@@ -6,11 +6,12 @@
 namespace Dapr.Actors.Client
 {
     using System.IO;
+    using System.Text;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Communication.Client;
-    using Newtonsoft.Json;
 
     /// <summary>
     /// Provides the base implementation for the proxy to the remote actor objects implementing <see cref="IActor"/> interfaces.
@@ -72,51 +73,50 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// Invokes the specified method for the actor with argument. The argument will be serialized as JSON.
         /// </summary>
-        /// <typeparam name="T">Return type of method.</typeparam>
+        /// <typeparam name="TRequest">The data type of the object that will be serialized.</typeparam>
+        /// <typeparam name="TResponse">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public async Task<T> InvokeAsync<T>(string method, object data, CancellationToken cancellationToken = default)
+        public async Task<TResponse> InvokeAsync<TRequest, TResponse>(string method, TRequest data, CancellationToken cancellationToken = default)
         {
-            // TODO: Allow users to provide a custom Serializer.
-            var serializer = new JsonSerializer();
-            var jsonPayload = JsonConvert.SerializeObject(data);
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync<TRequest>(stream, data);
+            await stream.FlushAsync();
+            var jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
-
-            using var streamReader = new StreamReader(response);
-            using var reader = new JsonTextReader(streamReader);
-            return serializer.Deserialize<T>(reader);
+            return await JsonSerializer.DeserializeAsync<TResponse>(response);
         }
 
         /// <summary>
         /// Invokes the specified method for the actor with argument. The argument will be serialized as JSON.
         /// </summary>
+        /// <typeparam name="TRequest">The data type of the object that will be serialized.</typeparam>
         /// <param name="method">Actor method name.</param>
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public Task InvokeAsync(string method, object data, CancellationToken cancellationToken = default)
+        public async Task InvokeAsync<TRequest>(string method, TRequest data, CancellationToken cancellationToken = default)
         {
-            var jsonPayload = JsonConvert.SerializeObject(data);
-            return this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync<TRequest>(stream, data);
+            await stream.FlushAsync();
+            var jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
+            await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
         }
 
         /// <summary>
         /// Invokes the specified method for the actor with argument.
         /// </summary>
-        /// <typeparam name="T">Return type of method.</typeparam>
+        /// <typeparam name="TResponse">Return type of method.</typeparam>
         /// <param name="method">Actor method name.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public async Task<T> InvokeAsync<T>(string method, CancellationToken cancellationToken = default)
+        public async Task<TResponse> InvokeAsync<TResponse>(string method, CancellationToken cancellationToken = default)
         {
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
-            var serializer = new JsonSerializer();
-
-            using var streamReader = new StreamReader(response);
-            using var reader = new JsonTextReader(streamReader);
-            return serializer.Deserialize<T>(reader);
+            return await JsonSerializer.DeserializeAsync<TResponse>(response);
         }
 
         /// <summary>

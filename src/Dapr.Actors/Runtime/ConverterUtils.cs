@@ -11,6 +11,12 @@ namespace Dapr.Actors.Runtime
     {
         public static TimeSpan ConvertTimeSpanFromDaprFormat(string valueString)
         {
+            if (string.IsNullOrEmpty(valueString))
+            {
+                var never = TimeSpan.FromMilliseconds(-1);
+                return never;
+            }
+
             // TimeSpan is a string. Format returned by Dapr is: 1h4m5s4ms4us4ns
             //  acceptable values are: m, s, ms, us(micro), ns
             var spanOfValue = valueString.AsSpan();
@@ -28,7 +34,7 @@ namespace Dapr.Actors.Runtime
             var hoursSpan = spanOfValue.Slice(0, hIndex);
             var hours = int.Parse(hoursSpan);
             var days = hours / 24;
-            hours = hours % 24;
+            hours %= 24;
 
             var minutesSpan = spanOfValue.Slice(hIndex + 1, mIndex - (hIndex + 1));
             var minutes = int.Parse(minutesSpan);

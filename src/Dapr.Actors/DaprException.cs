@@ -13,21 +13,21 @@ namespace Dapr.Actors
     /// </summary>
     [Serializable]
     public class DaprException : Exception
-    {
+    {        
         /// <summary>
-        /// Initializes a new instance of the <see cref="DaprException"/> class with error code <see cref="DaprErrorCodes.UNKNOWN"/>.
+        /// Initializes a new instance of the <see cref="DaprException"/> class with error code 'UNKNOWN'"/>.
         /// </summary>
         public DaprException()
-            : this(DaprErrorCodes.UNKNOWN, false)
+            : this(Constants.Unknown, false)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DaprException"/> class with error code <see cref="DaprErrorCodes.UNKNOWN"/> and a specified error message.
+        /// Initializes a new instance of the <see cref="DaprException"/> class with error code 'UNKNOWN' and a specified error message.
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         public DaprException(string message)
-            : this(message, DaprErrorCodes.UNKNOWN, false)
+            : this(message, Constants.Unknown, false)
         {
         }
 
@@ -38,7 +38,7 @@ namespace Dapr.Actors
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
         public DaprException(string message, Exception innerException)
-            : this(message, innerException, DaprErrorCodes.UNKNOWN, false)
+            : this(message, innerException, Constants.Unknown, false)
         {
         }
 
@@ -47,7 +47,7 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">True, if the exception is to be treated as an transient exception.</param>
-        public DaprException(DaprErrorCodes errorCode, bool isTransient)
+        public DaprException(string errorCode, bool isTransient)
             : this(string.Empty, errorCode, isTransient)
         {
         }
@@ -58,7 +58,7 @@ namespace Dapr.Actors
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">Indicating if its an transient exception. </param>
-        public DaprException(string message, DaprErrorCodes errorCode, bool isTransient)
+        public DaprException(string message, string errorCode, bool isTransient)
             : this(message, null, errorCode, isTransient)
         {
         }
@@ -72,7 +72,7 @@ namespace Dapr.Actors
         /// <param name="inner">The exception that is the cause of the current exception or null if no inner exception is specified. The <see cref="System.Exception" /> class provides more details about the inner exception..</param>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">Indicating if its an transient exception. </param>
-        public DaprException(string message, Exception inner, DaprErrorCodes errorCode, bool isTransient)
+        public DaprException(string message, Exception inner, string errorCode, bool isTransient)
             : base(message, inner)
         {
             this.ErrorCode = errorCode;
@@ -89,7 +89,7 @@ namespace Dapr.Actors
         {
             if (info != null)
             {
-                this.ErrorCode = (DaprErrorCodes)info.GetValue(nameof(this.ErrorCode), typeof(DaprErrorCodes));
+                this.ErrorCode = (string)info.GetValue(nameof(this.ErrorCode), typeof(string));
                 this.IsTransient = info.GetBoolean(nameof(this.IsTransient));
             }
         }
@@ -98,7 +98,7 @@ namespace Dapr.Actors
         /// Gets the error code parameter.
         /// </summary>
         /// <value>The error code associated with the <see cref="DaprException" /> exception.</value>
-        public DaprErrorCodes ErrorCode { get; } = DaprErrorCodes.UNKNOWN;
+        public string ErrorCode { get; } = Constants.Unknown;
 
         /// <summary>
         /// Gets a value indicating whether gets exception is Transient and operation can be retried.

@@ -1,11 +1,12 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr.AspNetCore
 {
     using System;
+    using Dapr.AspNetCore.Resources;
     using Microsoft.AspNetCore.Mvc.ApplicationModels;
 
     internal class StateEntryApplicationModelProvider : IApplicationModelProvider
@@ -33,7 +34,7 @@ namespace Dapr
                     }
                     else if (IsStateEntryType(property.ParameterType))
                     {
-                        property.BindingInfo.BindingSource = new FromStateBindingSource(null);
+                        throw new InvalidOperationException(SR.ErrorStateStoreNameNotProvidedForStateEntry);
                     }
                 }
 
@@ -47,7 +48,7 @@ namespace Dapr
                         }
                         else if (IsStateEntryType(parameter.ParameterType))
                         {
-                            parameter.BindingInfo.BindingSource = new FromStateBindingSource(null);
+                            throw new InvalidOperationException(SR.ErrorStateStoreNameNotProvidedForStateEntry);
                         }
                     }
                 }
