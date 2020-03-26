@@ -19,6 +19,7 @@ namespace Dapr.Actors.AspNetCore
             {
                 var actorRouteBuilder = new RouteBuilder(app);
                 actorRouteBuilder.AddDaprConfigRoute();
+                actorRouteBuilder.AddDaprHealthzRoute();
                 actorRouteBuilder.AddActorActivationRoute();
                 actorRouteBuilder.AddActorDeactivationRoute();
                 actorRouteBuilder.AddActorMethodRoute();
