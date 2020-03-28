@@ -24,7 +24,7 @@ namespace Dapr.Actors.Runtime
         { }
 
         /// <summary>
-        /// Users should use this contstructor to override default values.
+        /// Users should use this constructor to override default values.
         /// </summary>
         /// <param name="actorIdleTimeout"></param>
         /// <param name="actorScanInterval"></param>

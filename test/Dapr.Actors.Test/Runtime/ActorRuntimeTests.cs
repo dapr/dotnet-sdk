@@ -7,7 +7,6 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
-    using System.Reflection.Metadata.Ecma335;
     using System.Text;
     using System.Text.Json;
     using Dapr.Actors;
@@ -100,8 +99,6 @@ namespace Dapr.Actors.Test
 
             element = root.GetProperty("drainBalancedActors");
             Assert.False(element.GetBoolean());
-
-            Console.WriteLine("done");
         }
 
         private sealed class TestActor : Actor, ITestActor
