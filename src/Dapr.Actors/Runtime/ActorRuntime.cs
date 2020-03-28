@@ -26,12 +26,15 @@ namespace Dapr.Actors.Runtime
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
 
+        private ActorConfig actorConfig;
+
         /// <remarks>
         /// WARNING: This type is expected to be accessed via the <see cref="Instance" /> singleton instance.
         /// This constructor is exposed only for unit testing purposes.
         /// </remarks>
         internal ActorRuntime()
         {
+            this.actorConfig = new ActorConfig();
         }
 
         /// <summary>
@@ -63,6 +66,26 @@ namespace Dapr.Actors.Runtime
 
             // Create ActorManagers, override existing entry if registered again.
             this.actorManagers[actorTypeInfo.ActorTypeName] = new ActorManager(actorService);
+            this.actorConfig.RegisteredActorTypes.Add(actorTypeInfo.ActorTypeName);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public void UseActorConfig(ActorConfig config)
+        {
+            ArgumentVerifier.ThrowIfNull(config, nameof(config));
+
+            // copy fields other than RegisteredActorTypes
+            this.actorConfig.ActorIdleTimeout = config.ActorIdleTimeout;
+            this.actorConfig.ActorScanInterval = config.ActorScanInterval;
+            this.actorConfig.DrainOngoingCallTimeout = config.DrainOngoingCallTimeout;
+            this.actorConfig.DrainBalancedActors = config.DrainBalancedActors;
+        }
+
+        internal Task SerializeActorConfigAsync(System.Buffers.IBufferWriter<byte> output)
+        {
+            return this.actorConfig.SerializeAsync(output);
         }
 
         /// <summary>
