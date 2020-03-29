@@ -71,12 +71,11 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        ///  Usees options for configuring a Grpc.Net.Client.GrpcChannel.
-        ///  Used by UnitTests to provide a HttpClient for testing.
+        /// Usees options for configuring a Grpc.Net.Client.GrpcChannel.
         /// </summary>
         /// <param name="gRPCChannelOptions"></param>
         /// <returns></returns>
-        internal DaprClientBuilder UseGrpcChannelOptions(GrpcChannelOptions gRPCChannelOptions)
+        public DaprClientBuilder UseGrpcChannelOptions(GrpcChannelOptions gRPCChannelOptions)
         {
             this.gRPCChannelOptions = gRPCChannelOptions;
             return this;
