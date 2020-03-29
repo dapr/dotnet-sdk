@@ -8,6 +8,7 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -26,7 +27,7 @@ namespace Dapr.Actors.Runtime
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
 
-        private ActorConfig actorConfig;
+        private ActorSettings actorSettings;
 
         /// <remarks>
         /// WARNING: This type is expected to be accessed via the <see cref="Instance" /> singleton instance.
@@ -34,7 +35,7 @@ namespace Dapr.Actors.Runtime
         /// </remarks>
         internal ActorRuntime()
         {
-            this.actorConfig = new ActorConfig();
+            this.actorSettings = new ActorSettings();
         }
 
         /// <summary>
@@ -66,26 +67,41 @@ namespace Dapr.Actors.Runtime
 
             // Create ActorManagers, override existing entry if registered again.
             this.actorManagers[actorTypeInfo.ActorTypeName] = new ActorManager(actorService);
-            this.actorConfig.RegisteredActorTypes.Add(actorTypeInfo.ActorTypeName);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        public void UseActorConfig(ActorConfig config)
+        public void UseActorSettings(ActorSettings settings)
         {
-            ArgumentVerifier.ThrowIfNull(config, nameof(config));
+            ArgumentVerifier.ThrowIfNull(settings, nameof(settings));
 
-            // copy fields other than RegisteredActorTypes
-            this.actorConfig.ActorIdleTimeout = config.ActorIdleTimeout;
-            this.actorConfig.ActorScanInterval = config.ActorScanInterval;
-            this.actorConfig.DrainOngoingCallTimeout = config.DrainOngoingCallTimeout;
-            this.actorConfig.DrainBalancedActors = config.DrainBalancedActors;
+            this.actorSettings = new ActorSettings(
+                settings.ActorIdleTimeout,
+                settings.ActorScanInterval,
+                settings.DrainOngoingCallTimeout,
+                settings.DrainRebalancedActors);
         }
 
-        internal Task SerializeActorConfigAsync(System.Buffers.IBufferWriter<byte> output)
+        internal Task SerializeActorSettingsAsync(System.Buffers.IBufferWriter<byte> output)
         {
-            return this.actorConfig.SerializeAsync(output);
+            using Utf8JsonWriter writer = new Utf8JsonWriter(output);
+            writer.WriteStartObject();
+
+            writer.WritePropertyName("entities");
+            writer.WriteStartArray();
+
+            foreach (var actorType in this.RegisteredActorTypes)
+            {
+                writer.WriteStringValue(actorType);
+            }
+
+            writer.WriteEndArray();
+
+            this.actorSettings.Serialize(output, writer);
+
+            writer.WriteEndObject();
+            return writer.FlushAsync();
         }
 
         /// <summary>

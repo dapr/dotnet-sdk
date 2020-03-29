@@ -50,27 +50,27 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public void TestActorConfig()
+        public void TestActorSettings()
         {
             var actorType = typeof(TestActor);
             var actorRuntime = new ActorRuntime();
 
             Assert.Empty(actorRuntime.RegisteredActorTypes);
 
-            ActorConfig actorConfig = new ActorConfig(
+            ActorSettings actorSettings = new ActorSettings(
                 actorIdleTimeout: TimeSpan.FromSeconds(30),
                 actorScanInterval: TimeSpan.FromSeconds(45),
                 drainOngoingCallTimeout: TimeSpan.FromSeconds(55),
-                drainBalancedActors: false);
+                drainRebalancedActors: true);
 
-            actorRuntime.UseActorConfig(actorConfig);
+            actorRuntime.UseActorSettings(actorSettings);
 
             actorRuntime.RegisterActor<TestActor>();
 
             Assert.Contains(actorType.Name, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
 
             ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
-            actorRuntime.SerializeActorConfigAsync(writer).GetAwaiter().GetResult();
+            actorRuntime.SerializeActorSettingsAsync(writer).GetAwaiter().GetResult();
 
             // read back the serialized json
             var array = writer.WrittenSpan.ToArray();
@@ -97,8 +97,8 @@ namespace Dapr.Actors.Test
             element = root.GetProperty("drainOngoingCallTimeout");
             Assert.Equal(TimeSpan.FromSeconds(55), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
 
-            element = root.GetProperty("drainBalancedActors");
-            Assert.False(element.GetBoolean());
+            element = root.GetProperty("drainRebalancedActors");
+            Assert.True(element.GetBoolean());
         }
 
         private sealed class TestActor : Actor, ITestActor
