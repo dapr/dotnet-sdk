@@ -70,7 +70,7 @@ namespace Dapr.Actors.Test
             Assert.Contains(actorType.Name, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
 
             ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
-            actorRuntime.SerializeActorSettingsAsync(writer).GetAwaiter().GetResult();
+            actorRuntime.SerializeSettingsAndRegisteredTypes(writer).GetAwaiter().GetResult();
 
             // read back the serialized json
             var array = writer.WrittenSpan.ToArray();

@@ -35,7 +35,6 @@ namespace Dapr.Actors.Runtime
         /// </remarks>
         internal ActorRuntime()
         {
-            this.actorSettings = new ActorSettings();
         }
 
         /// <summary>
@@ -83,7 +82,7 @@ namespace Dapr.Actors.Runtime
                 settings.DrainRebalancedActors);
         }
 
-        internal Task SerializeActorSettingsAsync(System.Buffers.IBufferWriter<byte> output)
+        internal Task SerializeSettingsAndRegisteredTypes(System.Buffers.IBufferWriter<byte> output)
         {
             using Utf8JsonWriter writer = new Utf8JsonWriter(output);
             writer.WriteStartObject();
@@ -98,7 +97,10 @@ namespace Dapr.Actors.Runtime
 
             writer.WriteEndArray();
 
-            this.actorSettings.Serialize(output, writer);
+            if (this.actorSettings != null)
+            {
+                this.actorSettings.Serialize(output, writer);
+            }
 
             writer.WriteEndObject();
             return writer.FlushAsync();

@@ -16,7 +16,7 @@ namespace Dapr.Actors.AspNetCore
         {
             routeBuilder.MapGet("dapr/config", async context =>
             {
-                await ActorRuntime.Instance.SerializeActorSettingsAsync(context.Response.BodyWriter);
+                await ActorRuntime.Instance.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
             });
         }
 
