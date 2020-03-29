@@ -6,10 +6,7 @@
 namespace Dapr.Client
 {
     using System;
-    using System.Net.Http;
     using System.Text.Json;
-    using System.Threading.Tasks;
-    using Grpc.Core;
     using Grpc.Net.Client;
 
     /// <summary>
@@ -68,29 +65,8 @@ namespace Dapr.Client
                 // Set correct switch to make insecure gRPC service calls. This switch must be set before creating the GrpcChannel.
                 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             }
-            else
-            {
-                // Workaround to allow with mTLS enabled Dapr grpc endpoint. The behavior will be fixed in 0.6.0 Dapr runtime.
-                if (this.gRPCChannelOptions == null)
-                {
-                    var httpClientHandler = new HttpClientHandler();
-                 
-                    // validate server cert.
-                    httpClientHandler.ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) =>
-                    {
-                        return true;
-                    };
 
-                    var httpClient = new HttpClient(httpClientHandler);
-                    this.gRPCChannelOptions = new GrpcChannelOptions
-                    {
-                        HttpClient = httpClient,
-                        DisposeHttpClient = true
-                    };
-                }
-            }
-            
-            var channel = GrpcChannel.ForAddress(this.daprEndpoint, this.gRPCChannelOptions ?? new GrpcChannelOptions());
+            var channel = GrpcChannel.ForAddress(this.daprEndpoint, this.gRPCChannelOptions ?? new GrpcChannelOptions());            
             return new DaprClientGrpc(channel, this.jsonSerializerOptions);
         }
 
