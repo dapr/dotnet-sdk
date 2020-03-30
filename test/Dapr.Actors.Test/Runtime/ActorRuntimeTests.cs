@@ -59,10 +59,10 @@ namespace Dapr.Actors.Test
 
             actorRuntime.ConfigureActorSettings(a =>
             {
-                a.SetActorIdleTimeout(TimeSpan.FromSeconds(33));
-                a.SetActorScanInterval(TimeSpan.FromSeconds(44));
-                a.SetDrainOngoingCallTimeout(TimeSpan.FromSeconds(55));
-                a.SetDrainRebalancedActors(true);
+                a.ActorIdleTimeout = TimeSpan.FromSeconds(33);
+                a.ActorScanInterval = TimeSpan.FromSeconds(44);
+                a.DrainOngoingCallTimeout = TimeSpan.FromSeconds(55);
+                a.DrainRebalancedActors = true;
             });
 
             actorRuntime.RegisterActor<TestActor>();
