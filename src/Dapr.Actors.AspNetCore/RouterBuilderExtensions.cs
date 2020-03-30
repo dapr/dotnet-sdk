@@ -6,9 +6,6 @@
 namespace Dapr.Actors.AspNetCore
 {
     using System;
-    using System.Buffers;
-    using System.Text.Json;
-    using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
@@ -19,7 +16,7 @@ namespace Dapr.Actors.AspNetCore
         {
             routeBuilder.MapGet("dapr/config", async context =>
             {
-                await WriteSupportedActorTypesAsJsonAsync(context.Response.BodyWriter);
+                await ActorRuntime.Instance.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
             });
         }
 
@@ -123,23 +120,6 @@ namespace Dapr.Actors.AspNetCore
                 // read dueTime, period and data from Request Body.
                 await ActorRuntime.FireTimerAsync(actorTypeName, actorId, timerName);
             });
-        }
-
-        private static async Task WriteSupportedActorTypesAsJsonAsync(IBufferWriter<byte> output)
-        {
-            using Utf8JsonWriter writer = new Utf8JsonWriter(output);
-            writer.WriteStartObject();
-            writer.WritePropertyName("entities");
-            writer.WriteStartArray();
-
-            foreach (var actorType in ActorRuntime.Instance.RegisteredActorTypes)
-            {
-                writer.WriteStringValue(actorType);
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            await writer.FlushAsync();
-        }
+        }     
     }
 }

@@ -8,6 +8,7 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -26,12 +27,15 @@ namespace Dapr.Actors.Runtime
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
 
+        private ActorSettings actorSettings;
+
         /// <remarks>
         /// WARNING: This type is expected to be accessed via the <see cref="Instance" /> singleton instance.
         /// This constructor is exposed only for unit testing purposes.
         /// </remarks>
         internal ActorRuntime()
         {
+            this.actorSettings = new ActorSettings();
         }
 
         /// <summary>
@@ -63,6 +67,55 @@ namespace Dapr.Actors.Runtime
 
             // Create ActorManagers, override existing entry if registered again.
             this.actorManagers[actorTypeInfo.ActorTypeName] = new ActorManager(actorService);
+        }
+
+        /// <summary>
+        /// Allows configuration of this app's actor configuration.
+        /// </summary>
+        /// <param name="actorSettingsDelegate">A delegate to edit the default ActorSettings object.</param>
+        public void ConfigureActorSettings(Action<ActorSettings> actorSettingsDelegate)
+        {
+            actorSettingsDelegate.Invoke(this.actorSettings);
+        }
+
+        internal Task SerializeSettingsAndRegisteredTypes(System.Buffers.IBufferWriter<byte> output)
+        {
+            using Utf8JsonWriter writer = new Utf8JsonWriter(output);
+            writer.WriteStartObject();
+
+            writer.WritePropertyName("entities");
+            writer.WriteStartArray();
+
+            foreach (var actorType in this.RegisteredActorTypes)
+            {
+                writer.WriteStringValue(actorType);
+            }
+
+            writer.WriteEndArray();
+
+            if (this.actorSettings.ActorIdleTimeout != null)
+            {
+                writer.WriteString("actorIdleTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.ActorIdleTimeout));
+            }
+
+            if (this.actorSettings.ActorScanInterval != null)
+            {
+                writer.WriteString("actorScanInterval", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.ActorScanInterval));
+            }
+
+            if (this.actorSettings.DrainOngoingCallTimeout != null)
+            {
+                writer.WriteString("drainOngoingCallTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.DrainOngoingCallTimeout));
+            }
+
+            // default is false, don't write it if default
+            if (this.actorSettings.DrainRebalancedActors != false)
+            {
+                writer.WriteBoolean("drainRebalancedActors", (this.actorSettings.DrainRebalancedActors));
+            }
+
+            writer.WriteEndObject();
+            return writer.FlushAsync();
         }
 
         /// <summary>
