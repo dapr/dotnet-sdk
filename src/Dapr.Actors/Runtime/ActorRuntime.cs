@@ -35,6 +35,7 @@ namespace Dapr.Actors.Runtime
         /// </remarks>
         internal ActorRuntime()
         {
+            this.actorSettings = new ActorSettings();
         }
 
         /// <summary>
@@ -69,17 +70,12 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
-        /// 
+        /// Allows configuration of this app's actor configuration.
         /// </summary>
-        public void UseActorSettings(ActorSettings settings)
+        /// <param name="actorSettingsDelegate">A delegate to edit the default ActorSettings object.</param>
+        public void ConfigureActorSettings(Action<ActorSettings> actorSettingsDelegate)
         {
-            ArgumentVerifier.ThrowIfNull(settings, nameof(settings));
-
-            this.actorSettings = new ActorSettings(
-                settings.ActorIdleTimeout,
-                settings.ActorScanInterval,
-                settings.DrainOngoingCallTimeout,
-                settings.DrainRebalancedActors);
+            actorSettingsDelegate.Invoke(this.actorSettings);
         }
 
         internal Task SerializeSettingsAndRegisteredTypes(System.Buffers.IBufferWriter<byte> output)
@@ -97,9 +93,25 @@ namespace Dapr.Actors.Runtime
 
             writer.WriteEndArray();
 
-            if (this.actorSettings != null)
+            if (this.actorSettings.ActorIdleTimeout != null)
             {
-                this.actorSettings.Serialize(output, writer);
+                writer.WriteString("actorIdleTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.ActorIdleTimeout));
+            }
+
+            if (this.actorSettings.ActorScanInterval != null)
+            {
+                writer.WriteString("actorScanInterval", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.ActorScanInterval));
+            }
+
+            if (this.actorSettings.DrainOngoingCallTimeout != null)
+            {
+                writer.WriteString("drainOngoingCallTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.DrainOngoingCallTimeout));
+            }
+
+            // default is false, don't write it if default
+            if (this.actorSettings.DrainRebalancedActors != false)
+            {
+                writer.WriteBoolean("drainRebalancedActors", (this.actorSettings.DrainRebalancedActors));
             }
 
             writer.WriteEndObject();

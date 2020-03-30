@@ -57,13 +57,13 @@ namespace Dapr.Actors.Test
 
             Assert.Empty(actorRuntime.RegisteredActorTypes);
 
-            ActorSettings actorSettings = new ActorSettings(
-                actorIdleTimeout: TimeSpan.FromSeconds(30),
-                actorScanInterval: TimeSpan.FromSeconds(45),
-                drainOngoingCallTimeout: TimeSpan.FromSeconds(55),
-                drainRebalancedActors: true);
-
-            actorRuntime.UseActorSettings(actorSettings);
+            actorRuntime.ConfigureActorSettings(a =>
+            {
+                a.SetActorIdleTimeout(TimeSpan.FromSeconds(33));
+                a.SetActorScanInterval(TimeSpan.FromSeconds(44));
+                a.SetDrainOngoingCallTimeout(TimeSpan.FromSeconds(55));
+                a.SetDrainRebalancedActors(true);
+            });
 
             actorRuntime.RegisterActor<TestActor>();
 
@@ -89,10 +89,10 @@ namespace Dapr.Actors.Test
 
             // validate the other properties have expected values
             element = root.GetProperty("actorIdleTimeout");
-            Assert.Equal(TimeSpan.FromSeconds(30), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+            Assert.Equal(TimeSpan.FromSeconds(33), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
 
             element = root.GetProperty("actorScanInterval");
-            Assert.Equal(TimeSpan.FromSeconds(45), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+            Assert.Equal(TimeSpan.FromSeconds(44), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
 
             element = root.GetProperty("drainOngoingCallTimeout");
             Assert.Equal(TimeSpan.FromSeconds(55), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
