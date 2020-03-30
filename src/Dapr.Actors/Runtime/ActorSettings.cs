@@ -107,29 +107,5 @@ namespace Dapr.Actors.Runtime
         {
             this.DrainRebalancedActors = drainRebalancedActors;
         }
-
-        internal void Serialize(System.Buffers.IBufferWriter<byte> output, Utf8JsonWriter writer)
-        {
-            if (this.ActorIdleTimeout != null)
-            {
-                writer.WriteString("actorIdleTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.ActorIdleTimeout));
-            }
-
-            if (this.ActorScanInterval != null)
-            {
-                writer.WriteString("actorScanInterval", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.ActorScanInterval));
-            }
-
-            if (this.DrainOngoingCallTimeout != null)
-            {
-                writer.WriteString("drainOngoingCallTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DrainOngoingCallTimeout));
-            }
-
-            // default is false, don't write it if default
-            if (this.DrainRebalancedActors != false)
-            {
-                writer.WriteBoolean("drainRebalancedActors", (this.DrainRebalancedActors));
-            }
-        }
     }
 }
