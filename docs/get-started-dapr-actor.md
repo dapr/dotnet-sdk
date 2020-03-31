@@ -288,6 +288,33 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
                 .UseUrls($"http://localhost:{AppChannelHttpPort}/");
 ```
 
+### **Optional** - Override Default Actor Settings
+
+Actor Settings are per app.  To override the settings described [here](https://github.com/dapr/docs/blob/master/reference/api/actors_api.md#dapr-calling-to-user-service-code) use the `ConfigureActorSettings()` API.
+
+The following code extends the previous section to do this.  Please note the values below are an **example** only.
+
+```csharp
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+            WebHost.CreateDefaultBuilder(args)
+                .UseStartup<Startup>()
+                .UseActors(actorRuntime =>
+                {
+                    actorRuntime.ConfigureActorSettings(a =>
+                    {
+                        a.ActorIdleTimeout = TimeSpan.FromMinutes(70);
+                        a.ActorScanInterval = TimeSpan.FromSeconds(35);
+                        a.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
+                        a.DrainRebalancedActors = true;
+                    });
+
+                    // Register MyActor actor type
+                    actorRuntime.RegisterActor<MyActor>();
+                }
+        
+```
+
+
 ### Update Startup.cs
 
 ```csharp
