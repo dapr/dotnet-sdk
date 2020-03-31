@@ -292,7 +292,7 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
 
 Actor Settings are per app.  To override the settings described [here](https://github.com/dapr/docs/blob/master/reference/api/actors_api.md#dapr-calling-to-user-service-code) use the `ConfigureActorSettings()` API.
 
-The following code extends the previous section to do this.  Please note the values below are an example only.
+The following code extends the previous section to do this.  Please note the values below are an **example** only.
 
 ```csharp
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
