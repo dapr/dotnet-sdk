@@ -101,16 +101,19 @@ namespace Dapr.Actors.Test
         /// <summary>
         /// Throw exception if id is null.
         /// </summary>
-        [Fact]
-        public void Initialize_New_ActorId_Object_With_Null_Id()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public void Initialize_New_ActorId_Object_With_Null_Id(string id)
         {
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<ArgumentException>(() =>
             {
-                ActorId actorId = new ActorId(null);
+                ActorId actorId = new ActorId(id);
             });
         }
 
         [Theory]
+        [InlineData("   ")]
         [InlineData("one")]
         [InlineData("123")]
         public void Get_Id(string id)
@@ -120,6 +123,7 @@ namespace Dapr.Actors.Test
         }
 
         [Theory]
+        [InlineData("   ")]
         [InlineData("one")]
         [InlineData("123")]
         public void Verify_ToString(string id)
