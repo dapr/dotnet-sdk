@@ -24,9 +24,9 @@ namespace Dapr.Actors
         /// <param name="id">Value for actor id.</param>
         public ActorId(string id)
         {
-            if (string.IsNullOrEmpty(id))
+            if (string.IsNullOrWhiteSpace(id))
             {
-                throw new ArgumentException("The value cannot be null or empty", nameof(id));
+                throw new ArgumentException("The value cannot be null, empty or white spaces.", nameof(id));
             }
             this.stringId = id;
         }

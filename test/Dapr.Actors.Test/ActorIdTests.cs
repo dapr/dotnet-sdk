@@ -104,7 +104,8 @@ namespace Dapr.Actors.Test
         [Theory]
         [InlineData(null)]
         [InlineData("")]
-        public void Initialize_New_ActorId_Object_With_Null_Id(string id)
+        [InlineData("   ")]
+        public void Initialize_New_ActorId_Object_With_Null_Or_Whitespace_Id(string id)
         {
             Assert.Throws<ArgumentException>(() =>
             {
@@ -113,7 +114,6 @@ namespace Dapr.Actors.Test
         }
 
         [Theory]
-        [InlineData("   ")]
         [InlineData("one")]
         [InlineData("123")]
         public void Get_Id(string id)
@@ -123,7 +123,6 @@ namespace Dapr.Actors.Test
         }
 
         [Theory]
-        [InlineData("   ")]
         [InlineData("one")]
         [InlineData("123")]
         public void Verify_ToString(string id)
