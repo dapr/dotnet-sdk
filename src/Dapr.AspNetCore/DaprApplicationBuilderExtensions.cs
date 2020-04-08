@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -27,6 +27,24 @@ namespace Microsoft.AspNetCore.Builder
             }
 
             builder.UseMiddleware<CloudEventsMiddleware>();
+            return builder;
+        }
+
+
+        /// <summary>
+        /// Adds the cloud events middleware to the middleware pipeline. The cloud events middleware will unwrap
+        /// requests that use the cloud events structured format, allowing the event payload to be read directly.
+        /// </summary>
+        /// <param name="builder">An <see cref="IApplicationBuilder" />.</param>
+        /// <returns>The <see cref="IApplicationBuilder" />.</returns>
+        public static IApplicationBuilder DecodeFormURLToJson(this IApplicationBuilder builder)
+        {
+            if (builder is null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            builder.UseMiddleware<FormURLEncodedMiddleware>();
             return builder;
         }
     }

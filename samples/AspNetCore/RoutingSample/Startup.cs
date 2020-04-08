@@ -71,6 +71,7 @@ namespace RoutingSample
             app.UseRouting();
 
             app.UseCloudEvents();
+            app.DecodeFormURLToJson();
 
             app.UseEndpoints(endpoints =>
             {
@@ -102,6 +103,8 @@ namespace RoutingSample
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
+                System.Diagnostics.Debug.Print("after deserialization");
+                
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
