@@ -4,6 +4,11 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
+
+<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+  <DebugType>portable</DebugType>
+</PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
   </ItemGroup>

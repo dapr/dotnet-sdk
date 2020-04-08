@@ -17,6 +17,10 @@
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
   </ItemGroup>
 
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+  <DebugType>portable</DebugType>
+</PropertyGroup>
+
   <ItemGroup>
     <Compile Update="Resources\SR.Designer.cs">
       <DesignTime>True</DesignTime>
