@@ -7,6 +7,7 @@ namespace GrpcClient
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
 
@@ -25,7 +26,18 @@ namespace GrpcClient
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public static async Task Main(string[] args)
         {
+            bool a = true;
+
+            while (a)
+            {
+                Thread.Sleep(1000);
+            }
+
             var client = new DaprClientBuilder().Build();
+
+            await PublishDepositeEventToRoutingSampleAsync(client);
+
+            await InvokeMethodOnHttpServiceAsync(client);
 
             await PublishEventAsync(client);
 
@@ -42,6 +54,14 @@ namespace GrpcClient
             // This is commented out because it requires another app to be running.
             // await InvokeMethodOnHttpServiceAsync(client);
         }
+
+        internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
+        {
+            var eventData = new  { id = "17", amount = (decimal)10, };
+            await client.PublishEventAsync("deposit", eventData);
+            Console.WriteLine("Published deposit event!");
+        }
+
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
@@ -86,8 +106,23 @@ namespace GrpcClient
         /// <returns></returns>
         internal static async Task InvokeMethodOnHttpServiceAsync(DaprClient client)
         {
+            var data = new { id = "17", amount = (decimal)10, };
+
+            // Add the verb to metadata if the method is other than a POST
+            var metaData = new Dictionary<string, string>();
+            metaData.Add("http.verb", "POST");
+
+            // invokes a GET method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
+            await client.InvokeMethodAsync<object>("bank", "Withdraw", data, metaData);
+
+            Console.WriteLine("Completed");
+        }
+
+
+        internal static async Task InvokeWithdrawServiceAsync(DaprClient client)
+        {
             MyData data = new MyData() { Message = "mydata" };
-            
+
             // Add the verb to metadata if the method is other than a POST
             var metaData = new Dictionary<string, string>();
             metaData.Add("http.verb", "GET");
