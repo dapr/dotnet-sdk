@@ -34,10 +34,7 @@ namespace GrpcClient
             }
 
             var client = new DaprClientBuilder().Build();
-
-            await PublishDepositeEventToRoutingSampleAsync(client);
-
-            await InvokeMethodOnHttpServiceAsync(client);
+                     
 
             await PublishEventAsync(client);
 
@@ -50,9 +47,19 @@ namespace GrpcClient
             // Delete State
             await DeleteStateAsync(client);
 
+            // Inwoke deposit operation on RoutingSample service by publishing event.
+            await PublishDepositeEventToRoutingSampleAsync(client);
+
+            // Inwoke deposit operation on RoutingSample service by POST.
+            await InvokeWithdrawServiceOperationAsync(client);
+
+            // Inwoke deposit operation on RoutingSample service by GET.
+            await InvokeBalanceServiceOperationAsync(client);
+
             // This provides an example of how to invoke a method on another app that is listening on http.
             // This is commented out because it requires another app to be running.
             // await InvokeMethodOnHttpServiceAsync(client);
+
         }
 
         internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
@@ -98,13 +105,15 @@ namespace GrpcClient
 
 
         /// <summary>
-        /// This example shows how to invoke a method on a service listening on http.
-        /// In such a scenario, a key value pair of http.verb and the verb must be added to the metadata parameter.
-        /// By default, Dapr uses POST as the verb if not specified/
+        /// This example shows how to invoke a POST method on a service listening on http.
+        /// Example:  curl -X POST http://127.0.0.1:5000/deposit -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 120 }"
         /// </summary>
         /// <param name="client"></param>
+        /// <remarks>
+        /// Before invoking this method, please first run RoutingSample.
+        /// </remarks>
         /// <returns></returns>
-        internal static async Task InvokeMethodOnHttpServiceAsync(DaprClient client)
+        internal static async Task InvokeWithdrawServiceOperationAsync(DaprClient client)
         {
             var data = new { id = "17", amount = (decimal)10, };
 
@@ -112,24 +121,31 @@ namespace GrpcClient
             var metaData = new Dictionary<string, string>();
             metaData.Add("http.verb", "POST");
 
-            // invokes a GET method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
-            await client.InvokeMethodAsync<object>("bank", "Withdraw", data, metaData);
+            // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
+            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, metaData);
 
             Console.WriteLine("Completed");
         }
 
-
-        internal static async Task InvokeWithdrawServiceAsync(DaprClient client)
+        /// <summary>
+        /// This example shows how to invoke a GET method on a service listening on http.
+        /// Example:  curl -X GET http://127.0.0.1:5000/17
+        /// </summary>
+        /// <param name="client"></param>
+        /// <remarks>
+        /// Before invoking this method, please first run RoutingSample.
+        /// </remarks>
+        /// <returns></returns>
+        internal static async Task InvokeBalanceServiceOperationAsync(DaprClient client)
         {
-            MyData data = new MyData() { Message = "mydata" };
-
-            // Add the verb to metadata if the method is other than a POST
+           // Add the verb to metadata if the method is other than a POST
             var metaData = new Dictionary<string, string>();
             metaData.Add("http.verb", "GET");
 
-            // invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
-            string s = await client.InvokeMethodAsync<MyData, string>("nodeapp", "hello", data, metaData);
-            Console.WriteLine("received {0}", s);
+            // Invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
+            var res = await client.InvokeMethodAsync<object>("routing", "17", metaData);
+           
+            Console.WriteLine($"Received balance {res}");
         }
 
         /// <summary>
