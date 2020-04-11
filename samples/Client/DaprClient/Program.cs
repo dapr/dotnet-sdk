@@ -39,15 +39,18 @@ namespace GrpcClient
             // Delete State
             await DeleteStateAsync(client);
 
-            // Inwoke deposit operation on RoutingSample service by publishing event.
-            await PublishDepositeEventToRoutingSampleAsync(client);
+            #region Service Invoke - Required RoutingService
+            // This provides an example of how to invoke a method on another REST service that is listening on http.
+            // To use it run RoutingService in this solution.
+            // Invoke deposit operation on RoutingSample service by publishing event.
+            //await PublishDepositeEventToRoutingSampleAsync(client);
 
             // Invoke deposit operation on RoutingSample service by POST.
-            await InvokeWithdrawServiceOperationAsync(client);
+            //await InvokeWithdrawServiceOperationAsync(client);
 
-            // Inwoke deposit operation on RoutingSample service by GET.
-            await InvokeBalanceServiceOperationAsync(client);
-
+            // Invoke deposit operation on RoutingSample service by GET.
+            //await InvokeBalanceServiceOperationAsync(client);
+            #endregion
             // This provides an example of how to invoke a method on another app that is listening on http.
             // This is commented out because it requires another app to be running.
             // await InvokeMethodOnHttpServiceAsync(client);
