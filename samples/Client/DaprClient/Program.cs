@@ -26,15 +26,7 @@ namespace GrpcClient
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public static async Task Main(string[] args)
         {
-            bool a = true;
-
-            while (a)
-            {
-                Thread.Sleep(1000);
-            }
-
-            var client = new DaprClientBuilder().Build();
-                     
+            var client = new DaprClientBuilder().Build();                     
 
             await PublishEventAsync(client);
 
@@ -50,7 +42,7 @@ namespace GrpcClient
             // Inwoke deposit operation on RoutingSample service by publishing event.
             await PublishDepositeEventToRoutingSampleAsync(client);
 
-            // Inwoke deposit operation on RoutingSample service by POST.
+            // Invoke deposit operation on RoutingSample service by POST.
             await InvokeWithdrawServiceOperationAsync(client);
 
             // Inwoke deposit operation on RoutingSample service by GET.
