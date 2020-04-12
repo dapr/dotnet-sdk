@@ -15,6 +15,7 @@ namespace RoutingSample
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
+    using Twilio.AspNet.Common;
 
     /// <summary>
     /// Startup class.
@@ -53,6 +54,8 @@ namespace RoutingSample
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 PropertyNameCaseInsensitive = true,
             });
+
+            services.AddControllers();
         }
 
         /// <summary>
@@ -69,6 +72,7 @@ namespace RoutingSample
             }
 
             app.UseRouting();
+        
 
             app.UseCloudEvents();
             app.DecodeFormURLToJson();
@@ -80,7 +84,16 @@ namespace RoutingSample
                 endpoints.MapGet("{id}", Balance);
                 endpoints.MapPost("deposit", Deposit).WithTopic("deposit");
                 endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
+                endpoints.MapPost("twiliopostinjson", TwilioPost );
+
+                endpoints.MapControllers();
             });
+
+            async Task TwilioPost(HttpContext httpContext)
+            {
+                var twilioVoiceRequest = await JsonSerializer.DeserializeAsync<VoiceRequest>(httpContext.Request.Body);
+                var phone = twilioVoiceRequest.From;
+            }
 
             async Task Balance(HttpContext context)
             {

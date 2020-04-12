@@ -13,7 +13,6 @@ namespace Dapr
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.WebUtilities;
-
     internal class CloudEventsMiddleware
     {
         private const string ContentType = "application/cloudevents+json";
