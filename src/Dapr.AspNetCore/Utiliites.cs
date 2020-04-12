@@ -16,6 +16,15 @@ namespace Dapr.Utility
     /// </summary>
     public class DictionaryConverter : JsonConverter<Dictionary<string, object>>
     {
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public DictionaryConverter()
+        {
+            int x = 1;
+            x++;
+        }
         /// <summary>
         /// 
         /// </summary>
