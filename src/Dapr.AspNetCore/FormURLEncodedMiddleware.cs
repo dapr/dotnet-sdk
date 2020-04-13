@@ -20,22 +20,26 @@ namespace Dapr
     using System.Net.Http;
     using System.Linq;
     using System.Collections.Specialized;
-    
+    using System.Diagnostics;
+    using Microsoft.AspNetCore.Http.Extensions;
+    using Microsoft.AspNetCore.Mvc;
 
     internal class FormURLEncodedMiddleware
     {
-        private const string ContentType = "application/x-www-form-urlencoded";
+        private const string FormURLContentType = "application/x-www-form-urlencoded";
+        private const string HeaderFlagName = "FromFormEncodingToJson";
         private readonly RequestDelegate next;
         private static readonly HttpClient client = new HttpClient();
+        private readonly string FormFormControllerName = string.Empty;
 
-        public FormURLEncodedMiddleware(RequestDelegate next)
+        public FormURLEncodedMiddleware(RequestDelegate next, string options)
         {
             this.next = next;
+            if (string.IsNullOrWhiteSpace(options))
+                System.Diagnostics.Debugger.Break();
+            this.FormFormControllerName = options;
         }
 
-        //https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-converters-how-to
-        //[JsonConverter(typeof(DictionaryConverter))]
-        private Dictionary<string, object> FormKeyValuePairs { get; set; } = new Dictionary<string, object>();
 
         public Task InvokeAsync(HttpContext httpContext)
         {
@@ -53,7 +57,9 @@ namespace Dapr
             // The philosophy here is that we don't report an error for things we don't support, because
             // that would block someone from implementing their own support for it. We only report an error
             // when something we do support isn't correct.
-            if (this.MatchesContentType(httpContext, out var charSet)==false || httpContext.Request.Headers.Keys.Contains("TwilioURLConvert"))
+
+            //todo: really should see if the URI has the FromFormControllerName on the tail end, and then allow it to pass
+            if (this.MatchesContentType(httpContext, out var charSet) == false || httpContext.Request.Headers.Keys.Contains(HeaderFlagName))
             {
                 return this.next(httpContext);
             }
@@ -61,79 +67,54 @@ namespace Dapr
             return this.ProcessBodyAsync(httpContext, charSet);
         }
 
-public static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRequestMessage req)
-    {
-        HttpRequestMessage clone = new HttpRequestMessage(req.Method, req.RequestUri);
-
-        // Copy the request's content (via a MemoryStream) into the cloned object
-        var ms = new MemoryStream();
-        if (req.Content != null)
-        {
-            await req.Content.CopyToAsync(ms).ConfigureAwait(false);
-            ms.Position = 0;
-            clone.Content = new StreamContent(ms);
-
-            // Copy the content headers
-            if (req.Content.Headers != null)
-                foreach (var h in req.Content.Headers)
-                    clone.Content.Headers.Add(h.Key, h.Value);
-        }
-
-
-        clone.Version = req.Version;
-
-        foreach (KeyValuePair<string, object> prop in req.Properties)
-            clone.Properties.Add(prop);
-
-        foreach (KeyValuePair<string, IEnumerable<string>> header in req.Headers)
-            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
-
-        return clone;
-    }
-       
 
         private async Task ProcessBodyAsync(HttpContext httpContext, string charSet)
         {
-            // //copy headers to request
-             client.DefaultRequestHeaders.Accept.Clear();
-             client.DefaultRequestHeaders.Accept
-                 .Add(new MediaTypeWithQualityHeaderValue(ContentType));//ACCEPT header
-             client.BaseAddress = new Uri( httpContext.Request.Path.Value);
-
-            //var incomingHeaders  = httpContext.Request.Headers;
-            var outgoingrequest = new HttpRequestMessage()
-                {
-                    RequestUri = new Uri(client.BaseAddress,"TwilioPost"),
-                    Method = new HttpMethod(httpContext.Request.Method)
-                };
-                
-            // CopyHeaders(outgoingrequest, outgoingrequest.Headers, incomingHeaders);
-            
-            outgoingrequest.Content = new StreamContent(httpContext.Request.Body);
-
-             // Copy the content headers
-            if (httpContext.Request.Headers != null)
+            //ensure we set this only once
+            if (client.BaseAddress == null)
             {
-                foreach (var h in httpContext.Request.Headers)
-                {
-                    var KeyInHeader = h.Key;
-                    bool AlreadyExistsTest = false; ;
-                    try
-                    {
-                        AlreadyExistsTest = outgoingrequest.Content.Headers.Any(pKeyValuePair => pKeyValuePair.Key.Equals(h.Key)==false);
-                    }
-                    catch(Exception ex)
-                    {
-                        var whatthefuck = ex.Message;
-                    }
-                    if (AlreadyExistsTest == false)
-                        outgoingrequest.Content.Headers.Add(h.Key, h.Value.ToList());
-                }
+                // //copy headers to request
+                //client.DefaultRequestHeaders.Accept.Clear();
+                //client.DefaultRequestHeaders.Accept
+                //    .Add(new MediaTypeWithQualityHeaderValue(FormURLContentType));//ACCEPT header
+                client.BaseAddress = GetBaseURLFromContext(httpContext);
             }
 
-            outgoingrequest.Content.Headers.Add("TwilioURLConvert","True");
+            var outgoingrequest = new HttpRequestMessage()
+            {
+                RequestUri = new Uri(client.BaseAddress, FormFormControllerName),
+                Method = new HttpMethod(httpContext.Request.Method)
+            };
+
+            Debug.WriteLine($"Sending request to: {outgoingrequest.RequestUri}");
+            Debug.WriteLine($"Content-Type Accept Header:{client.DefaultRequestHeaders.Accept}");
+
+            //content must be created first to enable access to headers
+            outgoingrequest.Content = new StreamContent(httpContext.Request.Body);
+            outgoingrequest.Content.Headers.ContentType = new MediaTypeHeaderValue(FormURLContentType);
+            outgoingrequest.Content.Headers.ContentLength = httpContext.Request.Headers.ContentLength;
+
+
+            //// Copy the incoming headers to the outgoing request
+            //if (httpContext.Request.Headers != null)
+            //{
+            //    foreach (var h in httpContext.Request.Headers)
+            //    {
+            //        if (outgoingrequest.Content.Headers.Contains(h.Key) == false)
+            //           outgoingrequest.Content.Headers.Add(h.Key, h.Value.ToList());
+            //    }
+            //}
+
+            //send to Action on Controller that will convert FormURLEncoded to JSON using  the class defined in method signature
+            outgoingrequest.Content.Headers.Add(HeaderFlagName, "True");
+
             var response = await client.SendAsync(outgoingrequest);
-            var jsonResponse = await response.Content.ReadAsStringAsync();
+
+            string jsonResponse = string.Empty;
+            if (response.IsSuccessStatusCode)
+                jsonResponse = await response.Content.ReadAsStringAsync();
+            else
+                throw new Exception("Post to Twilio FormURL was not successful");
 
             Stream originalBody;
             Stream body;
@@ -156,6 +137,7 @@ public static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRe
                 httpContext.Request.Body = body;
                 httpContext.Request.ContentType = contentType;
 
+                Debug.WriteLine($"sending Json Response {jsonResponse}");
                 await this.next(httpContext);
             }
             finally
@@ -176,7 +158,7 @@ public static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRe
 
             // Handle cases where the content type includes additional parameters like charset.
             // Doing the string comparison up front so we can avoid allocation.
-            if (!httpContext.Request.ContentType.StartsWith(ContentType))
+            if (!httpContext.Request.ContentType.StartsWith(FormURLContentType))
             {
                 charSet = null;
                 return false;
@@ -188,7 +170,7 @@ public static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRe
                 return false;
             }
 
-            if (parsed.MediaType != ContentType)
+            if (parsed.MediaType != FormURLContentType)
             {
                 charSet = null;
                 return false;
@@ -197,5 +179,45 @@ public static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRe
             charSet = parsed.CharSet ?? "UTF-8";
             return true;
         }
+
+        public Uri GetBaseURLFromContext(HttpContext httpContext)
+        {
+            string AppBaseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}";
+
+            return new Uri(AppBaseUrl);
+
+        }
+
+        //todo: can this be change to handle the headers better?
+        ////httpRequestMessage is hold, and not HttpRequest which is new (.net core)
+        //private static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRequestMessage req)
+        //{
+        //    HttpRequestMessage clone = new HttpRequestMessage(req.Method, req.RequestUri);
+
+        //    // Copy the request's content (via a MemoryStream) into the cloned object
+        //    var ms = new MemoryStream();
+        //    if (req.Content != null)
+        //    {
+        //        await req.Content.CopyToAsync(ms).ConfigureAwait(false);
+        //        ms.Position = 0;
+        //        clone.Content = new StreamContent(ms);
+
+        //        // Copy the content headers
+        //        if (req.Content.Headers != null)
+        //            foreach (var h in req.Content.Headers)
+        //                clone.Content.Headers.Add(h.Key, h.Value);
+        //    }
+
+
+        //    clone.Version = req.Version;
+
+        //    foreach (KeyValuePair<string, object> prop in req.Properties)
+        //        clone.Properties.Add(prop);
+
+        //    foreach (KeyValuePair<string, IEnumerable<string>> header in req.Headers)
+        //        clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+
+        //    return clone;
+        //}
     }
 }
