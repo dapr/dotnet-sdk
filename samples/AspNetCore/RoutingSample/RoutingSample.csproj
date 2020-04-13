@@ -9,6 +9,11 @@
   <DebugType>portable</DebugType>
 </PropertyGroup>
 
+
+<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <NoWarn>1701;1702;CS8002</NoWarn>
+</PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
     <PackageReference Include="Twilio.AspNet.Core" Version="5.33.1" />

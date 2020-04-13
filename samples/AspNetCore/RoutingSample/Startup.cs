@@ -75,7 +75,7 @@ namespace RoutingSample
         
 
             app.UseCloudEvents();
-            app.DecodeFormURLToJson();
+            app.DecodeFormURLToJson("TwilioPost");
 
             app.UseEndpoints(endpoints =>
             {
@@ -84,12 +84,12 @@ namespace RoutingSample
                 endpoints.MapGet("{id}", Balance);
                 endpoints.MapPost("deposit", Deposit).WithTopic("deposit");
                 endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
-                endpoints.MapPost("twiliopostinjson", TwilioPost );
+                endpoints.MapPost("twiliopostinjson", twiliopostinjson);
 
                 endpoints.MapControllers();
             });
 
-            async Task TwilioPost(HttpContext httpContext)
+            async Task twiliopostinjson(HttpContext httpContext)
             {
                 var twilioVoiceRequest = await JsonSerializer.DeserializeAsync<VoiceRequest>(httpContext.Request.Body);
                 var phone = twilioVoiceRequest.From;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,7 +26,11 @@ namespace TestForControllers.Controllers
     [HttpPost]
     public string Post([FromForm] VoiceRequest voiceRequest)
     {
-      return JsonSerializer.Serialize(voiceRequest);
+            var x = this.HttpContext.Request.ContentType;
+            if (this.ModelState.IsValid)
+                return JsonSerializer.Serialize(voiceRequest);
+            else
+                return null;
     }
   }
 }
