@@ -5,6 +5,7 @@
 
 namespace Dapr.Actors.Client
 {
+    using System;
     using System.IO;
     using System.Text;
     using System.Text.Json;
@@ -57,6 +58,25 @@ namespace Dapr.Actors.Client
             where TActorInterface : IActor
         {
             return DefaultProxyFactory.CreateActorProxy<TActorInterface>(actorId, actorType);
+        }
+
+        /// <summary>
+        /// Creates a proxy to the actor object that implements an actor interface.
+        /// </summary>
+        /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
+        /// being sent to the actor with this ID.</param>
+        /// <param name="actorInterfaceType">
+        /// The actor interface type implemented by the remote actor object.
+        /// The returned proxy object will implement this interface.
+        /// </param>
+        /// <param name="actorType">
+        /// Type of actor implementation.
+        /// </param>
+        /// <returns>Proxy to the actor object.</returns>
+        public static object Create(ActorId actorId, Type actorInterfaceType, string actorType)
+        {
+            _ = actorInterfaceType as IActor ?? throw new ArgumentException("The interface must implement IActor.", nameof(actorInterfaceType));
+            return DefaultProxyFactory.CreateActorProxy(actorId, actorInterfaceType, actorType);
         }
 
         /// <summary>
