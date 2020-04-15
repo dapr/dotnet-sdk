@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="Twilio.AspNet.Core" Version="5.33.1" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
+    <ProjectReference Include="..\src\Dapr.Actors\Dapr.Actors.csproj" />
+  </ItemGroup>
+
+</Project>

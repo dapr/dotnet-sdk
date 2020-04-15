@@ -26,7 +26,6 @@ namespace TestForControllers.Controllers
     [HttpPost]
     public string Post([FromForm] VoiceRequest voiceRequest)
     {
-            var x = this.HttpContext.Request.ContentType;
             if (this.ModelState.IsValid)
                 return JsonSerializer.Serialize(voiceRequest);
             else

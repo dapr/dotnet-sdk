@@ -23,6 +23,7 @@ namespace Dapr
     using System.Diagnostics;
     using Microsoft.AspNetCore.Http.Extensions;
     using Microsoft.AspNetCore.Mvc;
+    using System.Security.Cryptography;
 
     internal class FormURLEncodedMiddleware
     {
@@ -59,7 +60,7 @@ namespace Dapr
             // when something we do support isn't correct.
 
             //todo: really should see if the URI has the FromFormControllerName on the tail end, and then allow it to pass
-            if (this.MatchesContentType(httpContext, out var charSet) == false || httpContext.Request.Headers.Keys.Contains(HeaderFlagName))
+            if (this.MatchesContentType(httpContext, out var charSet) == false || httpContext.Request.Headers.Keys.Contains(HeaderFlagName) || httpContext.Request.Method.ToLower() == "get")
             {
                 return this.next(httpContext);
             }
@@ -75,8 +76,8 @@ namespace Dapr
             {
                 // //copy headers to request
                 //client.DefaultRequestHeaders.Accept.Clear();
-                //client.DefaultRequestHeaders.Accept
-                //    .Add(new MediaTypeWithQualityHeaderValue(FormURLContentType));//ACCEPT header
+                client.DefaultRequestHeaders.Accept
+                    .Add(new MediaTypeWithQualityHeaderValue(FormURLContentType));//ACCEPT header
                 client.BaseAddress = GetBaseURLFromContext(httpContext);
             }
 
@@ -108,7 +109,17 @@ namespace Dapr
             //send to Action on Controller that will convert FormURLEncoded to JSON using  the class defined in method signature
             outgoingrequest.Content.Headers.Add(HeaderFlagName, "True");
 
-            var response = await client.SendAsync(outgoingrequest);
+            HttpResponseMessage response = null;
+
+            try
+            {
+                response = await client.SendAsync(outgoingrequest);
+            }
+            catch (Exception ex)
+            {
+                string exMsg = ex.Message;
+                throw;
+            }
 
             string jsonResponse = string.Empty;
             if (response.IsSuccessStatusCode)
@@ -139,6 +150,11 @@ namespace Dapr
 
                 Debug.WriteLine($"sending Json Response {jsonResponse}");
                 await this.next(httpContext);
+            }
+            catch (Exception ex)
+            {
+                var x = ex.Message;
+                throw;
             }
             finally
             {
@@ -180,16 +196,24 @@ namespace Dapr
             return true;
         }
 
+        //found here: https://www.hanselman.com/blog/DetectingThatANETCoreAppIsRunningInADockerContainerAndSkippableFactsInXUnit.aspx
+        private bool InDocker { get { return Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true"; } }
+
         public Uri GetBaseURLFromContext(HttpContext httpContext)
         {
-            string AppBaseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}";
-
+            string AppBaseUrl = string.Empty;
+            
+            if (InDocker)
+                AppBaseUrl = $"http://localhost";
+            else
+                AppBaseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}:32771{httpContext.Request.PathBase}";
+            
             return new Uri(AppBaseUrl);
 
         }
 
         //todo: can this be change to handle the headers better?
-        ////httpRequestMessage is hold, and not HttpRequest which is new (.net core)
+        //todo: httpRequestMessage is old, and not HttpRequest which is new (.net core)
         //private static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRequestMessage req)
         //{
         //    HttpRequestMessage clone = new HttpRequestMessage(req.Method, req.RequestUri);
