@@ -30,7 +30,7 @@ We recommend installing [Visual Studio 2019 v16.4 or later ](https://www.visuals
 Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio). To find a version of .NET Core that can be used with earlier versions of Visual Studio, see [.NET SDKs for Visual Studio](https://dotnet.microsoft.com/download/visual-studio-sdks).
 
 ### Solution Files
-The repo currently has 3 solution files:
+The repo currently has 4 solution files:
 - *all.sln*: This includes all the sdk product, test and samples project files.
 - *src/prod.sln*: This includes all the product project files.
 - *samples/samples.sln*: This includes all the sample projects files dependencies project files.
