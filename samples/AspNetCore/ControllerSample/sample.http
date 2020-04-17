@@ -1,0 +1,21 @@
+//Deposit Money
+
+POST http://127.0.0.1:5000/deposit
+Content-Type: application/json
+
+{ "id": "17", "amount": 12 }
+
+###
+
+//Withdraw Money
+
+POST http://127.0.0.1:5000/withdraw
+Content-Type: application/json
+
+{ "id": "17", "amount": 5 }
+
+###
+
+//View Balance
+
+GET http://127.0.0.1:5000/17
