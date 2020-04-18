@@ -51,9 +51,6 @@ namespace GrpcClient
             // Invoke deposit operation on RoutingSample service by GET.
             //await InvokeBalanceServiceOperationAsync(client);
             #endregion
-            // This provides an example of how to invoke a method on another app that is listening on http.
-            // This is commented out because it requires another app to be running.
-            // await InvokeMethodOnHttpServiceAsync(client);
 
         }
 
