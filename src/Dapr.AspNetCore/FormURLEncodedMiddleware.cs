@@ -206,8 +206,10 @@ namespace Dapr
             if (InDocker)
                 AppBaseUrl = $"http://localhost";
             else
-                AppBaseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}:32771{httpContext.Request.PathBase}";
-            
+                AppBaseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}";
+
+
+            AppBaseUrl = $"http://localhost:60022";
             return new Uri(AppBaseUrl);
 
         }

@@ -51,5 +51,23 @@ namespace Microsoft.AspNetCore.Builder
             builder.UseMiddleware<FormURLEncodedMiddleware>(options);
             return builder;
         }
+
+
+        /// <summary>
+        /// Adds the FromForm middleware to the middleware pipeline. The middleware will leverage a controller to convert
+        /// Form URL Encoded Posts into JSON.  Primary used to prepare payload against Actors
+        /// </summary>
+        /// <param name="builder">An <see cref="IApplicationBuilder" />.</param>
+        /// <returns>The <see cref="IApplicationBuilder" />.</returns>
+        public static IApplicationBuilder UseTwilioWebHooks(this IApplicationBuilder builder)
+        {
+            if (builder is null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            builder.UseMiddleware<TwilioWebHookMiddleware>();
+            return builder;
+        }
     }
 }
