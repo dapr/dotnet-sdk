@@ -32,6 +32,17 @@ On Windows:
  ```sh
  curl -X POST http://127.0.0.1:5000/deposit -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 12 }"
  ```
+
+Or, we can also do this using the Visual Studio Code [Rest Client Plugin](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
+
+[sample.http](sample.http)
+```http
+POST http://127.0.0.1:5000/deposit
+Content-Type: application/json
+
+{ "id": "17", "amount": 12 }
+```
+
 Output:
 ```txt
  {"id":"17","balance":12}
@@ -50,6 +61,17 @@ On Windows:
  ```sh
  curl -X POST http://127.0.0.1:5000/withdraw -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 10 }"
  ```
+
+or using the Visual Studio Code [Rest Client Plugin](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
+
+[sample.http](sample.http)
+```http
+POST http://127.0.0.1:5000/withdraw
+Content-Type: application/json
+
+{ "id": "17", "amount": 5 }
+```
+
  Output:
 ```txt
 {"id":"17","balance":2}
@@ -62,6 +84,14 @@ On Windows:
 ```sh
 curl http://127.0.0.1:5000/17
 ```
+
+or using the Visual Studio Code [Rest Client Plugin](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
+
+[sample.http](sample.http)
+```http
+GET http://127.0.0.1:5000/17
+```
+
 Output:
 ```txt
 {"id":"17","balance":2}
