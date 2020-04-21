@@ -77,11 +77,9 @@ namespace RoutingSample
             }
 
             app.UseRouting();
-
-
+            
             app.UseCloudEvents();
-            app.DecodeFormURLToJson("TwilioPost");
-            //app.UseActors();
+            app.UseTwilioWebHooks();
 
             app.UseEndpoints(endpoints =>
             {
