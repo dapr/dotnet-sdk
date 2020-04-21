@@ -14,7 +14,7 @@ namespace Dapr
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.WebUtilities;
-    internal class TwilioWebHookMiddleware 
+    internal class TwilioWebHookMiddleware
     {
         private const string ContentType = "application/x-www-form-urlencoded";
         private readonly RequestDelegate next;
