@@ -38,6 +38,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
             app.UseAuthorization();
 
+            app.UseTwilioWebHooks();
             app.UseCloudEvents();
 
             app.UseEndpoints(endpoints =>

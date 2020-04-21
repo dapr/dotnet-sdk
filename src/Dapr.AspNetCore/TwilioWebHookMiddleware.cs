@@ -17,7 +17,6 @@ namespace Dapr
     internal class TwilioWebHookMiddleware 
     {
         private const string ContentType = "application/x-www-form-urlencoded";
-        private const string HeaderFlagName = "FromFormEncodingToJson";
         private readonly RequestDelegate next;
 
         public TwilioWebHookMiddleware(RequestDelegate next)

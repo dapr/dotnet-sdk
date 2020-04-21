@@ -26,6 +26,12 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             return user; // echo back the user for testing
         }
 
+        [HttpPost("/formurlencoded")]
+        public ActionResult<FormURLEncodingPayload> FormURLEncodedWidget(FormURLEncodingPayload formURLEncodingPayload)
+        {
+            return formURLEncodingPayload; // echo back the user for testing
+        }
+
         [HttpPost("/controllerwithoutstateentry/{widget}")]
         public async Task AddOneWithoutStateEntry([FromServices] DaprClient state, [FromState("testStore")] Widget widget)
         {
@@ -46,5 +52,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             state.Value.Count++;
             await state.SaveAsync();
         }
+
+
+
     }
 }
