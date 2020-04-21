@@ -46,21 +46,19 @@ curl -X GET http://127.0.0.1:5000/17
 If you are developing the .NET client and want to invoke this operation via HTTP/S, you can also use *HttpClient* API.
 The **dapr** supports out-of-the-box invokation of the service operation via gRPC.
 To demonstrate this, take a look on the method *InvokeBalanceServiceOperationAsync*.
- ```c#
-        internal static async Task InvokeBalanceServiceOperationAsync(DaprClient client)
-        {
-           // Add the verb to metadata if the method is other than a POST
-            var metaData = new Dictionary<string, string>();
-            metaData.Add("http.verb", "GET");
+Services are typically invoked with the following code:
 
-            // Invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
-            var res = await client.InvokeMethodAsync<object>("routing", "17", metaData);
-        }   
- ```
+```c#
+var metaData = new Dictionary<string, string>();
+metaData.Add("http.verb", "GET");
 
+var res = await client.InvokeMethodAsync<object serviceName, "17", metadata);
+```
+In this example, the HttpGet method is onvoked on the service with name *serviceName*. This argument specifies the name of the service, which was used when in conjunction with *dapr run –app-id serviceName*.The *route* argument specifies the route of the service endpoint.
+For example, if your service is the Rest service, the route is typically dened by attribute *HttpPost(“route”)* or *HttpGet(“route”)*. Last argument is called metadata and it specifies GET operation in tis example.
 
 
-Second operation *withdraw* can be invoked by HTTP/S POST request, but also triggered as a *cloud event* by publishing the event to the topic with name 'withdraw'.
+Second service operation *withdraw* can be invoked by HTTP/S POST request, but also triggered as a *cloud event* by publishing the event to the topic with name 'withdraw'.
 To enable this, the operation is mapped as:
  ```c#
 endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
@@ -73,18 +71,13 @@ curl -X POST http://127.0.0.1:5000/withdraw -H "Content-Type: application/json" 
 
 
 The method *InvokeWithdrawServiceOperationAsync* demonstrates how to use DAPR .NET SDK to invoke a REST/POST operation via gRPC.
- ```c#
-        internal static async Task InvokeWithdrawServiceOperationAsync(DaprClient client)
-        {
-            var data = new { id = "17", amount = (decimal)10, };
 
-            // Add the verb to metadata if the method is other than a POST
-            var metaData = new Dictionary<string, string>();
+ ```c#        
+            ...
+
             metaData.Add("http.verb", "POST");
 
-            // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
-            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, metaData);
-        }
+            await client.InvokeMethodAsync<object>("routing", "Withdraw", new { id = "17", amount = (decimal)10 }, metaData);
  ```
 
 Because, the same operation subscribes events on the *withdraw* topic, it can be invoked by event:
@@ -102,12 +95,7 @@ You can also use a **dapr** cli to publish the event to invoke te operation *dep
 dapr publish -t deposit -p '{"id": "17", "deposit": 15 }'
  ``` 
 
-Following code-snipet demonstrates how to publish an event to the dapr runtime, which triggers the REST operation 'deposit'.
+The method *PublishDepositeEventToRoutingSampleAsync* demonstrates how to publish an event to the dapr runtime, which triggers the REST operation 'deposit'.
  ```c#
-        internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
-        {
-            var eventData = new  { id = "17", amount = (decimal)10, };
-            await client.PublishEventAsync("deposit", eventData);
-            Console.WriteLine("Published deposit event!");
-        }
+            await client.PublishEventAsync("deposit", new  { id = "17", amount = (decimal)10, });          
  ```
