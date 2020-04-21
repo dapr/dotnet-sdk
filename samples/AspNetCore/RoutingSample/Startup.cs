@@ -18,9 +18,6 @@ namespace RoutingSample
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
-    using Twilio.AspNet.Common;
-    using Twilio.AspNet.Core;
-    using Twilio.TwiML;
 
     /// <summary>
     /// Startup class.
@@ -88,35 +85,9 @@ namespace RoutingSample
                 endpoints.MapGet("{id}", Balance);
                 endpoints.MapPost("deposit", Deposit).WithTopic("deposit");
                 endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
-                endpoints.MapPost("twiliopostinjson", twiliopostinjson);
-
                 endpoints.MapControllers();
             });
 
-            async Task twiliopostinjson(HttpContext httpContext)
-            {
-                var voiceRequest = await JsonSerializer.DeserializeAsync<VoiceRequest>(httpContext.Request.Body);
-
-                //put call on hold
-                //pause this call... which will continue the ringback until we handle it via the event and modify a call in progress
-                var voiceResponse = new VoiceResponse().Pause(Convert.ToInt32(TimeSpan.FromMinutes(3).TotalSeconds)); //todo: PauseLength should be configured}}
-
-                var callIdentifier = voiceRequest.CallSid;
-                var fromNumber = voiceRequest.To;
-                //instanciate actor and pass control to them using Actor ID CallSID
-                //callsid must then send message to PhoneActorNumber from CallSidActor.... after it reminds itself and wakes up
-
-                if (voiceResponse == null)
-                {
-                    httpContext.Response.StatusCode = 500;
-                }
-                else
-                {
-                    httpContext.Response.ContentType = "application/xml";
-                    await httpContext.Response.WriteAsync(voiceResponse.ToString());
-                    System.Diagnostics.Debug.WriteLine(voiceResponse.ToString());
-                }
-            }
 
             async Task Balance(HttpContext context)
             {
@@ -185,12 +156,6 @@ namespace RoutingSample
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
             }
         }
-
-
-        //public static MemoryStream GenerateStreamFromString(string value)
-        //{
-        //    return new MemoryStream(Encoding.UTF8.GetBytes(value ?? ""));
-        //}
     }
 
 }

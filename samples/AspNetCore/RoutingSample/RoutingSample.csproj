@@ -16,7 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
-    <PackageReference Include="Twilio.AspNet.Core" Version="5.33.1" />
   </ItemGroup>
 
 </Project>
