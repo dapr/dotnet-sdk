@@ -38,8 +38,9 @@ Operation *balance* is a GET-operation mapped as (see startup.cs in the *Routing
  endpoints.MapGet("{id}", Balance);
  ```
 
-It can be invoked via HTTTP/S by using following url:
- ```
+It can be invoked via HTTTP/S by using following urls.
+On Windows, Linux, MacOS:
+ ```sh
 curl -X GET http://127.0.0.1:5000/17
  ```
 
@@ -65,7 +66,14 @@ endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
  ```
 and it can also be invoked (triggered) by following url:
 
- ``` 
+On Linux and MacOS:
+ ```sh
+curl -X POST http://127.0.0.1:5000/withdraw \
+        -H 'Content-Type: application/json' \
+        -d '{ "id": "17", "amount": 10 }'
+ ```
+On Windows:
+ ```sh
 curl -X POST http://127.0.0.1:5000/withdraw -H "Content-Type: application/json" -d "{ \"id\": \"17\", \"amount\": 1 }"
  ```
 
