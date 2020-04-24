@@ -57,12 +57,7 @@
                 widget.FieldA.Should().Be("stringInfoA");
                 widget.FieldB.Should().Be("stringInfoB");
                 widget.FieldC.Should().Be("stringInfoC");
-          
             }
         }
-
-       
-
-        
     }
 }

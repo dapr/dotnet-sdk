@@ -12,7 +12,10 @@ namespace Dapr
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Microsoft.AspNetCore.CookiePolicy;
+    using Microsoft.AspNetCore.DataProtection;
     using Microsoft.AspNetCore.Http;
+    using Microsoft.AspNetCore.Http.Extensions;
     using Microsoft.AspNetCore.WebUtilities;
     internal class TwilioWebHookMiddleware
     {
@@ -26,14 +29,8 @@ namespace Dapr
 
         public Task InvokeAsync(HttpContext httpContext)
         {
-            // This middleware unwraps any requests with a cloud events (JSON) content type
-            // and replaces the request body + request content type so that it can be read by a
-            // non-cloud-events-aware piece of code.
-            //
-            // This corresponds to cloud events in the *structured* format:
-            // https://github.com/cloudevents/spec/blob/master/http-transport-binding.md#13-content-modes
-            //
-            // For *binary* format, we don't have to do anything
+            // This middleware converts Form URL Encoded POST (e.g. Twilio, but can be used for any form url encoding) to JSON which
+            // the Actors are limited to ...
             //
             // We don't support batching.
             //
@@ -48,9 +45,8 @@ namespace Dapr
             return this.ProcessBodyAsync(httpContext, charSet);
         }
 
-        private async Task ProcessBodyAsync(HttpContext httpContext, string charSet) 
+        private async Task ProcessBodyAsync(HttpContext httpContext, string charSet)
         {
-            Console.WriteLine("Twilio Middle has successfully become involved!");
             string formURLParameters = string.Empty;
 
             using (StreamReader stream = new StreamReader(httpContext.Request.Body, Encoding.GetEncoding(charSet)))
@@ -73,16 +69,16 @@ namespace Dapr
                     return (object)pValue.Value.FirstOrDefault();
                 else
                     return (object)JsonSerializer.Serialize(pValue.Value, jsonOptions); ;
-              });
+            });
 
             var jsonFromFormInJson = JsonSerializer.Serialize(formEncodedKeyPairs, jsonOptions);
-          
+
             Stream originalBody;
             Stream body;
 
+
             string originalContentType;
             string contentType = "application/json";
-                      
 
             originalBody = httpContext.Request.Body;
             originalContentType = httpContext.Request.ContentType;
@@ -94,7 +90,7 @@ namespace Dapr
 
                 httpContext.Request.Body = body;
                 httpContext.Request.ContentType = contentType;
-
+                
                 await this.next(httpContext);
             }
             finally
