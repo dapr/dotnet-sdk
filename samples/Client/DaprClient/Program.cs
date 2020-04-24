@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace GrpcClient
+namespace DaprClient
 {
     using System;
     using System.Collections.Generic;
@@ -12,7 +12,7 @@ namespace GrpcClient
     using Dapr.Client;
 
     /// <summary>
-    /// gRPC CLient sample class.
+    /// Shows Dapr client calls.
     /// </summary>
     public class Program
     {
