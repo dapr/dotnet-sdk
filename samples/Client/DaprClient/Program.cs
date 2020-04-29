@@ -6,8 +6,7 @@
 namespace DaprClient
 {
     using System;
-    using System.Collections.Generic;
-    using System.Threading;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client;
 
@@ -26,7 +25,15 @@ namespace DaprClient
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public static async Task Main(string[] args)
         {
-            var client = new DaprClientBuilder().Build();                     
+            var jsonOptions = new JsonSerializerOptions()
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true,
+            };
+
+            var client = new DaprClientBuilder()
+                .UseJsonSerializationOptions(jsonOptions)
+                .Build();
 
             await PublishEventAsync(client);
 
@@ -42,25 +49,27 @@ namespace DaprClient
             #region Service Invoke - Required RoutingService
             // This provides an example of how to invoke a method on another REST service that is listening on http.
             // To use it run RoutingService in this solution.
-            // Invoke deposit operation on RoutingSample service by publishing event.
-            //await PublishDepositeEventToRoutingSampleAsync(client);
+            // Invoke deposit operation on RoutingSample service by publishing event.            
+            await PublishDepositeEventToRoutingSampleAsync(client);
+                        
+            await Task.Delay(TimeSpan.FromSeconds(1));
 
-            // Invoke deposit operation on RoutingSample service by POST.
-            //await InvokeWithdrawServiceOperationAsync(client);
+            await DepositUsingServiceInvocation(client);
 
-            // Invoke deposit operation on RoutingSample service by GET.
-            //await InvokeBalanceServiceOperationAsync(client);
+            //Invoke deposit operation on RoutingSample service by POST.
+            await InvokeWithdrawServiceOperationAsync(client);
+
+            //Invoke deposit operation on RoutingSample service by GET.
+            await InvokeBalanceServiceOperationAsync(client);
             #endregion
-
         }
 
         internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
         {
-            var eventData = new  { id = "17", amount = (decimal)10, };
+            var eventData = new { Id = "17", Amount = (decimal)10, };
             await client.PublishEventAsync("deposit", eventData);
             Console.WriteLine("Published deposit event!");
         }
-
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
@@ -95,6 +104,19 @@ namespace DaprClient
             Console.WriteLine("Deleted State!");
         }
 
+        internal static async Task DepositUsingServiceInvocation(DaprClient client)
+        {
+            Console.WriteLine("DepositUsingServiceInvocation");
+            var data = new { id = "17", amount = (decimal)99 };
+
+            // Invokes a POST method named "depoit" that takes input of type "Transaction" as define in the RoutingSample.
+            Console.WriteLine("invoking");
+            //await client.InvokeMethodAsync<object>("routing", "deposit", data);
+            var a = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data);
+            Console.WriteLine("Returned: id:{0} | Balance:{1}", a.Id, a.Balance);
+
+            Console.WriteLine("Completed");
+        }
 
         /// <summary>
         /// This example shows how to invoke a POST method on a service listening on http.
@@ -107,14 +129,11 @@ namespace DaprClient
         /// <returns></returns>
         internal static async Task InvokeWithdrawServiceOperationAsync(DaprClient client)
         {
+            Console.WriteLine("Invoking withdraw");
             var data = new { id = "17", amount = (decimal)10, };
 
-            // Add the verb to metadata if the method is other than a POST
-            var metaData = new Dictionary<string, string>();
-            metaData.Add("http.verb", "POST");
-
-            // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
-            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, metaData);
+            // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.            
+            await client.InvokeMethodAsync<object>("routing", "Withdraw", data);
 
             Console.WriteLine("Completed");
         }
@@ -130,28 +149,12 @@ namespace DaprClient
         /// <returns></returns>
         internal static async Task InvokeBalanceServiceOperationAsync(DaprClient client)
         {
-           // Add the verb to metadata if the method is other than a POST
-            var metaData = new Dictionary<string, string>();
-            metaData.Add("http.verb", "GET");
+            Console.WriteLine("Invoking balance");
 
             // Invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
-            var res = await client.InvokeMethodAsync<object>("routing", "17", metaData);
-           
-            Console.WriteLine($"Received balance {res}");
-        }
+            var res = await client.InvokeMethodAsync<Account>("routing", "17", HTTPVerb.Get);
 
-        /// <summary>
-        /// This example shows how to invoke a method on a service listening on gRPC.
-        /// </summary>
-        /// <param name="client"></param>
-        /// <returns></returns>
-        internal static async Task InvokeMethodOnGrpcServiceAsync(DaprClient client)
-        {
-            MyData data = new MyData() { Message = "mydata" };
-
-            // invokes a method named "hello" that takes input of type "MyData" and returns a string.
-            string s = await client.InvokeMethodAsync<MyData, string>("nodeapp", "hello", data);
-            Console.WriteLine("received {0}", s);
+            Console.WriteLine($"Received balance {res.Balance}");
         }
 
         private class Widget
@@ -169,3 +172,4 @@ namespace DaprClient
         }
     }
 }
+

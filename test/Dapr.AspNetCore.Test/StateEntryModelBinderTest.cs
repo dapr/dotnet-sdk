@@ -15,6 +15,7 @@ namespace Dapr.AspNetCore.Test
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Autogen.Grpc;
+    using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
     using Google.Protobuf;
     using Google.Protobuf.WellKnownTypes;
@@ -69,7 +70,7 @@ namespace Dapr.AspNetCore.Test
 
             context.ValidationState.Count.Should().Be(1);
             context.ValidationState[context.Result.Model].SuppressValidation.Should().BeTrue();
-        }        
+        }
 
         [Fact]
         public async Task BindAsync_CanBindStateEntry()

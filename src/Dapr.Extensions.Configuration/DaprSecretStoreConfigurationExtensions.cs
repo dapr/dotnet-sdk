@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -28,7 +28,7 @@ namespace Dapr.Extensions.Configuration
             this IConfigurationBuilder configurationBuilder,
             string store,
             IEnumerable<DaprSecretDescriptor> secretDescriptors,
-            DaprClient client)
+            Dapr.Client.DaprClient client)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));

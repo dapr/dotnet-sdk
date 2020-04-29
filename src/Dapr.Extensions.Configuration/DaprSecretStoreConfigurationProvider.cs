@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -20,7 +20,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
 
         private readonly IEnumerable<DaprSecretDescriptor> secretDescriptors;
 
-        private readonly DaprClient client;
+        private readonly Dapr.Client.DaprClient client;
 
         /// <summary>
         /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
@@ -28,7 +28,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <param name="store">Dapr Secre Store name.</param>
         /// <param name="secretDescriptors">The secrets to retrieve.</param>
         /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(string store, IEnumerable<DaprSecretDescriptor> secretDescriptors, DaprClient client)
+        public DaprSecretStoreConfigurationProvider(string store, IEnumerable<DaprSecretDescriptor> secretDescriptors, Dapr.Client.DaprClient client)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));

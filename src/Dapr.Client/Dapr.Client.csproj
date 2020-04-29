@@ -1,21 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+        <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client" />
+        <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
+    </ItemGroup>
 
-  <!-- Additional Nuget package properties. -->
-  <PropertyGroup>
-    <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
-  </PropertyGroup>
-  <ItemGroup>
-    <Protobuf Include="Protos\dapr.proto" GrpcServices="Client" />
-    <Protobuf Include="Protos\daprclient.proto" GrpcServices="Client" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.11.4" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.27.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.27.0" PrivateAssets="All" />
-  </ItemGroup>  
-  
+    <!-- Additional Nuget package properties. -->
+    <PropertyGroup>
+        <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" Version="3.11.4" />
+        <PackageReference Include="Grpc.Net.Client" Version="2.27.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.27.0" PrivateAssets="All" />
+    </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Protos\" />
+    </ItemGroup>
+
 </Project>

@@ -10,6 +10,7 @@ namespace Dapr.Client.Test
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc;
+    using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
     using Grpc.Core;
     using Grpc.Net.Client;

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -27,7 +27,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <summary>
         /// Gets or sets the http client.
         /// </summary>
-        public DaprClient Client { get; set; }
+        public Dapr.Client.DaprClient Client { get; set; }
 
         /// <inheritdoc />
         public IConfigurationProvider Build(IConfigurationBuilder builder)
