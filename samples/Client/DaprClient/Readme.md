@@ -93,7 +93,7 @@ Because, the same operation subscribes events on the *withdraw* topic, it can be
 dapr publish -t withdraw -p '{"id": "17", "amount": 15 }'
 ``` 
 
-Operation *deposite* can be invoked by HTTP/S POST request and also triggered as a *cloud event* by publishing the event to the topic with name 'deposite'.
+Operation *deposit* can be invoked by HTTP/S POST request and also triggered as a *cloud event* by publishing the event to the topic with name 'deposit'.
 It is mapped as:
  ```c#
 endpoints.MapPost("deposit", Withdraw).WithTopic("deposit");
