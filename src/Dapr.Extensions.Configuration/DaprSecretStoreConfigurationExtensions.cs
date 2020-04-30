@@ -28,7 +28,7 @@ namespace Dapr.Extensions.Configuration
             this IConfigurationBuilder configurationBuilder,
             string store,
             IEnumerable<DaprSecretDescriptor> secretDescriptors,
-            Dapr.Client.DaprClient client)
+            DaprClient client)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));

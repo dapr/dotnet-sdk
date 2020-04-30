@@ -78,7 +78,7 @@ namespace RoutingSample
 
                 endpoints.MapGet("{id}", Balance);
                 endpoints.MapPost("deposit", Deposit).WithTopic("deposit");
-                endpoints.MapPost("Withdraw", Withdraw);
+                endpoints.MapPost("Withdraw", Withdraw).WithTopic("Withdraw");
             });
 
             async Task Balance(HttpContext context)
@@ -135,7 +135,6 @@ namespace RoutingSample
             {
                 Console.WriteLine("Enter Withdraw");
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
-
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
                 Console.WriteLine("Id is {0}", transaction.Id);
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);

@@ -27,7 +27,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <summary>
         /// Gets or sets the http client.
         /// </summary>
-        public Dapr.Client.DaprClient Client { get; set; }
+        public DaprClient Client { get; set; }
 
         /// <inheritdoc />
         public IConfigurationProvider Build(IConfigurationBuilder builder)

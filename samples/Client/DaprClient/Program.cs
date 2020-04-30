@@ -9,6 +9,7 @@ namespace DaprClient
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client;
+    using Dapr.Client.Http;
 
     /// <summary>
     /// Shows Dapr client calls.
@@ -50,17 +51,17 @@ namespace DaprClient
             // This provides an example of how to invoke a method on another REST service that is listening on http.
             // To use it run RoutingService in this solution.
             // Invoke deposit operation on RoutingSample service by publishing event.            
-            await PublishDepositeEventToRoutingSampleAsync(client);
+            //await PublishDepositeEventToRoutingSampleAsync(client);
                         
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            //await Task.Delay(TimeSpan.FromSeconds(1));
 
-            await DepositUsingServiceInvocation(client);
+            //await DepositUsingServiceInvocation(client);
 
             //Invoke deposit operation on RoutingSample service by POST.
-            await InvokeWithdrawServiceOperationAsync(client);
+            //await InvokeWithdrawServiceOperationAsync(client);
 
             //Invoke deposit operation on RoutingSample service by GET.
-            await InvokeBalanceServiceOperationAsync(client);
+            //await InvokeBalanceServiceOperationAsync(client);
             #endregion
         }
 
@@ -109,10 +110,15 @@ namespace DaprClient
             Console.WriteLine("DepositUsingServiceInvocation");
             var data = new { id = "17", amount = (decimal)99 };
 
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
+
             // Invokes a POST method named "depoit" that takes input of type "Transaction" as define in the RoutingSample.
             Console.WriteLine("invoking");
-            //await client.InvokeMethodAsync<object>("routing", "deposit", data);
-            var a = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data);
+
+            var a = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data, httpExtension);
             Console.WriteLine("Returned: id:{0} | Balance:{1}", a.Id, a.Balance);
 
             Console.WriteLine("Completed");
@@ -132,8 +138,13 @@ namespace DaprClient
             Console.WriteLine("Invoking withdraw");
             var data = new { id = "17", amount = (decimal)10, };
 
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
+
             // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.            
-            await client.InvokeMethodAsync<object>("routing", "Withdraw", data);
+            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, httpExtension);
 
             Console.WriteLine("Completed");
         }
@@ -152,7 +163,11 @@ namespace DaprClient
             Console.WriteLine("Invoking balance");
 
             // Invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
-            var res = await client.InvokeMethodAsync<Account>("routing", "17", HTTPVerb.Get);
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Get
+            };
+            var res = await client.InvokeMethodAsync<Account>("routing", "17", httpExtension);
 
             Console.WriteLine($"Received balance {res.Balance}");
         }
@@ -169,6 +184,14 @@ namespace DaprClient
             { }
 
             public String Message { get; set; }
+        }
+
+
+        internal class Account
+        {
+            public string Id { get; set; }
+
+            public decimal Balance { get; set; }
         }
     }
 }

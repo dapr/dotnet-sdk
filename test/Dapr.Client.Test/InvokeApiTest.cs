@@ -5,13 +5,12 @@
 
 namespace Dapr.Client.Test
 {
-    using System;
     using System.Collections.Generic;
     using System.Net;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using Dapr.Client.Autogen.Grpc;
     using Dapr.Client.Autogen.Grpc.v1;
+    using Dapr.Client.Http;
     using FluentAssertions;
     using Grpc.Core;
     using Grpc.Net.Client;
@@ -31,7 +30,14 @@ namespace Dapr.Client.Test
             var queryString = new Dictionary<string, string>();
             queryString.Add("key1", "value1");
             queryString.Add("key2", "value2");
-            var task = daprClient.InvokeMethodAsync<InvokedResponse>("app1", "mymethod", HTTPVerb.Post, queryString);
+
+            var httpExtension = new Http.HTTPExtension()
+            {
+                Verb = HTTPVerb.Post,
+                QueryString = queryString
+            };
+
+            var task = daprClient.InvokeMethodAsync<InvokedResponse>("app1", "mymethod", httpExtension);
 
             // Get Request and validate                     
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
@@ -40,13 +46,12 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("app1");
             envelope.Message.Method.Should().Be("mymethod");
 
-            envelope.Message.HttpExtension.Verb.Should().Be(HTTPExtension.Types.Verb.Post);
+            envelope.Message.HttpExtension.Verb.Should().Be(Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post);
             envelope.Message.HttpExtension.Querystring.Count.Should().Be(2);
             envelope.Message.HttpExtension.Querystring.ContainsKey("key1").Should().BeTrue();
             envelope.Message.HttpExtension.Querystring.ContainsKey("key2").Should().BeTrue();
             envelope.Message.HttpExtension.Querystring["key1"].Should().Be("value1");
             envelope.Message.HttpExtension.Querystring["key2"].Should().Be("value2");
-            Console.Write("done");
         }
 
         [Fact]
@@ -92,9 +97,8 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
 
-            DataWithContentType data = envelope.Message.Data.Unpack<DataWithContentType>();
-            string s = data.Body.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(s);
+            var json = envelope.Message.Data.Value.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
@@ -123,9 +127,8 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
 
-            DataWithContentType data = envelope.Message.Data.Unpack<DataWithContentType>();
-            string s = data.Body.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(s);
+            var json = envelope.Message.Data.Value.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
@@ -205,10 +208,8 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
 
-            DataWithContentType data = envelope.Message.Data.Unpack<DataWithContentType>();
-            string s = data.Body.ToStringUtf8();
-
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(s);
+            var json = envelope.Message.Data.Value.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
@@ -234,9 +235,8 @@ namespace Dapr.Client.Test
             var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
-            DataWithContentType data = envelope.Message.Data.Unpack<DataWithContentType>();
-            string s = data.Body.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(s);
+            var json = envelope.Message.Data.Value.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
@@ -267,11 +267,8 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
 
-            DataWithContentType data = envelope.Message.Data.Unpack<DataWithContentType>();
-            string s = data.Body.ToStringUtf8();
-
-            var t = JsonSerializer.Serialize(invokeRequest, jsonOptions);
-            t.Should().Be(s);
+            var json = envelope.Message.Data.Value.ToStringUtf8();
+            json.Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
         }
 
         [Fact]
@@ -296,11 +293,8 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
 
-            DataWithContentType data = envelope.Message.Data.Unpack<DataWithContentType>();
-            string s = data.Body.ToStringUtf8();
-
-            var t = JsonSerializer.Serialize(invokeRequest, jsonOptions);
-            t.Should().Be(s);
+            var json = envelope.Message.Data.Value.ToStringUtf8();
+            json.Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
 
             SendResponse(invokedResponse, entry, jsonOptions);
             var response = await task;
@@ -324,24 +318,27 @@ namespace Dapr.Client.Test
 
             Dictionary<string, string> queryString = new Dictionary<string, string>();
             queryString.Add("key1", "value1");
-            var task = daprClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest, HTTPVerb.Put, queryString);
+            var httpExtension = new Http.HTTPExtension()
+            {
+                Verb = HTTPVerb.Put,
+                QueryString = queryString
+            };
+
+            var task = daprClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest, httpExtension);
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
-            envelope.Message.HttpExtension.Verb.Should().Be(HTTPExtension.Types.Verb.Put);
+            envelope.Message.HttpExtension.Verb.Should().Be(Autogen.Grpc.v1.HTTPExtension.Types.Verb.Put);
             envelope.Message.HttpExtension.Querystring.Count.Should().Be(1);
             envelope.Message.HttpExtension.Querystring.ContainsKey("key1").Should().BeTrue();
             envelope.Message.HttpExtension.Querystring["key1"].Should().Be("value1");
 
 
-            DataWithContentType data = envelope.Message.Data.Unpack<DataWithContentType>();
-            string s = data.Body.ToStringUtf8();
-
-            var t = JsonSerializer.Serialize(invokeRequest, jsonOptions);
-            t.Should().Be(s);
+            var json = envelope.Message.Data.Value.ToStringUtf8();
+            json.Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
 
             SendResponse(invokedResponse, entry, jsonOptions);
             var response = await task;
@@ -351,8 +348,7 @@ namespace Dapr.Client.Test
 
         private async void SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
         {
-            var dataAny = DaprClientGrpc.WrapInDataWithContentTypeAndConvertToAny(data, options);
-
+            var dataAny = ProtobufUtils.ConvertToAnyAsync(data, options);
             var dataResponse = new InvokeResponse();
             dataResponse.Data = dataAny;
 
