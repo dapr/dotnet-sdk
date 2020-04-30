@@ -5,9 +5,9 @@
 
 namespace RoutingSample
 {
+    using System;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using Dapr;
     using Dapr.Client;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
@@ -83,15 +83,20 @@ namespace RoutingSample
 
             async Task Balance(HttpContext context)
             {
+                Console.WriteLine("Enter Balance");
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var id = (string)context.Request.RouteValues["id"];
+                Console.WriteLine("id is {0}", id);
                 var account = await client.GetStateAsync<Account>(StoreName, id);
                 if (account == null)
                 {
+                    Console.WriteLine("Account not found");
                     context.Response.StatusCode = 404;
                     return;
                 }
+
+                Console.WriteLine("Account balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
@@ -99,9 +104,12 @@ namespace RoutingSample
 
             async Task Deposit(HttpContext context)
             {
+                Console.WriteLine("Enter Deposit");
+                
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
+                Console.WriteLine("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
@@ -110,12 +118,14 @@ namespace RoutingSample
 
                 if (transaction.Amount < 0m)
                 {
+                    Console.WriteLine("Invalid amount");
                     context.Response.StatusCode = 400;
                     return;
                 }
 
                 account.Balance += transaction.Amount;
                 await client.SaveStateAsync(StoreName, transaction.Id, account);
+                Console.WriteLine("Balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
@@ -123,24 +133,28 @@ namespace RoutingSample
 
             async Task Withdraw(HttpContext context)
             {
+                Console.WriteLine("Enter Withdraw");
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
-
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
+                Console.WriteLine("Id is {0}", transaction.Id);
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
+                    Console.WriteLine("Account not found");
                     context.Response.StatusCode = 404;
                     return;
                 }
 
                 if (transaction.Amount < 0m)
                 {
+                    Console.WriteLine("Invalid amount");
                     context.Response.StatusCode = 400;
                     return;
                 }
 
                 account.Balance -= transaction.Amount;
                 await client.SaveStateAsync(StoreName, transaction.Id, account);
+                Console.WriteLine("Balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);

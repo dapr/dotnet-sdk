@@ -6,19 +6,11 @@
 namespace Dapr.AspNetCore.Test
 {
     using System;
-    using System.Buffers.Binary;
-    using System.IO;
     using System.Net;
-    using System.Net.Http;
-    using System.Net.Http.Headers;
-    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client;
-    using Dapr.Client.Autogen.Grpc;
+    using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
-    using Google.Protobuf;
-    using Google.Protobuf.WellKnownTypes;
-    using Grpc.Core;
     using Grpc.Net.Client;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
@@ -69,7 +61,7 @@ namespace Dapr.AspNetCore.Test
 
             context.ValidationState.Count.Should().Be(1);
             context.ValidationState[context.Result.Model].SuppressValidation.Should().BeTrue();
-        }        
+        }
 
         [Fact]
         public async Task BindAsync_CanBindStateEntry()
