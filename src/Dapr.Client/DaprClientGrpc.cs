@@ -113,7 +113,7 @@ namespace Dapr.Client
         public override async Task InvokeMethodAsync(
            string appId,
            string methodName,
-           Http.HTTPExtension httpExtension = null,
+           Http.HTTPExtension httpExtension = default,
            CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
@@ -126,7 +126,7 @@ namespace Dapr.Client
            string appId,
            string methodName,
            TRequest data,
-           Http.HTTPExtension httpExtension = null,
+           Http.HTTPExtension httpExtension = default,
            CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
@@ -144,7 +144,7 @@ namespace Dapr.Client
         public override async ValueTask<TResponse> InvokeMethodAsync<TResponse>(
            string appId,
            string methodName,
-           Http.HTTPExtension httpExtension = null,
+           Http.HTTPExtension httpExtension = default,
            CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
@@ -156,14 +156,14 @@ namespace Dapr.Client
                 return default;
             }
 
-            return ConvertFromDataWithContentType<TResponse>(response, this.jsonSerializerOptions);
+            return ConvertFromInvokeResponse<TResponse>(response, this.jsonSerializerOptions);
         }
 
         public override async ValueTask<TResponse> InvokeMethodAsync<TRequest, TResponse>(
             string appId,
             string methodName,
             TRequest data,
-            Http.HTTPExtension httpExtension = null,
+            Http.HTTPExtension httpExtension = default,
             CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
@@ -181,7 +181,7 @@ namespace Dapr.Client
                 return default;
             }
 
-            return ConvertFromDataWithContentType<TResponse>(response, this.jsonSerializerOptions);
+            return ConvertFromInvokeResponse<TResponse>(response, this.jsonSerializerOptions);
         }
 
         private async Task<InvokeResponse> MakeInvokeRequestAsync(
@@ -575,7 +575,7 @@ namespace Dapr.Client
             return any;
         }
 
-        private static T ConvertFromDataWithContentType<T>(InvokeResponse response, JsonSerializerOptions options = null)
+        private static T ConvertFromInvokeResponse<T>(InvokeResponse response, JsonSerializerOptions options = null)
         {
             var responseData = response.Data.Value.ToStringUtf8();
             return JsonSerializer.Deserialize<T>(responseData, options);

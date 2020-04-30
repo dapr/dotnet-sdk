@@ -78,7 +78,7 @@ namespace RoutingSample
 
                 endpoints.MapGet("{id}", Balance);
                 endpoints.MapPost("deposit", Deposit).WithTopic("deposit");
-                endpoints.MapPost("Withdraw", Withdraw).WithTopic("Withdraw");
+                endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
             });
 
             async Task Balance(HttpContext context)
@@ -91,8 +91,8 @@ namespace RoutingSample
                 var account = await client.GetStateAsync<Account>(StoreName, id);
                 if (account == null)
                 {
-                    Console.WriteLine("Account null, returning 500");
-                    context.Response.StatusCode = 500;
+                    Console.WriteLine("Account not found");
+                    context.Response.StatusCode = 404;
                     return;
                 }
 
@@ -140,8 +140,8 @@ namespace RoutingSample
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
-                    Console.WriteLine("Account null, returning 500");
-                    context.Response.StatusCode = 500;
+                    Console.WriteLine("Account not found");
+                    context.Response.StatusCode = 404;
                     return;
                 }
 

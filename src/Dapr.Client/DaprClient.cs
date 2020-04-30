@@ -59,7 +59,7 @@ namespace Dapr.Client
         public abstract Task InvokeMethodAsync(
             string appId,
             string methodName,
-            Dapr.Client.Http.HTTPExtension httpExtension = null,            
+            Dapr.Client.Http.HTTPExtension httpExtension = default,            
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace Dapr.Client
             string appId,
             string methodName,
             TRequest data,
-            Dapr.Client.Http.HTTPExtension httpExtension = null,
+            Dapr.Client.Http.HTTPExtension httpExtension = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace Dapr.Client
         public abstract ValueTask<TResponse> InvokeMethodAsync<TResponse>(
             string appId,
             string methodName,
-            Dapr.Client.Http.HTTPExtension httpExtension = null,
+            Dapr.Client.Http.HTTPExtension httpExtension = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Dapr.Client
             string appId,
             string methodName,
             TRequest data,
-            Dapr.Client.Http.HTTPExtension httpExtension = null,
+            Dapr.Client.Http.HTTPExtension httpExtension = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>

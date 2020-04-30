@@ -50,7 +50,8 @@ namespace DaprClient
             #region Service Invoke - Required RoutingService
             // This provides an example of how to invoke a method on another REST service that is listening on http.
             // To use it run RoutingService in this solution.
-            // Invoke deposit operation on RoutingSample service by publishing event.            
+            // Invoke deposit operation on RoutingSample service by publishing event.      
+            
             //await PublishDepositeEventToRoutingSampleAsync(client);
                         
             //await Task.Delay(TimeSpan.FromSeconds(1));
@@ -63,6 +64,8 @@ namespace DaprClient
             //Invoke deposit operation on RoutingSample service by GET.
             //await InvokeBalanceServiceOperationAsync(client);
             #endregion
+
+            Console.WriteLine("Done");
         }
 
         internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
