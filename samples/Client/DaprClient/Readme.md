@@ -24,42 +24,40 @@ The client sample shows how to make Dapr calls to publish events, save state, ge
  ```
 
 ## Invoking Services
-This solution contains a sample REST *RoutingSample* service, which implements a simple banking application in ASP.NET core.
+This solution contains a sample [RoutingSample service](..\..\AspNetCore\RoutingSample), which implements a simple banking application in ASP.NET core.
 The service provides following operations:
 - balance
 - withdraw
-- deposite
+- deposit
 
-The service is a typical HTTP/S REST service. However, by using **dapr**, another application can invoke an operation on this service by using not only REST.
-Following sample demonstrates how to use the gRPC with Dapr .NET SDK to invoke REST service operations.
+The service is a typical HTTP service. The following sample demonstrates how to use the Dapr .NET SDK to invoke a service listening on HTTP.
 
 Operation *balance* is a GET-operation mapped as (see startup.cs in the *RoutingService*):
  ```c#
  endpoints.MapGet("{id}", Balance);
  ```
 
-It can be invoked via HTTTP/S by using following urls.
+It can be invoked via HTTP by using following urls.
 On Windows, Linux, MacOS:
  ```sh
 curl -X GET http://127.0.0.1:5000/17
  ```
 
-If you are developing the .NET client and want to invoke this operation via HTTP/S, you can also use *HttpClient* API.
-The **dapr** supports out-of-the-box invokation of the service operation via gRPC.
-To demonstrate this, take a look on the method *InvokeBalanceServiceOperationAsync*.
-Services are typically invoked with the following code:
+Dapr supports out-of-the-box invocation of the service operation.
+To demonstrate this, take a look at the example inside `InvokeBalanceServiceOperationAsync()`.
+
+The following example invokes another service:
 
 ```c#
-var metaData = new Dictionary<string, string>();
-metaData.Add("http.verb", "GET");
 
-var res = await client.InvokeMethodAsync<object serviceName, "17", metadata);
+var res = await client.InvokeMethodAsync<object>(serviceName, methodName);
 ```
-In this example, the HttpGet method is onvoked on the service with name *serviceName*. This argument specifies the name of the service, which was used when in conjunction with *dapr run –app-id serviceName*.The *route* argument specifies the route of the service endpoint.
-For example, if your service is the Rest service, the route is typically dened by attribute *HttpPost(“route”)* or *HttpGet(“route”)*. Last argument is called metadata and it specifies GET operation in tis example.
+
+In this example, the HttpGet method is invoked on the service with name *serviceName*. This argument specifies the name of the service, which was used when in conjunction with *dapr run –app-id serviceName*.The *route* argument specifies the route of the service endpoint.
+For example, if your service listens on HTTP, the route is typically defined by attribute *HttpPost(“route”)* or *HttpGet(“route”)*. Last argument is called metadata and it specifies GET operation in its example.
 
 
-Second service operation *withdraw* can be invoked by HTTP/S POST request, but also triggered as a *cloud event* by publishing the event to the topic with name 'withdraw'.
+Second service operation *withdraw* can be invoked by HTTP POST request, but also triggered as a *cloud event* by publishing the event to the topic with name 'withdraw'.
 To enable this, the operation is mapped as:
  ```c#
 endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
@@ -78,14 +76,20 @@ curl -X POST http://127.0.0.1:5000/withdraw -H "Content-Type: application/json" 
  ```
 
 
-The method *InvokeWithdrawServiceOperationAsync* demonstrates how to use DAPR .NET SDK to invoke a REST/POST operation via gRPC.
+The method *InvokeWithdrawServiceOperationAsync* demonstrates how to use DAPR .NET SDK to invoke a POST operation on another service.
 
  ```c#        
             ...
 
-            metaData.Add("http.verb", "POST");
+            var data = new { id = "17", amount = (decimal)10, };
+            
+            // The HTTPExtension object is needed to specify additional information such as the HTTP verb and an optional query string, because the receiving service is listening on HTTP.  If it were listening on gRPC, it is not needed.
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
 
-            await client.InvokeMethodAsync<object>("routing", "Withdraw", new { id = "17", amount = (decimal)10 }, metaData);
+            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, httpExtension);
  ```
 
 Because, the same operation subscribes events on the *withdraw* topic, it can be invoked by event:
@@ -93,7 +97,7 @@ Because, the same operation subscribes events on the *withdraw* topic, it can be
 dapr publish -t withdraw -p '{"id": "17", "amount": 15 }'
 ``` 
 
-Operation *deposit* can be invoked by HTTP/S POST request and also triggered as a *cloud event* by publishing the event to the topic with name 'deposit'.
+Operation *deposit* can be invoked by HTTP POST request and also triggered as a *cloud event* by publishing the event to the topic with name 'deposit'.
 It is mapped as:
  ```c#
 endpoints.MapPost("deposit", Withdraw).WithTopic("deposit");
@@ -103,7 +107,7 @@ You can also use a **dapr** cli to publish the event to invoke te operation *dep
 dapr publish -t deposit -p '{"id": "17", "deposit": 15 }'
  ``` 
 
-The method *PublishDepositeEventToRoutingSampleAsync* demonstrates how to publish an event to the dapr runtime, which triggers the REST operation 'deposit'.
+The method *PublishDepositeEventToRoutingSampleAsync* demonstrates how to publish an event to the dapr runtime, which triggers the operation 'deposit'.
  ```c#
             await client.PublishEventAsync("deposit", new  { id = "17", amount = (decimal)10, });          
  ```
