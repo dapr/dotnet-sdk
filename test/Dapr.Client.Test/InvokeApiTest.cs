@@ -55,6 +55,29 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task InvokeMethodAsync_NoVerbSpecifiedByUser_ValidateRequest()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            // httpExtension not specified
+            var task = daprClient.InvokeMethodAsync<InvokedResponse>("app1", "mymethod");
+
+            // Get Request and validate                     
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+
+            envelope.Id.Should().Be("app1");
+            envelope.Message.Method.Should().Be("mymethod");
+
+            envelope.Message.HttpExtension.Verb.Should().Be(Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post);
+            envelope.Message.HttpExtension.Querystring.Count.Should().Be(0);            
+        }
+
+        [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeAndData()
         {
             // Configure Client
