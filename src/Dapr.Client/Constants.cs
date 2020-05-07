@@ -13,5 +13,6 @@ namespace Dapr.Client
         public const string Strong = "strong";
         public const string Exponential = "exponential";
         public const string Linear = "linear";
+        public const string ContentTypeApplicationJson = "application/json";
     }
 }
