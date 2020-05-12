@@ -7,6 +7,7 @@ namespace Dapr.Actors.AspNetCore
 {
     using System;
     using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.Diagnostics.HealthChecks;
     using Microsoft.AspNetCore.Hosting;
 
     internal class DaprActorSetupFilter : IStartupFilter
@@ -24,8 +25,8 @@ namespace Dapr.Actors.AspNetCore
                 // Configure endpoints for Actors.
                 app.UseEndpoints(endpoints =>
                 {
+                    endpoints.MapHealthChecks("/healthz");
                     endpoints.AddDaprConfigRoute();
-                    endpoints.AddDaprHealthzRoute();
                     endpoints.AddActorActivationRoute();
                     endpoints.AddActorDeactivationRoute();
                     endpoints.AddActorMethodRoute();

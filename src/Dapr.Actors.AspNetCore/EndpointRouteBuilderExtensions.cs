@@ -22,15 +22,6 @@ namespace Dapr.Actors.AspNetCore
             });
         }
 
-        public static IEndpointConventionBuilder AddDaprHealthzRoute(this IEndpointRouteBuilder endpoints)
-        {
-            return endpoints.MapGet("healthz", async context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status200OK;
-                await context.Response.CompleteAsync();
-            });
-        }
-
         public static IEndpointConventionBuilder AddActorActivationRoute(this IEndpointRouteBuilder endpoints)
         {
             return endpoints.MapPost("actors/{actorTypeName}/{actorId}", async context =>

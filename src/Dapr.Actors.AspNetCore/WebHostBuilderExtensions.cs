@@ -45,6 +45,7 @@ namespace Dapr.Actors.AspNetCore
             {
                 // Add routes.
                 services.AddRouting();
+                services.AddHealthChecks();
                 services.AddSingleton<IStartupFilter>(new DaprActorSetupFilter());
             });
 
