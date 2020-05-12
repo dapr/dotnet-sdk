@@ -7,32 +7,24 @@ namespace Dapr.Actors.AspNetCore
 {
     using System;
     using Dapr.Actors.Runtime;
+    using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
 
-    internal static class RouterBuilderExtensions
+    internal static class EndpointRouteBuilderExtensions
     {
-        public static void AddDaprConfigRoute(this IRouteBuilder routeBuilder)
+        public static IEndpointConventionBuilder AddDaprConfigRoute(this IEndpointRouteBuilder endpoints)
         {
-            routeBuilder.MapGet("dapr/config", async context =>
+            return endpoints.MapGet("dapr/config", async context =>
             {
                 context.Response.ContentType = "application/json";
-                await ActorRuntime.Instance.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);                
+                await ActorRuntime.Instance.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
             });
         }
 
-        public static void AddDaprHealthzRoute(this IRouteBuilder routeBuilder)
+        public static IEndpointConventionBuilder AddActorActivationRoute(this IEndpointRouteBuilder endpoints)
         {
-            routeBuilder.MapGet("healthz", async context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status200OK;
-                await context.Response.CompleteAsync();
-            });
-        }
-
-        public static void AddActorActivationRoute(this IRouteBuilder routeBuilder)
-        {
-            routeBuilder.MapPost("actors/{actorTypeName}/{actorId}", async context =>
+            return endpoints.MapPost("actors/{actorTypeName}/{actorId}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
@@ -41,9 +33,9 @@ namespace Dapr.Actors.AspNetCore
             });
         }
 
-        public static void AddActorDeactivationRoute(this IRouteBuilder routeBuilder)
+        public static IEndpointConventionBuilder AddActorDeactivationRoute(this IEndpointRouteBuilder endpoints)
         {
-            routeBuilder.MapDelete("actors/{actorTypeName}/{actorId}", async context =>
+            return endpoints.MapDelete("actors/{actorTypeName}/{actorId}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
@@ -52,9 +44,9 @@ namespace Dapr.Actors.AspNetCore
             });
         }
 
-        public static void AddActorMethodRoute(this IRouteBuilder routeBuilder)
+        public static IEndpointConventionBuilder AddActorMethodRoute(this IEndpointRouteBuilder endpoints)
         {
-            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
+            return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
@@ -95,9 +87,9 @@ namespace Dapr.Actors.AspNetCore
             });
         }
 
-        public static void AddReminderRoute(this IRouteBuilder routeBuilder)
+        public static IEndpointConventionBuilder AddReminderRoute(this IEndpointRouteBuilder endpoints)
         {
-            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/remind/{reminderName}", async context =>
+            return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/remind/{reminderName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
@@ -109,9 +101,9 @@ namespace Dapr.Actors.AspNetCore
             });
         }
 
-        public static void AddTimerRoute(this IRouteBuilder routeBuilder)
+        public static IEndpointConventionBuilder AddTimerRoute(this IEndpointRouteBuilder endpoints)
         {
-            routeBuilder.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", async context =>
+            return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
@@ -121,6 +113,6 @@ namespace Dapr.Actors.AspNetCore
                 // read dueTime, period and data from Request Body.
                 await ActorRuntime.FireTimerAsync(actorTypeName, actorId, timerName);
             });
-        }     
+        }
     }
 }

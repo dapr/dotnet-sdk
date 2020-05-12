@@ -30,7 +30,7 @@ namespace Dapr.Actors.AspNetCore
                 throw new ArgumentNullException("hostBuilder");
             }
 
-            // Check if 'UseServiceFabricIntegration' has already been called.
+            // Check if 'UseActors' has already been called.
             if (hostBuilder.GetSetting(SettingName) != null && hostBuilder.GetSetting(SettingName).Equals(true.ToString(), StringComparison.Ordinal))
             {
                 return hostBuilder;
@@ -45,6 +45,7 @@ namespace Dapr.Actors.AspNetCore
             {
                 // Add routes.
                 services.AddRouting();
+                services.AddHealthChecks();
                 services.AddSingleton<IStartupFilter>(new DaprActorSetupFilter());
             });
 
