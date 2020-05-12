@@ -16,10 +16,10 @@ namespace Dapr.Actors.AspNetCore
             // Adds routes for Actors interaction.
             return app =>
             {
-                app.UseRouting();
-
                 // This allows the middlewares to be configured correctly from Startup class.
                 next(app);
+
+                app.UseRouting();
 
                 // Configure endpoints for Actors.
                 app.UseEndpoints(endpoints =>
