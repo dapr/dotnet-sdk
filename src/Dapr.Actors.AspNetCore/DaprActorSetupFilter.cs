@@ -8,7 +8,6 @@ namespace Dapr.Actors.AspNetCore
     using System;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
-    using Microsoft.AspNetCore.Routing;
 
     internal class DaprActorSetupFilter : IStartupFilter
     {
@@ -17,17 +16,22 @@ namespace Dapr.Actors.AspNetCore
             // Adds routes for Actors interaction.
             return app =>
             {
-                var actorRouteBuilder = new RouteBuilder(app);
-                actorRouteBuilder.AddDaprConfigRoute();
-                actorRouteBuilder.AddDaprHealthzRoute();
-                actorRouteBuilder.AddActorActivationRoute();
-                actorRouteBuilder.AddActorDeactivationRoute();
-                actorRouteBuilder.AddActorMethodRoute();
-                actorRouteBuilder.AddReminderRoute();
-                actorRouteBuilder.AddTimerRoute();
+                app.UseRouting();
 
-                app.UseRouter(actorRouteBuilder.Build());
+                // This allows the middlewares to be configured correctly from Startup class.
                 next(app);
+
+                // Configure endpoints for Actors.
+                app.UseEndpoints(endpoints =>
+                {
+                    endpoints.AddDaprConfigRoute();
+                    endpoints.AddDaprHealthzRoute();
+                    endpoints.AddActorActivationRoute();
+                    endpoints.AddActorDeactivationRoute();
+                    endpoints.AddActorMethodRoute();
+                    endpoints.AddReminderRoute();
+                    endpoints.AddTimerRoute();
+                });
             };
         }
     }
