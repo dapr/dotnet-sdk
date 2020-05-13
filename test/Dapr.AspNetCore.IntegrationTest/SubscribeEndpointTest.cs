@@ -44,7 +44,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     topics.Should().Contain("register-user");
 
                     routes.Should().Contain("B");
-                    routes.Should().Contain("/topic-a");
+                    routes.Should().Contain("topic-a");
                     routes.Should().Contain("register-user");
                 }
             }
