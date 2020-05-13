@@ -14,6 +14,7 @@ namespace Microsoft.AspNetCore.Builder
     using Microsoft.AspNetCore.Routing;
     using Microsoft.AspNetCore.Routing.Patterns;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Contains extension methods for <see cref="IEndpointRouteBuilder" />.
@@ -39,7 +40,6 @@ namespace Microsoft.AspNetCore.Builder
                 var entries = dataSource.Endpoints
                     .OfType<RouteEndpoint>()
                     .Where(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
-                    .Where(e => e.RoutePattern.Parameters.Count == 0) // only endpoints which don't have parameters.
                     .Distinct()
                     .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern));
 
@@ -47,8 +47,20 @@ namespace Microsoft.AspNetCore.Builder
                 using Utf8JsonWriter writer = new Utf8JsonWriter(context.Response.BodyWriter);
                 writer.WriteStartArray();
 
+                var logger = context.RequestServices.GetService<ILogger<TopicAttribute>>();
                 foreach (var entry in entries)
                 {
+                    // only return topics which have routes without parameters.
+                    if (entry.RoutePattern.Parameters.Count > 0)
+                    {
+                        if (logger != null)
+                        {
+                            logger.LogWarning("Topic subscription doesn't support route with parameters. Subscription for topic {name} is removed.", entry.Name);
+                        }
+
+                        continue;
+                    }
+
                     writer.WriteStartObject();
                     writer.WriteString("topic", entry.Name);
 
@@ -58,7 +70,6 @@ namespace Microsoft.AspNetCore.Builder
                         .Select(part => part.Content))));
 
                     writer.WriteString("route", route);
-                    Console.WriteLine(route);
                     writer.WriteEndObject();
                 }
 
