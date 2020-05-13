@@ -5,8 +5,11 @@
 
 namespace Microsoft.AspNetCore.Builder
 {
+    using System;
     using System.Linq;
     using System.Text.Json;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Dapr;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.DependencyInjection;
@@ -33,13 +36,26 @@ namespace Microsoft.AspNetCore.Builder
             {
                 var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
                 var entries = dataSource.Endpoints
-                    .Select(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name)
-                    .Where(n => n != null)
+                    .OfType<RouteEndpoint>()
+                    .Where(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
+                    .Where(e => e.RoutePattern.Parameters.Count == 0) // only endpoints which don't have parameters.
                     .Distinct()
-                    .ToArray();
+                    .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern.RawText));
 
                 context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.Body, entries, context.RequestServices.GetService<JsonSerializerOptions>());
+                using Utf8JsonWriter writer = new Utf8JsonWriter(context.Response.BodyWriter);
+                writer.WriteStartArray();
+
+                foreach (var entry in entries)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("topic", entry.Name);
+                    writer.WriteString("route", entry.RawText);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+                await writer.FlushAsync();
             });
         }
     }
