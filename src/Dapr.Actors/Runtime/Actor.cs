@@ -21,7 +21,7 @@ namespace Dapr.Actors.Runtime
     {
         private const string TraceType = "Actor";
         private readonly string traceId;
-        private readonly string actorImplementaionTypeName;
+        private readonly string actorTypeName;
 
         /// <summary>
         /// Contains timers to be invoked.
@@ -41,7 +41,7 @@ namespace Dapr.Actors.Runtime
             this.IsDirty = false;
             this.ActorService = actorService;
             this.StateManager = actorStateManager ?? new ActorStateManager(this);
-            this.actorImplementaionTypeName = this.ActorService.ActorTypeInfo.ImplementationType.Name;
+            this.actorTypeName = this.ActorService.ActorTypeInfo.ActorTypeName;
         }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace Dapr.Actors.Runtime
             var reminderInfo = new ReminderInfo(state, dueTime, period);
             var reminder = new ActorReminder(this.Id, reminderName, reminderInfo);
             var serializedReminderInfo = await reminderInfo.SerializeAsync();
-            await ActorRuntime.DaprInteractor.RegisterReminderAsync(this.actorImplementaionTypeName, this.Id.ToString(), reminderName, serializedReminderInfo);
+            await ActorRuntime.DaprInteractor.RegisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminderName, serializedReminderInfo);
             return reminder;
         }
 
@@ -229,7 +229,7 @@ namespace Dapr.Actors.Runtime
         /// </returns>
         protected Task UnregisterReminderAsync(IActorReminder reminder)
         {
-            return ActorRuntime.DaprInteractor.UnregisterReminderAsync(this.actorImplementaionTypeName, this.Id.ToString(), reminder.Name);
+            return ActorRuntime.DaprInteractor.UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminder.Name);
         }
 
         /// <summary>
@@ -241,7 +241,7 @@ namespace Dapr.Actors.Runtime
         /// </returns>
         protected Task UnregisterReminderAsync(string reminderName)
         {
-            return ActorRuntime.DaprInteractor.UnregisterReminderAsync(this.actorImplementaionTypeName, this.Id.ToString(), reminderName);
+            return ActorRuntime.DaprInteractor.UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminderName);
         }
 
         /// <summary>
@@ -303,7 +303,7 @@ namespace Dapr.Actors.Runtime
 
             var actorTimer = new ActorTimer(this, timerName, asyncCallback, state, dueTime, period);
             var serializedTimer = await actorTimer.SerializeAsync();
-            await ActorRuntime.DaprInteractor.RegisterTimerAsync(this.actorImplementaionTypeName, this.Id.ToString(), timerName, serializedTimer);
+            await ActorRuntime.DaprInteractor.RegisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName, serializedTimer);
 
             this.timers[timerName] = actorTimer;
             return actorTimer;
@@ -316,7 +316,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>Task representing the Unregister timer operation.</returns>
         protected async Task UnregisterTimerAsync(IActorTimer timer)
         {
-            await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorImplementaionTypeName, this.Id.ToString(), timer.Name);
+            await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timer.Name);
             if (this.timers.ContainsKey(timer.Name))
             {
                 this.timers.Remove(timer.Name);
@@ -330,7 +330,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>Task representing the Unregister timer operation.</returns>
         protected async Task UnregisterTimerAsync(string timerName)
         {
-            await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorImplementaionTypeName, this.Id.ToString(), timerName);
+            await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName);
             if (this.timers.ContainsKey(timerName))
             {
                 this.timers.Remove(timerName);
