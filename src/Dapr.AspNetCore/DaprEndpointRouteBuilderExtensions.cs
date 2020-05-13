@@ -12,6 +12,7 @@ namespace Microsoft.AspNetCore.Builder
     using System.Threading.Tasks;
     using Dapr;
     using Microsoft.AspNetCore.Routing;
+    using Microsoft.AspNetCore.Routing.Patterns;
     using Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
@@ -40,7 +41,7 @@ namespace Microsoft.AspNetCore.Builder
                     .Where(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
                     .Where(e => e.RoutePattern.Parameters.Count == 0) // only endpoints which don't have parameters.
                     .Distinct()
-                    .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern.RawText));
+                    .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern));
 
                 context.Response.ContentType = "application/json";
                 using Utf8JsonWriter writer = new Utf8JsonWriter(context.Response.BodyWriter);
@@ -50,7 +51,14 @@ namespace Microsoft.AspNetCore.Builder
                 {
                     writer.WriteStartObject();
                     writer.WriteString("topic", entry.Name);
-                    writer.WriteString("route", entry.RawText);
+
+                    var route = string.Join("/",
+                        entry.RoutePattern.PathSegments
+                        .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
+                        .Select(part => part.Content))));
+
+                    writer.WriteString("route", route);
+                    Console.WriteLine(route);
                     writer.WriteEndObject();
                 }
 
