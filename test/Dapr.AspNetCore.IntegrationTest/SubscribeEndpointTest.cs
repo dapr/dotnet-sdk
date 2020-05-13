@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -32,14 +32,20 @@ namespace Dapr.AspNetCore.IntegrationTest
                     json.ValueKind.Should().Be(JsonValueKind.Array);
                     json.GetArrayLength().Should().Be(3);
                     var topics = new List<string>();
+                    var routes = new List<string>();
                     foreach (var element in json.EnumerateArray())
                     {
-                        topics.Add(element.GetString());
+                        topics.Add(element.GetProperty("topic").GetString());
+                        routes.Add(element.GetProperty("route").GetString());
                     }
 
                     topics.Should().Contain("A");
                     topics.Should().Contain("B");
                     topics.Should().Contain("register-user");
+
+                    routes.Should().Contain("B");
+                    routes.Should().Contain("/topic-a");
+                    routes.Should().Contain("register-user");
                 }
             }
         }
