@@ -232,8 +232,7 @@ namespace Dapr.Actors.Runtime
             }
 
             if (!this.activeActors.TryGetValue(actorId, out var actor))
-            {
-                // This should never happen, as "Dapr" runtime activates the actor first. if it ever it would mean a bug in "Dapr" runtime.
+            {             
                 var errorMsg = $"Actor {actorId} is not yet activated.";
                 ActorTrace.Instance.WriteError(TraceType, errorMsg);
                 throw new InvalidOperationException(errorMsg);
