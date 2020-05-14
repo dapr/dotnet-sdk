@@ -119,17 +119,6 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
-        /// Activates an actor for an actor type with given actor id.
-        /// </summary>
-        /// <param name="actorTypeName">Actor type name to activate the actor for.</param>
-        /// <param name="actorId">Actor id for the actor to be activated.</param>
-        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        internal static async Task ActivateAsync(string actorTypeName, string actorId)
-        {
-            await Instance.GetActorManager(actorTypeName).ActivateActor(new ActorId(actorId));
-        }
-
-        /// <summary>
         /// Deactivates an actor for an actor type with given actor id.
         /// </summary>
         /// <param name="actorTypeName">Actor type name to deactivate the actor for.</param>
@@ -201,7 +190,7 @@ namespace Dapr.Actors.Runtime
         {
             if (!this.actorManagers.TryGetValue(actorTypeName, out var actorManager))
             {
-                var errorMsg = $"Actor type {actorTypeName} is not registerd with Actor runtime.";
+                var errorMsg = $"Actor type {actorTypeName} is not registered with Actor runtime.";
                 ActorTrace.Instance.WriteError(TraceType, errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }

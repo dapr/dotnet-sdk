@@ -7,8 +7,11 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
+    using System.Collections.Generic;
+    using System.IO;
     using System.Text;
     using System.Text.Json;
+    using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Runtime;
     using Xunit;
@@ -47,6 +50,23 @@ namespace Dapr.Actors.Test
             actorRuntime.RegisterActor<RenamedActor>();
 
             Assert.Contains(RenamedActorTypeName, actorRuntime.RegisteredActorTypes, StringComparer.InvariantCulture);
+        }
+
+        // This tests the change that removed the Activate message from Dapr runtime -> app.
+        [Fact]
+        public void NoActivateMessageFromRuntime()
+        {
+            var actorType = typeof(MyActor);
+
+            ActorRuntime.Instance.RegisterActor<MyActor>();
+
+            var output = new MemoryStream();
+            ActorRuntime.DispatchWithoutRemotingAsync("MyActor", "abc", "MyMethod", new MemoryStream(), output).GetAwaiter().GetResult();
+            string s = Encoding.UTF8.GetString(output.ToArray());
+
+            Assert.Equal("\"hi\"", s);            
+            Assert.Contains(actorType.Name, ActorRuntime.Instance.RegisteredActorTypes, StringComparer.InvariantCulture);
+            Console.WriteLine("done");
         }
 
         [Fact]
@@ -115,6 +135,24 @@ namespace Dapr.Actors.Test
             public RenamedActor(ActorService actorService, ActorId actorId)
                 : base(actorService, actorId)
             {
+            }
+        }
+
+        private interface IAnotherActor : IActor
+        {
+            public Task<string> MyMethod();
+        }
+
+        private sealed class MyActor : Actor, IAnotherActor
+        {
+            public MyActor(ActorService actorService, ActorId actorId)
+                : base(actorService, actorId)
+            {
+            }
+
+            public Task<string> MyMethod()
+            {
+                return Task.FromResult("hi");
             }
         }
     }

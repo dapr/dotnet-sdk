@@ -55,7 +55,7 @@ namespace Dapr.Actors.Runtime
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
 
         internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken)
-        {
+        {          
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
             // Get the serialized header
@@ -104,7 +104,7 @@ namespace Dapr.Actors.Runtime
         }
 
         internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
-        {
+        {                       
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
             // Create a Func to be invoked by common method.
@@ -120,7 +120,7 @@ namespace Dapr.Actors.Runtime
                     awaitable = methodInfo.Invoke(actor, null);
                 }
                 else if (parameters.Length == 1)
-                {
+                {                    
                     // deserialize using stream.
                     var type = parameters[0].ParameterType;
                     var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type);
@@ -159,7 +159,7 @@ namespace Dapr.Actors.Runtime
         }
 
         internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
-        {
+        {            
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
             {
@@ -225,7 +225,12 @@ namespace Dapr.Actors.Runtime
         }
 
         private async Task<T> DispatchInternalAsync<T>(ActorId actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
-        {
+        {            
+            if (!this.activeActors.ContainsKey(actorId))
+            {
+                await this.ActivateActor(actorId);
+            }
+
             if (!this.activeActors.TryGetValue(actorId, out var actor))
             {
                 // This should never happen, as "Dapr" runtime activates the actor first. if it ever it would mean a bug in "Dapr" runtime.
