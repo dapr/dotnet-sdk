@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Builder
                 using Utf8JsonWriter writer = new Utf8JsonWriter(context.Response.BodyWriter);
                 writer.WriteStartArray();
 
-                var logger = context.RequestServices.GetService<ILogger<TopicAttribute>>();
+                var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
                 foreach (var entry in entries)
                 {
                     // only return topics which have routes without parameters.
