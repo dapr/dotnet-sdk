@@ -5,11 +5,16 @@
 
 namespace Microsoft.AspNetCore.Builder
 {
+    using System;
     using System.Linq;
     using System.Text.Json;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Dapr;
     using Microsoft.AspNetCore.Routing;
+    using Microsoft.AspNetCore.Routing.Patterns;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Contains extension methods for <see cref="IEndpointRouteBuilder" />.
@@ -33,13 +38,43 @@ namespace Microsoft.AspNetCore.Builder
             {
                 var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
                 var entries = dataSource.Endpoints
-                    .Select(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name)
-                    .Where(n => n != null)
+                    .OfType<RouteEndpoint>()
+                    .Where(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
                     .Distinct()
-                    .ToArray();
+                    .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern));
 
                 context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.Body, entries, context.RequestServices.GetService<JsonSerializerOptions>());
+                using Utf8JsonWriter writer = new Utf8JsonWriter(context.Response.BodyWriter);
+                writer.WriteStartArray();
+
+                var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
+                foreach (var entry in entries)
+                {
+                    // only return topics which have routes without parameters.
+                    if (entry.RoutePattern.Parameters.Count > 0)
+                    {
+                        if (logger != null)
+                        {
+                            logger.LogWarning("Topic subscription doesn't support route with parameters. Subscription for topic {name} is removed.", entry.Name);
+                        }
+
+                        continue;
+                    }
+
+                    writer.WriteStartObject();
+                    writer.WriteString("topic", entry.Name);
+
+                    var route = string.Join("/",
+                        entry.RoutePattern.PathSegments
+                        .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
+                        .Select(part => part.Content))));
+
+                    writer.WriteString("route", route);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+                await writer.FlushAsync();
             });
         }
     }
