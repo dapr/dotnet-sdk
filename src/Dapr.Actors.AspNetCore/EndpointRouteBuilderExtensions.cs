@@ -20,18 +20,7 @@ namespace Dapr.Actors.AspNetCore
                 context.Response.ContentType = "application/json";
                 await ActorRuntime.Instance.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
             });
-        }
-
-        public static IEndpointConventionBuilder AddActorActivationRoute(this IEndpointRouteBuilder endpoints)
-        {
-            return endpoints.MapPost("actors/{actorTypeName}/{actorId}", async context =>
-            {
-                var routeValues = context.Request.RouteValues;
-                var actorTypeName = (string)routeValues["actorTypeName"];
-                var actorId = (string)routeValues["actorId"];
-                await ActorRuntime.ActivateAsync(actorTypeName, actorId);
-            });
-        }
+        }     
 
         public static IEndpointConventionBuilder AddActorDeactivationRoute(this IEndpointRouteBuilder endpoints)
         {

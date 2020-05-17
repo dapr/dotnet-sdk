@@ -26,8 +26,7 @@ namespace Dapr.Actors.AspNetCore
                 app.UseEndpoints(endpoints =>
                 {
                     endpoints.MapHealthChecks("/healthz");
-                    endpoints.AddDaprConfigRoute();
-                    endpoints.AddActorActivationRoute();
+                    endpoints.AddDaprConfigRoute();                    
                     endpoints.AddActorDeactivationRoute();
                     endpoints.AddActorMethodRoute();
                     endpoints.AddReminderRoute();

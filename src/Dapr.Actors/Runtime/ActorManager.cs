@@ -226,9 +226,13 @@ namespace Dapr.Actors.Runtime
 
         private async Task<T> DispatchInternalAsync<T>(ActorId actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
         {
-            if (!this.activeActors.TryGetValue(actorId, out var actor))
+            if (!this.activeActors.ContainsKey(actorId))
             {
-                // This should never happen, as "Dapr" runtime activates the actor first. if it ever it would mean a bug in "Dapr" runtime.
+                await this.ActivateActor(actorId);
+            }
+
+            if (!this.activeActors.TryGetValue(actorId, out var actor))
+            {             
                 var errorMsg = $"Actor {actorId} is not yet activated.";
                 ActorTrace.Instance.WriteError(TraceType, errorMsg);
                 throw new InvalidOperationException(errorMsg);
