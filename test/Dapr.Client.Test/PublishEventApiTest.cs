@@ -26,10 +26,10 @@ namespace Dapr.Client.Test
             var task = daprClient.PublishEventAsync<PublishContent>("test", publishContent);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<PublishEventEnvelope>(entry.Request);
-            var jsonFromRequest = envelope.Data.Value.ToStringUtf8();
+            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
+            var jsonFromRequest = request.Data.ToStringUtf8();
 
-            envelope.Topic.Should().Be("test");
+            request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishContent));
         }
 
@@ -44,10 +44,10 @@ namespace Dapr.Client.Test
 
             var task = daprClient.PublishEventAsync("test");
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<PublishEventEnvelope>(entry.Request);
-            var jsonFromRequest = envelope.Data.Value.ToStringUtf8();
+            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
+            var jsonFromRequest = request.Data.ToStringUtf8();
 
-            envelope.Topic.Should().Be("test");
+            request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be("\"\"");
         }
         

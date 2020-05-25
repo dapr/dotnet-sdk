@@ -41,7 +41,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate                     
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
 
             envelope.Id.Should().Be("app1");
             envelope.Message.Method.Should().Be("mymethod");
@@ -68,7 +68,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate                     
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
 
             envelope.Id.Should().Be("app1");
             envelope.Message.Method.Should().Be("mymethod");
@@ -91,7 +91,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -118,7 +118,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -149,7 +149,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -179,7 +179,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -206,7 +206,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -233,7 +233,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -262,7 +262,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -295,7 +295,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -322,7 +322,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
@@ -362,7 +362,7 @@ namespace Dapr.Client.Test
 
             // Get Request and validate            
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
