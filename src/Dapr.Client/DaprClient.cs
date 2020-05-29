@@ -19,11 +19,11 @@ namespace Dapr.Client
         /// Publishes an event to the specified topic.
         /// </summary>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
-        /// <param name="content">The contents of the event.</param>
+        /// <param name="data">The  event data.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TContent">The data type of the object that will be serialized.</typeparam>
+        /// <typeparam name="TData">The data type of the object that will be serialized.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync<TContent>(string topicName, TContent content, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync<TData>(string topicName, TData data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Publishes an event to the specified topic.

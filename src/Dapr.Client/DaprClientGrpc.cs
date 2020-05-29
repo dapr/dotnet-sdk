@@ -40,11 +40,11 @@ namespace Dapr.Client
 
         #region Publish Apis
         /// <inheritdoc/>
-        public override Task PublishEventAsync<TContent>(string topicName, TContent content, CancellationToken cancellationToken = default)
+        public override Task PublishEventAsync<TData>(string topicName, TData data, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(topicName, nameof(topicName));
-            ArgumentVerifier.ThrowIfNull(content, nameof(content));
-            return MakePublishRequest(topicName, content, cancellationToken);
+            ArgumentVerifier.ThrowIfNull(data, nameof(data));
+            return MakePublishRequest(topicName, data, cancellationToken);
         }
 
         /// <inheritdoc/>

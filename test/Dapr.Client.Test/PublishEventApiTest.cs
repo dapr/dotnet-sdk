@@ -15,22 +15,22 @@ namespace Dapr.Client.Test
     public class PublishEventApiTest
     {
         [Fact]
-        public async Task PublishEventAsync_CanPublishTopicWithContent()
+        public async Task PublishEventAsync_CanPublishTopicWithData()
         {
             var httpClient = new TestHttpClient();
             var daprClient = new DaprClientBuilder()
                 .UseGrpcChannelOptions(new GrpcChannelOptions{ HttpClient = httpClient })
                 .Build();
           
-            var publishContent = new PublishContent() { PublishObjectParameter = "testparam" };
-            var task = daprClient.PublishEventAsync<PublishContent>("test", publishContent);
+            var publishData = new PublishData() { PublishObjectParameter = "testparam" };
+            var task = daprClient.PublishEventAsync<PublishData>("test", publishData);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
             var jsonFromRequest = request.Data.ToStringUtf8();
 
-            request.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishContent));
+            envelope.Topic.Should().Be("test");
+            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData));
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace Dapr.Client.Test
             jsonFromRequest.Should().Be("\"\"");
         }
         
-        private class PublishContent
+        private class PublishData
         {
             public string PublishObjectParameter { get; set; }
         }
