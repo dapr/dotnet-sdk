@@ -29,7 +29,7 @@ namespace Dapr.Client.Test
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
             var jsonFromRequest = request.Data.ToStringUtf8();
 
-            envelope.Topic.Should().Be("test");
+            request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData));
         }
 
