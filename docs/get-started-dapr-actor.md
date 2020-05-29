@@ -43,7 +43,7 @@ dotnet new classlib -o MyActor.Interfaces
 cd MyActor.Interfaces
 
 # Add Dapr.Actors nuget package
-dotnet add package Dapr.Actors
+dotnet add package Dapr.Actors -v 0.7.0-preview01
 ```
 
 ### Update project to .NET Core 3.0
@@ -58,7 +58,7 @@ Update the csproj file to target .NET Core 3.0
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapr.Actors" Version="0.1.0-preview01" />
+    <PackageReference Include="Dapr.Actors" Version="0.7.0-preview01" />
   </ItemGroup>
 
 </Project>
@@ -112,10 +112,10 @@ dotnet new webapi -o MyActorService
 cd MyActorService
 
 # Add Dapr.Actors nuget package
-dotnet add package Dapr.Actors
+dotnet add package Dapr.Actors -v 0.7.0-preview01
 
 # Add Dapr.Actors.AspNetCore nuget package
-dotnet add package Dapr.Actors.AspNetCore
+dotnet add package Dapr.Actors.AspNetCore -v 0.7.0-preview01
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -355,7 +355,7 @@ dotnet new console -o MyActorClient
 cd MyActorClient
 
 # Add Dapr.Actors nuget package
-dotnet add package Dapr.Actors
+dotnet add package Dapr.Actors -v 0.7.0-preview01
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -442,7 +442,7 @@ In order to validate and debug actor service and client, we need to run actor se
 1. Run Dapr Runtime via Dapr cli
 
    ```bash
-   $ dapr run --app-id myapp --app-port 3000 dotnet MyActorService.dll
+   $ dapr run --app-id myapp --app-port 3000 -port 3500 dotnet MyActorService.dll
    ```
 
    After executing MyActorService via Dapr runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
