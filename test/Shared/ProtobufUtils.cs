@@ -26,5 +26,16 @@ namespace Dapr
 
             return any;
         }
+
+        public static ByteString ConvertToByteStringAsync<T>(T data, JsonSerializerOptions options = null)
+        {
+            if (data != null)
+            {
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(data, options);
+                return ByteString.CopyFrom(bytes);
+            }
+
+            return ByteString.Empty;
+        }
     }
 }

@@ -26,14 +26,14 @@ namespace Dapr
         internal const int HeaderSize = MessageDelimiterSize + 1; // message length + compression flag
 
         /// <summary>
-        /// Gets the envelope from protobuf. 
+        /// Gets the request from protobuf. 
         /// bytes in http request message content contains gRPC Headers and protobuf.
         /// https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="request"></param>
         /// <returns></returns>
-        public static async Task<T> GetEnvelopeFromRequestMessageAsync<T>(HttpRequestMessage request) where T : IMessage<T>, new()
+        public static async Task<T> GetRequestFromRequestMessageAsync<T>(HttpRequestMessage request) where T : IMessage<T>, new()
         {
             var bytes = await request.Content.ReadAsByteArrayAsync();
 
