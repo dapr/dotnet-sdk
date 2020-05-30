@@ -32,14 +32,14 @@ namespace Dapr.Client.Test
 
             // Get Request and validate                     
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetEnvelopeFromRequestMessageAsync<InvokeBindingEnvelope>(entry.Request);
-            envelope.Name.Should().Be("test");
-            envelope.Metadata.Count.Should().Be(2);
-            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
-            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
-            envelope.Metadata["key1"].Should().Be("value1");
-            envelope.Metadata["key2"].Should().Be("value2");
-            var json = envelope.Data.Value.ToStringUtf8();
+            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
+            request.Name.Should().Be("test");
+            request.Metadata.Count.Should().Be(2);
+            request.Metadata.Keys.Contains("key1").Should().BeTrue();
+            request.Metadata.Keys.Contains("key2").Should().BeTrue();
+            request.Metadata["key1"].Should().Be("value1");
+            request.Metadata["key2"].Should().Be("value2");
+            var json = request.Data.ToStringUtf8();
             var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
         }
