@@ -28,7 +28,7 @@ namespace Dapr.Client.Test
             metadata.Add("key1", "value1");
             metadata.Add("key2", "value2");
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", invokeRequest, metadata);
+            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata);
 
             // Get Request and validate                     
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();

@@ -36,15 +36,35 @@ namespace Dapr.Client
         /// <summary>
         /// Invokes an output binding.
         /// </summary>
-        /// <typeparam name="TContent"></typeparam>
+        /// <typeparam name="TRequest"></typeparam>
         /// <param name="name">The name of the binding to sent the event to.</param>
-        /// <param name="content">The content of the event to send.</param>
+        /// <param name="operation">The type of operation to perform on the binding.</param>
+        /// <param name="data">The data of the event to send.</param>
         /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task InvokeBindingAsync<TContent>(
+        public abstract Task InvokeBindingAsync<TRequest>(
             string name,
-            TContent content,
+            string operation,
+            TRequest data,
+            Dictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Invokes an output binding.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the object for the data to send.</typeparam>
+        /// <typeparam name="TResponse">The type of the object for the return value.</typeparam>
+        /// <param name="name">The name of the binding to sent the event to.</param>
+        /// <param name="operation">The type of operation to perform on the binding.</param>
+        /// <param name="data">The data of the event to send.</param>
+        /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="ValueTask{T}" /> that will complete when the operation has completed.</returns>
+        public abstract ValueTask<TResponse> InvokeBindingAsync<TRequest, TResponse>(
+            string name,
+            string operation,
+            TRequest data,
             Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
@@ -59,7 +79,7 @@ namespace Dapr.Client
         public abstract Task InvokeMethodAsync(
             string appId,
             string methodName,
-            Dapr.Client.Http.HTTPExtension httpExtension = default,            
+            Dapr.Client.Http.HTTPExtension httpExtension = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
