@@ -17,7 +17,7 @@
 
     <!-- Nuget package versions -->
     <NupkgMajorVersion>0</NupkgMajorVersion>
-    <NupkgMinorVersion>7</NupkgMinorVersion>
+    <NupkgMinorVersion>8</NupkgMinorVersion>
     <NupkgPatchVersion>0</NupkgPatchVersion>
     <NupkgPreviewTag>-preview01</NupkgPreviewTag>
     <NupkgVersion>$(NupkgMajorVersion).$(NupkgMinorVersion).$(NupkgPatchVersion)$(NupkgPreviewTag)</NupkgVersion>
