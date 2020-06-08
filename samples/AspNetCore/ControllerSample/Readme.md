@@ -95,6 +95,7 @@ GET http://127.0.0.1:5000/17
 
 Output:
 ```txt
+```txt
 {"id":"17","balance":2}
 ```
 
@@ -106,11 +107,11 @@ Output:
  
  On Linux, MacOS:
 ```sh
-dapr publish -t withdraw -p '{"id": "17", "amount": 15 }'
+dapr publish -t withdraw -d '{"id": "17", "amount": 15 }'
 ```
 On Windows:
  ```sh
- dapr publish -t withdraw -p "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
  ---
 
@@ -118,11 +119,11 @@ On Windows:
 Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
+dapr publish -t deposit -d '{"id": "17", "amount": 15 }'
 ```
 On Windows:
  ```sh
- dapr publish -t deposit -p "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
 ```
  ---
 
