@@ -38,7 +38,7 @@ Actor interface is defined with the below requirements:
 
 ```bash
 # Create Actor Interfaces
-dotnet new classlib -o MyActor.Interfaces
+dotnet new classlib -f netcoreapp3.1 -o MyActor.Interfaces
 
 cd MyActor.Interfaces
 
@@ -46,23 +46,6 @@ cd MyActor.Interfaces
 dotnet add package Dapr.Actors
 ```
 
-### Update project to .NET Core 3.0
-
-Update the csproj file to target .NET Core 3.0
-
-```xml
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Dapr.Actors" Version="0.1.0-preview01" />
-  </ItemGroup>
-
-</Project>
-```
 
 ### Implement IMyActor Interface
 
@@ -107,7 +90,7 @@ Dapr uses ASP.NET web service to host Actor service. This section will implement
 
 ```bash
 # Create ASP.Net Web service to host Dapr actor
-dotnet new webapi -o MyActorService
+dotnet new webapi -f netcoreapp3.1 -o MyActorService
 
 cd MyActorService
 
@@ -274,6 +257,11 @@ By default, the "type" of the actor as seen by clients is derived from the name 
 Register `MyActor` actor type to actor runtime and set the localhost port (`https://localhost:3000`) which Dapr Runtime can call Actor through.
 
 ```csharp
+        using Dapr.Actors;
+        using Dapr.Actors.AspNetCore;
+        
+        ...
+
         private const int AppChannelHttpPort = 3000;
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
@@ -350,7 +338,7 @@ Create a simple console app to call the actor service. Dapr SDK provides Actor P
 
 ```bash
 # Create Actor's Client
-dotnet new console -o MyActorClient
+dotnet new console -f netcoreapp3.1 -o MyActorClient
 
 cd MyActorClient
 
