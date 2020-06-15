@@ -158,7 +158,7 @@ namespace MyActorService
         {
             // Data is saved to configured state store implicitly after each method execution by Actor's runtime.
             // Data can also be saved explicitly by calling this.StateManager.SaveStateAsync();
-            // State to be saved must be DataContract serialziable.
+            // State to be saved must be DataContract serializable.
             await this.StateManager.SetStateAsync<MyData>(
                 "my_data",  // state name
                 data);      // data saved for the named state "my_data"
@@ -409,7 +409,7 @@ namespace MyActorClient
             // Create Actor Proxy instance to invoke the methods defined in the interface
             var proxy = ActorProxy.Create(actorID, actorType);
             // Need to specify the method name and response type explicitly
-            var response = await proxy.InvokeAsync<string>("SetDataAsync", new MyData()
+            var response = await proxy.InvokeAsync<MyData, string>("SetDataAsync", new MyData()
             {
                 PropertyA = "ValueA",
                 PropertyB = "ValueB",
