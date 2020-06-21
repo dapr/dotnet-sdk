@@ -11,6 +11,12 @@
     <Description>This package contains the reference assemblies for developing Actor services using Dapr and AspNetCore.</Description>
     <PackageTags>$(PackageTags);Actors</PackageTags>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Adding ref. to System.IO.Pipelines explicitly to work around build issue with .netcore sdk 3.1.102
+    https://github.com/dotnet/core/blob/master/release-notes/3.1/3.1-known-issues.md#net-core-312
+    This should be reverted when the fix will be available in future .net core sdk. -->
+    <PackageReference Include="System.IO.Pipelines" Version="4.7.0" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Actors\Dapr.Actors.csproj" />
