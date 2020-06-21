@@ -17,4 +17,10 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\properties\logo-transparent.png" Pack="true" Visible="false" PackagePath="images" />
   </ItemGroup>
+
+  <!-- Enable symbols package generation. https://docs.microsoft.com/nuget/create-packages/symbol-packages-snupkg -->
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
 </Project>
