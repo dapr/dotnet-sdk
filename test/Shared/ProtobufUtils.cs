@@ -5,9 +5,7 @@
 
 namespace Dapr
 {
-    using System.IO;
     using System.Text.Json;
-    using System.Threading.Tasks;
     using Google.Protobuf;
     using Google.Protobuf.WellKnownTypes;
 
@@ -36,6 +34,12 @@ namespace Dapr
             }
 
             return ByteString.Empty;
+        }
+
+        public static T ConvertFromAnyAsync<T>(Any any, JsonSerializerOptions options = null)
+        {
+            var utf8String = any.Value.ToStringUtf8();
+            return JsonSerializer.Deserialize<T>(utf8String, options);
         }
     }
 }
