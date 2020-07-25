@@ -393,11 +393,11 @@ namespace Dapr.Client.Test
                 .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
-            var request = new Request() { RequestParameter = "John" };
+            var request = new Request() { RequestParameter = "Look, I was invoked!" };
 
             var response = await daprClient.InvokeMethodAsync<Request, Response>("test1", "sayHello", request);
 
-            response.Name.Should().Be("Hello John");
+            response.Name.Should().Be("Hello Look, I was invoked!");
         }
 
         [Fact]
@@ -411,7 +411,7 @@ namespace Dapr.Client.Test
                 .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
-            var request = new Request() { RequestParameter = "John" };
+            var request = new Request() { RequestParameter = "Look, I was invoked!" };
 
             var response = await daprClient.InvokeMethodAsync<Request, Response>("test1", "not-existing", request);
 
