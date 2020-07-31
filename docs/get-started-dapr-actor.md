@@ -271,8 +271,7 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
                 {
                     // Register MyActor actor type
                     actorRuntime.RegisterActor<MyActor>();
-                }
-                )
+                })
                 .UseUrls($"http://localhost:{AppChannelHttpPort}/");
 ```
 
@@ -298,7 +297,7 @@ The following code extends the previous section to do this.  Please note the val
 
                     // Register MyActor actor type
                     actorRuntime.RegisterActor<MyActor>();
-                }
+                });
         
 ```
 
