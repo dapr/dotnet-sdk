@@ -16,7 +16,6 @@
   <ItemGroup>
     <Compile Include="..\Shared\TestHttpClient.cs" />
     <Compile Include="..\Shared\GrpcUtils.cs" />
-    <Compile Include="..\Shared\ProtobufUtils.cs" />
   </ItemGroup>
 
   <ItemGroup>

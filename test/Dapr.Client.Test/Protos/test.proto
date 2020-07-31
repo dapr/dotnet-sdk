@@ -1,0 +1,16 @@
+﻿// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+syntax = "proto3";
+
+option csharp_namespace = "Dapr.Client.Autogen.Test.Grpc.v1";
+
+message TestRun {
+  repeated TestCase tests = 1;
+}
+
+message TestCase {
+  string name = 1;
+}
