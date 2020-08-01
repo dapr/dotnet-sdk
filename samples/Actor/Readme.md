@@ -38,6 +38,8 @@ To run the actor service locally run this command in `DemoActor` directory:
 
 The `DemoActor` service will listen on port `5000` for HTTP.
 
+*Note: For Running the sample with ISS express, change the launchsettings.json to use 127.0.0.1 instead of localhost.*
+
 ### Making Client calls
 
 The `ActorClient` project shows how to make client calls for actor using Remoting which provides a strongly typed invocation experience.
