@@ -18,6 +18,8 @@ The application also registers for pub-sub with the `deposit` and `withdraw` top
 
  The application will listen on port 5000 for HTTP.
 
+ *Note: For Running the sample in ISS express, change the launchsettings.json to use 127.0.0.1 instead of localhost.*
+
  ### Examples
 
 **Deposit Money**
@@ -103,12 +105,12 @@ Output:
  Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-dapr publish -t withdraw -p '{"id": "17", "amount": 15 }'
+dapr publish -t withdraw -d '{"id": "17", "amount": 15 }'
 ```
 
 On Windows:
  ```sh
- dapr publish -t withdraw -p "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
 
  ---
@@ -117,11 +119,11 @@ On Windows:
 Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-dapr publish -t deposit -p '{"id": "17", "amount": 15 }'
+dapr publish -t deposit -d '{"id": "17", "amount": 15 }'
 ```
 On Windows:
  ```sh
- dapr publish -t deposit -p "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
  ---
 

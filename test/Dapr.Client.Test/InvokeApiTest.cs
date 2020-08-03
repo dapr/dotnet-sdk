@@ -10,6 +10,7 @@ namespace Dapr.Client.Test
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
+    using Dapr.AppCallback.Autogen.Grpc.v1;
     using Dapr.Client.Http;
     using FluentAssertions;
     using Grpc.Core;
@@ -37,9 +38,9 @@ namespace Dapr.Client.Test
                 QueryString = queryString
             };
 
-            var task = daprClient.InvokeMethodAsync<InvokedResponse>("app1", "mymethod", httpExtension);
+            var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpExtension);
 
-            // Get Request and validate                     
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
 
@@ -64,9 +65,9 @@ namespace Dapr.Client.Test
                 .Build();
 
             // httpExtension not specified
-            var task = daprClient.InvokeMethodAsync<InvokedResponse>("app1", "mymethod");
+            var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod");
 
-            // Get Request and validate                     
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
 
@@ -87,9 +88,9 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<InvokedResponse>("test", "test");
+            var task = daprClient.InvokeMethodAsync<Response>("test", "test");
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -97,7 +98,7 @@ namespace Dapr.Client.Test
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             // Create Response & Respond
-            var data = new InvokedResponse() { Name = "Look, I was invoked!" };
+            var data = new Response() { Name = "Look, I was invoked!" };
             SendResponse(data, entry);
 
             // Validate Response
@@ -114,9 +115,9 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -124,11 +125,11 @@ namespace Dapr.Client.Test
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             var json = envelope.Message.Data.Value.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
+            var typeFromRequest = JsonSerializer.Deserialize<Request>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
-            SendResponse<InvokedResponse>(null, entry);
+            SendResponse<Response>(null, entry);
 
             // Validate Response.
             var invokedResponse = await task;
@@ -145,9 +146,9 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -155,7 +156,7 @@ namespace Dapr.Client.Test
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             var json = envelope.Message.Data.Value.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
+            var typeFromRequest = JsonSerializer.Deserialize<Request>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
@@ -175,9 +176,9 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<InvokedResponse>("test", "test");
+            var task = daprClient.InvokeMethodAsync<Response>("test", "test");
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -185,7 +186,7 @@ namespace Dapr.Client.Test
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             // Create Response & Respond
-            var data = new InvokedResponse() { Name = "Look, I was invoked!" };
+            var data = new Response() { Name = "Look, I was invoked!" };
             SendResponse(data, entry);
 
             // Validate Response
@@ -202,9 +203,9 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<InvokedResponse>("test", "test");
+            var task = daprClient.InvokeMethodAsync<Response>("test", "test");
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -228,10 +229,10 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            InvokeRequest invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeMethodAsync<InvokeRequest>("test", "test", invokeRequest);
+            Request request = new Request() { RequestParameter = "Hello " };
+            var task = daprClient.InvokeMethodAsync<Request>("test", "test", request);
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -239,11 +240,11 @@ namespace Dapr.Client.Test
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             var json = envelope.Message.Data.Value.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
+            var typeFromRequest = JsonSerializer.Deserialize<Request>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
-            var response = new InvokedResponse() { Name = "Look, I was invoked!" };
+            var response = new Response() { Name = "Look, I was invoked!" };
             SendResponse(response, entry);
 
             FluentActions.Awaiting(async () => await task).Should().NotThrow();
@@ -258,9 +259,9 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<InvokeRequest>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+            var task = daprClient.InvokeMethodAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " });
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -268,7 +269,7 @@ namespace Dapr.Client.Test
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             var json = envelope.Message.Data.Value.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
+            var typeFromRequest = JsonSerializer.Deserialize<Request>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
@@ -290,10 +291,10 @@ namespace Dapr.Client.Test
                 .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
-            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello" };
-            var task = daprClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest);
+            var invokeRequest = new Request() { RequestParameter = "Hello" };
+            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test", invokeRequest);
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -315,12 +316,12 @@ namespace Dapr.Client.Test
                 .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
-            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var invokedResponse = new InvokedResponse { Name = "Look, I was invoked!" };
+            var invokeRequest = new Request() { RequestParameter = "Hello " };
+            var invokedResponse = new Response { Name = "Look, I was invoked!" };
 
-            var task = daprClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest);
+            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test", invokeRequest);
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
@@ -347,8 +348,8 @@ namespace Dapr.Client.Test
                 .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
-            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var invokedResponse = new InvokedResponse { Name = "Look, I was invoked!" };
+            var invokeRequest = new Request() { RequestParameter = "Hello " };
+            var invokedResponse = new Response { Name = "Look, I was invoked!" };
 
             Dictionary<string, string> queryString = new Dictionary<string, string>();
             queryString.Add("key1", "value1");
@@ -358,13 +359,13 @@ namespace Dapr.Client.Test
                 QueryString = queryString
             };
 
-            var task = daprClient.InvokeMethodAsync<InvokeRequest, InvokedResponse>("test", "test", invokeRequest, httpExtension);
+            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test1", invokeRequest, httpExtension);
 
-            // Get Request and validate            
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
             envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
+            envelope.Message.Method.Should().Be("test1");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
             envelope.Message.HttpExtension.Verb.Should().Be(Autogen.Grpc.v1.HTTPExtension.Types.Verb.Put);
             envelope.Message.HttpExtension.Querystring.Count.Should().Be(1);
@@ -381,6 +382,42 @@ namespace Dapr.Client.Test
             response.Name.Should().Be(invokedResponse.Name);
         }
 
+        [Fact]
+        public async Task InvokeMethodAsync_AppCallback_SayHello()
+        {
+            // Configure Client
+            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var httpClient = new AppCallbackClient(new DaprAppCallbackService(jsonOptions));
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .UseJsonSerializationOptions(jsonOptions)
+                .Build();
+
+            var request = new Request() { RequestParameter = "Look, I was invoked!" };
+
+            var response = await daprClient.InvokeMethodAsync<Request, Response>("test1", "sayHello", request);
+
+            response.Name.Should().Be("Hello Look, I was invoked!");
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_AppCallback_UnexpectedMethod()
+        {
+            // Configure Client
+            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var httpClient = new AppCallbackClient(new DaprAppCallbackService(jsonOptions));
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .UseJsonSerializationOptions(jsonOptions)
+                .Build();
+
+            var request = new Request() { RequestParameter = "Look, I was invoked!" };
+
+            var response = await daprClient.InvokeMethodAsync<Request, Response>("test1", "not-existing", request);
+
+            response.Name.Should().Be("unexpected");
+        }
+
         private async void SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
         {
             var dataAny = ProtobufUtils.ConvertToAnyAsync(data, options);
@@ -392,14 +429,48 @@ namespace Dapr.Client.Test
             entry.Completion.SetResult(response);
         }
 
-        private class InvokeRequest
+        private class Request
         {
             public string RequestParameter { get; set; }
         }
 
-        private class InvokedResponse
+        private class Response
         {
             public string Name { get; set; }
+        }
+
+        // Test implementation of the AppCallback.AppCallbackBase service
+        private class DaprAppCallbackService : AppCallback.AppCallbackBase
+        {
+            private readonly JsonSerializerOptions jsonOptions;
+
+            public DaprAppCallbackService(JsonSerializerOptions jsonOptions)
+            {
+                this.jsonOptions = jsonOptions;
+            }
+
+            public override Task<InvokeResponse> OnInvoke(InvokeRequest request, ServerCallContext context)
+            {
+                return request.Method switch
+                {
+                    "sayHello" => SayHello(request),
+                    _ => Task.FromResult(new InvokeResponse()
+                    {
+                        Data = ProtobufUtils.ConvertToAnyAsync(new Response() { Name = $"unexpected" }, this.jsonOptions)
+                    })
+                };
+            }
+
+            private Task<InvokeResponse> SayHello(InvokeRequest request)
+            {
+                var helloRequest = ProtobufUtils.ConvertFromAnyAsync<Request>(request.Data, this.jsonOptions);
+                var helloResponse = new Response() { Name = $"Hello {helloRequest.RequestParameter}" };
+
+                return Task.FromResult(new InvokeResponse()
+                {
+                    Data = ProtobufUtils.ConvertToAnyAsync(helloResponse, this.jsonOptions)
+                });
+            }
         }
     }
 }
