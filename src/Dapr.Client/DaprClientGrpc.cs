@@ -419,7 +419,7 @@ namespace Dapr.Client
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
-            await this.MakeDeleteStateCallSync(
+            await this.MakeDeleteStateCallAsync(
                 storeName,
                 key,
                 etag: null,
@@ -440,7 +440,7 @@ namespace Dapr.Client
 
             try
             {
-                await this.MakeDeleteStateCallSync(storeName, key, etag, stateOptions, cancellationToken);
+                await this.MakeDeleteStateCallAsync(storeName, key, etag, stateOptions, cancellationToken);
                 return true;
             }
             catch (Exception)
@@ -450,7 +450,7 @@ namespace Dapr.Client
             return false;
         }
 
-        private async ValueTask MakeDeleteStateCallSync(
+        private async ValueTask MakeDeleteStateCallAsync(
            string storeName,
            string key,
            string etag = default,

@@ -12,7 +12,7 @@ namespace Dapr.Client
     /// <summary>
     /// Some type converters.
     /// </summary>
-    public static class TypeConverters
+    internal static class TypeConverters
     {
         /// <summary>
         /// Converts an arbitrary type to a <see cref="System.Text.Json"/> based <see cref="ByteString"/>.
@@ -23,7 +23,10 @@ namespace Dapr.Client
         /// <returns>The given data as JSON based byte string.</returns>
         public static ByteString ToJsonByteString<T>(T data, JsonSerializerOptions options = null)
         {
-            if (data == null) return ByteString.Empty;
+            if (data == null)
+            {
+                return ByteString.Empty;
+            }
 
             var bytes = JsonSerializer.SerializeToUtf8Bytes(data, options);
             return ByteString.CopyFrom(bytes);
@@ -42,7 +45,10 @@ namespace Dapr.Client
         /// <returns>The <see cref="Any"/> type representation of the given data.</returns>
         public static Any ToAny<T>(T data, JsonSerializerOptions options = null)
         {
-            if (data == null) return new Any();
+            if (data == null)
+            {
+                return new Any();
+            }
 
             var t = typeof(T);
 
