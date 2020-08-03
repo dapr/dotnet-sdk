@@ -42,7 +42,7 @@ dotnet new classlib -f netcoreapp3.1 -o MyActor.Interfaces
 
 cd MyActor.Interfaces
 
-# Add Dapr.Actors nuget package
+# Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
 dotnet add package Dapr.Actors -v 0.9.0-preview01
 ```
 
@@ -94,10 +94,10 @@ dotnet new webapi -f netcoreapp3.1 -o MyActorService
 
 cd MyActorService
 
-# Add Dapr.Actors nuget package
+# Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
 dotnet add package Dapr.Actors -v 0.9.0-preview01
 
-# Add Dapr.Actors.AspNetCore nuget package
+# Add Dapr.Actors.AspNetCore nuget package. Please use the latest package version from nuget.org
 dotnet add package Dapr.Actors.AspNetCore -v 0.9.0-preview01
 
 # Add Actor Interface reference
@@ -341,7 +341,7 @@ dotnet new console -f netcoreapp3.1 -o MyActorClient
 
 cd MyActorClient
 
-# Add Dapr.Actors nuget package
+# Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
 dotnet add package Dapr.Actors -v 0.9.0-preview01
 
 # Add Actor Interface reference
