@@ -10,6 +10,7 @@ namespace Dapr.Client.Test
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
+    using Dapr.Client.Autogen.Test.Grpc.v1;
     using Dapr.AppCallback.Autogen.Grpc.v1;
     using Dapr.Client.Http;
     using FluentAssertions;
@@ -395,9 +396,33 @@ namespace Dapr.Client.Test
 
             var request = new Request() { RequestParameter = "Look, I was invoked!" };
 
-            var response = await daprClient.InvokeMethodAsync<Request, Response>("test1", "sayHello", request);
+            var response = await daprClient.InvokeMethodAsync<Request, Response>("test", "SayHello", request);
 
             response.Name.Should().Be("Hello Look, I was invoked!");
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_AppCallback_RepeatedField()
+        {
+            // Configure Client
+            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var httpClient = new AppCallbackClient(new DaprAppCallbackService(jsonOptions));
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .UseJsonSerializationOptions(jsonOptions)
+                .Build();
+
+            var testRun = new TestRun();
+            testRun.Tests.Add(new TestCase() { Name = "test1" });
+            testRun.Tests.Add(new TestCase() { Name = "test2" });
+            testRun.Tests.Add(new TestCase() { Name = "test3" });
+
+            var response = await daprClient.InvokeMethodAsync<TestRun, TestRun>("test", "TestRun", testRun);
+
+            response.Tests.Count.Should().Be(3);
+            response.Tests[0].Name.Should().Be("test1");
+            response.Tests[1].Name.Should().Be("test2");
+            response.Tests[2].Name.Should().Be("test3");
         }
 
         [Fact]
@@ -413,14 +438,14 @@ namespace Dapr.Client.Test
 
             var request = new Request() { RequestParameter = "Look, I was invoked!" };
 
-            var response = await daprClient.InvokeMethodAsync<Request, Response>("test1", "not-existing", request);
+            var response = await daprClient.InvokeMethodAsync<Request, Response>("test", "not-existing", request);
 
             response.Name.Should().Be("unexpected");
         }
 
         private async void SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
         {
-            var dataAny = ProtobufUtils.ConvertToAnyAsync(data, options);
+            var dataAny = TypeConverters.ToAny(data, options);
             var dataResponse = new InvokeResponse();
             dataResponse.Data = dataAny;
 
@@ -453,22 +478,33 @@ namespace Dapr.Client.Test
             {
                 return request.Method switch
                 {
-                    "sayHello" => SayHello(request),
+                    "SayHello" => SayHello(request),
+                    "TestRun" => TestRun(request),
                     _ => Task.FromResult(new InvokeResponse()
                     {
-                        Data = ProtobufUtils.ConvertToAnyAsync(new Response() { Name = $"unexpected" }, this.jsonOptions)
+                        Data = TypeConverters.ToAny(new Response() { Name = $"unexpected" }, this.jsonOptions)
                     })
                 };
             }
 
             private Task<InvokeResponse> SayHello(InvokeRequest request)
             {
-                var helloRequest = ProtobufUtils.ConvertFromAnyAsync<Request>(request.Data, this.jsonOptions);
+                var helloRequest = TypeConverters.FromAny<Request>(request.Data, this.jsonOptions);
                 var helloResponse = new Response() { Name = $"Hello {helloRequest.RequestParameter}" };
 
                 return Task.FromResult(new InvokeResponse()
                 {
-                    Data = ProtobufUtils.ConvertToAnyAsync(helloResponse, this.jsonOptions)
+                    Data = TypeConverters.ToAny(helloResponse, this.jsonOptions)
+                });
+            }
+
+            private Task<InvokeResponse> TestRun(InvokeRequest request)
+            {
+                var echoRequest = TypeConverters.FromAny<TestRun>(request.Data, this.jsonOptions);
+
+                return Task.FromResult(new InvokeResponse()
+                {
+                    Data = TypeConverters.ToAny(echoRequest, this.jsonOptions)
                 });
             }
         }

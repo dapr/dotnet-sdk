@@ -109,7 +109,7 @@ namespace Dapr.AspNetCore.Test
 
         private async void SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
         {
-            var stateData = ProtobufUtils.ConvertToByteStringAsync(state);
+            var stateData = TypeConverters.ToJsonByteString(state);
             var stateResponse = new GetStateResponse();
             stateResponse.Data = stateData;
             stateResponse.Etag = "test";
