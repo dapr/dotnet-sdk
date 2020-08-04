@@ -26,7 +26,7 @@ service AppCallback {
   rpc ListTopicSubscriptions(google.protobuf.Empty) returns (ListTopicSubscriptionsResponse) {}
 
   // Subscribes events from Pubsub
-  rpc OnTopicEvent(TopicEventRequest) returns (google.protobuf.Empty) {}
+  rpc OnTopicEvent(TopicEventRequest) returns (TopicEventResponse) {}
 
   // Lists all input bindings subscribed by this app.
   rpc ListInputBindings(google.protobuf.Empty) returns (ListInputBindingsResponse) {}
@@ -41,9 +41,9 @@ service AppCallback {
 // TopicEventRequest message is compatiable with CloudEvent spec v1.0
 // https://github.com/cloudevents/spec/blob/v1.0/spec.md
 message TopicEventRequest {
-  // id identifies the event. Producers MUST ensure that source + id
+  // id identifies the event. Producers MUST ensure that source + id 
   // is unique for each distinct event. If a duplicate event is re-sent
-  // (e.g. due to a network error) it MAY have the same id.
+  // (e.g. due to a network error) it MAY have the same id. 
   string id = 1;
 
   // source identifies the context in which an event happened.
@@ -53,10 +53,10 @@ message TopicEventRequest {
   // the data encoded in the URI is defined by the event producer.
   string source = 2;
 
-  // The type of event related to the originating occurrence.
+  // The type of event related to the originating occurrence. 
   string type = 3;
 
-  // The version of the CloudEvents specification.
+  // The version of the CloudEvents specification. 
   string spec_version = 4;
 
   // The content type of data value.
@@ -67,6 +67,10 @@ message TopicEventRequest {
 
   // The pubsub topic which publisher sent to.
   string topic = 6;
+}
+
+// TopicEventResponse is response from app on published message
+message TopicEventResponse {
 }
 
 // BindingEventRequest represents input bindings event.
@@ -90,7 +94,7 @@ message BindingEventResponse {
   // The state key values which will be stored in store_name.
   repeated common.v1.StateItem states = 2;
 
-  // BindingEventConcurrency is the kind of concurrency
+  // BindingEventConcurrency is the kind of concurrency 
   enum BindingEventConcurrency {
     // SEQUENTIAL sends data to output bindings specified in "to" sequentially.
     SEQUENTIAL = 0;
