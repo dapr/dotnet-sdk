@@ -23,10 +23,5 @@ namespace Dapr.Client
         /// Concurrency mode for state operations with Dapr.
         /// </summary>
         public ConcurrencyMode? Concurrency { get; set; }
-
-        /// <summary>
-        /// Retry options when perfroming operations with Dapr.
-        /// </summary>
-        public RetryOptions RetryOptions {get; set;}
     }
 }
