@@ -478,6 +478,14 @@ namespace Dapr.Actors
             {
                 // Get the request using the Func as same request cannot be resent when retries are implemented.
                 var request = requestFunc.Invoke();
+
+                // add token for dapr api token based authentication
+                var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                if (daprApiToken != null)
+                {
+                    request.Headers.Add("dapr-api-token", daprApiToken);
+                }
+
                 response = await this.httpClient.SendAsync(request, cancellationToken);
             }
             catch (AuthenticationException ex)
@@ -494,7 +502,8 @@ namespace Dapr.Actors
             if (!response.IsSuccessStatusCode)
             {
                 // RefreshSecurity Settings and try again,
-                if (response.StatusCode == HttpStatusCode.Forbidden)
+                if (response.StatusCode == HttpStatusCode.Forbidden ||
+                    response.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     // TODO Log
                     throw new AuthenticationException("Invalid client credentials");

@@ -521,7 +521,15 @@ namespace Dapr.Client
         /// <returns></returns>
         private async Task<TResponse> MakeGrpcCallHandleError<TResponse>(Func<CallOptions, AsyncUnaryCall<TResponse>> callFunc, CancellationToken cancellationToken = default)
         {
-            var callOptions = new CallOptions(cancellationToken: cancellationToken);
+            var callOptions = new CallOptions(headers: new Metadata(), cancellationToken: cancellationToken);
+
+            // add token for dapr api token based authentication
+            var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+
+            if (daprApiToken != null)
+            {
+                callOptions.Headers.Add("dapr-api-token", daprApiToken);
+            }
 
             // Common Exception Handling logic can be added here for all calls.
             return await callFunc.Invoke(callOptions);
