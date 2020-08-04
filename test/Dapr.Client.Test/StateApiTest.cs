@@ -17,7 +17,6 @@ namespace Dapr.Client.Test
     using System.Collections.Generic;
     using StateConsistency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConsistency;
     using StateConcurrency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConcurrency;
-    using RetryPattern = Dapr.Client.Autogen.Grpc.v1.StateRetryPolicy.Types.RetryPattern;
     using Google.Protobuf;
 
     public class StateApiTest
@@ -352,21 +351,15 @@ namespace Dapr.Client.Test
         }
 
         [Theory]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite)]
         public async Task SaveStateAsync_ValidateOptions(
             ConsistencyMode consistencyMode,
             ConcurrencyMode concurrencyMode,
-            RetryMode retryMode,
             StateConsistency expectedConsistency,
-            StateConcurrency expectedConcurrency,
-            RetryPattern expectedRetryMode)
+            StateConcurrency expectedConcurrency)
         {
             // Configure Client
             var httpClient = new TestHttpClient();
@@ -378,13 +371,7 @@ namespace Dapr.Client.Test
             var stateOptions = new StateOptions
             {
                 Concurrency = concurrencyMode,
-                Consistency = consistencyMode,
-                RetryOptions = new RetryOptions
-                {
-                    RetryInterval = TimeSpan.FromSeconds(5),
-                    RetryMode = retryMode,
-                    RetryThreshold = 10
-                }
+                Consistency = consistencyMode
             };
 
             var metadata = new Dictionary<string, string>();
@@ -406,9 +393,6 @@ namespace Dapr.Client.Test
             state.Metadata["key2"].Should().Be("value2");
             state.Options.Concurrency.Should().Be(expectedConcurrency);
             state.Options.Consistency.Should().Be(expectedConsistency);
-            state.Options.RetryPolicy.Pattern.Should().Be(expectedRetryMode);
-            state.Options.RetryPolicy.Threshold.Should().Be(10);
-            state.Options.RetryPolicy.Interval.Seconds.Should().Be(5);
 
             var stateJson = state.Value.ToStringUtf8();
             var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson);
@@ -417,21 +401,15 @@ namespace Dapr.Client.Test
         }
 
         [Theory]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite)]
         public async Task TrySaveStateAsync_ValidateOptions(
             ConsistencyMode consistencyMode,
             ConcurrencyMode concurrencyMode,
-            RetryMode retryMode,
             StateConsistency expectedConsistency,
-            StateConcurrency expectedConcurrency,
-            RetryPattern expectedRetryMode)
+            StateConcurrency expectedConcurrency)
         {
             // Configure Client
             var httpClient = new TestHttpClient();
@@ -443,13 +421,7 @@ namespace Dapr.Client.Test
             var stateOptions = new StateOptions
             {
                 Concurrency = concurrencyMode,
-                Consistency = consistencyMode,
-                RetryOptions = new RetryOptions
-                {
-                    RetryInterval = TimeSpan.FromSeconds(5),
-                    RetryMode = retryMode,
-                    RetryThreshold = 10
-                }
+                Consistency = consistencyMode
             };
 
             var metadata = new Dictionary<string, string>();
@@ -472,9 +444,6 @@ namespace Dapr.Client.Test
             state.Metadata["key2"].Should().Be("value2");
             state.Options.Concurrency.Should().Be(expectedConcurrency);
             state.Options.Consistency.Should().Be(expectedConsistency);
-            state.Options.RetryPolicy.Pattern.Should().Be(expectedRetryMode);
-            state.Options.RetryPolicy.Threshold.Should().Be(10);
-            state.Options.RetryPolicy.Interval.Seconds.Should().Be(5);
 
             var stateJson = state.Value.ToStringUtf8();
             var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson);
@@ -483,21 +452,15 @@ namespace Dapr.Client.Test
         }
 
         [Theory]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite)]
         public async Task DeleteStateAsync_ValidateOptions(
             ConsistencyMode consistencyMode,
             ConcurrencyMode concurrencyMode,
-            RetryMode retryMode,
             StateConsistency expectedConsistency,
-            StateConcurrency expectedConcurrency,
-            RetryPattern expectedRetryMode)
+            StateConcurrency expectedConcurrency)
         {
             // Configure Client
             var httpClient = new TestHttpClient();
@@ -508,13 +471,7 @@ namespace Dapr.Client.Test
             var stateOptions = new StateOptions
             {
                 Concurrency = concurrencyMode,
-                Consistency = consistencyMode,
-                RetryOptions = new RetryOptions
-                {
-                    RetryInterval = TimeSpan.FromSeconds(5),
-                    RetryMode = retryMode,
-                    RetryThreshold = 10
-                }
+                Consistency = consistencyMode
             };
 
             var task = daprClient.DeleteStateAsync("testStore", "test", stateOptions);
@@ -526,27 +483,18 @@ namespace Dapr.Client.Test
             request.Key.Should().Be("test");
             request.Options.Concurrency.Should().Be(expectedConcurrency);
             request.Options.Consistency.Should().Be(expectedConsistency);
-            request.Options.RetryPolicy.Pattern.Should().Be(expectedRetryMode);
-            request.Options.RetryPolicy.Threshold.Should().Be(10);
-            request.Options.RetryPolicy.Interval.Seconds.Should().Be(5);
         }
 
         [Theory]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite, RetryPattern.RetryLinear)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Exponential, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryExponential)]
-        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, RetryMode.Linear, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite, RetryPattern.RetryLinear)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Eventual, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyEventual, StateConcurrency.ConcurrencyLastWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.FirstWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyFirstWrite)]
+        [InlineData(ConsistencyMode.Strong, ConcurrencyMode.LastWrite, StateConsistency.ConsistencyStrong, StateConcurrency.ConcurrencyLastWrite)]
         public async Task TryDeleteStateAsync_ValidateOptions(
             ConsistencyMode consistencyMode,
             ConcurrencyMode concurrencyMode,
-            RetryMode retryMode,
             StateConsistency expectedConsistency,
-            StateConcurrency expectedConcurrency,
-            RetryPattern expectedRetryMode)
+            StateConcurrency expectedConcurrency)
         {
             // Configure Client
             var httpClient = new TestHttpClient();
@@ -557,13 +505,7 @@ namespace Dapr.Client.Test
             var stateOptions = new StateOptions
             {
                 Concurrency = concurrencyMode,
-                Consistency = consistencyMode,
-                RetryOptions = new RetryOptions
-                {
-                    RetryInterval = TimeSpan.FromSeconds(5),
-                    RetryMode = retryMode,
-                    RetryThreshold = 10
-                }
+                Consistency = consistencyMode
             };
 
             var task = daprClient.TryDeleteStateAsync("testStore", "test", "Test_Etag", stateOptions);
@@ -576,9 +518,6 @@ namespace Dapr.Client.Test
             request.Etag.Should().Be("Test_Etag");
             request.Options.Concurrency.Should().Be(expectedConcurrency);
             request.Options.Consistency.Should().Be(expectedConsistency);
-            request.Options.RetryPolicy.Pattern.Should().Be(expectedRetryMode);
-            request.Options.RetryPolicy.Threshold.Should().Be(10);
-            request.Options.RetryPolicy.Interval.Seconds.Should().Be(5);
         }
 
         private async void SendResponseWithState<T>(T state, TestHttpClient.Entry entry, string etag = null)
