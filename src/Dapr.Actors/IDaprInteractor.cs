@@ -27,27 +27,6 @@ namespace Dapr.Actors
         Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Saves Actor state. This is temporary until the Dapr runtime implements the Batch state update.
-        /// </summary>
-        /// <param name="actorType">Type of actor.</param>
-        /// <param name="actorId">ActorId.</param>
-        /// <param name="keyName">state name.</param>
-        /// <param name="data">State to be saved.</param>
-        /// <param name="cancellationToken">Cancels the operation.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Removes Actor state. This is temporary until the Dapr runtime implements the Batch state update.
-        /// </summary>
-        /// <param name="actorType">Type of actor.</param>
-        /// <param name="actorId">ActorId.</param>
-        /// <param name="keyName">state name.</param>
-        /// <param name="cancellationToken">Cancels the operation.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        Task RemoveStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Saves state batch to Dapr.
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
