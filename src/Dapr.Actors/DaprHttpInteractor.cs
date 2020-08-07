@@ -52,7 +52,6 @@ namespace Dapr.Actors
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -63,52 +62,14 @@ namespace Dapr.Actors
                 return request;
             }
 
-            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
             var stringResponse = await response.Content.ReadAsStringAsync();
             return stringResponse;
-        }
-
-        public async Task SaveStateAsync(string actorType, string actorId, string keyName, string data, CancellationToken cancellationToken = default)
-        {
-            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
-            var requestId = Guid.NewGuid().ToString();
-
-            HttpRequestMessage RequestFunc()
-            {
-                var request = new HttpRequestMessage()
-                {
-                    Method = HttpMethod.Put,
-                    Content = new StringContent(data),
-                };
-
-                return request;
-            }
-
-            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
-        }
-
-        public async Task RemoveStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
-        {
-            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
-            var requestId = Guid.NewGuid().ToString();
-
-            HttpRequestMessage RequestFunc()
-            {
-                var request = new HttpRequestMessage()
-                {
-                    Method = HttpMethod.Delete,
-                };
-
-                return request;
-            }
-
-            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
         }
 
         public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -121,7 +82,7 @@ namespace Dapr.Actors
                 return request;
             }
 
-            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
         public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default)
@@ -141,7 +102,6 @@ namespace Dapr.Actors
 
             // Send Request
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -161,7 +121,7 @@ namespace Dapr.Actors
                 return request;
             }
 
-            var retval = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            var retval = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
 
             IActorResponseMessageHeader actorResponseMessageHeader = null;
             if (retval != null && retval.Headers != null)
@@ -220,7 +180,6 @@ namespace Dapr.Actors
         public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -238,7 +197,7 @@ namespace Dapr.Actors
                 return request;
             }
 
-            var response = await this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
             var byteArray = await response.Content.ReadAsStreamAsync();
             return byteArray;
         }
@@ -246,7 +205,6 @@ namespace Dapr.Actors
         public Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -260,13 +218,12 @@ namespace Dapr.Actors
                 return request;
             }
 
-            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
         public Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -278,13 +235,12 @@ namespace Dapr.Actors
                 return request;
             }
 
-            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
         public Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -298,13 +254,12 @@ namespace Dapr.Actors
                 return request;
             }
 
-            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
         public Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
-            var requestId = Guid.NewGuid().ToString();
 
             HttpRequestMessage RequestFunc()
             {
@@ -316,7 +271,7 @@ namespace Dapr.Actors
                 return request;
             }
 
-            return this.SendAsync(RequestFunc, relativeUrl, requestId, cancellationToken);
+            return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
         /// <summary>
@@ -324,16 +279,14 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="requestFunc">Func to create HttpRequest to send.</param>
         /// <param name="relativeUri">The relative URI.</param>
-        /// <param name="requestId">Request Id for corelation.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The payload of the GET response.</returns>
         internal async Task<HttpResponseMessage> SendAsync(
             Func<HttpRequestMessage> requestFunc,
             string relativeUri,
-            string requestId,
             CancellationToken cancellationToken)
         {
-            return await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, requestId, cancellationToken);
+            return await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, cancellationToken);
         }
 
         /// <summary>
@@ -341,16 +294,14 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="requestFunc">Func to create HttpRequest to send.</param>
         /// <param name="relativeUri">The relative URI.</param>
-        /// <param name="requestId">Request Id for corelation.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The payload of the GET response as string.</returns>
         internal async Task<string> SendAsyncGetResponseAsRawJson(
             Func<HttpRequestMessage> requestFunc,
             string relativeUri,
-            string requestId,
             CancellationToken cancellationToken)
         {
-            var response = await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, requestId, cancellationToken);
+            var response = await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, cancellationToken);
             var retValue = default(string);
 
             if (response != null && response.Content != null)
@@ -393,22 +344,17 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="requestFunc">Func to create HttpRequest to send.</param>
         /// <param name="relativeUri">The relative URI.</param>
-        /// <param name="requestId">Request Id for corelation.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The payload of the GET response.</returns>
         private async Task<HttpResponseMessage> SendAsyncHandleUnsuccessfulResponse(
             Func<HttpRequestMessage> requestFunc,
             string relativeUri,
-            string requestId,
             CancellationToken cancellationToken)
         {
             HttpRequestMessage FinalRequestFunc()
             {
                 var request = requestFunc.Invoke();
                 request.RequestUri = new Uri($"http://{DaprEndpoint}:{this.daprPort}/{relativeUri}");
-
-                // Add correlation IDs.
-                request.Headers.Add(Constants.RequestIdHeaderName, this.GetClientRequestIdWithCorrelation(requestId));
                 return request;
             }
 
@@ -517,12 +463,6 @@ namespace Dapr.Actors
             {
                 return response;
             }
-        }
-
-        private string GetClientRequestIdWithCorrelation(string requestId)
-        {
-            // TODO: Add external correlations for tracing.
-            return requestId;
         }
 
         private HttpClient CreateHttpClient()
