@@ -61,11 +61,6 @@ jobs:
             --prerelease true \
             ${RELEASE_ARTIFACT[*]}
       - name: Publish nuget packages to nuget.org
-        if: startswith(github.ref, 'refs/tags/v') && !endsWith(github.ref, '-rc'
+        if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-beta') || endsWith(github.ref, '-alpha'))
         run: |
           dotnet nuget push ${{ env.NUPKG_OUTDIR }}/Dapr*.nupkg --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
-      - name: Publish nuget packages to github feed.
-        if: startswith(github.ref, 'refs/tags/v')
-        run: |
-          # publish to github nuget repository
-          dotnet nuget push ${{ env.NUPKG_OUTDIR }}/Dapr*.nupkg --skip-duplicate --api-key ${{ secrets.DAPR_BOT_TOKEN }} --source https://nuget.pkg.github.com/dapr/index.json
