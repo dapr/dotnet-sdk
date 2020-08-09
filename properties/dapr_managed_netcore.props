@@ -48,7 +48,7 @@
     <DefineConstants>$(DefineConstants);DotNetCoreClr</DefineConstants>
   </PropertyGroup>
 
-  <!-- Use MinVer for versioning based on git tags -->
+  <!-- Use MinVer for assembly, nuget versioning based on git tags -->
   <ItemGroup>
     <PackageReference Include="MinVer" Version="2.3.0">
       <PrivateAssets>all</PrivateAssets>
@@ -60,6 +60,6 @@
   <PropertyGroup>
     <MinVerTagPrefix>v</MinVerTagPrefix>
     <MinVerDefaultPreReleasePhase>preview</MinVerDefaultPreReleasePhase>
-    <MinVerVerbosity>detailed</MinVerVerbosity>
+    <!-- <MinVerVerbosity>detailed</MinVerVerbosity>-->
   </PropertyGroup>
 </Project>
