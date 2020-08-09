@@ -48,4 +48,18 @@
     <DefineConstants>$(DefineConstants);DotNetCoreClr</DefineConstants>
   </PropertyGroup>
 
+  <!-- Use MinVer for versioning based on git tags -->
+  <ItemGroup>
+    <PackageReference Include="MinVer" Version="2.3.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Configure properties for MinVer -->
+  <PropertyGroup>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerDefaultPreReleasePhase>preview</MinVerDefaultPreReleasePhase>
+    <MinVerVerbosity>detailed</MinVerVerbosity>
+  </PropertyGroup>
 </Project>

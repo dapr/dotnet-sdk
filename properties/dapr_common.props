@@ -4,23 +4,5 @@
   <PropertyGroup>
     <RepoRoot>$(MSBuildThisFileDirectory)..\</RepoRoot>
     <RequestedVerbosity Condition=" '$(RequestedVerbosity)' == '' ">minimal</RequestedVerbosity>
-    
-    <!-- Version for binaries, nuget packages generated from this repo. -->
-    <MajorVersion>1</MajorVersion>
-    <MinorVersion>0</MinorVersion>
-    <BuildVersion>0</BuildVersion>
-    <Revision>0</Revision>
-    <Version>$(MajorVersion).$(MinorVersion).$(BuildVersion).$(Revision)</Version>
-    <AssemblyVersion>$(Version)</AssemblyVersion>
-    <AssemblyFileVersion>$(Version)</AssemblyFileVersion>
-    <FileVersion>$(Version)</FileVersion>
-
-    <!-- Nuget package versions -->
-    <NupkgMajorVersion>0</NupkgMajorVersion>
-    <NupkgMinorVersion>9</NupkgMinorVersion>
-    <NupkgPatchVersion>0</NupkgPatchVersion>
-    <NupkgPreviewTag>-preview01</NupkgPreviewTag>
-    <NupkgVersion>$(NupkgMajorVersion).$(NupkgMinorVersion).$(NupkgPatchVersion)$(NupkgPreviewTag)</NupkgVersion>
   </PropertyGroup>
-  
 </Project>

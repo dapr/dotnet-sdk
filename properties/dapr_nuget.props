@@ -1,7 +1,6 @@
 <Project>
   <!-- Nuget package properties when packed using dotnet pack. -->
   <PropertyGroup>
-    <PackageVersion>$(NupkgVersion)</PackageVersion>
     <Authors>dapr.io</Authors>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
