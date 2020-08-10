@@ -33,7 +33,7 @@ Actor
 To run the actor service locally run this command in `DemoActor` directory:
 
 ```sh
- dapr run --port 3500 --app-id demo_actor --app-port 5000 dotnet run
+ dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5000 dotnet run
 ```
 
 The `DemoActor` service will listen on port `5000` for HTTP.
@@ -49,7 +49,7 @@ Run the client project from `ActorClient` directory as:
  dotnet run
  ```
 
- *Note: If you started the actor service with dapr port other than 3500, then set the environment variable DAPR_HTTP_PORT to the value of --port specified while starting the actor service before running the client in terminal.*
+ *Note: If you started the actor service with dapr port other than 3500, then set the environment variable DAPR_HTTP_PORT to the value of --dapr-http-port specified while starting the actor service before running the client in terminal.*
  ```
  On Windows: set DAPR_HTTP_PORT=<port>
  On Linux, MacOS: export DAPR_HTTP_PORT=<port>
