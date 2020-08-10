@@ -43,7 +43,7 @@ namespace ControllerSample.Controllers
         /// <param name="transaction">Transaction info.</param>
         /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
-        [Topic("deposit")]
+        [Topic("pubsub", "deposit")]
         [HttpPost("deposit")]
         public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] DaprClient daprClient)
         {
@@ -60,7 +60,7 @@ namespace ControllerSample.Controllers
         /// <param name="transaction">Transaction info.</param>
         /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
-        [Topic("withdraw")]
+        [Topic("pubsub", "withdraw")]
         [HttpPost("withdraw")]
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] DaprClient daprClient)
         {

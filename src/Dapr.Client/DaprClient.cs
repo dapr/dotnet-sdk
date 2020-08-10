@@ -18,20 +18,22 @@ namespace Dapr.Client
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
         /// <param name="data">The  event data.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TData">The data type of the object that will be serialized.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync<TData>(string topicName, TData data, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync<TData>(string pubsubName, string topicName, TData data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync(string topicName, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync(string pubsubName,string topicName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes an output binding.

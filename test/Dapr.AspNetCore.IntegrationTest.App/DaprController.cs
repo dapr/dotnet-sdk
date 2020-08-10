@@ -13,13 +13,13 @@ namespace Dapr.AspNetCore.IntegrationTest.App
     [ApiController]
     public class DaprController : ControllerBase
     {
-        [Topic("B")]
+        [Topic("pubsub", "B")]
         [HttpPost("/B")]
         public void TopicB()
         {
         }
 
-        [Topic("register-user")]
+        [Topic("pubsub", "register-user")]
         [HttpPost("/register-user")]
         public ActionResult<UserInfo> RegisterUser(UserInfo user)
         {

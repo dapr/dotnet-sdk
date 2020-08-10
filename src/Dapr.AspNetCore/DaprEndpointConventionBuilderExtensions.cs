@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -16,11 +16,12 @@ namespace Microsoft.AspNetCore.Builder
         /// <summary>
         /// Adds <see cref="TopicAttribute" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
         /// </summary>
-        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>
+        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="name">The topic name.</param>
         /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
         /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
-        public static T WithTopic<T>(this T builder, string name)
+        public static T WithTopic<T>(this T builder, string pubsubName, string name)
             where T : IEndpointConventionBuilder
         {
             if (builder is null)
@@ -28,12 +29,10 @@ namespace Microsoft.AspNetCore.Builder
                 throw new ArgumentNullException(nameof(builder));
             }
 
-            if (string.IsNullOrEmpty(name))
-            {
-                throw new ArgumentException("The value cannot be null or empty.", nameof(name));
-            }
+            ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
 
-            builder.WithMetadata(new TopicAttribute(name));
+            builder.WithMetadata(new TopicAttribute(pubsubName, name));
             return builder;
         }
     }

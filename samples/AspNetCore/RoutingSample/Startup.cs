@@ -27,6 +27,11 @@ namespace RoutingSample
         public const string StoreName = "statestore";
 
         /// <summary>
+        /// Pubsub component name.
+        /// </summary>
+        public const string PubsubName = "pubsub";
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="Startup"/> class.
         /// </summary>
         /// <param name="configuration">Configuration.</param>
@@ -77,8 +82,8 @@ namespace RoutingSample
                 endpoints.MapSubscribeHandler();
 
                 endpoints.MapGet("{id}", Balance);
-                endpoints.MapPost("deposit", Deposit).WithTopic("deposit");
-                endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
+                endpoints.MapPost("deposit", Deposit).WithTopic(PubsubName, "deposit");
+                endpoints.MapPost("withdraw", Withdraw).WithTopic(PubsubName, "withdraw");
             });
 
             async Task Balance(HttpContext context)

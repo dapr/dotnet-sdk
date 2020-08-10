@@ -18,6 +18,7 @@ namespace DaprClient
     {
         private static readonly string stateKeyName = "mykey";
         private static readonly string storeName = "statestore";
+        private static readonly string pubsubName = "pubsub";
 
         /// <summary>
         /// Main entry point.
@@ -71,14 +72,14 @@ namespace DaprClient
         internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
         {
             var eventData = new { Id = "17", Amount = (decimal)10, };
-            await client.PublishEventAsync("deposit", eventData);
+            await client.PublishEventAsync(pubsubName, "deposit", eventData);
             Console.WriteLine("Published deposit event!");
         }
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
             var eventData = new Widget() { Size = "small", Color = "yellow", };
-            await client.PublishEventAsync("TopicA", eventData);
+            await client.PublishEventAsync(pubsubName, "TopicA", eventData);
             Console.WriteLine("Published Event!");
         }
 
