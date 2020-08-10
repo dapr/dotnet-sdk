@@ -6,6 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\AspNetCore\GrpcServiceSample\Models\GetAccountInput.cs" Link="GetAccountInput.cs" />
+    <Compile Include="..\..\AspNetCore\GrpcServiceSample\Models\GetAccountOutput.cs" Link="GetAccountOutput.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
   </ItemGroup>
 

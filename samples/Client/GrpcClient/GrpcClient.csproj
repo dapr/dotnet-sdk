@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Protos\appcallback.proto" />
+    <None Remove="Protos\common.proto" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\..\src\Dapr.Client\TypeConverters.cs" Link="TypeConverters.cs" />
+    <Compile Include="..\..\AspNetCore\GrpcServiceSample\Models\GetAccountInput.cs" Link="GetAccountInput.cs" />
+    <Compile Include="..\..\AspNetCore\GrpcServiceSample\Models\GetAccountOutput.cs" Link="GetAccountOutput.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.12.4" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.30.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.31.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\appcallback.proto" GrpcServices="Client">
+      <ProtoRoot>Protos</ProtoRoot>
+    </Protobuf>
+    <Protobuf Include="Protos\common.proto" GrpcServices="Client">
+      <ProtoRoot>Protos</ProtoRoot>
+    </Protobuf>
+  </ItemGroup>
+
+</Project>

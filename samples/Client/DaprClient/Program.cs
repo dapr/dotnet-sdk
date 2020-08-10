@@ -10,6 +10,7 @@ namespace DaprClient
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Http;
+    using GrpcServiceSample.Models;
 
     /// <summary>
     /// Shows Dapr client calls.
@@ -51,18 +52,21 @@ namespace DaprClient
             // This provides an example of how to invoke a method on another REST service that is listening on http.
             // To use it run RoutingService in this solution.
             // Invoke deposit operation on RoutingSample service by publishing event.      
-            
-            //await PublishDepositeEventToRoutingSampleAsync(client);
-                        
-            //await Task.Delay(TimeSpan.FromSeconds(1));
 
-            //await DepositUsingServiceInvocation(client);
+            await PublishDepositeEventToRoutingSampleAsync(client);
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
 
             //Invoke deposit operation on RoutingSample service by POST.
+            //await InvokeDepositServiceOperationAsync(client);
+
+            //Invoke withdraw operation on RoutingSample service by POST.
             //await InvokeWithdrawServiceOperationAsync(client);
 
-            //Invoke deposit operation on RoutingSample service by GET.
+            //Invoke balance operation on RoutingSample service by GET.
             //await InvokeBalanceServiceOperationAsync(client);
+
+            await InvokeGrpcBalanceServiceOperationAsync(client);
             #endregion
 
             Console.WriteLine("Done");
@@ -108,9 +112,9 @@ namespace DaprClient
             Console.WriteLine("Deleted State!");
         }
 
-        internal static async Task DepositUsingServiceInvocation(DaprClient client)
+        internal static async Task InvokeDepositServiceOperationAsync(DaprClient client)
         {
-            Console.WriteLine("DepositUsingServiceInvocation");
+            Console.WriteLine("Invoking deposit");
             var data = new { id = "17", amount = (decimal)99 };
 
             HTTPExtension httpExtension = new HTTPExtension()
@@ -173,6 +177,19 @@ namespace DaprClient
             var res = await client.InvokeMethodAsync<Account>("routing", "17", httpExtension);
 
             Console.WriteLine($"Received balance {res.Balance}");
+        }
+
+        internal static async Task InvokeGrpcBalanceServiceOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking grpc balance");
+
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
+            var res = await client.InvokeMethodAsync<GetAccountInput, GetAccountOutput>("grpcsample", "getaccount", new GetAccountInput { Id = "abc" }, httpExtension);
+
+            Console.WriteLine($"Received grpc balance {res.Balance}");
         }
 
         private class Widget
