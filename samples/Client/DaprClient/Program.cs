@@ -52,17 +52,17 @@ namespace DaprClient
             // This provides an example of how to invoke a method on another REST service that is listening on http.
             // To use it run RoutingService in this solution.
             // Invoke deposit operation on RoutingSample service by publishing event.      
-            
+
             //await PublishDepositeEventToRoutingSampleAsync(client);
-                        
+
             //await Task.Delay(TimeSpan.FromSeconds(1));
 
             //await DepositUsingServiceInvocation(client);
 
-            //Invoke deposit operation on RoutingSample service by POST.
+            ////Invoke deposit operation on RoutingSample service by POST.
             //await InvokeWithdrawServiceOperationAsync(client);
 
-            //Invoke deposit operation on RoutingSample service by GET.
+            ////Invoke deposit operation on RoutingSample service by GET.
             //await InvokeBalanceServiceOperationAsync(client);
             #endregion
 
@@ -78,7 +78,7 @@ namespace DaprClient
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
-            var eventData = new Widget() { Size = "small", Color = "yellow", };
+            var eventData = new Widget() { Size = "small", Color = "yellow", };            
             await client.PublishEventAsync(pubsubName, "TopicA", eventData);
             Console.WriteLine("Published Event!");
         }
