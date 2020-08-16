@@ -8,7 +8,7 @@ namespace Dapr
     /// <summary>
     /// Represents a state object returned from a bulk get state operation.
     /// </summary>
-    public sealed class GetBulkItem
+    public readonly struct GetBulkItem
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="GetBulkItem"/> class.

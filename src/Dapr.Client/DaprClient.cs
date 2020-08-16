@@ -148,11 +148,11 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of state store to read from.</param>
         /// <param name="keys">The list of keys to get values for.</param>
-        /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store.</param>
+        /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store. a value equal to or smaller than 0 means max parallelism.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{GetBulkItem}" /> that will return the list of values when the operation has completed.</returns>
+        /// <returns>A <see cref="ValueTask{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
         
-        public abstract ValueTask<IEnumerable<GetBulkItem>> GetBulkStateAsync(string storeName, IEnumerable<string> keys, int parallelism = -1, CancellationToken cancellationToken = default);
+        public abstract ValueTask<IReadOnlyList<GetBulkItem>> GetBulkStateAsync(string storeName, IList<string> keys, int parallelism = -1, CancellationToken cancellationToken = default);
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
         /// </summary>

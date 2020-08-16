@@ -41,7 +41,7 @@ namespace Dapr
             }
         }
 
-        public override ValueTask<IEnumerable<GetBulkItem>> GetBulkStateAsync(string storeName, IEnumerable<string> keys, int parallelism = -1, CancellationToken cancellationToken = default)
+        public override ValueTask<IReadOnlyList<GetBulkItem>> GetBulkStateAsync(string storeName, IList<string> keys, int parallelism = -1, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
 
@@ -59,7 +59,7 @@ namespace Dapr
                 }
             }
 
-            return new ValueTask<IEnumerable<GetBulkItem>>(response);
+            return new ValueTask<IReadOnlyList<GetBulkItem>>(response);
         }
 
         public override ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(
