@@ -23,7 +23,7 @@ namespace Dapr
         /// Initializes a new instance of the <see cref="DaprClientGrpc"/> class.
         /// </summary>
         internal StateTestClient()
-            :base(channel)
+            : base(channel)
         { }
 
         public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
@@ -41,9 +41,30 @@ namespace Dapr
             }
         }
 
+        public override ValueTask<IEnumerable<GetBulkItem>> GetBulkStateAsync(string storeName, IEnumerable<string> keys, int parallelism = -1, CancellationToken cancellationToken = default)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
+
+            var response = new List<GetBulkItem>();
+
+            foreach (var key in keys)
+            {
+                if (this.State.TryGetValue(key, out var obj))
+                {
+                    response.Add(new GetBulkItem(key, obj.ToString(), ""));
+                }
+                else
+                {
+                    response.Add(new GetBulkItem(key, "", ""));
+                }
+            }
+
+            return new ValueTask<IEnumerable<GetBulkItem>>(response);
+        }
+
         public override ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(
-            string storeName, 
-            string key, 
+            string storeName,
+            string key,
             ConsistencyMode? consistencyMode = default,
             CancellationToken cancellationToken = default)
         {
@@ -63,7 +84,7 @@ namespace Dapr
         public override Task SaveStateAsync<TValue>(
             string storeName,
             string key,
-            TValue value,            
+            TValue value,
             StateOptions stateOptions = default,
             Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
