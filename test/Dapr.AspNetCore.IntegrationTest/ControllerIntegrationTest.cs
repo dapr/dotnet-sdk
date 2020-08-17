@@ -69,5 +69,19 @@ namespace Dapr.AspNetCore.IntegrationTest
                 widget.Count.Should().Be(18);
             }
         }
+
+        [Fact]
+        public async Task ModelBinder_CanGetOutOfTheWayWhenTheresNoBinding()
+        {
+            using (var factory = new AppWebApplicationFactory())
+            {
+                var httpClient = factory.CreateClient();
+                var daprClient = factory.DaprClient;
+
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/echo-user?name=jimmy");
+                var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+            }
+        }
     }
 }
