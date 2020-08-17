@@ -29,7 +29,7 @@ namespace Dapr.AspNetCore
 
         private static bool CanBind(ModelBinderProviderContext context, out Type type)
         {
-            if (context.BindingInfo.BindingSource.Id == "state")
+            if (context.BindingInfo.BindingSource?.Id == "state")
             {
                 // [FromState]
                 type = Unwrap(context.Metadata.ModelType);
