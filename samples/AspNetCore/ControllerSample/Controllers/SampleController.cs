@@ -5,6 +5,7 @@
 
 namespace ControllerSample.Controllers
 {
+    using System;
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
@@ -43,10 +44,12 @@ namespace ControllerSample.Controllers
         /// <param name="transaction">Transaction info.</param>
         /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
         [Topic("pubsub", "deposit")]
         [HttpPost("deposit")]
         public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] DaprClient daprClient)
         {
+            Console.WriteLine("Enter deposit");
             var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
             state.Value ??= new Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
@@ -60,10 +63,12 @@ namespace ControllerSample.Controllers
         /// <param name="transaction">Transaction info.</param>
         /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
         [Topic("pubsub", "withdraw")]
         [HttpPost("withdraw")]
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] DaprClient daprClient)
         {
+            Console.WriteLine("Enter withdraw");
             var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
 
             if (state.Value == null)

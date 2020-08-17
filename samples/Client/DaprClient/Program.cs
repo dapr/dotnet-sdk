@@ -49,9 +49,9 @@ namespace DaprClient
             await DeleteStateAsync(client);
 
             #region Service Invoke - Required RoutingService
-            // This provides an example of how to invoke a method on another REST service that is listening on http.
-            // To use it run RoutingService in this solution.
-            // Invoke deposit operation on RoutingSample service by publishing event.      
+            //// This provides an example of how to invoke a method on another REST service that is listening on http.
+            //// To use it run RoutingService in this solution.
+            //// Invoke deposit operation on RoutingSample service by publishing event.      
 
             //await PublishDepositeEventToRoutingSampleAsync(client);
 
