@@ -46,5 +46,12 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             state.Value.Count++;
             await state.SaveAsync();
         }
+
+        [HttpPost("/echo-user")]
+        public ActionResult<UserInfo> EchoUser([FromQuery]UserInfo user)
+        {
+            // To simulate an action where there's no Dapr attribute, yet MVC still checks the list of available model binder providers.
+            return user;
+        }
     }
 }
