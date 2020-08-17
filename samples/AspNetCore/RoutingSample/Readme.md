@@ -7,7 +7,7 @@ It exposes the following endpoints over HTTP:
  - POST `/deposit`: Accepts a JSON payload to deposit money to an account
  - POST `/withdraw`: Accepts a JSON payload to withdraw money from an account
 
-The application also registers for pub-sub with the `deposit` and `withdraw` topics.
+The application also registers for pub/sub with the `deposit` and `withdraw` topics.
 
  ## Running the Sample
 
@@ -105,12 +105,12 @@ Output:
  Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-dapr publish -t withdraw -d '{"id": "17", "amount": 15 }'
+  dapr publish --pubsub pubsub -t withdraw -d '{"id": "17", "amount": 15 }'
 ```
 
 On Windows:
  ```sh
- dapr publish -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish --pubsub pubsub -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
 
  ---
@@ -119,11 +119,11 @@ On Windows:
 Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-dapr publish -t deposit -d '{"id": "17", "amount": 15 }'
+  dapr publish --pubsub pubsub -t deposit -d '{"id": "17", "amount": 15 }'
 ```
 On Windows:
  ```sh
- dapr publish -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish --pubsub pubsub -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
  ---
 
@@ -158,16 +158,16 @@ app.UseEndpoints(endpoints =>
     endpoints.MapSubscribeHandler();
 
     endpoints.MapGet("{id}", Balance);
-    endpoints.MapPost("deposit", Deposit).WithTopic("deposit");
-    endpoints.MapPost("withdraw", Withdraw).WithTopic("withdraw");
+    endpoints.MapPost("deposit", Deposit).WithTopic(PubsubName, "deposit");
+    endpoints.MapPost("withdraw", Withdraw).WithTopic(PubsubName, "withdraw");
 });
 ```
 
-`MapSubscribeHandler()` registers an endpoint that will be called by the Dapr runtime to register for pub-sub topics. This is is not needed unless using pub-sub.
+`MapSubscribeHandler()` registers an endpoint that will be called by the Dapr runtime to register for pub/sub topics. This is is not needed unless using pub/sub.
 
 `MapGet(...)` and `MapPost(...)` are provided by ASP.NET Core routing - these are used to setup endpoints to handle HTTP requests.
 
-`WithTopic(...)` associates an endpoint with a pub-sub topic.
+`WithTopic(...)` associates an endpoint with a pub/sub topic.
 
 ---
 

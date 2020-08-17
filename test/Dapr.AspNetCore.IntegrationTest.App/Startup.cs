@@ -45,7 +45,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
                 endpoints.MapSubscribeHandler();
                 endpoints.MapControllers();
 
-                endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("A");
+                endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("testpubsub", "A");
 
                 endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
                 {
