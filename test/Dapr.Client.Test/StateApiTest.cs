@@ -53,7 +53,7 @@ namespace Dapr.Client.Test
                 .Build();
 
             var key = "test";
-            var task = daprClient.GetBulkStateAsync("testStore", new List<string>(){ key });
+            var task = daprClient.GetBulkStateAsync("testStore", new List<string>(){ key }, null);
 
             // Create Response & Respond
             var data = "value";
