@@ -18,6 +18,7 @@ namespace DaprClient
     {
         private static readonly string stateKeyName = "mykey";
         private static readonly string storeName = "statestore";
+        private static readonly string pubsubName = "pubsub";
 
         /// <summary>
         /// Main entry point.
@@ -48,20 +49,20 @@ namespace DaprClient
             await DeleteStateAsync(client);
 
             #region Service Invoke - Required RoutingService
-            // This provides an example of how to invoke a method on another REST service that is listening on http.
-            // To use it run RoutingService in this solution.
-            // Invoke deposit operation on RoutingSample service by publishing event.      
-            
+            //// This provides an example of how to invoke a method on another REST service that is listening on http.
+            //// To use it run RoutingService in this solution.
+            //// Invoke deposit operation on RoutingSample service by publishing event.      
+
             //await PublishDepositeEventToRoutingSampleAsync(client);
-                        
+
             //await Task.Delay(TimeSpan.FromSeconds(1));
 
             //await DepositUsingServiceInvocation(client);
 
-            //Invoke deposit operation on RoutingSample service by POST.
+            ////Invoke deposit operation on RoutingSample service by POST.
             //await InvokeWithdrawServiceOperationAsync(client);
 
-            //Invoke deposit operation on RoutingSample service by GET.
+            ////Invoke deposit operation on RoutingSample service by GET.
             //await InvokeBalanceServiceOperationAsync(client);
             #endregion
 
@@ -71,14 +72,14 @@ namespace DaprClient
         internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
         {
             var eventData = new { Id = "17", Amount = (decimal)10, };
-            await client.PublishEventAsync("deposit", eventData);
+            await client.PublishEventAsync(pubsubName, "deposit", eventData);
             Console.WriteLine("Published deposit event!");
         }
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
-            var eventData = new Widget() { Size = "small", Color = "yellow", };
-            await client.PublishEventAsync("TopicA", eventData);
+            var eventData = new Widget() { Size = "small", Color = "yellow", };            
+            await client.PublishEventAsync(pubsubName, "TopicA", eventData);
             Console.WriteLine("Published Event!");
         }
 

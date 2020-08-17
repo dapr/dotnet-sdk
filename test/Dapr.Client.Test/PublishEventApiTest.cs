@@ -14,6 +14,8 @@ namespace Dapr.Client.Test
 
     public class PublishEventApiTest
     {
+        const string TestPubsubName = "testpubsubname";
+
         [Fact]
         public async Task PublishEventAsync_CanPublishTopicWithData()
         {
@@ -23,12 +25,13 @@ namespace Dapr.Client.Test
                 .Build();
           
             var publishData = new PublishData() { PublishObjectParameter = "testparam" };
-            var task = daprClient.PublishEventAsync<PublishData>("test", publishData);
+            var task = daprClient.PublishEventAsync<PublishData>(TestPubsubName, "test", publishData);
 
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
             var jsonFromRequest = request.Data.ToStringUtf8();
 
+            request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData));
         }
@@ -42,11 +45,12 @@ namespace Dapr.Client.Test
                 .Build();
 
 
-            var task = daprClient.PublishEventAsync("test");
+            var task = daprClient.PublishEventAsync(TestPubsubName, "test");
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
             var jsonFromRequest = request.Data.ToStringUtf8();
 
+            request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be("\"\"");
         }

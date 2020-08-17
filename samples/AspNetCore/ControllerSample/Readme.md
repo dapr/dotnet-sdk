@@ -7,7 +7,7 @@ It exposes the following endpoints over HTTP:
  - POST `/deposit`: Accepts a JSON payload to deposit money to an account
  - POST `/withdraw`: Accepts a JSON payload to withdraw money from an account
 
-The application also registers for pub-sub with the `deposit` and `withdraw` topics.
+The application also registers for pub/sub with the `deposit` and `withdraw` topics.
 
  ## Running the Sample
 
@@ -109,11 +109,11 @@ Output:
  
  On Linux, MacOS:
 ```sh
-dapr publish -t withdraw -d '{"id": "17", "amount": 15 }'
+dapr publish --pubsub pubsub -t withdraw -d '{"id": "17", "amount": 15 }'
 ```
 On Windows:
  ```sh
- dapr publish -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish --pubsub pubsub -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
  ---
 
@@ -121,11 +121,11 @@ On Windows:
 Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-dapr publish -t deposit -d '{"id": "17", "amount": 15 }'
+dapr publish --pubsub pubsub -t deposit -d '{"id": "17", "amount": 15 }'
 ```
 On Windows:
  ```sh
- dapr publish -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish --pubsub pubsub -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
 ```
  ---
 
@@ -162,12 +162,12 @@ app.UseEndpoints(endpoints =>
 });
 ```
 
-`MapSubscribeHandler()` registers an endpoint that will be called by the Dapr runtime to register for pub-sub topics. This is is not needed unless using pub-sub.
+`MapSubscribeHandler()` registers an endpoint that will be called by the Dapr runtime to register for pub/sub topics. This is is not needed unless using pub/sub.
 
 ---
 
 ```C#
-[Topic("deposit")]
+[Topic("pubsub", "deposit")]
 [HttpPost("deposit")]
 public async Task<ActionResult<Account>> Deposit(...)
 {
@@ -175,7 +175,7 @@ public async Task<ActionResult<Account>> Deposit(...)
 }
 ```
 
-`[Topic(...)]` associates a pub-sub topic with this endpoint.
+`[Topic(...)]` associates a pub/sub named `pubsub` (this is the default configured by the Dapr CLI) pub/sub topic `deposit` with this endpoint.
 
 ---
 
@@ -215,7 +215,7 @@ Using `[FromState]` allows binding a data type directly without using `StateEntr
 ---
 
 ```C#
-[Topic("deposit")]
+[Topic("pubsub", "deposit")]
 [HttpPost("deposit")]
 public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] StateClient stateClient)
 {
