@@ -152,7 +152,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
         
-        public abstract ValueTask<IReadOnlyList<GetBulkItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default);
+        public abstract ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default);
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
         /// </summary>

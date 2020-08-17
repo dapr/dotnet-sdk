@@ -202,7 +202,7 @@ namespace Dapr.Client
             return response.Data.Value.IsEmpty ? default : TypeConverters.FromAny<TResponse>(response.Data, this.jsonSerializerOptions);
         }
 
-        public override async ValueTask<IReadOnlyList<GetBulkItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default)
+        public override async ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             if (keys.Count == 0)
@@ -220,11 +220,11 @@ namespace Dapr.Client
                 options => client.GetBulkStateAsync(getBulkStateEnvelope, options),
                 cancellationToken);
 
-            var bulkResponse = new List<GetBulkItem>();
+            var bulkResponse = new List<BulkStateItem>();
 
             foreach (var item in response.Items)
             {
-                bulkResponse.Add(new GetBulkItem(item.Key, item.Data.ToStringUtf8(), item.Etag));
+                bulkResponse.Add(new BulkStateItem(item.Key, item.Data.ToStringUtf8(), item.Etag));
             }
 
             return bulkResponse;
