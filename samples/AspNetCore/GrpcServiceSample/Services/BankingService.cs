@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr.AppCallback.Autogen.Grpc.v1;
@@ -17,13 +15,21 @@ namespace GrpcServiceSample
     /// </summary>
     public class BankingService : AppCallback.AppCallbackBase
     {
+        /// <summary>
+        /// State store name.
+        /// </summary>
+        public const string StoreName = "statestore";
+
         private readonly ILogger<BankingService> _logger;
+        private readonly DaprClient _daprClient;
         /// <summary>
         /// Constructor
         /// </summary>
+        /// <param name="daprClient"></param>
         /// <param name="logger"></param>
-        public BankingService(ILogger<BankingService> logger)
+        public BankingService(DaprClient daprClient, ILogger<BankingService> logger)
         {
+            _daprClient = daprClient;
             _logger = logger;
         }
 
@@ -37,7 +43,15 @@ namespace GrpcServiceSample
                 case "getaccount":
                     var input = TypeConverters.FromAny<GetAccountInput>(request.Data, this.jsonOptions);
                     var output = await GetAccount(input, context);
-                    respone.Data = TypeConverters.ToAny<GetAccountOutput>(output, this.jsonOptions);
+                    respone.Data = TypeConverters.ToAny<Account>(output, this.jsonOptions);
+                    break;
+                case "deposit":
+                case "withdraw":
+                    var transaction = TypeConverters.FromAny<Transaction>(request.Data, this.jsonOptions);
+                    var account = request.Method == "deposit" ?
+                        await Deposit(transaction, context) :
+                        await Withdraw(transaction, context);
+                    respone.Data = TypeConverters.ToAny<Account>(account, this.jsonOptions);
                     break;
                 default:
                     break;
@@ -48,16 +62,44 @@ namespace GrpcServiceSample
         /// <summary>
         /// GetAccount
         /// </summary>
-        /// <param name="request"></param>
+        /// <param name="input"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public Task<GetAccountOutput> GetAccount(GetAccountInput request, ServerCallContext context)
+        public async Task<Account> GetAccount(GetAccountInput input, ServerCallContext context)
         {
-            return Task.FromResult(new GetAccountOutput
+            var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, input.Id);
+
+            if (state.Value == null)
             {
-                Id = Guid.NewGuid().ToString(),
-                Balance = 100
-            });
+                return null;
+            }
+
+            return state.Value;
+        }
+
+        public async Task<Account> Deposit(Transaction transaction, ServerCallContext context)
+        {
+            Console.WriteLine("Enter deposit");
+            var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+            state.Value ??= new Account() { Id = transaction.Id, };
+            state.Value.Balance += transaction.Amount;
+            await state.SaveAsync();
+            return state.Value;
+        }
+
+        public async Task<Account> Withdraw(Transaction transaction, ServerCallContext context)
+        {
+            Console.WriteLine("Enter withdraw");
+            var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+
+            if (state.Value == null)
+            {
+                return null;
+            }
+
+            state.Value.Balance -= transaction.Amount;
+            await state.SaveAsync();
+            return state.Value;
         }
     }
 }

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -11,7 +11,7 @@ namespace RoutingSample
     /// <summary>
     /// Controller Sample.
     /// </summary>
-    public class Program
+    public static class Program
     {
         /// <summary>
         /// Main for Controller Sample.

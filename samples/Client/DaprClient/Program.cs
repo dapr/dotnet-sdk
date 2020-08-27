@@ -10,12 +10,11 @@ namespace DaprClient
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Http;
-    using GrpcServiceSample.Models;
 
     /// <summary>
     /// Shows Dapr client calls.
     /// </summary>
-    public class Program
+    public static class Program
     {
         private static readonly string stateKeyName = "mykey";
         private static readonly string storeName = "statestore";
@@ -54,7 +53,7 @@ namespace DaprClient
             // To use it run RoutingService in this solution.
             // Invoke deposit operation on RoutingSample service by publishing event.      
 
-            await PublishDepositeEventToRoutingSampleAsync(client);
+            await PublishDepositeEventAsync(client);
 
             await Task.Delay(TimeSpan.FromSeconds(1));
 
@@ -67,13 +66,20 @@ namespace DaprClient
             //Invoke balance operation on RoutingSample service by GET.
             //await InvokeBalanceServiceOperationAsync(client);
 
+            //Invoke deposit operation on GrpcServiceSample service by GRPC.
+            await InvokeGrpcDepositServiceOperationAsync(client);
+
+            //Invoke withdraw operation on GrpcServiceSample service by GRPC.
+            await InvokeGrpcWithdrawServiceOperationAsync(client);
+
+            //Invoke balance operation on GrpcServiceSample service by GRPC.
             await InvokeGrpcBalanceServiceOperationAsync(client);
             #endregion
 
             Console.WriteLine("Done");
         }
 
-        internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
+        internal static async Task PublishDepositeEventAsync(DaprClient client)
         {
             var eventData = new { Id = "17", Amount = (decimal)10, };
             await client.PublishEventAsync(pubsubName, "deposit", eventData);
@@ -188,9 +194,42 @@ namespace DaprClient
             {
                 Verb = HTTPVerb.Post
             };
-            var res = await client.InvokeMethodAsync<GetAccountInput, GetAccountOutput>("grpcsample", "getaccount", new GetAccountInput { Id = "abc" }, httpExtension);
+            var res = await client.InvokeMethodAsync<object, Account>("grpcsample", "getaccount", new { Id = "17" }, httpExtension);
 
             Console.WriteLine($"Received grpc balance {res.Balance}");
+        }
+
+        internal static async Task InvokeGrpcDepositServiceOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking grpc deposit");
+            var data = new { id = "17", amount = (decimal)99 };
+
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
+
+            Console.WriteLine("invoking");
+
+            var a = await client.InvokeMethodAsync<object, Account>("grpcsample", "deposit", data, httpExtension);
+            Console.WriteLine("Returned: id:{0} | Balance:{1}", a.Id, a.Balance);
+
+            Console.WriteLine("Completed grpc deposit");
+        }
+
+        internal static async Task InvokeGrpcWithdrawServiceOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking grpc withdraw");
+            var data = new { id = "17", amount = (decimal)10, };
+
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
+
+            await client.InvokeMethodAsync<object>("grpcsample", "withdraw", data, httpExtension);
+
+            Console.WriteLine("Completed grpc withdraw");
         }
 
         private class Widget
