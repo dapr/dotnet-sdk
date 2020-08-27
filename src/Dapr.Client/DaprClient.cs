@@ -18,20 +18,22 @@ namespace Dapr.Client
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
         /// <param name="data">The  event data.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TData">The data type of the object that will be serialized.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync<TData>(string topicName, TData data, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync<TData>(string pubsubName, string topicName, TData data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync(string topicName, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync(string pubsubName,string topicName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes an output binding.
@@ -143,6 +145,16 @@ namespace Dapr.Client
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>
         public abstract ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Gets a list of values associated with the <paramref name="keys" /> from the Dapr state store.
+        /// </summary>
+        /// <param name="storeName">The name of state store to read from.</param>
+        /// <param name="keys">The list of keys to get values for.</param>
+        /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store. a value equal to or smaller than 0 means max parallelism.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="ValueTask{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
+        
+        public abstract ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default);
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
         /// </summary>

@@ -13,13 +13,13 @@ namespace Dapr.AspNetCore.IntegrationTest.App
     [ApiController]
     public class DaprController : ControllerBase
     {
-        [Topic("B")]
+        [Topic("pubsub", "B")]
         [HttpPost("/B")]
         public void TopicB()
         {
         }
 
-        [Topic("register-user")]
+        [Topic("pubsub", "register-user")]
         [HttpPost("/register-user")]
         public ActionResult<UserInfo> RegisterUser(UserInfo user)
         {
@@ -45,6 +45,13 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
             state.Value.Count++;
             await state.SaveAsync();
+        }
+
+        [HttpPost("/echo-user")]
+        public ActionResult<UserInfo> EchoUser([FromQuery]UserInfo user)
+        {
+            // To simulate an action where there's no Dapr attribute, yet MVC still checks the list of available model binder providers.
+            return user;
         }
     }
 }

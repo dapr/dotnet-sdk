@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -41,10 +41,10 @@ namespace Microsoft.AspNetCore.Builder
                     .OfType<RouteEndpoint>()
                     .Where(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
                     .Distinct()
-                    .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern));
+                    .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().PubsubName, e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern));
 
                 context.Response.ContentType = "application/json";
-                using Utf8JsonWriter writer = new Utf8JsonWriter(context.Response.BodyWriter);
+                using var writer = new Utf8JsonWriter(context.Response.BodyWriter);
                 writer.WriteStartArray();
 
                 var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
@@ -70,6 +70,7 @@ namespace Microsoft.AspNetCore.Builder
                         .Select(part => part.Content))));
 
                     writer.WriteString("route", route);
+                    writer.WriteString("pubsubName", entry.PubsubName);
                     writer.WriteEndObject();
                 }
 

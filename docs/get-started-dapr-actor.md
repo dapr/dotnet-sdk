@@ -429,7 +429,7 @@ In order to validate and debug actor service and client, we need to run actor se
 1. Run Dapr Runtime via Dapr cli
 
    ```bash
-   $ dapr run --app-id myapp --app-port 3000 --port 3500 dotnet run
+   $ dapr run --app-id myapp --app-port 3000 --dapr-http-port 3500 dotnet run
    ```
 
    After executing MyActorService via Dapr runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
