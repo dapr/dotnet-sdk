@@ -18,6 +18,8 @@ The application also registers for pub/sub with the `deposit` and `withdraw` top
 
  The application will listen on port 5000 for GRPC.
 
+*NOTE: Because of this [bug](https://github.com/dapr/dapr/issues/1883), only can use port 5000 without TLS.*
+
  ### Client Examples
 
 See InvokeGrpcBalanceServiceOperationAsync, InvokeGrpcDepositServiceOperationAsync and InvokeGrpcWithdrawServiceOperationAsync on DaprClient project.
