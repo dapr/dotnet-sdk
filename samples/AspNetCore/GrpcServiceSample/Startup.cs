@@ -27,8 +27,6 @@ namespace GrpcServiceSample
 
             app.UseRouting();
 
-            app.UseCloudEvents();
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapGrpcService<BankingService>();
