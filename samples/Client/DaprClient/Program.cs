@@ -48,14 +48,15 @@ namespace DaprClient
             // Delete State
             await DeleteStateAsync(client);
 
-            #region Service Invoke - Required RoutingService
-            // This provides an example of how to invoke a method on another REST service that is listening on http.
-            // To use it run RoutingService in this solution.
-            // Invoke deposit operation on RoutingSample service by publishing event.      
+            // Invoke deposit operation on ControllerSample or RoutingSample or GrpcServiceSample service by publishing event.      
 
             await PublishDepositeEventAsync(client);
 
             await Task.Delay(TimeSpan.FromSeconds(1));
+
+            #region Service Invoke - Required RoutingService
+            // This provides an example of how to invoke a method on another REST service that is listening on http.
+            // To use it run RoutingService in this solution.
 
             //Invoke deposit operation on RoutingSample service by POST.
             //await InvokeDepositServiceOperationAsync(client);
@@ -65,7 +66,9 @@ namespace DaprClient
 
             //Invoke balance operation on RoutingSample service by GET.
             //await InvokeBalanceServiceOperationAsync(client);
+            #endregion
 
+            #region Service Invoke via GRPC - Required GrpcServiceSample
             //Invoke deposit operation on GrpcServiceSample service by GRPC.
             await InvokeGrpcDepositServiceOperationAsync(client);
 

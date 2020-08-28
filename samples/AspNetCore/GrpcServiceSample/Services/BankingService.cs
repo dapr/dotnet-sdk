@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Dapr.Client;
 using Dapr.Client.Autogen.Grpc.v1;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using GrpcServiceSample.Models;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,7 @@ namespace GrpcServiceSample
 
         private readonly ILogger<BankingService> _logger;
         private readonly DaprClient _daprClient;
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -35,6 +38,12 @@ namespace GrpcServiceSample
 
         readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
+        /// <summary>
+        /// implement OnIvoke to support getaccount, deposit and withdraw
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
         public override async Task<InvokeResponse> OnInvoke(InvokeRequest request, ServerCallContext context)
         {
             var respone = new InvokeResponse();
@@ -58,7 +67,49 @@ namespace GrpcServiceSample
             }
             return respone;
         }
-       
+
+        /// <summary>
+        /// implement ListTopicSubscriptions to register deposit and withdraw subscriber
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public override Task<ListTopicSubscriptionsResponse> ListTopicSubscriptions(Empty request, ServerCallContext context)
+        {
+            var result = new ListTopicSubscriptionsResponse();
+            result.Subscriptions.Add(new TopicSubscription
+            {
+                PubsubName = "pubsub",
+                Topic = "deposit"
+            });
+            result.Subscriptions.Add(new TopicSubscription
+            {
+                PubsubName = "pubsub",
+                Topic = "withdraw"
+            });
+            return Task.FromResult(result);
+        }
+
+        /// <summary>
+        /// implement OnTopicEvent to handle deposit and withdraw event
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public override async Task<TopicEventResponse> OnTopicEvent(TopicEventRequest request, ServerCallContext context)
+        {
+            if (request.PubsubName == "pubsub")
+            {
+                var transaction = JsonSerializer.Deserialize<Transaction>(request.Data.ToStringUtf8(), this.jsonOptions);
+                if (request.Topic == "deposit")
+                    await Deposit(transaction, context);
+                else
+                    await Withdraw(transaction, context);
+            }
+           
+            return await Task.FromResult(default(TopicEventResponse));
+        }
+
         /// <summary>
         /// GetAccount
         /// </summary>
@@ -77,6 +128,12 @@ namespace GrpcServiceSample
             return state.Value;
         }
 
+        /// <summary>
+        /// Deposit
+        /// </summary>
+        /// <param name="transaction"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
         public async Task<Account> Deposit(Transaction transaction, ServerCallContext context)
         {
             Console.WriteLine("Enter deposit");
@@ -87,6 +144,12 @@ namespace GrpcServiceSample
             return state.Value;
         }
 
+        /// <summary>
+        /// Withdraw
+        /// </summary>
+        /// <param name="transaction"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
         public async Task<Account> Withdraw(Transaction transaction, ServerCallContext context)
         {
             Console.WriteLine("Enter withdraw");
