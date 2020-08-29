@@ -69,14 +69,16 @@ namespace DaprClient
             #endregion
 
             #region Service Invoke via GRPC - Required GrpcServiceSample
+            //If you want to try calling for grpc sample, you can uncomment below 3 method callings and start grpcsample service
+
             //Invoke deposit operation on GrpcServiceSample service by GRPC.
-            await InvokeGrpcDepositServiceOperationAsync(client);
+            //await InvokeGrpcDepositServiceOperationAsync(client);
 
             //Invoke withdraw operation on GrpcServiceSample service by GRPC.
-            await InvokeGrpcWithdrawServiceOperationAsync(client);
+            //await InvokeGrpcWithdrawServiceOperationAsync(client);
 
             //Invoke balance operation on GrpcServiceSample service by GRPC.
-            await InvokeGrpcBalanceServiceOperationAsync(client);
+            //await InvokeGrpcBalanceServiceOperationAsync(client);
             #endregion
 
             Console.WriteLine("Done");
