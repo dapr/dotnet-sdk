@@ -33,7 +33,7 @@ namespace Dapr.Client
         /// <param name="topicName">The name of the topic the request should be published to.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync(string pubsubName,string topicName, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync(string pubsubName, string topicName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes an output binding.
@@ -140,10 +140,11 @@ namespace Dapr.Client
         /// <param name="storeName">The name of state store to read from.</param>
         /// <param name="key">The state key.</param>
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
+        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to read.</typeparam>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>
-        public abstract ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default);
+        public abstract ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a list of values associated with the <paramref name="keys" /> from the Dapr state store.
@@ -153,7 +154,7 @@ namespace Dapr.Client
         /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store. a value equal to or smaller than 0 means max parallelism.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
-        
+
         public abstract ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default);
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
@@ -234,12 +235,14 @@ namespace Dapr.Client
         /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
+        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task DeleteStateAsync(
             string storeName,
             string key,
             StateOptions stateOptions = default,
+            Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -250,6 +253,7 @@ namespace Dapr.Client
         /// <param name="key">The state key.</param>
         /// <param name="etag">An ETag.</param>
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
+        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
         public abstract ValueTask<bool> TryDeleteStateAsync(
@@ -257,6 +261,7 @@ namespace Dapr.Client
             string key,
             string etag,
             StateOptions stateOptions = default,
+            Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
