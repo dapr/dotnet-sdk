@@ -5,6 +5,7 @@
 
 namespace Dapr
 {
+    using System.Collections.Generic;
     using System.Threading;
     using Dapr.Client;
 
@@ -21,13 +22,19 @@ namespace Dapr
         /// <param name="key">The state key.</param>
         /// <param name="value">The value.</param>
         /// <param name="operationType">The operation type.</param>
-        public StateTransactionRequest(string key, TValue value, string operationType)
+        /// <param name="etag">The etag (optional).</param>
+        /// <param name="metadata">Additional key value pairs for the state (optional).</param>
+        /// <param name="options">State options (optional).</param>
+        public StateTransactionRequest(string key, TValue value, string operationType, string etag = default, Dictionary<string, string> metadata = default, StateOptions options = default)
         {
             ArgumentVerifier.ThrowIfNull(key, nameof(key));
 
             this.Key = key;
             this.Value = value;
             this.OperationType = operationType;
+            this.ETag = etag;
+            this.Metadata = metadata;
+            this.Options = options;
         }
 
 
@@ -44,6 +51,21 @@ namespace Dapr
         /// <summary>
         /// The Operation type.
         /// </summary>
-        public string OperationType { get; }
+        public string OperationType { get; set; }
+
+        /// <summary>
+        /// The ETag (optional).
+        /// </summary>
+        public string ETag { get; set; }
+
+        /// <summary>
+        /// Additional key-value pairs to be passed to the state store (optional).
+        /// </summary>
+        public Dictionary<string, string> Metadata { get; set; }
+
+        /// <summary>
+        /// State Options (optional).
+        /// </summary>
+        public StateOptions Options { get; set; }
     }
 }
