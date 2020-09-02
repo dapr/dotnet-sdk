@@ -237,11 +237,10 @@ namespace Dapr.Client
         /// <param name="stateTransactionRequests">A list of StateTransactionRequests.</param>
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to save.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
-        public abstract Task ExecuteStateTransactionAsync<TValue>(
+        public abstract Task ExecuteStateTransactionAsync(
             string storeName,
-            IReadOnlyList<StateTransactionRequest<TValue>> stateTransactionRequests,
+            IReadOnlyList<StateTransactionRequest> stateTransactionRequests,
             Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
@@ -252,11 +251,10 @@ namespace Dapr.Client
         /// <param name="stateTransactionRequests">A list of StateTransactionRequests.</param>
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to save.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation succeeded.</returns>
-        public abstract ValueTask<bool> TryExecuteStateTransactionAsync<TValue>(
+        public abstract ValueTask<bool> TryExecuteStateTransactionAsync(
             string storeName,
-            IReadOnlyList<StateTransactionRequest<TValue>> stateTransactionRequests,
+            IReadOnlyList<StateTransactionRequest> stateTransactionRequests,
             Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
