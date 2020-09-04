@@ -230,17 +230,17 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Saves the provided <paramref name="stateTransactionRequests" /> to the Dapr state
+        /// Saves the provided <paramref name="operations" /> to the Dapr state
         /// store.
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
-        /// <param name="stateTransactionRequests">A list of StateTransactionRequests.</param>
+        /// <param name="operations">A list of StateTransactionRequests.</param>
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public abstract Task ExecuteStateTransactionAsync(
             string storeName,
-            IReadOnlyList<StateTransactionRequest> stateTransactionRequests,
+            IReadOnlyList<StateTransactionRequest> operations,
             Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 

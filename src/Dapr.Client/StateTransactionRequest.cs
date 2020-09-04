@@ -24,7 +24,7 @@ namespace Dapr
         /// <param name="etag">The etag (optional).</param>
         /// <param name="metadata">Additional key value pairs for the state (optional).</param>
         /// <param name="options">State options (optional).</param>
-        public StateTransactionRequest(string key, byte[] value, string operationType, string etag = default, Dictionary<string, string> metadata = default, StateOptions options = default)
+        public StateTransactionRequest(string key, byte[] value, StateOperationType operationType, string etag = default, Dictionary<string, string> metadata = default, StateOptions options = default)
         {
             ArgumentVerifier.ThrowIfNull(key, nameof(key));
 
@@ -50,7 +50,7 @@ namespace Dapr
         /// <summary>
         /// The Operation type.
         /// </summary>
-        public string OperationType { get; set; }
+        public StateOperationType OperationType { get; set; }
 
         /// <summary>
         /// The ETag (optional).
