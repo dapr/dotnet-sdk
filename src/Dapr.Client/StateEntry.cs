@@ -58,7 +58,7 @@ namespace Dapr
         public string Key { get; }
 
         /// <summary>
-        /// Gets or sets the value locally.  This is not sent to the state store until an API (e.g. <see cref="DeleteAsync(StateOptions, CancellationToken)"/> is called.
+        /// Gets or sets the value locally.  This is not sent to the state store until an API (e.g. <see cref="DeleteAsync(StateOptions, Dictionary{string, string}, CancellationToken)"/> is called.
         /// </summary>
         public TValue Value { get; set; }
 
@@ -71,12 +71,13 @@ namespace Dapr
         /// Deletes the entry associated with <see cref="Key" /> in the state store.
         /// </summary>
         /// <param name="stateOptions">A <see cref="StateOptions"/> object.</param>
+        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public Task DeleteAsync(StateOptions stateOptions = default, CancellationToken cancellationToken = default)
+        public Task DeleteAsync(StateOptions stateOptions = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             // ETag is intentionally not specified
-            return this.client.DeleteStateAsync(this.StoreName, this.Key, stateOptions, cancellationToken);
+            return this.client.DeleteStateAsync(this.StoreName, this.Key, stateOptions, metadata, cancellationToken);
         }
 
         /// <summary>
@@ -92,8 +93,8 @@ namespace Dapr
             return this.client.SaveStateAsync(
                 storeName: this.StoreName,
                 key: this.Key,
-                value: this.Value, 
-                metadata: metadata, 
+                value: this.Value,
+                metadata: metadata,
                 stateOptions: stateOptions,
                 cancellationToken: cancellationToken);
         }
@@ -111,7 +112,7 @@ namespace Dapr
                     this.StoreName,
                     this.Key,
                     this.Value,
-                    this.ETag,                    
+                    this.ETag,
                     stateOptions,
                     metadata,
                     cancellationToken);
@@ -121,8 +122,8 @@ namespace Dapr
         /// Tries to delete the the state using the 
         /// <see cref="ETag"/> from the Dapr state. State store implementation will allow the delete only if the attached ETag matches with the latest ETag in the state store.
         /// </summary>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
-        /// <param name="stateOptions">Options for Save state operation.</param>
+        /// <param name="stateOptions">Options for Save state operation.</param>        
+        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
         public ValueTask<bool> TryDeleteAsync(StateOptions stateOptions = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
@@ -132,6 +133,7 @@ namespace Dapr
                     this.Key,
                     this.ETag,
                     stateOptions,
+                    metadata,
                     cancellationToken);
         }
     }
