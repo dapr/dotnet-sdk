@@ -354,29 +354,6 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task TryExecuteStateTransactionAsync_DoesNotThrowForNonSuccess()
-        {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
-
-            var widget1 = new Widget() { Size = "small", Color = "yellow", };
-            var state1 = new StateTransactionRequest("stateKey1", JsonSerializer.SerializeToUtf8Bytes(widget1), StateOperationType.Upsert);
-            var states = new List<StateTransactionRequest>();
-            states.Add(state1);
-            var task = daprClient.TryExecuteStateTransactionAsync("testStore", states);
-
-            // Create Response & Respond
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
-
-            await FluentActions.Awaiting(async () => await task).Should().NotThrowAfterAsync(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-        }
-
-        [Fact]
         public async Task DeleteStateAsync_CanDeleteState()
         {
             var httpClient = new TestHttpClient();

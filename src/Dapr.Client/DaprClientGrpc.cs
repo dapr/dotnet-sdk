@@ -473,34 +473,6 @@ namespace Dapr.Client
                 cancellationToken);
         }
 
-        /// <inheritdoc/>
-        public override async ValueTask<bool> TryExecuteStateTransactionAsync(
-            string storeName,
-            IReadOnlyList<StateTransactionRequest> operations,
-            Dictionary<string, string> metadata = default,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
-            ArgumentVerifier.ThrowIfNull(operations, nameof(operations));
-            if (operations.Count == 0)
-                throw new ArgumentException($"{nameof(operations)} does not contain any elements");
-
-            try
-            {
-                await this.MakeExecuteStateTransactionCallAsync(
-                    storeName,
-                    operations,
-                    metadata,
-                    cancellationToken);
-                return true;
-            }
-            catch (RpcException)
-            {
-            }
-
-            return false;
-        }
-
         private async ValueTask MakeExecuteStateTransactionCallAsync(
             string storeName,
             IReadOnlyList<StateTransactionRequest> states,
