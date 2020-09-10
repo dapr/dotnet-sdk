@@ -265,7 +265,7 @@ namespace Dapr.Client.Test
 
             var req1 = transactionRequest.Operations[0];
             req1.Request.Key.Should().Be("stateKey1");
-            req1.OperationType.Should().Be(StateOperationType.Upsert.ToString());
+            req1.OperationType.Should().Be(StateOperationType.Upsert.ToString().ToLower());
             var valueJson1 = req1.Request.Value.ToStringUtf8();
             var value1 = JsonSerializer.Deserialize<Widget>(valueJson1);
             value1.Size.Should().Be(stateValue1.Size);
@@ -278,14 +278,14 @@ namespace Dapr.Client.Test
 
             var req2 = transactionRequest.Operations[1];
             req2.Request.Key.Should().Be("stateKey2");
-            req2.OperationType.Should().Be(StateOperationType.Delete.ToString());
+            req2.OperationType.Should().Be(StateOperationType.Delete.ToString().ToLower());
             var valueJson2 = req2.Request.Value.ToStringUtf8();
             var value2 = JsonSerializer.Deserialize<int>(valueJson2);
             value2.Should().Be(100);
 
             var req3 = transactionRequest.Operations[2];
             req3.Request.Key.Should().Be("stateKey3");
-            req3.OperationType.Should().Be(StateOperationType.Upsert.ToString());
+            req3.OperationType.Should().Be(StateOperationType.Upsert.ToString().ToLower());
             var valueJson3 = req3.Request.Value.ToStringUtf8();
             var value3 = JsonSerializer.Deserialize<string>(valueJson3);
             value3.Should().Be("teststring");
@@ -318,14 +318,14 @@ namespace Dapr.Client.Test
 
             var req1 = transactionRequest.Operations[0];
             req1.Request.Key.Should().Be("stateKey1");
-            req1.OperationType.Should().Be(StateOperationType.Upsert.ToString());
+            req1.OperationType.Should().Be(StateOperationType.Upsert.ToString().ToLower());
             var valueJson1 = req1.Request.Value.ToStringUtf8();
             var value1 = JsonSerializer.Deserialize<int>(valueJson1);
             value1.Should().Be(100);
 
             var req2 = transactionRequest.Operations[1];
             req2.Request.Key.Should().Be("stateKey2");
-            req2.OperationType.Should().Be(StateOperationType.Delete.ToString());
+            req2.OperationType.Should().Be(StateOperationType.Delete.ToString().ToLower());
             req2.Request.Value.Should().Equal(ByteString.Empty);
 
         }
