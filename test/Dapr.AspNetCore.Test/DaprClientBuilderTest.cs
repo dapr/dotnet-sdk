@@ -1,8 +1,5 @@
-﻿using System;
-using System.Reflection;
-using System.Text.Json;
+﻿using System.Text.Json;
 using Dapr.Client;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Dapr.AspNetCore.Test
