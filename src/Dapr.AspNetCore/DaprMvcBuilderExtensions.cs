@@ -22,9 +22,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Adds Dapr integration for MVC to the provided <see cref="IMvcBuilder" />.
         /// </summary>
         /// <param name="builder">The <see cref="IMvcBuilder" />.</param>
-        /// <param name="configure">The (optional) <see cref="DaprClientBuilder" /> to use for building the DaprClient.</param>
+        /// <param name="configureClient">The (optional) <see cref="DaprClientBuilder" /> to use for configuring the DaprClient.</param>
         /// <returns>The <see cref="IMvcBuilder" /> builder.</returns>
-        public static IMvcBuilder AddDapr(this IMvcBuilder builder, Action<DaprClientBuilder> configure = null)
+        public static IMvcBuilder AddDapr(this IMvcBuilder builder, Action<DaprClientBuilder> configureClient = null)
         {
             if (builder is null)
             {
@@ -38,18 +38,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 return builder;
             }
 
-            // create default clientbuilder config (if not specified)
-            if (configure == null)
-            {
-                configure = new Action<DaprClientBuilder>(
-                    builder => builder.UseJsonSerializationOptions(
-                        new JsonSerializerOptions()
-                        {
-                            PropertyNameCaseInsensitive = true
-                        }));
-            }
-
-            builder.Services.AddDaprClient(configure);
+            builder.Services.AddDaprClient(configureClient);
 
             builder.Services.AddSingleton<DaprMvcMarkerService>();
             builder.Services.AddSingleton<IApplicationModelProvider, StateEntryApplicationModelProvider>();

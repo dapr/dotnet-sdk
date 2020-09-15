@@ -26,7 +26,11 @@ namespace Dapr.Client
         public DaprClientBuilder()
         {
             var daprGrpcPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? defaultDaprGrpcPort;
-            this.daprEndpoint = $"http://127.0.0.1:{daprGrpcPort}";            
+            this.daprEndpoint = $"http://127.0.0.1:{daprGrpcPort}";
+            this.jsonSerializerOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
         }
 
         /// <summary>
