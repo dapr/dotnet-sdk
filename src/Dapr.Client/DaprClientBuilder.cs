@@ -14,11 +14,10 @@ namespace Dapr.Client
     /// </summary>
     public sealed class DaprClientBuilder
     {
-        const string defaultDaprGrpcPort = "50001";
-        string daprEndpoint;
-        JsonSerializerOptions jsonSerializerOptions;
-        GrpcChannelOptions gRPCChannelOptions;
-
+        private const string defaultDaprGrpcPort = "50001";
+        internal string daprEndpoint;
+        internal JsonSerializerOptions jsonSerializerOptions;
+        internal GrpcChannelOptions gRPCChannelOptions;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DaprClientBuilder"/> class.

@@ -27,15 +27,9 @@ namespace Dapr.AspNetCore.Test
 
             var serviceProvider = services.BuildServiceProvider();
 
-            var daprClient = serviceProvider.GetService<DaprClient>();
+            DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            var jsonSerializerOptions = daprClient
-                .GetType()
-                .GetField("jsonSerializerOptions", 
-                    BindingFlags.Instance | BindingFlags.GetField | BindingFlags.NonPublic)
-                .GetValue(daprClient) as JsonSerializerOptions;
-
-            Assert.False(jsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.False(daprClient.jsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
         [Fact]
@@ -47,15 +41,9 @@ namespace Dapr.AspNetCore.Test
 
             var serviceProvider = services.BuildServiceProvider();
 
-            var daprClient = serviceProvider.GetService<DaprClient>();
+            DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            var jsonSerializerOptions = daprClient
-                .GetType()
-                .GetField("jsonSerializerOptions",
-                    BindingFlags.Instance | BindingFlags.GetField | BindingFlags.NonPublic)
-                .GetValue(daprClient) as JsonSerializerOptions;
-
-            Assert.True(jsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.True(daprClient.jsonSerializerOptions.PropertyNameCaseInsensitive);
         }
     }
 }
