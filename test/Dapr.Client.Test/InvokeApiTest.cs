@@ -17,6 +17,7 @@ namespace Dapr.Client.Test
     using Grpc.Core;
     using Grpc.Net.Client;
     using Xunit;
+    using System.Linq;
 
     public class InvokeApiTest
     {
@@ -78,6 +79,35 @@ namespace Dapr.Client.Test
 
             envelope.Message.HttpExtension.Verb.Should().Be(Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post);
             envelope.Message.HttpExtension.Querystring.Count.Should().Be(0);
+        }
+
+        [Fact]
+        public void InvokeMethodAsync_HeadersSpecifiedByUser_ValidateRequest()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var headers = new Dictionary<string, string>();
+            headers.Add("Authorization", "Bearer foo");
+            headers.Add("X-Custom", "bar");
+
+            var httpExtension = new Http.HTTPExtension()
+            {
+                Verb = HTTPVerb.Post,
+                Headers = headers
+            };
+
+            var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpExtension);
+
+            // Get Request and validate
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+
+            entry.Request.Headers.Authorization.Scheme.Should().Be("Bearer");
+            entry.Request.Headers.Authorization.Parameter.Should().Be("foo");
+            entry.Request.Headers.GetValues("X-Custom").FirstOrDefault().Should().Be("bar");
         }
 
         [Fact]
