@@ -36,11 +36,11 @@ namespace Dapr.Client.Http
         /// <summary>
         /// This represents a collection of query strings.
         /// </summary>
-        public Dictionary<string, string> QueryString { get; set; }
+        public IDictionary<string, string> QueryString { get; set; }
 
         /// <summary>
         /// This represents a collection of HTTP headers.
         /// </summary>
-        public Dictionary<string, string> Headers { get; set; }
+        public IDictionary<string, string> Headers { get; set; }
     }
 }
