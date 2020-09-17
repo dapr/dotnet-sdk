@@ -65,6 +65,6 @@ namespace Dapr
         /// <summary>
         /// State Options (optional).
         /// </summary>
-        public StateOptions Options { get; set; }
+        public StateOptions Options;
     }
 }
