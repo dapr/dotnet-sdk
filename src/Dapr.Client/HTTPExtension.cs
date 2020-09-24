@@ -20,6 +20,7 @@ namespace Dapr.Client.Http
         {
             this.Verb = HTTPVerb.Post;
             this.QueryString = new Dictionary<string, string>();
+            this.Headers = new Dictionary<string, string>();
         }
 
         /// <summary>
@@ -35,7 +36,11 @@ namespace Dapr.Client.Http
         /// <summary>
         /// This represents a collection of query strings.
         /// </summary>
-        public Dictionary<string, string> QueryString { get; set; }
+        public IDictionary<string, string> QueryString { get; set; }
 
+        /// <summary>
+        /// This represents a collection of HTTP headers.
+        /// </summary>
+        public IDictionary<string, string> Headers { get; set; }
     }
 }
