@@ -156,9 +156,9 @@ csharp_space_after_dot = false
 csharp_preserve_single_line_statements = true
 csharp_preserve_single_line_blocks = true
 
-###############################
-# SonarLint Configuration     #
-###############################
+#####################################
+# Analayers Serverity Configuration #
+#####################################
 
 # CS1591: Missing XML comment for publicly visible type or member
-dotnet_diagnostic.CS1591.severity = suggestion
+dotnet_diagnostic.CS1591.severity = warning

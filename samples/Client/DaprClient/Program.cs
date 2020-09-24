@@ -6,6 +6,7 @@
 namespace DaprClient
 {
     using System;
+    using System.Collections.Generic;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client;
@@ -48,8 +49,12 @@ namespace DaprClient
             // Delete State
             await DeleteStateAsync(client);
 
-            // Invoke deposit operation on ControllerSample or RoutingSample or GrpcServiceSample service by publishing event.      
+            // State Transaction
+            await ExecuteStateTransactionAsync(client);
 
+            await GetStateAfterTransactionAsync(client);
+
+            // Invoke deposit operation on ControllerSample or RoutingSample or GrpcServiceSample service by publishing event.
             await PublishDepositeEventAsync(client);
 
             await Task.Delay(TimeSpan.FromSeconds(1));
@@ -58,27 +63,27 @@ namespace DaprClient
             // This provides an example of how to invoke a method on another REST service that is listening on http.
             // To use it run RoutingService in this solution.
 
-            //Invoke deposit operation on RoutingSample service by POST.
-            //await InvokeDepositServiceOperationAsync(client);
+            /*  //Invoke deposit operation on RoutingSample service by POST.
+              await InvokeDepositServiceOperationAsync(client);
 
-            //Invoke withdraw operation on RoutingSample service by POST.
-            //await InvokeWithdrawServiceOperationAsync(client);
+              //Invoke withdraw operation on RoutingSample service by POST.
+              await InvokeWithdrawServiceOperationAsync(client);
 
-            //Invoke balance operation on RoutingSample service by GET.
-            //await InvokeBalanceServiceOperationAsync(client);
+              //Invoke balance operation on RoutingSample service by GET.
+              await InvokeBalanceServiceOperationAsync(client);*/
             #endregion
 
             #region Service Invoke via GRPC - Required GrpcServiceSample
             //If you want to try calling for grpc sample, you can uncomment below 3 method callings and start grpcsample service
 
-            //Invoke deposit operation on GrpcServiceSample service by GRPC.
-            //await InvokeGrpcDepositServiceOperationAsync(client);
+            /*//Invoke deposit operation on GrpcServiceSample service by GRPC.
+            await InvokeGrpcDepositServiceOperationAsync(client);
 
             //Invoke withdraw operation on GrpcServiceSample service by GRPC.
-            //await InvokeGrpcWithdrawServiceOperationAsync(client);
+            await InvokeGrpcWithdrawServiceOperationAsync(client);
 
             //Invoke balance operation on GrpcServiceSample service by GRPC.
-            //await InvokeGrpcBalanceServiceOperationAsync(client);
+            await InvokeGrpcBalanceServiceOperationAsync(client);*/
             #endregion
 
             Console.WriteLine("Done");
@@ -93,7 +98,7 @@ namespace DaprClient
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
-            var eventData = new Widget() { Size = "small", Color = "yellow", };            
+            var eventData = new Widget() { Size = "small", Color = "yellow", };
             await client.PublishEventAsync(pubsubName, "TopicA", eventData);
             Console.WriteLine("Published Event!");
         }
@@ -124,6 +129,38 @@ namespace DaprClient
             Console.WriteLine("Deleted State!");
         }
 
+        internal static async Task ExecuteStateTransactionAsync(DaprClient client)
+        {
+            var value = new Widget() { Size = "small", Color = "yellow", };
+            var request1 = new Dapr.StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
+            // var request2 = new Dapr.StateTransactionRequest("mystate", null, StateOperationType.Delete);
+            var requests = new List<Dapr.StateTransactionRequest>();
+            requests.Add(request1);
+            // requests.Add(request2);
+            await client.ExecuteStateTransactionAsync(storeName, requests);
+            Console.WriteLine("Deleted State!");
+        }
+
+        internal static async Task GetStateAfterTransactionAsync(DaprClient client)
+        {
+            var state = await client.GetStateAsync<Widget>(storeName, "mystate");
+            if (state == null)
+            {
+                Console.WriteLine("State not found in store");
+            }
+            else
+            {
+                Console.WriteLine($"Got Transaction State: {state.Size} {state.Color}");
+            }
+            if (state?.Equals("my transaction") == true)
+            {
+                Console.WriteLine("Strings match");
+            }
+            else
+            {
+                Console.WriteLine("Strings dont match");
+            }
+        }
         internal static async Task InvokeDepositServiceOperationAsync(DaprClient client)
         {
             Console.WriteLine("Invoking deposit");
@@ -260,4 +297,3 @@ namespace DaprClient
         }
     }
 }
-
