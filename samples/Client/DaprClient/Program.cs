@@ -6,6 +6,7 @@
 namespace DaprClient
 {
     using System;
+    using System.Collections.Generic;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client;
@@ -47,6 +48,11 @@ namespace DaprClient
 
             // Delete State
             await DeleteStateAsync(client);
+
+            // State Transaction
+            await ExecuteStateTransaction(client);
+
+            await GetStateAfterTransactionAsync(client);
 
             #region Service Invoke - Required RoutingService
             //// This provides an example of how to invoke a method on another REST service that is listening on http.
@@ -107,6 +113,39 @@ namespace DaprClient
         {
             await client.DeleteStateAsync(storeName, stateKeyName);
             Console.WriteLine("Deleted State!");
+        }
+
+        internal static async Task ExecuteStateTransaction(DaprClient client)
+        {
+            var value = new Widget() { Size = "small", Color = "yellow", }; 
+            var request1 = new Dapr.StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
+            // var request2 = new Dapr.StateTransactionRequest("mystate", null, StateOperationType.Delete);
+            var requests = new List<Dapr.StateTransactionRequest>();
+            requests.Add(request1);
+            // requests.Add(request2);
+            await client.ExecuteStateTransactionAsync(storeName, requests);
+            Console.WriteLine("Deleted State!");
+        }
+
+        internal static async Task GetStateAfterTransactionAsync(DaprClient client)
+        {
+            var state = await client.GetStateAsync<Widget>(storeName, "mystate");
+            if (state == null)
+            {
+                Console.WriteLine("State not found in store");
+            }
+            else
+            {
+                Console.WriteLine($"Got Transaction State: {state.Size} {state.Color}");
+            }
+            if(state.Equals("my transaction"))
+            {
+                Console.WriteLine("Strings match");
+            }
+            else
+            {
+                Console.WriteLine("Strings dont match");
+            }
         }
 
         internal static async Task DepositUsingServiceInvocation(DaprClient client)
