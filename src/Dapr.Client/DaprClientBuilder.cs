@@ -16,8 +16,14 @@ namespace Dapr.Client
     {
         private const string defaultDaprGrpcPort = "50001";
         internal string daprEndpoint;
-        internal JsonSerializerOptions jsonSerializerOptions;
-        internal GrpcChannelOptions gRPCChannelOptions;
+        private JsonSerializerOptions jsonSerializerOptions;
+        private GrpcChannelOptions gRPCChannelOptions;
+
+        // property exposed for testing purposes
+        internal JsonSerializerOptions JsonSerializerOptions => jsonSerializerOptions;
+
+        // these internal properties are exposed for testing purposes
+        internal GrpcChannelOptions GRPCChannelOptions => gRPCChannelOptions;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DaprClientBuilder"/> class.
@@ -35,7 +41,7 @@ namespace Dapr.Client
         /// <summary>
         /// Overrides the default endpoint used by IDaprClient for conencting to Dapr runtime.
         /// </summary>
-        /// <param name="daprEndpoint">Endpoint to use for making calls to Dapr runtime. 
+        /// <param name="daprEndpoint">Endpoint to use for making calls to Dapr runtime.
         /// Default endpoint used is http://127.0.0.1:DAPR_GRPC_PORT.</param>
         /// <returns>DaprClientBuilder instance.</returns>
         public DaprClientBuilder UseEndpoint(string daprEndpoint)

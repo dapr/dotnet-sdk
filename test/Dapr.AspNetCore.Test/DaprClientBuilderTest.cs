@@ -10,7 +10,7 @@ namespace Dapr.AspNetCore.Test
         public void DaprClientBuilder_UsesPropertyNameCaseHandlingInsensitiveByDefault()
         {
             DaprClientBuilder builder = new DaprClientBuilder();
-            Assert.True(builder.jsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.True(builder.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
         [Fact]
@@ -21,7 +21,7 @@ namespace Dapr.AspNetCore.Test
             {
                 PropertyNameCaseInsensitive = false
             });
-            Assert.False(builder.jsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.False(builder.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
     }
 }
