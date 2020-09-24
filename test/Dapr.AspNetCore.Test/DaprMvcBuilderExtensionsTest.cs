@@ -28,7 +28,7 @@ namespace Dapr.AspNetCore.Test
 
             DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.False(daprClient.jsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.False(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
         [Fact]
@@ -42,7 +42,7 @@ namespace Dapr.AspNetCore.Test
 
             DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.True(daprClient.jsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
     }
 }

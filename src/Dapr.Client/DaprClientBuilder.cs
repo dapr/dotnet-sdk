@@ -15,15 +15,19 @@ namespace Dapr.Client
     public sealed class DaprClientBuilder
     {
         private const string defaultDaprGrpcPort = "50001";
-        internal string daprEndpoint;
+        private string daprEndpoint;
         private JsonSerializerOptions jsonSerializerOptions;
         private GrpcChannelOptions gRPCChannelOptions;
 
         // property exposed for testing purposes
-        internal JsonSerializerOptions JsonSerializerOptions => jsonSerializerOptions;
+        internal string DaprEndpoint => this.daprEndpoint;
 
-        // these internal properties are exposed for testing purposes
-        internal GrpcChannelOptions GRPCChannelOptions => gRPCChannelOptions;
+        // property exposed for testing purposes
+        internal JsonSerializerOptions JsonSerializerOptions => this.jsonSerializerOptions;
+
+        // property exposed for testing purposes
+        internal GrpcChannelOptions GRPCChannelOptions => this.gRPCChannelOptions;
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DaprClientBuilder"/> class.
