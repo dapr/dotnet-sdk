@@ -14,10 +14,19 @@ namespace Dapr.Client
     /// </summary>
     public sealed class DaprClientBuilder
     {
-        const string defaultDaprGrpcPort = "50001";
-        string daprEndpoint;
-        JsonSerializerOptions jsonSerializerOptions;
-        GrpcChannelOptions gRPCChannelOptions;
+        private const string defaultDaprGrpcPort = "50001";
+        private string daprEndpoint;
+        private JsonSerializerOptions jsonSerializerOptions;
+        private GrpcChannelOptions gRPCChannelOptions;
+
+        // property exposed for testing purposes
+        internal string DaprEndpoint => this.daprEndpoint;
+
+        // property exposed for testing purposes
+        internal JsonSerializerOptions JsonSerializerOptions => this.jsonSerializerOptions;
+
+        // property exposed for testing purposes
+        internal GrpcChannelOptions GRPCChannelOptions => this.gRPCChannelOptions;
 
 
         /// <summary>
@@ -26,13 +35,17 @@ namespace Dapr.Client
         public DaprClientBuilder()
         {
             var daprGrpcPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? defaultDaprGrpcPort;
-            this.daprEndpoint = $"http://127.0.0.1:{daprGrpcPort}";            
+            this.daprEndpoint = $"http://127.0.0.1:{daprGrpcPort}";
+            this.jsonSerializerOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
         }
 
         /// <summary>
         /// Overrides the default endpoint used by IDaprClient for conencting to Dapr runtime.
         /// </summary>
-        /// <param name="daprEndpoint">Endpoint to use for making calls to Dapr runtime. 
+        /// <param name="daprEndpoint">Endpoint to use for making calls to Dapr runtime.
         /// Default endpoint used is http://127.0.0.1:DAPR_GRPC_PORT.</param>
         /// <returns>DaprClientBuilder instance.</returns>
         public DaprClientBuilder UseEndpoint(string daprEndpoint)

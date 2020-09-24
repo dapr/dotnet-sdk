@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -38,12 +38,6 @@ namespace ControllerSample
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers().AddDapr();
-
-            services.AddSingleton(new JsonSerializerOptions()
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true,
-            });
         }
 
         /// <summary>
