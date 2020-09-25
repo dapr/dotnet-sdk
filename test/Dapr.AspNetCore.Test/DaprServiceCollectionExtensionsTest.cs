@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Dapr.AspNetCore.Test
 {
-    public class DaprServiceCollectionExtensions
+    public class DaprServiceCollectionExtensionsTest
     {
         [Fact]
         public void AddDaprClient_RegistersDaprClientOnlyOnce()

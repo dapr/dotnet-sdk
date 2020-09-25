@@ -59,7 +59,10 @@ namespace Dapr.AspNetCore.Test
                 )
             );
 
+            // register with JsonSerializerOptions.PropertyNameCaseInsensitive = false
             services.AddControllers().AddDapr(clientBuilder);
+
+            // register with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
             services.AddControllers().AddDapr();
 
             var serviceProvider = services.BuildServiceProvider();
