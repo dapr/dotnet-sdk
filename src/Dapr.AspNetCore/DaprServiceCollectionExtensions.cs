@@ -6,6 +6,7 @@
 namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
+    using System.Linq;
     using Dapr.Client;
 
     /// <summary>
@@ -28,7 +29,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             // This pattern prevents registering services multiple times in the case AddDaprClient is called
             // by non-user-code.
-            if (services.Contains(ServiceDescriptor.Singleton<DaprClientMarkerService, DaprClientMarkerService>()))
+            if (services.Any(s => s.ImplementationType == typeof(DaprClientMarkerService)))
             {
                 return;
             }
