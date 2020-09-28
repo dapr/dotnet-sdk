@@ -52,6 +52,7 @@ namespace DaprClient
             // State Transaction
             await ExecuteStateTransaction(client);
 
+            // Read State
             await GetStateAfterTransactionAsync(client);
 
             #region Service Invoke - Required RoutingService
@@ -119,12 +120,13 @@ namespace DaprClient
         {
             var value = new Widget() { Size = "small", Color = "yellow", }; 
             var request1 = new Dapr.StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
-            // var request2 = new Dapr.StateTransactionRequest("mystate", null, StateOperationType.Delete);
+            var request2 = new Dapr.StateTransactionRequest("mystate", null, StateOperationType.Delete);
             var requests = new List<Dapr.StateTransactionRequest>();
             requests.Add(request1);
-            // requests.Add(request2);
+            requests.Add(request2);
+            Console.WriteLine("Executing transaction - save state and delete state");
             await client.ExecuteStateTransactionAsync(storeName, requests);
-            Console.WriteLine("Deleted State!");
+            Console.WriteLine("Executed State Transaction!");
         }
 
         internal static async Task GetStateAfterTransactionAsync(DaprClient client)
@@ -137,14 +139,6 @@ namespace DaprClient
             else
             {
                 Console.WriteLine($"Got Transaction State: {state.Size} {state.Color}");
-            }
-            if(state.Equals("my transaction"))
-            {
-                Console.WriteLine("Strings match");
-            }
-            else
-            {
-                Console.WriteLine("Strings dont match");
             }
         }
 
