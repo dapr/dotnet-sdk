@@ -14,15 +14,25 @@ using Microsoft.Extensions.Hosting;
 
 namespace GrpcServiceSample
 {
+    /// <summary>
+    /// GrpcService Sample
+    /// </summary>
     public class Program
     {
+        /// <summary>
+        /// Entry point
+        /// </summary>
+        /// <param name="args"></param>
         public static void Main(string[] args)
         {
             CreateHostBuilder(args).Build().Run();
         }
 
-        // Additional configuration is required to successfully run gRPC on macOS.
-        // For instructions on how to configure Kestrel and gRPC clients on macOS, visit https://go.microsoft.com/fwlink/?linkid=2099682
+        /// <summary>
+        /// Creates WebHost Builder.
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>

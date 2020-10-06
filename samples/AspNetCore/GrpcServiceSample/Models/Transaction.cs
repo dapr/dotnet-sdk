@@ -3,10 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System.ComponentModel.DataAnnotations;
+
 namespace GrpcServiceSample.Models
 {
-    using System.ComponentModel.DataAnnotations;
-
     /// <summary>
     /// Represents a transaction used by sample code.
     /// </summary>

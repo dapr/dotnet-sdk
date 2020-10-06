@@ -26,8 +26,8 @@ namespace DaprClient
         /// Main entry point.
         /// </summary>
         /// <param name="args">
-        /// set parameter "useRouting" to use routing service;
-        /// set parameter "useGrpcsample" to use grpcsample service
+        /// set parameter "useRouting" true to use routing service;
+        /// set parameter "useGrpcsample" true to use grpcsample service
         /// </param>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public static async Task Main(string[] args)

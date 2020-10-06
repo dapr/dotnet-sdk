@@ -51,13 +51,13 @@ namespace GrpcServiceSample
         /// <returns></returns>
         public override async Task<InvokeResponse> OnInvoke(InvokeRequest request, ServerCallContext context)
         {
-            var respone = new InvokeResponse();
+            var response = new InvokeResponse();
             switch (request.Method)
             {
                 case "getaccount":
                     var input = TypeConverters.FromAny<GetAccountInput>(request.Data, this.jsonOptions);
                     var output = await GetAccount(input, context);
-                    respone.Data = TypeConverters.ToAny<Account>(output, this.jsonOptions);
+                    response.Data = TypeConverters.ToAny<Account>(output, this.jsonOptions);
                     break;
                 case "deposit":
                 case "withdraw":
@@ -65,12 +65,12 @@ namespace GrpcServiceSample
                     var account = request.Method == "deposit" ?
                         await Deposit(transaction, context) :
                         await Withdraw(transaction, context);
-                    respone.Data = TypeConverters.ToAny<Account>(account, this.jsonOptions);
+                    response.Data = TypeConverters.ToAny<Account>(account, this.jsonOptions);
                     break;
                 default:
                     break;
             }
-            return respone;
+            return response;
         }
 
         /// <summary>
@@ -125,11 +125,6 @@ namespace GrpcServiceSample
         {
             var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, input.Id);
 
-            if (state.Value == null)
-            {
-                return null;
-            }
-
             return state.Value;
         }
 
@@ -141,7 +136,7 @@ namespace GrpcServiceSample
         /// <returns></returns>
         public async Task<Account> Deposit(Transaction transaction, ServerCallContext context)
         {
-            Console.WriteLine("Enter deposit");
+            _logger.LogDebug("Enter deposit");
             var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
             state.Value ??= new Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
@@ -157,16 +152,15 @@ namespace GrpcServiceSample
         /// <returns></returns>
         public async Task<Account> Withdraw(Transaction transaction, ServerCallContext context)
         {
-            Console.WriteLine("Enter withdraw");
+            _logger.LogDebug("Enter withdraw");
             var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
 
-            if (state.Value == null)
+            if (state.Value != null)
             {
-                return null;
+                state.Value.Balance -= transaction.Amount;
+                await state.SaveAsync();
             }
-
-            state.Value.Balance -= transaction.Amount;
-            await state.SaveAsync();
+        
             return state.Value;
         }
     }

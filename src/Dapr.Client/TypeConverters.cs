@@ -12,7 +12,7 @@ namespace Dapr.Client
     /// <summary>
     /// Some type converters.
     /// </summary>
-    public static class TypeConverters
+    internal static class TypeConverters
     {
         /// <summary>
         /// Converts an arbitrary type to a <see cref="System.Text.Json"/> based <see cref="ByteString"/>.
