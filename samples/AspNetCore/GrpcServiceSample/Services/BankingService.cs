@@ -159,9 +159,10 @@ namespace GrpcServiceSample
             {
                 state.Value.Balance -= transaction.Amount;
                 await state.SaveAsync();
+                return state.Value;
             }
-        
-            return state.Value;
+            else
+                throw new Exception($"NotFound: {transaction.Id}");
         }
     }
 }
