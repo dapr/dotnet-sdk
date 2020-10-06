@@ -11,6 +11,7 @@ namespace DaprClient
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Http;
+    using Microsoft.Extensions.Configuration;
 
     /// <summary>
     /// Shows Dapr client calls.
@@ -24,10 +25,18 @@ namespace DaprClient
         /// <summary>
         /// Main entry point.
         /// </summary>
-        /// <param name="args">Arguments.</param>
+        /// <param name="args">
+        /// set parameter "useRouting" to use routing service;
+        /// set parameter "useGrpcsample" to use grpcsample service
+        /// </param>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public static async Task Main(string[] args)
         {
+            var builder = new ConfigurationBuilder();
+            builder.AddCommandLine(args);
+
+            var config = builder.Build();
+
             var jsonOptions = new JsonSerializerOptions()
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -64,27 +73,34 @@ namespace DaprClient
             // This provides an example of how to invoke a method on another REST service that is listening on http.
             // To use it run RoutingService in this solution.
 
-            /*  //Invoke deposit operation on RoutingSample service by POST.
-              await InvokeDepositServiceOperationAsync(client);
+            if (config.GetValue("useRouting", false))
+            {
+                //Invoke deposit operation on RoutingSample service by POST.
+                await InvokeDepositServiceOperationAsync(client);
 
-              //Invoke withdraw operation on RoutingSample service by POST.
-              await InvokeWithdrawServiceOperationAsync(client);
+                //Invoke withdraw operation on RoutingSample service by POST.
+                await InvokeWithdrawServiceOperationAsync(client);
 
-              //Invoke balance operation on RoutingSample service by GET.
-              await InvokeBalanceServiceOperationAsync(client);*/
+                //Invoke balance operation on RoutingSample service by GET.
+                await InvokeBalanceServiceOperationAsync(client);
+            }
             #endregion
 
             #region Service Invoke via GRPC - Required GrpcServiceSample
             //If you want to try calling for grpc sample, you can uncomment below 3 method callings and start grpcsample service
 
-            /*//Invoke deposit operation on GrpcServiceSample service by GRPC.
-            await InvokeGrpcDepositServiceOperationAsync(client);
+            if (config.GetValue("useGrpcsample", false))
+            {
+                //Invoke deposit operation on GrpcServiceSample service by GRPC.
+                await InvokeGrpcDepositServiceOperationAsync(client);
 
-            //Invoke withdraw operation on GrpcServiceSample service by GRPC.
-            await InvokeGrpcWithdrawServiceOperationAsync(client);
+                //Invoke withdraw operation on GrpcServiceSample service by GRPC.
+                await InvokeGrpcWithdrawServiceOperationAsync(client);
 
-            //Invoke balance operation on GrpcServiceSample service by GRPC.
-            await InvokeGrpcBalanceServiceOperationAsync(client);*/
+                //Invoke balance operation on GrpcServiceSample service by GRPC.
+                await InvokeGrpcBalanceServiceOperationAsync(client);
+            }
+
             #endregion
 
             Console.WriteLine("Done");
