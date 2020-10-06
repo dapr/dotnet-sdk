@@ -155,10 +155,3 @@ csharp_space_after_dot = false
 # Wrapping preferences
 csharp_preserve_single_line_statements = true
 csharp_preserve_single_line_blocks = true
-
-#####################################
-# Analayers Serverity Configuration #
-#####################################
-
-# CS1591: Missing XML comment for publicly visible type or member
-dotnet_diagnostic.CS1591.severity = warning
