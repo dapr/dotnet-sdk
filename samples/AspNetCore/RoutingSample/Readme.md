@@ -134,13 +134,19 @@ On Windows:
  ```C#
 public void ConfigureServices(IServiceCollection services)
 {
-    services.AddDaprClient();
+    services.AddDaprClient(builder =>
+        builder.UseJsonSerializationOptions(
+            new JsonSerializerOptions()
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true,
+            }));
 
     ...
 }
  ```
 
- `AddDaprClient()` registers the `StateClient` service with the dependency injection container. This service can be used to interact with the Dapr state-store.
+ `AddDaprClient()` registers the `DaprClient` service with the dependency injection container (using the sepcified `DaprClientBuilder` for settings options). This service can be used to interact with the dapr runtime (e.g. invoke services, publish messages, interact with a state-store, ...).
 
 ---
 

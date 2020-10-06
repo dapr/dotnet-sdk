@@ -15,12 +15,16 @@ The client sample shows how to make Dapr calls to publish events, save state, ge
  ```
 
  Above command will run Dapr runtime and launch the app and will show logs both form Dapr runtime and the application. The client app will make calls to Dapr runtime to publish events, save state, get state and delete state using the gRPC client.
- Logs form application will show following in the command window:
+ Logs from application will show following in the command window:
 ```sh
-  Published Event!
-  Saved State!
-  Got State: my data
-  Deleted State!
+Published Event!
+Saved State!
+Got State: small  yellow
+Deleted State!
+Executing transaction - save state and delete state
+Executed State Transaction!
+State not found in store
+Done
  ```
 
 ## Invoking Services
