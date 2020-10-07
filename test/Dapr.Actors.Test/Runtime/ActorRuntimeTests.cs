@@ -7,7 +7,6 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
-    using System.Collections.Generic;
     using System.IO;
     using System.Text;
     using System.Text.Json;
@@ -54,18 +53,19 @@ namespace Dapr.Actors.Test
 
         // This tests the change that removed the Activate message from Dapr runtime -> app.
         [Fact]
-        public void NoActivateMessageFromRuntime()
+        public async Task NoActivateMessageFromRuntime()
         {
             var actorType = typeof(MyActor);
 
-            ActorRuntime.Instance.RegisterActor<MyActor>();
+            var runtime = new ActorRuntime();
+            runtime.RegisterActor<MyActor>();
 
             var output = new MemoryStream();
-            ActorRuntime.DispatchWithoutRemotingAsync("MyActor", "abc", "MyMethod", new MemoryStream(), output).GetAwaiter().GetResult();
+            await runtime.DispatchWithoutRemotingAsync("MyActor", "abc", "MyMethod", new MemoryStream(), output);
             string s = Encoding.UTF8.GetString(output.ToArray());
 
-            Assert.Equal("\"hi\"", s);            
-            Assert.Contains(actorType.Name, ActorRuntime.Instance.RegisteredActorTypes, StringComparer.InvariantCulture);
+            Assert.Equal("\"hi\"", s);
+            Assert.Contains(actorType.Name, runtime.RegisteredActorTypes, StringComparer.InvariantCulture);
             Console.WriteLine("done");
         }
 
