@@ -10,31 +10,35 @@ namespace Dapr.Actors.AspNetCore
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
+    using Microsoft.Extensions.DependencyInjection;
 
     internal static class EndpointRouteBuilderExtensions
     {
         public static IEndpointConventionBuilder AddDaprConfigRoute(this IEndpointRouteBuilder endpoints)
         {
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapGet("dapr/config", async context =>
             {
                 context.Response.ContentType = "application/json";
-                await ActorRuntime.Instance.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
+                await runtime.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
             });
         }     
 
         public static IEndpointConventionBuilder AddActorDeactivationRoute(this IEndpointRouteBuilder endpoints)
         {
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapDelete("actors/{actorTypeName}/{actorId}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
                 var actorId = (string)routeValues["actorId"];
-                await ActorRuntime.DeactivateAsync(actorTypeName, actorId);
+                await runtime.DeactivateAsync(actorTypeName, actorId);
             });
         }
 
         public static IEndpointConventionBuilder AddActorMethodRoute(this IEndpointRouteBuilder endpoints)
         {
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
@@ -46,7 +50,7 @@ namespace Dapr.Actors.AspNetCore
                 if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
                     var daprActorheader = context.Request.Headers[Constants.RequestHeaderName];
-                    var (header, body) = await ActorRuntime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
+                    var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
 
                     // Item 1 is header , Item 2 is body
                     if (header != string.Empty)
@@ -62,7 +66,7 @@ namespace Dapr.Actors.AspNetCore
                     // write exception info in response.
                     try
                     {
-                        await ActorRuntime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                        await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
                     }
                     catch (Exception e)
                     {
@@ -78,6 +82,7 @@ namespace Dapr.Actors.AspNetCore
 
         public static IEndpointConventionBuilder AddReminderRoute(this IEndpointRouteBuilder endpoints)
         {
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/remind/{reminderName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
@@ -86,12 +91,13 @@ namespace Dapr.Actors.AspNetCore
                 var reminderName = (string)routeValues["reminderName"];
 
                 // read dueTime, period and data from Request Body.
-                await ActorRuntime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body);
+                await runtime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body);
             });
         }
 
         public static IEndpointConventionBuilder AddTimerRoute(this IEndpointRouteBuilder endpoints)
         {
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
@@ -100,7 +106,7 @@ namespace Dapr.Actors.AspNetCore
                 var timerName = (string)routeValues["timerName"];
 
                 // read dueTime, period and data from Request Body.
-                await ActorRuntime.FireTimerAsync(actorTypeName, actorId, timerName);
+                await runtime.FireTimerAsync(actorTypeName, actorId, timerName);
             });
         }
     }
