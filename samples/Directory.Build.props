@@ -5,8 +5,6 @@
     <!-- Set Output Path for samples-->
     <OutputPath>$(RepoRoot)bin\$(Configuration)\samples\$(MSBuildProjectName)\</OutputPath>
 
-    <!-- Stylecop needs the documentation file to exist -->
-    <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>
