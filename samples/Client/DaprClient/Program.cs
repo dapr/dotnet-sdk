@@ -23,6 +23,7 @@ namespace DaprClient
         private static readonly string pubsubName = "pubsub";
         private static readonly string daprErrorInfoHTTPCodeMetadata  = "http.code";
         private static readonly string daprErrorInfoHTTPErrorMetadata = "http.error_message";
+        private static readonly string grpcStatusDetails = "grpc-status-details-bin";
         private static readonly string grpcErrorInfoDetail = "google.rpc.ErrorInfo";
 
         /// <summary>
@@ -236,7 +237,7 @@ namespace DaprClient
             }
             catch (RpcException ex)
             {
-                var entry = ex.Trailers.Get("grpc-status-details-bin");
+                var entry = ex.Trailers.Get(grpcStatusDetails);
                 var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
                 Console.WriteLine("Grpc Exception Message: " + status.Message);
                 Console.WriteLine("Grpc Statuscode: " + status.Code);
