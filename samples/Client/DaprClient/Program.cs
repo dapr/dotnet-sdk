@@ -56,7 +56,11 @@ namespace DaprClient
             // Read State
             await GetStateAfterTransactionAsync(client);
 
-            await InvokeThrowExceptionOperationAsync(client);
+            if (args.Length > 0 && args[0] == "rpc-exception")
+            {
+                // Invoke /throwException route on the Controller sample server
+                await InvokeThrowExceptionOperationAsync(client);
+            }
 
             #region Service Invoke - Required RoutingService
             //// This provides an example of how to invoke a method on another REST service that is listening on http.
@@ -224,7 +228,7 @@ namespace DaprClient
 
             try
             {
-                // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.            
+                // Invokes a POST method named "throwException" that takes input of type "Transaction" as define in the ControllerSample.            
                 await client.InvokeMethodAsync<object>("controller", "throwException", data, httpExtension);
             }
             catch (Grpc.Core.RpcException ex)
