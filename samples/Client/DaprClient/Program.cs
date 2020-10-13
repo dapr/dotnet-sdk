@@ -11,6 +11,7 @@ namespace DaprClient
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Http;
+    using Grpc.Core;
 
     /// <summary>
     /// Shows Dapr client calls.
@@ -54,6 +55,8 @@ namespace DaprClient
 
             // Read State
             await GetStateAfterTransactionAsync(client);
+
+            await InvokeThrowExceptionOperationAsync(client);
 
             #region Service Invoke - Required RoutingService
             //// This provides an example of how to invoke a method on another REST service that is listening on http.
@@ -207,6 +210,34 @@ namespace DaprClient
             var res = await client.InvokeMethodAsync<Account>("routing", "17", httpExtension);
 
             Console.WriteLine($"Received balance {res.Balance}");
+        }
+
+        internal static async Task InvokeThrowExceptionOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking ThrowException");
+            var data = new { id = "17", amount = (decimal)10, };
+
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
+
+            try
+            {
+                // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.            
+                await client.InvokeMethodAsync<object>("controller", "throwException", data, httpExtension);
+            }
+            catch (Grpc.Core.RpcException ex)
+            {
+                var entry = ex.Trailers.Get("grpc-status-details-bin");
+                var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
+                Console.WriteLine("Grpc Exception Message: " + status.Message);
+                Console.WriteLine("Grpc Statuscode: " + status.Code);
+                var details = status.Details[0];
+                var rpcError = details.Unpack<Google.Rpc.ErrorInfo>();
+                Console.WriteLine("Grpc Exception: Http Error Message: " + rpcError.Metadata["http.error_message"]);
+                Console.WriteLine("Grpc Exception: Http Status Code: " + rpcError.Metadata["http.code"]);
+            }
         }
 
         private class Widget

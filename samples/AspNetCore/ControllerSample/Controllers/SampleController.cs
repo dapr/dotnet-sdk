@@ -80,5 +80,20 @@ namespace ControllerSample.Controllers
             await state.SaveAsync();
             return state.Value;
         }
+
+        /// <summary>
+        /// Method for throwing a BadRequest exception which will cause Dapr sidecar to throw an RpcException
+        /// </summary>
+        /// <param name="transaction">Transaction info.</param>
+        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        [HttpPost("throwException")]
+        public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
+        {
+            Console.WriteLine("Enter ThrowException");
+            var task = Task.Delay(10);
+            await task;
+            return BadRequest("{statusCode: 404, message: not found...}");
+        }
     }
 }
