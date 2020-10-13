@@ -21,6 +21,9 @@ namespace DaprClient
         private static readonly string stateKeyName = "mykey";
         private static readonly string storeName = "statestore";
         private static readonly string pubsubName = "pubsub";
+        private static readonly string daprErrorInfoHTTPCodeMetadata  = "http.code";
+        private static readonly string daprErrorInfoHTTPErrorMetadata = "http.error_message";
+        private static readonly string grpcErrorInfoDetail = "google.rpc.ErrorInfo";
 
         /// <summary>
         /// Main entry point.
@@ -237,10 +240,15 @@ namespace DaprClient
                 var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
                 Console.WriteLine("Grpc Exception Message: " + status.Message);
                 Console.WriteLine("Grpc Statuscode: " + status.Code);
-                var details = status.Details[0];
-                var rpcError = details.Unpack<Google.Rpc.ErrorInfo>();
-                Console.WriteLine("Grpc Exception: Http Error Message: " + rpcError.Metadata["http.error_message"]);
-                Console.WriteLine("Grpc Exception: Http Status Code: " + rpcError.Metadata["http.code"]);
+                foreach(var detail in status.Details)
+                {
+                    if(Google.Protobuf.WellKnownTypes.Any.GetTypeName(detail.TypeUrl) == grpcErrorInfoDetail)
+                    {
+                        var rpcError = detail.Unpack<Google.Rpc.ErrorInfo>();
+                        Console.WriteLine("Grpc Exception: Http Error Message: " + rpcError.Metadata[daprErrorInfoHTTPErrorMetadata]);
+                        Console.WriteLine("Grpc Exception: Http Status Code: " + rpcError.Metadata[daprErrorInfoHTTPCodeMetadata]);
+                    }
+                }
             }
         }
 

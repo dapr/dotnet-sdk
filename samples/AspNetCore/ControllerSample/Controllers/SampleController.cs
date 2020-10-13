@@ -89,7 +89,7 @@ namespace ControllerSample.Controllers
             Console.WriteLine("Enter ThrowException");
             var task = Task.Delay(10);
             await task;
-            return BadRequest("{statusCode: 404, message: not found...}");
+            return BadRequest(@"{""statusCode"": 400, ""message"": ""bad request""}");
         }
     }
 }
