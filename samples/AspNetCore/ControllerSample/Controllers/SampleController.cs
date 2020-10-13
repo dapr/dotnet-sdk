@@ -82,11 +82,7 @@ namespace ControllerSample.Controllers
         }
 
         /// <summary>
-        /// Method for throwing a BadRequest exception which will cause Dapr sidecar to throw an RpcException
-        /// </summary>
-        /// <param name="transaction">Transaction info.</param>
-        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
-        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        /// Method for returning a BadRequest result which will cause Dapr sidecar to throw an RpcException
         [HttpPost("throwException")]
         public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
         {

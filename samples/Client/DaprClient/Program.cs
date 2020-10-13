@@ -228,10 +228,10 @@ namespace DaprClient
 
             try
             {
-                // Invokes a POST method named "throwException" that takes input of type "Transaction" as define in the ControllerSample.            
-                await client.InvokeMethodAsync<object>("controller", "throwException", data, httpExtension);
+                // Invokes a POST method named "throwException" that takes input of type "Transaction" as defined in the ControllerSample.            
+                await client.InvokeMethodAsync("controller", "throwException", data, httpExtension);
             }
-            catch (Grpc.Core.RpcException ex)
+            catch (RpcException ex)
             {
                 var entry = ex.Trailers.Get("grpc-status-details-bin");
                 var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
