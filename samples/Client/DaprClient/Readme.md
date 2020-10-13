@@ -131,12 +131,17 @@ dapr run --app-id gRPC_Client dotnet run rpc-exception
 
 The controller sample has a route "/throwException" that returns a BadRequest result which causes the Dapr sidecar to throw an RpcException. The method *InvokeThrowExceptionOperationAsync* on the client side demonstrates how to extract the error message from RpcException.
 ```c#
-            var entry = ex.Trailers.Get("grpc-status-details-bin");
+            var entry = ex.Trailers.Get(grpcStatusDetails);
             var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
             Console.WriteLine("Grpc Exception Message: " + status.Message);
             Console.WriteLine("Grpc Statuscode: " + status.Code);
-            var details = status.Details[0];
-            var rpcError = details.Unpack<Google.Rpc.ErrorInfo>();
-            Console.WriteLine("Grpc Exception: Http Error Message: " + rpcError.Metadata["http.error_message"]);
-            Console.WriteLine("Grpc Exception: Http Status Code: " + rpcError.Metadata["http.code"]);
+            foreach(var detail in status.Details)
+            {
+                if(Google.Protobuf.WellKnownTypes.Any.GetTypeName(detail.TypeUrl) == grpcErrorInfoDetail)
+                {
+                    var rpcError = detail.Unpack<Google.Rpc.ErrorInfo>();
+                    Console.WriteLine("Grpc Exception: Http Error Message: " + rpcError.Metadata[daprErrorInfoHTTPErrorMetadata]);
+                    Console.WriteLine("Grpc Exception: Http Status Code: " + rpcError.Metadata[daprErrorInfoHTTPCodeMetadata]);
+                }
+            }
  ```
