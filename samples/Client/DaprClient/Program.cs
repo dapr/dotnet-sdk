@@ -11,6 +11,7 @@ namespace DaprClient
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Http;
+    using Grpc.Core;
 
     /// <summary>
     /// Shows Dapr client calls.
@@ -20,6 +21,10 @@ namespace DaprClient
         private static readonly string stateKeyName = "mykey";
         private static readonly string storeName = "statestore";
         private static readonly string pubsubName = "pubsub";
+        private static readonly string daprErrorInfoHTTPCodeMetadata  = "http.code";
+        private static readonly string daprErrorInfoHTTPErrorMetadata = "http.error_message";
+        private static readonly string grpcStatusDetails = "grpc-status-details-bin";
+        private static readonly string grpcErrorInfoDetail = "google.rpc.ErrorInfo";
 
         /// <summary>
         /// Main entry point.
@@ -54,6 +59,12 @@ namespace DaprClient
 
             // Read State
             await GetStateAfterTransactionAsync(client);
+
+            if (args.Length > 0 && args[0] == "rpc-exception")
+            {
+                // Invoke /throwException route on the Controller sample server
+                await InvokeThrowExceptionOperationAsync(client);
+            }
 
             #region Service Invoke - Required RoutingService
             //// This provides an example of how to invoke a method on another REST service that is listening on http.
@@ -207,6 +218,39 @@ namespace DaprClient
             var res = await client.InvokeMethodAsync<Account>("routing", "17", httpExtension);
 
             Console.WriteLine($"Received balance {res.Balance}");
+        }
+
+        internal static async Task InvokeThrowExceptionOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking ThrowException");
+            var data = new { id = "17", amount = (decimal)10, };
+
+            HTTPExtension httpExtension = new HTTPExtension()
+            {
+                Verb = HTTPVerb.Post
+            };
+
+            try
+            {
+                // Invokes a POST method named "throwException" that takes input of type "Transaction" as defined in the ControllerSample.            
+                await client.InvokeMethodAsync("controller", "throwException", data, httpExtension);
+            }
+            catch (RpcException ex)
+            {
+                var entry = ex.Trailers.Get(grpcStatusDetails);
+                var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
+                Console.WriteLine("Grpc Exception Message: " + status.Message);
+                Console.WriteLine("Grpc Statuscode: " + status.Code);
+                foreach(var detail in status.Details)
+                {
+                    if(Google.Protobuf.WellKnownTypes.Any.GetTypeName(detail.TypeUrl) == grpcErrorInfoDetail)
+                    {
+                        var rpcError = detail.Unpack<Google.Rpc.ErrorInfo>();
+                        Console.WriteLine("Grpc Exception: Http Error Message: " + rpcError.Metadata[daprErrorInfoHTTPErrorMetadata]);
+                        Console.WriteLine("Grpc Exception: Http Status Code: " + rpcError.Metadata[daprErrorInfoHTTPCodeMetadata]);
+                    }
+                }
+            }
         }
 
         private class Widget
