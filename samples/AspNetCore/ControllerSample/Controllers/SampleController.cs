@@ -80,5 +80,16 @@ namespace ControllerSample.Controllers
             await state.SaveAsync();
             return state.Value;
         }
+
+        /// <summary>
+        /// Method for returning a BadRequest result which will cause Dapr sidecar to throw an RpcException
+        [HttpPost("throwException")]
+        public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
+        {
+            Console.WriteLine("Enter ThrowException");
+            var task = Task.Delay(10);
+            await task;
+            return BadRequest(new { statusCode = 400, message = "bad request" });
+        }
     }
 }
