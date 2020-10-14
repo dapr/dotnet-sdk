@@ -135,6 +135,16 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Invokes a method on a Dapr app.
+        /// </summary>
+        /// <param name="request">The InvokeRequest.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{InvokeResponse}" /> that will return the value when the operation has completed.</returns>        
+        public abstract Task<InvokeResponse> InvokeMethodRawAsync(
+            InvokeRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store.
         /// </summary>
         /// <param name="storeName">The name of state store to read from.</param>
