@@ -83,6 +83,7 @@ namespace ControllerSample.Controllers
 
         /// <summary>
         /// Method for returning a BadRequest result which will cause Dapr sidecar to throw an RpcException
+        /// </summary>
         [HttpPost("throwException")]
         public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
         {
