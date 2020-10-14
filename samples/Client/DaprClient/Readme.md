@@ -115,3 +115,33 @@ The method *PublishDepositeEventToRoutingSampleAsync* demonstrates how to publis
  ```c#
             await client.PublishEventAsync("deposit", new  { id = "17", amount = (decimal)10, });          
  ```
+
+
+## Handling RpcException
+
+Run the controller sample as follows from samples/AspNetCore/ControllerSample directory:-
+```
+dapr run --app-id controller --app-port 5000 dotnet run
+```
+
+Run the client sample as follows from samples/Client/DaprClient directory. The "rpc-exception" argument invokes a route on the server side that causes it to throw an RpcException:-
+```
+dapr run --app-id gRPC_Client dotnet run rpc-exception
+```
+
+The controller sample has a route "/throwException" that returns a BadRequest result which causes the Dapr sidecar to throw an RpcException. The method *InvokeThrowExceptionOperationAsync* on the client side demonstrates how to extract the error message from RpcException.
+```c#
+            var entry = ex.Trailers.Get(grpcStatusDetails);
+            var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
+            Console.WriteLine("Grpc Exception Message: " + status.Message);
+            Console.WriteLine("Grpc Statuscode: " + status.Code);
+            foreach(var detail in status.Details)
+            {
+                if(Google.Protobuf.WellKnownTypes.Any.GetTypeName(detail.TypeUrl) == grpcErrorInfoDetail)
+                {
+                    var rpcError = detail.Unpack<Google.Rpc.ErrorInfo>();
+                    Console.WriteLine("Grpc Exception: Http Error Message: " + rpcError.Metadata[daprErrorInfoHTTPErrorMetadata]);
+                    Console.WriteLine("Grpc Exception: Http Status Code: " + rpcError.Metadata[daprErrorInfoHTTPCodeMetadata]);
+                }
+            }
+ ```
