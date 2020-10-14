@@ -9,4 +9,9 @@
     <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.13.0" />
+    <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
+  </ItemGroup>
+
 </Project>
