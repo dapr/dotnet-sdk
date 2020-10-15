@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Dapr.Client;
 using Dapr.Client.Autogen.Grpc.v1;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using GrpcServiceSample.Models;
@@ -55,17 +56,23 @@ namespace GrpcServiceSample
             switch (request.Method)
             {
                 case "getaccount":
-                    var input = TypeConverters.FromAny<GetAccountInput>(request.Data, this.jsonOptions);
+                    var input = JsonSerializer.Deserialize<GetAccountInput>(request.Data.Value.ToByteArray(), this.jsonOptions);
                     var output = await GetAccount(input, context);
-                    response.Data = TypeConverters.ToAny<Account>(output, this.jsonOptions);
+                    response.Data = new Any
+                    {
+                        Value = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes<Account>(output, this.jsonOptions)),
+                    };
                     break;
                 case "deposit":
                 case "withdraw":
-                    var transaction = TypeConverters.FromAny<Transaction>(request.Data, this.jsonOptions);
+                    var transaction = JsonSerializer.Deserialize<Transaction>(request.Data.Value.ToByteArray(), this.jsonOptions);
                     var account = request.Method == "deposit" ?
                         await Deposit(transaction, context) :
                         await Withdraw(transaction, context);
-                    response.Data = TypeConverters.ToAny<Account>(account, this.jsonOptions);
+                    response.Data = new Any
+                    {
+                        Value = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes<Account>(account, this.jsonOptions)),
+                    };
                     break;
                 default:
                     break;
@@ -111,7 +118,7 @@ namespace GrpcServiceSample
                 else
                     await Withdraw(transaction, context);
             }
-           
+
             return await Task.FromResult(default(TopicEventResponse));
         }
 
