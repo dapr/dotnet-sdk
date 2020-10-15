@@ -24,10 +24,20 @@ This repo builds the following packages:
 
 ### Prerequesites
 
-Each project is a normal C# Visual Studio 2019 project. At minimum, you need [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) to build and generate NuGet packages.
+Each project is a normal C# project. At minimum, you need [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) to build, test, and generate NuGet packages.
 
-We recommend installing [Visual Studio 2019 v16.4 or later ](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
-Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio). To find a version of .NET Core that can be used with earlier versions of Visual Studio, see [.NET SDKs for Visual Studio](https://dotnet.microsoft.com/download/visual-studio-sdks).
+**macOS/Linux:**
+
+On macOS or Linux we recommend [Visual Studio Code](https://code.visualstudio.com/) with the [C# Extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp). See [here](https://code.visualstudio.com/docs/languages/dotnet) for a getting started guide for VS Code and .NET.
+
+
+**Windows:**
+
+On Windows, we recommend installing [the latest Visual Studio 2019](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
+
+Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio).
+
+
 
 ### Solution Files
 The repo currently has 4 solution files:
@@ -51,7 +61,7 @@ dotnet test test/test.sln
 dotnet pack src/prod.sln
 ```
 
-Each project can also be built individually directly through Visual Studio. You can open the solution file all.sln in repo root to load all sdk, samples and test projects.
+Each project can also be built individually directly through the CLI or your editor/IDE. You can open the solution file all.sln in repo root to load all sdk, samples and test projects.
 
 ## Releases
 
