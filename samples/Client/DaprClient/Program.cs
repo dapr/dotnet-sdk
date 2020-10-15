@@ -69,7 +69,7 @@ namespace DaprClient
             // Read State
             await GetStateAfterTransactionAsync(client);
 
-            if (args.Length > 0 && args[0] == "rpc-exception")
+            if (config.GetValue("rpc-exception", false))
             {
                 // Invoke /throwException route on the Controller sample server
                 await InvokeThrowExceptionOperationAsync(client);
