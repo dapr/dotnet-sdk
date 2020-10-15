@@ -14,8 +14,6 @@ namespace Dapr.Actors
     [DataContract(Name = "ActorId")]
     public class ActorId
     {
-        private static readonly Random Rand = new Random();
-        private static readonly object RandLock = new object();
         private readonly string stringId;
 
         /// <summary>
@@ -71,13 +69,7 @@ namespace Dapr.Actors
         /// <remarks>This method is thread-safe and generates a new random <see cref="ActorId"/> every time it is called.</remarks>
         public static ActorId CreateRandom()
         {
-            var buffer = new byte[8];
-            lock (RandLock)
-            {
-                Rand.NextBytes(buffer);
-            }
-
-            return new ActorId(BitConverter.ToString(buffer, 0));
+            return new ActorId(Guid.NewGuid().ToString());
         }
 
         /// <summary>
