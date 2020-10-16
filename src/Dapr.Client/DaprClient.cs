@@ -140,8 +140,8 @@ namespace Dapr.Client
         /// <param name="request">The InvokeRequest.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{InvokeResponse}" /> that will return the value when the operation has completed.</returns>        
-        public abstract Task<InvokeResponse> InvokeMethodRawAsync(
-            InvokeRequest request,
+        public abstract Task<ServiceInvocationResponse<TRequest, TResponse>> InvokeMethodWithResponseHeadersAsync<TRequest, TResponse>(
+            ServiceInvocationRequest<TRequest> request,
             CancellationToken cancellationToken = default);
 
         /// <summary>

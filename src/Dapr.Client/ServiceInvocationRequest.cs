@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr.Client
 {
     using Dapr.Client;
     using Dapr.Client.Http;
@@ -11,18 +11,25 @@ namespace Dapr
     /// <summary>
     /// Represents an Invoke Request used for service invocation
     /// </summary>
-    public sealed class InvokeRequest
+    /// <typeparam name="TRequest">Data type of the request.</typeparam>
+    public sealed class ServiceInvocationRequest<TRequest>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ServiceInvocationRequest{TRequest}"/> class.
+        /// </summary>
+        public ServiceInvocationRequest()
+        {
+        }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="InvokeRequest"/> class.
+        /// Initializes a new instance of the <see cref="ServiceInvocationRequest{TRequest}"/> class.
         /// </summary>
         /// <param name="appId">The app identifier.</param>
         /// <param name="methodName">The name of the method to invoke.</param>
         /// <param name="body">The request body.</param>
         /// <param name="contentType">The content type.</param>
         /// <param name="httpExtension">HTTP extension info (optional).</param>
-        public InvokeRequest(string appId, string methodName, byte[] body, string contentType, HTTPExtension httpExtension)
+        public ServiceInvocationRequest(string appId, string methodName, TRequest body, string contentType, HTTPExtension httpExtension)
         {
             ArgumentVerifier.ThrowIfNull(appId, nameof(appId));
             ArgumentVerifier.ThrowIfNull(methodName, nameof(methodName));
@@ -47,7 +54,7 @@ namespace Dapr
         /// <summary>
         /// Gets or sets the request body.
         /// </summary>
-        public byte[] Body { get; set; }
+        public TRequest Body { get; set; }
 
         /// <summary>
         /// Gets or sets the content type.

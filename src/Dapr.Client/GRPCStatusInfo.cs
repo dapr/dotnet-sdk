@@ -17,7 +17,7 @@ namespace Dapr.Client
         /// <summary>
         /// The constructor.
         /// </summary>
-        public GRPCStatusInfo(int statusCode, string message, int? innerHttpStatusCode = default, string InnerHttpErrorMessage = default)
+        public GRPCStatusInfo(Grpc.Core.StatusCode statusCode, string message, int? innerHttpStatusCode = default, string InnerHttpErrorMessage = default)
         {
             this.GrpcStatusCode = statusCode;
             this.GrpcErrorMessage = message;
@@ -28,7 +28,7 @@ namespace Dapr.Client
         /// <summary>
         /// The gRPC Status Code
         /// </summary>
-        public int GrpcStatusCode { get; set; }
+        public Grpc.Core.StatusCode GrpcStatusCode { get; set; }
 
         /// <summary>
         /// The gRPC Error Message
