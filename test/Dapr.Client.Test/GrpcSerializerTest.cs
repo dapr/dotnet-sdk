@@ -11,6 +11,13 @@ namespace Dapr.Client.Test
 
     public class TypeConvertersTest
     {
+        private readonly GrpcSerializer serializer;
+
+        public TypeConvertersTest()
+        {
+            serializer = new GrpcSerializer();
+        }
+
         [Fact]
         public void AnyConversion_GRPC_Pack_Unpack()
         {
@@ -19,8 +26,8 @@ namespace Dapr.Client.Test
             testRun.Tests.Add(new TestCase() { Name = "test2" });
             testRun.Tests.Add(new TestCase() { Name = "test3" });
 
-            var any = TypeConverters.ToAny(testRun);
-            var type = TypeConverters.FromAny<TestRun>(any);
+            var any = serializer.ToAny(testRun);
+            var type = serializer.FromAny<TestRun>(any);
 
             type.Should().BeEquivalentTo(testRun);
             any.TypeUrl.Should().Be("type.googleapis.com/TestRun");
@@ -38,8 +45,8 @@ namespace Dapr.Client.Test
                 Name = "test"
             };
 
-            var any = TypeConverters.ToAny(response);
-            var type = TypeConverters.FromAny<Response>(any);
+            var any = serializer.ToAny(response);
+            var type = serializer.FromAny<Response>(any);
 
             type.Should().BeEquivalentTo(response);
             any.TypeUrl.Should().Be("Dapr.Client.Test.TypeConvertersTest+Response");

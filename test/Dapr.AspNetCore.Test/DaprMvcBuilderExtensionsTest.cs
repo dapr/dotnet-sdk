@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text.Json;
 using Dapr.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -12,14 +11,10 @@ namespace Dapr.AspNetCore.Test
         public void AddDapr_UsesSpecifiedDaprClientBuilderConfig()
         {
             var services = new ServiceCollection();
+            const string endpoint = "https://dapr.io";
 
             var clientBuilder = new Action<DaprClientBuilder>(
-                builder => builder.UseJsonSerializationOptions(
-                    new JsonSerializerOptions()
-                    {
-                        PropertyNameCaseInsensitive = false
-                    }
-                )
+                builder => builder.UseEndpoint(endpoint)
             );
 
             services.AddControllers().AddDapr(clientBuilder);
@@ -28,7 +23,7 @@ namespace Dapr.AspNetCore.Test
 
             DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.False(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.Equal(daprClient.Channel.Target, new Uri(endpoint).Authority);
         }
 
         [Fact]
@@ -42,34 +37,30 @@ namespace Dapr.AspNetCore.Test
 
             DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.True(daprClient.Serializer.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
         [Fact]
         public void AddDapr_RegistersDaprOnlyOnce()
         {
             var services = new ServiceCollection();
+            const string endpoint = "https://dapr.io";
 
             var clientBuilder = new Action<DaprClientBuilder>(
-                builder => builder.UseJsonSerializationOptions(
-                    new JsonSerializerOptions()
-                    {
-                        PropertyNameCaseInsensitive = false
-                    }
-                )
+                builder => builder.UseEndpoint(endpoint)
             );
 
-            // register with JsonSerializerOptions.PropertyNameCaseInsensitive = false
+            // register with endpoint https://dapr.io
             services.AddControllers().AddDapr(clientBuilder);
 
-            // register with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
+            // register with endpoint http://127.0.0.1
             services.AddControllers().AddDapr();
 
             var serviceProvider = services.BuildServiceProvider();
 
             DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.False(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.Equal(daprClient.Channel.Target, new Uri(endpoint).Authority);
         }
     }
 }

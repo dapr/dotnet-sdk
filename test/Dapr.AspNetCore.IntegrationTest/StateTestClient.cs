@@ -5,9 +5,7 @@
 
 namespace Dapr
 {
-    using System;
     using System.Collections.Generic;
-    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
@@ -23,7 +21,7 @@ namespace Dapr
         /// Initializes a new instance of the <see cref="DaprClientGrpc"/> class.
         /// </summary>
         internal StateTestClient()
-            : base(channel)
+            : base(channel, new GrpcSerializer())
         { }
 
         public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)

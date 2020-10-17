@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Dapr.Client;
+using Grpc.Net.Client;
 using Xunit;
 
 namespace Dapr.AspNetCore.Test
@@ -10,18 +11,41 @@ namespace Dapr.AspNetCore.Test
         public void DaprClientBuilder_UsesPropertyNameCaseHandlingInsensitiveByDefault()
         {
             DaprClientBuilder builder = new DaprClientBuilder();
-            Assert.True(builder.JsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.True(builder.GrpcSerializer.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
         [Fact]
         public void DaprClientBuilder_UsesPropertyNameCaseHandlingAsSpecified()
         {
-            DaprClientBuilder builder = new DaprClientBuilder();
-            builder.UseJsonSerializationOptions(new JsonSerializerOptions
+            var serializer = new GrpcSerializer(new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = false
             });
-            Assert.False(builder.JsonSerializerOptions.PropertyNameCaseInsensitive);
+
+            DaprClientBuilder builder = new DaprClientBuilder(serializer);
+            Assert.False(builder.GrpcSerializer.JsonSerializerOptions.PropertyNameCaseInsensitive);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_UsesSpecifiedEndpoint()
+        {
+            const string endpoint = "https://dapr.io";
+
+            DaprClientBuilder builder = new DaprClientBuilder();
+            builder.UseEndpoint(endpoint);
+
+            Assert.Equal(builder.DaprEndpoint, endpoint);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_UsesSpecifiedGrpcChannelOptions()
+        {
+            var grpcChannelOptions = new GrpcChannelOptions();
+
+            DaprClientBuilder builder = new DaprClientBuilder();
+            builder.UseGrpcChannelOptions(grpcChannelOptions);
+
+            Assert.Equal(builder.GrpcChannelOptions, grpcChannelOptions);
         }
     }
 }

@@ -10,26 +10,60 @@ namespace Dapr.Client
     using Google.Protobuf.WellKnownTypes;
 
     /// <summary>
-    /// Some type converters.
+    /// A serializer that is able to serialize/deserialize into different formats which are used by
+    /// the <see cref="DaprClientGrpc"/> implementation.
     /// </summary>
-    internal static class TypeConverters
+    public class GrpcSerializer
     {
+        // property exposed for testing purposes
+        internal JsonSerializerOptions JsonSerializerOptions { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GrpcSerializer"/> class.
+        /// </summary>
+        public GrpcSerializer()
+        {
+            JsonSerializerOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GrpcSerializer"/> class.
+        /// </summary>
+        /// <param name="jsonSerializerOptions">Json serialization options.</param>
+        public GrpcSerializer(JsonSerializerOptions jsonSerializerOptions = null)
+        {
+            JsonSerializerOptions = jsonSerializerOptions;
+        }
+
         /// <summary>
         /// Converts an arbitrary type to a <see cref="System.Text.Json"/> based <see cref="ByteString"/>.
         /// </summary>
         /// <param name="data">The data to convert.</param>
-        /// <param name="options">The JSON serialization options.</param>
         /// <typeparam name="T">The type of the given data.</typeparam>
         /// <returns>The given data as JSON based byte string.</returns>
-        public static ByteString ToJsonByteString<T>(T data, JsonSerializerOptions options = null)
+        public ByteString ToJsonByteString<T>(T data)
         {
             if (data == null)
             {
                 return ByteString.Empty;
             }
 
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(data, options);
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(data, JsonSerializerOptions);
             return ByteString.CopyFrom(bytes);
+        }
+
+        /// <summary>
+        /// Converts a JSON byte string to an arbitrary type.
+        /// </summary>
+        /// <param name="json">The JSON byte string to convert.</param>
+        /// <typeparam name="T">The type to convert to.</typeparam>
+        /// <returns>An instance of T.</returns>
+        public T FromJsonByteString<T>(ByteString json)
+        {
+            return JsonSerializer.Deserialize<T>(json.ToStringUtf8(), JsonSerializerOptions);
         }
 
         /// <summary>
@@ -40,10 +74,9 @@ namespace Dapr.Client
         /// For all other types, we use JSON serialization based on <see cref="System.Text.Json"/>.
         /// </summary>
         /// <param name="data">The data to convert.</param>
-        /// <param name="options">The JSON serialization options.</param>
         /// <typeparam name="T">The type of the given data.</typeparam>
         /// <returns>The <see cref="Any"/> type representation of the given data.</returns>
-        public static Any ToAny<T>(T data, JsonSerializerOptions options = null)
+        public Any ToAny<T>(T data)
         {
             if (data == null)
             {
@@ -54,7 +87,7 @@ namespace Dapr.Client
 
             return typeof(IMessage).IsAssignableFrom(t)
                 ? Any.Pack((IMessage) data)
-                : new Any {Value = ToJsonByteString(data, options), TypeUrl = t.FullName};
+                : new Any { Value = ToJsonByteString(data), TypeUrl = t.FullName };
         }
 
         /// <summary>
@@ -65,21 +98,21 @@ namespace Dapr.Client
         /// instance. For all other types, we use JSON deserialization based on <see cref="System.Text.Json"/>.
         /// </summary>
         /// <param name="any">The any instance to convert.</param>
-        /// <param name="options">The JSON serialization options.</param>
         /// <typeparam name="T">The type to convert to.</typeparam>
         /// <returns>An instance of T.</returns>
-        public static T FromAny<T>(Any any, JsonSerializerOptions options = null)
+        public T FromAny<T>(Any any)
         {
             var t = typeof(T);
 
-            if (typeof(IMessage).IsAssignableFrom(t) && t.GetConstructor(System.Type.EmptyTypes) != null)
+            if (!typeof(IMessage).IsAssignableFrom(t) || t.GetConstructor(System.Type.EmptyTypes) == null)
             {
-                var method = any.GetType().GetMethod("Unpack");
-                var generic = method.MakeGenericMethod(t);
-                return (T) generic.Invoke(any, null);
+                return FromJsonByteString<T>(any.Value);
             }
 
-            return JsonSerializer.Deserialize<T>(any.Value.ToStringUtf8(), options);
+            var method = any.GetType().GetMethod("Unpack");
+            var generic = method.MakeGenericMethod(t);
+
+            return (T) generic.Invoke(any, null);
         }
     }
 }

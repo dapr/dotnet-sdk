@@ -115,7 +115,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -130,7 +131,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(data, entry);
+            SendResponse(clientBuilder.GrpcSerializer, data, entry);
 
             // Validate Response
             var invokedResponse = await task;
@@ -142,7 +143,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -160,7 +162,7 @@ namespace Dapr.Client.Test
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
-            SendResponse<Response>(null, entry);
+            SendResponse<Response>(clientBuilder.GrpcSerializer, null, entry);
 
             // Validate Response.
             var invokedResponse = await task;
@@ -203,7 +205,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -218,7 +221,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(data, entry);
+            SendResponse(clientBuilder.GrpcSerializer, data, entry);
 
             // Validate Response
             var invokedResponse = await task;
@@ -256,7 +259,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -276,7 +280,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var response = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(response, entry);
+            SendResponse(clientBuilder.GrpcSerializer, response, entry);
 
             FluentActions.Awaiting(async () => await task).Should().NotThrow();
         }
@@ -317,9 +321,8 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var daprClient = new DaprClientBuilder()
+            var daprClient = new DaprClientBuilder(new GrpcSerializer(jsonOptions))
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
             var invokeRequest = new Request() { RequestParameter = "Hello" };
@@ -342,9 +345,9 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder(new GrpcSerializer(jsonOptions));
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
             var invokeRequest = new Request() { RequestParameter = "Hello " };
@@ -362,7 +365,7 @@ namespace Dapr.Client.Test
             var json = envelope.Message.Data.Value.ToStringUtf8();
             json.Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
 
-            SendResponse(invokedResponse, entry, jsonOptions);
+            SendResponse(clientBuilder.GrpcSerializer, invokedResponse, entry);
             var response = await task;
 
             response.Name.Should().Be(invokedResponse.Name);
@@ -374,9 +377,9 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder(new GrpcSerializer(jsonOptions));
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
             var invokeRequest = new Request() { RequestParameter = "Hello " };
@@ -407,7 +410,7 @@ namespace Dapr.Client.Test
             var json = envelope.Message.Data.Value.ToStringUtf8();
             json.Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
 
-            SendResponse(invokedResponse, entry, jsonOptions);
+            SendResponse(clientBuilder.GrpcSerializer, invokedResponse, entry);
             var response = await task;
 
             response.Name.Should().Be(invokedResponse.Name);
@@ -418,10 +421,10 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var httpClient = new AppCallbackClient(new DaprAppCallbackService(jsonOptions));
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder(new GrpcSerializer(jsonOptions));
+            var httpClient = new AppCallbackClient(new DaprAppCallbackService(clientBuilder.GrpcSerializer));
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
             var request = new Request() { RequestParameter = "Look, I was invoked!" };
@@ -436,10 +439,10 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var httpClient = new AppCallbackClient(new DaprAppCallbackService(jsonOptions));
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder(new GrpcSerializer(jsonOptions));
+            var httpClient = new AppCallbackClient(new DaprAppCallbackService(clientBuilder.GrpcSerializer));
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
             var testRun = new TestRun();
@@ -460,10 +463,10 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var httpClient = new AppCallbackClient(new DaprAppCallbackService(jsonOptions));
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder(new GrpcSerializer(jsonOptions));
+            var httpClient = new AppCallbackClient(new DaprAppCallbackService(clientBuilder.GrpcSerializer));
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .UseJsonSerializationOptions(jsonOptions)
                 .Build();
 
             var request = new Request() { RequestParameter = "Look, I was invoked!" };
@@ -473,9 +476,9 @@ namespace Dapr.Client.Test
             response.Name.Should().Be("unexpected");
         }
 
-        private async void SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
+        private async void SendResponse<T>(GrpcSerializer serializer, T data, TestHttpClient.Entry entry)
         {
-            var dataAny = TypeConverters.ToAny(data, options);
+            var dataAny = serializer.ToAny(data);
             var dataResponse = new InvokeResponse();
             dataResponse.Data = dataAny;
 
@@ -497,11 +500,11 @@ namespace Dapr.Client.Test
         // Test implementation of the AppCallback.AppCallbackBase service
         private class DaprAppCallbackService : AppCallback.AppCallbackBase
         {
-            private readonly JsonSerializerOptions jsonOptions;
+            private readonly GrpcSerializer serializer;
 
-            public DaprAppCallbackService(JsonSerializerOptions jsonOptions)
+            public DaprAppCallbackService(GrpcSerializer serializer)
             {
-                this.jsonOptions = jsonOptions;
+                this.serializer = serializer;
             }
 
             public override Task<InvokeResponse> OnInvoke(InvokeRequest request, ServerCallContext context)
@@ -510,31 +513,31 @@ namespace Dapr.Client.Test
                 {
                     "SayHello" => SayHello(request),
                     "TestRun" => TestRun(request),
-                    _ => Task.FromResult(new InvokeResponse()
+                    _ => Task.FromResult(new InvokeResponse
                     {
-                        Data = TypeConverters.ToAny(new Response() { Name = $"unexpected" }, this.jsonOptions)
+                        Data = serializer.ToAny(new Response { Name = $"unexpected" })
                     })
                 };
             }
 
             private Task<InvokeResponse> SayHello(InvokeRequest request)
             {
-                var helloRequest = TypeConverters.FromAny<Request>(request.Data, this.jsonOptions);
-                var helloResponse = new Response() { Name = $"Hello {helloRequest.RequestParameter}" };
+                var helloRequest = serializer.FromAny<Request>(request.Data);
+                var helloResponse = new Response { Name = $"Hello {helloRequest.RequestParameter}" };
 
-                return Task.FromResult(new InvokeResponse()
+                return Task.FromResult(new InvokeResponse
                 {
-                    Data = TypeConverters.ToAny(helloResponse, this.jsonOptions)
+                    Data = serializer.ToAny(helloResponse)
                 });
             }
 
             private Task<InvokeResponse> TestRun(InvokeRequest request)
             {
-                var echoRequest = TypeConverters.FromAny<TestRun>(request.Data, this.jsonOptions);
+                var echoRequest = serializer.FromAny<TestRun>(request.Data);
 
-                return Task.FromResult(new InvokeResponse()
+                return Task.FromResult(new InvokeResponse
                 {
-                    Data = TypeConverters.ToAny(echoRequest, this.jsonOptions)
+                    Data = serializer.ToAny(echoRequest)
                 });
             }
         }

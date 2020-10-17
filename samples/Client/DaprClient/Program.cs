@@ -39,8 +39,7 @@ namespace DaprClient
                 PropertyNameCaseInsensitive = true,
             };
 
-            var client = new DaprClientBuilder()
-                .UseJsonSerializationOptions(jsonOptions)
+            var client = new DaprClientBuilder(new GrpcSerializer(jsonOptions))
                 .Build();
 
             await PublishEventAsync(client);
@@ -69,7 +68,7 @@ namespace DaprClient
             #region Service Invoke - Required RoutingService
             //// This provides an example of how to invoke a method on another REST service that is listening on http.
             //// To use it run RoutingService in this solution.
-            //// Invoke deposit operation on RoutingSample service by publishing event.      
+            //// Invoke deposit operation on RoutingSample service by publishing event.
 
             //await PublishDepositeEventToRoutingSampleAsync(client);
 
@@ -96,7 +95,7 @@ namespace DaprClient
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
-            var eventData = new Widget() { Size = "small", Color = "yellow", };            
+            var eventData = new Widget() { Size = "small", Color = "yellow", };
             await client.PublishEventAsync(pubsubName, "TopicA", eventData);
             Console.WriteLine("Published Event!");
         }
@@ -129,7 +128,7 @@ namespace DaprClient
 
         internal static async Task ExecuteStateTransaction(DaprClient client)
         {
-            var value = new Widget() { Size = "small", Color = "yellow", }; 
+            var value = new Widget() { Size = "small", Color = "yellow", };
             var request1 = new Dapr.StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
             var request2 = new Dapr.StateTransactionRequest("mystate", null, StateOperationType.Delete);
             var requests = new List<Dapr.StateTransactionRequest>();
@@ -191,7 +190,7 @@ namespace DaprClient
                 Verb = HTTPVerb.Post
             };
 
-            // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.            
+            // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
             await client.InvokeMethodAsync<object>("routing", "Withdraw", data, httpExtension);
 
             Console.WriteLine("Completed");

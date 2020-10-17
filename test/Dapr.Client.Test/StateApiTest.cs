@@ -5,7 +5,6 @@
 
 namespace Dapr.Client.Test
 {
-    using System;
     using System.Collections.Generic;
     using System.Net;
     using System.Text.Json;
@@ -26,7 +25,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -35,7 +35,7 @@ namespace Dapr.Client.Test
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState(data, entry);
+            SendResponseWithState(clientBuilder.GrpcSerializer, data, entry);
 
             // Get response and validate
             var state = await task;
@@ -70,7 +70,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -79,7 +80,7 @@ namespace Dapr.Client.Test
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState(data, entry, "Test_Etag");
+            SendResponseWithState(clientBuilder.GrpcSerializer, data, entry, "Test_Etag");
 
             // Get response and validate
             var (state, etag) = await task;
@@ -93,7 +94,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -101,7 +103,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState<Widget>(null, entry);
+            SendResponseWithState<Widget>(clientBuilder.GrpcSerializer, null, entry);
 
             // Get response and validate
             var state = await task;
@@ -115,7 +117,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -129,7 +132,7 @@ namespace Dapr.Client.Test
             request.Consistency.Should().Be(expectedConsistencyMode);
 
             // Create Response & Respond
-            SendResponseWithState<Widget>(null, entry);
+            SendResponseWithState<Widget>(clientBuilder.GrpcSerializer, null, entry);
 
             // Get response and validate
             var state = await task;
@@ -352,7 +355,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -361,7 +365,7 @@ namespace Dapr.Client.Test
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState(data, entry);
+            SendResponseWithState(clientBuilder.GrpcSerializer, data, entry);
 
             // Get response and validate
             var state = await task;
@@ -374,7 +378,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -382,7 +387,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState<Widget>(null, entry);
+            SendResponseWithState<Widget>(clientBuilder.GrpcSerializer, null, entry);
 
             var state = await task;
             state.Key.Should().Be("test");
@@ -394,7 +399,8 @@ namespace Dapr.Client.Test
         {
             // Configure Client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -403,7 +409,7 @@ namespace Dapr.Client.Test
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState(data, entry);
+            SendResponseWithState(clientBuilder.GrpcSerializer, data, entry);
 
             var state = await task;
             state.Key.Should().Be("test");
@@ -434,7 +440,8 @@ namespace Dapr.Client.Test
         {
             // Configure client
             var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
+            var clientBuilder = new DaprClientBuilder();
+            var daprClient = clientBuilder
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -443,7 +450,7 @@ namespace Dapr.Client.Test
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState(data, entry);
+            SendResponseWithState(clientBuilder.GrpcSerializer, data, entry);
 
             var state = await task;
             state.Key.Should().Be("test");
@@ -630,9 +637,9 @@ namespace Dapr.Client.Test
             request.Options.Consistency.Should().Be(expectedConsistency);
         }
 
-        private async void SendResponseWithState<T>(T state, TestHttpClient.Entry entry, string etag = null)
+        private async void SendResponseWithState<T>(GrpcSerializer serializer, T state, TestHttpClient.Entry entry, string etag = null)
         {
-            var stateDate = TypeConverters.ToJsonByteString(state);
+            var stateDate = serializer.ToJsonByteString(state);
             var stateResponse = new Autogenerated.GetStateResponse();
             stateResponse.Data = stateDate;
 
@@ -648,7 +655,6 @@ namespace Dapr.Client.Test
 
         private async void SendResponseWithBulkState(string key, string state, TestHttpClient.Entry entry)
         {
-            var stateDate = TypeConverters.ToJsonByteString(state);
             var bulkResponse = new Autogenerated.GetBulkStateResponse();
             bulkResponse.Items.Add(new Autogenerated.BulkStateItem()
             {

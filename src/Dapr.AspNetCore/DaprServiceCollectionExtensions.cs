@@ -36,13 +36,11 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddSingleton<DaprClientMarkerService>();
 
-            services.AddSingleton(_ =>
+            services.AddSingleton(p =>
             {
-                var builder = new DaprClientBuilder();
-                if (configure != null)
-                {
-                    configure.Invoke(builder);
-                }
+                var grpcSerializer = p.GetService<GrpcSerializer>() ?? new GrpcSerializer();
+                var builder = new DaprClientBuilder(grpcSerializer);
+                configure?.Invoke(builder);
 
                 return builder.Build();
             });

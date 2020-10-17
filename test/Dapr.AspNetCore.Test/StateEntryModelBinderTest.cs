@@ -109,7 +109,8 @@ namespace Dapr.AspNetCore.Test
 
         private async void SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
         {
-            var stateData = TypeConverters.ToJsonByteString(state);
+            var serializer = new GrpcSerializer();
+            var stateData = serializer.ToJsonByteString(state);
             var stateResponse = new GetStateResponse();
             stateResponse.Data = stateData;
             stateResponse.Etag = "test";

@@ -84,3 +84,7 @@ bld/
 
 # VS Code
 .vscode/
+
+# Rider
+.idea
+*.iml
