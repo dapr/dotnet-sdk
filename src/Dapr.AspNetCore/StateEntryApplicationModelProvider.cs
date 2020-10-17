@@ -28,7 +28,7 @@ namespace Dapr.AspNetCore
                     {
                         // Not bindable.
                     }
-                    else if (property.BindingInfo.BindingSource.Id == "state")
+                    else if (property.BindingInfo.BindingSource?.Id == "state")
                     {
                         // Already configured, don't overwrite in case the user customized it.
                     }
@@ -42,7 +42,11 @@ namespace Dapr.AspNetCore
                 {
                     foreach (var parameter in action.Parameters)
                     {
-                        if (parameter.BindingInfo.BindingSource.Id == "state")
+                        if (parameter.BindingInfo == null)
+                        {
+                            // Not bindable.
+                        }
+                        else if (parameter.BindingInfo.BindingSource?.Id == "state")
                         {
                             // Already configured, don't overwrite in case the user customized it.
                         }
