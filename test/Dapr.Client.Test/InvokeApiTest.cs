@@ -7,8 +7,10 @@ namespace Dapr.Client.Test
 {
     using System.Collections.Generic;
     using System.Net;
+    using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Dapr.Client;
     using Dapr.Client.Autogen.Grpc.v1;
     using Dapr.Client.Autogen.Test.Grpc.v1;
     using Dapr.AppCallback.Autogen.Grpc.v1;
@@ -18,6 +20,10 @@ namespace Dapr.Client.Test
     using Grpc.Net.Client;
     using Xunit;
     using System.Linq;
+    using ProtoBuf.Grpc.Client;
+    using Microsoft.AspNetCore.Mvc.Testing;
+
+
 
     public class InvokeApiTest
     {
@@ -195,7 +201,7 @@ namespace Dapr.Client.Test
             entry.Completion.SetResult(response);
 
             //validate response
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<RpcException>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ServiceInvocationException<Request, Response>>();
         }
 
         [Fact]
@@ -414,6 +420,123 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_CalleeSideGrpc()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var body = new Request() { RequestParameter = "Hello " };
+            var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
+
+            // Get Request and validate
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            envelope.Id.Should().Be("test");
+            envelope.Message.Method.Should().Be("testMethod");
+            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+
+            // Create Response & Respond
+            var data = new Response() { Name = "Look, I was invoked!" };
+            SendResponse(data, entry);
+
+            // Validate Response
+            var invokedResponse = await task;
+            invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.HttpStatusCode.Should().BeNull();
+            invokedResponse.GrpcStatusInfo.Should().NotBeNull();
+            invokedResponse.GrpcStatusInfo.GrpcStatusCode.Should().Be(Grpc.Core.StatusCode.OK);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_CalleeSideHttp()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var body = new Request() { RequestParameter = "Hello " };
+            var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
+
+            // Get Request and validate
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            envelope.Id.Should().Be("test");
+            envelope.Message.Method.Should().Be("testMethod");
+            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+
+            // Create Response & Respond
+            var data = new Response() { Name = "Look, I was invoked!" };
+            SendResponseFromHttpServer(data, entry);
+
+            // Validate Response
+            var invokedResponse = await task;
+            invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.GrpcStatusInfo.Should().BeNull();
+            invokedResponse.HttpStatusCode.Should().NotBeNull();
+            invokedResponse.HttpStatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_ServerThrowsRpcException()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var body = new Request() { RequestParameter = "Hello " };
+            var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
+
+            // Get Request and validate
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            envelope.Id.Should().Be("test");
+            envelope.Message.Method.Should().Be("testMethod");
+            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+
+            // Create Response & Respond
+            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
+            entry.Completion.SetResult(response);
+
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ServiceInvocationException<Request,Response>>();
+        }
+
+         [Fact]
+        public async Task InvokeMethodAsync_CanInvokeRawMethod_WithResponse()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var body = new Request() { RequestParameter = "Hello " };
+            var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(body));
+            var task = daprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
+
+            // Get Request and validate
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            envelope.Id.Should().Be("test");
+            envelope.Message.Method.Should().Be("testMethod");
+            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+
+            // Create Response & Respond
+            var data = new Response() { Name = "Look, I was invoked!" };
+            SendResponse(data, entry);
+
+            // Validate Response
+            var invokedResponse = await task;
+            invokedResponse.Name.Should().Be("Look, I was invoked!");
+        }
+
+        [Fact]
         public async Task InvokeMethodAsync_AppCallback_SayHello()
         {
             // Configure Client
@@ -483,6 +606,28 @@ namespace Dapr.Client.Test
             var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
             entry.Completion.SetResult(response);
         }
+
+        private async void SendResponseFromHttpServer<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
+        {
+            var dataAny = TypeConverters.ToAny(data, options);
+            var dataResponse = new InvokeResponse();
+            dataResponse.Data = dataAny;
+
+            var streamContent = await GrpcUtils.CreateResponseContent(dataResponse);
+            var response = GrpcUtils.CreateResponseFromHttpServer(HttpStatusCode.OK, streamContent);
+            entry.Completion.SetResult(response);
+        }
+
+        // private async void SendResponseWithRpcException<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
+        // {
+        //     var dataAny = TypeConverters.ToAny(data, options);
+        //     var dataResponse = new InvokeResponse();
+        //     dataResponse.Data = dataAny;
+
+        //     var streamContent = await GrpcUtils.CreateResponseContent(dataResponse);
+        //     var response = GrpcUtils.CreateResponseWithRpcException(HttpStatusCode.OK, streamContent);
+        //     entry.Completion.SetResult(response);
+        // }
 
         private class Request
         {
