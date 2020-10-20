@@ -221,12 +221,6 @@ namespace Dapr.Client
                 Body = data,
             };
 
-            // Any serializedData = null;
-            // if (data != null)
-            // {
-            //     serializedData = TypeConverters.ToAny(data, this.jsonSerializerOptions);
-            // }
-
             var invokeResponse = await this.MakeInvokeRequestAsyncWithResponse<TRequest, TResponse>(request, httpExtension, cancellationToken);
             return invokeResponse.Body;
         }
@@ -241,7 +235,7 @@ namespace Dapr.Client
             ArgumentVerifier.ThrowIfNull(appId, nameof(appId));
             ArgumentVerifier.ThrowIfNull(methodName, nameof(methodName));
 
-            
+
 
             var request = new ServiceInvocationRequest<TRequest>
             {
@@ -250,42 +244,13 @@ namespace Dapr.Client
                 Body = data,
             };
 
-            // Any serializedData = null;
-            // if (request.Body != null)
-            // {
-            //     serializedData = TypeConverters.ToAny(request.Body, this.jsonSerializerOptions);
-            // }
-
             var invokeResponse = new ServiceInvocationResponse<TRequest, TResponse>(request);
-            // try
-            // {
-                invokeResponse = await this.MakeInvokeRequestAsyncWithResponse<TRequest, TResponse>(request, request.HttpExtension, cancellationToken);
-                
-            // }
-            // catch (RpcException ex)
-            // {
-            //     var entry = ex.Trailers.Get(grpcStatusDetails);
-            //     if (entry != null)
-            //     {
-            //         var status = Google.Rpc.Status.Parser.ParseFrom(entry.ValueBytes);
-            //         foreach(var detail in status.Details)
-            //         {
-            //             if(Google.Protobuf.WellKnownTypes.Any.GetTypeName(detail.TypeUrl) == grpcErrorInfoDetail)
-            //             {
-            //                 var rpcError = detail.Unpack<Google.Rpc.ErrorInfo>();
-            //                 invokeResponse.GrpcStatusInfo.InnerHttpStatusCode = Convert.ToInt32(rpcError.Metadata[daprErrorInfoHTTPCodeMetadata]);
-            //                 invokeResponse.GrpcStatusInfo.InnerHttpErrorMessage = rpcError.Metadata[daprErrorInfoHTTPErrorMetadata];
-            //             }
-            //         }
-            //     }
-                
-            //     throw new ServiceInvocationException<TRequest, TResponse>($"Exception while invoking {request.MethodName} on appId:{request.AppId}", ex, invokeResponse);
-            // }
+            invokeResponse = await this.MakeInvokeRequestAsyncWithResponse<TRequest, TResponse>(request, request.HttpExtension, cancellationToken);
 
             return invokeResponse;
         }
 
-        public override async ValueTask<TResponse> InvokeMethodRawAsync<TResponse>(
+        public override async Task<ServiceInvocationResponse<byte[], TResponse>> InvokeMethodRawAsync<TResponse>(
            string appId,
            string methodName,
            byte[] data,
@@ -295,9 +260,15 @@ namespace Dapr.Client
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
             ArgumentVerifier.ThrowIfNullOrEmpty(methodName, nameof(methodName));
 
-            var serializedData = TypeConverters.ToAny(data, this.jsonSerializerOptions);
-            var response = await this.MakeInvokeRequestAsync(appId, methodName, serializedData, httpExtension, cancellationToken);
-            return response.Data.Value.IsEmpty ? default : TypeConverters.FromAny<TResponse>(response.Data, this.jsonSerializerOptions);
+            var request = new ServiceInvocationRequest<byte[]>
+            {
+                AppId = appId,
+                MethodName = methodName,
+                Body = data,
+            };
+
+            var invokeResponse = await this.MakeInvokeRequestAsyncWithResponse<byte[], TResponse>(request, httpExtension, cancellationToken);
+            return invokeResponse;
         }
 
         public override async ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default)
