@@ -18,6 +18,7 @@ namespace Dapr.Client
         private string daprEndpoint;
         private JsonSerializerOptions jsonSerializerOptions;
         private GrpcChannelOptions gRPCChannelOptions;
+        private GrpcChannel grpcChannel;
 
         // property exposed for testing purposes
         internal string DaprEndpoint => this.daprEndpoint;
@@ -79,7 +80,7 @@ namespace Dapr.Client
                 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             }
 
-            var channel = GrpcChannel.ForAddress(this.daprEndpoint, this.gRPCChannelOptions ?? new GrpcChannelOptions());
+            var channel = this.grpcChannel ?? GrpcChannel.ForAddress(this.daprEndpoint, this.gRPCChannelOptions ?? new GrpcChannelOptions());
             return new DaprClientGrpc(channel, this.jsonSerializerOptions);
         }
 
@@ -91,6 +92,17 @@ namespace Dapr.Client
         public DaprClientBuilder UseGrpcChannelOptions(GrpcChannelOptions gRPCChannelOptions)
         {
             this.gRPCChannelOptions = gRPCChannelOptions;
+            return this;
+        }
+
+        /// <summary>
+        /// Provides a way to inject a mock DaprClient
+        /// </summary>
+        /// <param name="grpcChannel"></param>
+        /// <returns></returns>
+        public DaprClientBuilder UseGrpcChannel(GrpcChannel grpcChannel)
+        {
+            this.grpcChannel = grpcChannel;
             return this;
         }
     }
