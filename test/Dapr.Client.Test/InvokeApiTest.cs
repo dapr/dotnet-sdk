@@ -685,17 +685,6 @@ namespace Dapr.Client.Test
             entry.Completion.SetResult(response);
         }
 
-        // private async void SendResponseWithRpcException<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
-        // {
-        //     var dataAny = TypeConverters.ToAny(data, options);
-        //     var dataResponse = new InvokeResponse();
-        //     dataResponse.Data = dataAny;
-
-        //     var streamContent = await GrpcUtils.CreateResponseContent(dataResponse);
-        //     var response = GrpcUtils.CreateResponseWithRpcException(HttpStatusCode.OK, streamContent);
-        //     entry.Completion.SetResult(response);
-        // }
-
         private class Request
         {
             public string RequestParameter { get; set; }

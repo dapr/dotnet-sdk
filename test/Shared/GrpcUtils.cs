@@ -106,31 +106,6 @@ namespace Dapr
             return streamContent;
         }
 
-        // HTTP Callee Server returns status code = 400, body = json describing error
-        // 
-        // public static HttpResponseMessage CreateResponseWithRpcException(
-        //     HttpStatusCode statusCode,
-        //     HttpContent payload)
-        // {
-        //     payload.Headers.ContentType = GrpcContentTypeHeaderValue;
-
-        //     var message = new HttpResponseMessage(statusCode)
-        //     {
-        //         Content = payload,
-        //         Version = version ?? ProtocolVersion
-        //     };
-
-        //     message.Headers.Add(MessageEncodingHeader, grpcEncoding ?? IdentityGrpcEncoding);
-
-        //     if (grpcStatusCode != null)
-        //     {
-        //         message.TrailingHeaders.Add(StatusTrailer, grpcStatusCode.Value.ToString("D"));
-        //     }
-
-        //     return message;
-        // }
-
-
         private static async Task WriteResponseAsync<TResponse>(Stream ms, TResponse response) where TResponse : IMessage<TResponse>
         {
             var data = response.ToByteArray();
