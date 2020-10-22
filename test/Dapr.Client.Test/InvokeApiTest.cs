@@ -426,25 +426,24 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_CalleeSideGrpc()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("some-header", "some-value")
                 .Build();
 
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
             var body = new Request() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
-
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("testMethod");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
-
-            // Create Response & Respond
-            var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(data, entry);
+            var task = client.DaprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
 
             // Validate Response
             var invokedResponse = await task;
@@ -457,25 +456,24 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_CalleeSideHttp()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("dapr-http-status", "200")
                 .Build();
 
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
             var body = new Request() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
-
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("testMethod");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
-
-            // Create Response & Respond
-            var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponseFromHttpServer(data, entry);
+            var task = client.DaprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
 
             // Validate Response
             var invokedResponse = await task;
@@ -499,100 +497,38 @@ namespace Dapr.Client.Test
                 .AddHeader("some-header", "some-value")
                 .Build();
 
-            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            
+            var rpcException = new RpcException(new Status(StatusCode.PermissionDenied, "Insufficient permissions"), "No access to app");
+            client.SetupMockToThrow(rpcException);
 
-
-            var trailers = new Metadata();
-            var details = new Google.Rpc.Status
-            {
-                Code = Convert.ToInt32(StatusCode.PermissionDenied),
-                Message = "Bad permissions",
-            };
-
-            var errorInfo = new Google.Rpc.ErrorInfo
-            {
-                Reason = "Insufficient permissions",
-                Domain = "dapr.io",
-            };
-            errorInfo.Metadata.Add("http.code", "500");
-            errorInfo.Metadata.Add("http.error_message", "no permissions");
-
-            details.Details.Add(Google.Protobuf.WellKnownTypes.Any.Pack(errorInfo));
-            // details.Details.Add(TypeConverters.ToAny(errorInfo));
-            // var formatter = new BinaryFormatter();
-            // var stream = new MemoryStream();
-            // formatter.Serialize(stream, errorInfo);
-            // var valueBytes = stream.ToArray();
-
-
-            // var s = new Google.Protobuf.CodedOutputStream(stream, true);
-            // errorInfo.WriteTo(s);
-
-            var entry = new Metadata.Entry("grpc-status-details-bin", JsonSerializer.SerializeToUtf8Bytes(details));
-            trailers.Add(entry);
-            // trailers.Add("grpc-status-details-bin", JsonSerializer.SerializeToUtf8Bytes(details));
-
-            var rpcException = new RpcException(new Status(StatusCode.PermissionDenied, "Insufficient permissions"), trailers, "No access to app");
-
-
-            // If you want, you can make this a method on MockClient for reuse.
-            client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
 
             var body = new Request() { RequestParameter = "Hello " };
-            await client.DaprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
-
-
-
-
-            //  // Configure Client
-            // var httpClient = new TestHttpClient();
-            // var daprClient = new DaprClientBuilder()
-            //     .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-            //     .Build();
-
-            // var body = new Request() { RequestParameter = "Hello " };
-            // var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
-                
-            // // Get Request and validate
-            // httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            // var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            // envelope.Id.Should().Be("test");
-            // envelope.Message.Method.Should().Be("testMethod");
-            // envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
-
-            // // Create Response & Respond
-            // var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            // entry.Completion.SetResult(response);
-
-            // await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ServiceInvocationException<Request,Response>>();
+            var task = client.DaprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ServiceInvocationException<Request,Response>>();
         }
         
 
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideGrpc()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
                 .Build();
 
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
             var body = new Request() { RequestParameter = "Hello " };
-            var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(body));
-            var task = daprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
-
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("testMethod");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
-
-            // Create Response & Respond
-            var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(data, entry);
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
+            var task = client.DaprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
 
             // Validate Response
             var invokedResponse = await task;
@@ -605,26 +541,25 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideHttp()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("dapr-http-status", "200")
                 .Build();
 
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
             var body = new Request() { RequestParameter = "Hello " };
-            var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(body));
-            var task = daprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
-
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("testMethod");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
-
-            // Create Response & Respond
-            var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponseFromHttpServer(data, entry);
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
+            var task = client.DaprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
 
             // Validate Response
             var invokedResponse = await task;
