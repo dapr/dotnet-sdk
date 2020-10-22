@@ -9,6 +9,7 @@ namespace Dapr.Actors.AspNetCore
     using Dapr.Actors.Runtime;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
 
     /// <summary>
     /// Class containing DaprActor related extension methods for Microsoft.AspNetCore.Hosting.IWebHostBuilder.
@@ -36,7 +37,11 @@ namespace Dapr.Actors.AspNetCore
                 return hostBuilder;
             }
 
-            configureActorRuntime.Invoke(ActorRuntime.Instance);
+            var runtime = new ActorRuntime();
+            if (configureActorRuntime != null)
+            {
+                configureActorRuntime.Invoke(runtime);
+            }
 
             // Set flag to prevent double service configuration
             hostBuilder.UseSetting(SettingName, true.ToString());
@@ -47,6 +52,8 @@ namespace Dapr.Actors.AspNetCore
                 services.AddRouting();
                 services.AddHealthChecks();
                 services.AddSingleton<IStartupFilter>(new DaprActorSetupFilter());
+
+                services.AddSingleton<ActorRuntime>(runtime);
             });
 
             return hostBuilder;
