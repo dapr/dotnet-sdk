@@ -487,100 +487,29 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_ServerThrowsRpcException()
         {
-            // Configure Client
-            var mockDaprClient = new MockAutoDaprClient();
-            var fakeResponse = new Mock<AsyncUnaryCall<Autogen.Grpc.v1.InvokeResponse>>();
-            mockDaprClient.Client.Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>())).Returns(fakeResponse);
-
-            var daprClient = new DaprClientGrpc(mockDaprClient, null, null);
-                
-            // daprClient.When(InvokeMethodWithResponseHeadersAsync<It.IsAnyType, It.IsAnyType>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Request>())).Throws(new BadImageFormatException());
-            // var mockTrailers = new Metadata();
-            // mockTrailers.Add("grpc-status-details-bin", "dummy");
-            //  daprClient.Setup(m => m.InvokeMethodWithResponseHeadersAsync<Request, Response>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Request>()).Returns(null));
-            //  .Throws(
-            //     new RpcException(new Status(StatusCode.PermissionDenied, "No access to app"), mockTrailers,"Insufficient permissions"));
-            // var daprClient = new DaprClientBuilder()
-            //     .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-            //     .Build();
+             // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
 
             var body = new Request() { RequestParameter = "Hello " };
             var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
-
-            // Get Request and validate
-            // httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            // var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            // envelope.Id.Should().Be("test");
-            // envelope.Message.Method.Should().Be("testMethod");
-            // envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
-
-            // Create Response & Respond
-            // var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            // entry.Completion.SetResult(response);
-
-
-            // try
-            // {
-            //     await task;
-            // }
-            // catch (Grpc.Core.RpcException ex)
-            // {
-            //     var e = ex.Trailers.GetEnumerator();
-            //     Console.WriteLine(e);
-            // }
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ServiceInvocationException<Request,Response>>();
-            //  Func<Task> f = async () => { await Fail(); };
-            // f.ShouldThrow<Exception>();            
-        }
-
-        [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_ServerThrowsRpcException()
-        {
-            // Configure Client
-            var mockDaprClient = new MockAutoDaprClient();
-            var fakeResponse = new Mock<AsyncUnaryCall<Autogen.Grpc.v1.InvokeResponse>>();
-            mockDaprClient.Client.Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>())).Returns(fakeResponse);
-
-            var daprClient = new DaprClientGrpc(mockDaprClient, null, null);
                 
-            // daprClient.When(InvokeMethodWithResponseHeadersAsync<It.IsAnyType, It.IsAnyType>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Request>())).Throws(new BadImageFormatException());
-            // var mockTrailers = new Metadata();
-            // mockTrailers.Add("grpc-status-details-bin", "dummy");
-            //  daprClient.Setup(m => m.InvokeMethodWithResponseHeadersAsync<Request, Response>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Request>()).Returns(null));
-            //  .Throws(
-            //     new RpcException(new Status(StatusCode.PermissionDenied, "No access to app"), mockTrailers,"Insufficient permissions"));
-            // var daprClient = new DaprClientBuilder()
-            //     .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-            //     .Build();
-
-            var body = new Request() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
-
             // Get Request and validate
-            // httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            // var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            // envelope.Id.Should().Be("test");
-            // envelope.Message.Method.Should().Be("testMethod");
-            // envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
+            envelope.Id.Should().Be("test");
+            envelope.Message.Method.Should().Be("testMethod");
+            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             // Create Response & Respond
-            // var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            // entry.Completion.SetResult(response);
+            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
+            entry.Completion.SetResult(response);
 
-
-            // try
-            // {
-            //     await task;
-            // }
-            // catch (Grpc.Core.RpcException ex)
-            // {
-            //     var e = ex.Trailers.GetEnumerator();
-            //     Console.WriteLine(e);
-            // }
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ServiceInvocationException<Request,Response>>();
-            //  Func<Task> f = async () => { await Fail(); };
-            // f.ShouldThrow<Exception>();            
         }
+        
 
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideGrpc()
