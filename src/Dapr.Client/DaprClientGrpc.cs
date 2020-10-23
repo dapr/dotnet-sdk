@@ -406,8 +406,8 @@ namespace Dapr.Client
                 else
                 {
                     // Response is grpc
-                    invokeResponse.ContentType = Constants.ContentTypeApplicationGrpc;
                     invokeResponse.GrpcStatusInfo = new GRPCStatusInfo(grpcStatus.StatusCode, grpcStatus.Detail);
+                    invokeResponse.ContentType = Constants.ContentTypeApplicationGrpc;
                 }
             }
             catch (RpcException ex)
@@ -429,8 +429,8 @@ namespace Dapr.Client
                     if (Google.Protobuf.WellKnownTypes.Any.GetTypeName(detail.TypeUrl) == grpcErrorInfoDetail)
                     {
                         var rpcError = detail.Unpack<Google.Rpc.ErrorInfo>();
-                        invokeResponse.GrpcStatusInfo.InnerHttpStatusCode = Convert.ToInt32(rpcError.Metadata[daprErrorInfoHTTPCodeMetadata]);
-                        invokeResponse.GrpcStatusInfo.InnerHttpErrorMessage = rpcError.Metadata[daprErrorInfoHTTPErrorMetadata];
+                        var grpcStatusCode = (StatusCode) System.Enum.ToObject(typeof(StatusCode), status.Code);
+                        invokeResponse.GrpcStatusInfo = new GRPCStatusInfo(grpcStatusCode, status.Message, Convert.ToInt32(rpcError.Metadata[daprErrorInfoHTTPCodeMetadata]), rpcError.Metadata[daprErrorInfoHTTPErrorMetadata]);
                     }
                 }
             }
