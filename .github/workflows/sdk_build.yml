@@ -27,10 +27,13 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 3.1.301
+      - name: Test solution - release
+        run: |
+          unset GITHUB_ACTIONS #disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+          dotnet test test/test.sln --configuration release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+          dotnet clean # remove the artifacts so they can be rebuild with deterministic builds enabled
       - name: Build solution - release
         run: dotnet build all.sln --configuration release
-      - name: Test solution - release
-        run: dotnet test test/test.sln --configuration release
       - name: Generate Nuget Packages - release
         run: dotnet pack src/prod.sln --configuration release
       - name: upload artifacts
@@ -38,6 +41,8 @@ jobs:
         with:
           name: release_drop
           path: ${{ env.NUPKG_OUTDIR }}
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v1
       - name: Publish binaries to github for tags
         if: startswith(github.ref, 'refs/tags/v')
         run: |
