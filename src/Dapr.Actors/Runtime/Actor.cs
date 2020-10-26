@@ -69,7 +69,8 @@ namespace Dapr.Actors.Runtime
         {
             await this.ResetStateAsync();
             await this.OnActivateAsync();
-            this.TraceSource.WriteInfoWithId(TraceType, this.traceId, "Activated");
+            ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Activated");
+            // ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Activated");
 
             // Save any state modifications done in user overridden Activate method.
             await this.SaveStateAsync();
@@ -77,10 +78,10 @@ namespace Dapr.Actors.Runtime
 
         internal async Task OnDeactivateInternalAsync()
         {
-            this.TraceSource.WriteInfoWithId(TraceType, this.traceId, "Deactivating ...");
+            ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Deactivating ...");
             await this.ResetStateAsync();
             await this.OnDeactivateAsync();
-            this.TraceSource.WriteInfoWithId(TraceType, this.traceId, "Deactivated");
+            ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Deactivated");
         }
 
         internal Task OnPreActorMethodAsyncInternal(ActorMethodContext actorMethodContext)

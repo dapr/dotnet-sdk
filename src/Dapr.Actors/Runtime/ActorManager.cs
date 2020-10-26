@@ -125,6 +125,7 @@ namespace Dapr.Actors.Runtime
                     var type = parameters[0].ParameterType;
                     var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type);
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
+                    ActorNewTrace.WriteError("aaa", "@@@@@@@@@@@@@@@@@@@@@@@");
                 }
                 else
                 {
@@ -163,6 +164,8 @@ namespace Dapr.Actors.Runtime
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
             {
+                ActorNewTrace.WriteInfo("aaa", "@@@@@@@@@@@@@@@@@@@@@@@");
+                // ActorTrace.Instance.WriteInfo("aaa", "@@@@@@@@@@@@@@@@@@@@@@@");
                 var reminderdata = await ReminderInfo.DeserializeAsync(requestBodyStream);
 
                 // Create a Func to be invoked by common method.

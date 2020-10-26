@@ -10,23 +10,23 @@ namespace Dapr.Actors
     using Microsoft.Extensions.Logging;
 
 
-    internal sealed class ActorTrace
+    internal sealed class ActorNewTrace
     {
-        internal static readonly ActorTrace Instance = new ActorTrace();
-
         private readonly ILogger logger;
         private readonly ITraceWriter traceWriter;
+        private static ActorNewTrace Instance;
 
         /// <summary>
         /// Prevents a default instance of the <see cref="ActorTrace" /> class from being created.
         /// </summary>
-        internal ActorTrace(ILogger logger = null)
+        internal ActorNewTrace(ILogger logger = null)
         {
             // TODO: Replace with actual TraceWriter (or integrate with distributed tracing).
             // Use ConsoleTraceWriter during development & test.
-            this.traceWriter = new ConsoleTraceWriter();
             var loggerFactory = new LoggerFactory();
             this.logger = logger ?? loggerFactory.CreateLogger("ActorTrace");
+            this.traceWriter = new MyTraceWriter(this.logger);
+            Instance = this;
             
         }
 
@@ -54,80 +54,80 @@ namespace Dapr.Actors
             void WriteError(string errorText);
         }
 
-        internal void WriteInfo(string type, string format, params object[] args)
+        internal static void WriteInfo(string type, string format, params object[] args)
         {
-            this.WriteInfoWithId(type, string.Empty, format, args);
+            WriteInfoWithId(type, string.Empty, format, args);
         }
 
-        internal void WriteInfoWithId(string type, string id, string format, params object[] args)
+        internal static void WriteInfoWithId(string type, string id, string format, params object[] args)
         {
             if (args == null || args.Length == 0)
             {
-                this.logger.LogInformation($"{type}: {id} {format}");
-                this.traceWriter.WriteInfo($"{type}: {id} {format}");
+                Instance.traceWriter.WriteInfo($"{type}: {id} {format}");
             }
             else
             {
-                this.logger.LogInformation($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
-                this.traceWriter.WriteInfo($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
+                Instance.logger.LogInformation($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
+                Instance.traceWriter.WriteInfo($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
             }
         }
 
-        internal void WriteWarning(string type, string format, params object[] args)
+        internal static void WriteWarning(string type, string format, params object[] args)
         {
-            this.logger.LogWarning(type, string.Empty, format, args);
+            Instance.logger.LogWarning(type, string.Empty, format, args);
         }
 
-        internal void WriteWarningWithId(string type, string id, string format, params object[] args)
+        internal static void WriteWarningWithId(string type, string id, string format, params object[] args)
         {
             if (args == null || args.Length == 0)
             {
-                this.logger.LogWarning($"{type}: {id} {format}");
+                Instance.logger.LogWarning($"{type}: {id} {format}");
             }
             else
             {
-                this.logger.LogWarning($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
+                Instance.logger.LogWarning($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
             }
         }
 
-        internal void WriteError(string type, string format, params object[] args)
+        internal static void WriteError(string type, string format, params object[] args)
         {
-            this.WriteErrorWithId(type, string.Empty, format, args);
+            WriteErrorWithId(type, string.Empty, format, args);
         }
 
-        internal void WriteErrorWithId(string type, string id, string format, params object[] args)
+        internal static void WriteErrorWithId(string type, string id, string format, params object[] args)
         {
             if (args == null || args.Length == 0)
             {
-                this.logger.LogError($"{type}: {id} {format}");
-                this.traceWriter.WriteInfo($"{type}: {id} {format}");
+                Instance.logger.LogError($"{type}: {id} {format}");
+                Instance.traceWriter.WriteInfo($"{type}: {id} {format}");
             }
             else
             {
-                this.logger.LogError($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
-                this.traceWriter.WriteInfo($"{type}: {id} {format}");
+                Instance.logger.LogError($"{type}: {id} {string.Format(CultureInfo.InvariantCulture, format, args)}");
+                Instance.traceWriter.WriteInfo($"{type}: {id} {format}");
             }
         }
 
-        private class ConsoleTraceWriter : ITraceWriter
+        private class MyTraceWriter : ITraceWriter
         {
+            private readonly ILogger logger;
+            public MyTraceWriter(ILogger logger)
+            {
+                this.logger = logger;
+            }
             public void WriteError(string errorText)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"ERROR: {errorText}");
-                Console.ResetColor();
+                this.logger.LogError($"ERROR: {errorText}");
             }
 
             public void WriteInfo(string infoText)
             {
-                Console.WriteLine(infoText);
+                this.logger.LogInformation("#######" + infoText);
             }
 
             public void WriteWarning(string warningText)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"WARNING: {warningText}");
-                Console.ResetColor();
+                this.logger.LogWarning($"WARNING: {warningText}");
             }
         }
     }

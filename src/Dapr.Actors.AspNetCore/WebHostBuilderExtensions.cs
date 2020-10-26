@@ -9,7 +9,8 @@ namespace Dapr.Actors.AspNetCore
     using Dapr.Actors.Runtime;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Configuration;
 
     /// <summary>
     /// Class containing DaprActor related extension methods for Microsoft.AspNetCore.Hosting.IWebHostBuilder.
@@ -43,8 +44,12 @@ namespace Dapr.Actors.AspNetCore
                 configureActorRuntime.Invoke(runtime);
             }
 
+            var trace = new ActorNewTrace();
+
             // Set flag to prevent double service configuration
             hostBuilder.UseSetting(SettingName, true.ToString());
+
+            Console.WriteLine("@@@@@@@ Adding logging config");
 
             hostBuilder.ConfigureServices(services =>
             {
@@ -54,8 +59,38 @@ namespace Dapr.Actors.AspNetCore
                 services.AddSingleton<IStartupFilter>(new DaprActorSetupFilter());
 
                 services.AddSingleton<ActorRuntime>(runtime);
+
+                services.AddSingleton<ActorNewTrace>(trace);
             });
 
+            hostBuilder.ConfigureAppConfiguration((hostingContext, config) =>
+            {
+                config.AddJsonFile("appsettings.json", 
+                    optional: true, 
+                    reloadOnChange: true);
+            });
+
+
+            hostBuilder.ConfigureLogging((hostingContext, logging) =>
+            {
+                // Requires `using Microsoft.Extensions.Logging;`
+                logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
+                logging.AddConsole();
+                // logging.AddJsonFile("appsettings.json", 
+                //     optional: true, 
+                //     reloadOnChange: true);
+
+                // if (provider.Contains("ConsoleLoggerProvider"))
+                // {
+                //     Console.WriteLine($"category {category}, loglevel: {logLevel}");
+                // }
+                // else
+                // {
+                //     Console.WriteLine($"provider: {provider}");
+                // }
+
+
+            });
             return hostBuilder;
         }
     }
