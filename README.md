@@ -88,4 +88,4 @@ These articles will help get you started with Dapr runtime and Dapr Actors:
 
 - [Getting started with Dapr Actor](docs/get-started-dapr-actor.md)
 - [Dapr CLI](https://github.com/dapr/cli)
-- [Dapr Actors API Reference](https://github.com/dapr/docs/blob/master/reference/api/actors.md)
+- [Dapr Actors API Reference](https://docs.dapr.io/reference/api/actors_api/)
