@@ -20,7 +20,6 @@ namespace Dapr.Actors.Runtime
     /// </remarks>
     public abstract class Actor
     {
-        private const string TraceType = "Actor";
         private readonly string traceId;
         private readonly string actorTypeName;
         private readonly ILogger<Actor> logger;
