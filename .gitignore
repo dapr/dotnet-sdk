@@ -84,3 +84,6 @@ bld/
 
 # VS Code
 .vscode/
+
+# coverlet code coverage results
+coverage.json
