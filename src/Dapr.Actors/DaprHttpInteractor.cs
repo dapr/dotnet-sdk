@@ -19,6 +19,7 @@ namespace Dapr.Actors
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Class to interact with Dapr runtime over http.
@@ -33,10 +34,12 @@ namespace Dapr.Actors
         private readonly ClientSettings clientSettings;
         private HttpClient httpClient = null;
         private bool disposed = false;
+        private readonly ILogger<DaprHttpInteractor> logger;
 
         public DaprHttpInteractor(
             HttpClientHandler innerHandler = null,
             ClientSettings clientSettings = null,
+            ILoggerFactory loggerFactory = null,
             params DelegatingHandler[] delegateHandlers)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
@@ -47,6 +50,7 @@ namespace Dapr.Actors
             this.clientSettings = clientSettings;
 
             this.httpClient = this.CreateHttpClient();
+            this.logger = loggerFactory?.CreateLogger<DaprHttpInteractor>();
         }
 
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
@@ -436,12 +440,12 @@ namespace Dapr.Actors
             }
             catch (AuthenticationException ex)
             {
-                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
+                this.logger?.LogError(ex.ToString());
                 throw;
             }
             catch (HttpRequestException ex)
             {
-                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
+                this.logger?.LogError(ex.ToString());
                 throw;
             }
 

@@ -14,6 +14,7 @@ namespace Dapr.Actors.Runtime
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Communication;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Manages Actors of a specific actor type.
@@ -36,7 +37,9 @@ namespace Dapr.Actors.Runtime
         // method info map used by non-remoting calls.
         private readonly ActorMethodInfoMap actorMethodInfoMap;
 
-        internal ActorManager(ActorService actorService)
+        private readonly ILogger<ActorManager> logger;
+
+        internal ActorManager(ActorService actorService, ILoggerFactory loggerFactory)
         {
             this.actorService = actorService;
 
@@ -50,6 +53,8 @@ namespace Dapr.Actors.Runtime
             this.timerMethodContext = ActorMethodContext.CreateForReminder(TimerMethodName);
             this.serializersManager = IntializeSerializationManager(null);
             this.messageBodyFactory = new WrappedRequestMessageFactory();
+
+            this.logger = loggerFactory.CreateLogger<ActorManager>();
         }
 
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
@@ -125,12 +130,11 @@ namespace Dapr.Actors.Runtime
                     var type = parameters[0].ParameterType;
                     var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type);
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
-                    ActorNewTrace.WriteError("aaa", "@@@@@@@@@@@@@@@@@@@@@@@");
                 }
                 else
                 {
                     var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
-                    ActorTrace.Instance.WriteError(TraceType, errorMsg);
+                    this.logger.LogError(TraceType, errorMsg);
                     throw new ArgumentException(errorMsg);
                 }
 
@@ -164,8 +168,6 @@ namespace Dapr.Actors.Runtime
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
             {
-                ActorNewTrace.WriteInfo("aaa", "@@@@@@@@@@@@@@@@@@@@@@@");
-                // ActorTrace.Instance.WriteInfo("aaa", "@@@@@@@@@@@@@@@@@@@@@@@");
                 var reminderdata = await ReminderInfo.DeserializeAsync(requestBodyStream);
 
                 // Create a Func to be invoked by common method.
@@ -237,7 +239,7 @@ namespace Dapr.Actors.Runtime
             if (!this.activeActors.TryGetValue(actorId, out var actor))
             {             
                 var errorMsg = $"Actor {actorId} is not yet activated.";
-                ActorTrace.Instance.WriteError(TraceType, errorMsg);
+                this.logger.LogError(TraceType, errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
 
@@ -254,7 +256,7 @@ namespace Dapr.Actors.Runtime
             catch (Exception ex)
             {
                 await actor.OnInvokeFailedAsync();
-                ActorTrace.Instance.WriteError(TraceType, $"Got exception from actor method invocation: {ex}");
+                this.logger.LogError(TraceType, $"Got exception from actor method invocation: {ex}");
                 throw;
             }
 
@@ -280,7 +282,7 @@ namespace Dapr.Actors.Runtime
             var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
             var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
 
-            var responseMsgBody = RemoteException.FromException(ex);
+            var responseMsgBody = RemoteException.FromException(ex, this.logger);
 
             return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }

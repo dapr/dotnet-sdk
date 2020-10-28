@@ -16,6 +16,7 @@ namespace Dapr.Actors.Communication
     using System.Xml;
     using Dapr.Actors;
     using Dapr.Actors.Resources;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Fault type used by Service Remoting to transfer the exception details from the service to the client.
@@ -51,8 +52,9 @@ namespace Dapr.Actors.Communication
         /// Factory method that constructs the RemoteException from an exception.
         /// </summary>
         /// <param name="exception">Exception.</param>
+        /// <param name="logger">Logger.</param>
         /// <returns>Serialized bytes.</returns>
-        public static byte[] FromException(Exception exception)
+        public static byte[] FromException(Exception exception, ILogger logger = null)
         {
             try
             {
@@ -65,7 +67,7 @@ namespace Dapr.Actors.Communication
             {
                 // failed to serialize the exception, include the information about the exception in the data
                 // Add trace diagnostics
-                ActorTrace.Instance.WriteWarning(
+                logger?.LogWarning(
                     "RemoteException",
                     "Serialization failed for Exception Type {0} : Reason  {1}",
                     exception.GetType().FullName,
@@ -103,7 +105,7 @@ namespace Dapr.Actors.Communication
             return false;
         }
 
-        internal static bool TryDeserializeExceptionData(Stream data, out ServiceExceptionData result)
+        internal static bool TryDeserializeExceptionData(Stream data, out ServiceExceptionData result, ILogger logger = null)
         {
             try
             {
@@ -114,7 +116,7 @@ namespace Dapr.Actors.Communication
             catch (Exception e)
             {
                 // swallowing the exception
-                ActorTrace.Instance.WriteWarning(
+                logger?.LogWarning(
                     "RemoteException",
                     " ServiceExceptionData DeSerialization failed : Reason  {0}",
                     e);
@@ -161,7 +163,7 @@ namespace Dapr.Actors.Communication
             }
         }
 
-        private static bool TryDeserializeServiceException(Stream data, out Exception result)
+        private static bool TryDeserializeServiceException(Stream data, out Exception result, ILogger logger = null)
         {
             try
             {
@@ -175,7 +177,7 @@ namespace Dapr.Actors.Communication
             catch (Exception e)
             {
                 // swallowing the exception
-                ActorTrace.Instance.WriteWarning("RemoteException", "DeSerialization failed : Reason  {0}", e);
+                logger?.LogWarning("RemoteException", "DeSerialization failed : Reason  {0}", e);
             }
 
             result = null;

@@ -8,6 +8,7 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Represents the base class for actors.
@@ -22,6 +23,7 @@ namespace Dapr.Actors.Runtime
         private const string TraceType = "Actor";
         private readonly string traceId;
         private readonly string actorTypeName;
+        private readonly ILogger<Actor> logger;
 
         /// <summary>
         /// Contains timers to be invoked.
@@ -42,6 +44,7 @@ namespace Dapr.Actors.Runtime
             this.ActorService = actorService;
             this.StateManager = actorStateManager ?? new ActorStateManager(this);
             this.actorTypeName = this.ActorService.ActorTypeInfo.ActorTypeName;
+            this.logger = actorService.LoggerFactory.CreateLogger<Actor>();
         }
 
         /// <summary>
@@ -56,8 +59,6 @@ namespace Dapr.Actors.Runtime
         /// <value>The <see cref="ActorService"/> for the actor.</value>
         public ActorService ActorService { get; }
 
-        internal ActorTrace TraceSource => ActorTrace.Instance;
-
         internal bool IsDirty { get; private set; }
 
         /// <summary>
@@ -69,8 +70,8 @@ namespace Dapr.Actors.Runtime
         {
             await this.ResetStateAsync();
             await this.OnActivateAsync();
-            ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Activated");
-            // ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Activated");
+            
+            this.logger.LogInformation($"{this.traceId} Activated");
 
             // Save any state modifications done in user overridden Activate method.
             await this.SaveStateAsync();
@@ -78,10 +79,10 @@ namespace Dapr.Actors.Runtime
 
         internal async Task OnDeactivateInternalAsync()
         {
-            ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Deactivating ...");
+            this.logger.LogInformation($"{this.traceId} Deactivating ...");
             await this.ResetStateAsync();
             await this.OnDeactivateAsync();
-            ActorNewTrace.WriteInfoWithId(TraceType, this.traceId, "Deactivated");
+            this.logger.LogInformation($"{this.traceId} Deactivated");
         }
 
         internal Task OnPreActorMethodAsyncInternal(ActorMethodContext actorMethodContext)
