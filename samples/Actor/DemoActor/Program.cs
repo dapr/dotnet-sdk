@@ -31,7 +31,7 @@ namespace DaprDemoActor
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-            .UseActors((actorRuntime) =>
+            .UseActors(actorRuntime =>
             {
                 actorRuntime.RegisterActor<DemoActor>();
             });
