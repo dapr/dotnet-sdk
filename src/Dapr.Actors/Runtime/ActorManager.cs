@@ -21,7 +21,6 @@ namespace Dapr.Actors.Runtime
     /// </summary>
     internal sealed class ActorManager : IActorManager
     {
-        private const string TraceType = "ActorManager";
         private const string ReceiveReminderMethodName = "ReceiveReminderAsync";
         private const string TimerMethodName = "FireTimerAsync";
         private readonly ActorService actorService;
@@ -134,7 +133,7 @@ namespace Dapr.Actors.Runtime
                 else
                 {
                     var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
-                    this.logger.LogError(TraceType, errorMsg);
+                    this.logger.LogError(errorMsg);
                     throw new ArgumentException(errorMsg);
                 }
 
@@ -239,7 +238,7 @@ namespace Dapr.Actors.Runtime
             if (!this.activeActors.TryGetValue(actorId, out var actor))
             {             
                 var errorMsg = $"Actor {actorId} is not yet activated.";
-                this.logger.LogError(TraceType, errorMsg);
+                this.logger.LogError(errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
 
@@ -256,7 +255,7 @@ namespace Dapr.Actors.Runtime
             catch (Exception ex)
             {
                 await actor.OnInvokeFailedAsync();
-                this.logger.LogError(TraceType, $"Got exception from actor method invocation: {ex}");
+                this.logger.LogError($"Got exception from actor method invocation: {ex}");
                 throw;
             }
 

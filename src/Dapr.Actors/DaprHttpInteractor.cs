@@ -27,7 +27,6 @@ namespace Dapr.Actors
     internal class DaprHttpInteractor : IDaprInteractor
     {
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
-        private const string TraceType = "DaprHttpInteractor";
         private readonly string daprPort;
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
