@@ -15,26 +15,26 @@ namespace Dapr.Client
     /// </summary>
     /// <typeparam name="TRequest">Data type of the request.</typeparam>
     /// <typeparam name="TResponse">Data type of the response.</typeparam>
-    public sealed class ServiceInvocationResponse<TRequest, TResponse>
+    public sealed class InvocationResponse<TRequest, TResponse>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceInvocationResponse{TRequest,TResponse}"/> class.
+        /// Initializes a new instance of the <see cref="InvocationResponse{TRequest,TResponse}"/> class.
         /// </summary>
-        public ServiceInvocationResponse()
+        public InvocationResponse()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceInvocationResponse{TRequest,TResponse}"/> class.
+        /// Initializes a new instance of the <see cref="InvocationResponse{TRequest,TResponse}"/> class.
         /// </summary>
         /// <param name="request">The request.</param>
-        public ServiceInvocationResponse(ServiceInvocationRequest<TRequest> request)
+        public InvocationResponse(InvocationRequest<TRequest> request)
         {
             this.Request = request;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceInvocationResponse{TRequest,TResponse}"/> class.
+        /// Initializes a new instance of the <see cref="InvocationResponse{TRequest,TResponse}"/> class.
         /// </summary>
         /// <param name="request">The request.</param>
         /// <param name="body">The response body.</param>
@@ -43,13 +43,13 @@ namespace Dapr.Client
         /// <param name="contentType">The content type.</param>
         /// <param name="httpStatusCode">HTTP status code (optional).</param>
         /// <param name="grpcStatusInfo">gRPC status info (optional).</param>
-        public ServiceInvocationResponse(
-            ServiceInvocationRequest<TRequest> request,
+        public InvocationResponse(
+            InvocationRequest<TRequest> request,
             TResponse body, string contentType,
             IDictionary<string, byte[]> headers,
             IDictionary<string, byte[]> trailers,
             HttpStatusCode? httpStatusCode = default,
-            GRPCStatusInfo grpcStatusInfo = default)
+            GrpcStatusInfo grpcStatusInfo = default)
         {
             this.Request = request;
             this.Body = body;
@@ -63,7 +63,7 @@ namespace Dapr.Client
         /// <summary>
         /// Gets or sets the reference to Invoke Request.
         /// </summary>
-        public ServiceInvocationRequest<TRequest> Request { get; set; }
+        public InvocationRequest<TRequest> Request { get; set; }
 
         /// <summary>
         /// Gets or sets the response body.
@@ -93,6 +93,6 @@ namespace Dapr.Client
         /// <summary>
         /// Gets or sets the gRPC status info.
         /// </summary>
-        public GRPCStatusInfo GrpcStatusInfo { get; set; }
+        public GrpcStatusInfo GrpcStatusInfo { get; set; }
     }
 }

@@ -12,24 +12,24 @@ namespace Dapr.Client
     /// Represents an Invoke Request used for service invocation
     /// </summary>
     /// <typeparam name="TRequest">Data type of the request.</typeparam>
-    public sealed class ServiceInvocationRequest<TRequest>
+    public sealed class InvocationRequest<TRequest>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceInvocationRequest{TRequest}"/> class.
+        /// Initializes a new instance of the <see cref="InvocationRequest{TRequest}"/> class.
         /// </summary>
-        public ServiceInvocationRequest()
+        public InvocationRequest()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceInvocationRequest{TRequest}"/> class.
+        /// Initializes a new instance of the <see cref="InvocationRequest{TRequest}"/> class.
         /// </summary>
         /// <param name="appId">The app identifier.</param>
         /// <param name="methodName">The name of the method to invoke.</param>
         /// <param name="body">The request body.</param>
         /// <param name="contentType">The content type.</param>
         /// <param name="httpExtension">HTTP extension info (optional).</param>
-        public ServiceInvocationRequest(string appId, string methodName, TRequest body, string contentType, HTTPExtension httpExtension)
+        public InvocationRequest(string appId, string methodName, TRequest body, string contentType, HTTPExtension httpExtension)
         {
             ArgumentVerifier.ThrowIfNull(appId, nameof(appId));
             ArgumentVerifier.ThrowIfNull(methodName, nameof(methodName));

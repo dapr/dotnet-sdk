@@ -12,17 +12,17 @@ namespace Dapr.Client
     /// This class is only needed if the app you are calling app is listening on gRPC.
     /// It contains propertes that represent status info that may be populated for an gRPC response.
     /// </summary>
-    public class GRPCStatusInfo
+    public class GrpcStatusInfo
     {
         /// <summary>
         /// The constructor.
         /// </summary>
-        public GRPCStatusInfo(Grpc.Core.StatusCode statusCode, string message, int? innerHttpStatusCode = default, string InnerHttpErrorMessage = default)
+        public GrpcStatusInfo(Grpc.Core.StatusCode statusCode, string message, int? innerHttpStatusCode = default, string innerHttpErrorMessage = default)
         {
             this.GrpcStatusCode = statusCode;
             this.GrpcErrorMessage = message;
             this.InnerHttpStatusCode = innerHttpStatusCode;
-            this.InnerHttpErrorMessage = InnerHttpErrorMessage;
+            this.InnerHttpErrorMessage = innerHttpErrorMessage;
         }
 
         /// <summary>
