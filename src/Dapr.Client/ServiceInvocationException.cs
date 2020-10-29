@@ -48,6 +48,6 @@ namespace Dapr.Client
         /// <summary>
         /// The Response
         /// </summary>
-        public InvocationResponse<TRequest, TResponse> Response { get; set; }
+        public InvocationResponse<TRequest, TResponse> Response { get; }
     }
 }
