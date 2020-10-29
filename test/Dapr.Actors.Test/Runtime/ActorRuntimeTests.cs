@@ -19,7 +19,7 @@ namespace Dapr.Actors.Test
     public sealed class ActorRuntimeTests
     {
         private const string RenamedActorTypeName = "MyRenamedActor";
-        private DaprActorRuntimeOptions options = new DaprActorRuntimeOptions();
+        private ActorRuntimeOptions options = new ActorRuntimeOptions();
         private ILoggerFactory loggerFactory = new LoggerFactory();
 
         private interface ITestActor : IActor

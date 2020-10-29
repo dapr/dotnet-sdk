@@ -33,7 +33,7 @@ namespace Dapr.Actors
         private readonly ClientSettings clientSettings;
         private HttpClient httpClient = null;
         private bool disposed = false;
-        private readonly ILogger<DaprHttpInteractor> logger;
+        private readonly ILogger logger;
 
         public DaprHttpInteractor(
             HttpClientHandler innerHandler = null,
@@ -49,7 +49,7 @@ namespace Dapr.Actors
             this.clientSettings = clientSettings;
 
             this.httpClient = this.CreateHttpClient();
-            this.logger = loggerFactory?.CreateLogger<DaprHttpInteractor>();
+            this.logger = loggerFactory?.CreateLogger(this.GetType());
         }
 
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)

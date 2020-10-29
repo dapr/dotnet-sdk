@@ -36,7 +36,7 @@ namespace Dapr.Actors.Runtime
         // method info map used by non-remoting calls.
         private readonly ActorMethodInfoMap actorMethodInfoMap;
 
-        private readonly ILogger<ActorManager> logger;
+        private readonly ILogger logger;
 
         internal ActorManager(ActorService actorService, ILoggerFactory loggerFactory)
         {
@@ -53,7 +53,7 @@ namespace Dapr.Actors.Runtime
             this.serializersManager = IntializeSerializationManager(null);
             this.messageBodyFactory = new WrappedRequestMessageFactory();
 
-            this.logger = loggerFactory.CreateLogger<ActorManager>();
+            this.logger = loggerFactory?.CreateLogger(this.GetType());
         }
 
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
@@ -133,8 +133,9 @@ namespace Dapr.Actors.Runtime
                 else
                 {
                     var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
-                    this.logger.LogError(errorMsg);
-                    throw new ArgumentException(errorMsg);
+                    var ex = new ArgumentException(errorMsg);
+                    this.logger.LogError(ex, "An error encountered while invoking method: {method}", methodInfo.Name);
+                    throw ex;
                 }
 
                 await awaitable;
@@ -238,8 +239,9 @@ namespace Dapr.Actors.Runtime
             if (!this.activeActors.TryGetValue(actorId, out var actor))
             {             
                 var errorMsg = $"Actor {actorId} is not yet activated.";
-                this.logger.LogError(errorMsg);
-                throw new InvalidOperationException(errorMsg);
+                var ex = new InvalidOperationException(errorMsg);
+                this.logger.LogError(ex, "An error was encountered during method invocation on ActorId: {actorId} for method: {method}", actorId, actorMethodContext.MethodName);
+                throw ex;
             }
 
             T retval;
@@ -255,7 +257,7 @@ namespace Dapr.Actors.Runtime
             catch (Exception ex)
             {
                 await actor.OnInvokeFailedAsync();
-                this.logger.LogError($"Got exception from actor method invocation: {ex}");
+                this.logger.LogError(ex, "An error was encountered during method invocation on ActorId: {actorId} for method: {method}", actorId, actorMethodContext.MethodName);
                 throw;
             }
 
@@ -281,7 +283,11 @@ namespace Dapr.Actors.Runtime
             var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
             var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
 
-            var responseMsgBody = RemoteException.FromException(ex, this.logger);
+            (var responseMsgBody, var errorMsg) = RemoteException.FromException(ex);
+            if(errorMsg != null)
+            {
+                this.logger.LogInformation(ex, errorMsg);
+            }
 
             return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }

@@ -52,27 +52,22 @@ namespace Dapr.Actors.Communication
         /// Factory method that constructs the RemoteException from an exception.
         /// </summary>
         /// <param name="exception">Exception.</param>
-        /// <param name="logger">Logger.</param>
         /// <returns>Serialized bytes.</returns>
-        public static byte[] FromException(Exception exception, ILogger logger = null)
+        public static (byte[], string) FromException(Exception exception)
         {
             try
             {
                 using var stream = new MemoryStream();
                 binaryFormatter.Serialize(stream, exception);
                 stream.Flush();
-                return stream.ToArray();
+                return (stream.ToArray(), string.Empty);
             }
             catch (Exception e)
             {
                 // failed to serialize the exception, include the information about the exception in the data
                 // Add trace diagnostics
-                logger?.LogWarning(
-                    "RemoteException",
-                    "Serialization failed for Exception Type {0} : Reason  {1}",
-                    exception.GetType().FullName,
-                    e);
-                return FromExceptionString(exception);
+                var errorMessage = $"RemoteException, Serialization failed for Exception Type {exception.GetType().FullName} : Reason  {e}";
+                return (FromExceptionString(exception), errorMessage);
             }
         }
 

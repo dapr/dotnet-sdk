@@ -11,9 +11,9 @@ namespace Dapr.Actors.Runtime
     /// <summary>
     /// Represents the Dapr runtime options
     /// </summary>
-    public class DaprActorRuntimeOptions
+    public class ActorRuntimeOptions
     {
-        // Map of ActorType --> ActorManager.
+        // Map of ActorType --> ActorService factory.
         internal readonly Dictionary<ActorTypeInformation, Func<ActorTypeInformation, ActorService>> actorServicesFunc = new Dictionary<ActorTypeInformation, Func<ActorTypeInformation, ActorService>>();
 
         /// <summary>

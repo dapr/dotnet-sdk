@@ -24,12 +24,12 @@ namespace Dapr.Actors.Runtime
 
         private ActorSettings actorSettings;
 
-        private readonly ILogger<ActorRuntime> logger;
+        private readonly ILogger logger;
 
-        internal ActorRuntime(DaprActorRuntimeOptions options, ILoggerFactory loggerFactory)
+        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory)
         {
             this.actorSettings = new ActorSettings();
-            this.logger = loggerFactory.CreateLogger<ActorRuntime>();
+            this.logger = loggerFactory.CreateLogger(this.GetType());
             DaprInteractor = new DaprHttpInteractor(loggerFactory:loggerFactory);
 
             // Create ActorManagers, override existing entry if registered again.
@@ -172,8 +172,9 @@ namespace Dapr.Actors.Runtime
             if (!this.actorManagers.TryGetValue(actorTypeName, out var actorManager))
             {
                 var errorMsg = $"Actor type {actorTypeName} is not registered with Actor runtime.";
-                this.logger.LogError(errorMsg);
-                throw new InvalidOperationException(errorMsg);
+                var ex = new InvalidOperationException(errorMsg);
+                this.logger.LogError(ex, "An error was encountered for ActorType: {actorType}", actorTypeName);
+                throw ex;
             }
 
             return actorManager;

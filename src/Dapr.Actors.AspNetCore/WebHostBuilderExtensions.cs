@@ -24,9 +24,9 @@ namespace Dapr.Actors.AspNetCore
         /// Configures the service to use the routes needed by Dapr Actor runtime.
         /// </summary>
         /// <param name="hostBuilder">The Microsoft.AspNetCore.Hosting.IWebHostBuilder to configure.</param>
-        /// <param name="runtimeOptions">Options to configure Actor runtime..</param>
+        /// <param name="configure">A delegate used to register actors and configure the actor runtime.</param>
         /// <returns>The Microsoft.AspNetCore.Hosting.IWebHostBuilder.</returns>
-        public static IWebHostBuilder UseActors(this IWebHostBuilder hostBuilder, Action<DaprActorRuntimeOptions> runtimeOptions)
+        public static IWebHostBuilder UseActors(this IWebHostBuilder hostBuilder, Action<ActorRuntimeOptions> configure)
         {
             if (hostBuilder == null)
             {
@@ -35,9 +35,9 @@ namespace Dapr.Actors.AspNetCore
 
             hostBuilder.ConfigureServices(services =>
             {
-                if (runtimeOptions != null)
+                if (configure != null)
                 {
-                    services.Configure<DaprActorRuntimeOptions>(runtimeOptions);
+                    services.Configure<ActorRuntimeOptions>(configure);
                 }
             });
 
@@ -59,16 +59,10 @@ namespace Dapr.Actors.AspNetCore
 
                 services.AddSingleton<ActorRuntime>(s =>
                 {
-                    return new ActorRuntime(s.GetRequiredService<IOptions<DaprActorRuntimeOptions>>().Value, s.GetRequiredService<ILoggerFactory>());
+                    return new ActorRuntime(s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value, s.GetRequiredService<ILoggerFactory>());
                 });
             });
 
-            hostBuilder.ConfigureAppConfiguration((hostingContext, config) =>
-            {
-                config.AddJsonFile("appsettings.json", 
-                    optional: true, 
-                    reloadOnChange: true);
-            });
             return hostBuilder;
         }
     }
