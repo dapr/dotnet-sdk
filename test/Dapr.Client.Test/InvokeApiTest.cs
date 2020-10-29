@@ -200,7 +200,7 @@ namespace Dapr.Client.Test
             entry.Completion.SetResult(response);
 
             //validate response
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ServiceInvocationException<Request, Response>>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<InvocationException<Request, Response>>();
         }
 
         [Fact]
@@ -419,7 +419,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_CalleeSideGrpc()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_CalleeSideGrpc()
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -443,14 +443,14 @@ namespace Dapr.Client.Test
             var invokedResponse = await task;
             invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
             invokedResponse.Headers.Count.Should().Be(0);
-            invokedResponse.ContentType = Constants.ContentTypeApplicationGrpc;
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
             invokedResponse.HttpStatusCode.Should().BeNull();
             invokedResponse.GrpcStatusInfo.Should().NotBeNull();
             invokedResponse.GrpcStatusInfo.GrpcStatusCode.Should().Be(Grpc.Core.StatusCode.OK);
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_CalleeSideHttp()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_CalleeSideHttp()
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -474,15 +474,15 @@ namespace Dapr.Client.Test
             // Validate Response
             var invokedResponse = await task;
             invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
-            invokedResponse.Headers.ContainsKey("dapr-http-status");
-            invokedResponse.ContentType = Constants.ContentTypeApplicationJson;
+            invokedResponse.Headers.ContainsKey("dapr-http-status").Should().BeTrue();
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
             invokedResponse.GrpcStatusInfo.Should().BeNull();
             invokedResponse.HttpStatusCode.Should().NotBeNull();
             invokedResponse.HttpStatusCode.Should().Be(HttpStatusCode.OK);
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_GrpcServerReturnsNonSuccessResponse()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_GrpcServerReturnsNonSuccessResponse()
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -534,7 +534,7 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
                 Assert.False(true);
             }
-            catch(ServiceInvocationException<Request, Response> ex)
+            catch(InvocationException<Request, Response> ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
@@ -548,7 +548,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_HttpServerReturnsNonSuccessResponse()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_HttpServerReturnsNonSuccessResponse()
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -606,7 +606,7 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
                 Assert.False(true);
             }
-            catch(ServiceInvocationException<Request, Response> ex)
+            catch(InvocationException<Request, Response> ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
@@ -624,19 +624,19 @@ namespace Dapr.Client.Test
         public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideGrpc()
         {
             var client = new MockClient();
-            var data = new Response() { Name = "Look, I was invoked!" };
+            var responseBody = new Response() { Name = "Look, I was invoked!" };
             // var dataBytes = new byte[]{1,2,3};
-            var dataBytes = JsonSerializer.SerializeToUtf8Bytes(data);
+            var responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseBody);
             var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(dataBytes), TypeUrl = typeof(byte[]).FullName };
+            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName };
             
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
 
-            var body = new Request() { RequestParameter = "Hello " };
-            var requestBytes = JsonSerializer.SerializeToUtf8Bytes(body);
+            var requestBody = new Request() { RequestParameter = "Hello " };
+            var requestBytes = JsonSerializer.SerializeToUtf8Bytes(requestBody);
             
             client.Mock
             .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
@@ -646,11 +646,13 @@ namespace Dapr.Client.Test
 
             // Validate Response
             var invokedResponse = await task;
-            var responseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
-            responseBody.Name.Should().Be("Look, I was invoked!");
+            var invokedResponseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
+            invokedResponseBody.Name.Should().Be("Look, I was invoked!");
             invokedResponse.HttpStatusCode.Should().BeNull();
             invokedResponse.GrpcStatusInfo.Should().NotBeNull();
             invokedResponse.GrpcStatusInfo.GrpcStatusCode.Should().Be(Grpc.Core.StatusCode.OK);
+            invokedResponse.Headers.Count.Should().Be(0);
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
 
             var expectedRequest = new Autogen.Grpc.v1.InvokeServiceRequest
             {
@@ -663,7 +665,7 @@ namespace Dapr.Client.Test
                     {
                         Verb = Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post,
                     },
-                    ContentType = "application/json",
+                    ContentType = Constants.ContentTypeApplicationJson,
                 },
             };
             client.Mock.Verify(m => m.InvokeServiceAsync(It.Is<Autogen.Grpc.v1.InvokeServiceRequest>(request => request.Equals(expectedRequest)), It.IsAny<CallOptions>()));
@@ -674,10 +676,10 @@ namespace Dapr.Client.Test
         public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideHttp()
         {
             var client = new MockClient();
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var dataBytes = JsonSerializer.SerializeToUtf8Bytes(data);
+            var responseBody = new Response() { Name = "Look, I was invoked!" };
+            var responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseBody);
             var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(dataBytes), TypeUrl = typeof(byte[]).FullName };
+            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName };
             
             var response = 
                 client.Call<InvokeResponse>()
@@ -696,13 +698,15 @@ namespace Dapr.Client.Test
 
             // Validate Response
             var invokedResponse = await task;
-            var responseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
-            responseBody.Name.Should().Be("Look, I was invoked!");
+            var invokedResponseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
+            invokedResponseBody.Name.Should().Be("Look, I was invoked!");
             invokedResponse.Headers.ContainsKey("dapr-http-status");
             invokedResponse.ContentType = Constants.ContentTypeApplicationJson;
             invokedResponse.GrpcStatusInfo.Should().BeNull();
             invokedResponse.HttpStatusCode.Should().NotBeNull();
             invokedResponse.HttpStatusCode.Should().Be(HttpStatusCode.OK);
+            invokedResponse.Headers.ContainsKey("dapr-http-status").Should().BeTrue();
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
 
             var expectedRequest = new Autogen.Grpc.v1.InvokeServiceRequest
             {
@@ -775,7 +779,7 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes);
                 Assert.False(true);
             }
-            catch(ServiceInvocationException<byte[], byte[]> ex)
+            catch(InvocationException<byte[], byte[]> ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
@@ -847,7 +851,7 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes);
                 Assert.False(true);
             }
-            catch(ServiceInvocationException<byte[], byte[]> ex)
+            catch(InvocationException<byte[], byte[]> ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);

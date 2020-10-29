@@ -492,7 +492,7 @@ namespace Dapr.Client
             return invokeResponse;
         }
 
-        public static ServiceInvocationException<TRequest, TResponse> ProcessRpcException<TRequest, TResponse>(RpcException ex, InvocationResponse<TRequest, TResponse> invokeResponse)
+        public static InvocationException<TRequest, TResponse> ProcessRpcException<TRequest, TResponse>(RpcException ex, InvocationResponse<TRequest, TResponse> invokeResponse)
         {
             var entry = ex.Trailers.Get(GrpcStatusDetails);
             if (entry != null)
@@ -514,7 +514,7 @@ namespace Dapr.Client
                 }
             }
 
-            return new ServiceInvocationException<TRequest, TResponse>($"Exception while invoking {invokeResponse.Request.MethodName} on appId:{invokeResponse.Request.AppId}", ex, invokeResponse);
+            return new InvocationException<TRequest, TResponse>($"Exception while invoking {invokeResponse.Request.MethodName} on appId:{invokeResponse.Request.AppId}", ex, invokeResponse);
         }
 
         private bool IsResponseFromHttpCallee(Dictionary<string,byte[]> headers)

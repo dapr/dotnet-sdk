@@ -11,12 +11,12 @@ namespace Dapr.Client
     /// <summary>
     /// This class represents the exception thrown when Service Invocation via Dapr encounters an error
     /// </summary>
-    public class ServiceInvocationException<TRequest, TResponse> : Exception
+    public class InvocationException<TRequest, TResponse> : Exception
     {
         /// <summary>
         /// The constructor.
         /// </summary>
-        public ServiceInvocationException(InvocationResponse<TRequest, TResponse> response)
+        public InvocationException(InvocationResponse<TRequest, TResponse> response)
         {
             this.Response = response;
         }
@@ -24,7 +24,7 @@ namespace Dapr.Client
         /// <summary>
         /// The constructor.
         /// </summary>
-        public ServiceInvocationException(string message, InvocationResponse<TRequest, TResponse> response)
+        public InvocationException(string message, InvocationResponse<TRequest, TResponse> response)
             : base(message)
         {
             this.Response = response;
@@ -33,7 +33,7 @@ namespace Dapr.Client
         /// <summary>
         /// The constructor.
         /// </summary>
-        public ServiceInvocationException(string message, Exception innerException, InvocationResponse<TRequest, TResponse> response)
+        public InvocationException(string message, Exception innerException, InvocationResponse<TRequest, TResponse> response)
             : base(message, innerException)
         {
             this.Response = response;
