@@ -376,12 +376,17 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default)
         {
             
-            var invokeResponse = new InvocationResponse<TRequest, TResponse>(request);
+            var invokeResponse = new InvocationResponse<TRequest, TResponse>
+            {
+                Request = request
+            };
+            
             Any serializedData = null;
             if (request.Body != null)
             {
                 if (typeof(TResponse) == typeof(byte[]))
                 {
+                    // User has passed in raw bytes
                     var requestBytes = (byte[])Convert.ChangeType(request.Body, typeof(byte[]));
                     serializedData = new Any { Value = ByteString.CopyFrom(requestBytes), TypeUrl = typeof(byte[]).FullName };
                 }
@@ -407,6 +412,7 @@ namespace Dapr.Client
 
                 if (typeof(TResponse) == typeof(byte[]))
                 {
+                    // User wants to receive raw bytes
                     var responseBytes = new byte[response.Data.Value.Length];
                     response.Data.Value?.CopyTo(responseBytes, 0);
                     invokeResponse.Body = (TResponse)(response.Data.Value.IsEmpty ? default : Convert.ChangeType(responseBytes, typeof(TResponse)));

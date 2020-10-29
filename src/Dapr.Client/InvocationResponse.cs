@@ -34,33 +34,6 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="InvocationResponse{TRequest,TResponse}"/> class.
-        /// </summary>
-        /// <param name="request">The request.</param>
-        /// <param name="body">The response body.</param>
-        /// <param name="headers">The response headers.</param>
-        /// <param name="trailers">The response trailers.</param>
-        /// <param name="contentType">The content type.</param>
-        /// <param name="httpStatusCode">HTTP status code (optional).</param>
-        /// <param name="grpcStatusInfo">gRPC status info (optional).</param>
-        public InvocationResponse(
-            InvocationRequest<TRequest> request,
-            TResponse body, string contentType,
-            IDictionary<string, byte[]> headers,
-            IDictionary<string, byte[]> trailers,
-            HttpStatusCode? httpStatusCode = default,
-            GrpcStatusInfo grpcStatusInfo = default)
-        {
-            this.Request = request;
-            this.Body = body;
-            this.Headers = headers;
-            this.Trailers = trailers;
-            this.ContentType = contentType;
-            this.HttpStatusCode = httpStatusCode;
-            this.GrpcStatusInfo = grpcStatusInfo;
-        }
-
-        /// <summary>
         /// Gets or sets the reference to Invoke Request.
         /// </summary>
         public InvocationRequest<TRequest> Request { get; set; }

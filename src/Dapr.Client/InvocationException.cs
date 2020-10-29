@@ -16,21 +16,6 @@ namespace Dapr.Client
         /// <summary>
         /// The constructor.
         /// </summary>
-        public InvocationException()
-        {
-        }
-
-        /// <summary>
-        /// The constructor.
-        /// </summary>
-        public InvocationException(string message)
-            : base(message)
-        {
-        }
-
-        /// <summary>
-        /// The constructor.
-        /// </summary>
         public InvocationException(string message, Exception innerException, GrpcStatusInfo grpcStatusInfo)
             : base(message, innerException)
         {
@@ -40,6 +25,6 @@ namespace Dapr.Client
         /// <summary>
         /// The gRPC Status Info
         /// </summary>
-        public GrpcStatusInfo GrpcStatusInfo { get; set; }
+        public GrpcStatusInfo GrpcStatusInfo { get; }
     }
 }
