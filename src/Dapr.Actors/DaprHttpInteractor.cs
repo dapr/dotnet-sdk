@@ -439,12 +439,12 @@ namespace Dapr.Actors
             }
             catch (AuthenticationException ex)
             {
-                this.logger?.LogError(ex.ToString());
+                this.logger?.LogError(ex, "An error was encountered during authentication");
                 throw;
             }
             catch (HttpRequestException ex)
             {
-                this.logger?.LogError(ex.ToString());
+                this.logger?.LogError(ex, "An error was encountered while handling HTTP request");
                 throw;
             }
 
