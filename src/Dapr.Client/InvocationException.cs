@@ -11,43 +11,35 @@ namespace Dapr.Client
     /// <summary>
     /// This class represents the exception thrown when Service Invocation via Dapr encounters an error
     /// </summary>
-    public class InvocationException<TRequest, TResponse> : Exception
+    public class InvocationException : Exception
     {
         /// <summary>
         /// The constructor.
         /// </summary>
-        public InvocationException(InvocationResponse<TRequest, TResponse> response)
+        public InvocationException()
         {
-            this.Response = response;
         }
 
         /// <summary>
         /// The constructor.
         /// </summary>
-        public InvocationException(string message, InvocationResponse<TRequest, TResponse> response)
+        public InvocationException(string message)
             : base(message)
         {
-            this.Response = response;
         }
 
         /// <summary>
         /// The constructor.
         /// </summary>
-        public InvocationException(string message, Exception innerException, InvocationResponse<TRequest, TResponse> response)
+        public InvocationException(string message, Exception innerException, GrpcStatusInfo grpcStatusInfo)
             : base(message, innerException)
         {
-            this.Response = response;
+            this.GrpcStatusInfo = grpcStatusInfo;
         }
 
-
         /// <summary>
-        /// The gRPC Error Message
+        /// The gRPC Status Info
         /// </summary>
-        public string GrpcErrorMessage { get; set; }
-
-        /// <summary>
-        /// The Response
-        /// </summary>
-        public InvocationResponse<TRequest, TResponse> Response { get; }
+        public GrpcStatusInfo GrpcStatusInfo { get; set; }
     }
 }

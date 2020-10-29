@@ -200,7 +200,7 @@ namespace Dapr.Client.Test
             entry.Completion.SetResult(response);
 
             //validate response
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<InvocationException<Request, Response>>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<InvocationException>();
         }
 
         [Fact]
@@ -534,16 +534,15 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
                 Assert.False(true);
             }
-            catch(InvocationException<Request, Response> ex)
+            catch(InvocationException ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.Response.GrpcStatusInfo.InnerHttpErrorMessage.Should().BeNull();
-                ex.Response.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(0);
-                ex.Response.HttpStatusCode.Should().BeNull();
+                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().BeNull();
+                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(0);
             }
         }
 
@@ -606,16 +605,15 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
                 Assert.False(true);
             }
-            catch(InvocationException<Request, Response> ex)
+            catch(InvocationException ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.Response.GrpcStatusInfo.InnerHttpErrorMessage.Should().Be(grpcErrorInfoDetailHttpErrorMsg);
-                ex.Response.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
-                ex.Response.HttpStatusCode.Should().BeNull();
+                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().Be(grpcErrorInfoDetailHttpErrorMsg);
+                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
             }
         }
         
@@ -779,16 +777,15 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes);
                 Assert.False(true);
             }
-            catch(InvocationException<byte[], byte[]> ex)
+            catch(InvocationException ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.Response.GrpcStatusInfo.InnerHttpErrorMessage.Should().BeNull();
-                ex.Response.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(0);
-                ex.Response.HttpStatusCode.Should().BeNull();
+                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().BeNull();
+                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(0);
             }
         }
 
@@ -851,16 +848,15 @@ namespace Dapr.Client.Test
                 await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes);
                 Assert.False(true);
             }
-            catch(InvocationException<byte[], byte[]> ex)
+            catch(InvocationException ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.Response.GrpcStatusInfo.InnerHttpErrorMessage.Should().Be(grpcErrorInfoDetailHttpErrorMsg);
-                ex.Response.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
-                ex.Response.HttpStatusCode.Should().BeNull();
+                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().Be(grpcErrorInfoDetailHttpErrorMsg);
+                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
             }
         }
 
