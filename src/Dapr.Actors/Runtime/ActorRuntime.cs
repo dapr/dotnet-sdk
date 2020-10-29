@@ -30,7 +30,7 @@ namespace Dapr.Actors.Runtime
         {
             this.actorSettings = new ActorSettings();
             this.logger = loggerFactory.CreateLogger(this.GetType());
-            DaprInteractor = new DaprHttpInteractor(loggerFactory:loggerFactory);
+            DaprInteractor ??= new DaprHttpInteractor(loggerFactory:loggerFactory);
 
             // Create ActorManagers, override existing entry if registered again.
             foreach(var actorServiceFunc in options.actorServicesFunc)
@@ -57,6 +57,14 @@ namespace Dapr.Actors.Runtime
         public void ConfigureActorSettings(Action<ActorSettings> actorSettingsDelegate)
         {
             actorSettingsDelegate.Invoke(this.actorSettings);
+        }
+
+        /// <summary>
+        /// Returns if the Dapr Interactor is initialized
+        /// </summary>
+        public static bool IsDaprInteractorInitialized()
+        {
+            return (DaprInteractor!= null);
         }
 
         internal Task SerializeSettingsAndRegisteredTypes(IBufferWriter<byte> output)
