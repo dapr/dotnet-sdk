@@ -135,7 +135,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(data, entry);
+            await SendResponse(data, entry);
 
             // Validate Response
             var invokedResponse = await task;
@@ -165,7 +165,7 @@ namespace Dapr.Client.Test
             typeFromRequest.RequestParameter.Should().Be("Hello ");
 
             // Create Response & Respond
-            SendResponse<Response>(null, entry);
+            await SendResponse<Response>(null, entry);
 
             // Validate Response.
             var invokedResponse = await task;
@@ -223,7 +223,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(data, entry);
+            await SendResponse(data, entry);
 
             // Validate Response
             var invokedResponse = await task;
@@ -281,7 +281,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var response = new Response() { Name = "Look, I was invoked!" };
-            SendResponse(response, entry);
+            await SendResponse(response, entry);
 
             FluentActions.Awaiting(async () => await task).Should().NotThrow();
         }
@@ -367,7 +367,7 @@ namespace Dapr.Client.Test
             var json = envelope.Message.Data.Value.ToStringUtf8();
             json.Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
 
-            SendResponse(invokedResponse, entry, jsonOptions);
+            await SendResponse(invokedResponse, entry, jsonOptions);
             var response = await task;
 
             response.Name.Should().Be(invokedResponse.Name);
@@ -412,7 +412,7 @@ namespace Dapr.Client.Test
             var json = envelope.Message.Data.Value.ToStringUtf8();
             json.Should().Be(JsonSerializer.Serialize(invokeRequest, jsonOptions));
 
-            SendResponse(invokedResponse, entry, jsonOptions);
+            await SendResponse(invokedResponse, entry, jsonOptions);
             var response = await task;
 
             response.Name.Should().Be(invokedResponse.Name);
@@ -920,7 +920,7 @@ namespace Dapr.Client.Test
             response.Name.Should().Be("unexpected");
         }
 
-        private async void SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
+        private async Task SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
         {
             var dataAny = TypeConverters.ToAny(data, options);
             var dataResponse = new InvokeResponse();
