@@ -21,6 +21,9 @@ namespace Dapr.Client.Test
     using Xunit;
     using System.Linq;
     using Moq;
+    using Google.Protobuf.WellKnownTypes;
+    using Google.Protobuf;
+
     // using Moq.SetupAsync;
 
     public class InvokeApiTest
@@ -428,7 +431,6 @@ namespace Dapr.Client.Test
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
-                .AddHeader("some-header", "some-value")
                 .Build();
 
             
@@ -437,7 +439,7 @@ namespace Dapr.Client.Test
             .Returns(response);
 
             var body = new Request() { RequestParameter = "Hello " };
-            var task = client.DaprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
+            var task = client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
 
             // Validate Response
             var invokedResponse = await task;
@@ -467,7 +469,7 @@ namespace Dapr.Client.Test
             .Returns(response);
 
             var body = new Request() { RequestParameter = "Hello " };
-            var task = client.DaprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
+            var task = client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
 
             // Validate Response
             var invokedResponse = await task;
@@ -478,7 +480,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_ServerThrowsRpcException()
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponseHeaders_ServerReturnsNonSuccessResponse()
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -488,7 +490,6 @@ namespace Dapr.Client.Test
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
-                .AddHeader("some-header", "some-value")
                 .Build();
 
 
@@ -532,7 +533,7 @@ namespace Dapr.Client.Test
             try
             {
                 var body = new Request() { RequestParameter = "Hello " };
-                await client.DaprClient.InvokeMethodWithResponseHeadersAsync<Request, Response>("test", "testMethod", body);
+                await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
                 Assert.False(true);
             }
             catch(ServiceInvocationException<Request, Response> ex)
@@ -554,29 +555,49 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
+            // var dataBytes = new byte[]{1,2,3};
+            var dataBytes = JsonSerializer.SerializeToUtf8Bytes(data);
             var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
+            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(dataBytes), TypeUrl = typeof(byte[]).FullName };
             
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
 
+            var body = new Request() { RequestParameter = "Hello " };
+            var requestBytes = JsonSerializer.SerializeToUtf8Bytes(body);
             
             client.Mock
             .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
             .Returns(response);
 
-            var body = new Request() { RequestParameter = "Hello " };
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
-            var task = client.DaprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
+            var task = client.DaprClient.InvokeMethodRawAsync("test", "testMethod", requestBytes);
 
             // Validate Response
             var invokedResponse = await task;
-            invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
+            var responseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
+            responseBody.Name.Should().Be("Look, I was invoked!");
             invokedResponse.HttpStatusCode.Should().BeNull();
             invokedResponse.GrpcStatusInfo.Should().NotBeNull();
             invokedResponse.GrpcStatusInfo.GrpcStatusCode.Should().Be(Grpc.Core.StatusCode.OK);
+
+            var expectedRequest = new Autogen.Grpc.v1.InvokeServiceRequest
+            {
+                Id = "test",
+                Message = new InvokeRequest
+                {
+                    Method = "testMethod",
+                    Data = new Any { Value = ByteString.CopyFrom(requestBytes), TypeUrl = typeof(byte[]).FullName },
+                    HttpExtension = new Autogen.Grpc.v1.HTTPExtension
+                    {
+                        Verb = Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post,
+                    },
+                    ContentType = "application/json",
+                },
+            };
+            client.Mock.Verify(m => m.InvokeServiceAsync(It.Is<Autogen.Grpc.v1.InvokeServiceRequest>(request => request.Equals(expectedRequest)), It.IsAny<CallOptions>()));
+
         }
 
         [Fact]
@@ -584,8 +605,9 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
+            var dataBytes = JsonSerializer.SerializeToUtf8Bytes(data);
             var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
+            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(dataBytes), TypeUrl = typeof(byte[]).FullName };
             
             var response = 
                 client.Call<InvokeResponse>()
@@ -593,25 +615,42 @@ namespace Dapr.Client.Test
                 .AddHeader("dapr-http-status", "200")
                 .Build();
 
+            var body = new Request() { RequestParameter = "Hello " };
+            var requestBytes = JsonSerializer.SerializeToUtf8Bytes(body);
             
             client.Mock
             .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
             .Returns(response);
 
-            var body = new Request() { RequestParameter = "Hello " };
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
-            var task = client.DaprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
+            var task = client.DaprClient.InvokeMethodRawAsync("test", "testMethod", requestBytes);
 
             // Validate Response
             var invokedResponse = await task;
-            invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
+            var responseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
+            responseBody.Name.Should().Be("Look, I was invoked!");
             invokedResponse.GrpcStatusInfo.Should().BeNull();
             invokedResponse.HttpStatusCode.Should().NotBeNull();
             invokedResponse.HttpStatusCode.Should().Be(HttpStatusCode.OK);
+
+            var expectedRequest = new Autogen.Grpc.v1.InvokeServiceRequest
+            {
+                Id = "test",
+                Message = new InvokeRequest
+                {
+                    Method = "testMethod",
+                    Data = new Any { Value = ByteString.CopyFrom(requestBytes), TypeUrl = typeof(byte[]).FullName },
+                    HttpExtension = new Autogen.Grpc.v1.HTTPExtension
+                    {
+                        Verb = Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post,
+                    },
+                    ContentType = "application/json",
+                },
+            };
+            client.Mock.Verify(m => m.InvokeServiceAsync(It.Is<Autogen.Grpc.v1.InvokeServiceRequest>(request => request.Equals(expectedRequest)), It.IsAny<CallOptions>()));
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_ServerThrowsRpcException()
+        public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_ServerReturnsNonSuccessResponse()
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -621,7 +660,6 @@ namespace Dapr.Client.Test
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
-                .AddHeader("some-header", "some-value")
                 .Build();
 
             var trailers = new Metadata();
@@ -666,10 +704,10 @@ namespace Dapr.Client.Test
             {
                 var body = new Request() { RequestParameter = "Hello " };
                 var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
-                await client.DaprClient.InvokeMethodRawAsync<Response>("test", "testMethod", bytes);
+                await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes);
                 Assert.False(true);
             }
-            catch(ServiceInvocationException<byte[], Response> ex)
+            catch(ServiceInvocationException<byte[], byte[]> ex)
             {
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
