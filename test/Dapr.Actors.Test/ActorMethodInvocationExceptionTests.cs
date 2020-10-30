@@ -29,7 +29,7 @@ namespace Dapr.Actors.Test
             var message = "Remote Actor Exception";
 
             // Create Serialized Exception
-            var serializedException = RemoteException.FromException(new InvalidOperationException());
+            (var serializedException, _) = RemoteException.FromException(new InvalidOperationException());
 
             // De Serialize Exception
             var isDeserialzied = RemoteException.ToException(
