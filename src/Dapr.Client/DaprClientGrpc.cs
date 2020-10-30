@@ -399,7 +399,7 @@ namespace Dapr.Client
 
                 var headers = grpcCall.ResponseHeadersAsync.Result.ToDictionary(kv => kv.Key, kv => kv.ValueBytes);
 
-                if (typeof(TResponse) == typeof(byte[]))
+                if (useRaw)
                 {
                     // User wants to receive raw bytes
                     var responseBytes = new byte[response.Data.Value.Length];
