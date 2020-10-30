@@ -124,7 +124,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
         {
-            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {Actorid}, MethodName: {Reminder}", actorTypeName, actorId, actorMethodName))
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, MethodName: {Reminder}", actorTypeName, actorId, actorMethodName))
             {
                 return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
             }
