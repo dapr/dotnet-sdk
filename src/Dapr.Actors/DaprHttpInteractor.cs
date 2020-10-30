@@ -33,12 +33,10 @@ namespace Dapr.Actors
         private readonly ClientSettings clientSettings;
         private HttpClient httpClient = null;
         private bool disposed = false;
-        private readonly ILogger logger;
 
         public DaprHttpInteractor(
             HttpClientHandler innerHandler = null,
             ClientSettings clientSettings = null,
-            ILoggerFactory loggerFactory = null,
             params DelegatingHandler[] delegateHandlers)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
@@ -49,7 +47,6 @@ namespace Dapr.Actors
             this.clientSettings = clientSettings;
 
             this.httpClient = this.CreateHttpClient();
-            this.logger = loggerFactory?.CreateLogger(this.GetType());
         }
 
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
@@ -423,30 +420,18 @@ namespace Dapr.Actors
             CancellationToken cancellationToken)
         {
             HttpResponseMessage response;
-            try
-            {
-                // Get the request using the Func as same request cannot be resent when retries are implemented.
-                var request = requestFunc.Invoke();
 
-                // add token for dapr api token based authentication
-                var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-                if (daprApiToken != null)
-                {
-                    request.Headers.Add("dapr-api-token", daprApiToken);
-                }
+            // Get the request using the Func as same request cannot be resent when retries are implemented.
+            var request = requestFunc.Invoke();
 
-                response = await this.httpClient.SendAsync(request, cancellationToken);
-            }
-            catch (AuthenticationException ex)
+            // add token for dapr api token based authentication
+            var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+            if (daprApiToken != null)
             {
-                this.logger?.LogError(ex, "An error was encountered during authentication");
-                throw;
+                request.Headers.Add("dapr-api-token", daprApiToken);
             }
-            catch (HttpRequestException ex)
-            {
-                this.logger?.LogError(ex, "An error was encountered while handling HTTP request");
-                throw;
-            }
+
+            response = await this.httpClient.SendAsync(request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {

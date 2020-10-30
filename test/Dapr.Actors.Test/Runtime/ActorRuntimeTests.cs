@@ -38,16 +38,6 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public void TestDaprHttpInteractorInitialization()
-        {
-            var actorType = typeof(TestActor);
-            options.RegisterActor<TestActor>();
-            var actorRuntime = new ActorRuntime(options, loggerFactory);
-
-            Assert.True(ActorRuntime.IsDaprInteractorInitialized());
-        }
-
-        [Fact]
         public void TestExplicitActorType()
         {
             var actorType = typeof(RenamedActor);

@@ -133,9 +133,7 @@ namespace Dapr.Actors.Runtime
                 else
                 {
                     var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
-                    var ex = new ArgumentException(errorMsg);
-                    this.logger.LogError(ex, "An error encountered while invoking method: {method}", methodInfo.Name);
-                    throw ex;
+                    throw new ArgumentException(errorMsg);
                 }
 
                 await awaitable;
@@ -239,9 +237,7 @@ namespace Dapr.Actors.Runtime
             if (!this.activeActors.TryGetValue(actorId, out var actor))
             {             
                 var errorMsg = $"Actor {actorId} is not yet activated.";
-                var ex = new InvalidOperationException(errorMsg);
-                this.logger.LogError(ex, "An error was encountered during method invocation on ActorId: {actorId} for method: {method}", actorId, actorMethodContext.MethodName);
-                throw ex;
+                throw new InvalidOperationException(errorMsg);
             }
 
             T retval;
@@ -254,10 +250,9 @@ namespace Dapr.Actors.Runtime
                 // PostActivate will save the state, its not invoked when actorFunc invocation throws.
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await actor.OnInvokeFailedAsync();
-                this.logger.LogError(ex, "An error was encountered during method invocation on ActorId: {actorId} for method: {method}", actorId, actorMethodContext.MethodName);
                 throw;
             }
 
@@ -286,7 +281,7 @@ namespace Dapr.Actors.Runtime
             (var responseMsgBody, var errorMsg) = RemoteException.FromException(ex);
             if(errorMsg != null)
             {
-                this.logger.LogInformation(ex, errorMsg);
+                this.logger.LogWarning(ex, errorMsg);
             }
 
             return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);

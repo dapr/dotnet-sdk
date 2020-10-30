@@ -69,11 +69,8 @@ namespace Dapr.Actors.Runtime
         {
             await this.ResetStateAsync();
             await this.OnActivateAsync();
-            
-            using(this.logger.BeginScope("Actor: {id}", this.traceId))
-            {
-                this.logger.LogDebug("Activated");
-            }
+
+            this.logger.LogDebug("Activated");
 
             // Save any state modifications done in user overridden Activate method.
             await this.SaveStateAsync();
@@ -81,13 +78,10 @@ namespace Dapr.Actors.Runtime
 
         internal async Task OnDeactivateInternalAsync()
         {
-            using (this.logger.BeginScope("Actor: {id}", this.traceId))
-            {
-                this.logger.LogDebug("Deactivating ...");
-                await this.ResetStateAsync();
-                await this.OnDeactivateAsync();
-                this.logger.LogDebug("Deactivated");
-            }
+            this.logger.LogDebug("Deactivating ...");
+            await this.ResetStateAsync();
+            await this.OnDeactivateAsync();
+            this.logger.LogDebug("Deactivated");
         }
 
         internal Task OnPreActorMethodAsyncInternal(ActorMethodContext actorMethodContext)

@@ -30,7 +30,6 @@ namespace Dapr.Actors.Runtime
         {
             this.actorSettings = new ActorSettings();
             this.logger = loggerFactory.CreateLogger(this.GetType());
-            DaprInteractor ??= new DaprHttpInteractor(loggerFactory:loggerFactory);
 
             // Create ActorManagers, override existing entry if registered again.
             foreach(var actorServiceFunc in options.actorServicesFunc)
@@ -47,7 +46,7 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public IEnumerable<string> RegisteredActorTypes => this.actorManagers.Keys;
 
-        internal static IDaprInteractor DaprInteractor;
+        internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor();
 
 
         /// <summary>
@@ -57,14 +56,6 @@ namespace Dapr.Actors.Runtime
         public void ConfigureActorSettings(Action<ActorSettings> actorSettingsDelegate)
         {
             actorSettingsDelegate.Invoke(this.actorSettings);
-        }
-
-        /// <summary>
-        /// Returns if the Dapr Interactor is initialized
-        /// </summary>
-        public static bool IsDaprInteractorInitialized()
-        {
-            return (DaprInteractor!= null);
         }
 
         internal Task SerializeSettingsAndRegisteredTypes(IBufferWriter<byte> output)
@@ -115,7 +106,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal async Task DeactivateAsync(string actorTypeName, string actorId)
         {
-            await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
+            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}", actorTypeName, actorId))
+            {
+                await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
+            }
         }
 
         /// <summary>
@@ -130,7 +124,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
+            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}, MethodName:{reminder}", actorTypeName, actorId, actorMethodName))
+            {
+                return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -159,7 +156,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
+            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}, ReminderName:{reminder}", actorTypeName, actorId, reminderName))
+            {
+                return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -172,7 +172,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task FireTimerAsync(string actorTypeName, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
+            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}, TimerName:{timer}", actorTypeName, actorId, timerName))
+            {
+                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
+            }
         }
 
         private ActorManager GetActorManager(string actorTypeName)
@@ -180,9 +183,7 @@ namespace Dapr.Actors.Runtime
             if (!this.actorManagers.TryGetValue(actorTypeName, out var actorManager))
             {
                 var errorMsg = $"Actor type {actorTypeName} is not registered with Actor runtime.";
-                var ex = new InvalidOperationException(errorMsg);
-                this.logger.LogError(ex, "An error was encountered for ActorType: {actorType}", actorTypeName);
-                throw ex;
+                throw new InvalidOperationException(errorMsg);
             }
 
             return actorManager;
