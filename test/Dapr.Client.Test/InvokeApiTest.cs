@@ -9,6 +9,7 @@ namespace Dapr.Client.Test
     using System.Collections.Generic;
     using System.Linq;
     using System.Net;
+    using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.AppCallback.Autogen.Grpc.v1;
@@ -539,10 +540,10 @@ namespace Dapr.Client.Test
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().BeNull();
-                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(0);
+                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.Response.Body.Should().BeNull();
+                ex.Response.HttpStatusCode.Should().BeNull();
             }
         }
 
@@ -610,10 +611,9 @@ namespace Dapr.Client.Test
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().Be(grpcErrorInfoDetailHttpErrorMsg);
-                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
+                ex.Response.GrpcStatusInfo.Should().BeNull();
+                Encoding.UTF8.GetString(ex.Response.Body).Should().Be(grpcErrorInfoDetailHttpErrorMsg);
+                ex.Response.HttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
             }
         }
         
@@ -782,10 +782,10 @@ namespace Dapr.Client.Test
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().BeNull();
-                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(0);
+                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.Response.Body.Should().BeNull();
+                ex.Response.HttpStatusCode.Should().BeNull();
             }
         }
 
@@ -853,10 +853,9 @@ namespace Dapr.Client.Test
                 ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
                 ex.InnerException.Message.Should().Be(rpcExceptionMessage);
 
-                ex.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
-                ex.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
-                ex.GrpcStatusInfo.InnerHttpErrorMessage.Should().Be(grpcErrorInfoDetailHttpErrorMsg);
-                ex.GrpcStatusInfo.InnerHttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
+                ex.Response.GrpcStatusInfo.Should().BeNull();
+                Encoding.UTF8.GetString(ex.Response.Body).Should().Be(grpcErrorInfoDetailHttpErrorMsg);
+                ex.Response.HttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
             }
         }
 

@@ -17,32 +17,20 @@ namespace Dapr.Client
         /// <summary>
         /// The constructor.
         /// </summary>
-        public GrpcStatusInfo(Grpc.Core.StatusCode statusCode, string message, int? innerHttpStatusCode = default, string innerHttpErrorMessage = default)
+        public GrpcStatusInfo(Grpc.Core.StatusCode statusCode, string message)
         {
             this.GrpcStatusCode = statusCode;
             this.GrpcErrorMessage = message;
-            this.InnerHttpStatusCode = innerHttpStatusCode;
-            this.InnerHttpErrorMessage = innerHttpErrorMessage;
         }
 
         /// <summary>
         /// The gRPC Status Code
         /// </summary>
-        public Grpc.Core.StatusCode GrpcStatusCode { get; set; }
+        public Grpc.Core.StatusCode GrpcStatusCode { get; }
 
         /// <summary>
         /// The gRPC Error Message
         /// </summary>
-        public string GrpcErrorMessage { get; set; }
-
-        /// <summary>
-        /// The HTTP Status Code
-        /// </summary>
-        public int? InnerHttpStatusCode { get; set; }
-
-        /// <summary>
-        /// The HTTP Error Message
-        /// </summary>
-        public string InnerHttpErrorMessage { get; set; }
+        public string GrpcErrorMessage { get; }
     }
 }

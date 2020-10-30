@@ -16,15 +16,15 @@ namespace Dapr.Client
         /// <summary>
         /// The constructor.
         /// </summary>
-        public InvocationException(string message, Exception innerException, GrpcStatusInfo grpcStatusInfo)
+        public InvocationException(string message, Exception innerException, InvocationResponse<byte[]> response)
             : base(message, innerException)
         {
-            this.GrpcStatusInfo = grpcStatusInfo;
+            this.Response = response;
         }
 
         /// <summary>
-        /// The gRPC Status Info
+        /// The Response
         /// </summary>
-        public GrpcStatusInfo GrpcStatusInfo { get; }
+        public InvocationResponse<byte[]> Response { get; }
     }
 }

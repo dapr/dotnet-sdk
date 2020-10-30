@@ -13,30 +13,15 @@ namespace Dapr.Client
     /// <summary>
     /// Represents a response returned by service invocation
     /// </summary>
-    /// <typeparam name="TRequest">Data type of the request.</typeparam>
     /// <typeparam name="TResponse">Data type of the response.</typeparam>
-    public sealed class InvocationResponse<TRequest, TResponse>
+    public sealed class InvocationResponse<TResponse>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="InvocationResponse{TRequest,TResponse}"/> class.
+        /// Initializes a new instance of the <see cref="InvocationResponse{TResponse}"/> class.
         /// </summary>
         public InvocationResponse()
         {
         }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="InvocationResponse{TRequest,TResponse}"/> class.
-        /// </summary>
-        /// <param name="request">The request.</param>
-        public InvocationResponse(InvocationRequest<TRequest> request)
-        {
-            this.Request = request;
-        }
-
-        /// <summary>
-        /// Gets or sets the reference to Invoke Request.
-        /// </summary>
-        public InvocationRequest<TRequest> Request { get; set; }
 
         /// <summary>
         /// Gets or sets the response body.
