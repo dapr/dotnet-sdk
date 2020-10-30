@@ -11,6 +11,7 @@ namespace Dapr
     using System.Net;
     using System.Net.Http;
     using System.Net.Http.Headers;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Google.Protobuf;
     using Grpc.Core;
@@ -71,6 +72,17 @@ namespace Dapr
             {
                 message.TrailingHeaders.Add(StatusTrailer, grpcStatusCode.Value.ToString("D"));
             }
+
+            return message;
+        }
+
+        public static HttpResponseMessage CreateResponseFromHttpServer(
+            HttpStatusCode statusCode,
+            HttpContent payload)
+        {
+            var message = CreateResponse(statusCode, payload);
+            // Add Dapr HTTP status header
+            message.Headers.Add("dapr-http-status", "200");
 
             return message;
         }

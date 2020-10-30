@@ -5,19 +5,25 @@
 
 namespace Dapr.Client.Test
 {
+    using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Net;
+    using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Dapr.AppCallback.Autogen.Grpc.v1;
+    using Dapr.Client;
     using Dapr.Client.Autogen.Grpc.v1;
     using Dapr.Client.Autogen.Test.Grpc.v1;
-    using Dapr.AppCallback.Autogen.Grpc.v1;
     using Dapr.Client.Http;
     using FluentAssertions;
+    using Google.Protobuf;
+    using Google.Protobuf.WellKnownTypes;
     using Grpc.Core;
     using Grpc.Net.Client;
+    using Moq;
     using Xunit;
-    using System.Linq;
 
     public class InvokeApiTest
     {
@@ -195,7 +201,7 @@ namespace Dapr.Client.Test
             entry.Completion.SetResult(response);
 
             //validate response
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<RpcException>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<InvocationException>();
         }
 
         [Fact]
@@ -414,6 +420,446 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_CalleeSideGrpc()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .Build();
+
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
+            var body = new Request() { RequestParameter = "Hello " };
+            var task = client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
+
+            // Validate Response
+            var invokedResponse = await task;
+            invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.Headers.Count.Should().Be(0);
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
+            invokedResponse.HttpStatusCode.Should().BeNull();
+            invokedResponse.GrpcStatusInfo.Should().NotBeNull();
+            invokedResponse.GrpcStatusInfo.GrpcStatusCode.Should().Be(Grpc.Core.StatusCode.OK);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_CalleeSideHttp()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("dapr-http-status", "200")
+                .Build();
+
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
+            var body = new Request() { RequestParameter = "Hello " };
+            var task = client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
+
+            // Validate Response
+            var invokedResponse = await task;
+            invokedResponse.Body.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.Headers.ContainsKey("dapr-http-status").Should().BeTrue();
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+            invokedResponse.GrpcStatusInfo.Should().BeNull();
+            invokedResponse.HttpStatusCode.Should().NotBeNull();
+            invokedResponse.HttpStatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_GrpcServerReturnsNonSuccessResponse()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .Build();
+
+
+            var trailers = new Metadata();
+             const string grpcErrorInfoReason = "Insufficient permissions";
+            int grpcStatusCode = Convert.ToInt32(StatusCode.PermissionDenied);
+            const string grpcStatusMessage = "Bad permissions";
+            var details = new Google.Rpc.Status
+            {
+                Code = grpcStatusCode,
+                Message = grpcStatusMessage,
+            };
+
+            var errorInfo = new Google.Rpc.ErrorInfo
+            {
+                Reason = grpcErrorInfoReason,
+                Domain = "dapr.io",
+            };
+            details.Details.Add(Google.Protobuf.WellKnownTypes.Any.Pack(errorInfo));
+
+
+            var entry = new Metadata.Entry("grpc-status-details-bin", Google.Protobuf.MessageExtensions.ToByteArray(details));
+            trailers.Add(entry);
+
+            const string rpcExceptionMessage = "No access to app";
+            const StatusCode rpcStatusCode = StatusCode.PermissionDenied;
+            const string rpcStatusDetail = "Insufficient permissions";
+
+            var rpcException = new RpcException(new Status(rpcStatusCode, rpcStatusDetail), trailers, rpcExceptionMessage);
+
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            try
+            {
+                var body = new Request() { RequestParameter = "Hello " };
+                await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
+                Assert.False(true);
+            }
+            catch(InvocationException ex)
+            {
+                ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
+                ex.InnerException.Message.Should().Be(rpcExceptionMessage);
+
+                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.Response.Body.Should().BeNull();
+                ex.Response.HttpStatusCode.Should().BeNull();
+            }
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_HttpServerReturnsNonSuccessResponse()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            invokeResponse.ContentType = Constants.ContentTypeApplicationJson;
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("dapr-http-status", "200")
+                .Build();
+
+
+            var trailers = new Metadata();
+             const string grpcErrorInfoReason = "Insufficient permissions";
+            const int grpcErrorInfoDetailHttpCode = 500;
+            const string grpcErrorInfoDetailHttpErrorMsg = "no permissions";
+            int grpcStatusCode = Convert.ToInt32(StatusCode.PermissionDenied);
+            const string grpcStatusMessage = "Bad permissions";
+            var details = new Google.Rpc.Status
+            {
+                Code = grpcStatusCode,
+                Message = grpcStatusMessage,
+            };
+
+            var errorInfo = new Google.Rpc.ErrorInfo
+            {
+                Reason = grpcErrorInfoReason,
+                Domain = "dapr.io",
+            };
+            errorInfo.Metadata.Add("http.code", grpcErrorInfoDetailHttpCode.ToString());
+            errorInfo.Metadata.Add("http.error_message", grpcErrorInfoDetailHttpErrorMsg);
+            details.Details.Add(Google.Protobuf.WellKnownTypes.Any.Pack(errorInfo));
+
+
+            var entry = new Metadata.Entry("grpc-status-details-bin", Google.Protobuf.MessageExtensions.ToByteArray(details));
+            trailers.Add(entry);
+
+            const string rpcExceptionMessage = "No access to app";
+            const StatusCode rpcStatusCode = StatusCode.PermissionDenied;
+            const string rpcStatusDetail = "Insufficient permissions";
+
+            var rpcException = new RpcException(new Status(rpcStatusCode, rpcStatusDetail), trailers, rpcExceptionMessage);
+
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            try
+            {
+                var body = new Request() { RequestParameter = "Hello " };
+                await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body);
+                Assert.False(true);
+            }
+            catch(InvocationException ex)
+            {
+                ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
+                ex.InnerException.Message.Should().Be(rpcExceptionMessage);
+
+                ex.Response.GrpcStatusInfo.Should().BeNull();
+                Encoding.UTF8.GetString(ex.Response.Body).Should().Be(grpcErrorInfoDetailHttpErrorMsg);
+                ex.Response.HttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
+            }
+        }
+        
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideGrpc()
+        {
+            var client = new MockClient();
+            var responseBody = new Response() { Name = "Look, I was invoked!" };
+            // var dataBytes = new byte[]{1,2,3};
+            var responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseBody);
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName };
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .Build();
+
+            var requestBody = new Request() { RequestParameter = "Hello " };
+            var requestBytes = JsonSerializer.SerializeToUtf8Bytes(requestBody);
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
+            var task = client.DaprClient.InvokeMethodRawAsync("test", "testMethod", requestBytes);
+
+            // Validate Response
+            var invokedResponse = await task;
+            var invokedResponseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
+            invokedResponseBody.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.HttpStatusCode.Should().BeNull();
+            invokedResponse.GrpcStatusInfo.Should().NotBeNull();
+            invokedResponse.GrpcStatusInfo.GrpcStatusCode.Should().Be(Grpc.Core.StatusCode.OK);
+            invokedResponse.Headers.Count.Should().Be(0);
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
+
+            var expectedRequest = new Autogen.Grpc.v1.InvokeServiceRequest
+            {
+                Id = "test",
+                Message = new InvokeRequest
+                {
+                    Method = "testMethod",
+                    Data = new Any { Value = ByteString.CopyFrom(requestBytes), TypeUrl = typeof(byte[]).FullName },
+                    HttpExtension = new Autogen.Grpc.v1.HTTPExtension
+                    {
+                        Verb = Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post,
+                    },
+                    ContentType = Constants.ContentTypeApplicationJson,
+                },
+            };
+            client.Mock.Verify(m => m.InvokeServiceAsync(It.Is<Autogen.Grpc.v1.InvokeServiceRequest>(request => request.Equals(expectedRequest)), It.IsAny<CallOptions>()));
+
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideHttp()
+        {
+            var client = new MockClient();
+            var responseBody = new Response() { Name = "Look, I was invoked!" };
+            var responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseBody);
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName };
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("dapr-http-status", "200")
+                .Build();
+
+            var requestBody = new Request() { RequestParameter = "Hello " };
+            var requestBytes = JsonSerializer.SerializeToUtf8Bytes(requestBody);
+            
+            client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
+
+            var task = client.DaprClient.InvokeMethodRawAsync("test", "testMethod", requestBytes);
+
+            // Validate Response
+            var invokedResponse = await task;
+            var invokedResponseBody = JsonSerializer.Deserialize<Response>(invokedResponse.Body);
+            invokedResponseBody.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.Headers.ContainsKey("dapr-http-status");
+            invokedResponse.ContentType = Constants.ContentTypeApplicationJson;
+            invokedResponse.GrpcStatusInfo.Should().BeNull();
+            invokedResponse.HttpStatusCode.Should().NotBeNull();
+            invokedResponse.HttpStatusCode.Should().Be(HttpStatusCode.OK);
+            invokedResponse.Headers.ContainsKey("dapr-http-status").Should().BeTrue();
+            invokedResponse.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+
+            var expectedRequest = new Autogen.Grpc.v1.InvokeServiceRequest
+            {
+                Id = "test",
+                Message = new InvokeRequest
+                {
+                    Method = "testMethod",
+                    Data = new Any { Value = ByteString.CopyFrom(requestBytes), TypeUrl = typeof(byte[]).FullName },
+                    HttpExtension = new Autogen.Grpc.v1.HTTPExtension
+                    {
+                        Verb = Autogen.Grpc.v1.HTTPExtension.Types.Verb.Post,
+                    },
+                    ContentType = "application/json",
+                },
+            };
+            client.Mock.Verify(m => m.InvokeServiceAsync(It.Is<Autogen.Grpc.v1.InvokeServiceRequest>(request => request.Equals(expectedRequest)), It.IsAny<CallOptions>()));
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_GrpcServerReturnsNonSuccessResponse()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .Build();
+
+            var trailers = new Metadata();
+             const string grpcErrorInfoReason = "Insufficient permissions";
+            int grpcStatusCode = Convert.ToInt32(StatusCode.PermissionDenied);
+            const string grpcStatusMessage = "Bad permissions";
+            var details = new Google.Rpc.Status
+            {
+                Code = grpcStatusCode,
+                Message = grpcStatusMessage,
+            };
+
+            var errorInfo = new Google.Rpc.ErrorInfo
+            {
+                Reason = grpcErrorInfoReason,
+                Domain = "dapr.io",
+            };
+            details.Details.Add(Google.Protobuf.WellKnownTypes.Any.Pack(errorInfo));
+
+
+            var entry = new Metadata.Entry("grpc-status-details-bin", Google.Protobuf.MessageExtensions.ToByteArray(details));
+            trailers.Add(entry);
+
+            const string rpcExceptionMessage = "No access to app";
+            const StatusCode rpcStatusCode = StatusCode.PermissionDenied;
+            const string rpcStatusDetail = "Insufficient permissions";
+
+            var rpcException = new RpcException(new Status(rpcStatusCode, rpcStatusDetail), trailers, rpcExceptionMessage);
+
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+
+            try
+            {
+                var body = new Request() { RequestParameter = "Hello " };
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
+                await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes);
+                Assert.False(true);
+            }
+            catch(InvocationException ex)
+            {
+                ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
+                ex.InnerException.Message.Should().Be(rpcExceptionMessage);
+
+                ex.Response.GrpcStatusInfo.GrpcErrorMessage.Should().Be(grpcStatusMessage);
+                ex.Response.GrpcStatusInfo.GrpcStatusCode.Should().Be(grpcStatusCode);
+                ex.Response.Body.Should().BeNull();
+                ex.Response.HttpStatusCode.Should().BeNull();
+            }
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_HttpServerReturnsNonSuccessResponse()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("dapr-status-header", "200")
+                .Build();
+
+            var trailers = new Metadata();
+             const string grpcErrorInfoReason = "Insufficient permissions";
+            const int grpcErrorInfoDetailHttpCode = 500;
+            const string grpcErrorInfoDetailHttpErrorMsg = "no permissions";
+            int grpcStatusCode = Convert.ToInt32(StatusCode.PermissionDenied);
+            const string grpcStatusMessage = "Bad permissions";
+            var details = new Google.Rpc.Status
+            {
+                Code = grpcStatusCode,
+                Message = grpcStatusMessage,
+            };
+
+            var errorInfo = new Google.Rpc.ErrorInfo
+            {
+                Reason = grpcErrorInfoReason,
+                Domain = "dapr.io",
+            };
+            errorInfo.Metadata.Add("http.code", grpcErrorInfoDetailHttpCode.ToString());
+            errorInfo.Metadata.Add("http.error_message", grpcErrorInfoDetailHttpErrorMsg);
+            details.Details.Add(Google.Protobuf.WellKnownTypes.Any.Pack(errorInfo));
+
+
+            var entry = new Metadata.Entry("grpc-status-details-bin", Google.Protobuf.MessageExtensions.ToByteArray(details));
+            trailers.Add(entry);
+
+            const string rpcExceptionMessage = "No access to app";
+            const StatusCode rpcStatusCode = StatusCode.PermissionDenied;
+            const string rpcStatusDetail = "Insufficient permissions";
+
+            var rpcException = new RpcException(new Status(rpcStatusCode, rpcStatusDetail), trailers, rpcExceptionMessage);
+
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+
+            try
+            {
+                var body = new Request() { RequestParameter = "Hello " };
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
+                await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes);
+                Assert.False(true);
+            }
+            catch(InvocationException ex)
+            {
+                ex.Message.Should().Be("Exception while invoking testMethod on appId:test");
+                ex.InnerException.Message.Should().Be(rpcExceptionMessage);
+
+                ex.Response.GrpcStatusInfo.Should().BeNull();
+                Encoding.UTF8.GetString(ex.Response.Body).Should().Be(grpcErrorInfoDetailHttpErrorMsg);
+                ex.Response.HttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
+            }
+        }
+
+        [Fact]
         public async Task InvokeMethodAsync_AppCallback_SayHello()
         {
             // Configure Client
@@ -481,6 +927,17 @@ namespace Dapr.Client.Test
 
             var streamContent = await GrpcUtils.CreateResponseContent(dataResponse);
             var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
+            entry.Completion.SetResult(response);
+        }
+
+        private async void SendResponseFromHttpServer<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
+        {
+            var dataAny = TypeConverters.ToAny(data, options);
+            var dataResponse = new InvokeResponse();
+            dataResponse.Data = dataAny;
+
+            var streamContent = await GrpcUtils.CreateResponseContent(dataResponse);
+            var response = GrpcUtils.CreateResponseFromHttpServer(HttpStatusCode.OK, streamContent);
             entry.Completion.SetResult(response);
         }
 
