@@ -106,7 +106,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal async Task DeactivateAsync(string actorTypeName, string actorId)
         {
-            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {Actorid}", actorTypeName, actorId))
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}", actorTypeName, actorId))
             {
                 await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
             }
