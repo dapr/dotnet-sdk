@@ -156,7 +156,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {Actorid}, ReminderName: {Reminder}", actorTypeName, actorId, reminderName))
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, ReminderName: {Reminder}", actorTypeName, actorId, reminderName))
             {
                 return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
             }
