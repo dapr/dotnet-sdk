@@ -106,7 +106,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal async Task DeactivateAsync(string actorTypeName, string actorId)
         {
-            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}", actorTypeName, actorId))
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {Actorid}", actorTypeName, actorId))
             {
                 await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
             }
@@ -124,7 +124,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
         {
-            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}, MethodName:{reminder}", actorTypeName, actorId, actorMethodName))
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {Actorid}, MethodName: {Reminder}", actorTypeName, actorId, actorMethodName))
             {
                 return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
             }
@@ -156,7 +156,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}, ReminderName:{reminder}", actorTypeName, actorId, reminderName))
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {Actorid}, ReminderName: {Reminder}", actorTypeName, actorId, reminderName))
             {
                 return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
             }
@@ -172,7 +172,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task FireTimerAsync(string actorTypeName, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
-            using(this.logger.BeginScope("ActorType: {actorType}, ActorId: {actorid}, TimerName:{timer}", actorTypeName, actorId, timerName))
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {Actorid}, TimerName: {Timer}", actorTypeName, actorId, timerName))
             {
                 return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
             }

@@ -22,7 +22,11 @@ namespace Dapr.Actors.Runtime
     {
         private readonly string traceId;
         private readonly string actorTypeName;
-        private readonly ILogger logger;
+
+        /// <summary>
+        /// The logger
+        /// </summary>
+        protected ILogger logger { get; }
 
         /// <summary>
         /// Contains timers to be invoked.

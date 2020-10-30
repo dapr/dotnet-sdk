@@ -55,7 +55,7 @@ namespace Microsoft.AspNetCore.Builder
                     {
                         if (logger != null)
                         {
-                            logger.LogInformation("Topic subscription doesn't support route with parameters. Subscription for topic {name} is removed.", entry.Name);
+                            logger.LogError("Topic subscription doesn't support route with parameters. Subscription for topic {name} is removed.", entry.Name);
                         }
 
                         continue;
