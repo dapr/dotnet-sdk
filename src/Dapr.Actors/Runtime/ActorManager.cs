@@ -14,13 +14,13 @@ namespace Dapr.Actors.Runtime
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Communication;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Manages Actors of a specific actor type.
     /// </summary>
     internal sealed class ActorManager : IActorManager
     {
-        private const string TraceType = "ActorManager";
         private const string ReceiveReminderMethodName = "ReceiveReminderAsync";
         private const string TimerMethodName = "FireTimerAsync";
         private readonly ActorService actorService;
@@ -36,7 +36,9 @@ namespace Dapr.Actors.Runtime
         // method info map used by non-remoting calls.
         private readonly ActorMethodInfoMap actorMethodInfoMap;
 
-        internal ActorManager(ActorService actorService)
+        private readonly ILogger logger;
+
+        internal ActorManager(ActorService actorService, ILoggerFactory loggerFactory)
         {
             this.actorService = actorService;
 
@@ -50,6 +52,8 @@ namespace Dapr.Actors.Runtime
             this.timerMethodContext = ActorMethodContext.CreateForReminder(TimerMethodName);
             this.serializersManager = IntializeSerializationManager(null);
             this.messageBodyFactory = new WrappedRequestMessageFactory();
+
+            this.logger = loggerFactory?.CreateLogger(this.GetType());
         }
 
         internal ActorTypeInformation ActorTypeInfo => this.actorService.ActorTypeInfo;
@@ -129,7 +133,6 @@ namespace Dapr.Actors.Runtime
                 else
                 {
                     var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
-                    ActorTrace.Instance.WriteError(TraceType, errorMsg);
                     throw new ArgumentException(errorMsg);
                 }
 
@@ -234,7 +237,6 @@ namespace Dapr.Actors.Runtime
             if (!this.activeActors.TryGetValue(actorId, out var actor))
             {             
                 var errorMsg = $"Actor {actorId} is not yet activated.";
-                ActorTrace.Instance.WriteError(TraceType, errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
 
@@ -248,10 +250,9 @@ namespace Dapr.Actors.Runtime
                 // PostActivate will save the state, its not invoked when actorFunc invocation throws.
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await actor.OnInvokeFailedAsync();
-                ActorTrace.Instance.WriteError(TraceType, $"Got exception from actor method invocation: {ex}");
                 throw;
             }
 
@@ -277,7 +278,11 @@ namespace Dapr.Actors.Runtime
             var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
             var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
 
-            var responseMsgBody = RemoteException.FromException(ex);
+            (var responseMsgBody, var errorMsg) = RemoteException.FromException(ex);
+            if(errorMsg != null)
+            {
+                this.logger.LogWarning(ex, errorMsg);
+            }
 
             return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }

@@ -4,7 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-
     <!--
       This is a workaround for https://github.com/dotnet/sdk/issues/14019
       The extra reference is harmless but is needed due to a bug in the 5.0 RC dotnet SDK.

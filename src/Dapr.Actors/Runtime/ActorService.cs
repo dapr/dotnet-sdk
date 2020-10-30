@@ -6,6 +6,7 @@
 namespace Dapr.Actors.Runtime
 {
     using System;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Represents a host for an actor type within the actor runtime.
@@ -18,14 +19,17 @@ namespace Dapr.Actors.Runtime
         /// Initializes a new instance of the <see cref="ActorService"/> class.
         /// </summary>
         /// <param name="actorTypeInfo">The type information of the Actor.</param>
+        /// <param name="loggerFactory">The logger factory.</param>
         /// <param name="actorFactory">The factory method to create Actor objects.</param>
         public ActorService(
             ActorTypeInformation actorTypeInfo,
+            ILoggerFactory loggerFactory,
             Func<ActorService, ActorId, Actor> actorFactory = null)
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.actorFactory = actorFactory ?? this.DefaultActorFactory;
             this.StateProvider = new DaprStateProvider();
+            this.LoggerFactory = loggerFactory;
         }
 
         /// <summary>
@@ -34,6 +38,11 @@ namespace Dapr.Actors.Runtime
         public ActorTypeInformation ActorTypeInfo { get; }
 
         internal DaprStateProvider StateProvider { get; }
+
+        /// <summary>
+        /// Gets the LoggerFactory for actor service
+        /// </summary>
+        public ILoggerFactory LoggerFactory { get; private set; }
 
         internal Actor CreateActor(ActorId actorId)
         {

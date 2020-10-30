@@ -11,6 +11,7 @@ namespace Dapr.Actors.Test.Runtime
     using FluentAssertions;
     using Moq;
     using Xunit;
+    using Microsoft.Extensions.Logging;
 
     public sealed class ActorTests
     {
@@ -54,7 +55,8 @@ namespace Dapr.Actors.Test.Runtime
             var actorTypeInformation = ActorTypeInformation.Get(typeof(TestActor));
             Func<ActorService, ActorId, TestActor> actorFactory = (service, id) =>
                 new TestActor(service, id, actorStateManager);
-            var actorService = new ActorService(actorTypeInformation, actorFactory);
+            var loggerFactory = new LoggerFactory();
+            var actorService = new ActorService(actorTypeInformation, loggerFactory, actorFactory);
             var testActor = actorFactory.Invoke(actorService, ActorId.CreateRandom());
             return testActor;
         }
