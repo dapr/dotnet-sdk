@@ -51,7 +51,7 @@ namespace Dapr.AspNetCore.Test
             // Create Response & Respond
             var state = new Widget() { Size = "small", Color = "yellow", };
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState(state, entry);
+            await SendResponseWithState(state, entry);
 
             // Get response and validate
             await task;
@@ -77,7 +77,7 @@ namespace Dapr.AspNetCore.Test
             // Create Response & Respond
             var state = new Widget() { Size = "small", Color = "yellow", };
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            SendResponseWithState(state, entry);
+            await SendResponseWithState(state, entry);
 
             // Get response and validate
             await task;
@@ -107,7 +107,7 @@ namespace Dapr.AspNetCore.Test
             };
         }
 
-        private async void SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
+        private async Task SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
         {
             var stateData = TypeConverters.ToJsonByteString(state);
             var stateResponse = new GetStateResponse();

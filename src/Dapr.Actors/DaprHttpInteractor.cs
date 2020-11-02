@@ -19,6 +19,7 @@ namespace Dapr.Actors
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Class to interact with Dapr runtime over http.
@@ -26,7 +27,6 @@ namespace Dapr.Actors
     internal class DaprHttpInteractor : IDaprInteractor
     {
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
-        private const string TraceType = "DaprHttpInteractor";
         private readonly string daprPort;
         private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
@@ -420,30 +420,18 @@ namespace Dapr.Actors
             CancellationToken cancellationToken)
         {
             HttpResponseMessage response;
-            try
-            {
-                // Get the request using the Func as same request cannot be resent when retries are implemented.
-                var request = requestFunc.Invoke();
 
-                // add token for dapr api token based authentication
-                var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-                if (daprApiToken != null)
-                {
-                    request.Headers.Add("dapr-api-token", daprApiToken);
-                }
+            // Get the request using the Func as same request cannot be resent when retries are implemented.
+            var request = requestFunc.Invoke();
 
-                response = await this.httpClient.SendAsync(request, cancellationToken);
-            }
-            catch (AuthenticationException ex)
+            // add token for dapr api token based authentication
+            var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+            if (daprApiToken != null)
             {
-                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
-                throw;
+                request.Headers.Add("dapr-api-token", daprApiToken);
             }
-            catch (HttpRequestException ex)
-            {
-                ActorTrace.Instance.WriteError(TraceType, ex.ToString());
-                throw;
-            }
+
+            response = await this.httpClient.SendAsync(request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {

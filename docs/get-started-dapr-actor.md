@@ -277,7 +277,7 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
 
 ### **Optional** - Override Default Actor Settings
 
-Actor Settings are per app.  To override the settings described [here](https://github.com/dapr/docs/blob/master/reference/api/actors_api.md#dapr-calling-to-user-service-code) use the `ConfigureActorSettings()` API.
+Actor Settings are per app.  To override the settings described [here](https://docs.dapr.io/reference/api/actors_api/) use the `ConfigureActorSettings()` API.
 
 The following code extends the previous section to do this.  Please note the values below are an **example** only.
 
