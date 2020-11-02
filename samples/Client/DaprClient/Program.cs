@@ -98,7 +98,6 @@ namespace DaprClient
             #endregion
 
             #region Service Invoke via GRPC - Required GrpcServiceSample
-            //If you want to try calling for grpc sample, you can uncomment below 3 method callings and start grpcsample service
 
             if (config.GetValue("useGrpcsample", false))
             {
