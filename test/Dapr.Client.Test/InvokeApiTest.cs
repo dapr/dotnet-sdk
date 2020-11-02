@@ -11,6 +11,7 @@ namespace Dapr.Client.Test
     using System.Net;
     using System.Text;
     using System.Text.Json;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.AppCallback.Autogen.Grpc.v1;
     using Dapr.Client;
@@ -420,6 +421,47 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task InvokeMethodAsync_WithCancelledToken()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .Build();
+
+            const string rpcExceptionMessage = "Call canceled by client";
+            const StatusCode rpcStatusCode = StatusCode.Cancelled;
+            const string rpcStatusDetail = "Call canceled";
+
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+            try
+            {
+                Request request = new Request() { RequestParameter = "Hello " };
+                await client.DaprClient.InvokeMethodAsync<Request, Response>("test", "test", request, cancellationToken:ct);
+                Assert.False(true);
+            }
+            catch(OperationCanceledException ex)
+            {
+                ex.Message.Should().Be(rpcExceptionMessage);
+                ((Grpc.Core.RpcException)ex.InnerException).Status.Equals(rpcStatus);
+            }
+        }
+
+        [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithResponse_CalleeSideGrpc()
         {
             var client = new MockClient();
@@ -616,7 +658,49 @@ namespace Dapr.Client.Test
                 ex.Response.HttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
             }
         }
-        
+
+        [Fact]
+        public async Task InvokeMethodWithResponseAsync_WithCancelledToken()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            invokeResponse.ContentType = Constants.ContentTypeApplicationJson;
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .AddHeader("dapr-http-status", "200")
+                .Build();
+
+            const string rpcExceptionMessage = "Call canceled by client";
+            const StatusCode rpcStatusCode = StatusCode.Cancelled;
+            const string rpcStatusDetail = "Call canceled";
+
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+            try
+            {
+                var body = new Request() { RequestParameter = "Hello " };
+                await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body, cancellationToken:ct);
+                Assert.False(true);
+            }
+            catch(OperationCanceledException ex)
+            {
+                ex.Message.Should().Be(rpcExceptionMessage);
+                ((Grpc.Core.RpcException)ex.InnerException).Status.Equals(rpcStatus);
+            }
+        }
 
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeRawMethodWithResponse_CalleeSideGrpc()
@@ -856,6 +940,48 @@ namespace Dapr.Client.Test
                 ex.Response.GrpcStatusInfo.Should().BeNull();
                 Encoding.UTF8.GetString(ex.Response.Body).Should().Be(grpcErrorInfoDetailHttpErrorMsg);
                 ex.Response.HttpStatusCode.Should().Be(grpcErrorInfoDetailHttpCode);
+            }
+        }
+
+        [Fact]
+        public async Task InvokeRawMethodAsync_WithCancelledToken()
+        {
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+            
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .Build();
+
+            const string rpcExceptionMessage = "Call canceled by client";
+            const StatusCode rpcStatusCode = StatusCode.Cancelled;
+            const string rpcStatusDetail = "Call canceled";
+
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+            try
+            {
+                var body = new Request() { RequestParameter = "Hello " };
+                var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
+                await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes, cancellationToken:ct);
+                Assert.False(true);
+            }
+            catch(OperationCanceledException ex)
+            {
+                ex.Message.Should().Be(rpcExceptionMessage);
+                ((Grpc.Core.RpcException)ex.InnerException).Status.Equals(rpcStatus);
             }
         }
 

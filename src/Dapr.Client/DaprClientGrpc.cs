@@ -427,6 +427,10 @@ namespace Dapr.Client
                 return invokeResponse;
 
             }
+            catch (RpcException rpc) when (rpc.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(rpc.Message, rpc, cancellationToken);
+            }
             catch (RpcException ex)
             {
                 var invokeErrorResponse = new InvocationResponse<byte[]>();
