@@ -24,8 +24,27 @@ Deleted State!
 Executing transaction - save state and delete state
 Executed State Transaction!
 State not found in store
+Published deposit event!
 Done
  ```
+
+If you want to invoke RoutingService via HTTP or GrpcService via gRPC, you should run [RoutingService](..\..\AspNetCore\RoutingSample) or [GrpcService](..\..\AspNetCore\GrpcServiceSample) sample firstly, then run this command:
+
+``` sh
+ dapr run --app-id gRPC_Client -- dotnet run --useRouting true
+```
+
+or
+
+``` sh
+ dapr run --app-id gRPC_Client -- dotnet run --useGrpcsample true
+```
+
+or pass these 2 options to invoke RoutingService via HTTP and GrpcService via gRPC:
+
+``` sh
+ dapr run --app-id gRPC_Client -- dotnet run --useRouting true --useGrpcsample true
+```
 
 ## Invoking Services
 This solution contains a sample [RoutingSample service](..\..\AspNetCore\RoutingSample), which implements a simple banking application in ASP.NET core.
