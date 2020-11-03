@@ -25,11 +25,12 @@ namespace Dapr.Actors.Test
         public void TestThrowActorMethodInvocationException()
         {
             // Create Remote Actor Method test Exception
-            var exception = new InvalidOperationException();
             var message = "Remote Actor Exception";
+            var innerMessage = "Bad time zone";
+            var exception = new InvalidOperationException(message, new InvalidTimeZoneException(innerMessage));
 
             // Create Serialized Exception
-            (var serializedException, _) = RemoteException.FromException(new InvalidOperationException());
+            (var serializedException, _) = RemoteException.FromException(exception);
 
             // De Serialize Exception
             var isDeserialzied = RemoteException.ToException(
@@ -39,7 +40,9 @@ namespace Dapr.Actors.Test
             var ex = this.ThrowRemoteException(message, remoteMethodException);
             ex.Should().BeOfType<ActorMethodInvocationException>();
             ex.InnerException.Should().BeOfType<InvalidOperationException>();
+            ex.InnerException.InnerException.Should().BeOfType<InvalidTimeZoneException>();
             ex.Message.Should().Be(message);
+            ex.InnerException.InnerException.Message.Should().Be(innerMessage);
         }
 
         private Exception ThrowRemoteException(string message, Exception exception)

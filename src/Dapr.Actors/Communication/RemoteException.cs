@@ -13,10 +13,12 @@ namespace Dapr.Actors.Communication
     using System.Runtime.Serialization.Formatters;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
+    using System.Text.Json;
     using System.Xml;
     using Dapr.Actors;
     using Dapr.Actors.Resources;
     using Microsoft.Extensions.Logging;
+    using System.Reflection;
 
     /// <summary>
     /// Fault type used by Service Remoting to transfer the exception details from the service to the client.
@@ -25,15 +27,16 @@ namespace Dapr.Actors.Communication
     internal class RemoteException
     {
         private static readonly DataContractSerializer ServiceExceptionDataSerializer = new DataContractSerializer(typeof(ServiceExceptionData));
+        private static readonly string ExceptionClassName = "ClassName";
+        private static readonly string ExceptionMessage = "Message";
+        private static readonly string ExceptionSource = "Source";
+        private static readonly string ExceptionHResult = "HResult";
+        private static readonly string ExceptionInner = "InnerException";
+        private static readonly string ExceptionData = "Data";
 
-        private static readonly BinaryFormatter binaryFormatter;
 
         static RemoteException()
         {
-            binaryFormatter = new BinaryFormatter
-            {
-                AssemblyFormat = FormatterAssemblyStyle.Simple,
-            };
         }
 
         public RemoteException(List<ArraySegment<byte>> buffers)
@@ -57,10 +60,31 @@ namespace Dapr.Actors.Communication
         {
             try
             {
-                using var stream = new MemoryStream();
-                binaryFormatter.Serialize(stream, exception);
-                stream.Flush();
-                return (stream.ToArray(), string.Empty);
+                var dict = new Dictionary<string, object>();
+
+                var type = exception.GetType();
+                dict[ExceptionClassName] = type.FullName;
+                dict[ExceptionMessage] = exception.Message;
+                dict[ExceptionData] = exception.Data;
+                dict[ExceptionHResult] = exception.HResult;
+                dict[ExceptionSource] = exception.Source;
+
+                var innerExceptionDict = new Dictionary<string, object>();
+                innerExceptionDict[ExceptionMessage] = exception.InnerException.Message;
+                innerExceptionDict[ExceptionClassName] = exception.InnerException.GetType().FullName;
+                innerExceptionDict[ExceptionData] = exception.InnerException.Data;
+                innerExceptionDict[ExceptionSource] = exception.InnerException.Source;
+                innerExceptionDict[ExceptionHResult] = exception.InnerException.HResult;
+
+                dict[ExceptionInner] = innerExceptionDict;
+
+                foreach (var p in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    if (!dict.ContainsKey(p.Name))
+                        dict[p.Name] = p.GetValue(exception);
+                }
+                return (JsonSerializer.SerializeToUtf8Bytes(dict), string.Empty);
+
             }
             catch (Exception e)
             {
@@ -147,8 +171,24 @@ namespace Dapr.Actors.Communication
         {
             try
             {
-                result = (Exception)binaryFormatter.Deserialize(data);
-                return true;
+                using (var sr = new StreamReader(data, Encoding.UTF8))
+                {
+                    var str = sr.ReadToEnd();
+                    var dict = (Dictionary<string, object>)JsonSerializer.Deserialize(str, typeof(Dictionary<string, object>));
+                    var innerExceptionDict = (Dictionary<string, object>)JsonSerializer.Deserialize(dict[ExceptionInner].ToString(), typeof(Dictionary<string, object>));
+
+                    var innerExceptionType = Type.GetType(innerExceptionDict[ExceptionClassName].ToString());
+                    var innerException = (Exception)Activator.CreateInstance(innerExceptionType, innerExceptionDict[ExceptionMessage].ToString());
+                    innerException.Source = innerExceptionDict[ExceptionSource]?.ToString();
+                    innerException.HResult = Convert.ToInt32(innerExceptionDict[ExceptionHResult].ToString());
+
+                    var exceptionType = Type.GetType(dict[ExceptionClassName].ToString());
+                    result = (Exception)Activator.CreateInstance(exceptionType, dict[ExceptionMessage].ToString(), innerException);
+                    result.Source = dict[ExceptionSource]?.ToString();
+                    result.HResult = Convert.ToInt32(dict[ExceptionHResult].ToString());
+
+                    return true;
+                }
             }
             catch (Exception ex)
             {
