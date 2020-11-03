@@ -5,12 +5,16 @@
 
 namespace Dapr.Client.Test
 {
+    using System;
     using System.Collections.Generic;
     using System.Text.Json;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
+    using Grpc.Core;
     using Grpc.Net.Client;
+    using Moq;
     using Xunit;
 
     public class InvokeBindingApiTest
@@ -42,6 +46,42 @@ namespace Dapr.Client.Test
             var json = request.Data.ToStringUtf8();
             var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
+        }
+
+        [Fact]
+        public async Task InvokeBindingAsync_WithCancelledToken()
+        {
+            // Configure Client
+            var client = new MockClient();
+            var response =
+                client.InvokeBinding<InvokeResponse>()
+                .Build();
+
+            const string rpcExceptionMessage = "Call canceled by client";
+            const StatusCode rpcStatusCode = StatusCode.Cancelled;
+            const string rpcStatusDetail = "Call canceled";
+
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeBindingAsync(It.IsAny<Autogen.Grpc.v1.InvokeBindingRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+            try
+            {
+                int data = 10;
+                await client.DaprClient.InvokeBindingAsync<int>("test", "testOp", data, cancellationToken:ct);
+            }
+            catch(OperationCanceledException ex)
+            {
+                ex.Message.Should().Be(rpcExceptionMessage);
+                ((Grpc.Core.RpcException)ex.InnerException).Status.Equals(rpcStatus);
+            }
         }
 
         private class InvokeRequest

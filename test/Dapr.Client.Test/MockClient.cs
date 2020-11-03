@@ -22,26 +22,39 @@ namespace Dapr.Client
 
         public DaprClient DaprClient { get; }
 
-        public CallBuilder<TResponse> Call<TResponse>()
+        public InvokeApiCallBuilder<TResponse> Call<TResponse>()
         {
-            return new CallBuilder<TResponse>();
+            return new InvokeApiCallBuilder<TResponse>();
         }
 
-        public void SetupMockToThrow(RpcException rpcException)
+        public PublishApiCallBuilder Publish()
         {
-            this.Mock
-            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
-            .Throws(rpcException);
+            return new PublishApiCallBuilder();
         }
 
-        public class CallBuilder<TResponse>
+        public InvokeBindingApiCallBuilder<TResponse> InvokeBinding<TResponse>()
+        {
+            return new InvokeBindingApiCallBuilder<TResponse>();
+        }
+
+        public StateApiCallBuilder<TResponse> SetState<TResponse>()
+        {
+            return new StateApiCallBuilder<TResponse>();
+        }
+
+        public SecretsApiCallBuilder<TResponse> SetSecrets<TResponse>()
+        {
+            return new SecretsApiCallBuilder<TResponse>();
+        }
+
+        public class InvokeApiCallBuilder<TResponse>
         {
             private TResponse response;
             private Metadata headers;
             private Status status;
             private Metadata trailers;
 
-            public CallBuilder()
+            public InvokeApiCallBuilder()
             {
                 headers = new Metadata();
                 trailers = new Metadata();
@@ -54,32 +67,212 @@ namespace Dapr.Client
                     Task.FromResult(headers),
                     () => status,
                     () => trailers,
-                    () => {});
+                    () => { });
             }
 
-            public CallBuilder<TResponse> SetResponse(TResponse response)
+            public InvokeApiCallBuilder<TResponse> SetResponse(TResponse response)
             {
                 this.response = response;
                 return this;
             }
 
-            public CallBuilder<TResponse> SetStatus(Status status)
+            public InvokeApiCallBuilder<TResponse> SetStatus(Status status)
             {
                 this.status = status;
                 return this;
             }
 
-            public CallBuilder<TResponse> AddHeader(string key, string value)
+            public InvokeApiCallBuilder<TResponse> AddHeader(string key, string value)
             {
                 this.headers.Add(key, value);
                 return this;
             }
 
-            public CallBuilder<TResponse> AddTrailer(string key, string value)
+            public InvokeApiCallBuilder<TResponse> AddTrailer(string key, string value)
             {
                 this.trailers.Add(key, value);
                 return this;
             }
+        }
+    }
+
+    public class PublishApiCallBuilder
+    {
+        private global::Google.Protobuf.WellKnownTypes.Empty response;
+        private Metadata headers;
+        private Status status;
+        private Metadata trailers;
+
+        public PublishApiCallBuilder()
+        {
+            headers = new Metadata();
+            trailers = new Metadata();
+        }
+
+        public AsyncUnaryCall<global::Google.Protobuf.WellKnownTypes.Empty> Build()
+        {
+            return new AsyncUnaryCall<global::Google.Protobuf.WellKnownTypes.Empty>(
+                Task.FromResult(response),
+                Task.FromResult(headers),
+                () => status,
+                () => trailers,
+                () => { });
+        }
+
+        public PublishApiCallBuilder SetResponse()
+        {
+            this.response = null;
+            return this;
+        }
+
+        public PublishApiCallBuilder SetStatus(Status status)
+        {
+            this.status = status;
+            return this;
+        }
+    }
+
+    public class InvokeBindingApiCallBuilder<TResponse>
+    {
+        private TResponse response;
+        private Metadata headers;
+        private Status status;
+        private Metadata trailers;
+
+        public InvokeBindingApiCallBuilder()
+        {
+            headers = new Metadata();
+            trailers = new Metadata();
+        }
+
+        public AsyncUnaryCall<TResponse> Build()
+        {
+            return new AsyncUnaryCall<TResponse>(
+                Task.FromResult(response),
+                Task.FromResult(headers),
+                () => status,
+                () => trailers,
+                () => { });
+        }
+
+        public InvokeBindingApiCallBuilder<TResponse> SetResponse(TResponse response)
+        {
+            this.response = response;
+            return this;
+        }
+
+        public InvokeBindingApiCallBuilder<TResponse> SetStatus(Status status)
+        {
+            this.status = status;
+            return this;
+        }
+
+        public InvokeBindingApiCallBuilder<TResponse> AddHeader(string key, string value)
+        {
+            this.headers.Add(key, value);
+            return this;
+        }
+
+        public InvokeBindingApiCallBuilder<TResponse> AddTrailer(string key, string value)
+        {
+            this.trailers.Add(key, value);
+            return this;
+        }
+    }
+
+    public class StateApiCallBuilder<TResponse>
+    {
+        private TResponse response;
+        private Metadata headers;
+        private Status status;
+        private Metadata trailers;
+
+        public StateApiCallBuilder()
+        {
+            headers = new Metadata();
+            trailers = new Metadata();
+        }
+
+        public AsyncUnaryCall<TResponse> Build()
+        {
+            return new AsyncUnaryCall<TResponse>(
+                Task.FromResult(response),
+                Task.FromResult(headers),
+                () => status,
+                () => trailers,
+                () => { });
+        }
+
+        public StateApiCallBuilder<TResponse> SetResponse(TResponse response)
+        {
+            this.response = response;
+            return this;
+        }
+
+        public StateApiCallBuilder<TResponse> SetStatus(Status status)
+        {
+            this.status = status;
+            return this;
+        }
+
+        public StateApiCallBuilder<TResponse> AddHeader(string key, string value)
+        {
+            this.headers.Add(key, value);
+            return this;
+        }
+
+        public StateApiCallBuilder<TResponse> AddTrailer(string key, string value)
+        {
+            this.trailers.Add(key, value);
+            return this;
+        }
+    }
+
+    public class SecretsApiCallBuilder<TResponse>
+    {
+        private TResponse response;
+        private Metadata headers;
+        private Status status;
+        private Metadata trailers;
+
+        public SecretsApiCallBuilder()
+        {
+            headers = new Metadata();
+            trailers = new Metadata();
+        }
+
+        public AsyncUnaryCall<TResponse> Build()
+        {
+            return new AsyncUnaryCall<TResponse>(
+                Task.FromResult(response),
+                Task.FromResult(headers),
+                () => status,
+                () => trailers,
+                () => { });
+        }
+
+        public SecretsApiCallBuilder<TResponse> SetResponse(TResponse response)
+        {
+            this.response = response;
+            return this;
+        }
+
+        public SecretsApiCallBuilder<TResponse> SetStatus(Status status)
+        {
+            this.status = status;
+            return this;
+        }
+
+        public SecretsApiCallBuilder<TResponse> AddHeader(string key, string value)
+        {
+            this.headers.Add(key, value);
+            return this;
+        }
+
+        public SecretsApiCallBuilder<TResponse> AddTrailer(string key, string value)
+        {
+            this.trailers.Add(key, value);
+            return this;
         }
     }
 }
