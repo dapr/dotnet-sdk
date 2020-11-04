@@ -12,22 +12,33 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Contains methods to register actor types. Registering the types allows the runtime to create instances of the actor.
     /// </summary>
     public sealed class ActorRuntime
     {
-        private const string TraceType = "ActorRuntime";
-
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
 
         private ActorSettings actorSettings;
 
-        internal ActorRuntime()
+        private readonly ILogger logger;
+
+        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory)
         {
             this.actorSettings = new ActorSettings();
+            this.logger = loggerFactory.CreateLogger(this.GetType());
+
+            // Create ActorManagers, override existing entry if registered again.
+            foreach(var actorServiceFunc in options.actorServicesFunc)
+            {
+                var actorServiceFactory = actorServiceFunc.Value ?? ((type) => new ActorService(type, loggerFactory));
+                var actorService = actorServiceFactory.Invoke(actorServiceFunc.Key);
+
+                this.actorManagers[actorServiceFunc.Key.ActorTypeName] = new ActorManager(actorService, loggerFactory);
+            }
         }
 
         /// <summary>
@@ -37,29 +48,6 @@ namespace Dapr.Actors.Runtime
 
         internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor();
 
-        /// <summary>
-        /// Registers an actor with the runtime.
-        /// </summary>
-        /// <typeparam name="TActor">Type of actor.</typeparam>
-        /// <param name="actorServiceFactory">An optional delegate to create actor service. This can be used for dependency injection into actors.</param>
-        public void RegisterActor<TActor>(Func<ActorTypeInformation, ActorService> actorServiceFactory = null)
-            where TActor : Actor
-        {
-            var actorTypeInfo = ActorTypeInformation.Get(typeof(TActor));
-
-            ActorService actorService;
-            if (actorServiceFactory != null)
-            {
-                actorService = actorServiceFactory.Invoke(actorTypeInfo);
-            }
-            else
-            {
-                actorService = new ActorService(actorTypeInfo);
-            }
-
-            // Create ActorManagers, override existing entry if registered again.
-            this.actorManagers[actorTypeInfo.ActorTypeName] = new ActorManager(actorService);
-        }
 
         /// <summary>
         /// Allows configuration of this app's actor configuration.
@@ -118,7 +106,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal async Task DeactivateAsync(string actorTypeName, string actorId)
         {
-            await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}", actorTypeName, actorId))
+            {
+                await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
+            }
         }
 
         /// <summary>
@@ -133,7 +124,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, MethodName: {Reminder}", actorTypeName, actorId, actorMethodName))
+            {
+                return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -162,7 +156,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, ReminderName: {Reminder}", actorTypeName, actorId, reminderName))
+            {
+                return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -175,7 +172,10 @@ namespace Dapr.Actors.Runtime
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         internal Task FireTimerAsync(string actorTypeName, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
-            return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
+            using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, TimerName: {Timer}", actorTypeName, actorId, timerName))
+            {
+                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
+            }
         }
 
         private ActorManager GetActorManager(string actorTypeName)
@@ -183,7 +183,6 @@ namespace Dapr.Actors.Runtime
             if (!this.actorManagers.TryGetValue(actorTypeName, out var actorManager))
             {
                 var errorMsg = $"Actor type {actorTypeName} is not registered with Actor runtime.";
-                ActorTrace.Instance.WriteError(TraceType, errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
 
