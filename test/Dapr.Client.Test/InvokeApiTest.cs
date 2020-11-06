@@ -179,31 +179,31 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeAndData_ThrowsExceptionForNonSuccess()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
 
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+            const string rpcExceptionMessage = "RPC exception";
+            const StatusCode rpcStatusCode = StatusCode.Unavailable;
+            const string rpcStatusDetail = "Non success";
 
-            var json = envelope.Message.Data.Value.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<Request>(json);
-            typeFromRequest.RequestParameter.Should().Be("Hello ");
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
 
-            // Create Response & Respond
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
 
-            //validate response
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<InvocationException>();
+            await FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " }))
+                .Should().ThrowAsync<InvocationException>();
         }
 
         [Fact]
@@ -236,87 +236,81 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithReturnTypeNoData_ThrowsExceptionNonSuccess()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<Response>("test", "test");
 
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+            const string rpcExceptionMessage = "RPC exception";
+            const StatusCode rpcStatusCode = StatusCode.Unavailable;
+            const string rpcStatusDetail = "Non success";
 
-            // Create Response & Respond
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
 
-            //validate response
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<RpcException>();
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            await FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodAsync<Response>("test", "test")).Should().ThrowAsync<RpcException>();
         }
 
         [Fact]
-        public async Task InvokeMethodAsync_CanInvokeMethodWithNoReturnTypeAndData()
+        public void InvokeMethodAsync_CanInvokeMethodWithNoReturnTypeAndData()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
-
             Request request = new Request() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeMethodAsync<Request>("test", "test", request);
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
 
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
+                .Build();
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Returns(response);
 
-            var json = envelope.Message.Data.Value.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<Request>(json);
-            typeFromRequest.RequestParameter.Should().Be("Hello ");
-
-            // Create Response & Respond
-            var response = new Response() { Name = "Look, I was invoked!" };
-            await SendResponse(response, entry);
-
-            FluentActions.Awaiting(async () => await task).Should().NotThrow();
+            FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodAsync<Request>("test", "test", request)).Should().NotThrow();
         }
 
         [Fact]
         public async Task InvokeMethodAsync_CanInvokeMethodWithNoReturnTypeAndData_ThrowsErrorNonSuccess()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+            var client = new MockClient();
+            var data = new Response() { Name = "Look, I was invoked!" };
+            var invokeResponse = new InvokeResponse();
+            invokeResponse.Data = TypeConverters.ToAny(data);
+
+            var response = 
+                client.Call<InvokeResponse>()
+                .SetResponse(invokeResponse)
                 .Build();
 
-            var task = daprClient.InvokeMethodAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " });
 
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var envelope = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeServiceRequest>(entry.Request);
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationJson);
+            const string rpcExceptionMessage = "RPC exception";
+            const StatusCode rpcStatusCode = StatusCode.Unavailable;
+            const string rpcStatusDetail = "Non success";
 
-            var json = envelope.Message.Data.Value.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<Request>(json);
-            typeFromRequest.RequestParameter.Should().Be("Hello ");
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
 
-            // Create Response & Respond
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
 
-            //validate response
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<RpcException>();
+            await FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " }))
+                .Should().ThrowAsync<RpcException>();
         }
 
         [Fact]
