@@ -73,8 +73,9 @@ namespace Dapr.Client.Test
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
             int data = 10;
-            var task = client.DaprClient.InvokeBindingAsync<int>("test", "testOp", data, cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.InvokeBindingAsync<int>("test", "testOp", data, cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         private class InvokeRequest

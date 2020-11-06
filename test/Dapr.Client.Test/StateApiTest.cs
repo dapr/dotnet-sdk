@@ -206,8 +206,9 @@ namespace Dapr.Client.Test
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            var task = client.DaprClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         [Fact]
@@ -256,8 +257,9 @@ namespace Dapr.Client.Test
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            var task = client.DaprClient.SaveStateAsync<object>("testStore", "test", null, cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.SaveStateAsync<object>("testStore", "test", null, cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         [Fact]
@@ -394,8 +396,9 @@ namespace Dapr.Client.Test
             var operation = new StateTransactionRequest("test", null, StateOperationType.Delete);
             var operations = new List<StateTransactionRequest>();
             operations.Add(operation);
-            var task = client.DaprClient.ExecuteStateTransactionAsync("testStore", operations, new Dictionary<string, string>(), cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.ExecuteStateTransactionAsync("testStore", operations, new Dictionary<string, string>(), cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         [Fact]
@@ -459,8 +462,9 @@ namespace Dapr.Client.Test
             var operation = new StateTransactionRequest("test", null, StateOperationType.Delete);
             var operations = new List<StateTransactionRequest>();
             operations.Add(operation);
-            var task = client.DaprClient.DeleteStateAsync("testStore", "key", cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.DeleteStateAsync("testStore", "key", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         [Fact]

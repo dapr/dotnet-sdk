@@ -147,8 +147,9 @@ namespace Dapr.Client.Test
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            var task = client.DaprClient.GetSecretAsync("testStore", "test_key", new Dictionary<string, string>(), cancellationToken:ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.GetSecretAsync("testStore", "test_key", new Dictionary<string, string>(), cancellationToken:ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         private async Task SendResponseWithSecrets(Dictionary<string, string> secrets, TestHttpClient.Entry entry)

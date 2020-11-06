@@ -450,8 +450,9 @@ namespace Dapr.Client.Test
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
             Request request = new Request() { RequestParameter = "Hello " };
-            var task = client.DaprClient.InvokeMethodAsync<Request, Response>("test", "test", request, cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodAsync<Request, Response>("test", "test", request, cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         [Fact]
@@ -683,8 +684,9 @@ namespace Dapr.Client.Test
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
             var body = new Request() { RequestParameter = "Hello " };
-            var task = client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body, cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodWithResponseAsync<Request, Response>("test", "testMethod", body, cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         [Fact]
@@ -958,8 +960,9 @@ namespace Dapr.Client.Test
             ctSource.Cancel();
             var body = new Request() { RequestParameter = "Hello " };
             var bytes = JsonSerializer.SerializeToUtf8Bytes(body);
-            var task = client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes, cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodRawAsync("test", "testMethod", bytes, cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         [Fact]

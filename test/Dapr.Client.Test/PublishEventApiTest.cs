@@ -80,8 +80,9 @@ namespace Dapr.Client.Test
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            var task = client.DaprClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: ct);
-            (await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<OperationCanceledException>()).WithInnerException<Grpc.Core.RpcException>();
+            (await FluentActions.Awaiting(async () => await client.DaprClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>())
+                .WithInnerException<Grpc.Core.RpcException>();
         }
 
         private class PublishData
