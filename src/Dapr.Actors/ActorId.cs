@@ -7,10 +7,13 @@ namespace Dapr.Actors
 {
     using System;
     using System.Runtime.Serialization;
+    using System.Text.Json.Serialization;
+    using Dapr.Actors.Seralization;
 
     /// <summary>
     /// The ActorId represents the identity of an actor within an actor service.
     /// </summary>
+    [JsonConverter(typeof(ActorIdJsonConverter))]
     [DataContract(Name = "ActorId")]
     public class ActorId
     {
