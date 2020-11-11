@@ -123,6 +123,38 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
+        public async Task InvokeActorMethodWithRemoting_ThrowsActorMethodInvocationException()
+        {
+            var handler = new TestHttpClientHandler();
+            var httpInteractor = new DaprHttpInteractor(handler);
+            var actorType = "ActorType_Test";
+            var actorId = "ActorId_Test";
+            var methodName = "MethodName";
+
+            var header = new ActorRequestMessageHeader()
+            {
+                ActorId = new ActorId(actorId),
+                ActorType = actorType,
+                MethodName = methodName,
+            };
+
+            var msgBody = new ActorRequestMessageBody(1);
+            msgBody.SetParameter(0, "ActorMessage", "Test message to actor");
+            var requestMessage = new ActorRequestMessage(header, msgBody);
+
+            var serializersManager = new ActorMessageSerializersManager(null, new ActorMessageHeaderSerializer());
+
+            var task = httpInteractor.InvokeActorMethodWithRemotingAsync(serializersManager, requestMessage);
+
+            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var message = new HttpResponseMessage(HttpStatusCode.NotFound);
+
+            entry.Completion.SetResult(message);
+
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ActorMethodInvocationException>();
+        }
+
+        [Fact]
         public void RegisterReminder_ValidateRequest()
         {
             var handler = new TestHttpClientHandler();

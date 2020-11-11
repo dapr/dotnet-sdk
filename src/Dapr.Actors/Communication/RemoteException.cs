@@ -27,12 +27,6 @@ namespace Dapr.Actors.Communication
     internal class RemoteException
     {
         private static readonly DataContractSerializer ServiceExceptionDataSerializer = new DataContractSerializer(typeof(ServiceExceptionData));
-        private static readonly string ExceptionClassName = "ClassName";
-        private static readonly string ExceptionMessage = "Message";
-        private static readonly string ExceptionSource = "Source";
-        private static readonly string ExceptionHResult = "HResult";
-        private static readonly string ExceptionInner = "InnerException";
-        private static readonly string ExceptionData = "Data";
 
 
         static RemoteException()
@@ -60,31 +54,7 @@ namespace Dapr.Actors.Communication
         {
             try
             {
-                var dict = new Dictionary<string, object>();
-
-                var type = exception.GetType();
-                dict[ExceptionClassName] = type.FullName;
-                dict[ExceptionMessage] = exception.Message;
-                dict[ExceptionData] = exception.Data;
-                dict[ExceptionHResult] = exception.HResult;
-                dict[ExceptionSource] = exception.Source;
-
-                var innerExceptionDict = new Dictionary<string, object>();
-                innerExceptionDict[ExceptionMessage] = exception.InnerException.Message;
-                innerExceptionDict[ExceptionClassName] = exception.InnerException.GetType().FullName;
-                innerExceptionDict[ExceptionData] = exception.InnerException.Data;
-                innerExceptionDict[ExceptionSource] = exception.InnerException.Source;
-                innerExceptionDict[ExceptionHResult] = exception.InnerException.HResult;
-
-                dict[ExceptionInner] = innerExceptionDict;
-
-                foreach (var p in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                {
-                    if (!dict.ContainsKey(p.Name))
-                        dict[p.Name] = p.GetValue(exception);
-                }
-                return (JsonSerializer.SerializeToUtf8Bytes(dict), string.Empty);
-
+                return (SerializeServiceException(exception), String.Empty);
             }
             catch (Exception e)
             {
@@ -103,22 +73,12 @@ namespace Dapr.Actors.Communication
         /// <returns>true if there was a valid exception, false otherwise.</returns>
         public static bool ToException(Stream bufferedStream, out Exception result)
         {
-            // try to de-serialize the bytes in to the exception
-            if (TryDeserializeException(bufferedStream, out var res))
-            {
-                result = res;
-                return true;
-            }
-
             // try to de-serialize the bytes in to exception requestMessage and create service exception
             if (TryDeserializeServiceException(bufferedStream, out result))
             {
                 return true;
             }
-
-            // Set Reason for Serialization failure. This can happen in case where serialization succeded
-            // but deserialization fails as type is not accessible
-            result = res;
+           
             bufferedStream.Dispose();
 
             return false;
@@ -160,44 +120,19 @@ namespace Dapr.Actors.Communication
                 CultureInfo.CurrentCulture,
                 SR.ErrorExceptionSerializationFailed2,
                 exception);
-            var exceptionData = new ServiceExceptionData(exception.GetType().FullName, exceptionStringBuilder.ToString());
+            return SerializeServiceException(exception);
+        }
+
+        internal static byte[] SerializeServiceException(Exception exception)
+        {
+            var exceptionData = new ServiceExceptionData(exception.GetType().FullName, exception.Message);
 
             var exceptionBytes = SerializeServiceExceptionData(exceptionData);
 
             return exceptionBytes;
         }
 
-        private static bool TryDeserializeException(Stream data, out Exception result)
-        {
-            try
-            {
-                using (var sr = new StreamReader(data, Encoding.UTF8))
-                {
-                    var str = sr.ReadToEnd();
-                    var dict = (Dictionary<string, object>)JsonSerializer.Deserialize(str, typeof(Dictionary<string, object>));
-                    var innerExceptionDict = (Dictionary<string, object>)JsonSerializer.Deserialize(dict[ExceptionInner].ToString(), typeof(Dictionary<string, object>));
-
-                    var innerExceptionType = Type.GetType(innerExceptionDict[ExceptionClassName].ToString());
-                    var innerException = (Exception)Activator.CreateInstance(innerExceptionType, innerExceptionDict[ExceptionMessage].ToString());
-                    innerException.Source = innerExceptionDict[ExceptionSource]?.ToString();
-                    innerException.HResult = Convert.ToInt32(innerExceptionDict[ExceptionHResult].ToString());
-
-                    var exceptionType = Type.GetType(dict[ExceptionClassName].ToString());
-                    result = (Exception)Activator.CreateInstance(exceptionType, dict[ExceptionMessage].ToString(), innerException);
-                    result.Source = dict[ExceptionSource]?.ToString();
-                    result.HResult = Convert.ToInt32(dict[ExceptionHResult].ToString());
-
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                // return reason for serialization failure
-                result = ex;
-                return false;
-            }
-        }
-
+        
         private static bool TryDeserializeServiceException(Stream data, out Exception result, ILogger logger = null)
         {
             try
