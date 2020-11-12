@@ -66,6 +66,7 @@ namespace Dapr
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
+            Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
