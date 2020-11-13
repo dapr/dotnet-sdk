@@ -24,9 +24,9 @@ namespace Dapr.Actors.Runtime
         private readonly string actorTypeName;
 
         /// <summary>
-        /// The logger
+        /// The Logger
         /// </summary>
-        protected ILogger logger { get; }
+        protected ILogger Logger { get; }
 
         /// <summary>
         /// Contains timers to be invoked.
@@ -47,7 +47,7 @@ namespace Dapr.Actors.Runtime
             this.ActorService = actorService;
             this.StateManager = actorStateManager ?? new ActorStateManager(this);
             this.actorTypeName = this.ActorService.ActorTypeInfo.ActorTypeName;
-            this.logger = actorService.LoggerFactory.CreateLogger(this.GetType());
+            this.Logger = actorService.LoggerFactory.CreateLogger(this.GetType());
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace Dapr.Actors.Runtime
             await this.ResetStateAsync();
             await this.OnActivateAsync();
 
-            this.logger.LogDebug("Activated");
+            this.Logger.LogDebug("Activated");
 
             // Save any state modifications done in user overridden Activate method.
             await this.SaveStateAsync();
@@ -82,10 +82,10 @@ namespace Dapr.Actors.Runtime
 
         internal async Task OnDeactivateInternalAsync()
         {
-            this.logger.LogDebug("Deactivating ...");
+            this.Logger.LogDebug("Deactivating ...");
             await this.ResetStateAsync();
             await this.OnDeactivateAsync();
-            this.logger.LogDebug("Deactivated");
+            this.Logger.LogDebug("Deactivated");
         }
 
         internal Task OnPreActorMethodAsyncInternal(ActorMethodContext actorMethodContext)
