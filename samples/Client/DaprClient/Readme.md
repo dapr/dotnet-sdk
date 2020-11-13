@@ -28,7 +28,7 @@ Done
  ```
 
 ## Invoking Services
-This solution contains a sample [RoutingSample service](..\..\AspNetCore\RoutingSample), which implements a simple banking application in ASP.NET core.
+This solution contains a sample [RoutingSample service](../../AspNetCore/RoutingSample), which implements a simple banking application in ASP.NET core.
 The service provides following operations:
 - balance
 - withdraw
