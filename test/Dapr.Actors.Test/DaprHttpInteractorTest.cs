@@ -7,17 +7,14 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Collections.Concurrent;
-    using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Security.Authentication;
-    using System.Text;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
     using FluentAssertions;
     using Xunit;
 
@@ -120,38 +117,6 @@ namespace Dapr.Actors.Test
 
             actualPath.Should().Be(expectedPath);
             entry.Request.Method.Should().Be(HttpMethod.Put);
-        }
-
-        [Fact]
-        public async Task InvokeActorMethodWithRemoting_ThrowsActorMethodInvocationException()
-        {
-            var handler = new TestHttpClientHandler();
-            var httpInteractor = new DaprHttpInteractor(handler);
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var methodName = "MethodName";
-
-            var header = new ActorRequestMessageHeader()
-            {
-                ActorId = new ActorId(actorId),
-                ActorType = actorType,
-                MethodName = methodName,
-            };
-
-            var msgBody = new ActorRequestMessageBody(1);
-            msgBody.SetParameter(0, "ActorMessage", "Test message to actor");
-            var requestMessage = new ActorRequestMessage(header, msgBody);
-
-            var serializersManager = new ActorMessageSerializersManager(null, new ActorMessageHeaderSerializer());
-
-            var task = httpInteractor.InvokeActorMethodWithRemotingAsync(serializersManager, requestMessage);
-
-            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var message = new HttpResponseMessage(HttpStatusCode.NotFound);
-
-            entry.Completion.SetResult(message);
-
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<ActorMethodInvocationException>();
         }
 
         [Fact]
