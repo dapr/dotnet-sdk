@@ -37,11 +37,6 @@ namespace Dapr.Client
         public TRequest Body { get; set; }
 
         /// <summary>
-        /// Gets or sets the content type.
-        /// </summary>
-        public string ContentType { get; set; }
-
-        /// <summary>
         /// Gets or sets the HTTP extension info.
         /// </summary>
         public HTTPExtension HttpExtension { get; set; }
