@@ -158,15 +158,10 @@ namespace DaprClient
             Console.WriteLine("DepositUsingServiceInvocation");
             var data = new { id = "17", amount = (decimal)99 };
 
-            HTTPExtension httpExtension = new HTTPExtension()
-            {
-                Verb = HTTPVerb.Post
-            };
-
             // Invokes a POST method named "depoit" that takes input of type "Transaction" as define in the RoutingSample.
             Console.WriteLine("invoking");
 
-            var a = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data, httpExtension);
+            var a = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data, HTTPExtension.UsingPost());
             Console.WriteLine("Returned: id:{0} | Balance:{1}", a.Id, a.Balance);
 
             Console.WriteLine("Completed");
@@ -186,13 +181,8 @@ namespace DaprClient
             Console.WriteLine("Invoking withdraw");
             var data = new { id = "17", amount = (decimal)10, };
 
-            HTTPExtension httpExtension = new HTTPExtension()
-            {
-                Verb = HTTPVerb.Post
-            };
-
             // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.            
-            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, httpExtension);
+            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, HTTPExtension.UsingPost());
 
             Console.WriteLine("Completed");
         }
@@ -211,11 +201,7 @@ namespace DaprClient
             Console.WriteLine("Invoking balance");
 
             // Invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
-            HTTPExtension httpExtension = new HTTPExtension()
-            {
-                Verb = HTTPVerb.Get
-            };
-            var res = await client.InvokeMethodAsync<Account>("routing", "17", httpExtension);
+            var res = await client.InvokeMethodAsync<Account>("routing", "17", HTTPExtension.UsingGet());
 
             Console.WriteLine($"Received balance {res.Balance}");
         }
@@ -225,15 +211,10 @@ namespace DaprClient
             Console.WriteLine("Invoking ThrowException");
             var data = new { id = "17", amount = (decimal)10, };
 
-            HTTPExtension httpExtension = new HTTPExtension()
-            {
-                Verb = HTTPVerb.Post
-            };
-
             try
             {
                 // Invokes a POST method named "throwException" that takes input of type "Transaction" as defined in the ControllerSample.            
-                await client.InvokeMethodAsync("controller", "throwException", data, httpExtension);
+                await client.InvokeMethodAsync("controller", "throwException", data, HTTPExtension.UsingPost());
             }
             catch (RpcException ex)
             {
