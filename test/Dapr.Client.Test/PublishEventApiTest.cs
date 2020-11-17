@@ -11,10 +11,7 @@ namespace Dapr.Client.Test
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
-    using Google.Rpc;
-    using Grpc.Core;
     using Grpc.Net.Client;
-    using Moq;
     using Xunit;
 
     public class PublishEventApiTest
@@ -26,7 +23,7 @@ namespace Dapr.Client.Test
         {
             var httpClient = new TestHttpClient();
             var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .UseGrpcChannelOptions(new GrpcChannelOptions{ HttpClient = httpClient })
                 .Build();
 
             var publishData = new PublishData() { PublishObjectParameter = "testparam" };
@@ -63,26 +60,17 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task PublishEventAsync_WithCancelledToken()
         {
-            var client = new MockClient();
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
 
-            const string rpcExceptionMessage = "Call canceled by client";
-            const StatusCode rpcStatusCode = StatusCode.Cancelled;
-            const string rpcStatusDetail = "Call canceled";
-
-            var rpcStatus = new Grpc.Core.Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new Grpc.Core.RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            var response = client.Publish().Build();
-
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock.Setup(m => m.PublishEventAsync(It.IsAny<PublishEventRequest>(), It.IsAny<CallOptions>()))
-                       .Throws(rpcException);
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            (await FluentActions.Awaiting(async () => await client.DaprClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>())
-                .WithInnerException<Grpc.Core.RpcException>();
+
+            await FluentActions.Awaiting(async () => await daprClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         private class PublishData

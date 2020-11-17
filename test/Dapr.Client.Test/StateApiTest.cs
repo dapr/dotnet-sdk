@@ -18,7 +18,6 @@ namespace Dapr.Client.Test
     using StateConsistency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConsistency;
     using StateConcurrency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConcurrency;
     using Xunit;
-    using Moq;
     using System.Threading;
 
     public class StateApiTest
@@ -186,29 +185,21 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetStateAsync_WithCancelledToken()
         {
-            // Configure Client
-            var client = new MockClient();
-            var response = client.SetState<string>()
-            .Build();
+           // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
 
-            const string rpcExceptionMessage = "Call canceled by client";
-            const StatusCode rpcStatusCode = StatusCode.Cancelled;
-            const string rpcStatusDetail = "Call canceled";
-
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock
-                .Setup(m => m.GetStateAsync(It.IsAny<Autogen.Grpc.v1.GetStateRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
+            var widget = new Widget() { Size = "small", Color = "yellow", };
+            var task = daprClient.SaveStateAsync("testStore", "test", widget);
 
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            (await FluentActions.Awaiting(async () => await client.DaprClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>())
-                .WithInnerException<Grpc.Core.RpcException>();
+
+            await FluentActions.Awaiting(async () => await daprClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         [Fact]
@@ -238,28 +229,16 @@ namespace Dapr.Client.Test
         public async Task SaveStateAsync_WithCancelledToken()
         {
             // Configure Client
-            var client = new MockClient();
-            var response = client.SetState<string>()
-            .Build();
-
-            const string rpcExceptionMessage = "Call canceled by client";
-            const StatusCode rpcStatusCode = StatusCode.Cancelled;
-            const string rpcStatusDetail = "Call canceled";
-
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock
-                .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
 
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            (await FluentActions.Awaiting(async () => await client.DaprClient.SaveStateAsync<object>("testStore", "test", null, cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>())
-                .WithInnerException<Grpc.Core.RpcException>();
+            await FluentActions.Awaiting(async () => await daprClient.SaveStateAsync<object>("testStore", "test", null, cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         [Fact]
@@ -374,31 +353,20 @@ namespace Dapr.Client.Test
         public async Task ExecuteStateTransactionAsync_WithCancelledToken()
         {
             // Configure Client
-            var client = new MockClient();
-            var response = client.SetState<string>()
-            .Build();
-
-            const string rpcExceptionMessage = "Call canceled by client";
-            const StatusCode rpcStatusCode = StatusCode.Cancelled;
-            const string rpcStatusDetail = "Call canceled";
-
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock
-                .Setup(m => m.ExecuteStateTransactionAsync(It.IsAny<Autogen.Grpc.v1.ExecuteStateTransactionRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
 
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
+
             var operation = new StateTransactionRequest("test", null, StateOperationType.Delete);
             var operations = new List<StateTransactionRequest>();
             operations.Add(operation);
-            (await FluentActions.Awaiting(async () => await client.DaprClient.ExecuteStateTransactionAsync("testStore", operations, new Dictionary<string, string>(), cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>())
-                .WithInnerException<Grpc.Core.RpcException>();
+            await FluentActions.Awaiting(async () => await daprClient.ExecuteStateTransactionAsync("testStore", operations, new Dictionary<string, string>(), cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         [Fact]
@@ -440,31 +408,17 @@ namespace Dapr.Client.Test
         public async Task DeleteStateAsync_WithCancelledToken()
         {
             // Configure Client
-            var client = new MockClient();
-            var response = client.SetState<string>()
-            .Build();
-
-            const string rpcExceptionMessage = "Call canceled by client";
-            const StatusCode rpcStatusCode = StatusCode.Cancelled;
-            const string rpcStatusDetail = "Call canceled";
-
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock
-                .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
 
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            var operation = new StateTransactionRequest("test", null, StateOperationType.Delete);
-            var operations = new List<StateTransactionRequest>();
-            operations.Add(operation);
-            (await FluentActions.Awaiting(async () => await client.DaprClient.DeleteStateAsync("testStore", "key", cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>())
-                .WithInnerException<Grpc.Core.RpcException>();
+
+            await FluentActions.Awaiting(async () => await daprClient.DeleteStateAsync("testStore", "key", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         [Fact]

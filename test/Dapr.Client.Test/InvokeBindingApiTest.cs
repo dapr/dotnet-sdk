@@ -12,9 +12,7 @@ namespace Dapr.Client.Test
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
-    using Grpc.Core;
     using Grpc.Net.Client;
-    using Moq;
     using Xunit;
 
     public class InvokeBindingApiTest
@@ -52,30 +50,23 @@ namespace Dapr.Client.Test
         public async Task InvokeBindingAsync_WithCancelledToken()
         {
             // Configure Client
-            var client = new MockClient();
-            var response =
-                client.InvokeBinding<InvokeResponse>()
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
                 .Build();
-
-            const string rpcExceptionMessage = "Call canceled by client";
-            const StatusCode rpcStatusCode = StatusCode.Cancelled;
-            const string rpcStatusDetail = "Call canceled";
-
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock
-                .Setup(m => m.InvokeBindingAsync(It.IsAny<Autogen.Grpc.v1.InvokeBindingRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
 
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
-            int data = 10;
-            (await FluentActions.Awaiting(async () => await client.DaprClient.InvokeBindingAsync<int>("test", "testOp", data, cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>())
-                .WithInnerException<Grpc.Core.RpcException>();
+
+            var metadata = new Dictionary<string, string>();
+            metadata.Add("key1", "value1");
+            metadata.Add("key2", "value2");
+            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
+            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata, ct);
+
+            await FluentActions.Awaiting(async () => await task)
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         private class InvokeRequest
