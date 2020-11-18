@@ -269,7 +269,7 @@ namespace Dapr.Client
             return invokeResponse;
         }
 
-        public override async ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default)
+        public override async ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             if (keys.Count == 0)
@@ -280,6 +280,11 @@ namespace Dapr.Client
                 StoreName = storeName,
                 Parallelism = parallelism ?? default(int)
             };
+
+            if (metadata != null)
+            {
+                getBulkStateEnvelope.Metadata.Add(metadata);
+            }
 
             getBulkStateEnvelope.Keys.AddRange(keys);
 
@@ -445,7 +450,7 @@ namespace Dapr.Client
                             string innerHttpErrorMessage = null;
                             rpcError.Metadata.TryGetValue(DaprErrorInfoHttpCodeMetadata, out innerHttpErrorCode);
                             rpcError.Metadata.TryGetValue(DaprErrorInfoHttpErrorMetadata, out innerHttpErrorMessage);
-                            if(innerHttpErrorCode != null || innerHttpErrorMessage != null)
+                            if (innerHttpErrorCode != null || innerHttpErrorMessage != null)
                             {
                                 // Response returned by Http server
                                 invokeErrorResponse.HttpStatusCode = (HttpStatusCode)(Convert.ToInt32(innerHttpErrorCode));
@@ -464,7 +469,7 @@ namespace Dapr.Client
             }
         }
 
-        private bool IsResponseFromHttpCallee(Dictionary<string,byte[]> headers)
+        private bool IsResponseFromHttpCallee(Dictionary<string, byte[]> headers)
         {
             return headers.ContainsKey(DaprHttpStatusHeader);
         }
