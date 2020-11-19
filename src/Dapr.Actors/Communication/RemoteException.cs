@@ -10,15 +10,11 @@ namespace Dapr.Actors.Communication
     using System.Globalization;
     using System.IO;
     using System.Runtime.Serialization;
-    using System.Runtime.Serialization.Formatters;
-    using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
-    using System.Text.Json;
     using System.Xml;
     using Dapr.Actors;
     using Dapr.Actors.Resources;
     using Microsoft.Extensions.Logging;
-    using System.Reflection;
 
     /// <summary>
     /// Fault type used by Service Remoting to transfer the exception details from the service to the client.
@@ -26,12 +22,8 @@ namespace Dapr.Actors.Communication
     [DataContract(Name = "RemoteException", Namespace = Constants.Namespace)]
     internal class RemoteException
     {
-        private static readonly DataContractSerializer ServiceExceptionDataSerializer = new DataContractSerializer(typeof(ServiceExceptionData));
+        private static readonly DataContractSerializer ActorCommunicationExceptionDataSerializer = new DataContractSerializer(typeof(ActorCommunicationExceptionData));
 
-
-        static RemoteException()
-        {
-        }
 
         public RemoteException(List<ArraySegment<byte>> buffers)
         {
@@ -54,7 +46,7 @@ namespace Dapr.Actors.Communication
         {
             try
             {
-                return (SerializeServiceException(exception), String.Empty);
+                return (SerializeActorCommunicationException(exception), String.Empty);
             }
             catch (Exception e)
             {
@@ -74,7 +66,7 @@ namespace Dapr.Actors.Communication
         public static bool ToException(Stream bufferedStream, out Exception result)
         {
             // try to de-serialize the bytes in to exception requestMessage and create service exception
-            if (TryDeserializeServiceException(bufferedStream, out result))
+            if (TryDeserializeActorCommunicationException(bufferedStream, out result))
             {
                 return true;
             }
@@ -84,11 +76,11 @@ namespace Dapr.Actors.Communication
             return false;
         }
 
-        internal static bool TryDeserializeExceptionData(Stream data, out ServiceExceptionData result, ILogger logger = null)
+        internal static bool TryDeserializeExceptionData(Stream data, out ActorCommunicationExceptionData result, ILogger logger = null)
         {
             try
             {
-                var exceptionData = (ServiceExceptionData)DeserializeServiceExceptionData(data);
+                var exceptionData = (ActorCommunicationExceptionData)DeserializeActorCommunicationExceptionData(data);
                 result = exceptionData;
                 return true;
             }
@@ -97,7 +89,7 @@ namespace Dapr.Actors.Communication
                 // swallowing the exception
                 logger?.LogWarning(
                     "RemoteException",
-                    " ServiceExceptionData DeSerialization failed : Reason  {0}",
+                    " ActorCommunicationExceptionData DeSerialization failed : Reason  {0}",
                     e);
             }
 
@@ -120,27 +112,27 @@ namespace Dapr.Actors.Communication
                 CultureInfo.CurrentCulture,
                 SR.ErrorExceptionSerializationFailed2,
                 exception);
-            return SerializeServiceException(exception);
+            return SerializeActorCommunicationException(exception);
         }
 
-        internal static byte[] SerializeServiceException(Exception exception)
+        internal static byte[] SerializeActorCommunicationException(Exception exception)
         {
-            var exceptionData = new ServiceExceptionData(exception.GetType().FullName, exception.Message);
+            var exceptionData = new ActorCommunicationExceptionData(exception.GetType().FullName, exception.Message);
 
-            var exceptionBytes = SerializeServiceExceptionData(exceptionData);
+            var exceptionBytes = SerializeActorCommunicationExceptionData(exceptionData);
 
             return exceptionBytes;
         }
 
         
-        private static bool TryDeserializeServiceException(Stream data, out Exception result, ILogger logger = null)
+        private static bool TryDeserializeActorCommunicationException(Stream data, out Exception result, ILogger logger = null)
         {
             try
             {
                 data.Seek(0, SeekOrigin.Begin);
                 if (TryDeserializeExceptionData(data, out var eData))
                 {
-                    result = new ServiceException(eData.Type, eData.Message);
+                    result = new ActorCommunicationException(eData.Type, eData.Message);
                     return true;
                 }
             }
@@ -154,7 +146,7 @@ namespace Dapr.Actors.Communication
             return false;
         }
 
-        private static object DeserializeServiceExceptionData(Stream buffer)
+        private static object DeserializeActorCommunicationExceptionData(Stream buffer)
         {
             if ((buffer == null) || (buffer.Length == 0))
             {
@@ -162,10 +154,10 @@ namespace Dapr.Actors.Communication
             }
 
             using var reader = XmlDictionaryReader.CreateBinaryReader(buffer, XmlDictionaryReaderQuotas.Max);
-            return ServiceExceptionDataSerializer.ReadObject(reader);
+            return ActorCommunicationExceptionDataSerializer.ReadObject(reader);
         }
 
-        private static byte[] SerializeServiceExceptionData(ServiceExceptionData msg)
+        private static byte[] SerializeActorCommunicationExceptionData(ActorCommunicationExceptionData msg)
         {
             if (msg == null)
             {
@@ -174,7 +166,7 @@ namespace Dapr.Actors.Communication
 
             using var stream = new MemoryStream();
             using var writer = XmlDictionaryWriter.CreateBinaryWriter(stream);
-            ServiceExceptionDataSerializer.WriteObject(writer, msg);
+            ActorCommunicationExceptionDataSerializer.WriteObject(writer, msg);
             writer.Flush();
             return stream.ToArray();
         }

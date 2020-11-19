@@ -164,7 +164,7 @@ namespace Dapr.Actors
                     }
                     else
                     {
-                        throw new ServiceException(remoteMethodException.GetType().FullName, string.Format(
+                        throw new ActorCommunicationException(remoteMethodException.GetType().FullName, string.Format(
                             CultureInfo.InvariantCulture,
                             SR.ErrorDeserializationFailure,
                             remoteMethodException.ToString()));

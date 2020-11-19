@@ -39,7 +39,8 @@ namespace Dapr.Actors.Test
             isDeserialzied.Should().BeTrue();
             var ex = this.ThrowRemoteException(message, remoteMethodException);
             ex.Should().BeOfType<ActorMethodInvocationException>();
-            ex.InnerException.Should().BeOfType<ServiceException>();
+            ex.InnerException.Should().BeOfType<ActorCommunicationException>();
+            ((ActorCommunicationException)ex.InnerException).ActualExceptionType.Should().Be("System.InvalidOperationException");
             ex.InnerException.InnerException.Should().BeNull();
             ex.Message.Should().Be(message);
             ex.InnerException.Message.Should().Be(message);

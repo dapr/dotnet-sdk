@@ -8,10 +8,10 @@ namespace Dapr.Actors.Communication
     using System.Runtime.Serialization;
     using Dapr.Actors;
 
-    [DataContract(Name = "ServiceExceptionData", Namespace = Constants.Namespace)]
-    internal class ServiceExceptionData
+    [DataContract(Name = "ActorCommunicationExceptionData", Namespace = Constants.Namespace)]
+    internal class ActorCommunicationExceptionData
     {
-        public ServiceExceptionData(string type, string message)
+        public ActorCommunicationExceptionData(string type, string message)
         {
             this.Type = type;
             this.Message = message;

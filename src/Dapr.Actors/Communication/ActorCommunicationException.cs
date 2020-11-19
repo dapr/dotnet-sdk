@@ -11,22 +11,22 @@ namespace Dapr.Actors.Communication
     /// Provides an information about an exception from the service. This exception is thrown when the actual
     /// exception from the service cannot be serialized for transferring to client.
     /// </summary>
-    public class ServiceException : Exception
+    public class ActorCommunicationException : Exception
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceException"/> class.
+        /// Initializes a new instance of the <see cref="ActorCommunicationException"/> class.
         /// </summary>
-        public ServiceException()
+        public ActorCommunicationException()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceException" /> class with appropriate message.
+        /// Initializes a new instance of the <see cref="ActorCommunicationException" /> class with appropriate message.
         /// </summary>
         /// <param name="actualExceptionType">the ActualExceptionType of exception thrown.</param>
         /// <param name="message">The error message that explains the reason for this exception.
         /// </param>
-        public ServiceException(string actualExceptionType, string message)
+        public ActorCommunicationException(string actualExceptionType, string message)
             : base(message)
         {
             this.ActualExceptionType = actualExceptionType;
