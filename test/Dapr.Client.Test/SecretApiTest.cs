@@ -8,7 +8,7 @@ namespace Dapr.Client.Test
     using System;
     using System.Collections.Generic;
     using System.Net;
-    using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
     using FluentAssertions;
     using Grpc.Net.Client;
@@ -118,6 +118,26 @@ namespace Dapr.Client.Test
             secretsResponse["redis_secret"].Should().Be("Guess_Redis");
             secretsResponse.ContainsKey("kafka_secret").Should().BeTrue();
             secretsResponse["kafka_secret"].Should().Be("Guess_Kafka");
+        }
+
+        [Fact]
+        public async Task GetSecretAsync_WithCancelledToken()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+
+            var metadata = new Dictionary<string, string>();
+            metadata.Add("key1", "value1");
+            metadata.Add("key2", "value2");
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+            await FluentActions.Awaiting(async () => await daprClient.GetSecretAsync("testStore", "test_key", metadata, cancellationToken:ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         private async Task SendResponseWithSecrets(Dictionary<string, string> secrets, TestHttpClient.Entry entry)

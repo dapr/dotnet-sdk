@@ -866,7 +866,6 @@ namespace Dapr.Client
                 callOptions.Headers.Add("dapr-api-token", daprApiToken);
             }
 
-            // Common Exception Handling logic can be added here for all calls.
             return await callFunc.Invoke(callOptions);
         }
 
