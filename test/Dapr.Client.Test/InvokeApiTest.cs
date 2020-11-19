@@ -37,15 +37,10 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var queryString = new Dictionary<string, string>();
-            queryString.Add("key1", "value1");
-            queryString.Add("key2", "value2");
-
-            var httpExtension = new Http.HTTPExtension()
-            {
-                Verb = HTTPVerb.Post,
-                QueryString = queryString
-            };
+            var httpExtension = Http.HTTPExtension
+                .UsingPost()
+                .WithQueryParam("key1", "value1")
+                .WithQueryParam("key2", "value2");
 
             var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpExtension);
 
@@ -114,15 +109,10 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var headers = new Dictionary<string, string>();
-            headers.Add("Authorization", "Bearer foo");
-            headers.Add("X-Custom", "bar");
-
-            var httpExtension = new Http.HTTPExtension()
-            {
-                Verb = HTTPVerb.Post,
-                Headers = headers
-            };
+            var httpExtension = Http.HTTPExtension
+                .UsingPost()
+                .WithHeader("Authorization", "Bearer foo")
+                .WithHeader("X-Custom", "bar");
 
             var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpExtension);
 
@@ -399,14 +389,9 @@ namespace Dapr.Client.Test
 
             var invokeRequest = new Request() { RequestParameter = "Hello " };
             var invokedResponse = new Response { Name = "Look, I was invoked!" };
-
-            Dictionary<string, string> queryString = new Dictionary<string, string>();
-            queryString.Add("key1", "value1");
-            var httpExtension = new Http.HTTPExtension()
-            {
-                Verb = HTTPVerb.Put,
-                QueryString = queryString
-            };
+            var httpExtension = Http.HTTPExtension
+                .UsingPut()
+                .WithQueryParam("key1", "value1");
 
             var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test1", invokeRequest, httpExtension);
 
