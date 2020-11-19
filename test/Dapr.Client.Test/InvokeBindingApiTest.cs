@@ -5,8 +5,10 @@
 
 namespace Dapr.Client.Test
 {
+    using System;
     using System.Collections.Generic;
     using System.Text.Json;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
@@ -42,6 +44,29 @@ namespace Dapr.Client.Test
             var json = request.Data.ToStringUtf8();
             var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
+        }
+
+        [Fact]
+        public async Task InvokeBindingAsync_WithCancelledToken()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+
+            var metadata = new Dictionary<string, string>();
+            metadata.Add("key1", "value1");
+            metadata.Add("key2", "value2");
+            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
+            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata, ct);
+
+            await FluentActions.Awaiting(async () => await task)
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         private class InvokeRequest

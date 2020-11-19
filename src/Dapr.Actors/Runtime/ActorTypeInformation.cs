@@ -19,7 +19,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorTypeInformation"/> class.
         /// </summary>
-        public ActorTypeInformation()
+        private ActorTypeInformation()
         {
         }
 

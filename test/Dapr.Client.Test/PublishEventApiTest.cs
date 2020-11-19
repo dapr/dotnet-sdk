@@ -5,7 +5,9 @@
 
 namespace Dapr.Client.Test
 {
+    using System;
     using System.Text.Json;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
@@ -23,7 +25,7 @@ namespace Dapr.Client.Test
             var daprClient = new DaprClientBuilder()
                 .UseGrpcChannelOptions(new GrpcChannelOptions{ HttpClient = httpClient })
                 .Build();
-          
+
             var publishData = new PublishData() { PublishObjectParameter = "testparam" };
             var task = daprClient.PublishEventAsync<PublishData>(TestPubsubName, "test", publishData);
 
@@ -54,7 +56,23 @@ namespace Dapr.Client.Test
             request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be("\"\"");
         }
-        
+
+        [Fact]
+        public async Task PublishEventAsync_WithCancelledToken()
+        {
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+
+            await FluentActions.Awaiting(async () => await daprClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
+        }
+
         private class PublishData
         {
             public string PublishObjectParameter { get; set; }
