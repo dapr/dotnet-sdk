@@ -84,7 +84,7 @@ namespace DaprDemoActor
         /// <inheritdoc/>
         public Task RegisterTimer()
         {
-            return this.RegisterTimerAsync("TestTimer", this.TimerCallBack, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+            return this.RegisterTimerAsync("TestTimer", "TimerCallBack", null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
         /// <inheritdoc/>
@@ -120,7 +120,7 @@ namespace DaprDemoActor
         /// </summary>
         /// <param name="data">Timer input data.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        private Task TimerCallBack(object data)
+        public Task TimerCallBack(object data)
         {
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
