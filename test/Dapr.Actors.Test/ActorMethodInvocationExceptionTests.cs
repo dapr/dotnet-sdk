@@ -30,10 +30,10 @@ namespace Dapr.Actors.Test
             var exception = new InvalidOperationException(message, new InvalidTimeZoneException(innerMessage));
 
             // Create Serialized Exception
-            (var serializedException, _) = RemoteException.FromException(exception);
+            (var serializedException, _) = ActorCommunicationException.FromException(exception);
 
             // De Serialize Exception
-            var isDeserialzied = RemoteException.ToException(
+            var isDeserialzied = ActorCommunicationException.ToException(
                                                      new MemoryStream(serializedException),
                                                      out var remoteMethodException);
             isDeserialzied.Should().BeTrue();
