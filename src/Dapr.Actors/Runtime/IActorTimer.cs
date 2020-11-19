@@ -14,12 +14,6 @@ namespace Dapr.Actors.Runtime
     public interface IActorTimer
     {
         /// <summary>
-        /// Gets the time when timer is first due.
-        /// </summary>
-        /// <value>Time as <see cref="System.TimeSpan"/> when timer is first due.</value>
-        TimeSpan DueTime { get; }
-
-        /// <summary>
         /// Gets the periodic time when timer will be invoked.
         /// </summary>
         /// <value>Periodic time as <see cref="System.TimeSpan"/> when timer will be invoked.</value>
@@ -36,11 +30,11 @@ namespace Dapr.Actors.Runtime
         /// It has one parameter: the state object passed to RegisterTimer.
         /// It returns a <see cref="System.Threading.Tasks.Task"/> representing the asynchronous operation.
         /// </summary>
-        Func<object, Task> AsyncCallback { get; }
+        string TimerCallback { get; }
 
         /// <summary>
         /// Gets state containing information to be used by the callback method, or null.
         /// </summary>
-        object State { get; }
+        byte[] State { get; }
     }
 }

@@ -77,7 +77,7 @@ namespace DaprDemoActor
 
         public Task RegisterTimer()
         {
-            return this.RegisterTimerAsync("TestTimer", this.TimerCallBack, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+            return this.RegisterTimerAsync("TestTimer", "TimerCallBack", null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
         public Task UnregisterTimer()
@@ -100,9 +100,13 @@ namespace DaprDemoActor
             return Task.CompletedTask;
         }
 
-        // This method is called when the timer is triggered based on its registration.
-        // It updates the PropertyA value.
-        private Task TimerCallBack(object data)
+        /// <summary>
+        /// This method is called when the timer is triggered based on its registration.
+        /// It updates the PropertyA value.
+        /// </summary>
+        /// <param name="data">Timer input data.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public Task TimerCallBack(object data)
         {
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";

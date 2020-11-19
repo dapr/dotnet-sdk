@@ -18,49 +18,38 @@ namespace Dapr.Actors.Runtime
         public ActorTimer(
             Actor owner,
             string timerName,
-            Func<object, Task> asyncCallback,
-            object state,
-            TimeSpan dueTime,
-            TimeSpan period)
+            TimerInfo timerInfo)
         {
             this.owner = owner;
             this.Name = timerName;
-            this.AsyncCallback = asyncCallback;
-            this.State = state;
-            this.Period = period;
-            this.DueTime = dueTime;
+            this.TimerInfo = timerInfo;
         }
 
         public string Name { get; }
 
-        public TimeSpan DueTime { get; }
+        internal TimerInfo TimerInfo { get; }
 
-        public TimeSpan Period { get; }
 
-        public object State { get; }
-
-        public Func<object, Task> AsyncCallback { get; }
-
-        internal async Task<string> SerializeAsync()
+        public string TimerCallback
         {
-            using var stream = new MemoryStream();
-            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
-
-            writer.WriteStartObject();
-
-            if (this.DueTime != null)
-            {
-                writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));
-            }
-
-            if (this.Period != null && this.Period >= TimeSpan.Zero)
-            {
-                writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.Period));
-            }
-
-            writer.WriteEndObject();
-            await writer.FlushAsync();
-            return Encoding.UTF8.GetString(stream.ToArray());
+            get { return this.TimerInfo.TimerCallback; }
         }
+
+        public byte[] State
+        {
+            get { return this.TimerInfo.Data; }
+        }
+
+        public TimeSpan DueTime
+        {
+            get { return this.TimerInfo.DueTime; }
+        }
+
+        public TimeSpan Period
+        {
+            get { return this.TimerInfo.Period; }
+        }
+
+        internal ActorId OwnerActorId { get; }
     }
 }

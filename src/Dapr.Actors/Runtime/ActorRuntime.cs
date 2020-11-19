@@ -162,13 +162,14 @@ namespace Dapr.Actors.Runtime
         /// <param name="actorTypeName">Actor type name to invokde the method for.</param>
         /// <param name="actorId">Actor id for the actor for which method will be invoked.</param>
         /// <param name="timerName">The name of timer provided during registration.</param>
+        /// <param name="requestBodyStream">The name of timer provided during registration.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        internal Task FireTimerAsync(string actorTypeName, string actorId, string timerName, CancellationToken cancellationToken = default)
+        internal Task FireTimerAsync(string actorTypeName, string actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, TimerName: {Timer}", actorTypeName, actorId, timerName))
             {
-                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, cancellationToken);
+                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, requestBodyStream, cancellationToken);
             }
         }
 
