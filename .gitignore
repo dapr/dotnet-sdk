@@ -87,3 +87,4 @@ bld/
 
 # coverlet code coverage results
 coverage.json
+/.ionide

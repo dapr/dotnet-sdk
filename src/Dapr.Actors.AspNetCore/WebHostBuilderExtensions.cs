@@ -59,7 +59,7 @@ namespace Dapr.Actors.AspNetCore
 
                 services.AddSingleton<ActorRuntime>(s =>
                 {
-                    return new ActorRuntime(s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value, s.GetRequiredService<ILoggerFactory>());
+                    return new ActorRuntime(s);
                 });
             });
 

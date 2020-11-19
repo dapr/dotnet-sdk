@@ -12,7 +12,9 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Options;
 
     /// <summary>
     /// Contains methods to register actor types. Registering the types allows the runtime to create instances of the actor.
@@ -25,20 +27,47 @@ namespace Dapr.Actors.Runtime
         private ActorSettings actorSettings;
 
         private readonly ILogger logger;
+        private readonly ILoggerFactory loggerFactory;
+        private readonly IServiceProvider serviceProvider;
 
         internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory)
         {
             this.actorSettings = new ActorSettings();
+            this.loggerFactory = loggerFactory;
             this.logger = loggerFactory.CreateLogger(this.GetType());
 
             // Create ActorManagers, override existing entry if registered again.
             foreach(var actorServiceFunc in options.actorServicesFunc)
             {
-                var actorServiceFactory = actorServiceFunc.Value ?? ((type) => new ActorService(type, loggerFactory));
+                var actorServiceFactory = actorServiceFunc.Value ?? CreateActorService;
                 var actorService = actorServiceFactory.Invoke(actorServiceFunc.Key);
 
                 this.actorManagers[actorServiceFunc.Key.ActorTypeName] = new ActorManager(actorService, loggerFactory);
             }
+        }
+
+        private ActorService CreateActorService(ActorTypeInformation type)
+        {
+            if (serviceProvider == null)
+            {
+                return new ActorService(type, loggerFactory);
+            }
+            else
+            {
+                return new ActorService(type, loggerFactory, serviceProvider);
+            }
+        }
+
+        /// <summary>
+        /// Use this constructor whene a <see cref="IServiceProvider"/> is available and needed to activate 
+        /// new instances of Actors.
+        /// </summary>
+        /// <param name="serviceProvider"></param>
+        internal ActorRuntime(IServiceProvider serviceProvider) : this(
+            options: serviceProvider.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value, 
+            loggerFactory: serviceProvider.GetRequiredService<ILoggerFactory>())
+        {
+            this.serviceProvider = serviceProvider;
         }
 
         /// <summary>
