@@ -6,6 +6,7 @@
 namespace Dapr.Actors.Runtime
 {
     using System;
+    using System.Collections.Generic;
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
@@ -92,7 +93,6 @@ namespace Dapr.Actors.Runtime
             // Exception has been thrown by user code, reset the state in state manager.
             return this.ResetStateAsync();
         }
-
 
         internal Task ResetStateAsync()
         {

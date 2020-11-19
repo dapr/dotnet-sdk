@@ -81,7 +81,7 @@ namespace ActorClient
             await proxy.RegisterTimer();
             await proxy.RegisterReminder();
             Console.WriteLine("Waiting so the timer and reminder can be triggered");
-            await Task.Delay(6000);
+            await Task.Delay(20000);
 
             Console.WriteLine("Making call using actor proxy to get data after timer and reminder triggered");
             receivedData = await proxy.GetData();
