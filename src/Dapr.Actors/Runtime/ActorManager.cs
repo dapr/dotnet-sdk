@@ -8,7 +8,6 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Collections.Concurrent;
     using System.IO;
-    using System.Linq;
     using System.Reflection;
     using System.Text;
     using System.Text.Json;
@@ -198,12 +197,10 @@ namespace Dapr.Actors.Runtime
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                // t
-                // var methodInfo = this.actorMethodInfoMap.LookupActorMethodInfo(timerData.TimerCallback);
                 var actorTypeName = this.actorService.ActorTypeInfo.ActorTypeName;
-                Type actorType = Type.GetType(actorTypeName);
-                MethodInfo[] methods = actorType.GetMethods();
-                MethodInfo methodInfo = actorType.GetMethod(timerData.TimerCallback);
+                var actorType = this.actorService.ActorTypeInfo.ImplementationType;
+                MethodInfo[] methods = actorType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                var methodInfo = actorType.GetMethod(timerData.Callback);
 
                 var parameters = methodInfo.GetParameters();
                 if (parameters.Length == 0)
@@ -212,7 +209,6 @@ namespace Dapr.Actors.Runtime
                 }
                 else
                 {
-                    timerData.TimerCallback
                     var deserializedType = timerData.Data;
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
                 }

@@ -19,20 +19,20 @@ namespace Dapr.Actors.Runtime
         private readonly TimeSpan minTimePeriod = Timeout.InfiniteTimeSpan;
 
         public TimerInfo(
-            string timerCallback,
+            string callback,
             byte[] state,
             TimeSpan dueTime,
             TimeSpan period)
         {
             this.ValidateDueTime("DueTime", dueTime);
             this.ValidatePeriod("Period", period);
-            this.TimerCallback = timerCallback;
+            this.Callback = callback;
             this.Data = state;
             this.DueTime = dueTime;
             this.Period = period;
         }
 
-        public string TimerCallback { get; private set; }
+        public string Callback { get; private set; }
 
         public TimeSpan DueTime { get; private set; }
 
@@ -47,7 +47,7 @@ namespace Dapr.Actors.Runtime
             var dueTime = default(TimeSpan);
             var period = default(TimeSpan);
             var data = default(byte[]);
-            string timerCallback = "";
+            string callback = "";
 
             if (json.TryGetProperty("dueTime", out var dueTimeProperty))
             {
@@ -66,12 +66,12 @@ namespace Dapr.Actors.Runtime
                 data = dataProperty.GetBytesFromBase64();
             }
 
-            if (json.TryGetProperty("timerCallback", out var timerCallbackProperty))
+            if (json.TryGetProperty("callback", out var callbackProperty))
             {
-                timerCallback = timerCallbackProperty.GetString();
+                callback = callbackProperty.GetString();
             }
 
-            return new TimerInfo(timerCallback, data, dueTime, period);
+            return new TimerInfo(callback, data, dueTime, period);
         }
 
         internal async Task<string> SerializeAsync()
@@ -95,9 +95,9 @@ namespace Dapr.Actors.Runtime
                 writer.WriteString("data", Convert.ToBase64String(this.Data));
             }
 
-            if (this.TimerCallback != null)
+            if (this.Callback != null)
             {
-                writer.WriteString("timerCallback", this.TimerCallback);
+                writer.WriteString("callback", this.Callback);
             }
 
             writer.WriteEndObject();

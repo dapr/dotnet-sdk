@@ -32,7 +32,7 @@ namespace Dapr.Actors.Runtime
 
         public string TimerCallback
         {
-            get { return this.TimerInfo.TimerCallback; }
+            get { return this.TimerInfo.Callback; }
         }
 
         public byte[] State

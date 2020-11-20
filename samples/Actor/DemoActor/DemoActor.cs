@@ -6,6 +6,7 @@
 namespace DaprDemoActor
 {
     using System;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using IDemoActorInterface;
@@ -75,9 +76,23 @@ namespace DaprDemoActor
             return Task.CompletedTask;
         }
 
+        class TimerParams
+        {
+            public int IntParam { get; set; }
+            public string StringParam { get; set; }
+        }
+
+        /// <inheritdoc/>
         public Task RegisterTimer()
         {
-            return this.RegisterTimerAsync("TestTimer", "TimerCallBack", null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+            var timerParams = new TimerParams
+            {
+                IntParam = 100,
+                StringParam = "timer test",
+            };
+
+            var state = JsonSerializer.SerializeToUtf8Bytes(timerParams);
+            return this.RegisterTimerAsync("TestTimer", "TimerCallBack", state, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
         public Task UnregisterTimer()
@@ -111,6 +126,10 @@ namespace DaprDemoActor
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
             this.StateManager.SetStateAsync<MyData>(StateName, state);
+            var args = (byte[])data;
+            var timerParams = JsonSerializer.Deserialize<TimerParams>(args);
+            Console.WriteLine("Timer parameter1: " + timerParams.IntParam);
+            Console.WriteLine("Timer parameter2: " + timerParams.StringParam);
             return Task.CompletedTask;
         }
 
