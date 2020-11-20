@@ -6,7 +6,6 @@
 namespace Dapr.Actors.Runtime
 {
     using System;
-    using System.Collections.Generic;
     using System.Text;
     using System.Threading.Tasks;
     using Microsoft.Extensions.Logging;
@@ -28,11 +27,6 @@ namespace Dapr.Actors.Runtime
         /// The Logger
         /// </summary>
         protected ILogger Logger { get; }
-
-        // /// <summary>
-        // /// Contains timers to be invoked.
-        // /// </summary>
-        // private readonly Dictionary<string, IActorTimer> timers = new Dictionary<string, IActorTimer>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Actor"/> class.
@@ -106,14 +100,6 @@ namespace Dapr.Actors.Runtime
             return this.ResetStateAsync();
         }
 
-        internal Task FireTimerAsync(string timerName)
-        {
-            // var timer = this.timers[timerName];
-            // return timer.AsyncCallback.Invoke(timer.State);
-            // Invoke()
-
-            return null;
-        }
 
         internal Task ResetStateAsync()
         {
