@@ -297,7 +297,6 @@ namespace Dapr.Actors.Runtime
             var serializedTimer = await timerInfo.SerializeAsync();
             await ActorRuntime.DaprInteractor.RegisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName, serializedTimer);
 
-            // this.timers[timerName] = actorTimer;
             return actorTimer;
         }
 
@@ -309,10 +308,6 @@ namespace Dapr.Actors.Runtime
         protected async Task UnregisterTimerAsync(IActorTimer timer)
         {
             await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timer.Name);
-            // if (this.timers.ContainsKey(timer.Name))
-            // {
-            //     this.timers.Remove(timer.Name);
-            // }
         }
 
         /// <summary>
@@ -323,10 +318,6 @@ namespace Dapr.Actors.Runtime
         protected async Task UnregisterTimerAsync(string timerName)
         {
             await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName);
-            // if (this.timers.ContainsKey(timerName))
-            // {
-            //     this.timers.Remove(timerName);
-            // }
         }
     }
 }
