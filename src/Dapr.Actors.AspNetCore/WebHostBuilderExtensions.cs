@@ -56,10 +56,14 @@ namespace Dapr.Actors.AspNetCore
                 services.AddRouting();
                 services.AddHealthChecks();
                 services.AddSingleton<IStartupFilter>(new DaprActorSetupFilter());
+                services.AddSingleton<ActorActivatorFactory, DependencyInjectionActorActivatorFactory>();
 
                 services.AddSingleton<ActorRuntime>(s =>
-                {
-                    return new ActorRuntime(s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value, s.GetRequiredService<ILoggerFactory>());
+                {   
+                    var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
+                    var loggerFactory = s.GetRequiredService<ILoggerFactory>();
+                    var activatorFactory = s.GetRequiredService<ActorActivatorFactory>();
+                    return new ActorRuntime(options, loggerFactory, activatorFactory);
                 });
             });
 

@@ -7,7 +7,6 @@ namespace DaprDemoActor
 {
     using System;
     using System.Threading.Tasks;
-    using Dapr.Actors;
     using Dapr.Actors.Runtime;
     using IDemoActorInterface;
 
@@ -17,18 +16,22 @@ namespace DaprDemoActor
     /// For Actors to use Reminders, it must derive from IRemindable.
     /// If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder specific methods which are shown in the code below.
     /// </summary>
-    public class DemoActor : Actor, IDemoActor, IRemindable
+    public class DemoActor : Actor, IDemoActor, IBankActor, IRemindable
     {
         private const string StateName = "my_data";
+
+        private readonly BankService bank;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DemoActor"/> class.
         /// </summary>
         /// <param name="service">Actor Service hosting the actor.</param>
-        /// <param name="actorId">Actor Id.</param>
-        public DemoActor(ActorService service, ActorId actorId)
-            : base(service, actorId)
+        public DemoActor(ActorHost service, BankService bank)
+            : base(service)
         {
+            // BankService is provided by dependency injection.
+            // See Program.cs
+            this.bank = bank;
         }
 
         /// <inheritdoc/>
@@ -126,6 +129,35 @@ namespace DaprDemoActor
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
             this.StateManager.SetStateAsync<MyData>(StateName, state);
             return Task.CompletedTask;
+        }
+
+        public async Task<AccountBalance> GetAccountBalance()
+        {
+            var starting = new AccountBalance()
+            {
+                AccountId = this.Id.GetId(),
+                Balance = 100m, // Start new accounts with 100, we're pretty generous.
+            };
+
+            var balance = await this.StateManager.GetOrAddStateAsync<AccountBalance>("balance", starting);
+            return balance;
+        }
+
+        public async Task Withdraw(WithdrawRequest withdraw)
+        {
+            var starting = new AccountBalance()
+            {
+                AccountId = this.Id.GetId(),
+                Balance = 100m, // Start new accounts with 100, we're pretty generous.
+            };
+
+            var balance = await this.StateManager.GetOrAddStateAsync<AccountBalance>("balance", starting);
+
+            // Throws Overdraft exception if the account doesn't have enough money.
+            var updated = this.bank.Withdraw(balance.Balance, withdraw.Amount);
+
+            balance.Balance = updated;
+            await this.StateManager.SetStateAsync("balance", balance);
         }
     }
 }

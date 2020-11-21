@@ -20,8 +20,7 @@ namespace Dapr.Actors.Test.Runtime
         {
             var mockStateManager = new Mock<IActorStateManager>();
             var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
-            testDemoActor.ActorService.Should().NotBeNull();
-            testDemoActor.IsDirty.Should().BeFalse();
+            testDemoActor.Host.Should().NotBeNull();
             testDemoActor.Id.Should().NotBeNull();
         }
 
@@ -53,11 +52,9 @@ namespace Dapr.Actors.Test.Runtime
         private TestActor CreateTestDemoActor(IActorStateManager actorStateManager)
         {
             var actorTypeInformation = ActorTypeInformation.Get(typeof(TestActor));
-            Func<ActorService, ActorId, TestActor> actorFactory = (service, id) =>
-                new TestActor(service, id, actorStateManager);
             var loggerFactory = new LoggerFactory();
-            var actorService = new ActorService(actorTypeInformation, loggerFactory, actorFactory);
-            var testActor = actorFactory.Invoke(actorService, ActorId.CreateRandom());
+            var actorService = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), loggerFactory);
+            var testActor = new TestActor(actorService, actorStateManager);
             return testActor;
         }
     }

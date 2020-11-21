@@ -35,9 +35,13 @@ namespace Dapr.Actors.Test
     /// </summary>
     public class TestActor : Actor,  ITestActor
     {
-        public TestActor(ActorService actorService, ActorId actorId, IActorStateManager actorStateManager)
-            : base(actorService, actorId, actorStateManager)
+        public TestActor(ActorHost actorService, IActorStateManager stateManager = null)
+            : base(actorService)
         {
+            if (stateManager != null)
+            {
+                this.StateManager = stateManager;
+            }
         }
 
         /// <inheritdoc/>

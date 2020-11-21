@@ -9,6 +9,7 @@ namespace ActorClient
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Client;
+    using Dapr.Actors.Communication;
     using IDemoActorInterface;
 
     /// <summary>
@@ -90,6 +91,25 @@ namespace ActorClient
             await proxy.UnregisterTimer();
             Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
             await proxy.UnregisterReminder();
+
+
+            Console.WriteLine("Creating a Bank Actor");
+            var bank = ActorProxy.Create<IBankActor>(ActorId.CreateRandom(), "DemoActor");
+            while (true)
+            {
+                var balance = await bank.GetAccountBalance();
+                Console.WriteLine($"Balance for account '{balance.AccountId}' is '{balance.Balance:c}'.");
+
+                Console.WriteLine($"Withdrawing '{10m:c}'...");
+                try
+                {
+                    await bank.Withdraw(new WithdrawRequest() { Amount = 10m, });
+                }
+                catch (ServiceException ex)
+                {
+                    Console.WriteLine("Overdraft: " + ex.Message);
+                }
+            }
         }
     }
 }
