@@ -47,7 +47,7 @@ or pass these 2 options to invoke RoutingService via HTTP and GrpcService via gR
 ```
 
 ## Invoking Services
-This solution contains a sample [RoutingSample service](..\..\AspNetCore\RoutingSample), which implements a simple banking application in ASP.NET core.
+This solution contains a sample [RoutingSample service](../../AspNetCore/RoutingSample), which implements a simple banking application in ASP.NET core.
 The service provides following operations:
 - balance
 - withdraw
@@ -164,3 +164,13 @@ The controller sample has a route "/throwException" that returns a BadRequest re
                 }
             }
  ```
+
+ ## Working with cancellation tokens
+
+ InvokeMethodAsync and other APIs exposed by Dapr client accept a cancellation token and by default, if the operation is canceled, you will get an OperationCanceledException. However, if you choose to initialize and pass in your own GrpcChannelOptions to the client builder, then unless you enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation), the exception thrown would be an RpcException with StatusCode as Cancelled. To get an OperationCanceledException instead, refer to the code below:-
+ ```c#
+            var httpClient = new HttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+```

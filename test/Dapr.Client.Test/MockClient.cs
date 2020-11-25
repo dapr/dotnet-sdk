@@ -22,26 +22,19 @@ namespace Dapr.Client
 
         public DaprClient DaprClient { get; }
 
-        public CallBuilder<TResponse> Call<TResponse>()
+        public InvokeApiCallBuilder<TResponse> Call<TResponse>()
         {
-            return new CallBuilder<TResponse>();
+            return new InvokeApiCallBuilder<TResponse>();
         }
 
-        public void SetupMockToThrow(RpcException rpcException)
-        {
-            this.Mock
-            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
-            .Throws(rpcException);
-        }
-
-        public class CallBuilder<TResponse>
+        public class InvokeApiCallBuilder<TResponse>
         {
             private TResponse response;
             private Metadata headers;
             private Status status;
             private Metadata trailers;
 
-            public CallBuilder()
+            public InvokeApiCallBuilder()
             {
                 headers = new Metadata();
                 trailers = new Metadata();
@@ -54,28 +47,28 @@ namespace Dapr.Client
                     Task.FromResult(headers),
                     () => status,
                     () => trailers,
-                    () => {});
+                    () => { });
             }
 
-            public CallBuilder<TResponse> SetResponse(TResponse response)
+            public InvokeApiCallBuilder<TResponse> SetResponse(TResponse response)
             {
                 this.response = response;
                 return this;
             }
 
-            public CallBuilder<TResponse> SetStatus(Status status)
+            public InvokeApiCallBuilder<TResponse> SetStatus(Status status)
             {
                 this.status = status;
                 return this;
             }
 
-            public CallBuilder<TResponse> AddHeader(string key, string value)
+            public InvokeApiCallBuilder<TResponse> AddHeader(string key, string value)
             {
                 this.headers.Add(key, value);
                 return this;
             }
 
-            public CallBuilder<TResponse> AddTrailer(string key, string value)
+            public InvokeApiCallBuilder<TResponse> AddTrailer(string key, string value)
             {
                 this.trailers.Add(key, value);
                 return this;
