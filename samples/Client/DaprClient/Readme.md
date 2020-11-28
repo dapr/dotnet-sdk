@@ -9,7 +9,7 @@ The client sample shows how to make Dapr calls to publish events, save state, ge
 
  ## Running the Sample
 
- To run the sample locally run this command in GrpcClient directory:
+ To run the sample locally run this command in DaprClient directory:
  ```sh
  dapr run --app-id gRPC_Client -- dotnet run
  ```
@@ -28,7 +28,7 @@ Published deposit event!
 Done
  ```
 
-If you want to invoke RoutingService via HTTP or GrpcService via gRPC, you should run [RoutingService](..\..\AspNetCore\RoutingSample) or [GrpcService](..\..\AspNetCore\GrpcServiceSample) sample firstly, then run this command:
+If you want to invoke RoutingService via HTTP or GrpcService via gRPC, you should run [RoutingService](../../AspNetCore/RoutingSample) or [GrpcService](../../AspNetCore/GrpcServiceSample) sample firstly (only one service can be ran) , then run this command
 
 ``` sh
  dapr run --app-id gRPC_Client -- dotnet run --useRouting true
@@ -138,14 +138,14 @@ The method *PublishDepositeEventToRoutingSampleAsync* demonstrates how to publis
 
 ## Handling RpcException
 
-Run the controller sample as follows from samples/AspNetCore/ControllerSample directory:-
+Run the controller sample as follows from samples/AspNetCore/ControllerSample directory:
 ```
 dapr run --app-id controller --app-port 5000 dotnet run
 ```
 
-Run the client sample as follows from samples/Client/DaprClient directory. The "rpc-exception" argument invokes a route on the server side that causes it to throw an RpcException:-
+Run the client sample as follows from samples/Client/DaprClient directory. Setting the "--rpc-exception" argument into true will invokes a route on the server side that causes it to throw an RpcException:
 ```
-dapr run --app-id gRPC_Client dotnet run rpc-exception
+dapr run --app-id gRPC_Client dotnet run --rpc-exception true
 ```
 
 The controller sample has a route "/throwException" that returns a BadRequest result which causes the Dapr sidecar to throw an RpcException. The method *InvokeThrowExceptionOperationAsync* on the client side demonstrates how to extract the error message from RpcException.

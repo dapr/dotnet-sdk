@@ -13,12 +13,12 @@ The application also registers for pub/sub with the `deposit` and `withdraw` top
 
  To run the sample locally run this command in this project root directory:
  ```sh
- dapr run --app-id grpcsample --app-port 5000 --app-protocol grpc -- dotnet run
+ dapr run --app-id grpcsample --app-port 5050 --app-protocol grpc -- dotnet run
  ```
 
- The application will listen on port 5000 for GRPC.
+ The application will listen on port 5050 for GRPC.
 
-*NOTE: Because of this [bug](https://github.com/dapr/dapr/issues/1883), only can use port 5000 without TLS.*
+*NOTE: Because of this [bug](https://github.com/dapr/dapr/issues/1883), only can use port 5050 without TLS.*
 
  ### Client Examples
 
