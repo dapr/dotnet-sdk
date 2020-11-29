@@ -7,8 +7,6 @@ namespace Dapr.Client
 {
     using System.Net;
     using System.Collections.Generic;
-    using Dapr.Client;
-    using Dapr.Client.Http;
 
     /// <summary>
     /// Represents a response returned by service invocation
