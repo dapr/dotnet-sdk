@@ -28,7 +28,7 @@ Published deposit event!
 Done
  ```
 
-If you want to invoke RoutingService via HTTP or GrpcService via gRPC, you should run [RoutingService](../../AspNetCore/RoutingSample) or [GrpcService](../../AspNetCore/GrpcServiceSample) sample firstly (only one service can be ran) , then run this command
+To invoke RoutingService via HTTP, run [RoutingService](../../AspNetCore/RoutingSample) or to invoke GrpcService via gRPC, run [GrpcService](../../AspNetCore/GrpcServiceSample) sample first. Then, invoke the client using the corresponding command below:-
 
 ``` sh
  dapr run --app-id gRPC_Client -- dotnet run --useRouting true
@@ -40,7 +40,7 @@ or
  dapr run --app-id gRPC_Client -- dotnet run --useGrpcsample true
 ```
 
-or pass these 2 options to invoke RoutingService via HTTP and GrpcService via gRPC:
+or to invoke RoutingService via HTTP and GrpcService via gRPC simultaneously:
 
 ``` sh
  dapr run --app-id gRPC_Client -- dotnet run --useRouting true --useGrpcsample true
@@ -143,7 +143,7 @@ Run the controller sample as follows from samples/AspNetCore/ControllerSample di
 dapr run --app-id controller --app-port 5000 dotnet run
 ```
 
-Run the client sample as follows from samples/Client/DaprClient directory. Setting the "--rpc-exception" argument into true will invokes a route on the server side that causes it to throw an RpcException:
+Run the client sample as follows from samples/Client/DaprClient directory. Setting the "--rpc-exception" argument to true will invoke a route on the server side that causes it to throw an RpcException:
 ```
 dapr run --app-id gRPC_Client dotnet run --rpc-exception true
 ```
