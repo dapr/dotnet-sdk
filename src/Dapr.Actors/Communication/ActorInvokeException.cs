@@ -59,28 +59,26 @@ namespace Dapr.Actors
         /// <summary>
         /// Gets the exception from the ActorInvokeException.
         /// </summary>
-        /// <param name="bufferedStream">The stream that contains the serialized exception or exception message.</param>
+        /// <param name="stream">The stream that contains the serialized exception or exception message.</param>
         /// <param name="result">Exception from the remote side.</param>
         /// <returns>true if there was a valid exception, false otherwise.</returns>
-        internal static bool ToException(Stream bufferedStream, out Exception result)
+        internal static bool ToException(Stream stream, out Exception result)
         {
             // try to de-serialize the bytes in to exception requestMessage and create service exception
-            if (ActorInvokeException.TryDeserialize(bufferedStream, out result))
+            if (ActorInvokeException.TryDeserialize(stream, out result))
             {
                 return true;
             }
 
-            bufferedStream.Dispose();
-
             return false;
         }
 
-        internal static bool TryDeserialize(Stream data, out Exception result, ILogger logger = null)
+        internal static bool TryDeserialize(Stream stream, out Exception result, ILogger logger = null)
         {
             try
             {
-                data.Seek(0, SeekOrigin.Begin);
-                var eData = ActorInvokeExceptionData.Deserialize(data);
+                stream.Seek(0, SeekOrigin.Begin);
+                var eData = ActorInvokeExceptionData.Deserialize(stream);
                 result = new ActorInvokeException(eData.Type, eData.Message);
                 return true;
             }

@@ -29,14 +29,14 @@ namespace Dapr.Actors
         [DataMember]
         public string Message { get; private set; }
 
-        internal static ActorInvokeExceptionData Deserialize(Stream buffer)
+        internal static ActorInvokeExceptionData Deserialize(Stream stream)
         {
-            if ((buffer == null) || (buffer.Length == 0))
+            if ((stream == null) || (stream.Length == 0))
             {
                 return null;
             }
 
-            using var reader = XmlDictionaryReader.CreateBinaryReader(buffer, XmlDictionaryReaderQuotas.Max);
+            using var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
             return (ActorInvokeExceptionData)ActorInvokeExceptionDataSerializer.ReadObject(reader);
         }
 
