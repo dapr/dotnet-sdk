@@ -5,9 +5,6 @@
 
 namespace Dapr.Client
 {
-    using Dapr.Client;
-    using Dapr.Client.Http;
-
     /// <summary>
     /// Represents an Invoke Request used for service invocation
     /// </summary>
@@ -37,8 +34,8 @@ namespace Dapr.Client
         public TRequest Body { get; set; }
 
         /// <summary>
-        /// Gets or sets the HTTP extension info.
+        /// Gets or sets the HTTP options.
         /// </summary>
-        public HTTPExtension HttpExtension { get; set; }
+        public HttpInvocationOptions HttpOptions { get; set; }
     }
 }
