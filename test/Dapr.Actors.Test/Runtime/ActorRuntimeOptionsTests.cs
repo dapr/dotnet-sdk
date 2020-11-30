@@ -17,8 +17,8 @@ namespace Dapr.Actors.Test.Runtime
         {
             var actorType = typeof(TestActor);
             var actorTypeInformation = ActorTypeInformation.Get(actorType);
-            var actorService = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), new LoggerFactory());
-            var actor = new TestActor(actorService);
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), new LoggerFactory());
+            var actor = new TestActor(host);
 
             var activator = Mock.Of<ActorActivator>();
 

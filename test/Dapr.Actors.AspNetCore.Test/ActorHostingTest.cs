@@ -67,16 +67,16 @@ namespace Dapr.Actors.AspNetCore
 
         private class TestActor1 : Actor, ITestActor
         {
-            public TestActor1(ActorHost actorService) 
-                : base(actorService)
+            public TestActor1(ActorHost host) 
+                : base(host)
             {
             }
         }
 
         private class TestActor2 : Actor, ITestActor
         {
-            public TestActor2(ActorHost actorService) 
-                : base(actorService)
+            public TestActor2(ActorHost host) 
+                : base(host)
             {
             }
         }

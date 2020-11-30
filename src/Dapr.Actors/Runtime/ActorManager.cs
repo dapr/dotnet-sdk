@@ -240,8 +240,8 @@ namespace Dapr.Actors.Runtime
         private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-            var actorService = new ActorHost(this.ActorTypeInfo, actorId, this.loggerFactory);
-            var state =  await this.activator.CreateAsync(actorService);
+            var host = new ActorHost(this.ActorTypeInfo, actorId, this.loggerFactory);
+            var state =  await this.activator.CreateAsync(host);
             this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             return state;
         }
@@ -271,7 +271,7 @@ namespace Dapr.Actors.Runtime
         {
             this.logger.LogDebug("Deleting Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, state.Actor.Id);
             await this.activator.DeleteAsync(state);
-            this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, state.Actor.Id);
+            this.logger.LogDebug("Finished deleting Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, state.Actor.Id);
         }
 
         // Used for testing - do not leak the actor instances outside of this method in library code.

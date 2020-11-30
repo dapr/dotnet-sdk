@@ -35,8 +35,8 @@ namespace Dapr.Actors.Test
     /// </summary>
     public class TestActor : Actor,  ITestActor
     {
-        public TestActor(ActorHost actorService, IActorStateManager stateManager = null)
-            : base(actorService)
+        public TestActor(ActorHost host, IActorStateManager stateManager = null)
+            : base(host)
         {
             if (stateManager != null)
             {

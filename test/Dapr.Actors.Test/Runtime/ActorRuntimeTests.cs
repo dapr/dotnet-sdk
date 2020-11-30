@@ -146,8 +146,8 @@ namespace Dapr.Actors.Test
 
         private sealed class TestActor : Actor, ITestActor
         {
-            public TestActor(ActorHost actorService)
-                : base(actorService)
+            public TestActor(ActorHost host)
+                : base(host)
             {
             }
         }
@@ -155,8 +155,8 @@ namespace Dapr.Actors.Test
         [Actor(TypeName = RenamedActorTypeName)]
         private sealed class RenamedActor : Actor, ITestActor
         {
-            public RenamedActor(ActorHost actorService)
-                : base(actorService)
+            public RenamedActor(ActorHost host)
+                : base(host)
             {
             }
         }
@@ -168,8 +168,8 @@ namespace Dapr.Actors.Test
 
         private sealed class MyActor : Actor, IAnotherActor
         {
-            public MyActor(ActorHost actorService)
-                : base(actorService)
+            public MyActor(ActorHost host)
+                : base(host)
             {
             }
 
@@ -185,10 +185,10 @@ namespace Dapr.Actors.Test
 
             public int DeleteCallCount { get; set; }
 
-            public override Task<ActorActivatorState> CreateAsync(ActorHost service)
+            public override Task<ActorActivatorState> CreateAsync(ActorHost host)
             {
                 CreateCallCount++;;
-                return base.CreateAsync(service);
+                return base.CreateAsync(host);
             }
 
             public override ValueTask DeleteAsync(ActorActivatorState state)

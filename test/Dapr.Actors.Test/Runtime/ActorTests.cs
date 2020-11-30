@@ -53,8 +53,8 @@ namespace Dapr.Actors.Test.Runtime
         {
             var actorTypeInformation = ActorTypeInformation.Get(typeof(TestActor));
             var loggerFactory = new LoggerFactory();
-            var actorService = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), loggerFactory);
-            var testActor = new TestActor(actorService, actorStateManager);
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), loggerFactory);
+            var testActor = new TestActor(host, actorStateManager);
             return testActor;
         }
     }

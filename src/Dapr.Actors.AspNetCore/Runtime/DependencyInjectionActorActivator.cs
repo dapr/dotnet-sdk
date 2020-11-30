@@ -37,7 +37,7 @@ namespace Dapr.Actors.Runtime
             };
         }
 
-        public override async Task<ActorActivatorState> CreateAsync(ActorHost service)
+        public override async Task<ActorActivatorState> CreateAsync(ActorHost host)
         {
             var scope = services.CreateScope();
             try
@@ -48,7 +48,7 @@ namespace Dapr.Actors.Runtime
                     ref this.@lock,
                     this.initializer);
 
-                var actor = (Actor)factory(scope.ServiceProvider, new object[] { service });
+                var actor = (Actor)factory(scope.ServiceProvider, new object[] { host });
                 return new State(actor, scope);
             }
             catch

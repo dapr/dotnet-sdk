@@ -7,7 +7,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using Xunit;
 
 namespace Dapr.Actors.Runtime
@@ -127,6 +126,7 @@ namespace Dapr.Actors.Runtime
             var manager = CreateActorManager(typeof(TestActor));
 
             var id = ActorId.CreateRandom();
+            Assert.False(manager.TryGetActorAsync(id, out _));
             await manager.DeactivateActorAsync(id);
         }
 
@@ -233,10 +233,10 @@ namespace Dapr.Actors.Runtime
 
             public int DeleteCallCount { get; set; }
 
-            public override Task<ActorActivatorState> CreateAsync(ActorHost service)
+            public override Task<ActorActivatorState> CreateAsync(ActorHost host)
             {
                 CreateCallCount++;;
-                return base.CreateAsync(service);
+                return base.CreateAsync(host);
             }
 
             public override ValueTask DeleteAsync(ActorActivatorState state)

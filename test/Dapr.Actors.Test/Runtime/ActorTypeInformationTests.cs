@@ -40,8 +40,8 @@ namespace Dapr.Actors.Test
 
         private sealed class TestActor : Actor, ITestActor
         {
-            public TestActor(ActorHost actorService)
-                : base(actorService)
+            public TestActor(ActorHost host)
+                : base(host)
             {
             }
         }
@@ -49,8 +49,8 @@ namespace Dapr.Actors.Test
         [Actor(TypeName = RenamedActorTypeName)]
         private sealed class RenamedActor : Actor, ITestActor
         {
-            public RenamedActor(ActorHost actorService)
-                : base(actorService)
+            public RenamedActor(ActorHost host)
+                : base(host)
             {
             }
         }
