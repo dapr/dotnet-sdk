@@ -4,9 +4,7 @@
 // ------------------------------------------------------------
 namespace Dapr.Client
 {
-    using Dapr.Client.Http;
     using System;
-    using System.Net;
 
     /// <summary>
     /// This class represents the exception thrown when Service Invocation via Dapr encounters an error
