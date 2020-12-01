@@ -15,12 +15,15 @@ namespace Dapr.Actors.Runtime
     using System.Threading.Tasks;
     using Dapr.Actors.Resources;
 
+    /// <summary>
+    /// Represents the details of the timer set on an Actor.
+    /// </summary>
     [JsonConverter(typeof(TimerInfoConverter))]
-    internal class TimerInfo
+    public class TimerInfo
     {
         private readonly TimeSpan minTimePeriod = Timeout.InfiniteTimeSpan;
 
-        public TimerInfo(
+        internal TimerInfo(
             string callback,
             byte[] state,
             TimeSpan dueTime,
@@ -34,13 +37,13 @@ namespace Dapr.Actors.Runtime
             this.Period = period;
         }
 
-        public string Callback { get; private set; }
+        internal string Callback { get; private set; }
 
-        public TimeSpan DueTime { get; private set; }
+        internal TimeSpan DueTime { get; private set; }
 
-        public TimeSpan Period { get; private set; }
+        internal TimeSpan Period { get; private set; }
 
-        public byte[] Data { get; private set; }
+        internal byte[] Data { get; private set; }
 
         private void ValidateDueTime(string argName, TimeSpan value)
         {
@@ -144,5 +147,5 @@ namespace Dapr.Actors.Runtime
             writer.WriteEndObject();
             await writer.FlushAsync();
         }
-    }        
+    }
 }
