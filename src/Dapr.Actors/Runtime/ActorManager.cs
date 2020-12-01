@@ -53,7 +53,7 @@ namespace Dapr.Actors.Runtime
             this.actorMethodInfoMap = new ActorMethodInfoMap(this.registration.Type.InterfaceTypes);
             this.activeActors = new ConcurrentDictionary<ActorId, ActorActivatorState>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
-            this.timerMethodContext = ActorMethodContext.CreateForReminder(TimerMethodName);
+            this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
             this.serializersManager = IntializeSerializationManager(null);
             this.messageBodyFactory = new WrappedRequestMessageFactory();
 
@@ -193,12 +193,12 @@ namespace Dapr.Actors.Runtime
         {
              var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
 
-            dynamic awaitable;
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                var actorTypeName = this.actorService.ActorTypeInfo.ActorTypeName;
-                var actorType = this.actorService.ActorTypeInfo.ImplementationType;
+                dynamic awaitable;
+                var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
+                var actorType = actor.Host.ActorTypeInfo.ImplementationType;
                 MethodInfo[] methods = actorType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
                 var methodInfo = actorType.GetMethod(timerData.Callback);
 
@@ -213,7 +213,6 @@ namespace Dapr.Actors.Runtime
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
                 }
                 await awaitable;
-
                 return default;
             }
 

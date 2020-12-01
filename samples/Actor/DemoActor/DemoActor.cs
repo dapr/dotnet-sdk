@@ -117,7 +117,7 @@ namespace DaprDemoActor
 
         // This method is called when the timer is triggered based on its registration.
         // It updates the PropertyA value.
-        private Task TimerCallBack(object data)
+        public Task TimerCallBack(object data)
         {
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
