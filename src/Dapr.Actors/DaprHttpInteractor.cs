@@ -145,14 +145,14 @@ namespace Dapr.Actors
                 var responseMessageBody = await retval.Content.ReadAsStreamAsync();
 
                 // Deserialize Actor Response Message Body
-                // Deserialize to RemoteException when there is response header otherwise normal path
+                // Deserialize to ActorInvokeException when there is response header otherwise normal path
                 var responseBodySerializer = serializersManager.GetResponseMessageBodySerializer(interfaceId);
 
                 // actorResponseMessageHeader is not null, it means there is remote exception
                 if (actorResponseMessageHeader != null)
                 {
                     var isDeserialzied =
-                            RemoteException.ToException(
+                            ActorInvokeException.ToException(
                                 responseMessageBody,
                                 out var remoteMethodException);
                     if (isDeserialzied)
@@ -164,7 +164,7 @@ namespace Dapr.Actors
                     }
                     else
                     {
-                        throw new ServiceException(remoteMethodException.GetType().FullName, string.Format(
+                        throw new ActorInvokeException(remoteMethodException.GetType().FullName, string.Format(
                             CultureInfo.InvariantCulture,
                             SR.ErrorDeserializationFailure,
                             remoteMethodException.ToString()));
