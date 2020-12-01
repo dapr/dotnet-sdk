@@ -115,13 +115,9 @@ namespace DaprDemoActor
             return Task.CompletedTask;
         }
 
-        /// <summary>
-        /// This method is called when the timer is triggered based on its registration.
-        /// It updates the PropertyA value.
-        /// </summary>
-        /// <param name="data">Timer input data.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task TimerCallBack(object data)
+        // This method is called when the timer is triggered based on its registration.
+        // It updates the PropertyA value.
+        private Task TimerCallBack(object data)
         {
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
