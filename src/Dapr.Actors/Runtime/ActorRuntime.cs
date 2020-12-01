@@ -21,42 +21,36 @@ namespace Dapr.Actors.Runtime
     {
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
-
-        private ActorSettings actorSettings;
-
+        private readonly ActorRuntimeOptions options;
         private readonly ILogger logger;
+        private readonly ActorActivatorFactory activatorFactory;
 
-        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory)
+        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory)
         {
-            this.actorSettings = new ActorSettings();
+            this.options = options;
             this.logger = loggerFactory.CreateLogger(this.GetType());
+            this.activatorFactory = activatorFactory;
 
-            // Create ActorManagers, override existing entry if registered again.
-            foreach(var actorServiceFunc in options.actorServicesFunc)
+            // Loop through actor registrations and create the actor manager for each one. 
+            // We do this up front so that we can catch initialization errors early, and so
+            // that access to state can have a simple threading model.
+            // 
+            // Revisit this if actor initialization becomes a significant source of delay for large projects.
+            foreach (var actor in options.Actors)
             {
-                var actorServiceFactory = actorServiceFunc.Value ?? ((type) => new ActorService(type, loggerFactory));
-                var actorService = actorServiceFactory.Invoke(actorServiceFunc.Key);
-
-                this.actorManagers[actorServiceFunc.Key.ActorTypeName] = new ActorManager(actorService, loggerFactory);
+                this.actorManagers[actor.Type.ActorTypeName] = new ActorManager(
+                    actor, 
+                    actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type), 
+                    loggerFactory);
             }
         }
 
         /// <summary>
-        /// Gets actor type names registered with the runtime.
+        /// Gets actor registrations registered with the runtime.
         /// </summary>
-        public IEnumerable<string> RegisteredActorTypes => this.actorManagers.Keys;
+        public IReadOnlyList<ActorRegistration> RegisteredActors => this.options.Actors;
 
         internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor();
-
-
-        /// <summary>
-        /// Allows configuration of this app's actor configuration.
-        /// </summary>
-        /// <param name="actorSettingsDelegate">A delegate to edit the default ActorSettings object.</param>
-        public void ConfigureActorSettings(Action<ActorSettings> actorSettingsDelegate)
-        {
-            actorSettingsDelegate.Invoke(this.actorSettings);
-        }
 
         internal Task SerializeSettingsAndRegisteredTypes(IBufferWriter<byte> output)
         {
@@ -66,32 +60,32 @@ namespace Dapr.Actors.Runtime
             writer.WritePropertyName("entities");
             writer.WriteStartArray();
 
-            foreach (var actorType in this.RegisteredActorTypes)
+            foreach (var actor in this.RegisteredActors)
             {
-                writer.WriteStringValue(actorType);
+                writer.WriteStringValue(actor.Type.ActorTypeName);
             }
 
             writer.WriteEndArray();
 
-            if (this.actorSettings.ActorIdleTimeout != null)
+            if (this.options.ActorIdleTimeout != null)
             {
-                writer.WriteString("actorIdleTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.ActorIdleTimeout));
+                writer.WriteString("actorIdleTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.options.ActorIdleTimeout));
             }
 
-            if (this.actorSettings.ActorScanInterval != null)
+            if (this.options.ActorScanInterval != null)
             {
-                writer.WriteString("actorScanInterval", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.ActorScanInterval));
+                writer.WriteString("actorScanInterval", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.options.ActorScanInterval));
             }
 
-            if (this.actorSettings.DrainOngoingCallTimeout != null)
+            if (this.options.DrainOngoingCallTimeout != null)
             {
-                writer.WriteString("drainOngoingCallTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.actorSettings.DrainOngoingCallTimeout));
+                writer.WriteString("drainOngoingCallTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.options.DrainOngoingCallTimeout));
             }
 
             // default is false, don't write it if default
-            if (this.actorSettings.DrainRebalancedActors != false)
+            if (this.options.DrainRebalancedActors != false)
             {
-                writer.WriteBoolean("drainRebalancedActors", (this.actorSettings.DrainRebalancedActors));
+                writer.WriteBoolean("drainRebalancedActors", (this.options.DrainRebalancedActors));
             }
 
             writer.WriteEndObject();
@@ -108,7 +102,7 @@ namespace Dapr.Actors.Runtime
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}", actorTypeName, actorId))
             {
-                await GetActorManager(actorTypeName).DeactivateActor(new ActorId(actorId));
+                await GetActorManager(actorTypeName).DeactivateActorAsync(new ActorId(actorId));
             }
         }
 

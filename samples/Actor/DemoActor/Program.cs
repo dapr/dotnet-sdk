@@ -8,6 +8,7 @@ namespace DaprDemoActor
     using Dapr.Actors.AspNetCore;
     using Microsoft.AspNetCore;
     using Microsoft.AspNetCore.Hosting;
+    using Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
     /// Class for host.
@@ -31,9 +32,15 @@ namespace DaprDemoActor
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-            .UseActors(actorRuntime =>
-            {
-                actorRuntime.RegisterActor<DemoActor>();
-            });
+                .ConfigureServices(services => 
+                {
+                    // Services registered here are available for Actor types to accept in their
+                    // constructor.
+                    services.AddSingleton<BankService>();
+                })
+                .UseActors(options =>
+                {
+                    options.Actors.RegisterActor<DemoActor>();
+                });
     }
 }

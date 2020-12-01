@@ -17,10 +17,10 @@ namespace Dapr.Actors.AspNetCore
         public void CanRegisterActorsInSingleCalls()
         {
             var builder = new WebHostBuilder();
-            builder.UseActors(actors =>
+            builder.UseActors(options =>
             {
-                actors.RegisterActor<TestActor1>();
-                actors.RegisterActor<TestActor2>();
+                options.Actors.RegisterActor<TestActor1>();
+                options.Actors.RegisterActor<TestActor2>();
             });
             
             // Configuring the HTTP pipeline is required. It's ok if it's empty.
@@ -30,7 +30,7 @@ namespace Dapr.Actors.AspNetCore
             var runtime = host.Services.GetRequiredService<ActorRuntime>();
 
             Assert.Collection(
-                runtime.RegisteredActorTypes.OrderBy(t => t),
+                runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1)).ActorTypeName, t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2)).ActorTypeName, t));
         }
@@ -39,14 +39,14 @@ namespace Dapr.Actors.AspNetCore
         public void CanRegisterActorsInMultipleCalls()
         {
             var builder = new WebHostBuilder();
-            builder.UseActors(actors =>
+            builder.UseActors(options =>
             {
-                actors.RegisterActor<TestActor1>();
+                options.Actors.RegisterActor<TestActor1>();
             });
             
-            builder.UseActors(actors =>
+            builder.UseActors(options =>
             {
-                actors.RegisterActor<TestActor2>();
+                options.Actors.RegisterActor<TestActor2>();
             });
 
             // Configuring the HTTP pipeline is required. It's ok if it's empty.
@@ -56,7 +56,7 @@ namespace Dapr.Actors.AspNetCore
             var runtime = host.Services.GetRequiredService<ActorRuntime>();
 
             Assert.Collection(
-                runtime.RegisteredActorTypes.OrderBy(t => t),
+                runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1)).ActorTypeName, t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2)).ActorTypeName, t));
         }
@@ -67,16 +67,16 @@ namespace Dapr.Actors.AspNetCore
 
         private class TestActor1 : Actor, ITestActor
         {
-            public TestActor1(ActorService actorService, ActorId actorId, IActorStateManager actorStateManager = null) 
-                : base(actorService, actorId, actorStateManager)
+            public TestActor1(ActorHost host) 
+                : base(host)
             {
             }
         }
 
         private class TestActor2 : Actor, ITestActor
         {
-            public TestActor2(ActorService actorService, ActorId actorId, IActorStateManager actorStateManager = null) 
-                : base(actorService, actorId, actorStateManager)
+            public TestActor2(ActorHost host) 
+                : base(host)
             {
             }
         }

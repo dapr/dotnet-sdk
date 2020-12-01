@@ -20,7 +20,6 @@ namespace Dapr.Actors.Runtime
     /// </remarks>
     public abstract class Actor
     {
-        private readonly string traceId;
         private readonly string actorTypeName;
 
         /// <summary>
@@ -36,38 +35,31 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Initializes a new instance of the <see cref="Actor"/> class.
         /// </summary>
-        /// <param name="actorService">The <see cref="ActorService"/> that will host this actor instance.</param>
-        /// <param name="actorId">Id for the actor.</param>
-        /// <param name="actorStateManager">The custom implementation of the StateManager.</param>
-        protected Actor(ActorService actorService, ActorId actorId, IActorStateManager actorStateManager = default)
+        /// <param name="host">The <see cref="ActorHost"/> that will host this actor instance.</param>
+        protected Actor(ActorHost host)
         {
-            this.Id = actorId;
-            this.traceId = this.Id.ToString();
-            this.IsDirty = false;
-            this.ActorService = actorService;
-            this.StateManager = actorStateManager ?? new ActorStateManager(this);
-            this.actorTypeName = this.ActorService.ActorTypeInfo.ActorTypeName;
-            this.Logger = actorService.LoggerFactory.CreateLogger(this.GetType());
+            this.Host = host;
+            this.StateManager = new ActorStateManager(this);
+            this.actorTypeName = this.Host.ActorTypeInfo.ActorTypeName;
+            this.Logger = host.LoggerFactory.CreateLogger(this.GetType());
         }
 
         /// <summary>
         /// Gets the identity of this actor.
         /// </summary>
         /// <value>The <see cref="ActorId"/> for the actor.</value>
-        public ActorId Id { get; }
+        public ActorId Id => Host.Id;
 
         /// <summary>
-        /// Gets the host ActorService of this actor within the Actor runtime.
+        /// Gets the host of this actor within the actor runtime.
         /// </summary>
-        /// <value>The <see cref="ActorService"/> for the actor.</value>
-        public ActorService ActorService { get; }
-
-        internal bool IsDirty { get; private set; }
+        /// <value>The <see cref="ActorHost"/> for the actor.</value>
+        public ActorHost Host { get; }
 
         /// <summary>
         /// Gets the StateManager for the actor.
         /// </summary>
-        protected IActorStateManager StateManager { get; }
+        protected IActorStateManager StateManager { get; set; }
 
         internal async Task OnActivateInternalAsync()
         {
