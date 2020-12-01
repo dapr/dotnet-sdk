@@ -105,7 +105,7 @@ namespace ActorClient
                 {
                     await bank.Withdraw(new WithdrawRequest() { Amount = 10m, });
                 }
-                catch (ServiceException ex)
+                catch (ActorMethodInvocationException ex)
                 {
                     Console.WriteLine("Overdraft: " + ex.Message);
                 }
