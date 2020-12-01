@@ -6,7 +6,6 @@
 namespace Dapr.Client.Test
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Net;
     using System.Text;
@@ -17,7 +16,6 @@ namespace Dapr.Client.Test
     using Dapr.Client;
     using Dapr.Client.Autogen.Grpc.v1;
     using Dapr.Client.Autogen.Test.Grpc.v1;
-    using Dapr.Client.Http;
     using FluentAssertions;
     using Google.Protobuf;
     using Google.Protobuf.WellKnownTypes;
@@ -37,12 +35,12 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var httpExtension = Http.HTTPExtension
+            var httpOptions = HttpInvocationOptions
                 .UsingPost()
                 .WithQueryParam("key1", "value1")
                 .WithQueryParam("key2", "value2");
 
-            var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpExtension);
+            var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpOptions);
 
             // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
@@ -85,7 +83,7 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            // httpExtension not specified
+            // httpOptions not specified
             var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod");
 
             // Get Request and validate
@@ -109,12 +107,12 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var httpExtension = Http.HTTPExtension
+            var httpOptions = HttpInvocationOptions
                 .UsingPost()
                 .WithHeader("Authorization", "Bearer foo")
                 .WithHeader("X-Custom", "bar");
 
-            var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpExtension);
+            var task = daprClient.InvokeMethodAsync<Response>("app1", "mymethod", httpOptions);
 
             // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
@@ -389,11 +387,11 @@ namespace Dapr.Client.Test
 
             var invokeRequest = new Request() { RequestParameter = "Hello " };
             var invokedResponse = new Response { Name = "Look, I was invoked!" };
-            var httpExtension = Http.HTTPExtension
+            var httpOptions = HttpInvocationOptions
                 .UsingPut()
                 .WithQueryParam("key1", "value1");
 
-            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test1", invokeRequest, httpExtension);
+            var task = daprClient.InvokeMethodAsync<Request, Response>("test", "test1", invokeRequest, httpOptions);
 
             // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();

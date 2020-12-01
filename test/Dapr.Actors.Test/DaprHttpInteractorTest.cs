@@ -7,17 +7,14 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Collections.Concurrent;
-    using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Security.Authentication;
-    using System.Text;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
     using FluentAssertions;
     using Xunit;
 
