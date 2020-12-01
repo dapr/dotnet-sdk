@@ -9,6 +9,7 @@ namespace DaprClient
     using System.Collections.Generic;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Dapr;
     using Dapr.Client;
     using Grpc.Core;
     using Microsoft.Extensions.Configuration;
@@ -158,9 +159,9 @@ namespace DaprClient
         internal static async Task ExecuteStateTransactionAsync(DaprClient client)
         {
             var value = new Widget() { Size = "small", Color = "yellow", };
-            var request1 = new Dapr.StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
-            var request2 = new Dapr.StateTransactionRequest("mystate", null, StateOperationType.Delete);
-            var requests = new List<Dapr.StateTransactionRequest>();
+            var request1 = new StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
+            var request2 = new StateTransactionRequest("mystate", null, StateOperationType.Delete);
+            var requests = new List<StateTransactionRequest>();
             requests.Add(request1);
             requests.Add(request2);
             Console.WriteLine("Executing transaction - save state and delete state");
@@ -265,11 +266,7 @@ namespace DaprClient
         {
             Console.WriteLine("Invoking grpc balance");
 
-            HTTPExtension httpExtension = new HTTPExtension()
-            {
-                Verb = HTTPVerb.Post
-            };
-            var res = await client.InvokeMethodAsync<object, Account>("grpcsample", "getaccount", new { Id = "17" }, httpExtension);
+            var res = await client.InvokeMethodAsync<object, Account>("grpcsample", "getaccount", new { Id = "17" }, new HttpInvocationOptions());
 
             Console.WriteLine($"Received grpc balance {res.Balance}");
         }
@@ -279,14 +276,9 @@ namespace DaprClient
             Console.WriteLine("Invoking grpc deposit");
             var data = new { id = "17", amount = (decimal)99 };
 
-            HTTPExtension httpExtension = new HTTPExtension()
-            {
-                Verb = HTTPVerb.Post
-            };
-
             Console.WriteLine("invoking");
 
-            var a = await client.InvokeMethodAsync<object, Account>("grpcsample", "deposit", data, httpExtension);
+            var a = await client.InvokeMethodAsync<object, Account>("grpcsample", "deposit", data, new HttpInvocationOptions());
             Console.WriteLine("Returned: id:{0} | Balance:{1}", a.Id, a.Balance);
 
             Console.WriteLine("Completed grpc deposit");
@@ -297,12 +289,7 @@ namespace DaprClient
             Console.WriteLine("Invoking grpc withdraw");
             var data = new { id = "17", amount = (decimal)10, };
 
-            HTTPExtension httpExtension = new HTTPExtension()
-            {
-                Verb = HTTPVerb.Post
-            };
-
-            await client.InvokeMethodAsync<object>("grpcsample", "withdraw", data, httpExtension);
+            await client.InvokeMethodAsync<object>("grpcsample", "withdraw", data, new HttpInvocationOptions());
 
             Console.WriteLine("Completed grpc withdraw");
         }
