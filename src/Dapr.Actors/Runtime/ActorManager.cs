@@ -191,7 +191,7 @@ namespace Dapr.Actors.Runtime
 
         internal async Task FireTimerAsync(ActorId actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-            var timerData = await TimerInfo.DeserializeAsync(requestBodyStream);
+             var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
 
             dynamic awaitable;
             // Create a Func to be invoked by common method.

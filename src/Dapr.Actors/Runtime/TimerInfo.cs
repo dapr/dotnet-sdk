@@ -10,10 +10,12 @@ namespace Dapr.Actors.Runtime
     using System.IO;
     using System.Text;
     using System.Text.Json;
+    using System.Text.Json.Serialization;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors.Resources;
 
+    [JsonConverter(typeof(TimerInfoConverter))]
     internal class TimerInfo
     {
         private readonly TimeSpan minTimePeriod = Timeout.InfiniteTimeSpan;
@@ -39,71 +41,6 @@ namespace Dapr.Actors.Runtime
         public TimeSpan Period { get; private set; }
 
         public byte[] Data { get; private set; }
-
-        internal static async Task<TimerInfo> DeserializeAsync(Stream stream)
-        {
-            var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
-
-            var dueTime = default(TimeSpan);
-            var period = default(TimeSpan);
-            var data = default(byte[]);
-            string callback = "";
-
-            if (json.TryGetProperty("dueTime", out var dueTimeProperty))
-            {
-                var dueTimeString = dueTimeProperty.GetString();
-                dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
-            }
-
-            if (json.TryGetProperty("period", out var periodProperty))
-            {
-                var periodString = periodProperty.GetString();
-                period = ConverterUtils.ConvertTimeSpanFromDaprFormat(periodString);
-            }
-
-            if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
-            {
-                data = dataProperty.GetBytesFromBase64();
-            }
-
-            if (json.TryGetProperty("callback", out var callbackProperty))
-            {
-                callback = callbackProperty.GetString();
-            }
-
-            return new TimerInfo(callback, data, dueTime, period);
-        }
-
-        internal async Task<string> SerializeAsync()
-        {
-            using var stream = new MemoryStream();
-            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
-
-            writer.WriteStartObject();
-            if (this.DueTime != null)
-            {
-                writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));
-            }
-
-            if (this.Period != null)
-            {
-                writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.Period));
-            }
-
-            if (this.Data != null)
-            {
-                writer.WriteString("data", Convert.ToBase64String(this.Data));
-            }
-
-            if (this.Callback != null)
-            {
-                writer.WriteString("callback", this.Callback);
-            }
-
-            writer.WriteEndObject();
-            await writer.FlushAsync();
-            return Encoding.UTF8.GetString(stream.ToArray());
-        }
 
         private void ValidateDueTime(string argName, TimeSpan value)
         {
@@ -133,4 +70,79 @@ namespace Dapr.Actors.Runtime
             }
         }
     }
+
+    internal class TimerInfoConverter : JsonConverter<TimerInfo>
+    {
+        public override TimerInfo Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options)
+        {
+            var dueTime = default(TimeSpan);
+            var period = default(TimeSpan);
+            var data = default(byte[]);
+            string callback = "";
+
+            using (JsonDocument document = JsonDocument.ParseValue(ref reader))
+            {
+                var json = document.RootElement.Clone();
+
+                if (json.TryGetProperty("dueTime", out var dueTimeProperty))
+                {
+                    var dueTimeString = dueTimeProperty.GetString();
+                    dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
+                }
+
+                if (json.TryGetProperty("period", out var periodProperty))
+                {
+                    var periodString = periodProperty.GetString();
+                    period = ConverterUtils.ConvertTimeSpanFromDaprFormat(periodString);
+                }
+
+                if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
+                {
+                    data = dataProperty.GetBytesFromBase64();
+                }
+
+                if (json.TryGetProperty("callback", out var callbackProperty))
+                {
+                    callback = callbackProperty.GetString();
+                }
+
+                return new TimerInfo(callback, data, dueTime, period);
+            }
+        }
+
+        public override async void Write(
+            Utf8JsonWriter writer,
+            TimerInfo value,
+            JsonSerializerOptions options)
+        {
+            using var stream = new MemoryStream();
+
+            writer.WriteStartObject();
+            if (value.DueTime != null)
+            {
+                writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(value.DueTime));
+            }
+
+            if (value.Period != null)
+            {
+                writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(value.Period));
+            }
+
+            if (value.Data != null)
+            {
+                writer.WriteString("data", Convert.ToBase64String(value.Data));
+            }
+
+            if (value.Callback != null)
+            {
+                writer.WriteString("callback", value.Callback);
+            }
+
+            writer.WriteEndObject();
+            await writer.FlushAsync();
+        }
+    }        
 }

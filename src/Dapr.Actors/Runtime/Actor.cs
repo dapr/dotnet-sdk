@@ -7,6 +7,7 @@ namespace Dapr.Actors.Runtime
 {
     using System;
     using System.Text;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Microsoft.Extensions.Logging;
 
@@ -286,7 +287,7 @@ namespace Dapr.Actors.Runtime
 
             var timerInfo = new TimerInfo(callback, state, dueTime, period);
             var actorTimer = new ActorTimer(this, timerName, timerInfo);
-            var serializedTimer = await timerInfo.SerializeAsync();
+            var serializedTimer = JsonSerializer.Serialize<TimerInfo>(timerInfo);
             await ActorRuntime.DaprInteractor.RegisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName, serializedTimer);
 
             return actorTimer;

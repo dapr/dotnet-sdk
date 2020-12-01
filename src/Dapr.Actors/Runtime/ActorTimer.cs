@@ -49,7 +49,5 @@ namespace Dapr.Actors.Runtime
         {
             get { return this.TimerInfo.Period; }
         }
-
-        internal ActorId OwnerActorId { get; }
     }
 }
