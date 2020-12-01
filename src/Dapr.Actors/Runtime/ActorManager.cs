@@ -278,12 +278,8 @@ namespace Dapr.Actors.Runtime
             var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
             var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
 
-            (var responseMsgBody, var errorMsg) = RemoteException.FromException(ex);
-            if(errorMsg != null)
-            {
-                this.logger.LogWarning(ex, errorMsg);
-            }
-
+            var responseMsgBody = ActorInvokeException.FromException(ex);
+            
             return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }
     }
