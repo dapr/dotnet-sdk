@@ -249,7 +249,7 @@ namespace Dapr.Actors.Runtime
         /// The time interval between invocations of the async callback.
         /// Specify negative one (-1) milliseconds to disable periodic signaling.</param>
         /// <returns>Returns IActorTimer object.</returns>
-        protected async Task<IActorTimer> RegisterTimerAsync(
+        public async Task<ActorTimer> RegisterTimerAsync(
             string timerName,
             string callback,
             byte[] callbackParams,
@@ -264,9 +264,6 @@ namespace Dapr.Actors.Runtime
             {
                 timerName = $"{this.Id}_Timer_{Guid.NewGuid()}";
             }
-            var actorType = this.ActorService.ActorTypeInfo.ImplementationType;
-            var methodInfo = actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance);
-            this.ValidateTimerCallback(methodInfo, actorType, callback);
 
             var timerInfo = new TimerInfo(callback, callbackParams, dueTime, period);
             var actorTimer = new ActorTimer(this, timerName, timerInfo);
@@ -299,40 +296,35 @@ namespace Dapr.Actors.Runtime
         private void ValidateTimerCallback(string callback)
         {
             var actorTypeName = this.Host.ActorTypeInfo.ActorTypeName;
-                var actorType = this.Host.ActorTypeInfo.ImplementationType;
+            var actorType = this.Host.ActorTypeInfo.ImplementationType;
 
-                // GetMethod will throw an AmbiguousMatchException if more than one methods are found with the same name
-                var methodInfo = actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance);
+            // GetMethod will throw an AmbiguousMatchException if more than one methods are found with the same name
+            var methodInfo = actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance);
 
-                // Check if the method exists
-                if(methodInfo == null)
-                {
-                    throw new Exception($"Timer callback method: ${callback} does not exist in the Actor class: ${actorTypeName}");
-                }
+            // Check if the method exists
+            if (methodInfo == null)
+            {
+                throw new ArgumentException($"Timer callback method: {callback} does not exist in the Actor class: {actorTypeName}");
+            }
 
-                // The timer callback can accept only 0 or 1 parameters
-                var parameters = methodInfo.GetParameters();
-                if(parameters.Length > 1)
-                {
-                    throw new Exception($"Timer callback can accept only upto one parameters. The specified callback: ${callback} accepts more than one parameters");
-                }
+            // The timer callback can accept only 0 or 1 parameters
+            var parameters = methodInfo.GetParameters();
+            if (parameters.Length > 1)
+            {
+                throw new ArgumentException("Timer callback can accept only zero or one parameters");
+            }
 
-                // The timer callback should return only Task return type
-                if(methodInfo.ReturnType != typeof(Task))
-                {
-                    throw new Exception("Timer callback can only return type Task");
-                }
+            // The timer callback should return only Task return type
+            if (methodInfo.ReturnType != typeof(Task))
+            {
+                throw new ArgumentException("Timer callback can only return type Task");
+            }
 
-                // if(methodInfo.DeclaringType != methodInfo.GetBaseDefinition().DeclaringType)
-                // {
-                //     throw new Exception("Timer callback cannot be overridden by a derived class");
-                // }
-
-                // The timer callback cannot be overridden in a derived class
-                if(methodInfo.IsVirtual)
-                {
-                    throw new Exception("Timer callback method cannot be virtual");
-                }
+            // The timer callback cannot be overridden in a derived class
+            if (methodInfo.IsVirtual)
+            {
+                throw new ArgumentException("Timer callback method cannot be virtual");
+            }
         }
     }
 }

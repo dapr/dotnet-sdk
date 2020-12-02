@@ -67,14 +67,24 @@ namespace Dapr.Actors.Test
             this.ResetStateAsync().GetAwaiter().GetResult();
         }
 
-        public override async Task RegisterTimerAsync(
-            string timerName,
-            string callback,
-            byte[] state,
-            TimeSpan dueTime,
-            TimeSpan period)
+        public void TimerCallbackVoid()
         {
-            await base.RegisterTimerAsync(timerName, callback, state, dueTime, period);
+        }
+
+        public Task TimerCallbackTwoArguments(int i, int j)
+        {
+            Console.WriteLine(i + j);
+            return default;
+        }
+
+        public virtual Task TimerCallbackVirtual()
+        {
+            return default;
+        }
+
+        public Task ValidTimerCallback()
+        {
+            return default;
         }
     }
 }

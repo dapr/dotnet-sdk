@@ -45,15 +45,21 @@ namespace Dapr.Actors.Test.Runtime
             mockStateManager.Verify(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        [Fact]
-        public async Task ValidateTimerCallback_CallbackMethodDoesNotExist()
+        [Theory]
+        [InlineData("TestTimer", "NonExistentMethod", "Timer callback method: NonExistentMethod does not exist in the Actor class: TestActor")]
+        [InlineData("TestTimer", "TimerCallbackTwoArguments", "Timer callback can accept only zero or one parameters")]
+        [InlineData("TestTimer", "TimerCallbackVoid", "Timer callback can only return type Task")]
+        [InlineData("TestTimer", "TimerCallbackVirtual", "Timer callback method cannot be virtual")]
+        public async Task ValidateTimerCallback_CallbackMethodDoesNotMeetRequirements(string timerName, string callback, string expectedErrorMessage)
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
             var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
 
-            FluentActions.Awaiting(async () => await testDemoActor.RegisterTimerAsync("TestTimer", "NonExistentMethod", null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(20))).Should().NotThrow();
-            
+            await FluentActions.Awaiting(async () => 
+            await (testDemoActor.RegisterTimerAsync(timerName, callback, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(20))))
+            .Should().ThrowAsync<ArgumentException>()
+            .WithMessage(expectedErrorMessage);
         }
 
         /// <summary>
