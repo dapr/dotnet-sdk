@@ -7,10 +7,9 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.IO;
     using System.Text;
-    using System.Threading;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using Newtonsoft.Json;
@@ -50,27 +49,25 @@ namespace Dapr.Actors.Test
             Assert.Equal(expectedDeserializedValue, deserializedTimeSpan);
         }
 
-        // [Fact]
-        // public async Task ConverterUtilsTestEndToEndAsync()
-        // {
-        //     static Task<string> SerializeAsync(TimeSpan dueTime, TimeSpan period)
-        //     {
-        //         var timer = new ActorTimer(
-        //             owner: null,
-        //             timerName: "SomeTimer",
-        //             asyncCallback: state => Task.CompletedTask,
-        //             state: Encoding.UTF8.GetBytes("Some state value"),
-        //             dueTime: dueTime,
-        //             period: period);
-        //         return timer.SerializeAsync();
-        //     }
+        [Fact]
+        public async Task ConverterUtilsTestEndToEndAsync()
+        {
+            static Task<string> SerializeAsync(TimeSpan dueTime, TimeSpan period)
+            {
+                var timerInfo = new TimerInfo(
+                    callback: null,
+                    state: null,
+                    dueTime: dueTime,
+                    period: period);
+                return Task.FromResult(System.Text.Json.JsonSerializer.Serialize<TimerInfo>(timerInfo));
+            }
 
-        //     var inTheFuture = TimeSpan.FromMilliseconds(20);
-        //     var never = TimeSpan.FromMilliseconds(-1);
-        //     Assert.Equal(
-        //        "{\"dueTime\":\"0h0m0s20ms\"}",
-        //        await SerializeAsync(inTheFuture, never));
-        // }
+            var inTheFuture = TimeSpan.FromMilliseconds(20);
+            var never = TimeSpan.FromMilliseconds(-1);
+            Assert.Equal(
+               "{\"dueTime\":\"0h0m0s20ms\"}",
+               await SerializeAsync(inTheFuture, never));
+        }
 
         [Fact]
         public void DaprFormatTimespanEmpty()

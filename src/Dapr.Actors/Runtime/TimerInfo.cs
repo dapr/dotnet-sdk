@@ -84,7 +84,7 @@ namespace Dapr.Actors.Runtime
             var dueTime = default(TimeSpan);
             var period = default(TimeSpan);
             var data = default(byte[]);
-            string callback = "";
+            string callback = null;
 
             using (JsonDocument document = JsonDocument.ParseValue(ref reader))
             {
@@ -129,7 +129,7 @@ namespace Dapr.Actors.Runtime
                 writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(value.DueTime));
             }
 
-            if (value.Period != null)
+            if (value.Period != null && value.Period >= TimeSpan.Zero)
             {
                 writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(value.Period));
             }
