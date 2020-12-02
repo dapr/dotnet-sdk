@@ -196,23 +196,15 @@ namespace Dapr.Actors.Runtime
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                dynamic awaitable;
                 var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
                 var actorType = actor.Host.ActorTypeInfo.ImplementationType;
                 MethodInfo[] methods = actorType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
                 var methodInfo = actorType.GetMethod(timerData.Callback);
 
                 var parameters = methodInfo.GetParameters();
-                if (parameters.Length == 0)
-                {
-                    awaitable = methodInfo.Invoke(actor, null);
-                }
-                else
-                {
-                    var deserializedType = timerData.Data;
-                    awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
-                }
-                await awaitable;
+
+                // The timer callback routine needs to return a type Task
+                await (Task)methodInfo.Invoke(actor, (parameters.Length == 0) ? null : new object[] { timerData.Data });
                 return default;
             }
 
