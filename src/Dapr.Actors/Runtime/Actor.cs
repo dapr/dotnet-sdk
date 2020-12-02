@@ -6,8 +6,7 @@
 namespace Dapr.Actors.Runtime
 {
     using System;
-    using System.Collections.Generic;
-    using System.Text;
+    using System.Reflection;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Microsoft.Extensions.Logging;
@@ -279,6 +278,9 @@ namespace Dapr.Actors.Runtime
             TimeSpan dueTime,
             TimeSpan period)
         {
+            // Validate that the timer callback specified meets all the required criteria for a valid callback method
+            this.ValidateTimerCallback(callback);
+
             // create a timer name to register with Dapr runtime.
             if (string.IsNullOrEmpty(timerName))
             {
@@ -311,6 +313,45 @@ namespace Dapr.Actors.Runtime
         protected async Task UnregisterTimerAsync(string timerName)
         {
             await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName);
+        }
+
+        private void ValidateTimerCallback(string callback)
+        {
+            var actorTypeName = this.Host.ActorTypeInfo.ActorTypeName;
+                var actorType = this.Host.ActorTypeInfo.ImplementationType;
+
+                // GetMethod will throw an AmbiguousMatchException if more than one methods are found with the same name
+                var methodInfo = actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance);
+
+                // Check if the method exists
+                if(methodInfo == null)
+                {
+                    throw new Exception($"Timer callback method: ${callback} does not exist in the Actor class: ${actorTypeName}");
+                }
+
+                // The timer callback can accept only 0 or 1 parameters
+                var parameters = methodInfo.GetParameters();
+                if(parameters.Length > 1)
+                {
+                    throw new Exception($"Timer callback can accept only upto one parameters. The specified callback: ${callback} accepts more than one parameters");
+                }
+
+                // The timer callback should return only Task return type
+                if(methodInfo.ReturnType != typeof(Task))
+                {
+                    throw new Exception("Timer callback can only return type Task");
+                }
+
+                // if(methodInfo.DeclaringType != methodInfo.GetBaseDefinition().DeclaringType)
+                // {
+                //     throw new Exception("Timer callback cannot be overridden by a derived class");
+                // }
+
+                // The timer callback cannot be overridden in a derived class
+                if(methodInfo.IsVirtual)
+                {
+                    throw new Exception("Timer callback method cannot be virtual");
+                }
         }
     }
 }
