@@ -12,6 +12,7 @@ namespace Dapr.Actors.Test.Runtime
     using Moq;
     using Xunit;
     using Microsoft.Extensions.Logging;
+    using System.Threading.Tasks;
 
     public sealed class ActorTests
     {
@@ -42,6 +43,17 @@ namespace Dapr.Actors.Test.Runtime
             var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
             testDemoActor.ResetTestStateAsync();
             mockStateManager.Verify(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ValidateTimerCallback_CallbackMethodDoesNotExist()
+        {
+            var mockStateManager = new Mock<IActorStateManager>();
+            mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+
+            FluentActions.Awaiting(async () => await testDemoActor.RegisterTimerAsync("TestTimer", "NonExistentMethod", null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(20))).Should().NotThrow();
+            
         }
 
         /// <summary>

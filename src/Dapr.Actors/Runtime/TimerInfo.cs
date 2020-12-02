@@ -32,7 +32,7 @@ namespace Dapr.Actors.Runtime
             this.ValidateDueTime("DueTime", dueTime);
             this.ValidatePeriod("Period", period);
             this.Callback = callback;
-            this.Data = state;
+            this.Data =  state;
             this.DueTime = dueTime;
             this.Period = period;
         }

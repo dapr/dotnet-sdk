@@ -91,8 +91,8 @@ namespace DaprDemoActor
                 StringParam = "timer test",
             };
 
-            var state = JsonSerializer.SerializeToUtf8Bytes(timerParams);
-            return this.RegisterTimerAsync("TestTimer", nameof(TimerCallback), state, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+            var serializedTimerParams = JsonSerializer.SerializeToUtf8Bytes(timerParams);
+            return this.RegisterTimerAsync("TestTimer", nameof(this.TimerCallback), serializedTimerParams, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
         public Task UnregisterTimer()
@@ -115,8 +115,12 @@ namespace DaprDemoActor
             return Task.CompletedTask;
         }
 
-        // This method is called when the timer is triggered based on its registration.
-        // It updates the PropertyA value.
+        /// <summary>
+        /// This method is called when the timer is triggered based on its registration.
+        /// It updates the PropertyA value.
+        /// </summary>
+        /// <param name="data">Timer input data.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public Task TimerCallback(object data)
         {
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
