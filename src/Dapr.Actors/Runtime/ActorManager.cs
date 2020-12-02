@@ -194,7 +194,7 @@ namespace Dapr.Actors.Runtime
              var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
 
             // Create a Func to be invoked by common method.
-            async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
+            Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
                 var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
                 var actorType = actor.Host.ActorTypeInfo.ImplementationType;

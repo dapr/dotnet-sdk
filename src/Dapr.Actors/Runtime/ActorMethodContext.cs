@@ -27,13 +27,6 @@ namespace Dapr.Actors.Runtime
             this.callback = null;
         }
 
-        private ActorMethodContext(Type callback, string methodName)
-        {
-            this.actorMethodName = "";
-            this.actorCallType = ActorCallType.ActorInterfaceMethod;
-            this.callback = callback.GetMethod(methodName);
-        }
-
         /// <summary>
         /// Gets the name of the method invoked by actor runtime.
         /// </summary>
@@ -55,7 +48,7 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
-        /// Gets the type of call by actor runtime (e.g. actor interface method, timer callback etc.).
+        /// Gets the callback method to be called by actor runtime (e.g. actor interface method, timer callback etc.).
         /// </summary>
         /// <value>
         /// An <see cref="Callback"/> representing the call type.

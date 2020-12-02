@@ -5,6 +5,7 @@
 
 namespace Dapr.Actors.Test
 {
+    using System;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
@@ -64,6 +65,16 @@ namespace Dapr.Actors.Test
         public void ResetTestStateAsync()
         {
             this.ResetStateAsync().GetAwaiter().GetResult();
+        }
+
+        public override async Task RegisterTimerAsync(
+            string timerName,
+            string callback,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period)
+        {
+            await base.RegisterTimerAsync(timerName, callback, state, dueTime, period);
         }
     }
 }
