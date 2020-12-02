@@ -18,6 +18,7 @@ namespace Dapr.Client.Test
     using StateConsistency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConsistency;
     using StateConcurrency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConcurrency;
     using Xunit;
+    using System.Threading;
 
     public class StateApiTest
     {
@@ -212,6 +213,26 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task GetStateAsync_WithCancelledToken()
+        {
+           // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+
+            var widget = new Widget() { Size = "small", Color = "yellow", };
+            var task = daprClient.SaveStateAsync("testStore", "test", widget);
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+
+            await FluentActions.Awaiting(async () => await daprClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
+        }
+
+        [Fact]
         public async Task SaveStateAsync_CanClearState()
         {
             // Configure Client
@@ -232,6 +253,22 @@ namespace Dapr.Client.Test
             state.Key.Should().Be("test");
 
             state.Value.Should().Equal(ByteString.Empty);
+        }
+
+        [Fact]
+        public async Task SaveStateAsync_WithCancelledToken()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+            await FluentActions.Awaiting(async () => await daprClient.SaveStateAsync<object>("testStore", "test", null, cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         [Fact]
@@ -343,6 +380,26 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task ExecuteStateTransactionAsync_WithCancelledToken()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+
+            var operation = new StateTransactionRequest("test", null, StateOperationType.Delete);
+            var operations = new List<StateTransactionRequest>();
+            operations.Add(operation);
+            await FluentActions.Awaiting(async () => await daprClient.ExecuteStateTransactionAsync("testStore", operations, new Dictionary<string, string>(), cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
+        }
+
+        [Fact]
         public async Task DeleteStateAsync_CanDeleteState()
         {
             var httpClient = new TestHttpClient();
@@ -375,6 +432,23 @@ namespace Dapr.Client.Test
             entry.Completion.SetResult(response);
 
             await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<RpcException>();
+        }
+
+        [Fact]
+        public async Task DeleteStateAsync_WithCancelledToken()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+
+            var ctSource = new CancellationTokenSource();
+            CancellationToken ct = ctSource.Token;
+            ctSource.Cancel();
+
+            await FluentActions.Awaiting(async () => await daprClient.DeleteStateAsync("testStore", "key", cancellationToken: ct))
+                .Should().ThrowAsync<OperationCanceledException>();
         }
 
         [Fact]

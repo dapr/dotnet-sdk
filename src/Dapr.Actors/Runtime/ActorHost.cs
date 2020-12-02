@@ -11,25 +11,23 @@ namespace Dapr.Actors.Runtime
     /// <summary>
     /// Represents a host for an actor type within the actor runtime.
     /// </summary>
-    public class ActorService : IActorService
+    public sealed class ActorHost
     {
-        private readonly Func<ActorService, ActorId, Actor> actorFactory;
-
         /// <summary>
-        /// Initializes a new instance of the <see cref="ActorService"/> class.
+        /// Initializes a new instance of the <see cref="ActorHost"/> class.
         /// </summary>
         /// <param name="actorTypeInfo">The type information of the Actor.</param>
+        /// <param name="id">The id of the Actor instance.</param>
         /// <param name="loggerFactory">The logger factory.</param>
-        /// <param name="actorFactory">The factory method to create Actor objects.</param>
-        public ActorService(
+        public ActorHost(
             ActorTypeInformation actorTypeInfo,
-            ILoggerFactory loggerFactory,
-            Func<ActorService, ActorId, Actor> actorFactory = null)
+            ActorId id,
+            ILoggerFactory loggerFactory)
         {
             this.ActorTypeInfo = actorTypeInfo;
-            this.actorFactory = actorFactory ?? this.DefaultActorFactory;
-            this.StateProvider = new DaprStateProvider();
+            this.Id = id;
             this.LoggerFactory = loggerFactory;
+            this.StateProvider = new DaprStateProvider();
         }
 
         /// <summary>
@@ -37,24 +35,16 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public ActorTypeInformation ActorTypeInfo { get; }
 
+        /// <summary>
+        /// Gets the <see cref="ActorId" />.
+        /// </summary>
+        public ActorId Id { get; }
+
         internal DaprStateProvider StateProvider { get; }
 
         /// <summary>
         /// Gets the LoggerFactory for actor service
         /// </summary>
-        public ILoggerFactory LoggerFactory { get; private set; }
-
-        internal Actor CreateActor(ActorId actorId)
-        {
-            return this.actorFactory.Invoke(this, actorId);
-        }
-
-        private Actor DefaultActorFactory(ActorService actorService, ActorId actorId)
-        {
-            return (Actor)Activator.CreateInstance(
-                this.ActorTypeInfo.ImplementationType,
-                actorService,
-                actorId);
-        }
+        public ILoggerFactory LoggerFactory { get; }
     }
 }

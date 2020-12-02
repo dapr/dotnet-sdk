@@ -87,13 +87,13 @@ The method *InvokeWithdrawServiceOperationAsync* demonstrates how to use DAPR .N
 
             var data = new { id = "17", amount = (decimal)10, };
             
-            // The HTTPExtension object is needed to specify additional information such as the HTTP verb and an optional query string, because the receiving service is listening on HTTP.  If it were listening on gRPC, it is not needed.
-            HTTPExtension httpExtension = new HTTPExtension()
+            // The HttpInvocationOptions object is needed to specify additional information such as the HTTP method and an optional query string, because the receiving service is listening on HTTP.  If it were listening on gRPC, it is not needed.
+            var httpOptions = new HttpInvocationOptions()
             {
-                Verb = HTTPVerb.Post
+                Method = HttpMethod.Post
             };
 
-            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, httpExtension);
+            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, httpOptions);
  ```
 
 Because, the same operation subscribes events on the *withdraw* topic, it can be invoked by event:
@@ -145,3 +145,13 @@ The controller sample has a route "/throwException" that returns a BadRequest re
                 }
             }
  ```
+
+ ## Working with cancellation tokens
+
+ InvokeMethodAsync and other APIs exposed by Dapr client accept a cancellation token and by default, if the operation is canceled, you will get an OperationCanceledException. However, if you choose to initialize and pass in your own GrpcChannelOptions to the client builder, then unless you enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation), the exception thrown would be an RpcException with StatusCode as Cancelled. To get an OperationCanceledException instead, refer to the code below:-
+ ```c#
+            var httpClient = new HttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
+                .Build();
+```

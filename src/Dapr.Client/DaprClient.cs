@@ -75,13 +75,13 @@ namespace Dapr.Client
         /// </summary>        
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
         /// <param name="methodName">The name of the method to invoke.</param>        
-        /// <param name="httpExtension">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>      
         public abstract Task InvokeMethodAsync(
             string appId,
             string methodName,
-            Dapr.Client.Http.HTTPExtension httpExtension = default,
+            HttpInvocationOptions httpOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -91,14 +91,14 @@ namespace Dapr.Client
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
         /// <param name="methodName">The name of the method to invoke.</param>  
         /// <param name="data">Data to pass to the method</param>
-        /// <param name="httpExtension">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>        
         public abstract Task InvokeMethodAsync<TRequest>(
             string appId,
             string methodName,
             TRequest data,
-            Dapr.Client.Http.HTTPExtension httpExtension = default,
+            HttpInvocationOptions httpOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -107,13 +107,13 @@ namespace Dapr.Client
         /// <typeparam name="TResponse">The type of the object in the response.</typeparam>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
         /// <param name="methodName">The name of the method to invoke.</param>         
-        /// <param name="httpExtension">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>    
         public abstract ValueTask<TResponse> InvokeMethodAsync<TResponse>(
             string appId,
             string methodName,
-            Dapr.Client.Http.HTTPExtension httpExtension = default,
+            HttpInvocationOptions httpOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -124,14 +124,14 @@ namespace Dapr.Client
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
         /// <param name="methodName">The name of the method to invoke.</param>  
         /// <param name="data">Data to pass to the method</param>      
-        /// <param name="httpExtension">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>  
         public abstract ValueTask<TResponse> InvokeMethodAsync<TRequest, TResponse>(
             string appId,
             string methodName,
             TRequest data,
-            Dapr.Client.Http.HTTPExtension httpExtension = default,
+            HttpInvocationOptions httpOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -140,14 +140,14 @@ namespace Dapr.Client
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
         /// <param name="methodName">The name of the method to invoke.</param>  
         /// <param name="data">Data to pass to the method</param>      
-        /// <param name="httpExtension">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{InvokeResponse}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<InvocationResponse<TResponse>> InvokeMethodWithResponseAsync<TRequest, TResponse>(
             string appId,
             string methodName,
             TRequest data,
-            Dapr.Client.Http.HTTPExtension httpExtension = default,
+            HttpInvocationOptions httpOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -156,14 +156,14 @@ namespace Dapr.Client
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
         /// <param name="methodName">The name of the method to invoke.</param>  
         /// <param name="data">Byte array to pass to the method</param>      
-        /// <param name="httpExtension">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>  
         public abstract Task<InvocationResponse<byte[]>> InvokeMethodRawAsync(
             string appId,
             string methodName,
             byte[] data,
-            Dapr.Client.Http.HTTPExtension httpExtension = default,
+            HttpInvocationOptions httpOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
