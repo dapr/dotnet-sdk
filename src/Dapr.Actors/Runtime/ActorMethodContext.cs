@@ -5,10 +5,6 @@
 
 namespace Dapr.Actors.Runtime
 {
-    using System;
-    using System.Reflection;
-    using System.Threading.Tasks;
-
     /// <summary>
     /// Contains information about the method that is invoked by actor runtime and
     /// is passed as an argument to <see cref="Actor.OnPreActorMethodAsync"/> and <see cref="Actor.OnPostActorMethodAsync"/>.
@@ -18,13 +14,10 @@ namespace Dapr.Actors.Runtime
         private readonly string actorMethodName;
         private readonly ActorCallType actorCallType;
 
-        private readonly MethodInfo callback;
-
         private ActorMethodContext(string methodName, ActorCallType callType)
         {
             this.actorMethodName = methodName;
             this.actorCallType = callType;
-            this.callback = null;
         }
 
         /// <summary>
@@ -46,18 +39,6 @@ namespace Dapr.Actors.Runtime
         {
             get { return this.actorCallType; }
         }
-
-        /// <summary>
-        /// Gets the callback method to be called by actor runtime (e.g. actor interface method, timer callback etc.).
-        /// </summary>
-        /// <value>
-        /// An <see cref="Callback"/> representing the call type.
-        /// </value>
-        public MethodInfo Callback
-        {
-            get { return this.callback; }
-        }
-
 
         internal static ActorMethodContext CreateForActor(string methodName)
         {
