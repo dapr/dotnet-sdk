@@ -11,7 +11,7 @@ The client sample shows how to make Dapr calls to publish events, save state, ge
 
  To run the sample locally run this command in DaprClient directory:
  ```sh
- dapr run --app-id gRPC_Client -- dotnet run
+ dapr run --app-id DaprClient -- dotnet run
  ```
 
  Above command will run Dapr runtime and launch the app and will show logs both form Dapr runtime and the application. The client app will make calls to Dapr runtime to publish events, save state, get state and delete state using the gRPC client.
@@ -31,19 +31,19 @@ Done
 To invoke RoutingService via HTTP, run [RoutingService](../../AspNetCore/RoutingSample) or to invoke GrpcService via gRPC, run [GrpcService](../../AspNetCore/GrpcServiceSample) sample first. Then, invoke the client using the corresponding command below:-
 
 ``` sh
- dapr run --app-id gRPC_Client -- dotnet run --useRouting true
+ dapr run --app-id DaprClient -- dotnet run --useRouting true
 ```
 
 or
 
 ``` sh
- dapr run --app-id gRPC_Client -- dotnet run --useGrpcsample true
+ dapr run --app-id DaprClient -- dotnet run --useGrpcsample true
 ```
 
 or to invoke RoutingService via HTTP and GrpcService via gRPC simultaneously:
 
 ``` sh
- dapr run --app-id gRPC_Client -- dotnet run --useRouting true --useGrpcsample true
+ dapr run --app-id DaprClient -- dotnet run --useRouting true --useGrpcsample true
 ```
 
 ## Invoking Services
@@ -145,7 +145,7 @@ dapr run --app-id controller --app-port 5000 dotnet run
 
 Run the client sample as follows from samples/Client/DaprClient directory. Setting the "--rpc-exception" argument to true will invoke a route on the server side that causes it to throw an RpcException:
 ```
-dapr run --app-id gRPC_Client dotnet run --rpc-exception true
+dapr run --app-id DaprClient dotnet run --rpc-exception true
 ```
 
 The controller sample has a route "/throwException" that returns a BadRequest result which causes the Dapr sidecar to throw an RpcException. The method *InvokeThrowExceptionOperationAsync* on the client side demonstrates how to extract the error message from RpcException.
