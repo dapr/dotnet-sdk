@@ -3,20 +3,26 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace RoutingSample
-{
-    using Microsoft.AspNetCore.Hosting;
-    using Microsoft.Extensions.Hosting;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Hosting;
 
+namespace GrpcServiceSample
+{
     /// <summary>
-    /// Controller Sample.
+    /// GrpcService Sample
     /// </summary>
-    public static class Program
+    public class Program
     {
         /// <summary>
-        /// Main for Controller Sample.
+        /// Entry point
         /// </summary>
-        /// <param name="args">Arguments.</param>
+        /// <param name="args"></param>
         public static void Main(string[] args)
         {
             CreateHostBuilder(args).Build().Run();
@@ -25,12 +31,19 @@ namespace RoutingSample
         /// <summary>
         /// Creates WebHost Builder.
         /// </summary>
-        /// <param name="args">Arguments.</param>
-        /// <returns>Returns IHostbuilder.</returns>
+        /// <param name="args"></param>
+        /// <returns></returns>
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
+                    webBuilder.ConfigureKestrel(options =>
+                    {
+                        // Setup a HTTP/2 endpoint without TLS.
+                        options.ListenLocalhost(5050, o => o.Protocols =
+                            HttpProtocols.Http2);
+                    });
+
                     webBuilder.UseStartup<Startup>();
                 });
     }
