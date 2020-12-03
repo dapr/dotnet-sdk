@@ -332,12 +332,6 @@ namespace Dapr.Actors.Runtime
             {
                 throw new ArgumentException("Timer callback can only return type Task");
             }
-
-            // The timer callback method needs to be implemented and cannot be abstract
-            if (methodInfo.IsAbstract)
-            {
-                throw new ArgumentException("Timer callback method cannot be abstract");
-            }
         }
     }
 }
