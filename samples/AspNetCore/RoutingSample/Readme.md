@@ -11,9 +11,9 @@ The application also registers for pub/sub with the `deposit` and `withdraw` top
 
  ## Running the Sample
 
- To run the sample locally run this comment in this directory:
+ To run the sample locally run this command in this project root directory:
  ```sh
- dapr run --app-id routing --app-port 5000 dotnet run
+ dapr run --app-id routing --app-port 5000 -- dotnet run
  ```
 
  The application will listen on port 5000 for HTTP.

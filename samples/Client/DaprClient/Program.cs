@@ -9,13 +9,15 @@ namespace DaprClient
     using System.Collections.Generic;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Dapr;
     using Dapr.Client;
     using Grpc.Core;
+    using Microsoft.Extensions.Configuration;
 
     /// <summary>
     /// Shows Dapr client calls.
     /// </summary>
-    public class Program
+    public static class Program
     {
         private static readonly string stateKeyName = "mykey";
         private static readonly string storeName = "statestore";
@@ -28,10 +30,18 @@ namespace DaprClient
         /// <summary>
         /// Main entry point.
         /// </summary>
-        /// <param name="args">Arguments.</param>
+        /// <param name="args">
+        /// set parameter "useRouting" true to use routing service;
+        /// set parameter "useGrpcsample" true to use grpcsample service
+        /// </param>
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public static async Task Main(string[] args)
         {
+            var builder = new ConfigurationBuilder();
+            builder.AddCommandLine(args);
+
+            var config = builder.Build();
+
             var jsonOptions = new JsonSerializerOptions()
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -54,39 +64,59 @@ namespace DaprClient
             await DeleteStateAsync(client);
 
             // State Transaction
-            await ExecuteStateTransaction(client);
+            await ExecuteStateTransactionAsync(client);
 
             // Read State
             await GetStateAfterTransactionAsync(client);
 
-            if (args.Length > 0 && args[0] == "rpc-exception")
+            if (config.GetValue("rpc-exception", false))
             {
                 // Invoke /throwException route on the Controller sample server
                 await InvokeThrowExceptionOperationAsync(client);
             }
 
+            // Invoke deposit operation on ControllerSample or RoutingSample or GrpcServiceSample service by publishing event.
+            await PublishDepositeEventAsync(client);
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
+
             #region Service Invoke - Required RoutingService
-            //// This provides an example of how to invoke a method on another REST service that is listening on http.
-            //// To use it run RoutingService in this solution.
-            //// Invoke deposit operation on RoutingSample service by publishing event.      
+            // This provides an example of how to invoke a method on another REST service that is listening on http.
+            // To use it run RoutingService in this solution.
 
-            //await PublishDepositeEventToRoutingSampleAsync(client);
+            if (config.GetValue("useRouting", false))
+            {
+                //Invoke deposit operation on RoutingSample service by POST.
+                await InvokeDepositServiceOperationAsync(client);
 
-            //await Task.Delay(TimeSpan.FromSeconds(1));
+                //Invoke withdraw operation on RoutingSample service by POST.
+                await InvokeWithdrawServiceOperationAsync(client);
 
-            //await DepositUsingServiceInvocation(client);
+                //Invoke balance operation on RoutingSample service by GET.
+                await InvokeBalanceServiceOperationAsync(client);
+            }
+            #endregion
 
-            ////Invoke deposit operation on RoutingSample service by POST.
-            //await InvokeWithdrawServiceOperationAsync(client);
+            #region Service Invoke via GRPC - Required GrpcServiceSample
 
-            ////Invoke deposit operation on RoutingSample service by GET.
-            //await InvokeBalanceServiceOperationAsync(client);
+            if (config.GetValue("useGrpcsample", false))
+            {
+                //Invoke deposit operation on GrpcServiceSample service by GRPC.
+                await InvokeGrpcDepositServiceOperationAsync(client);
+
+                //Invoke withdraw operation on GrpcServiceSample service by GRPC.
+                await InvokeGrpcWithdrawServiceOperationAsync(client);
+
+                //Invoke balance operation on GrpcServiceSample service by GRPC.
+                await InvokeGrpcBalanceServiceOperationAsync(client);
+            }
+
             #endregion
 
             Console.WriteLine("Done");
         }
 
-        internal static async Task PublishDepositeEventToRoutingSampleAsync(DaprClient client)
+        internal static async Task PublishDepositeEventAsync(DaprClient client)
         {
             var eventData = new { Id = "17", Amount = (decimal)10, };
             await client.PublishEventAsync(pubsubName, "deposit", eventData);
@@ -95,7 +125,7 @@ namespace DaprClient
 
         internal static async Task PublishEventAsync(DaprClient client)
         {
-            var eventData = new Widget() { Size = "small", Color = "yellow", };            
+            var eventData = new Widget() { Size = "small", Color = "yellow", };
             await client.PublishEventAsync(pubsubName, "TopicA", eventData);
             Console.WriteLine("Published Event!");
         }
@@ -126,12 +156,12 @@ namespace DaprClient
             Console.WriteLine("Deleted State!");
         }
 
-        internal static async Task ExecuteStateTransaction(DaprClient client)
+        internal static async Task ExecuteStateTransactionAsync(DaprClient client)
         {
-            var value = new Widget() { Size = "small", Color = "yellow", }; 
-            var request1 = new Dapr.StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
-            var request2 = new Dapr.StateTransactionRequest("mystate", null, StateOperationType.Delete);
-            var requests = new List<Dapr.StateTransactionRequest>();
+            var value = new Widget() { Size = "small", Color = "yellow", };
+            var request1 = new StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
+            var request2 = new StateTransactionRequest("mystate", null, StateOperationType.Delete);
+            var requests = new List<StateTransactionRequest>();
             requests.Add(request1);
             requests.Add(request2);
             Console.WriteLine("Executing transaction - save state and delete state");
@@ -151,10 +181,9 @@ namespace DaprClient
                 Console.WriteLine($"Got Transaction State: {state.Size} {state.Color}");
             }
         }
-
-        internal static async Task DepositUsingServiceInvocation(DaprClient client)
+        internal static async Task InvokeDepositServiceOperationAsync(DaprClient client)
         {
-            Console.WriteLine("DepositUsingServiceInvocation");
+            Console.WriteLine("Invoking deposit");
             var data = new { id = "17", amount = (decimal)99 };
 
             // Invokes a POST method named "depoit" that takes input of type "Transaction" as define in the RoutingSample.
@@ -233,6 +262,38 @@ namespace DaprClient
             }
         }
 
+        internal static async Task InvokeGrpcBalanceServiceOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking grpc balance");
+
+            var res = await client.InvokeMethodAsync<object, Account>("grpcsample", "getaccount", new { Id = "17" }, new HttpInvocationOptions());
+
+            Console.WriteLine($"Received grpc balance {res.Balance}");
+        }
+
+        internal static async Task InvokeGrpcDepositServiceOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking grpc deposit");
+            var data = new { id = "17", amount = (decimal)99 };
+
+            Console.WriteLine("invoking");
+
+            var a = await client.InvokeMethodAsync<object, Account>("grpcsample", "deposit", data, new HttpInvocationOptions());
+            Console.WriteLine("Returned: id:{0} | Balance:{1}", a.Id, a.Balance);
+
+            Console.WriteLine("Completed grpc deposit");
+        }
+
+        internal static async Task InvokeGrpcWithdrawServiceOperationAsync(DaprClient client)
+        {
+            Console.WriteLine("Invoking grpc withdraw");
+            var data = new { id = "17", amount = (decimal)10, };
+
+            await client.InvokeMethodAsync<object>("grpcsample", "withdraw", data, new HttpInvocationOptions());
+
+            Console.WriteLine("Completed grpc withdraw");
+        }
+
         private class Widget
         {
             public string Size { get; set; }
@@ -256,4 +317,3 @@ namespace DaprClient
         }
     }
 }
-
