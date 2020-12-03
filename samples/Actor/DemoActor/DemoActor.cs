@@ -121,13 +121,12 @@ namespace DaprDemoActor
         /// </summary>
         /// <param name="data">Timer input data.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task TimerCallback(object data)
+        public Task TimerCallback(byte[] data)
         {
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
             this.StateManager.SetStateAsync<MyData>(StateName, state);
-            var args = (byte[])data;
-            var timerParams = JsonSerializer.Deserialize<TimerParams>(args);
+            var timerParams = JsonSerializer.Deserialize<TimerParams>(data);
             Console.WriteLine("Timer parameter1: " + timerParams.IntParam);
             Console.WriteLine("Timer parameter2: " + timerParams.StringParam);
             return Task.CompletedTask;

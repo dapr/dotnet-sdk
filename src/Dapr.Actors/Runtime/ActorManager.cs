@@ -198,7 +198,7 @@ namespace Dapr.Actors.Runtime
             {
                 var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
                 var actorType = actor.Host.ActorTypeInfo.ImplementationType;
-                var methodInfo = actorType.GetMethod(timerData.Callback, BindingFlags.Public | BindingFlags.Instance);
+                var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
 
                 var parameters = methodInfo.GetParameters();
 

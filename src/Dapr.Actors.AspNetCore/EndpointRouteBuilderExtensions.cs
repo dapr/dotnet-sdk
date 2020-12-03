@@ -103,7 +103,6 @@ namespace Dapr.Actors.AspNetCore
             var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", async context =>
             {
-                // context.Request.EnableBuffering();
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
                 var actorId = (string)routeValues["actorId"];

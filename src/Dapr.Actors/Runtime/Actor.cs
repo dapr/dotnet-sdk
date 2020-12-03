@@ -257,7 +257,7 @@ namespace Dapr.Actors.Runtime
             TimeSpan period)
         {
             // Validate that the timer callback specified meets all the required criteria for a valid callback method
-            this.ValidateTimerCallback(callback);
+            this.ValidateTimerCallback(this.Host, callback);
 
             // create a timer name to register with Dapr runtime.
             if (string.IsNullOrEmpty(timerName))
@@ -293,13 +293,26 @@ namespace Dapr.Actors.Runtime
             await ActorRuntime.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName);
         }
 
-        private void ValidateTimerCallback(string callback)
+        internal MethodInfo GetMethodInfoUsingReflection(Type actorType, string callback)
         {
-            var actorTypeName = this.Host.ActorTypeInfo.ActorTypeName;
-            var actorType = this.Host.ActorTypeInfo.ImplementationType;
+            return actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.InvokeMethod);
+        }
 
-            // GetMethod will throw an AmbiguousMatchException if more than one methods are found with the same name
-            var methodInfo = actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance);
+        internal void ValidateTimerCallback(ActorHost host, string callback)
+        {
+            var actorTypeName = host.ActorTypeInfo.ActorTypeName;
+            var actorType = host.ActorTypeInfo.ImplementationType;
+
+            MethodInfo methodInfo = default;
+            try
+            {
+                methodInfo = this.GetMethodInfoUsingReflection(actorType, callback);
+            }
+            catch(AmbiguousMatchException)
+            {
+                // GetMethod will throw an AmbiguousMatchException if more than one methods are found with the same name
+                throw new ArgumentException($"Timer callback method: {callback} cannot be overloaded.");
+            }
 
             // Check if the method exists
             if (methodInfo == null)
@@ -320,10 +333,10 @@ namespace Dapr.Actors.Runtime
                 throw new ArgumentException("Timer callback can only return type Task");
             }
 
-            // The timer callback cannot be overridden in a derived class
-            if (methodInfo.IsVirtual)
+            // The timer callback method needs to be implemented and cannot be abstract
+            if (methodInfo.IsAbstract)
             {
-                throw new ArgumentException("Timer callback method cannot be virtual");
+                throw new ArgumentException("Timer callback method cannot be abstract");
             }
         }
     }

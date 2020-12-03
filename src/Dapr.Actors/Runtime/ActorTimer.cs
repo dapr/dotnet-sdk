@@ -36,7 +36,10 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public string Name { get; }
 
-        internal TimerInfo TimerInfo { get; }
+        /// <summary>
+        /// Timer related information
+        /// </summary>
+        public TimerInfo TimerInfo { get; }
 
 
         /// <summary>

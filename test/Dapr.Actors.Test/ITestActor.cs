@@ -67,7 +67,7 @@ namespace Dapr.Actors.Test
             this.ResetStateAsync().GetAwaiter().GetResult();
         }
 
-        public void TimerCallbackVoid()
+        public void TimerCallbackNonTaskReturnType()
         {
         }
 
@@ -77,12 +77,42 @@ namespace Dapr.Actors.Test
             return default;
         }
 
-        public virtual Task TimerCallbackVirtual()
+        private Task TimerCallbackPrivate()
         {
             return default;
         }
 
-        public Task ValidTimerCallback()
+        protected Task TimerCallbackProtected()
+        {
+            return default;
+        }
+
+        protected Task TimerCallbackInternal()
+        {
+            return default;
+        }
+
+        public Task TimerCallbackPublicWithNoArguments()
+        {
+            return default;
+        }
+
+        public Task TimerCallbackPublicWithOneArgument(int i)
+        {
+            return default;
+        }
+
+        public Task TimerCallbackOverloaded()
+        {
+            return default;
+        }
+
+        public Task TimerCallbackOverloaded(int i)
+        {
+            return default;
+        }
+
+        public static Task TimerCallbackStatic()
         {
             return default;
         }
