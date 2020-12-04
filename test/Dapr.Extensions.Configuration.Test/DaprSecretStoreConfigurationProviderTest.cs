@@ -83,7 +83,7 @@ namespace Dapr.Extensions.Configuration.Test
         }
 
         [Fact]
-        public void AddDaprSecretStore_WithCeroSecretDescriptors_ReportsError()
+        public void AddDaprSecretStore_WithZeroSecretDescriptors_ReportsError()
         {
             var daprClient = new DaprClientBuilder()
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = new TestHttpClient() })

@@ -53,7 +53,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
 
         private async Task LoadAsync()
         {
-            var data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
             foreach (var secretDescriptor in secretDescriptors)
             {
                 var result = await client.GetSecretAsync(store, secretDescriptor.SecretName, secretDescriptor.Metadata).ConfigureAwait(false);

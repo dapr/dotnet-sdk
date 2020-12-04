@@ -59,10 +59,10 @@ namespace SecretStoreConfigurationProviderSample
             async Task Secret(HttpContext context)
             {
                 // Get secret from configuration!!!
-                var secreValue = Configuration["super-secret"];
+                var secretValue = Configuration["super-secret"];
 
                 context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.Body, secreValue);
+                await JsonSerializer.SerializeAsync(context.Response.Body, secretValue);
             }
         }
     }
