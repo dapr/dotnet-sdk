@@ -46,7 +46,7 @@ namespace Dapr.AspNetCore
                         {
                             // Not bindable.
                         }
-                        if (parameter.BindingInfo.BindingSource.Id == "state")
+                        else if (parameter.BindingInfo.BindingSource.Id == "state")
                         {
                             // Already configured, don't overwrite in case the user customized it.
                         }
