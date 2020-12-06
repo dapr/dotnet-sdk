@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------
+// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -44,7 +44,7 @@ namespace Dapr.Actors.Client
         }
 
         /// <summary>
-        /// Create a proxy, this method is also sued by ACtorReference also to create proxy.
+        /// Create a proxy, this method is also used by ActorReference also to create proxy.
         /// </summary>
         /// <param name="actorId">Actor Id.</param>
         /// <param name="actorInterfaceType">Actor Interface Type.</param>

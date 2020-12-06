@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------
+// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -50,9 +50,7 @@ namespace Dapr.Actors.Client
         /// </typeparam>
         /// <param name="actorId">The actor ID of the proxy actor object. Methods called on this proxy will result in requests
         /// being sent to the actor with this ID.</param>
-        /// <param name="actorType">
-        /// Type of actor implementation.
-        /// </param>
+        /// <param name="actorType"> Type of actor implementation. </param>
         /// <returns>Proxy to the actor object.</returns>
         public static TActorInterface Create<TActorInterface>(ActorId actorId, string actorType)
             where TActorInterface : IActor
@@ -154,7 +152,7 @@ namespace Dapr.Actors.Client
         }
 
         /// <summary>
-        /// Initialize whencACtorProxy is created for Remoting.
+        /// Initialize when ActorProxy is created for Remoting.
         /// </summary>
         internal void Initialize(
           ActorRemotingClient client,
@@ -168,7 +166,7 @@ namespace Dapr.Actors.Client
         }
 
         /// <summary>
-        /// Initialize whenc ActorProxy is created for non-Remoting calls.
+        /// Initialize when ActorProxy is created for non-Remoting calls.
         /// </summary>
         internal void Initialize(
           ActorNonRemotingClient client,
