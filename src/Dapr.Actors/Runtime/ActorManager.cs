@@ -8,6 +8,7 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Collections.Concurrent;
     using System.IO;
+    using System.Reflection;
     using System.Text;
     using System.Text.Json;
     using System.Threading;
@@ -52,7 +53,7 @@ namespace Dapr.Actors.Runtime
             this.actorMethodInfoMap = new ActorMethodInfoMap(this.registration.Type.InterfaceTypes);
             this.activeActors = new ConcurrentDictionary<ActorId, ActorActivatorState>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
-            this.timerMethodContext = ActorMethodContext.CreateForReminder(TimerMethodName);
+            this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
             this.serializersManager = IntializeSerializationManager(null);
             this.messageBodyFactory = new WrappedRequestMessageFactory();
 
@@ -188,18 +189,26 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        internal Task FireTimerAsync(ActorId actorId, string timerName, CancellationToken cancellationToken = default)
+        internal async Task FireTimerAsync(ActorId actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
+             var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
+
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                await
-                    actor.FireTimerAsync(timerName);
+                var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
+                var actorType = actor.Host.ActorTypeInfo.ImplementationType;
+                var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
 
-                return null;
+                var parameters = methodInfo.GetParameters();
+
+                // The timer callback routine needs to return a type Task
+                await (Task)(methodInfo.Invoke(actor, (parameters.Length == 0) ? null : new object[] { timerData.Data }));
+
+                return default;
             }
 
-            return this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
+            var result = await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task ActivateActorAsync(ActorId actorId)
