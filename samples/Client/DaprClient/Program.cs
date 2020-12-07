@@ -69,6 +69,9 @@ namespace DaprClient
             // Read State
             await GetStateAfterTransactionAsync(client);
 
+            // Read and save state with etags
+            await ReadAndSaveStateWithEtagsAsync(client);
+
             if (config.GetValue("rpc-exception", false))
             {
                 // Invoke /throwException route on the Controller sample server
@@ -167,6 +170,29 @@ namespace DaprClient
             Console.WriteLine("Executing transaction - save state and delete state");
             await client.ExecuteStateTransactionAsync(storeName, requests);
             Console.WriteLine("Executed State Transaction!");
+        }
+
+         internal static async Task ReadAndSaveStateWithEtagsAsync(DaprClient client)
+        {
+            var origState = new Widget() { Size = "small", Color = "yellow", };
+            await client.SaveStateAsync(storeName, stateKeyName, origState);
+
+            var (origRetrievedState, origEtag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName);
+            Console.WriteLine($"Retrieved state: {origRetrievedState.Size}  {origRetrievedState.Color} with etag: {origEtag}");
+
+            origRetrievedState.Color = "orange";
+            var updatedState = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, origRetrievedState, origEtag);
+            Console.WriteLine($"Saved modified state with etag: {origEtag} successfully? {updatedState}");
+
+             var (updatedRetrievedState, updatedEtag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName);
+            Console.WriteLine($"Retrieved state: {updatedRetrievedState.Size}  {updatedRetrievedState.Color} with etag: {updatedEtag}");
+
+            updatedRetrievedState.Color = "purple";
+            var isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updatedRetrievedState, origEtag);
+            Console.WriteLine($"Saved state with old etag: {origEtag} successfully? {isSaveStateSuccess}");
+
+            isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updatedRetrievedState, updatedEtag);
+            Console.WriteLine($"Saved state with latest etag: {updatedEtag} successfully? {isSaveStateSuccess}");
         }
 
         internal static async Task GetStateAfterTransactionAsync(DaprClient client)
