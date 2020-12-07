@@ -295,7 +295,7 @@ namespace Dapr.Actors.Runtime
 
         internal MethodInfo GetMethodInfoUsingReflection(Type actorType, string callback)
         {
-            return actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.InvokeMethod);
+            return actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static);
         }
 
         internal void ValidateTimerCallback(ActorHost host, string callback)
@@ -303,12 +303,12 @@ namespace Dapr.Actors.Runtime
             var actorTypeName = host.ActorTypeInfo.ActorTypeName;
             var actorType = host.ActorTypeInfo.ImplementationType;
 
-            MethodInfo methodInfo = default;
+            MethodInfo methodInfo;
             try
             {
                 methodInfo = this.GetMethodInfoUsingReflection(actorType, callback);
             }
-            catch(AmbiguousMatchException)
+            catch (AmbiguousMatchException)
             {
                 // GetMethod will throw an AmbiguousMatchException if more than one methods are found with the same name
                 throw new ArgumentException($"Timer callback method: {callback} cannot be overloaded.");

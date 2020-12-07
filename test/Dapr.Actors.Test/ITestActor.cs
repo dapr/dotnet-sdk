@@ -87,7 +87,7 @@ namespace Dapr.Actors.Test
             return default;
         }
 
-        protected Task TimerCallbackInternal()
+        internal Task TimerCallbackInternal()
         {
             return default;
         }
