@@ -11,56 +11,67 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading.Tasks;
 
-    internal class ActorTimer : IActorTimer
+    /// <summary>
+    /// Represents the timer set on an Actor.
+    /// </summary>
+    public class ActorTimer
     {
         private readonly Actor owner;
 
+        /// <summary>
+        /// The constructor
+        /// </summary>
         public ActorTimer(
             Actor owner,
             string timerName,
-            Func<object, Task> asyncCallback,
-            object state,
-            TimeSpan dueTime,
-            TimeSpan period)
+            TimerInfo timerInfo)
         {
             this.owner = owner;
             this.Name = timerName;
-            this.AsyncCallback = asyncCallback;
-            this.State = state;
-            this.Period = period;
-            this.DueTime = dueTime;
+            this.TimerInfo = timerInfo;
         }
 
+        /// <summary>
+        /// Timer name
+        /// </summary>
         public string Name { get; }
 
-        public TimeSpan DueTime { get; }
+        /// <summary>
+        /// Timer related information
+        /// </summary>
+        public TimerInfo TimerInfo { get; }
 
-        public TimeSpan Period { get; }
 
-        public object State { get; }
-
-        public Func<object, Task> AsyncCallback { get; }
-
-        internal async Task<string> SerializeAsync()
+        /// <summary>
+        /// Gets the callback routine to be invoked when the timer is fired
+        /// </summary>
+        public string TimerCallback
         {
-            using var stream = new MemoryStream();
-            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+            get { return this.TimerInfo.Callback; }
+        }
 
-            writer.WriteStartObject();
+        /// <summary>
+        /// Parameters to be passed in to the timer callback routine
+        /// </summary>
+        public byte[] Data
+        {
+            get { return this.TimerInfo.Data; }
+        }
 
-            if (this.DueTime != null)
-            {
-                writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));
-            }
+        /// <summary>
+        /// Gets the time when the timer is first due to be invoked.
+        /// </summary>
+        public TimeSpan DueTime
+        {
+            get { return this.TimerInfo.DueTime; }
+        }
 
-            if (this.Period != null && this.Period >= TimeSpan.Zero)
-            {
-                writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.Period));
-            }
-
-            writer.WriteEndObject();
-            await writer.FlushAsync();
-            return Encoding.UTF8.GetString(stream.ToArray());
+        /// <summary>
+        /// Gets the time interval at which the timer is invoked periodically.
+        /// </summary>
+        public TimeSpan Period
+        {
+            get { return this.TimerInfo.Period; }
         }
     }
 }

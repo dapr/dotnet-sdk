@@ -6,6 +6,9 @@
 namespace Dapr.Actors.AspNetCore
 {
     using System;
+    using System.IO;
+    using System.Text;
+    using System.Text.Json;
     using Dapr.Actors.Runtime;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
@@ -106,7 +109,7 @@ namespace Dapr.Actors.AspNetCore
                 var timerName = (string)routeValues["timerName"];
 
                 // read dueTime, period and data from Request Body.
-                await runtime.FireTimerAsync(actorTypeName, actorId, timerName);
+                await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body);
             });
         }
     }
