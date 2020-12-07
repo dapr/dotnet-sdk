@@ -61,6 +61,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.AspNetCore.Inte
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.AspNetCore.IntegrationTest.App", "test\Dapr.Actors.AspNetCore.IntegrationTest.App\Dapr.Actors.AspNetCore.IntegrationTest.App.csproj", "{1BA7E772-8AA7-4D5A-800D-66B17F62421C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Extensions.Configuration.Test", "test\Dapr.Extensions.Configuration.Test\Dapr.Extensions.Configuration.Test.csproj", "{78FC19B2-396C-4ED2-BFD9-6C5667C61666}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecretStoreConfigurationProviderSample", "samples\AspNetCore\SecretStoreConfigurationProviderSample\SecretStoreConfigurationProviderSample.csproj", "{3E38D29F-C7E1-41BA-9F22-23BCC4650842}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Extensions.Configuration", "src\Dapr.Extensions.Configuration\Dapr.Extensions.Configuration.csproj", "{B615B353-476C-43B9-A776-B193B0DBD256}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -143,6 +149,18 @@ Global
 		{1BA7E772-8AA7-4D5A-800D-66B17F62421C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1BA7E772-8AA7-4D5A-800D-66B17F62421C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1BA7E772-8AA7-4D5A-800D-66B17F62421C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78FC19B2-396C-4ED2-BFD9-6C5667C61666}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78FC19B2-396C-4ED2-BFD9-6C5667C61666}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78FC19B2-396C-4ED2-BFD9-6C5667C61666}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78FC19B2-396C-4ED2-BFD9-6C5667C61666}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E38D29F-C7E1-41BA-9F22-23BCC4650842}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E38D29F-C7E1-41BA-9F22-23BCC4650842}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E38D29F-C7E1-41BA-9F22-23BCC4650842}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E38D29F-C7E1-41BA-9F22-23BCC4650842}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B615B353-476C-43B9-A776-B193B0DBD256}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B615B353-476C-43B9-A776-B193B0DBD256}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B615B353-476C-43B9-A776-B193B0DBD256}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B615B353-476C-43B9-A776-B193B0DBD256}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -170,6 +188,9 @@ Global
 		{367CC950-C047-48D8-9CBE-EA5A2139B137} = {DCBEAB71-0BDE-42F4-8187-F576942CB038}
 		{95BAF30B-8089-42CE-8530-6DFBCE1F6A07} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{1BA7E772-8AA7-4D5A-800D-66B17F62421C} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+		{78FC19B2-396C-4ED2-BFD9-6C5667C61666} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+		{3E38D29F-C7E1-41BA-9F22-23BCC4650842} = {DCBEAB71-0BDE-42F4-8187-F576942CB038}
+		{B615B353-476C-43B9-A776-B193B0DBD256} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
