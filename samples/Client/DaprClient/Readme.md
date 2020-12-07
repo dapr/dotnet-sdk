@@ -24,6 +24,11 @@ Deleted State!
 Executing transaction - save state and delete state
 Executed State Transaction!
 State not found in store
+Retrieved state: small  yellow with etag: 1
+Saved modified state : small  orange
+Retrieved state: small  orange with etag: 2
+Saved state with old etag: 1 successfully? False
+Saved state with latest etag: 2 successfully? True
 Published deposit event!
 Done
  ```
