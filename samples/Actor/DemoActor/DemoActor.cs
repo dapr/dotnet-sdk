@@ -6,6 +6,7 @@
 namespace DaprDemoActor
 {
     using System;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using IDemoActorInterface;
@@ -75,9 +76,23 @@ namespace DaprDemoActor
             return Task.CompletedTask;
         }
 
+        class TimerParams
+        {
+            public int IntParam { get; set; }
+            public string StringParam { get; set; }
+        }
+
+        /// <inheritdoc/>
         public Task RegisterTimer()
         {
-            return this.RegisterTimerAsync("TestTimer", this.TimerCallBack, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+            var timerParams = new TimerParams
+            {
+                IntParam = 100,
+                StringParam = "timer test",
+            };
+
+            var serializedTimerParams = JsonSerializer.SerializeToUtf8Bytes(timerParams);
+            return this.RegisterTimerAsync("TestTimer", nameof(this.TimerCallback), serializedTimerParams, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
         public Task UnregisterTimer()
@@ -100,13 +115,20 @@ namespace DaprDemoActor
             return Task.CompletedTask;
         }
 
-        // This method is called when the timer is triggered based on its registration.
-        // It updates the PropertyA value.
-        private Task TimerCallBack(object data)
+        /// <summary>
+        /// This method is called when the timer is triggered based on its registration.
+        /// It updates the PropertyA value.
+        /// </summary>
+        /// <param name="data">Timer input data.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public Task TimerCallback(byte[] data)
         {
             var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
             state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
             this.StateManager.SetStateAsync<MyData>(StateName, state);
+            var timerParams = JsonSerializer.Deserialize<TimerParams>(data);
+            Console.WriteLine("Timer parameter1: " + timerParams.IntParam);
+            Console.WriteLine("Timer parameter2: " + timerParams.StringParam);
             return Task.CompletedTask;
         }
 

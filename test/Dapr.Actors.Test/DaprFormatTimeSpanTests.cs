@@ -7,10 +7,9 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.IO;
     using System.Text;
-    using System.Threading;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using Newtonsoft.Json;
@@ -55,14 +54,12 @@ namespace Dapr.Actors.Test
         {
             static Task<string> SerializeAsync(TimeSpan dueTime, TimeSpan period)
             {
-                var timer = new ActorTimer(
-                    owner: null,
-                    timerName: "SomeTimer",
-                    asyncCallback: state => Task.CompletedTask,
-                    state: Encoding.UTF8.GetBytes("Some state value"),
+                var timerInfo = new TimerInfo(
+                    callback: null,
+                    state: null,
                     dueTime: dueTime,
                     period: period);
-                return timer.SerializeAsync();
+                return Task.FromResult(System.Text.Json.JsonSerializer.Serialize<TimerInfo>(timerInfo));
             }
 
             var inTheFuture = TimeSpan.FromMilliseconds(20);

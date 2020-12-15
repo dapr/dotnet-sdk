@@ -5,6 +5,7 @@
 
 namespace Dapr.Actors.Test
 {
+    using System;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
@@ -64,6 +65,56 @@ namespace Dapr.Actors.Test
         public void ResetTestStateAsync()
         {
             this.ResetStateAsync().GetAwaiter().GetResult();
+        }
+
+        public void TimerCallbackNonTaskReturnType()
+        {
+        }
+
+        public Task TimerCallbackTwoArguments(int i, int j)
+        {
+            Console.WriteLine(i + j);
+            return default;
+        }
+
+        private Task TimerCallbackPrivate()
+        {
+            return default;
+        }
+
+        protected Task TimerCallbackProtected()
+        {
+            return default;
+        }
+
+        internal Task TimerCallbackInternal()
+        {
+            return default;
+        }
+
+        public Task TimerCallbackPublicWithNoArguments()
+        {
+            return default;
+        }
+
+        public Task TimerCallbackPublicWithOneArgument(int i)
+        {
+            return default;
+        }
+
+        public Task TimerCallbackOverloaded()
+        {
+            return default;
+        }
+
+        public Task TimerCallbackOverloaded(int i)
+        {
+            return default;
+        }
+
+        public static Task TimerCallbackStatic()
+        {
+            return default;
         }
     }
 }
