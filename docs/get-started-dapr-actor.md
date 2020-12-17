@@ -43,7 +43,7 @@ dotnet new classlib -f netcoreapp3.1 -o MyActor.Interfaces
 cd MyActor.Interfaces
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 0.9.0-preview01
+dotnet add package Dapr.Actors -v 1.0.0-rc02
 ```
 
 
@@ -95,10 +95,10 @@ dotnet new webapi -f netcoreapp3.1 -o MyActorService
 cd MyActorService
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 0.9.0-preview01
+dotnet add package Dapr.Actors -v 1.0.0-rc02
 
 # Add Dapr.Actors.AspNetCore nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors.AspNetCore -v 0.9.0-preview01
+dotnet add package Dapr.Actors.AspNetCore -v 1.0.0-rc02
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -122,10 +122,9 @@ namespace MyActorService
         /// <summary>
         /// Initializes a new instance of MyActor
         /// </summary>
-        /// <param name="actorService">The Dapr.Actors.Runtime.ActorService that will host this actor instance.</param>
-        /// <param name="actorId">The Dapr.Actors.ActorId for this actor instance.</param>
-        public MyActor(ActorService actorService, ActorId actorId)
-            : base(actorService, actorId)
+         /// <param name="host">The <see cref="ActorHost"/> that will host this actor instance.</param>
+        public MyActor(ActorHost host)
+            : base(host)
         {
         }
 
@@ -231,7 +230,7 @@ namespace MyActorService
         /// <summary>
         /// Timer callback once timer is expired
         /// </summary>
-        private Task OnTimerCallBack(object data)
+        private Task OnTimerCallBack(byte[] data)
         {
             Console.WriteLine("OnTimerCallBack is called!");
             return Task.CompletedTask;
@@ -267,17 +266,22 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseActors(actorRuntime =>
+                .ConfigureServices(services => 
                 {
-                    // Register MyActor actor type
-                    actorRuntime.RegisterActor<MyActor>();
+                    // Services registered here are available for Actor types to accept in their
+                    // constructor.
+                    services.AddSingleton<BankService>();
+                })
+                .UseActors(options =>
+                {
+                    options.Actors.RegisterActor<MyActor>();
                 })
                 .UseUrls($"http://localhost:{AppChannelHttpPort}/");
 ```
 
 ### **Optional** - Override Default Actor Settings
 
-Actor Settings are per app.  To override the settings described [here](https://docs.dapr.io/reference/api/actors_api/) use the `ConfigureActorSettings()` API.
+Actor Settings are per app.  The settings described [here](https://docs.dapr.io/reference/api/actors_api/) are available on the options and can be modified as below.
 
 The following code extends the previous section to do this.  Please note the values below are an **example** only.
 
@@ -285,20 +289,21 @@ The following code extends the previous section to do this.  Please note the val
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseActors(actorRuntime =>
+                .ConfigureServices(services => 
                 {
-                    actorRuntime.ConfigureActorSettings(a =>
-                    {
-                        a.ActorIdleTimeout = TimeSpan.FromMinutes(70);
-                        a.ActorScanInterval = TimeSpan.FromSeconds(35);
-                        a.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
-                        a.DrainRebalancedActors = true;
-                    });
-
-                    // Register MyActor actor type
-                    actorRuntime.RegisterActor<MyActor>();
-                });
-        
+                    // Services registered here are available for Actor types to accept in their
+                    // constructor.
+                    services.AddSingleton<BankService>();
+                })
+                .UseActors(options =>
+                {
+                    options.Actors.RegisterActor<MyActor>();
+                    options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
+                    options.ActorScanInterval = TimeSpan.FromSeconds(35);
+                    options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
+                    options.DrainRebalancedActors = true;
+                })
+                .UseUrls($"http://localhost:{AppChannelHttpPort}/");
 ```
 
 
@@ -342,7 +347,7 @@ dotnet new console -f netcoreapp3.1 -o MyActorClient
 cd MyActorClient
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 0.9.0-preview01
+dotnet add package Dapr.Actors -v 1.0.0-rc02
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
