@@ -1,7 +1,7 @@
 # Getting started with Actors
 
 ## Prerequistes
-* [.Net Core SDK 3.0](https://dotnet.microsoft.com/download)
+* [.Net Core SDK 3.1 or newer](https://dotnet.microsoft.com/download)
 * [Dapr CLI](https://github.com/dapr/cli)
 * [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
 
@@ -38,12 +38,13 @@ Actor interface is defined with the below requirements:
 
 ```bash
 # Create Actor Interfaces
-dotnet new classlib -f netcoreapp3.1 -o MyActor.Interfaces
+dotnet new classlib -o MyActor.Interfaces
 
 cd MyActor.Interfaces
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 0.9.0-preview01
+# Find version info here - https://www.nuget.org/packages/Dapr.Actors/
+dotnet add package Dapr.Actors -v 0.12.0-preview01
 ```
 
 
@@ -90,15 +91,15 @@ Dapr uses ASP.NET web service to host Actor service. This section will implement
 
 ```bash
 # Create ASP.Net Web service to host Dapr actor
-dotnet new webapi -f netcoreapp3.1 -o MyActorService
+dotnet new webapi -o MyActorService
 
 cd MyActorService
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 0.9.0-preview01
+dotnet add package Dapr.Actors -v 0.12.0-preview01
 
 # Add Dapr.Actors.AspNetCore nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors.AspNetCore -v 0.9.0-preview01
+dotnet add package Dapr.Actors.AspNetCore -v 0.12.0-preview01
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -119,13 +120,15 @@ namespace MyActorService
 {
     internal class MyActor : Actor, IMyActor, IRemindable
     {
+        // The constructor must accept ActorHost as a parameter, and can also accept additional
+        // parameters that will be retrieved from the dependency injection container
+        //
         /// <summary>
         /// Initializes a new instance of MyActor
         /// </summary>
-        /// <param name="actorService">The Dapr.Actors.Runtime.ActorService that will host this actor instance.</param>
-        /// <param name="actorId">The Dapr.Actors.ActorId for this actor instance.</param>
-        public MyActor(ActorService actorService, ActorId actorId)
-            : base(actorService, actorId)
+        /// <param name="actorService">The Dapr.Actors.Runtime.ActorHost that will host this actor instance.</param>
+        public MyActor(ActorHost host)
+            : base(host)
         {
         }
 
@@ -213,7 +216,7 @@ namespace MyActorService
         {
             return this.RegisterTimerAsync(
                 "MyTimer",                  // The name of the timer
-                this.OnTimerCallBack,       // Timer callback
+                nameof(this.OnTimerCallBack),       // Timer callback
                 null,                       // User state passed to OnTimerCallback()
                 TimeSpan.FromSeconds(5),    // Time to delay before the async callback is first invoked
                 TimeSpan.FromSeconds(5));   // Time interval between invocations of the async callback
@@ -231,7 +234,7 @@ namespace MyActorService
         /// <summary>
         /// Timer callback once timer is expired
         /// </summary>
-        private Task OnTimerCallBack(object data)
+        private Task OnTimerCallBack(byte[] data)
         {
             Console.WriteLine("OnTimerCallBack is called!");
             return Task.CompletedTask;
@@ -267,10 +270,10 @@ Register `MyActor` actor type to actor runtime and set the localhost port (`http
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseActors(actorRuntime =>
+                .UseActors(options =>
                 {
                     // Register MyActor actor type
-                    actorRuntime.RegisterActor<MyActor>();
+                    options.Actors.RegisterActor<MyActor>();
                 })
                 .UseUrls($"http://localhost:{AppChannelHttpPort}/");
 ```
@@ -285,18 +288,15 @@ The following code extends the previous section to do this.  Please note the val
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseActors(actorRuntime =>
+                .UseActors(options =>
                 {
-                    actorRuntime.ConfigureActorSettings(a =>
-                    {
-                        a.ActorIdleTimeout = TimeSpan.FromMinutes(70);
-                        a.ActorScanInterval = TimeSpan.FromSeconds(35);
-                        a.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
-                        a.DrainRebalancedActors = true;
-                    });
-
                     // Register MyActor actor type
-                    actorRuntime.RegisterActor<MyActor>();
+                    options.Actors.RegisterActor<MyActor>();
+                    
+                    options.ActorIdleTimeout = TimeSpan.FromMinutes(70);
+                    options.ActorScanInterval = TimeSpan.FromSeconds(35);
+                    options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
+                    options.DrainRebalancedActors = true;
                 });
         
 ```
@@ -337,12 +337,12 @@ Create a simple console app to call the actor service. Dapr SDK provides Actor P
 
 ```bash
 # Create Actor's Client
-dotnet new console -f netcoreapp3.1 -o MyActorClient
+dotnet new console -o MyActorClient
 
 cd MyActorClient
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 0.9.0-preview01
+dotnet add package Dapr.Actors -v 0.12.0-preview01
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
