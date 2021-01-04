@@ -25,7 +25,7 @@ This repo builds the following packages:
 
 ### Prerequesites
 
-Each project is a normal C# project. At minimum, you need [.NET Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) to build, test, and generate NuGet packages.
+Each project is a normal C# project. At minimum, you need [.NET Core SDK 5.0](https://dotnet.microsoft.com/download/dotnet-core/5.0) to build, test, and generate NuGet packages.
 
 **macOS/Linux:**
 
