@@ -39,14 +39,14 @@ namespace Dapr.Client
         /// Invokes an output binding.
         /// </summary>
         /// <typeparam name="TRequest"></typeparam>
-        /// <param name="name">The name of the binding to sent the event to.</param>
+        /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
         /// <param name="data">The data of the event to send.</param>
         /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task InvokeBindingAsync<TRequest>(
-            string name,
+            string bindingName,
             string operation,
             TRequest data,
             Dictionary<string, string> metadata = default,
@@ -57,14 +57,14 @@ namespace Dapr.Client
         /// </summary>
         /// <typeparam name="TRequest">The type of the object for the data to send.</typeparam>
         /// <typeparam name="TResponse">The type of the object for the return value.</typeparam>
-        /// <param name="name">The name of the binding to sent the event to.</param>
+        /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
         /// <param name="data">The data of the event to send.</param>
         /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will complete when the operation has completed.</returns>
         public abstract ValueTask<TResponse> InvokeBindingAsync<TRequest, TResponse>(
-            string name,
+            string bindingName,
             string operation,
             TRequest data,
             Dictionary<string, string> metadata = default,
