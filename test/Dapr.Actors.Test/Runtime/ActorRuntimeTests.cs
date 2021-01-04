@@ -7,22 +7,21 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
+    using System.Linq;
     using System.IO;
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Runtime;
-    using Xunit;
     using Microsoft.Extensions.Logging;
-    using System.Linq;
-    using System.Reflection;
+    using Xunit;
 
     public sealed class ActorRuntimeTests
     {
         private const string RenamedActorTypeName = "MyRenamedActor";
-        private ILoggerFactory loggerFactory = new LoggerFactory();
-        private ActorActivatorFactory activatorFactory = new DefaultActorActivatorFactory();
+        private readonly ILoggerFactory loggerFactory = new LoggerFactory();
+        private readonly ActorActivatorFactory activatorFactory = new DefaultActorActivatorFactory();
 
         private interface ITestActor : IActor
         {
@@ -97,7 +96,7 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public void TestActorSettings()
+        public async Task TestActorSettings()
         {
             var actorType = typeof(TestActor);
 
@@ -113,7 +112,7 @@ namespace Dapr.Actors.Test
             Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
 
             ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
-            runtime.SerializeSettingsAndRegisteredTypes(writer).GetAwaiter().GetResult();
+            await runtime.SerializeSettingsAndRegisteredTypes(writer);
 
             // read back the serialized json
             var array = writer.WrittenSpan.ToArray();

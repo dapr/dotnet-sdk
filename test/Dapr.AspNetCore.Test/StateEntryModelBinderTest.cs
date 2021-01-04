@@ -110,9 +110,11 @@ namespace Dapr.AspNetCore.Test
         private async Task SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
         {
             var stateData = TypeConverters.ToJsonByteString(state);
-            var stateResponse = new GetStateResponse();
-            stateResponse.Data = stateData;
-            stateResponse.Etag = "test";
+            var stateResponse = new GetStateResponse
+            {
+                Data = stateData,
+                Etag = "test",
+            };
 
             var streamContent = await GrpcUtils.CreateResponseContent(stateResponse);
             var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);

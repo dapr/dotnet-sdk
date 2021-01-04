@@ -104,7 +104,6 @@ namespace Dapr.Actors.Builder
             // build the proxy generator
             result.ProxyGenerator = this.CreateProxyGenerator(
                 proxyInterfaceType,
-                methodBodyTypesResultsMap,
                 result.ProxyActivatorType);
 
             context.Complete();
@@ -234,14 +233,6 @@ namespace Dapr.Actors.Builder
                     }
                 }
             }
-        }
-
-        protected ActorProxyGenerator CreateProxyGenerator(
-            Type proxyInterfaceType,
-            IDictionary<InterfaceDescription, MethodBodyTypesBuildResult> methodBodyTypesResultsMap,
-            Type proxyActivatorType)
-        {
-            return this.CreateProxyGenerator(proxyInterfaceType, proxyActivatorType);
         }
 
         protected ActorProxyGenerator CreateProxyGenerator(

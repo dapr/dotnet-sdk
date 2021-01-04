@@ -67,13 +67,12 @@ namespace DaprDemoActor
             return this.UnregisterReminderAsync("TestReminder");
         }
 
-        public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
+        public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
             // This method is invoked when an actor reminder is fired.
-            var actorState = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
-            actorState.PropertyB = $"Reminder triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
-            this.StateManager.SetStateAsync<MyData>(StateName, actorState);
-            return Task.CompletedTask;
+            var actorState = await this.StateManager.GetStateAsync<MyData>(StateName);
+            actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}'";
+            await this.StateManager.SetStateAsync<MyData>(StateName, actorState);
         }
 
         class TimerParams
@@ -121,15 +120,14 @@ namespace DaprDemoActor
         /// </summary>
         /// <param name="data">Timer input data.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task TimerCallback(byte[] data)
+        public async Task TimerCallback(byte[] data)
         {
-            var state = this.StateManager.GetStateAsync<MyData>(StateName).GetAwaiter().GetResult();
-            state.PropertyA = $"Timer triggered at '{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")}'";
-            this.StateManager.SetStateAsync<MyData>(StateName, state);
+            var state = await this.StateManager.GetStateAsync<MyData>(StateName);
+            state.PropertyA = $"Timer triggered at '{DateTime.Now:yyyyy-MM-ddTHH:mm:s}'";
+            await this.StateManager.SetStateAsync<MyData>(StateName, state);
             var timerParams = JsonSerializer.Deserialize<TimerParams>(data);
             Console.WriteLine("Timer parameter1: " + timerParams.IntParam);
             Console.WriteLine("Timer parameter2: " + timerParams.StringParam);
-            return Task.CompletedTask;
         }
 
         public async Task<AccountBalance> GetAccountBalance()
