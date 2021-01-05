@@ -108,6 +108,7 @@ namespace ActorClient
                 catch (ActorMethodInvocationException ex)
                 {
                     Console.WriteLine("Overdraft: " + ex.Message);
+                    break;
                 }
             }
         }

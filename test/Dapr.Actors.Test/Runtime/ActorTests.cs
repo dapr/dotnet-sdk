@@ -26,22 +26,22 @@ namespace Dapr.Actors.Test.Runtime
         }
 
         [Fact]
-        public void TestSaveState()
+        public async Task TestSaveState()
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.SaveStateAsync(It.IsAny<CancellationToken>()));
             var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
-            testDemoActor.SaveTestState();
+            await testDemoActor.SaveTestState();
             mockStateManager.Verify(manager => manager.SaveStateAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public void TestResetStateAsync()
+        public async Task TestResetStateAsync()
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
             var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
-            testDemoActor.ResetTestStateAsync();
+            await testDemoActor.ResetTestStateAsync();
             mockStateManager.Verify(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 

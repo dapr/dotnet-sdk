@@ -105,12 +105,12 @@ Output:
  Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-  dapr publish --pubsub pubsub -t withdraw -d '{"id": "17", "amount": 15 }'
+  dapr publish --pubsub pubsub --publish-app-id routing -t withdraw -d '{"id": "17", "amount": 15 }'
 ```
 
 On Windows:
  ```sh
- dapr publish --pubsub pubsub -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish --pubsub pubsub --publish-app-id routing -t withdraw -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
 
  ---
@@ -119,11 +119,11 @@ On Windows:
 Publish events using Dapr cli:
 On Linux, MacOS:
 ```sh
-  dapr publish --pubsub pubsub -t deposit -d '{"id": "17", "amount": 15 }'
+  dapr publish --pubsub pubsub --publish-app-id routing -t deposit -d '{"id": "17", "amount": 15 }'
 ```
 On Windows:
  ```sh
- dapr publish --pubsub pubsub -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
+ dapr publish --pubsub pubsub --publish-app-id routing -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
  ---
 

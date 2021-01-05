@@ -34,7 +34,6 @@ namespace Dapr.Actors.Communication.Client
 
         public async Task<IActorResponseMessage> InvokeAsync(
             IActorRequestMessage remotingRequestMessage,
-            string methodName,
             CancellationToken cancellationToken)
         {
               return await this.daprInteractor.InvokeActorMethodWithRemotingAsync(this.serializersManager, remotingRequestMessage, cancellationToken);

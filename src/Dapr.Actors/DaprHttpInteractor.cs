@@ -330,15 +330,6 @@ namespace Dapr.Actors
             }
         }
 
-        private static ActorMessageSerializersManager IntializeSerializationManager(
-           IActorMessageBodySerializationProvider serializationProvider)
-        {
-            // TODO serializer settings
-            return new ActorMessageSerializersManager(
-                serializationProvider,
-                new ActorMessageHeaderSerializer());
-        }
-
         /// <summary>
         /// Sends an HTTP get request to cluster http gateway.
         /// </summary>
