@@ -42,10 +42,11 @@ namespace Dapr.Actors.Communication
             {
                 return null;
             }
-            else if (obj is IActorReference && typeof(IActor).IsAssignableFrom(targetType) &&
+            else if (obj is IActorReference reference && 
+                    typeof(IActor).IsAssignableFrom(targetType) &&
                      !typeof(IActorReference).IsAssignableFrom(targetType))
             {
-                return ((IActorReference)obj).Bind(targetType);
+                return reference.Bind(targetType);
             }
 
             return obj;

@@ -33,10 +33,7 @@ namespace Dapr.Actors.Runtime
         {
             var actorTypeInfo = ActorTypeInformation.Get(typeof(TActor));
             var registration = new ActorRegistration(actorTypeInfo);
-            if (configure != null)
-            {
-                configure(registration);
-            }
+            configure?.Invoke(registration);
             this.Add(registration);
         }
     }

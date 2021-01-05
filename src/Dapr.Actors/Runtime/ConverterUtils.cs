@@ -36,13 +36,13 @@ namespace Dapr.Actors.Runtime
             var days = hours / 24;
             hours %= 24;
 
-            var minutesSpan = spanOfValue.Slice(hIndex + 1, mIndex - (hIndex + 1));
+            var minutesSpan = spanOfValue[(hIndex + 1)..mIndex];
             var minutes = int.Parse(minutesSpan);
 
-            var secondsSpan = spanOfValue.Slice(mIndex + 1, sIndex - (mIndex + 1));
+            var secondsSpan = spanOfValue[(mIndex + 1)..sIndex];
             var seconds = int.Parse(secondsSpan);
 
-            var millisecondsSpan = spanOfValue.Slice(sIndex + 1, msIndex - (sIndex + 1));
+            var millisecondsSpan = spanOfValue[(sIndex + 1)..msIndex];
             var milliseconds = int.Parse(millisecondsSpan);
 
             return new TimeSpan(days, hours, minutes, seconds, milliseconds);
