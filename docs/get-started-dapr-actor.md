@@ -416,14 +416,14 @@ namespace MyActorClient
             // Create Actor Proxy instance to invoke the methods defined in the interface
             var proxy = ActorProxy.Create(actorID, actorType);
             // Need to specify the method name and response type explicitly
-            var response = await proxy.InvokeAsync<MyData, string>("SetDataAsync", new MyData()
+            var response = await proxy.InvokeMethodAsync<MyData, string>("SetDataAsync", new MyData()
             {
                 PropertyA = "ValueA",
                 PropertyB = "ValueB",
             });
             Console.WriteLine(response);
 
-            var savedData = await proxy.InvokeAsync<MyData>("GetDataAsync");
+            var savedData = await proxy.InvokeMethodAsync<MyData>("GetDataAsync");
             Console.WriteLine(savedData);
         }
     ...
