@@ -16,8 +16,8 @@ namespace Dapr.Actors.Builder
             this.AssemblyNamespace = assemblyNamespace;
             this.enableDebugging = enableDebugging;
 
-            this.AssemblyBuilder = CodeBuilderUtils.CreateAssemblyBuilder(assemblyName, this.enableDebugging);
-            this.ModuleBuilder = CodeBuilderUtils.CreateModuleBuilder(this.AssemblyBuilder, assemblyName, this.enableDebugging);
+            this.AssemblyBuilder = CodeBuilderUtils.CreateAssemblyBuilder(assemblyName);
+            this.ModuleBuilder = CodeBuilderUtils.CreateModuleBuilder(this.AssemblyBuilder, assemblyName);
         }
 
         public AssemblyBuilder AssemblyBuilder { get; }

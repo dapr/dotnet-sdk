@@ -130,7 +130,7 @@ namespace Dapr.Actors.Runtime
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, TimerName: {Timer}", actorTypeName, actorId, timerName))
             {
-                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, requestBodyStream, cancellationToken);
+                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), requestBodyStream, cancellationToken);
             }
         }
 

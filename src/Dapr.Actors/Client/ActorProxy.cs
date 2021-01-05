@@ -205,9 +205,8 @@ namespace Dapr.Actors.Client
 
             var responseMsg = await this.actorRemotingClient.InvokeAsync(
                 new ActorRequestMessage(
-                headers,
-                requestMsgBodyValue),
-                methodName,
+                    headers,
+                    requestMsgBodyValue),
                 cancellationToken);
 
             return responseMsg?.GetBody();

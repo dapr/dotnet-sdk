@@ -29,7 +29,7 @@ namespace Dapr.Actors.Communication
             }
         }
 
-        public ActorMethodDispatcherBase GetDispatcher(int interfaceId, int methodId)
+        public ActorMethodDispatcherBase GetDispatcher(int interfaceId)
         {
             if (!this.map.TryGetValue(interfaceId, out var methodDispatcher))
             {
