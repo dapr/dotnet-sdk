@@ -161,12 +161,15 @@ namespace DaprClient
 
         internal static async Task ExecuteStateTransactionAsync(DaprClient client)
         {
-            var value = new Widget() { Size = "small", Color = "yellow", };
+            var value = new Widget() { Size = "small", Color = "yellow", }; 
             var request1 = new StateTransactionRequest("mystate", JsonSerializer.SerializeToUtf8Bytes(value), StateOperationType.Upsert);
             var request2 = new StateTransactionRequest("mystate", null, StateOperationType.Delete);
-            var requests = new List<StateTransactionRequest>();
-            requests.Add(request1);
-            requests.Add(request2);
+            var requests = new List<StateTransactionRequest>
+            {
+                request1,
+                request2
+            };
+            
             Console.WriteLine("Executing transaction - save state and delete state");
             await client.ExecuteStateTransactionAsync(storeName, requests);
             Console.WriteLine("Executed State Transaction!");

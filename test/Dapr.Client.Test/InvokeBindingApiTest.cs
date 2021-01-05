@@ -26,9 +26,11 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var metadata = new Dictionary<string, string>();
-            metadata.Add("key1", "value1");
-            metadata.Add("key2", "value2");
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
             var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata);
 
@@ -59,9 +61,11 @@ namespace Dapr.Client.Test
             CancellationToken ct = ctSource.Token;
             ctSource.Cancel();
 
-            var metadata = new Dictionary<string, string>();
-            metadata.Add("key1", "value1");
-            metadata.Add("key2", "value2");
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
             var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata, ct);
 

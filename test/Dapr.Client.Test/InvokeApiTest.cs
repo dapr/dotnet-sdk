@@ -185,8 +185,10 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
 
             var response = 
                 client.Call<InvokeResponse>()
@@ -242,8 +244,10 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
 
             var response = 
                 client.Call<InvokeResponse>()
@@ -272,8 +276,10 @@ namespace Dapr.Client.Test
             Request request = new Request() { RequestParameter = "Hello " };
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
 
             var response = 
                 client.Call<InvokeResponse>()
@@ -292,8 +298,10 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
 
             var response = 
                 client.Call<InvokeResponse>()
@@ -419,9 +427,11 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -450,9 +460,11 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -482,9 +494,11 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -547,10 +561,12 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
-            invokeResponse.ContentType = Constants.ContentTypeApplicationJson;
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data),
+                ContentType = Constants.ContentTypeApplicationJson
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -636,9 +652,11 @@ namespace Dapr.Client.Test
             var responseBody = new Response() { Name = "Look, I was invoked!" };
             // var dataBytes = new byte[]{1,2,3};
             var responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseBody);
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName };
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName }
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -687,9 +705,11 @@ namespace Dapr.Client.Test
             var client = new MockClient();
             var responseBody = new Response() { Name = "Look, I was invoked!" };
             var responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseBody);
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName };
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = new Any { Value = ByteString.CopyFrom(responseBytes), TypeUrl = typeof(byte[]).FullName }
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -739,9 +759,11 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -805,9 +827,11 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
             var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse();
-            invokeResponse.Data = TypeConverters.ToAny(data);
-            
+            var invokeResponse = new InvokeResponse
+            {
+                Data = TypeConverters.ToAny(data)
+            };
+
             var response = 
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
@@ -952,22 +976,13 @@ namespace Dapr.Client.Test
         private async Task SendResponse<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
         {
             var dataAny = TypeConverters.ToAny(data, options);
-            var dataResponse = new InvokeResponse();
-            dataResponse.Data = dataAny;
+            var dataResponse = new InvokeResponse
+            {
+                Data = dataAny
+            };
 
             var streamContent = await GrpcUtils.CreateResponseContent(dataResponse);
             var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
-            entry.Completion.SetResult(response);
-        }
-
-        private async void SendResponseFromHttpServer<T>(T data, TestHttpClient.Entry entry, JsonSerializerOptions options = null)
-        {
-            var dataAny = TypeConverters.ToAny(data, options);
-            var dataResponse = new InvokeResponse();
-            dataResponse.Data = dataAny;
-
-            var streamContent = await GrpcUtils.CreateResponseContent(dataResponse);
-            var response = GrpcUtils.CreateResponseFromHttpServer(HttpStatusCode.OK, streamContent);
             entry.Completion.SetResult(response);
         }
 
