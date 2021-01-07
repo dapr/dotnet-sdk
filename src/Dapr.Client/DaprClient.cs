@@ -15,6 +15,10 @@ namespace Dapr.Client
     /// </summary>
     public abstract class DaprClient
     {
+        // Error messages returned by Dapr runtime
+        internal static readonly string ErrStateSave = "failed saving state in state store";
+        internal static readonly string ErrStateDelete = "failed deleting state with key";
+
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>

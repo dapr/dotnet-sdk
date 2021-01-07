@@ -588,7 +588,7 @@ namespace Dapr.Client
                 await this.MakeSaveStateCallAsync(storeName, key, value, etag, stateOptions, metadata, cancellationToken);
                 return true;
             }
-            catch (RpcException)
+            catch (RpcException rpc) when (rpc.Status.Detail.Contains(ErrStateSave))
             {
             }
 
@@ -766,7 +766,7 @@ namespace Dapr.Client
                 await this.MakeDeleteStateCallAsync(storeName, key, etag, stateOptions, metadata, cancellationToken);
                 return true;
             }
-            catch (Exception)
+            catch (RpcException rpc) when (rpc.Status.Detail.Contains(ErrStateDelete))
             {
             }
 
