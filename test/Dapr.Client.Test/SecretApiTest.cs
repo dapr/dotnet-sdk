@@ -26,9 +26,11 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var metadata = new Dictionary<string, string>();
-            metadata.Add("key1", "value1");
-            metadata.Add("key2", "value2");
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
             var task = daprClient.GetSecretAsync("testStore", "test_key", metadata);
 
             // Get Request and validate
@@ -52,9 +54,11 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var metadata = new Dictionary<string, string>();
-            metadata.Add("key1", "value1");
-            metadata.Add("key2", "value2");
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
             var task = daprClient.GetSecretAsync("testStore", "test_key", metadata);
 
             // Get Request and validate
@@ -69,8 +73,10 @@ namespace Dapr.Client.Test
             request.Metadata["key2"].Should().Be("value2");
 
             // Create Response & Respond
-            var secrets = new Dictionary<string, string>();
-            secrets.Add("redis_secret", "Guess_Redis");
+            var secrets = new Dictionary<string, string>
+            {
+                { "redis_secret", "Guess_Redis" }
+            };
             await SendResponseWithSecrets(secrets, entry);
 
             // Get response and validate
@@ -89,9 +95,11 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
-            var metadata = new Dictionary<string, string>();
-            metadata.Add("key1", "value1");
-            metadata.Add("key2", "value2");
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
             var task = daprClient.GetSecretAsync("testStore", "test_key", metadata);
 
             // Get Request and validate
@@ -106,9 +114,11 @@ namespace Dapr.Client.Test
             request.Metadata["key2"].Should().Be("value2");
 
             // Create Response & Respond
-            var secrets = new Dictionary<string, string>();
-            secrets.Add("redis_secret", "Guess_Redis");
-            secrets.Add("kafka_secret", "Guess_Kafka");
+            var secrets = new Dictionary<string, string>
+            {
+                { "redis_secret", "Guess_Redis" },
+                { "kafka_secret", "Guess_Kafka" }
+            };
             await SendResponseWithSecrets(secrets, entry);
 
             // Get response and validate
@@ -129,9 +139,11 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
                 .Build();
 
-            var metadata = new Dictionary<string, string>();
-            metadata.Add("key1", "value1");
-            metadata.Add("key2", "value2");
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
 
             var ctSource = new CancellationTokenSource();
             CancellationToken ct = ctSource.Token;

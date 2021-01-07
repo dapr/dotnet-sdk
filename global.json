@@ -1,7 +1,7 @@
 {
-  "_comment": "This policy allows the 3.1.100 SDK (latest LTS) or anything newer.",
+  "_comment": "This policy allows the 5.0.100 SDK or patches in that family.",
   "sdk": {
-    "version": "3.1.100",
+    "version": "5.0.100",
     "rollForward": "latestMajor"
   }
 }

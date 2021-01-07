@@ -16,17 +16,13 @@ namespace Dapr.Actors.Runtime
     /// </summary>
     public class ActorTimer
     {
-        private readonly Actor owner;
-
         /// <summary>
         /// The constructor
         /// </summary>
         public ActorTimer(
-            Actor owner,
             string timerName,
             TimerInfo timerInfo)
         {
-            this.owner = owner;
             this.Name = timerName;
             this.TimerInfo = timerInfo;
         }

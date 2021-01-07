@@ -33,7 +33,7 @@ namespace Dapr.Actors.Builder
 
             // TODO Should this search change to BindingFlags.NonPublic
             this.invokeAsyncMethodInfo = this.proxyBaseType.GetMethod(
-                "InvokeAsync",
+                "InvokeMethodAsync",
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
                 CallingConventions.Any,
@@ -104,7 +104,6 @@ namespace Dapr.Actors.Builder
             // build the proxy generator
             result.ProxyGenerator = this.CreateProxyGenerator(
                 proxyInterfaceType,
-                methodBodyTypesResultsMap,
                 result.ProxyActivatorType);
 
             context.Complete();
@@ -237,14 +236,6 @@ namespace Dapr.Actors.Builder
         }
 
         protected ActorProxyGenerator CreateProxyGenerator(
-            Type proxyInterfaceType,
-            IDictionary<InterfaceDescription, MethodBodyTypesBuildResult> methodBodyTypesResultsMap,
-            Type proxyActivatorType)
-        {
-            return this.CreateProxyGenerator(proxyInterfaceType, proxyActivatorType);
-        }
-
-        protected ActorProxyGenerator CreateProxyGenerator(
            Type proxyInterfaceType,
            Type proxyActivatorType)
         {
@@ -328,7 +319,7 @@ namespace Dapr.Actors.Builder
 
             var objectTask = ilGen.DeclareLocal(typeof(Task<IActorResponseMessageBody>));
 
-            // call the base InvokeAsync method
+            // call the base InvokeMethodAsync method
             ilGen.Emit(OpCodes.Ldarg_0); // base
             ilGen.Emit(OpCodes.Ldc_I4, interfaceId); // interfaceId
             ilGen.Emit(OpCodes.Ldc_I4, methodDescription.Id); // methodId

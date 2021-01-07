@@ -17,7 +17,7 @@ namespace Dapr
     internal class StateTestClient : DaprClientGrpc
     {
         public Dictionary<string, object> State { get; } = new Dictionary<string, object>();
-        static GrpcChannel channel = GrpcChannel.ForAddress("http://localhost");
+        private static readonly GrpcChannel channel = GrpcChannel.ForAddress("http://localhost");
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DaprClientGrpc"/> class.
