@@ -26,11 +26,15 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.1.301
+          dotnet-version: 3.1.x
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
       - name: Test solution - release
         run: |
-          unset GITHUB_ACTIONS #disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-          dotnet test test/test.sln --configuration release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+          # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+          dotnet test test/test.sln --configuration release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:GITHUB_ACTIONS=false
           dotnet clean # remove the artifacts so they can be rebuild with deterministic builds enabled
       - name: Build solution - release
         run: dotnet build all.sln --configuration release

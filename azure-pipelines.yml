@@ -22,12 +22,9 @@ stages:
         release:
           configuration: release
     steps:
-      - task: UseDotNet@2
-        displayName: 'Install dotnet SDK 3.0'
-        inputs:
-          packageType: sdk
-          version: 3.0.100
-          installationPath: $(Agent.ToolsDirectory)/dotnet
+      - uses: actions/setup-dotnet@v1
+        with:
+        dotnet-version: '3.1.x' # SDK Version to use; x will use the latest version of the 3.1 channel
       - task: DotNetCoreCLI@2
         displayName: 'Build solution - $(Configuration)'
         inputs:

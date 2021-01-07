@@ -32,7 +32,7 @@ namespace Dapr.Actors.Runtime
 
             if (stringResult.Length != 0)
             {
-                T typedResult = default;
+                T typedResult;
 
                 // perform default json de-serialization if custom serializer was not provided.
                 if (this.actorStateSerializer != null)

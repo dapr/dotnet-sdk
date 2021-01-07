@@ -99,7 +99,7 @@ namespace Dapr.Actors.Client
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public async Task<TResponse> InvokeAsync<TRequest, TResponse>(string method, TRequest data, CancellationToken cancellationToken = default)
+        public async Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(string method, TRequest data, CancellationToken cancellationToken = default)
         {
             using var stream = new MemoryStream();
             await JsonSerializer.SerializeAsync<TRequest>(stream, data);
@@ -117,7 +117,7 @@ namespace Dapr.Actors.Client
         /// <param name="data">Object argument for actor method.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public async Task InvokeAsync<TRequest>(string method, TRequest data, CancellationToken cancellationToken = default)
+        public async Task InvokeMethodAsync<TRequest>(string method, TRequest data, CancellationToken cancellationToken = default)
         {
             using var stream = new MemoryStream();
             await JsonSerializer.SerializeAsync<TRequest>(stream, data);
@@ -133,7 +133,7 @@ namespace Dapr.Actors.Client
         /// <param name="method">Actor method name.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public async Task<TResponse> InvokeAsync<TResponse>(string method, CancellationToken cancellationToken = default)
+        public async Task<TResponse> InvokeMethodAsync<TResponse>(string method, CancellationToken cancellationToken = default)
         {
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
             return await JsonSerializer.DeserializeAsync<TResponse>(response);
@@ -145,7 +145,7 @@ namespace Dapr.Actors.Client
         /// <param name="method">Actor method name.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>Response form server.</returns>
-        public Task InvokeAsync(string method, CancellationToken cancellationToken = default)
+        public Task InvokeMethodAsync(string method, CancellationToken cancellationToken = default)
         {
             return this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
         }
@@ -186,7 +186,7 @@ namespace Dapr.Actors.Client
         /// <param name="requestMsgBodyValue">Request Message Body Value.</param>
         /// <param name="cancellationToken">Cancellation Token.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
-        protected async Task<IActorResponseMessageBody> InvokeAsync(
+        protected async Task<IActorResponseMessageBody> InvokeMethodAsync(
             int interfaceId,
             int methodId,
             string methodName,
@@ -205,9 +205,8 @@ namespace Dapr.Actors.Client
 
             var responseMsg = await this.actorRemotingClient.InvokeAsync(
                 new ActorRequestMessage(
-                headers,
-                requestMsgBodyValue),
-                methodName,
+                    headers,
+                    requestMsgBodyValue),
                 cancellationToken);
 
             return responseMsg?.GetBody();

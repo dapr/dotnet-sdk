@@ -113,8 +113,7 @@ namespace Dapr.Actors.Builder
             LocalBuilder castedObject,
             MethodBodyTypes methodBodyTypes)
         {
-            LocalBuilder wrappedRequest = null;
-            wrappedRequest = ilGen.DeclareLocal(typeof(object));
+            var wrappedRequest = ilGen.DeclareLocal(typeof(object));
 
             var getValueMethod = typeof(WrappedMessage).GetProperty("Value").GetGetMethod();
             ilGen.Emit(OpCodes.Ldarg_3); // request object
@@ -183,7 +182,6 @@ namespace Dapr.Actors.Builder
                     elseLabel: elseLable,
                     castedObject: castedObject,
                     methodDescription: methodDescription,
-                    interfaceName: interfaceDescription.InterfaceType.FullName,
                     methodBodyTypes: methodBodyTypesBuildResult.MethodBodyTypesMap[methodDescription.Name]);
 
                 ilGen.MarkLabel(elseLable);
@@ -197,7 +195,6 @@ namespace Dapr.Actors.Builder
             Label elseLabel,
             LocalBuilder castedObject,
             MethodDescription methodDescription,
-            string interfaceName,
             MethodBodyTypes methodBodyTypes)
         {
             ilGen.Emit(OpCodes.Ldarg_1);

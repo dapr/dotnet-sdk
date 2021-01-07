@@ -21,10 +21,6 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
 
         private readonly IEnumerable<DaprSecretDescriptor> secretDescriptors;
 
-        const string localhost = "127.0.0.1";
-
-        static string daprPort => Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? "50001";
-
         private readonly DaprClient client;
 
         /// <summary>

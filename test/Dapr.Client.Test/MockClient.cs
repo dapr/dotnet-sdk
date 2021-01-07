@@ -30,9 +30,9 @@ namespace Dapr.Client
         public class InvokeApiCallBuilder<TResponse>
         {
             private TResponse response;
-            private Metadata headers;
+            private readonly Metadata headers;
             private Status status;
-            private Metadata trailers;
+            private readonly Metadata trailers;
 
             public InvokeApiCallBuilder()
             {
