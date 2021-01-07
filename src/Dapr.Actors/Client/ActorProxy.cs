@@ -75,7 +75,7 @@ namespace Dapr.Actors.Client
         /// <returns>Proxy to the actor object.</returns>
         public static object Create(ActorId actorId, Type actorInterfaceType, string actorType)
         {
-            if(!typeof(IActor).IsAssignableFrom(actorInterfaceType))
+            if (!typeof(IActor).IsAssignableFrom(actorInterfaceType))
             {
                 throw new ArgumentException("The interface must implement IActor.", nameof(actorInterfaceType));
             }
