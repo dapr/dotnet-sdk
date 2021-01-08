@@ -3,10 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-using Dapr.Actors.AspNetCore.IntegrationTest.App.ActivationTests;
-using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace Dapr.Actors.AspNetCore.IntegrationTest.App
@@ -15,19 +12,14 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest.App
     {
         public static void Main(string[] args)
         {
-            CreateWebHostBuilder(args).Build().Run();
+            CreateHostBuilder(args).Build().Run();
         }
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .ConfigureServices(services => 
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder => 
                 {
-                    services.AddScoped<CounterService>();
-                })
-                .UseActors(options =>
-                {
-                    options.Actors.RegisterActor<DependencyInjectionActor>();
+                    webBuilder.UseStartup<Startup>();
                 });
     }
 }
