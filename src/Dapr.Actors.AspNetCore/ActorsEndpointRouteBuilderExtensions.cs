@@ -95,19 +95,7 @@ namespace Microsoft.AspNetCore.Builder
                 }
                 else
                 {
-                    // write exception info in response.
-                    try
-                    {
-                        await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
-                    }
-                    catch (Exception e)
-                    {
-                        context.Response.Headers.Add("Connection: close", default(string));
-                        context.Response.ContentType = "application/json";
-                        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                        await context.Response.WriteAsync(e.ToString());
-                        await context.Response.CompleteAsync();
-                    }
+                    await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
                 }
             }).WithDisplayName(b => "Dapr Actors Invoke");
         }
