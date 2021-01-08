@@ -30,7 +30,7 @@ namespace Dapr
         /// <param name="etag">The ETag.</param>
         /// <remarks>
         /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use  
-        /// <see cref="DaprClient.GetStateEntryAsync{TValue}(string, string, ConsistencyMode?, CancellationToken)" /> to access
+        /// <see cref="DaprClient.GetStateEntryAsync{TValue}(string, string, ConsistencyMode?, Dictionary{string, string}, CancellationToken)" /> to access
         /// state entries.
         /// </remarks>
         public StateEntry(DaprClient client, string storeName, string key, TValue value, string etag)

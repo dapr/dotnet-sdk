@@ -42,7 +42,7 @@ namespace Dapr.Client
         /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
         /// <param name="data">The data of the event to send.</param>
-        /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task InvokeBindingAsync<TRequest>(
@@ -60,7 +60,7 @@ namespace Dapr.Client
         /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
         /// <param name="data">The data of the event to send.</param>
-        /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will complete when the operation has completed.</returns>
         public abstract ValueTask<TResponse> InvokeBindingAsync<TRequest, TResponse>(
@@ -137,7 +137,7 @@ namespace Dapr.Client
         /// <summary>
         /// Invokes a method on a Dapr app.
         /// </summary>
-       /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
         /// <param name="methodName">The name of the method to invoke.</param>  
         /// <param name="data">Data to pass to the method</param>      
         /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
@@ -172,7 +172,7 @@ namespace Dapr.Client
         /// <param name="storeName">The name of state store to read from.</param>
         /// <param name="key">The state key.</param>
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to read.</typeparam>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>
@@ -184,10 +184,11 @@ namespace Dapr.Client
         /// <param name="storeName">The name of state store to read from.</param>
         /// <param name="keys">The list of keys to get values for.</param>
         /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store. a value equal to or smaller than 0 means max parallelism.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
+        public abstract ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
-        public abstract ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default);
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
         /// </summary>
@@ -195,9 +196,10 @@ namespace Dapr.Client
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.  This wraps the read value and an ETag.</returns>
-        public abstract ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default);
+        public abstract ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a <see cref="StateEntry{T}" /> for the current value associated with the <paramref name="key" /> from
@@ -206,15 +208,16 @@ namespace Dapr.Client
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to read.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
-        public async ValueTask<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
+        public async ValueTask<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
-            var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, cancellationToken);
+            var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, metadata, cancellationToken);
             return new StateEntry<TValue>(this, storeName, key, state, etag);
         }
 
@@ -226,7 +229,7 @@ namespace Dapr.Client
         /// <param name="key">The state key.</param>
         /// <param name="value">The value to save.</param>        
         /// <param name="stateOptions">Options for performing save state operation.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to save.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
@@ -248,7 +251,7 @@ namespace Dapr.Client
         /// <param name="value">The value to save.</param>
         /// <param name="etag">An ETag.</param>        
         /// <param name="stateOptions">Options for performing save state operation.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to save.</typeparam>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation succeeded.</returns>
@@ -267,7 +270,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="operations">A list of StateTransactionRequests.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
         public abstract Task ExecuteStateTransactionAsync(
@@ -282,7 +285,7 @@ namespace Dapr.Client
         /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task DeleteStateAsync(
@@ -300,7 +303,7 @@ namespace Dapr.Client
         /// <param name="key">The state key.</param>
         /// <param name="etag">An ETag.</param>
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
         public abstract ValueTask<bool> TryDeleteStateAsync(
@@ -316,7 +319,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">Secret store name.</param>
         /// <param name="key">Key for the secret.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the secret store.  This depends on the secret store used.</param>
+        /// <param name="metadata">A key/value pair that may be consumed by the secret store. This depends on the secret store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>
         public abstract ValueTask<Dictionary<string, string>> GetSecretAsync(
