@@ -24,14 +24,20 @@ namespace Dapr.Actors.Client
         public void TestCreateActorProxy_Success()
         {
             var actorId = new ActorId("abc");
-            var proxy1 = ActorProxy.Create(actorId, "TestActor");
-            Assert.NotNull(proxy1);
-            var proxy2 = ActorProxy.Create(actorId, typeof(ITestActor), "TestActor");
-            Assert.NotNull(proxy2);
+            var proxy = ActorProxy.Create(actorId, "TestActor");
+            Assert.NotNull(proxy);
         }
 
         [Fact]
-        public void TestCreateActorProxy_NonSuccess()
+        public void TestCreateActorProxyThatImplementsInterface_Success()
+        {
+            var actorId = new ActorId("abc");
+            var proxy = ActorProxy.Create(actorId, typeof(ITestActor), "TestActor");
+            Assert.NotNull(proxy);
+        }
+
+        [Fact]
+        public void TestCreateActorProxyThatImplementsInterface_NonSuccess()
         {
             var actorId = new ActorId("abc");
             Action action = () =>  ActorProxy.Create(actorId, typeof(ActorId), "TestActor");
