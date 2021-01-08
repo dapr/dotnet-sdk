@@ -3,6 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using Dapr.Actors.AspNetCore.IntegrationTest.App.ActivationTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,11 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest.App
     {
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddScoped<CounterService>();
+            services.AddActors(options =>
+            {
+                options.Actors.RegisterActor<DependencyInjectionActor>();
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -27,6 +33,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest.App
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapActorsHandlers();
             });
         }
     }

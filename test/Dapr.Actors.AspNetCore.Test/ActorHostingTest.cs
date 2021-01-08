@@ -3,10 +3,14 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System;
 using System.Linq;
 using Dapr.Actors.Runtime;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace Dapr.Actors.AspNetCore
@@ -16,18 +20,16 @@ namespace Dapr.Actors.AspNetCore
         [Fact]
         public void CanRegisterActorsInSingleCalls()
         {
-            var builder = new WebHostBuilder();
-            builder.UseActors(options =>
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
             {
                 options.Actors.RegisterActor<TestActor1>();
                 options.Actors.RegisterActor<TestActor2>();
             });
             
-            // Configuring the HTTP pipeline is required. It's ok if it's empty.
-            builder.Configure(_ => {});
-
-            var host = builder.Build();
-            var runtime = host.Services.GetRequiredService<ActorRuntime>();
+            var runtime = services.BuildServiceProvider().GetRequiredService<ActorRuntime>();
 
             Assert.Collection(
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
@@ -38,22 +40,20 @@ namespace Dapr.Actors.AspNetCore
         [Fact]
         public void CanRegisterActorsInMultipleCalls()
         {
-            var builder = new WebHostBuilder();
-            builder.UseActors(options =>
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
             {
                 options.Actors.RegisterActor<TestActor1>();
             });
             
-            builder.UseActors(options =>
+            services.AddActors(options =>
             {
                 options.Actors.RegisterActor<TestActor2>();
             });
 
-            // Configuring the HTTP pipeline is required. It's ok if it's empty.
-            builder.Configure(_ => {});
-
-            var host = builder.Build();
-            var runtime = host.Services.GetRequiredService<ActorRuntime>();
+            var runtime = services.BuildServiceProvider().GetRequiredService<ActorRuntime>();
 
             Assert.Collection(
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
