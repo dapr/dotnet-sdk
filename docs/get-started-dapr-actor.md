@@ -254,74 +254,30 @@ By default, the "type" of the actor as seen by clients is derived from the name 
     }
 ```
 
-### Register Actor to Dapr Runtime
+### Register Actor runtime with ASP.NET Core startup
 
-Register `MyActor` actor type to actor runtime and set the localhost port (`https://localhost:3000`) which Dapr Runtime can call Actor through.
+The Actor runtime is configured through ASP.NET Core `Startup.cs`. 
+
+The runtime uses the ASP.NET Core dependency injection system to register actor types and essential services. This integration is provided through the `AddActors(...)` method call in `ConfigureServices(...)`. Use the delegate passed to `AddActors(...)` to register actor types and configure actor runtime settings. You can register additional types for dependency injection inside `ConfigureServices(...)`. These will be available to be injected into the constructors of your Actor types.
+
+Actors are implemented via HTTP calls with the Dapr runtime. This functionality is part of the application's HTTP processing pipeline and is registered inside `UseEndpoints(...)` inside `Configure(...)`.
+
 
 ```csharp
-        using Dapr.Actors;
-        using Dapr.Actors.AspNetCore;
-        
-        ...
-
-        private const int AppChannelHttpPort = 3000;
-
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .ConfigureServices(services => 
-                {
-                    // Services registered here are available for Actor types to accept in their
-                    // constructor.
-                    services.AddSingleton<BankService>();
-                })
-                .UseActors(options =>
-                {
-                    options.Actors.RegisterActor<MyActor>();
-                })
-                .UseUrls($"http://localhost:{AppChannelHttpPort}/");
-```
-
-### **Optional** - Override Default Actor Settings
-
-Actor Settings are per app.  The settings described [here](https://docs.dapr.io/reference/api/actors_api/) are available on the options and can be modified as below.
-
-The following code extends the previous section to do this.  Please note the values below are an **example** only.
-
-```csharp
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .ConfigureServices(services => 
-                {
-                    // Services registered here are available for Actor types to accept in their
-                    // constructor.
-                    services.AddSingleton<BankService>();
-                })
-                .UseActors(options =>
-                {
-                    options.Actors.RegisterActor<MyActor>();
-                    options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
-                    options.ActorScanInterval = TimeSpan.FromSeconds(35);
-                    options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
-                    options.DrainRebalancedActors = true;
-                })
-                .UseUrls($"http://localhost:{AppChannelHttpPort}/");
-```
-
-
-### Update Startup.cs
-
-```csharp
-    public class Startup
-    {
-        ...
-        
+        // In Startup.cs
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddRouting();
+            // Register actor runtime with DI
+            services.AddActors(options =>
+            {
+                // Register actor types and configure actor settings
+                options.Actors.RegisterActor<MyActor>();
+            });
+
+            // Register additional services for use with actors
+            services.AddSingleton<BankService>();
         }
-        
+
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
@@ -332,10 +288,44 @@ The following code extends the previous section to do this.  Please note the val
             {
                 app.UseHsts();
             }
+
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
+            {
+                // Register actors handlers that interface with the Dapr runtime.
+                endpoints.MapActorsHandlers();
+            });
         }
-    }
 ```
 
+### **Optional** - Override Default Actor Settings
+
+Actor Settings are per app.  The settings described [here](https://docs.dapr.io/reference/api/actors_api/) are available on the options and can be modified as below.
+
+The following code extends the previous section to do this.  Please note the values below are an **example** only.
+
+```csharp
+
+        // In Startup.cs
+        public void ConfigureServices(IServiceCollection services)
+        {
+            // Register actor runtime with DI
+            services.AddActors(options =>
+            {
+                // Register actor types and configure actor settings
+                options.Actors.RegisterActor<MyActor>();
+                
+                options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
+                options.ActorScanInterval = TimeSpan.FromSeconds(35);
+                options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
+                options.DrainRebalancedActors = true;
+            });
+
+            // Register additional services for use with actors
+            services.AddSingleton<BankService>();
+        }
+```
 
 ## STEP 3 - Add a client
 
@@ -437,10 +427,10 @@ In order to validate and debug actor service and client, we need to run actor se
 1. Run Dapr Runtime via Dapr cli
 
    ```bash
-   $ dapr run --app-id myapp --app-port 3000 --dapr-http-port 3500 dotnet run
+   $ dapr run --app-id myapp --app-port 5000 --dapr-http-port 3500 dotnet run
    ```
 
-   After executing MyActorService via Dapr runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
+   After executing MyActorService via Dapr runtime, make sure that application is discovered on port 5000 and actor connection is established successfully.
 
    ```bash
     INFO[0000] starting Dapr Runtime -- version  -- commit
@@ -448,8 +438,8 @@ In order to validate and debug actor service and client, we need to run actor se
     INFO[0000] standalone mode configured
     INFO[0000] dapr id: myapp
     INFO[0000] loaded component statestore (state.redis)
-    INFO[0000] application protocol: http. waiting on port 3000
-    INFO[0000] application discovered on port 3000
+    INFO[0000] application protocol: http. waiting on port 5000
+    INFO[0000] application discovered on port 5000
     INFO[0000] application configuration loaded
     2019/08/27 14:42:06 redis: connecting to localhost:6379
     2019/08/27 14:42:06 redis: connected to localhost:6379 (localAddr: [::1]:53155, remAddr: [::1]:6379)
