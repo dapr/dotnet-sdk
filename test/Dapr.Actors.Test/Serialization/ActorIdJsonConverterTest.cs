@@ -5,8 +5,6 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Dapr.Actors.Client;
-using Dapr.Actors.Test;
 using Xunit;
 
 namespace Dapr.Actors.Serialization
@@ -99,27 +97,6 @@ namespace Dapr.Actors.Serialization
 
             Assert.Equal(reference.ActorId.GetId(), deserialized.ActorId.GetId());
             Assert.Equal(reference.ActorType, deserialized.ActorType);
-        }
-
-        [Fact]
-        public async void CanRoundTripActorReference_Remoting()
-        {
-            // Create an actor Id.
-            var actorId1 = new ActorId("abc");
-            var actorId2 = new ActorId("xyz");
-
-            // Make strongly typed Actor calls with Remoting.
-            // DemoActor is the type registered with Dapr runtime in the service.
-            var proxy1 = ActorProxy.Create<ITestActor>(actorId1, "TestActor");
-            var proxy2 = ActorProxy.Create<ITestActor>(actorId2, "TestActor");
-
-            var reference = new ActorReference()
-            {
-                ActorId = actorId1,
-                ActorType = "TestActor",
-            };
-
-            await proxy2.SetCallingActorId(reference);
         }
 
         private class ActorHolder

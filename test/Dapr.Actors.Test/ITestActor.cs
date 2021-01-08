@@ -29,13 +29,6 @@ namespace Dapr.Actors.Test
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
         /// <returns>Task.</returns>
         Task SetCountAsync(int count, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Set Actor Id
-        /// </summary>
-        /// <param name="actorId">Actor Id of the caller.</param>
-        /// <returns>Task.</returns>
-        Task SetCallingActorId(ActorReference actorId);
     }
 
     /// <summary>
@@ -61,13 +54,6 @@ namespace Dapr.Actors.Test
         /// <inheritdoc/>
         public Task SetCountAsync(int count, CancellationToken cancellationToken)
         {
-            return Task.CompletedTask;
-        }
-
-        /// <inheritdoc/>
-        public Task SetCallingActorId(ActorReference actorId)
-        {
-            Console.WriteLine(actorId.ActorId);
             return Task.CompletedTask;
         }
 
