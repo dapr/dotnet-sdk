@@ -15,20 +15,6 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
     // running at the command line.
     public class AppWebApplicationFactory : WebApplicationFactory<Startup>
     {
-        protected override IWebHostBuilder CreateWebHostBuilder()
-        {
-           var builder = base.CreateWebHostBuilder();
-            if (builder == null)
-            {
-                return null;
-            }
-            
-            builder.ConfigureLogging(b =>
-            {
-                b.SetMinimumLevel(LogLevel.None);
-            });
-            return builder;
-        }
         protected override IHostBuilder CreateHostBuilder()
         {
             var builder = base.CreateHostBuilder();
