@@ -41,7 +41,7 @@ namespace Dapr
             }
         }
 
-        public override ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default)
+        public override ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
 
@@ -66,6 +66,7 @@ namespace Dapr
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
+            Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
