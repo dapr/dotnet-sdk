@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <DebugType>portable</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Dapr.Actors\Dapr.Actors.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
   </ItemGroup>
 
 </Project>
