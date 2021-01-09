@@ -4,6 +4,7 @@
 // ------------------------------------------------------------
 
 using System;
+using System.Text.Json;
 
 namespace Dapr.Actors.Runtime
 {
@@ -19,6 +20,7 @@ namespace Dapr.Actors.Runtime
         private TimeSpan? actorScanInterval;
         private TimeSpan? drainOngoingCallTimeout;
         private bool drainRebalancedActors;
+        private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
 
         /// <summary>
         /// Gets the collection of <see cref="ActorRegistration" /> instances.
@@ -113,6 +115,28 @@ namespace Dapr.Actors.Runtime
             set
             {
                 this.drainRebalancedActors = value;
+            }
+        }
+
+        
+        /// <summary>
+        /// The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization
+        /// </summary>
+        public JsonSerializerOptions JsonSerializerOptions
+        {
+            get
+            {
+                return this.jsonSerializerOptions;
+            }
+
+            set
+            {
+                if (value is null)
+                {
+                    throw new ArgumentNullException(nameof(JsonSerializerOptions), $"{nameof(ActorRuntimeOptions)}.{nameof(JsonSerializerOptions)} cannot be null");
+                }
+
+                this.jsonSerializerOptions = value;
             }
         }
     }

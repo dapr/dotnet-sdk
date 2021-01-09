@@ -31,6 +31,7 @@ namespace Dapr.Actors.Runtime
         private readonly ActorMethodContext timerMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
         private readonly IActorMessageBodyFactory messageBodyFactory;
+        private readonly JsonSerializerOptions jsonSerializerOptions;
 
         // method dispatchermap used by remoting calls.
         private readonly ActorMethodDispatcherMap methodDispatcherMap;
@@ -40,10 +41,11 @@ namespace Dapr.Actors.Runtime
 
         private readonly ILogger logger;
 
-        internal ActorManager(ActorRegistration registration, ActorActivator activator, ILoggerFactory loggerFactory)
+        internal ActorManager(ActorRegistration registration, ActorActivator activator, JsonSerializerOptions jsonSerializerOptions, ILoggerFactory loggerFactory)
         {
             this.registration = registration;
             this.activator = activator;
+            this.jsonSerializerOptions = jsonSerializerOptions;
             this.loggerFactory = loggerFactory;
 
             // map for remoting calls.
@@ -131,7 +133,7 @@ namespace Dapr.Actors.Runtime
                 {
                     // deserialize using stream.
                     var type = parameters[0].ParameterType;
-                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type);
+                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
                 }
                 else
@@ -161,7 +163,7 @@ namespace Dapr.Actors.Runtime
             // Serialize result if it has result (return type was not just Task.)
             if (methodInfo.ReturnType.Name != typeof(Task).Name)
             {
-                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType());
+                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType(), jsonSerializerOptions);
             }
         }
 
@@ -249,7 +251,7 @@ namespace Dapr.Actors.Runtime
         private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-            var host = new ActorHost(this.ActorTypeInfo, actorId, this.loggerFactory);
+            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory);
             var state =  await this.activator.CreateAsync(host);
             this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             return state;

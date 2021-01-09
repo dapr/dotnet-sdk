@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -12,50 +12,57 @@ namespace Dapr.Actors.Client
     /// <summary>
     /// Represents a factory class to create a proxy to the remote actor objects.
     /// </summary>
-    internal class ActorProxyFactory : IActorProxyFactory
+    public class ActorProxyFactory : IActorProxyFactory
     {
         private readonly IDaprInteractor daprInteractor;
+        private ActorProxyOptions defaultOptions = new ActorProxyOptions();
+
+        /// <inheritdoc/>
+        public ActorProxyOptions DefaultOptions
+        {
+            get => this.defaultOptions;
+            set => this.defaultOptions = value ??
+                    throw new ArgumentNullException(nameof(DefaultOptions), $"{nameof(ActorProxyFactory)}.{nameof(DefaultOptions)} cannot be null");
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
-        /// TODO: Accept Retry settings.
         /// </summary>
         public ActorProxyFactory()
         {
-            // TODO: Allow configuration of serialization and client settings.
             this.daprInteractor = new DaprHttpInteractor();
         }
 
-        /// <inheritdoc/>
-        public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType)
-            where TActorInterface : IActor
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
+        /// </summary>
+        public ActorProxyFactory(ActorProxyOptions options) : this()
         {
-            return (TActorInterface)this.CreateActorProxy(actorId, typeof(TActorInterface), actorType);
+            DefaultOptions = options;
         }
 
         /// <inheritdoc/>
-        public ActorProxy Create(ActorId actorId, string actorType)
+        public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType, ActorProxyOptions options = null)
+            where TActorInterface : IActor
+            => (TActorInterface)this.CreateActorProxy(actorId, typeof(TActorInterface), actorType, options ?? this.defaultOptions);
+
+        /// <inheritdoc/>
+        public ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null)
         {
             var actorProxy = new ActorProxy();
             var nonRemotingClient = new ActorNonRemotingClient(this.daprInteractor);
-            actorProxy.Initialize(nonRemotingClient, actorId, actorType);
+            actorProxy.Initialize(nonRemotingClient, actorId, actorType, options ?? this.defaultOptions);
 
             return actorProxy;
         }
 
-        /// <summary>
-        /// Create a proxy, this method is also used by ActorReference also to create proxy.
-        /// </summary>
-        /// <param name="actorId">Actor Id.</param>
-        /// <param name="actorInterfaceType">Actor Interface Type.</param>
-        /// <param name="actorType">Actor implementation Type.</param>
-        /// <returns>Returns Actor Proxy.</returns>
-        internal object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType)
+        /// <inheritdoc/>
+        public object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null)
         {
             var remotingClient = new ActorRemotingClient(this.daprInteractor);
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
             var actorProxy = proxyGenerator.CreateActorProxy();
-            actorProxy.Initialize(remotingClient, actorId, actorType);
+            actorProxy.Initialize(remotingClient, actorId, actorType, options ?? this.defaultOptions);
 
             return actorProxy;
         }

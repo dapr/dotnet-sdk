@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -17,7 +17,7 @@ namespace Dapr.Actors.Test.Runtime
         {
             var actorType = typeof(TestActor);
             var actorTypeInformation = ActorTypeInformation.Get(actorType);
-            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), new LoggerFactory());
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, new LoggerFactory());
             var actor = new TestActor(host);
 
             var activator = Mock.Of<ActorActivator>();
