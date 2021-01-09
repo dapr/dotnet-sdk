@@ -55,7 +55,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets the StateManager for the actor.
         /// </summary>
-        protected IActorStateManager StateManager { get; set; }
+        public IActorStateManager StateManager { get; set; }
 
         internal async Task OnActivateInternalAsync()
         {
