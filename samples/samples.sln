@@ -25,6 +25,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DemoActor", "Actor\DemoActo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ActorClient", "Actor\ActorClient\ActorClient.csproj", "{9D0A3EB0-C47C-4C68-A9A2-B253EC81E6C4}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "IDemoActor.FSharp", "samples\Actor\IDemoActor.FSharp\IDemoActor.FSharp.fsproj", "{16B6AC6B-5D86-46D1-8B7E-E61792F1D9A9}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "DemoActor.FSharp", "samples\Actor\DemoActor.FSharp\DemoActor.FSharp.fsproj", "{6F321DB4-7D50-400B-95F2-1052535EF966}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ActorClient.FSharp", "samples\Actor\ActorClient.FSharp\ActorClient.FSharp.fsproj", "{F2C11F40-E21A-40DB-9B91-05A1ADA41862}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AspNetCore", "AspNetCore", "{DCBEAB71-0BDE-42F4-8187-F576942CB038}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DaprClient", "Client\DaprClient\DaprClient.csproj", "{576B28F7-0D86-4C11-828A-B648E11863F6}"
