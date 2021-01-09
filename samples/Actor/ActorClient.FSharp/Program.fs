@@ -19,10 +19,14 @@ let run =
             try
                 do! bank.Withdraw { Amount = 10m } |> Async.AwaitTask
             with
-            | :? ActorMethodInvocationException as ex ->
-                printfn $"Overdraft: {ex.Message}"
+            // Due to quirks with Async.AwaitTask and aggregate exception, this horrible stuff seems necessary
+            | :? AggregateException as ae ->
+                for ex in ae.InnerExceptions do
+                    match ex with
+                    | :? ActorMethodInvocationException as amie ->
+                        printfn $"Overdraft: {amie.Message}"
+                    | _ -> ()
                 cond <- false
-
     }
 
 [<EntryPoint>]

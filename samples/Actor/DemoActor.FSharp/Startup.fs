@@ -1,5 +1,7 @@
 namespace DemoActor.FSharp
 
+open System
+
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
@@ -14,7 +16,7 @@ open DemoActor.FSharp.BankActor
 type Startup() =
     member this.ConfigureServices(services: IServiceCollection) =
         services.AddSingleton<BankService>()
-                .AddActors(fun options -> options.Actors.RegisterActor<BankActor> |> ignore)
+                .AddActors(fun options -> options.Actors.RegisterActor<BankActor>())
 
     member this.Configure(app: IApplicationBuilder, env: IWebHostEnvironment) =
         if env.IsDevelopment() then
