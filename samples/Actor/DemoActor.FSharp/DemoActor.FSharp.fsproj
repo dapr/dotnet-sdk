@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="BankService.fs" />
+    <Compile Include="BankActor.fs" />
+    <Compile Include="Startup.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
+    <ProjectReference Include="..\IDemoActor.FSharp\IDemoActor.FSharp.fsproj" />
+  </ItemGroup>
+
+</Project>
