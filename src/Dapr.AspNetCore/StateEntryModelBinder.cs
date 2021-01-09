@@ -71,13 +71,20 @@ namespace Dapr.AspNetCore
             }
 
             var obj = await this.thunk(daprClient, this.storeName, key);
-            bindingContext.Result = ModelBindingResult.Success(obj);
 
-            bindingContext.ValidationState.Add(bindingContext.Result.Model, new ValidationStateEntry()
+            if (obj == null)
             {
-                // Don't do validation since the data came from a trusted source.
-                SuppressValidation = true,
-            });
+                bindingContext.Result = ModelBindingResult.Failed();
+            }
+            else
+            {
+                bindingContext.Result = ModelBindingResult.Success(obj);
+                bindingContext.ValidationState.Add(bindingContext.Result.Model, new ValidationStateEntry()
+                {
+                    // Don't do validation since the data came from a trusted source.
+                    SuppressValidation = true,
+                });
+            }
         }
 
         private static async Task<object> GetStateEntryAsync<T>(DaprClient daprClient, string storeName, string key)
