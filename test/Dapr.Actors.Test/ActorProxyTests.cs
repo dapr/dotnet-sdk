@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -6,6 +6,7 @@
 namespace Dapr.Actors.Client
 {
     using System;
+    using System.Text.Json;
     using Dapr.Actors.Builder;
     using Dapr.Actors.Client;
     using Dapr.Actors.Test;
@@ -40,8 +41,52 @@ namespace Dapr.Actors.Client
         public void TestCreateActorProxyThatImplementsInterface_NonSuccess()
         {
             var actorId = new ActorId("abc");
-            Action action = () =>  ActorProxy.Create(actorId, typeof(ActorId), "TestActor");
+            Action action = () => ActorProxy.Create(actorId, typeof(ActorId), "TestActor");
             action.Should().Throw<ArgumentException>();
+        }
+
+        [Fact]
+        public void TestCustomSerializerOptionsOnDefaultActorProxyFactory_Success()
+        {
+            var factory = new ActorProxyFactory();
+            factory.DefaultOptions.JsonSerializerOptions = new JsonSerializerOptions();
+
+            var actorId = new ActorId("abc");
+            var proxy = ActorProxy.Create(actorId, typeof(ITestActor), "TestActor");
+
+            Assert.NotNull(proxy);
+        }
+
+        [Fact]
+        public void TestCustomSerializerOptionsOnActorProxyCreate_Success()
+        {
+            var options = new ActorProxyOptions
+            {
+                JsonSerializerOptions = new JsonSerializerOptions()
+            };
+
+            var actorId = new ActorId("abc");
+            var proxy = ActorProxy.Create(actorId, typeof(ITestActor), "TestActor", options);
+
+            Assert.NotNull(proxy);
+        }
+
+        [Fact]
+        public void TestCustomSerializerOptionsCantBeNull_NonSuccess()
+        {
+            var options = new ActorProxyOptions();
+            Action action = () => options.JsonSerializerOptions = null;
+
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Fact]
+        public void TestProxyFactoryDefaultOptionsCantBeNull_Success()
+        {
+            var factory = new ActorProxyFactory();
+            Action action = () => factory.DefaultOptions = null;
+
+            action.Should().Throw<ArgumentNullException>();
         }
     }
 }
