@@ -58,29 +58,6 @@ namespace Dapr.Actors.Client
         }
 
         [Fact]
-        public void TestCustomSerializerOptionsOnActorProxyCreate_Success()
-        {
-            var options = new ActorProxyOptions
-            {
-                JsonSerializerOptions = new JsonSerializerOptions()
-            };
-
-            var actorId = new ActorId("abc");
-            var proxy = ActorProxy.Create(actorId, typeof(ITestActor), "TestActor", options);
-
-            Assert.NotNull(proxy);
-        }
-
-        [Fact]
-        public void TestCustomSerializerOptionsCantBeNull_NonSuccess()
-        {
-            var options = new ActorProxyOptions();
-            Action action = () => options.JsonSerializerOptions = null;
-
-            action.Should().Throw<ArgumentNullException>();
-        }
-
-        [Fact]
         public void TestProxyFactoryDefaultOptionsCantBeNull_Success()
         {
             var factory = new ActorProxyFactory();
