@@ -39,14 +39,6 @@ On Windows, we recommend installing [the latest Visual Studio 2019](https://www.
 Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio).
 
 
-
-### Solution Files
-The repo currently has 4 solution files:
-- *all.sln*: This includes all the sdk product, test and samples project files.
-- *src/prod.sln*: This includes all the product project files.
-- *samples/samples.sln*: This includes all the sample projects files dependencies project files.
-- *test/test.sln*: This includes all the test projects and dependencies project files.
-
 ### Build
 
 To build everything and generate NuGet packages, run dotnet cli commands. Binaries and NuGet packages will be dropped in a *bin* directory at the repo root.
@@ -56,10 +48,10 @@ To build everything and generate NuGet packages, run dotnet cli commands. Binari
 dotnet build -c Debug  # for release, -c Release
 
 # Run unit-test
-dotnet test test/test.sln
+dotnet test
 
 # Generate nuget packages in /bin/Debug/nugets
-dotnet pack src/prod.sln
+dotnet pack
 ```
 
 Each project can also be built individually directly through the CLI or your editor/IDE. You can open the solution file all.sln in repo root to load all sdk, samples and test projects.
