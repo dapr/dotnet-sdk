@@ -80,7 +80,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
             await Assert2XXStatusAsync(response);
         }
 
-        private static IHost CreateHost<TStartup>()
+        private static IHost CreateHost<TStartup>() where TStartup : class
         {
             var builder = Host
                 .CreateDefaultBuilder()
@@ -91,7 +91,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<HealthCheckStartup>();
+                    webBuilder.UseStartup<TStartup>();
                     webBuilder.UseTestServer();
                 });
             var host = builder.Build();
