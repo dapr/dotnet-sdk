@@ -105,8 +105,8 @@ namespace Dapr
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
         /// <param name="stateOptions">Options for Save state operation.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
-        public ValueTask<bool> TrySaveAsync(StateOptions stateOptions = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
+        public Task<bool> TrySaveAsync(StateOptions stateOptions = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             return this.client.TrySaveStateAsync(
                     this.StoreName,
@@ -125,8 +125,8 @@ namespace Dapr
         /// <param name="stateOptions">Options for Save state operation.</param>        
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
-        public ValueTask<bool> TryDeleteAsync(StateOptions stateOptions = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
+        public Task<bool> TryDeleteAsync(StateOptions stateOptions = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             return this.client.TryDeleteStateAsync(
                     this.StoreName,
