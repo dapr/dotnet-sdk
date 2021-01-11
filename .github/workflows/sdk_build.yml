@@ -34,12 +34,12 @@ jobs:
       - name: Test solution - release
         run: |
           # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-          dotnet test test/test.sln --configuration release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:GITHUB_ACTIONS=false
+          dotnet test --configuration release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:GITHUB_ACTIONS=false
           dotnet clean # remove the artifacts so they can be rebuild with deterministic builds enabled
       - name: Build solution - release
-        run: dotnet build all.sln --configuration release
+        run: dotnet build --configuration release
       - name: Generate Nuget Packages - release
-        run: dotnet pack src/prod.sln --configuration release
+        run: dotnet pack --configuration release
       - name: upload artifacts
         uses: actions/upload-artifact@master
         with:
