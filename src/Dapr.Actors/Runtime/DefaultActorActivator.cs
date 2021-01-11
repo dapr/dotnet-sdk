@@ -45,7 +45,7 @@ namespace Dapr.Actors.Runtime
         /// Implementations should not interact with lifecycle callback methods on the <see cref="Actor" /> type.
         /// These methods will be called by the runtime.
         /// </remarks>
-        public async override ValueTask DeleteAsync(ActorActivatorState state)
+        public async override Task DeleteAsync(ActorActivatorState state)
         {
             if (state.Actor is IAsyncDisposable asyncDisposable)
             {
