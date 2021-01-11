@@ -190,7 +190,7 @@ namespace Dapr.Actors.Test
                 return base.CreateAsync(host);
             }
 
-            public override ValueTask DeleteAsync(ActorActivatorState state)
+            public override Task DeleteAsync(ActorActivatorState state)
             {
                 DeleteCallCount++;
                 return base.DeleteAsync(state);

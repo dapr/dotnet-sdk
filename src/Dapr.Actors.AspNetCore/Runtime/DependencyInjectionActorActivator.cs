@@ -59,7 +59,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        public override async ValueTask DeleteAsync(ActorActivatorState obj)
+        public override async Task DeleteAsync(ActorActivatorState obj)
         {
             var state = (State)obj;
             await DisposeCore(state.Actor);
