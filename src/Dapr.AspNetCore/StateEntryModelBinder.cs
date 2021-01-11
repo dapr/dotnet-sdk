@@ -69,9 +69,13 @@ namespace Dapr.AspNetCore
                 bindingContext.ModelState.TryAddModelError(bindingContext.ModelName, message);
                 return;
             }
-
+ 
             var obj = await this.thunk(daprClient, this.storeName, key);
 
+            // When the state isn't found in the state store:
+            // - If the StateEntryModelBinder is associated with a value of type StateEntry<T>, then the above call returns an object of type
+            //   StateEntry<T> which is non-null, but StateEntry<T>.Value is null
+            // - If the StateEntryModelBinder is associated with a value of type T, then the above call returns a null value.
             if (obj == null)
             {
                 bindingContext.Result = ModelBindingResult.Failed();

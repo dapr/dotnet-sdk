@@ -5,10 +5,12 @@
 
 namespace Dapr.AspNetCore.IntegrationTest
 {
+    using System;
     using System.Net.Http;
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
     using FluentAssertions;
+    using Newtonsoft.Json;
     using Xunit;
 
     public class ControllerIntegrationTest
@@ -29,6 +31,43 @@ namespace Dapr.AspNetCore.IntegrationTest
 
                 var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
                 widget.Count.Should().Be(18);
+            }
+        }
+
+        [Fact]
+        public async Task ModelBinder_GetFromStateEntryWithKeyPresentInStateStore_ReturnsStateValue()
+        {
+            using (var factory = new AppWebApplicationFactory())
+            {
+                var httpClient = factory.CreateClient();
+                var daprClient = factory.DaprClient;
+
+                var widget = new Widget() { Size = "small", Count = 17, };
+                await daprClient.SaveStateAsync("testStore", "test", widget);
+                var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithoutstateentry/test");
+                var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+                responseWidget.Size.Should().Be(widget.Size);
+                responseWidget.Count.Should().Be(widget.Count);
+            }
+        }
+
+        [Fact]
+        public async Task ModelBinder_GetFromStateEntryWithKeyNotInStateStore_ReturnsNull()
+        {
+            using (var factory = new AppWebApplicationFactory())
+            {
+                var httpClient = factory.CreateClient();
+                var daprClient = factory.DaprClient;
+
+                var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithoutstateentry/test");
+                var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+                Assert.Null(responseWidget);
             }
         }
 
@@ -67,6 +106,43 @@ namespace Dapr.AspNetCore.IntegrationTest
 
                 var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
                 widget.Count.Should().Be(18);
+            }
+        }
+
+        [Fact]
+        public async Task ModelBinder_GetFromStateEntryWithStateEntry_WithKeyPresentInStateStore()
+        {
+            using (var factory = new AppWebApplicationFactory())
+            {
+                var httpClient = factory.CreateClient();
+                var daprClient = factory.DaprClient;
+
+                var widget = new Widget() { Size = "small", Count = 17, };
+                await daprClient.SaveStateAsync("testStore", "test", widget);
+                var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithstateentry/test");
+                var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+                responseWidget.Size.Should().Be(widget.Size);
+                responseWidget.Count.Should().Be(widget.Count);
+            }
+        }
+
+        [Fact]
+        public async Task ModelBinder_GetFromStateEntryWithStateEntry_WithKeyNotInStateStore()
+        {
+            using (var factory = new AppWebApplicationFactory())
+            {
+                var httpClient = factory.CreateClient();
+                var daprClient = factory.DaprClient;
+
+                var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithstateentry/test");
+                var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+                Assert.Null(responseWidget);
             }
         }
 

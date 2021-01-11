@@ -5,6 +5,7 @@
 
 namespace Dapr.AspNetCore.IntegrationTest.App
 {
+    using System;
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
@@ -53,5 +54,18 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             // To simulate an action where there's no Dapr attribute, yet MVC still checks the list of available model binder providers.
             return user;
         }
+
+        [HttpGet("controllerwithoutstateentry/{widget}")]
+        public ActionResult<Widget> Get([FromState("testStore")] Widget widget)
+        {
+            return widget;
+        }
+
+        [HttpGet("controllerwithstateentry/{widgetStateEntry}")]
+        public ActionResult<Widget> Get([FromState("testStore")] StateEntry<Widget> widgetStateEntry)
+        {
+            return widgetStateEntry.Value;
+        }
+
     }
 }
