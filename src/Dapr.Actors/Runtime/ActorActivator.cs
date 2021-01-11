@@ -39,6 +39,6 @@ namespace Dapr.Actors.Runtime
         /// Implementations should not interact with lifecycle callback methods on the <see cref="Actor" /> type.
         /// These methods will be called by the runtime.
         /// </remarks>
-        public abstract ValueTask DeleteAsync(ActorActivatorState state);
+        public abstract Task DeleteAsync(ActorActivatorState state);
     }
 }

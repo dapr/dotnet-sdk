@@ -113,7 +113,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async ValueTask<TResponse> InvokeBindingAsync<TRequest, TResponse>(
+        public override async Task<TResponse> InvokeBindingAsync<TRequest, TResponse>(
             string bindingName,
             string operation,
             TRequest data,
@@ -198,7 +198,7 @@ namespace Dapr.Client
             await client.InvokeServiceAsync(request, callOptions);
         }
 
-        public override async ValueTask<TResponse> InvokeMethodAsync<TResponse>(
+        public override async Task<TResponse> InvokeMethodAsync<TResponse>(
            string appId,
            string methodName,
            HttpInvocationOptions httpOptions = default,
@@ -214,7 +214,7 @@ namespace Dapr.Client
             return response.Data.Value.IsEmpty ? default : TypeConverters.FromAny<TResponse>(response.Data, this.jsonSerializerOptions);
         }
 
-        public override async ValueTask<TResponse> InvokeMethodAsync<TRequest, TResponse>(
+        public override async Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
             string appId,
             string methodName,
             TRequest data,
@@ -281,7 +281,7 @@ namespace Dapr.Client
             return invokeResponse;
         }
 
-        public override async ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public override async Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             if (keys.Count == 0)
@@ -483,7 +483,7 @@ namespace Dapr.Client
 
         #region State Apis
         /// <inheritdoc/>
-        public override async ValueTask<TValue> GetStateAsync<TValue>(
+        public override async Task<TValue> GetStateAsync<TValue>(
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
@@ -523,7 +523,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default,
+        public override async Task<(TValue value, string etag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default,
             Dictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
@@ -583,7 +583,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async ValueTask<bool> TrySaveStateAsync<TValue>(
+        public override async Task<bool> TrySaveStateAsync<TValue>(
             string storeName,
             string key,
             TValue value,
@@ -607,7 +607,7 @@ namespace Dapr.Client
             return false;
         }
 
-        private async ValueTask MakeSaveStateCallAsync<TValue>(
+        private async Task MakeSaveStateCallAsync<TValue>(
             string storeName,
             string key,
             TValue value,
@@ -676,7 +676,7 @@ namespace Dapr.Client
                 cancellationToken);
         }
 
-        private async ValueTask MakeExecuteStateTransactionCallAsync(
+        private async Task MakeExecuteStateTransactionCallAsync(
             string storeName,
             IReadOnlyList<StateTransactionRequest> states,
             Dictionary<string, string> metadata = default,
@@ -762,7 +762,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async ValueTask<bool> TryDeleteStateAsync(
+        public override async Task<bool> TryDeleteStateAsync(
             string storeName,
             string key,
             string etag,
@@ -785,7 +785,7 @@ namespace Dapr.Client
             return false;
         }
 
-        private async ValueTask MakeDeleteStateCallAsync(
+        private async Task MakeDeleteStateCallAsync(
            string storeName,
            string key,
            string etag = default,
@@ -822,7 +822,7 @@ namespace Dapr.Client
 
         #region Secret Apis
         /// <inheritdoc/>
-        public async override ValueTask<Dictionary<string, string>> GetSecretAsync(
+        public async override Task<Dictionary<string, string>> GetSecretAsync(
             string storeName,
             string key,
             Dictionary<string, string> metadata = default,

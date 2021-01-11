@@ -26,22 +26,22 @@ namespace Dapr
         {
         }
 
-        public override ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             if (this.State.TryGetValue(key, out var obj))
             {
-                return new ValueTask<TValue>((TValue)obj);
+                return Task.FromResult((TValue)obj);
             }
             else
             {
-                return new ValueTask<TValue>(default(TValue));
+                return Task.FromResult(default(TValue));
             }
         }
 
-        public override ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public override Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
 
@@ -59,10 +59,10 @@ namespace Dapr
                 }
             }
 
-            return new ValueTask<IReadOnlyList<BulkStateItem>>(response);
+            return Task.FromResult<IReadOnlyList<BulkStateItem>>(response);
         }
 
-        public override ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(
+        public override Task<(TValue value, string etag)> GetStateAndETagAsync<TValue>(
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
@@ -74,11 +74,11 @@ namespace Dapr
 
             if (this.State.TryGetValue(key, out var obj))
             {
-                return new ValueTask<(TValue value, string etag)>(((TValue)obj, "test_etag"));
+                return Task.FromResult(((TValue)obj, "test_etag"));
             }
             else
             {
-                return new ValueTask<(TValue value, string etag)>((default(TValue), "test_etag"));
+                return Task.FromResult((default(TValue), "test_etag"));
             }
         }
 
