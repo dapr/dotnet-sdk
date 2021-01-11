@@ -26,7 +26,7 @@ namespace Dapr
         {
         }
 
-        public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
@@ -41,7 +41,7 @@ namespace Dapr
             }
         }
 
-        public override Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public override Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
 
@@ -66,7 +66,7 @@ namespace Dapr
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
@@ -87,7 +87,7 @@ namespace Dapr
             string key,
             TValue value,
             StateOptions stateOptions = default,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
@@ -101,7 +101,7 @@ namespace Dapr
            string storeName,
            string key,
            StateOptions stateOptions = default,
-           Dictionary<string, string> metadata = default,
+           IReadOnlyDictionary<string, string> metadata = default,
            CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
