@@ -26,6 +26,28 @@ namespace Dapr.Client.Test
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
+            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
+            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest);
+
+            // Get Request and validate                     
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
+            request.Name.Should().Be("test");
+            request.Metadata.Count.Should().Be(0);
+            var json = request.Data.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
+            typeFromRequest.RequestParameter.Should().Be("Hello ");
+        }
+
+        [Fact]
+        public async Task InvokeBindingAsync_ValidateRequest_WithMetadata()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
             var metadata = new Dictionary<string, string>
             {
                 { "key1", "value1" },
