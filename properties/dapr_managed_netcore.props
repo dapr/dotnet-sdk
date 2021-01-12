@@ -5,6 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
+    <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
    </PropertyGroup>
 
   <!-- Cls Compliant -->

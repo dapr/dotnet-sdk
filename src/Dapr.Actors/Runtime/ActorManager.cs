@@ -257,7 +257,7 @@ namespace Dapr.Actors.Runtime
             return state;
         }
 
-        internal async ValueTask DeactivateActorAsync(ActorId actorId)
+        internal async Task DeactivateActorAsync(ActorId actorId)
         {
             if (this.activeActors.TryRemove(actorId, out var deactivatedActor))
             {
@@ -265,7 +265,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        private async ValueTask DeactivateActorCore(ActorActivatorState state)
+        private async Task DeactivateActorCore(ActorActivatorState state)
         {
             try
             {
@@ -278,7 +278,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        private async ValueTask DeleteActorAsync(ActorActivatorState state)
+        private async Task DeleteActorAsync(ActorActivatorState state)
         {
             this.logger.LogDebug("Deleting Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, state.Actor.Id);
             await this.activator.DeleteAsync(state);
