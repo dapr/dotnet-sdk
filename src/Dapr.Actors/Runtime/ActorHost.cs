@@ -47,7 +47,11 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public ILoggerFactory LoggerFactory { get; }
 
+        /// <summary>
+        /// Gets the <see cref="DaprStateProvider" />.
+        /// </summary>
+        public JsonSerializerOptions JsonSerializerOptions { get; }
+
         internal DaprStateProvider StateProvider { get; }
-        internal JsonSerializerOptions JsonSerializerOptions { get; }
     }
 }

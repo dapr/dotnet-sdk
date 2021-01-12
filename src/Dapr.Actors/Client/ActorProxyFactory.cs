@@ -33,14 +33,6 @@ namespace Dapr.Actors.Client
             this.daprInteractor = new DaprHttpInteractor();
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
-        /// </summary>
-        public ActorProxyFactory(ActorProxyOptions options) : this()
-        {
-            DefaultOptions = options;
-        }
-
         /// <inheritdoc/>
         public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType, ActorProxyOptions options = null)
             where TActorInterface : IActor
