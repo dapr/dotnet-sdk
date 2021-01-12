@@ -69,15 +69,26 @@ namespace Dapr.AspNetCore
                 bindingContext.ModelState.TryAddModelError(bindingContext.ModelName, message);
                 return;
             }
-
+ 
             var obj = await this.thunk(daprClient, this.storeName, key);
-            bindingContext.Result = ModelBindingResult.Success(obj);
 
-            bindingContext.ValidationState.Add(bindingContext.Result.Model, new ValidationStateEntry()
+            // When the state isn't found in the state store:
+            // - If the StateEntryModelBinder is associated with a value of type StateEntry<T>, then the above call returns an object of type
+            //   StateEntry<T> which is non-null, but StateEntry<T>.Value is null
+            // - If the StateEntryModelBinder is associated with a value of type T, then the above call returns a null value.
+            if (obj == null)
             {
-                // Don't do validation since the data came from a trusted source.
-                SuppressValidation = true,
-            });
+                bindingContext.Result = ModelBindingResult.Failed();
+            }
+            else
+            {
+                bindingContext.Result = ModelBindingResult.Success(obj);
+                bindingContext.ValidationState.Add(bindingContext.Result.Model, new ValidationStateEntry()
+                {
+                    // Don't do validation since the data came from a trusted source.
+                    SuppressValidation = true,
+                });
+            }
         }
 
         private static async Task<object> GetStateEntryAsync<T>(DaprClient daprClient, string storeName, string key)
