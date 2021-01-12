@@ -23,12 +23,19 @@ namespace Dapr.Actors.Test
         Task<int> GetCountAsync(CancellationToken cancellationToken);
 
         /// <summary>
-        /// SetCoutn method for test actor.
+        /// SetCount method for test actor.
         /// </summary>
         /// <param name="count">Count to set for the actor.</param>
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
         /// <returns>Task.</returns>
         Task SetCountAsync(int count, CancellationToken cancellationToken);
+
+        // /// <summary>
+        /// GeActorReference method for test actor.
+        /// </summary>
+        /// <param name="actorReference">Reference to another actor.</param>
+        /// <returns>actor reference received as input.</returns>
+        Task<ActorReference> GeActorReference(ActorReference actorReference);
     }
 
     /// <summary>
@@ -65,6 +72,11 @@ namespace Dapr.Actors.Test
         public Task ResetTestStateAsync()
         {
             return this.ResetStateAsync();
+        }
+
+        public Task<ActorReference> GeActorReference(ActorReference actorReference)
+        {
+            return Task.FromResult(actorReference);
         }
 
         public void TimerCallbackNonTaskReturnType()
