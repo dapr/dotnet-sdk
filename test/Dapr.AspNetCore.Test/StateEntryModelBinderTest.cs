@@ -90,6 +90,46 @@ namespace Dapr.AspNetCore.Test
             context.ValidationState[context.Result.Model].SuppressValidation.Should().BeTrue();
         }
 
+        [Fact]
+        public async Task BindAsync_ReturnsNullForNonExistentStateEntry()
+        {
+            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
+
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var context = CreateContext(CreateServices(httpClient));
+            context.HttpContext.Request.RouteValues["id"] = "test";
+            var task = binder.BindModelAsync(context);
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            await SendResponseWithState<string>(null, entry);
+
+            await task;
+            context.ModelState.IsValid.Should().BeTrue();
+            context.Result.IsModelSet.Should().BeFalse();
+            context.Result.Should().Be(ModelBindingResult.Failed());
+        }
+
+        [Fact]
+        public async Task BindAsync_WithStateEntry_ForNonExistentStateEntry()
+        {
+            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
+
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var context = CreateContext(CreateServices(httpClient));
+            context.HttpContext.Request.RouteValues["id"] = "test";
+            var task = binder.BindModelAsync(context);
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            await SendResponseWithState<string>(null, entry);
+
+            await task;
+            context.ModelState.IsValid.Should().BeTrue();
+            context.Result.IsModelSet.Should().BeTrue();
+            ((StateEntry<Widget>)context.Result.Model).Value.Should().BeNull();
+        }
+
         private static ModelBindingContext CreateContext(IServiceProvider services)
         {
             return new DefaultModelBindingContext()
