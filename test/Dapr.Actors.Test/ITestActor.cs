@@ -29,13 +29,6 @@ namespace Dapr.Actors.Test
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
         /// <returns>Task.</returns>
         Task SetCountAsync(int count, CancellationToken cancellationToken);
-
-        // /// <summary>
-        /// GeActorReference method for test actor.
-        /// </summary>
-        /// <param name="actorReference">Reference to another actor.</param>
-        /// <returns>actor reference received as input.</returns>
-        Task<ActorReference> GeActorReference(ActorReference actorReference);
     }
 
     /// <summary>
