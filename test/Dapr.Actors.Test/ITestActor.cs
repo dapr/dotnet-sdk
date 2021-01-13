@@ -74,11 +74,6 @@ namespace Dapr.Actors.Test
             return this.ResetStateAsync();
         }
 
-        public Task<ActorReference> GeActorReference(ActorReference actorReference)
-        {
-            return Task.FromResult(actorReference);
-        }
-
         public void TimerCallbackNonTaskReturnType()
         {
         }
