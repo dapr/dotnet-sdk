@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -18,7 +18,7 @@ namespace Dapr.Actors.Runtime
             var services = new ServiceCollection();
             services.AddScoped<TestScopedService>();
             services.AddSingleton<TestSingletonService>();
-            return services.BuildServiceProvider(new ServiceProviderOptions(){ ValidateScopes = true, });
+            return services.BuildServiceProvider(new ServiceProviderOptions() { ValidateScopes = true, });
         }
 
         private DependencyInjectionActorActivator CreateActivator(Type type)
@@ -31,7 +31,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(TestActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<TestActor>(state.Actor);
 
@@ -42,13 +42,13 @@ namespace Dapr.Actors.Runtime
         [Fact]
         public async Task CreateAsync_CreatesNewScope()
         {
-             var activator = CreateActivator(typeof(TestActor));
+            var activator = CreateActivator(typeof(TestActor));
 
-            var host1 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host1 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
             var state1 = await activator.CreateAsync(host1);
             var actor1 = Assert.IsType<TestActor>(state1.Actor);
 
-            var host2 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host2 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
             var state2 = await activator.CreateAsync(host2);
             var actor2 = Assert.IsType<TestActor>(state2.Actor);
 
@@ -59,9 +59,9 @@ namespace Dapr.Actors.Runtime
         [Fact]
         public async Task DeleteAsync_DisposesScope()
         {
-             var activator = CreateActivator(typeof(TestActor));
+            var activator = CreateActivator(typeof(TestActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<TestActor>(state.Actor);
 
@@ -75,9 +75,9 @@ namespace Dapr.Actors.Runtime
         [Fact]
         public async Task DeleteAsync_Disposable()
         {
-             var activator = CreateActivator(typeof(DisposableActor));
+            var activator = CreateActivator(typeof(DisposableActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(DisposableActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(DisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<DisposableActor>(state.Actor);
 
@@ -89,9 +89,9 @@ namespace Dapr.Actors.Runtime
         [Fact]
         public async Task DeleteAsync_AsyncDisposable()
         {
-             var activator = CreateActivator(typeof(AsyncDisposableActor));
+            var activator = CreateActivator(typeof(AsyncDisposableActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(AsyncDisposableActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(AsyncDisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<AsyncDisposableActor>(state.Actor);
 
@@ -120,7 +120,7 @@ namespace Dapr.Actors.Runtime
 
         private class TestActor : Actor, ITestActor
         {
-            public TestActor(ActorHost host, TestSingletonService singletonService, TestScopedService scopedService) 
+            public TestActor(ActorHost host, TestSingletonService singletonService, TestScopedService scopedService)
                 : base(host)
             {
                 this.SingletonService = singletonService;
@@ -133,7 +133,7 @@ namespace Dapr.Actors.Runtime
 
         private class DisposableActor : Actor, ITestActor, IDisposable
         {
-            public DisposableActor(ActorHost host) 
+            public DisposableActor(ActorHost host)
                 : base(host)
             {
             }
@@ -148,7 +148,7 @@ namespace Dapr.Actors.Runtime
 
         private class AsyncDisposableActor : Actor, ITestActor, IAsyncDisposable
         {
-            public AsyncDisposableActor(ActorHost host) 
+            public AsyncDisposableActor(ActorHost host)
                 : base(host)
             {
             }

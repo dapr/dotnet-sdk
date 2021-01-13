@@ -39,8 +39,9 @@ namespace Dapr.Actors.Runtime
             foreach (var actor in options.Actors)
             {
                 this.actorManagers[actor.Type.ActorTypeName] = new ActorManager(
-                    actor, 
-                    actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type), 
+                    actor,
+                    actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),
+                    this.options.JsonSerializerOptions,
                     loggerFactory);
             }
         }

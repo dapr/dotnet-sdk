@@ -19,10 +19,16 @@ namespace Dapr.Actors.Runtime
     internal class DaprStateProvider
     {
         private readonly IActorStateSerializer actorStateSerializer;
+        private readonly JsonSerializerOptions jsonSerializerOptions;
 
         public DaprStateProvider(IActorStateSerializer actorStateSerializer = null)
         {
             this.actorStateSerializer = actorStateSerializer;
+        }
+
+        public DaprStateProvider(JsonSerializerOptions jsonSerializerOptions = null)
+        {
+            this.jsonSerializerOptions = jsonSerializerOptions;
         }
 
         public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
@@ -42,7 +48,7 @@ namespace Dapr.Actors.Runtime
                 }
                 else
                 {
-                    typedResult = JsonSerializer.Deserialize<T>(stringResult);
+                    typedResult = JsonSerializer.Deserialize<T>(stringResult, jsonSerializerOptions);
                 }
 
                 result = new ConditionalValue<T>(true, typedResult);
@@ -112,7 +118,7 @@ namespace Dapr.Actors.Runtime
                         else
                         {
                             writer.WritePropertyName("value");
-                            JsonSerializer.Serialize(writer, stateChange.Value, stateChange.Type);
+                            JsonSerializer.Serialize(writer, stateChange.Value, stateChange.Type, jsonSerializerOptions);
                         }
                         break;
                     default:
