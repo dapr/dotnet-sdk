@@ -703,7 +703,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task TrySaveStateAsync_ValidateRandomRpcExceptionThrowsException()
+        public async Task TrySaveStateAsync_ValidateNonETagErrorThrowsException()
         {
             var client = new MockClient();
 
@@ -723,25 +723,43 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task TrySaveStateAsync_ValidateSaveStateExceptionReturnsFalse()
+        public async Task TrySaveStateAsync_ValidateETagMismatchReturnsFalse()
         {
             var client = new MockClient();
 
             var response = client.CallStateApi<string>()
             .Build();
 
-            var rpcException = new RpcException(new Status(StatusCode.Internal, DaprClient.ErrStateSave + ": statestore"));
+            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed saving state in state store testStore: {DaprClient.ETagMismatch}"));
             // Setup the mock client to throw an Rpc Exception with the expected details info
             client.Mock
                 .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var operationResult = await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "badEtag");
+            var operationResult = await client.DaprClient.TrySaveStateAsync("testStore", "test", "testValue", "mismatchedETag");
             Assert.False(operationResult);
         }
 
         [Fact]
-        public async Task TryDeleteStateAsync_ValidateRandomRpcExceptionThrowsException()
+        public async Task TrySaveStateAsync_ValidateInvalidETagReturnsFalse()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed saving state in state store testStore: {DaprClient.ETagInvalid}"));
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var operationResult = await client.DaprClient.TrySaveStateAsync("testStore", "test", "testValue", "invalidETag");
+            Assert.False(operationResult);
+        }
+
+        [Fact]
+        public async Task TryDeleteStateAsync_ValidateNonETagErrorThrowsException()
         {
             var client = new MockClient();
 
@@ -761,20 +779,38 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task TryDeleteStateAsync_ValidateDeleteStateExceptionReturnsFalse()
+        public async Task TryDeleteStateAsync_ValidateETagMismatchReturnsFalse()
         {
             var client = new MockClient();
 
             var response = client.CallStateApi<string>()
             .Build();
 
-            var rpcException = new RpcException(new Status(StatusCode.Internal, DaprClient.ErrStateDelete + ": statestore"));
+            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed deleting state with key test: {DaprClient.ETagMismatch}"));
             // Setup the mock client to throw an Rpc Exception with the expected details info
             client.Mock
                 .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var operationResult = await client.DaprClient.TryDeleteStateAsync("test", "test", "badEtag");
+            var operationResult = await client.DaprClient.TryDeleteStateAsync("test", "test", "mismatchedETag");
+            Assert.False(operationResult);
+        }
+
+        [Fact]
+        public async Task TryDeleteStateAsync_ValidateInvalidETagReturnsFalse()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed deleting state with key test: {DaprClient.ETagInvalid}"));
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var operationResult = await client.DaprClient.TryDeleteStateAsync("test", "test", "invalidETag");
             Assert.False(operationResult);
         }
 

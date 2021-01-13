@@ -16,8 +16,8 @@ namespace Dapr.Client
     public abstract class DaprClient
     {
         // Error messages returned by Dapr runtime
-        internal static readonly string ErrStateSave = "failed saving state in state store";
-        internal static readonly string ErrStateDelete = "failed deleting state with key";
+        internal static readonly string ETagInvalid = "possible etag mismatch. error from state store";
+        internal static readonly string ETagMismatch = "invalid etag value";
 
         /// <summary>
         /// Publishes an event to the specified topic.
