@@ -19,13 +19,13 @@ namespace Dapr.Actors
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
-    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Class to interact with Dapr runtime over http.
     /// </summary>
     internal class DaprHttpInteractor : IDaprInteractor
     {
+        private readonly JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
         private readonly string daprPort;
         private readonly HttpClientHandler innerHandler;
@@ -368,12 +368,7 @@ namespace Dapr.Actors
                     var contentStream = await response.Content.ReadAsStreamAsync();
                     if (contentStream.Length != 0)
                     {
-                        var options = new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        };
-
-                        error = await JsonSerializer.DeserializeAsync<DaprError>(contentStream, options);
+                        error = await JsonSerializer.DeserializeAsync<DaprError>(contentStream, jsonSerializerOptions);
                     }
                 }
                 catch (Exception ex)
