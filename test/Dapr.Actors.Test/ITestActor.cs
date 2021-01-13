@@ -23,7 +23,7 @@ namespace Dapr.Actors.Test
         Task<int> GetCountAsync(CancellationToken cancellationToken);
 
         /// <summary>
-        /// SetCoutn method for test actor.
+        /// SetCount method for test actor.
         /// </summary>
         /// <param name="count">Count to set for the actor.</param>
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>

@@ -17,6 +17,7 @@ namespace Dapr.Actors
     [DataContract(Name = "ActorId")]
     public class ActorId
     {
+        [DataMember(Name = "ActorId", Order = 0, IsRequired = true)]
         private readonly string stringId;
 
         /// <summary>
