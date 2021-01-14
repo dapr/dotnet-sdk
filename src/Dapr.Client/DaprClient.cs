@@ -15,10 +15,6 @@ namespace Dapr.Client
     /// </summary>
     public abstract class DaprClient
     {
-        // Error messages returned by Dapr runtime
-        internal static readonly string ETagInvalid = "possible etag mismatch. error from state store";
-        internal static readonly string ETagMismatch = "invalid etag value";
-
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>

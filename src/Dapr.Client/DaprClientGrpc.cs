@@ -656,7 +656,7 @@ namespace Dapr.Client
                 await this.MakeSaveStateCallAsync(storeName, key, value, etag, stateOptions, metadata, cancellationToken);
                 return true;
             }
-            catch (RpcException rpc) when (rpc.StatusCode == StatusCode.Aborted && (rpc.Status.Detail.Contains(ETagInvalid) || rpc.Status.Detail.Contains(ETagMismatch)))
+            catch (RpcException rpc) when (rpc.StatusCode == StatusCode.Aborted)
             {
             }
 
@@ -843,7 +843,7 @@ namespace Dapr.Client
                 await this.MakeDeleteStateCallAsync(storeName, key, etag, stateOptions, metadata, cancellationToken);
                 return true;
             }
-            catch (RpcException rpc) when (rpc.StatusCode == StatusCode.Aborted && (rpc.Status.Detail.Contains(ETagInvalid) || rpc.Status.Detail.Contains(ETagMismatch)))
+            catch (RpcException rpc) when (rpc.StatusCode == StatusCode.Aborted)
             {
             }
 
