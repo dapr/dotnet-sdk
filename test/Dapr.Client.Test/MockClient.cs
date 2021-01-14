@@ -27,6 +27,11 @@ namespace Dapr.Client
             return new InvokeApiCallBuilder<TResponse>();
         }
 
+        public StateApiCallBuilder<TResponse> CallStateApi<TResponse>()
+        {
+            return new StateApiCallBuilder<TResponse>();
+        }
+        
         public class InvokeApiCallBuilder<TResponse>
         {
             private TResponse response;
@@ -69,6 +74,54 @@ namespace Dapr.Client
             }
 
             public InvokeApiCallBuilder<TResponse> AddTrailer(string key, string value)
+            {
+                this.trailers.Add(key, value);
+                return this;
+            }
+        }
+
+        public class StateApiCallBuilder<TResponse>
+        {
+            private TResponse response;
+            private readonly Metadata headers;
+            private Status status;
+            private readonly Metadata trailers;
+
+            public StateApiCallBuilder()
+            {
+                headers = new Metadata();
+                trailers = new Metadata();
+            }
+
+            public AsyncUnaryCall<TResponse> Build()
+            {
+                return new AsyncUnaryCall<TResponse>(
+                    Task.FromResult(response),
+                    Task.FromResult(headers),
+                    () => status,
+                    () => trailers,
+                    () => { });
+            }
+
+            public StateApiCallBuilder<TResponse> SetResponse(TResponse response)
+            {
+                this.response = response;
+                return this;
+            }
+
+            public StateApiCallBuilder<TResponse> SetStatus(Status status)
+            {
+                this.status = status;
+                return this;
+            }
+
+            public StateApiCallBuilder<TResponse> AddHeader(string key, string value)
+            {
+                this.headers.Add(key, value);
+                return this;
+            }
+
+            public StateApiCallBuilder<TResponse> AddTrailer(string key, string value)
             {
                 this.trailers.Add(key, value);
                 return this;

@@ -15,6 +15,7 @@ namespace Dapr.Client.Test
     using Google.Protobuf;
     using Grpc.Core;
     using Grpc.Net.Client;
+    using Moq;
     using StateConsistency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConsistency;
     using StateConcurrency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConcurrency;
     using Xunit;
@@ -699,6 +700,82 @@ namespace Dapr.Client.Test
             var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson);
             stateFromRequest.Size.Should().Be(widget.Size);
             stateFromRequest.Color.Should().Be(widget.Color);
+        }
+
+        [Fact]
+        public async Task TrySaveStateAsync_ValidateNonETagErrorThrowsException()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            var rpcException = new RpcException(new Status(StatusCode.Internal, "Network Error"));
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            await FluentActions.Awaiting(async () => await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "someETag"))
+                .Should().ThrowAsync<RpcException>();
+
+        }
+
+        [Fact]
+        public async Task TrySaveStateAsync_ValidateETagRelatedExceptionReturnsFalse()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed saving state in state store testStore"));
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var operationResult = await client.DaprClient.TrySaveStateAsync("testStore", "test", "testValue", "invalidETag");
+            Assert.False(operationResult);
+        }
+
+        [Fact]
+        public async Task TryDeleteStateAsync_ValidateNonETagErrorThrowsException()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            var rpcException = new RpcException(new Status(StatusCode.Internal, "Network Error"));
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            await FluentActions.Awaiting(async () => await client.DaprClient.TryDeleteStateAsync("test", "test", "badEtag"))
+                .Should().ThrowAsync<RpcException>();
+
+        }
+
+        [Fact]
+        public async Task TryDeleteStateAsync_ValidateETagRelatedExceptionReturnsFalse()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed deleting state with key test"));
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var operationResult = await client.DaprClient.TryDeleteStateAsync("test", "test", "invalidETag");
+            Assert.False(operationResult);
         }
 
         [Theory]
