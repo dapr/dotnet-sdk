@@ -19,18 +19,18 @@ namespace Samples.Client
             var client = new DaprClientBuilder().Build();
 
             Console.WriteLine("Invoking grpc balance");
-            var res = await client.InvokeMethodAsync<object, Account>("grpcsample", "getaccount", new { Id = "17" });
-            Console.WriteLine($"Received grpc balance {res.Balance}");
+            var account = await client.InvokeMethodAsync<object, Account>("grpcsample", "getaccount", new { Id = "17" }, cancellationToken: cancellationToken);
+            Console.WriteLine($"Received grpc balance {account.Balance}");
 
             Console.WriteLine("Invoking grpc deposit");
             var data = new Transaction() { Id = "17", Amount = 99m };
-            var result = await client.InvokeMethodAsync<Transaction, Account>("grpcsample", "deposit", data);
-            Console.WriteLine("Returned: id:{0} | Balance:{1}", result.Id, result.Balance);
+            account = await client.InvokeMethodAsync<Transaction, Account>("grpcsample", "deposit", data, cancellationToken: cancellationToken);
+            Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
             Console.WriteLine("Completed grpc deposit");
 
             Console.WriteLine("Invoking grpc withdraw");
             var withdraw = new Transaction() { Id = "17", Amount = 10m, };
-            await client.InvokeMethodAsync("grpcsample", "withdraw", data);
+            await client.InvokeMethodAsync("grpcsample", "withdraw", data, cancellationToken: cancellationToken);
             Console.WriteLine("Completed grpc withdraw");
         }
 

@@ -34,10 +34,10 @@ namespace Samples.Client
             };
             
             Console.WriteLine("Executing transaction - save state and delete state");
-            await client.ExecuteStateTransactionAsync(storeName, requests);
+            await client.ExecuteStateTransactionAsync(storeName, requests, cancellationToken: cancellationToken);
             Console.WriteLine("Executed State Transaction!");
 
-            var state = await client.GetStateAsync<Widget>(storeName, "widget");
+            var state = await client.GetStateAsync<Widget>(storeName, "widget", cancellationToken: cancellationToken);
             if (state == null)
             {
                 Console.WriteLine("State not found in store");

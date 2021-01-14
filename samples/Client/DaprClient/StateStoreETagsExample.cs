@@ -22,28 +22,28 @@ namespace Samples.Client
             var client = new DaprClientBuilder().Build();
 
             // Save state which will create an etag for the state entry
-            await client.SaveStateAsync(storeName, stateKeyName, new Widget() { Size = "small", Color = "yellow", });
+            await client.SaveStateAsync(storeName, stateKeyName, new Widget() { Size = "small", Color = "yellow", }, cancellationToken: cancellationToken);
 
             // Read the state and etag
-            var (original, originalETag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName);
+            var (original, originalETag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName, cancellationToken: cancellationToken);
             Console.WriteLine($"Retrieved state: {original.Size}  {original.Color} with etag: {originalETag}");
 
             // Modify the state which will update the etag
             original.Color = "orange";
-            await client.SaveStateAsync<Widget>(storeName, stateKeyName, original);
+            await client.SaveStateAsync<Widget>(storeName, stateKeyName, original, cancellationToken: cancellationToken);
             Console.WriteLine($"Saved modified state : {original.Size}  {original.Color}");
 
             // Read the updated state and etag
-            var (updated, updatedETag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName);
+            var (updated, updatedETag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName, cancellationToken: cancellationToken);
             Console.WriteLine($"Retrieved state: {updated.Size}  {updated.Color} with etag: {updatedETag}");
 
             // Modify the state and try saving it with the old etag. This will fail
             updated.Color = "purple";
-            var isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, originalETag);
+            var isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, originalETag, cancellationToken: cancellationToken);
             Console.WriteLine($"Saved state with old etag: {originalETag} successfully? {isSaveStateSuccess}");
 
             // Modify the state and try saving it with the updated etag. This will succeed
-            isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, updatedETag);
+            isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, updatedETag, cancellationToken: cancellationToken);
             Console.WriteLine($"Saved state with latest etag: {updatedETag} successfully? {isSaveStateSuccess}");
         }
 

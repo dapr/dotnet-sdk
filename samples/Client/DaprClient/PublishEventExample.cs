@@ -21,7 +21,7 @@ namespace Samples.Client
             var client = new DaprClientBuilder().Build();
 
             var eventData = new { Id = "17", Amount = 10m, };
-            await client.PublishEventAsync(pubsubName, "deposit", eventData);
+            await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
             Console.WriteLine("Published deposit event!");
         }
 
