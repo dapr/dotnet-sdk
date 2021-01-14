@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -16,7 +16,7 @@ namespace Dapr.Actors.Runtime
         private ActorManager CreateActorManager(Type type, ActorActivator activator = null)
         {
             var registration = new ActorRegistration(ActorTypeInformation.Get(type));
-            return new ActorManager(registration, activator ?? new DefaultActorActivator(), NullLoggerFactory.Instance);
+            return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
         }
 
         [Fact]

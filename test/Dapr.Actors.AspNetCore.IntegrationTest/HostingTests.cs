@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -36,8 +36,8 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
             });
 
             Assert.Equal(
-                "The ActorRuntime service is not registered with the dependency injection container. " + 
-                "Call AddActors() inside ConfigureServices() to register the actor runtime and actor types.", 
+                "The ActorRuntime service is not registered with the dependency injection container. " +
+                "Call AddActors() inside ConfigureServices() to register the actor runtime and actor types.",
                 exception.Message);
         }
 
@@ -169,7 +169,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
                         {
                             await httpContext.Response.WriteAsync(
                                 report.Status == HealthStatus.Healthy ?
-                                "Ice Cold, Solid Gold!" : 
+                                "Ice Cold, Solid Gold!" :
                                 "Oh Noes!");
                         },
                     });
