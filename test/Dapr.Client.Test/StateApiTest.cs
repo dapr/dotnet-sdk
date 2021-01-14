@@ -768,7 +768,7 @@ namespace Dapr.Client.Test
             var response = client.CallStateApi<string>()
             .Build();
 
-            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed deleting state with key test: {DaprClient.ETagInvalid}"));
+            var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed deleting state with key test"));
             // Setup the mock client to throw an Rpc Exception with the expected details info
             client.Mock
                 .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
