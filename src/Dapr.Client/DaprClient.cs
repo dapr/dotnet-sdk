@@ -5,7 +5,9 @@
 
 namespace Dapr.Client
 {
+    using System;
     using System.Collections.Generic;
+    using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -15,6 +17,50 @@ namespace Dapr.Client
     /// </summary>
     public abstract class DaprClient
     {
+        /// <summary>
+        /// <para>
+        /// Creates an <see cref="HttpClient" /> that can be used to perform Dapr service
+        /// invocation using <see cref="HttpRequestMessage" /> objects.
+        /// </para>
+        /// <para>
+        /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
+        /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
+        /// property will be replaced with a new URI with the authority section replaced by <paramref name="daprEndpoint" />
+        /// and the path portion of the URI rewitten to follow the format of a Dapr service invocation request.
+        /// </para>
+        /// </summary>
+        /// <param name="appId">
+        /// An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
+        /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used.
+        /// </param>
+        /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
+        /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
+        /// <remarks>
+        /// <para>
+        /// The <see cref="HttpClient" /> object is intended to be a long-lived and holds access to networking resources.
+        /// Since the value of <paramref name="daprEndpoint" /> will not change during the lifespan of the application,
+        /// a single client object can be reused for the life of the application.
+        /// </para>
+        /// </remarks>
+        public static HttpClient CreateInvokeClient(string appId = null, string daprEndpoint = null)
+        {
+            var handler = new InvocationHandler(){ InnerHandler = new HttpClientHandler(), };
+
+            if (daprEndpoint is string)
+            {
+                handler.DaprEndpoint = daprEndpoint;
+            }
+
+            var httpClient = new HttpClient(handler);
+            
+            if (appId is string)
+            {
+                httpClient.BaseAddress = new Uri($"http://{appId}");
+            }
+
+            return httpClient;
+        }
+
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>
