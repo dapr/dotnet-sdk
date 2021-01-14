@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr.Client
 {
     /// <summary>
     /// Represents a state object returned from a bulk get state operation.

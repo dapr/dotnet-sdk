@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr.Client
 {
     using System.Collections.Generic;
     using System.Threading;
