@@ -1,4 +1,5 @@
 # Dapr Client Sample
+
 The client sample shows how to use the Dapr Client to:
 
 - Invoke services
@@ -11,54 +12,45 @@ The client sample shows how to use the Dapr Client to:
 * [Dapr CLI](https://github.com/dapr/cli)
 * [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
 
- ## Running the Sample
+## Running the Sample
 
- To run the sample locally run this command in DaprClient directory:
- ```sh
- dapr run --app-id DaprClient -- dotnet run <sample number>
- ```
+To run the sample locally run this command in DaprClient directory:
+```sh
+dapr run --app-id DaprClient -- dotnet run <sample number>
+```
 
 Running the following command will output a list of the samples included. 
- ```sh
- dapr run --app-id DaprClient -- dotnet run
- ```
+```sh
+dapr run --app-id DaprClient -- dotnet run
+```
 
- Press Ctrl+C to exit, and then run the command again and provide a sample number to run the samples.
+Press Ctrl+C to exit, and then run the command again and provide a sample number to run the samples.
 
- For example run this command to run the 0th sample from the list produced earlier.
+For example run this command to run the 0th sample from the list produced earlier.
+```sh
+dapr run --app-id DaprClient -- dotnet run 0
+```
 
-  ```sh
- dapr run --app-id DaprClient -- dotnet run 0
- ```
+Samples that use HTTP-based service invocation will require running the [RoutingService](../../AspNetCore/RoutingSample).
 
- Samples that use HTTP-based service invocation will require running the [RoutingService](../../AspNetCore/RoutingSample).
- 
- Samples that use gRPC-based service invocation will require running [GrpcService](../../AspNetCore/GrpcServiceSample).
+Samples that use gRPC-based service invocation will require running [GrpcService](../../AspNetCore/GrpcServiceSample).
 
 ## Invoking Services
 
-This solution contains a sample [RoutingSample service](../../AspNetCore/RoutingSample), which implements a simple banking application in ASP.NET core.
-
-The service provides following operations:
-
-- balance
-- withdraw
-- deposit
-
-The service is a typical HTTP service.
-
-See: [RoutingSample service](../../AspNetCore/RoutingSample/Startup.cs) for the defition of the service.
-
 See: `InvokeServiceHttpClientExample.cs` for an example of using `HttpClient` to invoke another service through Dapr.
 
-See: `InvokeServiceHttpExample.cs` for an example using the `DaprClient` to invoke another service throught Dapr.
+See: `InvokeServiceHttpExample.cs` for an example using the `DaprClient` to invoke another service through Dapr.
 
- ## Working with cancellation tokens
+See: `InvokeServiceGrpcExample.cs` for an example using the `DaprClient` to invoke a service using gRPC through Dapr.
 
-Asynchronous APIs exposed by `DaprClient` accept a cancellation token and by default, if the operation is canceled, you will get an OperationCanceledException. However, if you choose to initialize and pass in your own GrpcChannelOptions to the client builder, then unless you enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation), the exception thrown would be an RpcException with StatusCode as Cancelled. To get an OperationCanceledException instead, refer to the code below:-
- ```c#
-            var httpClient = new HttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
-                .Build();
-```
+## Publishing Pub/Sub Events
+
+See: `PublishEventExample.cs` for an example using the `DaprClient` to publish a pub/sub event.
+
+## Working with the State Store
+
+See: `StateStoreExample.cs` for an example of using `DaprClient` for basic state store operations like get, set, and delete.
+
+See: `StateStoreETagsExample.cs` for an example of using `DaprClient` for optimistic concurrency control with the state store.
+
+See: `StateStoreTransactionsExample.cs` for an example of using `DaprClient` for transactional state store operations that affect multiple keys. 
