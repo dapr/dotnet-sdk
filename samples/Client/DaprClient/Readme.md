@@ -1,5 +1,9 @@
 # Dapr Client Sample
-The client sample shows how to make Dapr calls to publish events, save state, get state and delete state using a Dapr client apis. 
+The client sample shows how to use the Dapr Client to:
+
+- Invoke services
+- Publish events
+- Use the state store to get, set, and delete data
 
 ## Prerequistes
 
@@ -20,6 +24,8 @@ Running the following command will output a list of the samples included.
  ```
 
  Press Ctrl+C to exit, and then run the command again and provide a sample number to run the samples.
+
+ For example run this command to run the 0th sample from the list produced earlier.
 
   ```sh
  dapr run --app-id DaprClient -- dotnet run 0
