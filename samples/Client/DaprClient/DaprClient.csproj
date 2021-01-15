@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>Samples.Client</RootNamespace>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Net.Http.Json" Version="5.0.0" />
     <PackageReference Include="Google.Protobuf" Version="3.13.0" />
     <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
   </ItemGroup>
