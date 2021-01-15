@@ -15,6 +15,7 @@ namespace Samples.Client
         {
             new InvokeServiceGrpcExample(),
             new InvokeServiceHttpExample(),
+            new InvokeServiceHttpClientExample(),
             new PublishEventExample(),
             new StateStoreExample(),
             new StateStoreTransactionsExample(),
