@@ -42,7 +42,7 @@ namespace Dapr.Client
         /// a single client object can be reused for the life of the application.
         /// </para>
         /// </remarks>
-        public static HttpClient CreateInvokeClient(string appId = null, string daprEndpoint = null)
+        public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null)
         {
             var handler = new InvocationHandler(){ InnerHandler = new HttpClientHandler(), };
 

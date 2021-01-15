@@ -18,7 +18,7 @@ namespace Samples.Client
 
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
-            var client = DaprClient.CreateInvokeClient(appId: "routing");
+            var client = DaprClient.CreateInvokeHttpClient(appId: "routing");
 
             var deposit = new Transaction  { Id = "17", Amount = 99m };
             var response = await client.PostAsJsonAsync("/deposit", deposit, cancellationToken);
