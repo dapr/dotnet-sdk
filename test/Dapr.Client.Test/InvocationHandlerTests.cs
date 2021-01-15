@@ -53,7 +53,7 @@ namespace Dapr.Client
         [Fact]
         public void TryRewriteUri_FailsForBadScheme()
         {
-            var uri = new Uri("ftp://test", UriKind.Relative);
+            var uri = new Uri("ftp://test", UriKind.Absolute);
 
             var handler = new InvocationHandler();
             Assert.False(handler.TryRewriteUri(uri, out var rewritten));
