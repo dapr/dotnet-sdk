@@ -83,7 +83,13 @@ namespace Dapr.Client
                 }
 
                 // This will throw a reasonable exception if the URI is invalid.
-                this.parsedEndpoint = new Uri(value, UriKind.Absolute);
+                var uri = new Uri(value, UriKind.Absolute);
+                if (uri.Scheme != "http" && uri.Scheme != "https")
+                {
+                    throw new ArgumentException("The URI scheme of the Dapr endpoint must be http or https.", "value");
+                }
+
+                this.parsedEndpoint = uri;
             }
         }
 

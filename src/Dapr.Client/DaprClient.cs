@@ -48,6 +48,7 @@ namespace Dapr.Client
 
             if (daprEndpoint is string)
             {
+                // DaprEndpoint performs validation.
                 handler.DaprEndpoint = daprEndpoint;
             }
 
@@ -55,7 +56,14 @@ namespace Dapr.Client
             
             if (appId is string)
             {
-                httpClient.BaseAddress = new Uri($"http://{appId}");
+                try
+                {
+                    httpClient.BaseAddress = new Uri($"http://{appId}");
+                }
+                catch (UriFormatException inner)
+                {
+                    throw new ArgumentException("The appId must be a valid hostname.", nameof(appId), inner);
+                }
             }
 
             return httpClient;

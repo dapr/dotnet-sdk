@@ -19,9 +19,51 @@ namespace Dapr.Client
     public class InvocationHandlerTests 
     {
         [Fact]
-        public void TryRewriteUri_FailsForInvalidUris()
+        public void DaprEndpoint_InvalidScheme()
         {
-            var uri = new Uri("/test"); // We don't handle many invalid cases today, just non-absolute URIs
+            var handler = new InvocationHandler();
+            var ex = Assert.Throws<ArgumentException>(() => 
+            { 
+                handler.DaprEndpoint = "ftp://localhost:3500";
+            });
+
+            Assert.Contains("The URI scheme of the Dapr endpoint must be http or https.", ex.Message);
+        }
+
+        [Fact]
+        public void DaprEndpoint_InvalidUri()
+        {
+            var handler = new InvocationHandler();
+            Assert.Throws<UriFormatException>(() =>
+            { 
+                handler.DaprEndpoint = "";
+            });
+
+            // Exception message comes from the runtime, not validating it here
+        }
+
+        [Fact]
+        public void TryRewriteUri_FailsForNullUri()
+        {
+            var handler = new InvocationHandler();
+            Assert.False(handler.TryRewriteUri(null!, out var rewritten));
+            Assert.Null(rewritten);
+        }
+
+        [Fact]
+        public void TryRewriteUri_FailsForBadScheme()
+        {
+            var uri = new Uri("ftp://test", UriKind.Relative);
+
+            var handler = new InvocationHandler();
+            Assert.False(handler.TryRewriteUri(uri, out var rewritten));
+            Assert.Null(rewritten);
+        }
+
+        [Fact]
+        public void TryRewriteUri_FailsForRelativeUris()
+        {
+            var uri = new Uri("test", UriKind.Relative);
 
             var handler = new InvocationHandler();
             Assert.False(handler.TryRewriteUri(uri, out var rewritten));
