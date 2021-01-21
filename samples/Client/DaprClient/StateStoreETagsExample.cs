@@ -21,16 +21,6 @@ namespace Samples.Client
         {
             var client = new DaprClientBuilder().Build();
 
-            // Save state with a null etag. This will throw an exception
-            try
-            {
-                await client.TrySaveStateAsync<Widget>(storeName, stateKeyName,  new Widget() { Size = "small", Color = "yellow", }, null, cancellationToken: cancellationToken);
-            }
-            catch(ArgumentException)
-            {
-                Console.WriteLine($"TrySaveStateAsync with null etag threw ArgumentException");
-            }
-
             // Save state which will create a new etag
             await client.SaveStateAsync<Widget>(storeName, stateKeyName,  new Widget() { Size = "small", Color = "yellow", }, cancellationToken: cancellationToken);
             Console.WriteLine($"Saved state which created a new entry with an initial etag");
@@ -56,16 +46,6 @@ namespace Samples.Client
             updated.Color = "green";
             isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, updatedETag, cancellationToken: cancellationToken);
             Console.WriteLine($"Saved state with latest etag: {updatedETag} successfully? {isSaveStateSuccess}");
-
-            // Delete with a null etag. This will throw an ArgumentException
-            try
-            {
-                await client.TryDeleteStateAsync(storeName, stateKeyName, null, cancellationToken: cancellationToken);
-            }
-            catch(ArgumentException)
-            {
-                Console.WriteLine($"TryDeleteStateAsync with null etag threw ArgumentException");
-            }
 
             // Delete with an old etag. This will fail
             var isDeleteStateSuccess = await client.TryDeleteStateAsync(storeName, stateKeyName, originalETag, cancellationToken: cancellationToken);
