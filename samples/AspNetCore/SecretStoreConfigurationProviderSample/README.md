@@ -9,7 +9,7 @@
 
 This document describes how to use the Dapr Secret Store Configuration Provider sample to load Secrets into ASP.NET Core Configuration.
 
-To load secrets into configuration call the _AddDaprSecretStore_ extension method with the name of the Secret Store and a  list of secrets to retrieve:
+To load secrets into configuration call the _AddDaprSecretStore_ extension method with the name of the Secret Store and a list of secrets descriptors or related metadata.
 
 ## Using the Dapr Secret Store Configuration Provider ASP.NET Core sample
 

@@ -407,16 +407,28 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets the secret value ffrom the secret store.
+        /// Gets the secret value from the secret store.
         /// </summary>
         /// <param name="storeName">Secret store name.</param>
         /// <param name="key">Key for the secret.</param>
-        /// <param name="metadata">A key/value pair that may be consumed by the secret store. This depends on the secret store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<Dictionary<string, string>> GetSecretAsync(
             string storeName,
             string key,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets all secret values that the application is allowed to access from the secret store.
+        /// </summary>
+        /// <param name="storeName">Secret store name.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<Dictionary<string, Dictionary<string, string>>> GetBulkSecretAsync(
+            string storeName,
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
     }
