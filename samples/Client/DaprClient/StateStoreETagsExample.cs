@@ -21,49 +21,50 @@ namespace Samples.Client
         {
             var client = new DaprClientBuilder().Build();
 
-            // Save state with an empty etag. This will create an etag for the state entry
-            await client.TrySaveStateAsync(storeName, stateKeyName, new Widget() { Size = "small", Color = "yellow", }, null, cancellationToken: cancellationToken);
+            // Save state with a null etag. This will throw an exception
+            try
+            {
+                await client.TrySaveStateAsync<Widget>(storeName, stateKeyName,  new Widget() { Size = "small", Color = "yellow", }, null, cancellationToken: cancellationToken);
+            }
+            catch(ArgumentException)
+            {
+                Console.WriteLine($"TrySaveStateAsync with null etag threw ArgumentException");
+            }
+
+            // Save state which will create a new etag
+            await client.SaveStateAsync<Widget>(storeName, stateKeyName,  new Widget() { Size = "small", Color = "yellow", }, cancellationToken: cancellationToken);
+            Console.WriteLine($"Saved state which created a new entry with an initial etag");
 
             // Read the state and etag
             var (original, originalETag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName, cancellationToken: cancellationToken);
             Console.WriteLine($"Retrieved state: {original.Size}  {original.Color} with etag: {originalETag}");
 
-            // Modify the state with a null etag. This will update the etag
-            original.Color = "orange";
-            await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, original, null, cancellationToken: cancellationToken);
-            Console.WriteLine($"Saved modified state : {original.Size}  {original.Color}");
+            // Save state which will update the etag
+            await client.SaveStateAsync<Widget>(storeName, stateKeyName,  new Widget() { Size = "small", Color = "yellow", }, cancellationToken: cancellationToken);
+            Console.WriteLine($"Saved state with new etag");
+
+            // Modify the state and try saving it with the old etag. This will fail
+            original.Color = "purple";
+            var isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, original, originalETag, cancellationToken: cancellationToken);
+            Console.WriteLine($"Saved state with old etag: {originalETag} successfully? {isSaveStateSuccess}");
 
             // Read the updated state and etag
             var (updated, updatedETag) = await client.GetStateAndETagAsync<Widget>(storeName, stateKeyName, cancellationToken: cancellationToken);
             Console.WriteLine($"Retrieved state: {updated.Size}  {updated.Color} with etag: {updatedETag}");
 
-            // Modify the state and try saving it with the old etag. This will fail
-            updated.Color = "purple";
-            var isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, originalETag, cancellationToken: cancellationToken);
-            Console.WriteLine($"Saved state with old etag: {originalETag} successfully? {isSaveStateSuccess}");
-
-            // Specify an empty etag. This will throw an ArgumentException
-            try
-            {
-                await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, "", cancellationToken: cancellationToken);
-            }
-            catch(ArgumentException)
-            {
-                Console.WriteLine($"TrySaveStateAsync with empty etag threw ArgumentException");
-            }
-
             // Modify the state and try saving it with the updated etag. This will succeed
+            updated.Color = "green";
             isSaveStateSuccess = await client.TrySaveStateAsync<Widget>(storeName, stateKeyName, updated, updatedETag, cancellationToken: cancellationToken);
             Console.WriteLine($"Saved state with latest etag: {updatedETag} successfully? {isSaveStateSuccess}");
 
-            // Delete with an empty etag. This will throw an ArgumentException
+            // Delete with a null etag. This will throw an ArgumentException
             try
             {
-                await client.TryDeleteStateAsync(storeName, stateKeyName, "", cancellationToken: cancellationToken);
+                await client.TryDeleteStateAsync(storeName, stateKeyName, null, cancellationToken: cancellationToken);
             }
             catch(ArgumentException)
             {
-                Console.WriteLine($"TryDeleteStateAsync with empty etag threw ArgumentException");
+                Console.WriteLine($"TryDeleteStateAsync with null etag threw ArgumentException");
             }
 
             // Delete with an old etag. This will fail

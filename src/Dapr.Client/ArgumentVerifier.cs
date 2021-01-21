@@ -45,19 +45,5 @@ namespace Dapr.Client
                 throw new ArgumentException("The value cannot be null or empty", name);
             }
         }
-
-        /// <summary>
-        /// Validates string and throws:
-        /// ArgumentException if argument is empty.
-        /// </summary>
-        /// <param name="value">Argument value to check.</param>
-        /// <param name="name">Name of Argument.</param>
-        public static void ThrowIfEmpty(string value, string name)
-        {
-            if (value == string.Empty)
-            {
-                throw new ArgumentException("The value cannot be empty", name);
-            }
-        }
     }
 }

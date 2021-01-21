@@ -650,7 +650,9 @@ namespace Dapr.Client
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
-            ArgumentVerifier.ThrowIfEmpty(etag, nameof(etag));
+            // Not all state stores treat empty etag as invalid. Therefore, we will not verify an empty etag and
+            // rely on bubbling up the error if any from Dapr runtime
+            ArgumentVerifier.ThrowIfNull(etag, nameof(etag));
 
             try
             {
@@ -844,7 +846,9 @@ namespace Dapr.Client
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
-            ArgumentVerifier.ThrowIfEmpty(etag, nameof(etag));
+            // Not all state stores treat empty etag as invalid. Therefore, we will not verify an empty etag and
+            // rely on bubbling up the error if any from Dapr runtime
+            ArgumentVerifier.ThrowIfNull(etag, nameof(etag));
 
             try
             {

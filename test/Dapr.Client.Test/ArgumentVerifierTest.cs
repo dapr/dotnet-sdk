@@ -42,16 +42,5 @@ namespace Dapr.Client.Test
 
             Assert.Contains("args", ex.Message);
         }
-
-        [Fact]
-        public void ThrowIfEmpty_RespectsArgumentName_WhenValueIsEmpty()
-        {
-            var ex = Assert.Throws<ArgumentException>(() =>
-                {
-                    ArgumentVerifier.ThrowIfEmpty(string.Empty, "args");
-                });
-
-            Assert.Contains("args", ex.Message);
-        }
     }
 }
