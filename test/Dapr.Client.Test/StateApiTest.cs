@@ -686,7 +686,6 @@ namespace Dapr.Client.Test
             request.StoreName.Should().Be("testStore");
             request.States.Count.Should().Be(1);
             var state = request.States[0];
-            state.Key.Should().Be("test");
             state.Etag.Value.Should().Be("Test_Etag");
             state.Metadata.Count.Should().Be(2);
             state.Metadata.Keys.Contains("key1").Should().BeTrue();
@@ -741,6 +740,34 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task TrySaveStateAsync_NullEtagThrowsArgumentException()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            await FluentActions.Awaiting(async () => await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", null))
+                .Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task TrySaveStateAsync_EmptyEtagDoesNotThrow()
+        {
+            var client = new MockClient();
+            var response = client.CallStateApi<Google.Protobuf.WellKnownTypes.Empty>()
+            .Build();
+
+            // Setup the mock client to return success
+            client.Mock
+                .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
+                .Returns(response);
+
+            var result = await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "");
+            Assert.True(result);
+        }
+
+        [Fact]
         public async Task TryDeleteStateAsync_ValidateNonETagErrorThrowsException()
         {
             var client = new MockClient();
@@ -758,6 +785,34 @@ namespace Dapr.Client.Test
             await FluentActions.Awaiting(async () => await client.DaprClient.TryDeleteStateAsync("test", "test", "badEtag"))
                 .Should().ThrowAsync<RpcException>();
 
+        }
+
+        [Fact]
+        public async Task TryDeleteStateAsync_NullEtagThrowsArgumentException()
+        {
+            var client = new MockClient();
+
+            var response = client.CallStateApi<string>()
+            .Build();
+
+            await FluentActions.Awaiting(async () => await client.DaprClient.TryDeleteStateAsync("test", "test", null))
+                .Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task TryDeleteStateAsync_EmptyEtagDoesNotThrow()
+        {
+            var client = new MockClient();
+            var response = client.CallStateApi<Google.Protobuf.WellKnownTypes.Empty>()
+            .Build();
+
+            // Setup the mock client to return success
+            client.Mock
+                .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
+                .Returns(response);
+
+            var result = await client.DaprClient.TryDeleteStateAsync("test", "test", "");
+            Assert.True(result);
         }
 
         [Fact]
