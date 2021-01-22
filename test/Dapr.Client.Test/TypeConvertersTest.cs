@@ -5,31 +5,13 @@
 
 namespace Dapr.Client.Test
 {
+    using System.Text.Json;
     using Dapr.Client.Autogen.Test.Grpc.v1;
     using FluentAssertions;
     using Xunit;
 
     public class TypeConvertersTest
     {
-        [Fact]
-        public void AnyConversion_GRPC_Pack_Unpack()
-        {
-            var testRun = new TestRun();
-            testRun.Tests.Add(new TestCase() { Name = "test1" });
-            testRun.Tests.Add(new TestCase() { Name = "test2" });
-            testRun.Tests.Add(new TestCase() { Name = "test3" });
-
-            var any = TypeConverters.ToAny(testRun);
-            var type = TypeConverters.FromAny<TestRun>(any);
-
-            type.Should().BeEquivalentTo(testRun);
-            any.TypeUrl.Should().Be("type.googleapis.com/TestRun");
-            type.Tests.Count.Should().Be(3);
-            type.Tests[0].Name.Should().Be("test1");
-            type.Tests[1].Name.Should().Be("test2");
-            type.Tests[2].Name.Should().Be("test3");
-        }
-
         [Fact]
         public void AnyConversion_JSON_Serialization_Deserialization()
         {
@@ -38,11 +20,13 @@ namespace Dapr.Client.Test
                 Name = "test"
             };
 
-            var any = TypeConverters.ToAny(response);
-            var type = TypeConverters.FromAny<Response>(any);
+            var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+            var any = TypeConverters.ToJsonAny(response, options);
+            var type = TypeConverters.FromJsonAny<Response>(any, options);
 
             type.Should().BeEquivalentTo(response);
-            any.TypeUrl.Should().Be("Dapr.Client.Test.TypeConvertersTest+Response");
+            any.TypeUrl.Should().Be(string.Empty);
             type.Name.Should().Be("test");
         }
 

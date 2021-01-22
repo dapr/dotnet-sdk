@@ -7,6 +7,7 @@ namespace Dapr.AspNetCore.Test
 {
     using System;
     using System.Net;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Autogen.Grpc.v1;
@@ -149,7 +150,7 @@ namespace Dapr.AspNetCore.Test
 
         private async Task SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
         {
-            var stateData = TypeConverters.ToJsonByteString(state);
+            var stateData = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
             var stateResponse = new GetStateResponse
             {
                 Data = stateData,

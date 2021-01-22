@@ -87,7 +87,7 @@ namespace Dapr.Client.Test
             var data = new Response() { Name = "Look, I was invoked!" };
             var invokeResponse = new InvokeResponse
             {
-                Data = TypeConverters.ToAny(data)
+                Data = Any.Pack(data),
             };
 
             var response = 
@@ -146,7 +146,7 @@ namespace Dapr.Client.Test
             var data = new Response() { Name = "Look, I was invoked!" };
             var invokeResponse = new InvokeResponse
             {
-                Data = TypeConverters.ToAny(data)
+                Data = Any.Pack(data),
             };
 
             var response = 
@@ -181,7 +181,7 @@ namespace Dapr.Client.Test
             var data = new Response() { Name = "Look, I was invoked!" };
             var invokeResponse = new InvokeResponse
             {
-                Data = TypeConverters.ToAny(data)
+                Data = Any.Pack(data),
             };
 
             var response = 
@@ -203,7 +203,7 @@ namespace Dapr.Client.Test
             var data = new Response() { Name = "Look, I was invoked!" };
             var invokeResponse = new InvokeResponse
             {
-                Data = TypeConverters.ToAny(data)
+                Data = Any.Pack(data),
             };
 
             var response = 
