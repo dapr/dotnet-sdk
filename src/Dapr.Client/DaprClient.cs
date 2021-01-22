@@ -8,8 +8,10 @@ namespace Dapr.Client
     using System;
     using System.Collections.Generic;
     using System.Net.Http;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Google.Protobuf;
 
     /// <summary>
     /// Defines client methods for interacting with Dapr endpoints.
@@ -17,6 +19,11 @@ namespace Dapr.Client
     /// </summary>
     public abstract class DaprClient
     {
+        /// <summary>
+        /// Gets the <see cref="JsonSerializerOptions" /> used for JSON serialization operations.
+        /// </summary>
+        public abstract JsonSerializerOptions JsonSerializerOptions { get; }
+        
         /// <summary>
         /// <para>
         /// Creates an <see cref="HttpClient" /> that can be used to perform Dapr service
@@ -163,100 +170,343 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
-        /// </summary>        
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the <c>POST</c> HTTP method.
+        /// </summary>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>        
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>      
-        public abstract Task InvokeMethodAsync(
-            string appId,
-            string methodName,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public HttpRequestMessage CreateInvokeMethodRequest(string appId, string methodName)
+        {
+            return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName);
+        }
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" />.
         /// </summary>
-        /// <typeparam name="TRequest">The type of data to send.</typeparam>       
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Data to pass to the method</param>
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public abstract HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName);
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the <c>POST</c> HTTP method and a JSON serialized request body specified by <paramref name="data" />.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public HttpRequestMessage CreateInvokeMethodRequest<TRequest>(string appId, string methodName, TRequest data)
+        {
+            return CreateInvokeMethodRequest<TRequest>(HttpMethod.Post, appId, methodName, data);
+        }
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
+        /// <paramref name="data" />.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data);
+
+        /// <summary>
+        /// Perform service invocation using the request provided by <paramref name="request" />. The response will
+        /// be returned without performing any validation on the status code.
+        /// </summary>
+        /// <param name="request">
+        /// The <see cref="HttpRequestMessage" /> to send. The request must be a conforming Dapr service invocation request. 
+        /// Use the <c>CreateInvokeMethodRequest</c> to create service invocation requests.
+        /// </param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>        
-        public abstract Task InvokeMethodAsync<TRequest>(
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Perform service invocation using the request provided by <paramref name="request" />. If the response has a non-success
+        /// status an exception will be thrown.
+        /// </summary>
+        /// <param name="request">
+        /// The <see cref="HttpRequestMessage" /> to send. The request must be a conforming Dapr service invocation request. 
+        /// Use the <c>CreateInvokeMethodRequest</c> to create service invocation requests.
+        /// </param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task InvokeMethodAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Perform service invocation using the request provided by <paramref name="request" />. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="request">
+        /// The <see cref="HttpRequestMessage" /> to send. The request must be a conforming Dapr service invocation request. 
+        /// Use the <c>CreateInvokeMethodRequest</c> to create service invocation requests.
+        /// </param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<TResponse> InvokeMethodAsync<TResponse>(HttpRequestMessage request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method and an empty request body. 
+        /// If the response has a non-success status code an exception will be thrown.
+        /// </summary>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync(
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(appId, methodName);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="methodName" />
+        /// and an empty request body. If the response has a non-success status code an exception will be thrown.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync(
+            HttpMethod httpMethod,
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
+        /// status code an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync<TRequest>(
             string appId,
             string methodName,
             TRequest data,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(appId, methodName, data);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
-        /// </summary>        
-        /// <typeparam name="TResponse">The type of the object in the response.</typeparam>
-        /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>         
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>    
-        public abstract Task<TResponse> InvokeMethodAsync<TResponse>(
-            string appId,
-            string methodName,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
+        /// status code an exception will be thrown.
         /// </summary>
-        /// <typeparam name="TRequest">The type of data to send.</typeparam>
-        /// <typeparam name="TResponse">The type of the object in the response.</typeparam>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Data to pass to the method</param>      
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>  
-        public abstract Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync<TRequest>(
+            HttpMethod httpMethod,
             string appId,
             string methodName,
             TRequest data,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, data);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
+        /// and an empty request body. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
         /// </summary>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Data to pass to the method</param>      
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task{InvokeResponse}" /> that will return the value when the operation has completed.</returns>
-        public abstract Task<InvocationResponse<TResponse>> InvokeMethodWithResponseAsync<TRequest, TResponse>(
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TResponse>(
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(appId, methodName);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
+        /// and an empty request body. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TResponse>(
+            HttpMethod httpMethod,
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
             string appId,
             string methodName,
             TRequest data,
-            HttpInvocationOptions httpOptions = default,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(appId, methodName, data);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
+            HttpMethod httpMethod,
+            string appId,
+            string methodName,
+            TRequest data,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, data);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with an empty request body. 
+        /// If the response has a non-success status code an exception will be thrown.
+        /// </summary>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task InvokeMethodGrpcAsync(
+            string appId,
+            string methodName,
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />.
+        /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be Protobuf serialized and provided as the request body.</typeparam>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Byte array to pass to the method</param>      
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be Protobuf serialized and provided as the request body.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>  
-        public abstract Task<InvocationResponse<byte[]>> InvokeMethodRawAsync(
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task InvokeMethodGrpcAsync<TRequest>(
             string appId,
             string methodName,
-            byte[] data,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+            TRequest data,
+            CancellationToken cancellationToken = default)
+        where TRequest : IMessage;
+
+        /// <summary>
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with an empty request body. If the response has a success
+        /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the data that will be Protobuf deserialized from the response body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<TResponse> InvokeMethodGrpcAsync<TResponse>(
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        where TResponse : IMessage, new();
+
+        /// <summary>
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />. If the response has a success
+        /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be Protobuf serialized and provided as the request body.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be Protobuf deserialized from the response body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be Protobuf serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<TResponse> InvokeMethodGrpcAsync<TRequest, TResponse>(
+            string appId,
+            string methodName,
+            TRequest data,
+            CancellationToken cancellationToken = default)
+        where TRequest : IMessage
+        where TResponse : IMessage, new();
 
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store.

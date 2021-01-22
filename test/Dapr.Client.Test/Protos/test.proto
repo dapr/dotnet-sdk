@@ -14,3 +14,11 @@ message TestRun {
 message TestCase {
   string name = 1;
 }
+
+message Request {
+  string RequestParameter = 1;
+}
+
+message Response {
+  string Name = 1;
+}

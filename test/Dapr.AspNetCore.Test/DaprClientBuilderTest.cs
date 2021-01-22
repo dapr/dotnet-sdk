@@ -30,7 +30,7 @@ namespace Dapr.AspNetCore.Test
         {
             DaprClientBuilder builder = new DaprClientBuilder();
             var daprClient = builder.Build();
-            Assert.True(builder.GRPCChannelOptions.ThrowOperationCanceledOnCancellation);
+            Assert.True(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
 
         [Fact]
@@ -39,7 +39,7 @@ namespace Dapr.AspNetCore.Test
             var httpClient = new TestHttpClient();
             DaprClientBuilder builder = new DaprClientBuilder();
             var daprClient = builder.UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient }).Build();
-            Assert.False(builder.GRPCChannelOptions.ThrowOperationCanceledOnCancellation);
+            Assert.False(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
     }
 }

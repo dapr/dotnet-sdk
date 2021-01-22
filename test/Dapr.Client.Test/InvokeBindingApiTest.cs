@@ -35,7 +35,7 @@ namespace Dapr.Client.Test
             request.Name.Should().Be("test");
             request.Metadata.Count.Should().Be(0);
             var json = request.Data.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, daprClient.JsonSerializerOptions);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
         }
 
@@ -56,7 +56,7 @@ namespace Dapr.Client.Test
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
             var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata);
 
-            // Get Request and validate                     
+            // Get Request and validate
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
             request.Name.Should().Be("test");
@@ -66,7 +66,7 @@ namespace Dapr.Client.Test
             request.Metadata["key1"].Should().Be("value1");
             request.Metadata["key2"].Should().Be("value2");
             var json = request.Data.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json);
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, daprClient.JsonSerializerOptions);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
         }
 
