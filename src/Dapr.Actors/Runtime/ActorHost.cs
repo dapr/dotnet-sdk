@@ -6,6 +6,7 @@
 namespace Dapr.Actors.Runtime
 {
     using System.Text.Json;
+    using Dapr.Actors.Client;
     using Microsoft.Extensions.Logging;
 
     /// <summary>
@@ -20,15 +21,19 @@ namespace Dapr.Actors.Runtime
         /// <param name="id">The id of the Actor instance.</param>
         /// <param name="jsonSerializerOptions">The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization.</param>
         /// <param name="loggerFactory">The logger factory.</param>
+        /// <param name="proxyFactory">The <see cref="ActorProxyFactory" />.</param>
         public ActorHost(
             ActorTypeInformation actorTypeInfo,
             ActorId id,
             JsonSerializerOptions jsonSerializerOptions,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IActorProxyFactory proxyFactory)
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.Id = id;
             this.LoggerFactory = loggerFactory;
+            this.ProxyFactory = proxyFactory;
+            
             this.StateProvider = new DaprStateProvider(jsonSerializerOptions);
         }
 
@@ -51,6 +56,11 @@ namespace Dapr.Actors.Runtime
         /// Gets the <see cref="DaprStateProvider" />.
         /// </summary>
         public JsonSerializerOptions JsonSerializerOptions { get; }
+
+        /// <summary>
+        /// Gets the <see cref="IActorProxyFactory" />.
+        /// </summary>
+        public IActorProxyFactory ProxyFactory { get; }
 
         internal DaprStateProvider StateProvider { get; }
     }

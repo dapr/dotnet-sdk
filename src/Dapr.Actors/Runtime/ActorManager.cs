@@ -14,6 +14,7 @@ namespace Dapr.Actors.Runtime
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
+    using Dapr.Actors.Client;
     using Dapr.Actors.Communication;
     using Microsoft.Extensions.Logging;
 
@@ -26,6 +27,7 @@ namespace Dapr.Actors.Runtime
         private readonly ActorRegistration registration;
         private readonly ActorActivator activator;
         private readonly ILoggerFactory loggerFactory;
+        private readonly IActorProxyFactory proxyFactory;
         private readonly ConcurrentDictionary<ActorId, ActorActivatorState> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMethodContext timerMethodContext;
@@ -41,12 +43,18 @@ namespace Dapr.Actors.Runtime
 
         private readonly ILogger logger;
 
-        internal ActorManager(ActorRegistration registration, ActorActivator activator, JsonSerializerOptions jsonSerializerOptions, ILoggerFactory loggerFactory)
+        internal ActorManager(
+            ActorRegistration registration,
+            ActorActivator activator, 
+            JsonSerializerOptions jsonSerializerOptions, 
+            ILoggerFactory loggerFactory,
+            IActorProxyFactory proxyFactory)
         {
             this.registration = registration;
             this.activator = activator;
             this.jsonSerializerOptions = jsonSerializerOptions;
             this.loggerFactory = loggerFactory;
+            this.proxyFactory = proxyFactory;
 
             // map for remoting calls.
             this.methodDispatcherMap = new ActorMethodDispatcherMap(this.registration.Type.InterfaceTypes);
@@ -251,7 +259,7 @@ namespace Dapr.Actors.Runtime
         private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory);
+            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory);
             var state =  await this.activator.CreateAsync(host);
             this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             return state;

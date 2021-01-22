@@ -4,6 +4,7 @@
 // ------------------------------------------------------------
 
 using System;
+using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -38,7 +39,22 @@ namespace Microsoft.Extensions.DependencyInjection
                 var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
                 var loggerFactory = s.GetRequiredService<ILoggerFactory>();
                 var activatorFactory = s.GetRequiredService<ActorActivatorFactory>();
-                return new ActorRuntime(options, loggerFactory, activatorFactory);
+                var proxyFactory = s.GetRequiredService<ActorProxyFactory>();
+                return new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+            });
+
+            services.TryAddSingleton<ActorProxyFactory>(s =>
+            {
+                var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
+                var factory = new ActorProxyFactory() 
+                { 
+                    DefaultOptions =
+                    {
+                        JsonSerializerOptions = options.JsonSerializerOptions,
+                    }
+                };
+
+                return factory;
             });
 
             if (configure != null)

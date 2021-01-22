@@ -12,6 +12,7 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Dapr.Actors.Client;
     using Microsoft.Extensions.Logging;
 
     /// <summary>
@@ -24,12 +25,14 @@ namespace Dapr.Actors.Runtime
         private readonly ActorRuntimeOptions options;
         private readonly ILogger logger;
         private readonly ActorActivatorFactory activatorFactory;
+        private readonly IActorProxyFactory proxyFactory;
 
-        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory)
+        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory, IActorProxyFactory proxyFactory)
         {
             this.options = options;
             this.logger = loggerFactory.CreateLogger(this.GetType());
             this.activatorFactory = activatorFactory;
+            this.proxyFactory = proxyFactory;
 
             // Loop through actor registrations and create the actor manager for each one. 
             // We do this up front so that we can catch initialization errors early, and so
@@ -42,7 +45,8 @@ namespace Dapr.Actors.Runtime
                     actor,
                     actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),
                     this.options.JsonSerializerOptions,
-                    loggerFactory);
+                    loggerFactory, 
+                    proxyFactory);
             }
         }
 
