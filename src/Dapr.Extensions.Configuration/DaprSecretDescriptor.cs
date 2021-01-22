@@ -18,9 +18,9 @@ namespace Dapr.Extensions.Configuration
         public string SecretName { get; }
 
         /// <summary>
-        /// Gets or sets the secret's metadata.
+        /// A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.
         /// </summary>
-        public Dictionary<string, string> Metadata { get; }
+        public IReadOnlyDictionary<string, string> Metadata { get; }
 
         /// <summary>
         /// Secret Descriptor Construcutor
@@ -33,7 +33,7 @@ namespace Dapr.Extensions.Configuration
         /// <summary>
         /// Secret Descriptor Construcutor
         /// </summary>
-        public DaprSecretDescriptor(string secretName, Dictionary<string, string> metadata)
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata)
         {
             SecretName = secretName;
             Metadata = metadata;
