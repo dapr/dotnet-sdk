@@ -207,7 +207,7 @@ namespace Dapr.Client
             // Note about this, it's possible to construct invalid stuff using path navigation operators
             // like `../..`. But the principle of garbage in -> garbage out holds.
             //
-            // This approach leads avoids some common pitfals that could lead to undesired encoding.
+            // This approach avoids some common pitfalls that could lead to undesired encoding.
             var path = $"/v1.0/invoke/{appId}/method/{methodName.TrimStart('/')}";
             return new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path));
         }
