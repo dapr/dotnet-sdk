@@ -1034,7 +1034,7 @@ namespace Dapr.Client
             var options = new CallOptions(headers: headers ?? new Metadata(), cancellationToken: cancellationToken);
 
             // add token for dapr api token based authentication
-            this.AddDaprApiTokenHeader(callOptions.Headers);
+            this.AddDaprApiTokenHeader(options.Headers);
 
             return options;
         }
