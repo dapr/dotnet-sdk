@@ -11,6 +11,7 @@ namespace Dapr.Actors.Test.Runtime
     using Microsoft.Extensions.Logging;
     using System;
     using FluentAssertions;
+    using Dapr.Actors.Client;
 
     public sealed class ActorRuntimeOptionsTests
     {
@@ -19,7 +20,7 @@ namespace Dapr.Actors.Test.Runtime
         {
             var actorType = typeof(TestActor);
             var actorTypeInformation = ActorTypeInformation.Get(actorType);
-            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, new LoggerFactory());
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, new LoggerFactory(), ActorProxy.DefaultProxyFactory);
             var actor = new TestActor(host);
 
             var activator = Mock.Of<ActorActivator>();

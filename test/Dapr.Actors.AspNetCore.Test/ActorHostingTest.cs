@@ -3,14 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-using System;
 using System.Linq;
+using System.Text.Json;
+using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace Dapr.Actors.AspNetCore
@@ -59,6 +56,28 @@ namespace Dapr.Actors.AspNetCore
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1)).ActorTypeName, t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2)).ActorTypeName, t));
+        }
+
+        [Fact]
+        public void CanAccessProxyFactoryWithCustomJsonOptions()
+        {
+            var jsonOptions = new JsonSerializerOptions();
+
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
+            {
+                options.JsonSerializerOptions = jsonOptions;
+            });
+            
+            services.AddActors(options =>
+            {
+                options.Actors.RegisterActor<TestActor2>();
+            });
+
+            var factory = (ActorProxyFactory)services.BuildServiceProvider().GetRequiredService<IActorProxyFactory>();
+            Assert.Same(jsonOptions, factory.DefaultOptions.JsonSerializerOptions);
         }
 
         private interface ITestActor : IActor

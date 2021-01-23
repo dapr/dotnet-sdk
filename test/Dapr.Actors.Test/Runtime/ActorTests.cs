@@ -13,6 +13,7 @@ namespace Dapr.Actors.Test.Runtime
     using Xunit;
     using Microsoft.Extensions.Logging;
     using System.Threading.Tasks;
+    using Dapr.Actors.Client;
 
     public sealed class ActorTests
     {
@@ -115,7 +116,7 @@ namespace Dapr.Actors.Test.Runtime
         {
             var actorTypeInformation = ActorTypeInformation.Get(typeof(TestActor));
             var loggerFactory = new LoggerFactory();
-            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, loggerFactory);
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, loggerFactory, ActorProxy.DefaultProxyFactory);
             var testActor = new TestActor(host, actorStateManager);
             return testActor;
         }

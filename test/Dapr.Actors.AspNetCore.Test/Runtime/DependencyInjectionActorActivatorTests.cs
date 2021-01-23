@@ -5,6 +5,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Dapr.Actors.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -31,7 +32,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(TestActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<TestActor>(state.Actor);
 
@@ -44,11 +45,11 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(TestActor));
 
-            var host1 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
+            var host1 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
             var state1 = await activator.CreateAsync(host1);
             var actor1 = Assert.IsType<TestActor>(state1.Actor);
 
-            var host2 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
+            var host2 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
             var state2 = await activator.CreateAsync(host2);
             var actor2 = Assert.IsType<TestActor>(state2.Actor);
 
@@ -61,7 +62,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(TestActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<TestActor>(state.Actor);
 
@@ -77,7 +78,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(DisposableActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(DisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(DisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<DisposableActor>(state.Actor);
 
@@ -91,7 +92,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(AsyncDisposableActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(AsyncDisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(AsyncDisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<AsyncDisposableActor>(state.Actor);
 
