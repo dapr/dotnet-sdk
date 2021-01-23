@@ -39,11 +39,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
                 var loggerFactory = s.GetRequiredService<ILoggerFactory>();
                 var activatorFactory = s.GetRequiredService<ActorActivatorFactory>();
-                var proxyFactory = s.GetRequiredService<ActorProxyFactory>();
+                var proxyFactory = s.GetRequiredService<IActorProxyFactory>();
                 return new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
             });
 
-            services.TryAddSingleton<ActorProxyFactory>(s =>
+            services.TryAddSingleton<IActorProxyFactory>(s =>
             {
                 var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
                 var factory = new ActorProxyFactory() 
