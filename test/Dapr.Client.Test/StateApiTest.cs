@@ -232,7 +232,7 @@ namespace Dapr.Client.Test
             state.Key.Should().Be("test");
 
             var stateJson = state.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be(widget.Size);
             stateFromRequest.Color.Should().Be(widget.Color);
         }
@@ -362,7 +362,7 @@ namespace Dapr.Client.Test
             req1.Request.Key.Should().Be("stateKey1");
             req1.OperationType.Should().Be(StateOperationType.Upsert.ToString().ToLower());
             var valueJson1 = req1.Request.Value.ToStringUtf8();
-            var value1 = JsonSerializer.Deserialize<Widget>(valueJson1);
+            var value1 = JsonSerializer.Deserialize<Widget>(valueJson1, daprClient.JsonSerializerOptions);
             value1.Size.Should().Be(stateValue1.Size);
             value1.Color.Should().Be(stateValue1.Color);
             req1.Request.Etag.Value.Should().Be("testEtag");
@@ -374,14 +374,14 @@ namespace Dapr.Client.Test
             req2.Request.Key.Should().Be("stateKey2");
             req2.OperationType.Should().Be(StateOperationType.Delete.ToString().ToLower());
             var valueJson2 = req2.Request.Value.ToStringUtf8();
-            var value2 = JsonSerializer.Deserialize<int>(valueJson2);
+            var value2 = JsonSerializer.Deserialize<int>(valueJson2, daprClient.JsonSerializerOptions);
             value2.Should().Be(100);
 
             var req3 = transactionRequest.Operations[2];
             req3.Request.Key.Should().Be("stateKey3");
             req3.OperationType.Should().Be(StateOperationType.Upsert.ToString().ToLower());
             var valueJson3 = req3.Request.Value.ToStringUtf8();
-            var value3 = JsonSerializer.Deserialize<string>(valueJson3);
+            var value3 = JsonSerializer.Deserialize<string>(valueJson3, daprClient.JsonSerializerOptions);
             value3.Should().Be("teststring");
         }
 
@@ -561,7 +561,7 @@ namespace Dapr.Client.Test
             requestState.Key.Should().Be("test");
 
             var stateJson = requestState.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be("small");
             stateFromRequest.Color.Should().Be("green");
         }
@@ -644,7 +644,7 @@ namespace Dapr.Client.Test
             state.Options.Consistency.Should().Be(expectedConsistency);
 
             var stateJson = state.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be(widget.Size);
             stateFromRequest.Color.Should().Be(widget.Color);
         }
@@ -696,7 +696,7 @@ namespace Dapr.Client.Test
             state.Options.Consistency.Should().Be(expectedConsistency);
 
             var stateJson = state.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be(widget.Size);
             stateFromRequest.Color.Should().Be(widget.Color);
         }

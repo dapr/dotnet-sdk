@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Dapr.Client
 {
-    public class DaprClientTest
+    public partial class DaprClientTest
     {
         [Fact]
         public void CreateInvokeHttpClient_WithAppId()

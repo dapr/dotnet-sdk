@@ -36,7 +36,7 @@ namespace Dapr.Client.Test
 
             request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData));
+            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, daprClient.JsonSerializerOptions));
             request.Metadata.Count.Should().Be(0);
         }
 
@@ -63,7 +63,7 @@ namespace Dapr.Client.Test
 
             request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData));
+            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, daprClient.JsonSerializerOptions));
 
             request.Metadata.Count.Should().Be(2);
             request.Metadata.Keys.Contains("key1").Should().BeTrue();

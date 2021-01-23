@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System;
+using System.Text.Json;
 using Dapr.Client;
 using Grpc.Net.Client;
 using Xunit;
@@ -17,7 +18,7 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public void DaprClientBuilder_UsesPropertyNameCaseHandlingAsSpecified()
         {
-            DaprClientBuilder builder = new DaprClientBuilder();
+            var builder = new DaprClientBuilder();
             builder.UseJsonSerializationOptions(new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = false
@@ -28,18 +29,38 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public void DaprClientBuilder_UsesThrowOperationCanceledOnCancellation_ByDefault()
         {
-            DaprClientBuilder builder = new DaprClientBuilder();
+            var builder = new DaprClientBuilder();
             var daprClient = builder.Build();
-            Assert.True(builder.GRPCChannelOptions.ThrowOperationCanceledOnCancellation);
+            Assert.True(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
 
         [Fact]
         public void DaprClientBuilder_DoesNotOverrideUserGrpcChannelOptions()
         {
             var httpClient = new TestHttpClient();
-            DaprClientBuilder builder = new DaprClientBuilder();
+            var builder = new DaprClientBuilder();
             var daprClient = builder.UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient }).Build();
-            Assert.False(builder.GRPCChannelOptions.ThrowOperationCanceledOnCancellation);
+            Assert.False(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_ValidatesGrpcEndpointScheme()
+        {
+            var builder = new DaprClientBuilder();
+            builder.UseGrpcEndpoint("ftp://example.com");
+            
+            var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
+            Assert.Equal("The gRPC endpoint must use http or https.", ex.Message);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_ValidatesHttpEndpointScheme()
+        {
+            var builder = new DaprClientBuilder();
+            builder.UseHttpEndpoint("ftp://example.com");
+            
+            var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
+            Assert.Equal("The HTTP endpoint must use http or https.", ex.Message);
         }
     }
 }

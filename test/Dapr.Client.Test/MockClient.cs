@@ -5,6 +5,8 @@
 
 namespace Dapr.Client
 {
+    using System;
+    using System.Net.Http;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Grpc.Core;
@@ -15,7 +17,7 @@ namespace Dapr.Client
         public MockClient()
         {
             Mock = new Mock<Autogen.Grpc.v1.Dapr.DaprClient>(MockBehavior.Strict);
-            DaprClient = new DaprClientGrpc(Mock.Object, new JsonSerializerOptions());
+            DaprClient = new DaprClientGrpc(Mock.Object, new HttpClient(), new Uri("http://localhost:3500"), new JsonSerializerOptions());
         }
 
         public Mock<Autogen.Grpc.v1.Dapr.DaprClient> Mock { get; }
