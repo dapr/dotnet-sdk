@@ -6,6 +6,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Actors.Client;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -16,7 +17,7 @@ namespace Dapr.Actors.Runtime
         private ActorManager CreateActorManager(Type type, ActorActivator activator = null)
         {
             var registration = new ActorRegistration(ActorTypeInformation.Get(type));
-            return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance);
+            return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
         }
 
         [Fact]

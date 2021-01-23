@@ -9,6 +9,7 @@ namespace Dapr.Actors.Runtime
     using System.Reflection;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Dapr.Actors.Client;
     using Microsoft.Extensions.Logging;
 
     /// <summary>
@@ -51,6 +52,12 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <value>The <see cref="ActorHost"/> for the actor.</value>
         public ActorHost Host { get; }
+
+        /// <summary>
+        /// Gets the <see cref="IActorProxyFactory" /> used to create proxy client instances for communicating
+        /// with other actors.
+        /// </summary>
+        public IActorProxyFactory ProxyFactory => this.Host.ProxyFactory;
 
         /// <summary>
         /// Gets the StateManager for the actor.
