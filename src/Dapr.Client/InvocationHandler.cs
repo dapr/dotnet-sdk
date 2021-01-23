@@ -47,7 +47,7 @@ namespace Dapr.Client
 
         private static string? GetDaprApiToken()
         {
-            var token = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+            var token = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
 
             // Since we're dealing with environment variables, treat empty the same as null.
             return token == string.Empty ? null : token;

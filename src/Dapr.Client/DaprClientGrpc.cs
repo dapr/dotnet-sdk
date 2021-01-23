@@ -1010,6 +1010,12 @@ namespace Dapr.Client
 
             return response.Data.ToDictionary(r => r.Key, r => r.Value.Secrets.ToDictionary(s => s.Key, s => s.Value));
         }
+
+        public override void SetDaprApiToken(string apiToken)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(apiToken, nameof(apiToken));
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, apiToken);
+        }
         #endregion
 
         protected override void Dispose(bool disposing)
@@ -1028,11 +1034,7 @@ namespace Dapr.Client
             var options = new CallOptions(headers: headers ?? new Metadata(), cancellationToken: cancellationToken);
 
             // add token for dapr api token based authentication
-            var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-            if (daprApiToken != null)
-            {
-                options.Headers.Add("dapr-api-token", daprApiToken);
-            }
+            this.AddDaprApiTokenHeader(callOptions.Headers);
 
             return options;
         }
@@ -1088,6 +1090,15 @@ namespace Dapr.Client
             };
         }
 
+        private void AddDaprApiTokenHeader(Metadata headers)
+        {
+            var daprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
+
+            if (daprApiToken != null)
+            {
+                headers.Add("dapr-api-token", daprApiToken);
+            }
+        }
         #endregion Helper Methods
     }
 }

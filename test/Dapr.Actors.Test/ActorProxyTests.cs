@@ -113,5 +113,47 @@ namespace Dapr.Actors.Client
 
             action.Should().Throw<ArgumentNullException>();
         }
+
+        [Fact]
+        public void CreateRemotingActorProxy_WithDaprApiTokenOption_SetsEnvVar()
+        {
+            var actorId = new ActorId("abc");
+            var options = new ActorProxyOptions()
+            {
+                DaprApiToken = "test_token"
+            };
+            var proxy = ActorProxy.Create<ITestActor>(actorId, "TestActor", options);
+
+            var apiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
+            Assert.Equal("test_token", apiToken);
+        }
+
+        [Fact]
+        public void CreateNonRemotingActorProxy_WithDaprApiTokenOption_SetsEnvVar()
+        {
+            var actorId = new ActorId("abc");
+            var options = new ActorProxyOptions()
+            {
+                DaprApiToken = "test_token"
+            };
+            var proxy = ActorProxy.Create(actorId, "TestActor", options);
+
+            var apiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
+            Assert.Equal("test_token", apiToken);
+        }
+
+        [Fact]
+        public void CreateNonRemotingActorProxyUsingActorInterface_WithDaprApiTokenOption_SetsEnvVar()
+        {
+            var actorId = new ActorId("abc");
+            var options = new ActorProxyOptions()
+            {
+                DaprApiToken = "test_token"
+            };
+            var proxy = ActorProxy.Create(actorId, typeof(TestActor), "TestActor", options);
+
+            var apiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
+            Assert.Equal("test_token", apiToken);
+        }
     }
 }

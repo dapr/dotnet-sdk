@@ -90,10 +90,11 @@ namespace Dapr.Actors.Client
         /// </summary>
         /// <param name="actorId">Actor Id.</param>
         /// <param name="actorType">Type of actor.</param>
+        /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Actor proxy to interact with remote actor object.</returns>
-        public static ActorProxy Create(ActorId actorId, string actorType)
+        public static ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null)
         {
-            return DefaultProxyFactory.Create(actorId, actorType);
+            return DefaultProxyFactory.Create(actorId, actorType, options);
         }
 
         /// <summary>
@@ -185,6 +186,10 @@ namespace Dapr.Actors.Client
             this.ActorId = actorId;
             this.ActorType = actorType;
             this.JsonSerializerOptions = options?.JsonSerializerOptions ?? this.JsonSerializerOptions;
+            if(options?.DaprApiToken != null)
+            {
+                this.SetDaprApiToken(options?.DaprApiToken);
+            }
         }
 
         /// <summary>
@@ -304,6 +309,16 @@ namespace Dapr.Actors.Client
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Sets the Dapr Api Token which will be added to the header in all requests
+        /// </summary>
+        /// <param name="apiToken">Dapr Api Token value.</param>
+        public void SetDaprApiToken(string apiToken)
+        {
+            ArgumentVerifier.ThrowIfNull(apiToken, nameof(apiToken));
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", apiToken);
         }
     }
 }

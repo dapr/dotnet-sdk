@@ -20,11 +20,11 @@ namespace Dapr.Client.Test
         public async Task DaprCall_WithApiTokenEnvVar()
         {
             // Configure Client
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token");
             var httpClient = new TestHttpClient();
             var daprClient = new DaprClientBuilder()
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
+            daprClient.SetDaprApiToken("test_token");
 
             var task = daprClient.GetSecretAsync("testStore", "test_key");
 

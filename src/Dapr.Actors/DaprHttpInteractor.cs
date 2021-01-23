@@ -411,7 +411,7 @@ namespace Dapr.Actors
             var request = requestFunc.Invoke();
 
             // add token for dapr api token based authentication
-            var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+            var daprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
             if (daprApiToken != null)
             {
                 request.Headers.Add("dapr-api-token", daprApiToken);
