@@ -373,25 +373,25 @@ namespace Dapr.Actors
                 }
                 catch (Exception ex)
                 {
-                    throw new DaprException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode), ex);
+                    throw new DaprApiException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode), ex);
                 }
 
                 if (error != null)
                 {
-                    throw new DaprException(error.Message, error.ErrorCode ?? Constants.Unknown, false);
+                    throw new DaprApiException(error.Message, error.ErrorCode, false);
                 }
                 else
                 {
                     // Handle NotFound 404, without any ErrorCode.
                     if (response.StatusCode.Equals(HttpStatusCode.NotFound))
                     {
-                        throw new DaprException("ErrorMessageHTTP404", Constants.ErrorDoesNotExist, false);
+                        throw new DaprApiException("ErrorMessageHTTP404", Constants.ErrorDoesNotExist, false);
                     }
                 }
             }
 
             // Couldn't determine Error information from response., throw exception with status code.
-            throw new DaprException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode));
+            throw new DaprApiException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode));
         }
 
         /// <summary>

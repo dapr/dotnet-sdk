@@ -255,7 +255,7 @@ namespace Dapr.Actors.Test
             };
 
             entry.Completion.SetResult(message);
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprException>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprApiException>();
         }
 
         [Fact]
@@ -273,7 +273,7 @@ namespace Dapr.Actors.Test
             var message = new HttpResponseMessage(HttpStatusCode.NotFound);
 
             entry.Completion.SetResult(message);
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprException>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprApiException>();
         }
 
         [Fact]

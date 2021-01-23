@@ -4,12 +4,14 @@
 // ------------------------------------------------------------
 
 using System;
+using System.Runtime.Serialization;
 
 namespace Dapr
 {
     /// <summary>
     /// The base type of exceptions thrown by the Dapr .NET SDK.
     /// </summary>
+    [Serializable]
     public class DaprException : Exception
     {
         /// <summary>
@@ -29,6 +31,16 @@ namespace Dapr
         /// <param name="innerException">The inner exception.</param>
         public DaprException(string message, Exception innerException)
             : base(message, innerException)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DaprException"/> class with a specified context.
+        /// </summary>
+        /// <param name="info">The <see cref="SerializationInfo" /> object that contains serialized object data of the exception being thrown.</param>
+        /// <param name="context">The <see cref="StreamingContext" /> object that contains contextual information about the source or destination. The context parameter is reserved for future use and can be null.</param>
+        protected DaprException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
         {
         }
     }
