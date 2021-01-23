@@ -53,7 +53,7 @@ namespace Dapr.Client
 
         private static string FormatExceptionForFailedRequest(string appId, string methodName)
         {
-            return $"An exception occurred while invoking method: '{methodName}' on app-d: '{appId}'";
+            return $"An exception occurred while invoking method: '{methodName}' on app-id: '{appId}'";
         }
     }
 }
