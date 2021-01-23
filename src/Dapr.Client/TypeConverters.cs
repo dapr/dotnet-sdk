@@ -21,65 +21,36 @@ namespace Dapr.Client
         /// <param name="options">The JSON serialization options.</param>
         /// <typeparam name="T">The type of the given data.</typeparam>
         /// <returns>The given data as JSON based byte string.</returns>
-        public static ByteString ToJsonByteString<T>(T data, JsonSerializerOptions options = null)
+        public static ByteString ToJsonByteString<T>(T data, JsonSerializerOptions options)
         {
-            if (data == null)
-            {
-                return ByteString.Empty;
-            }
-
             var bytes = JsonSerializer.SerializeToUtf8Bytes(data, options);
             return ByteString.CopyFrom(bytes);
         }
 
-        /// <summary>
-        /// Converts an arbitrary type to the <see cref="Any"/> Protocol Buffer type.
-        ///
-        /// If the given type is a subtype of <see cref="IMessage"/>, then it's save to use the Protocol Buffer
-        /// packaging provided for the <see cref="Any"/> type with the <see cref="Any.Pack(Google.Protobuf.IMessage)"/>.
-        /// For all other types, we use JSON serialization based on <see cref="System.Text.Json"/>.
-        /// </summary>
-        /// <param name="data">The data to convert.</param>
-        /// <param name="options">The JSON serialization options.</param>
-        /// <typeparam name="T">The type of the given data.</typeparam>
-        /// <returns>The <see cref="Any"/> type representation of the given data.</returns>
-        public static Any ToAny<T>(T data, JsonSerializerOptions options = null)
+        public static Any ToJsonAny<T>(T data, JsonSerializerOptions options)
         {
-            if (data == null)
-            {
-                return new Any();
-            }
+            return new Any() 
+            { 
+                Value = ToJsonByteString<T>(data, options),
 
-            var t = typeof(T);
-
-            return typeof(IMessage).IsAssignableFrom(t)
-                ? Any.Pack((IMessage) data)
-                : new Any {Value = ToJsonByteString(data, options), TypeUrl = t.FullName};
+                // This isn't really compliant protobuf, because we're not setting TypeUrl, but it's
+                // what Dapr understands.
+            };
         }
 
-        /// <summary>
-        /// Converts the Protocol Buffer <see cref="Any"/> type to an arbitrary type.
-        ///
-        /// If the type to convert to is a subtype of <see cref="IMessage"/> and if the type has an empty default
-        /// constructor, then we use the <see cref="Any.Unpack{T}"/> method to deserialize the given <see cref="Any"/>
-        /// instance. For all other types, we use JSON deserialization based on <see cref="System.Text.Json"/>.
-        /// </summary>
-        /// <param name="any">The any instance to convert.</param>
-        /// <param name="options">The JSON serialization options.</param>
-        /// <typeparam name="T">The type to convert to.</typeparam>
-        /// <returns>An instance of T.</returns>
-        public static T FromAny<T>(Any any, JsonSerializerOptions options = null)
+        public static T FromJsonByteString<T>(ByteString bytes, JsonSerializerOptions options)
         {
-            var t = typeof(T);
-
-            if (typeof(IMessage).IsAssignableFrom(t) && t.GetConstructor(System.Type.EmptyTypes) != null)
+            if (bytes.Length == 0)
             {
-                var method = any.GetType().GetMethod("Unpack");
-                var generic = method.MakeGenericMethod(t);
-                return (T) generic.Invoke(any, null);
+                return default;
             }
+            
+            return JsonSerializer.Deserialize<T>(bytes.Span, options);
+        }
 
-            return JsonSerializer.Deserialize<T>(any.Value.ToStringUtf8(), options);
+        public static T FromJsonAny<T>(Any any, JsonSerializerOptions options)
+        {
+            return FromJsonByteString<T>(any.Value, options);
         }
     }
 }

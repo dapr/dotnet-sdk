@@ -81,9 +81,9 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
-        /// <param name="data">The  event data.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the event payload.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TData">The data type of the object that will be serialized.</typeparam>
+        /// <typeparam name="TData">The type of the data that will be JSON serialized and provided as the event payload.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task PublishEventAsync<TData>(
             string pubsubName,
@@ -96,10 +96,13 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
-        /// <param name="data">The  event data.</param>
-        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the event payload.</param>
+        /// <param name="metadata">
+        /// A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values 
+        /// are determined by the type of pubsub component used.
+        /// </param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TData">The data type of the object that will be serialized.</typeparam>
+        /// <typeparam name="TData">The type of the data that will be JSON serialized and provided as the event payload.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task PublishEventAsync<TData>(
             string pubsubName,
@@ -137,10 +140,10 @@ namespace Dapr.Client
         /// <summary>
         /// Invokes an output binding.
         /// </summary>
-        /// <typeparam name="TRequest"></typeparam>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the binding payload.</typeparam>
         /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
-        /// <param name="data">The data of the event to send.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the binding payload.</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
@@ -154,11 +157,11 @@ namespace Dapr.Client
         /// <summary>
         /// Invokes an output binding.
         /// </summary>
-        /// <typeparam name="TRequest">The type of the object for the data to send.</typeparam>
-        /// <typeparam name="TResponse">The type of the object for the return value.</typeparam>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the binding payload.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the binding response.</typeparam>
         /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
-        /// <param name="data">The data of the event to send.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the binding payload.</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will complete when the operation has completed.</returns>
@@ -552,7 +555,7 @@ namespace Dapr.Client
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to read.</typeparam>
+        /// <typeparam name="TValue">The type of the data that will be JSON deserialized from the state store response.</typeparam>
         /// <returns>A <see cref="Task" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
         public async Task<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
@@ -569,11 +572,11 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
-        /// <param name="value">The value to save.</param>        
+        /// <param name="value">The data that will be JSON serialized and stored in the state store.</param>        
         /// <param name="stateOptions">Options for performing save state operation.</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to save.</typeparam>
+        /// <typeparam name="TValue">The type of the data that will be JSON serialized and stored in the state store.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task SaveStateAsync<TValue>(
             string storeName,
@@ -590,12 +593,12 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
-        /// <param name="value">The value to save.</param>
-        /// <param name="etag">An ETag.</param>        
+        /// <param name="value">The data that will be JSON serialized and stored in the state store.</param>
+        /// <param name="etag">An ETag.</param>
         /// <param name="stateOptions">Options for performing save state operation.</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to save.</typeparam>
+        /// <typeparam name="TValue">The type of the data that will be JSON serialized and stored in the state store.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation succeeded.</returns>
         public abstract Task<bool> TrySaveStateAsync<TValue>(
             string storeName,
