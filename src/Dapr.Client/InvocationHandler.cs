@@ -45,14 +45,6 @@ namespace Dapr.Client
             return $"http://127.0.0.1:{port}";
         }
 
-        private static string? GetDaprApiToken()
-        {
-            var token = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
-
-            // Since we're dealing with environment variables, treat empty the same as null.
-            return token == string.Empty ? null : token;
-        }
-
         private Uri parsedEndpoint;
         private string? apiToken;
 
@@ -62,7 +54,15 @@ namespace Dapr.Client
         public InvocationHandler()
         {
             this.parsedEndpoint = new Uri(GetDefaultDaprEndpoint(), UriKind.Absolute);
-            this.apiToken = GetDaprApiToken();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="InvocationHandler" />.
+        /// </summary>
+        public InvocationHandler(string daprApiToken)
+        {
+            this.parsedEndpoint = new Uri(GetDefaultDaprEndpoint(), UriKind.Absolute);
+            this.apiToken = daprApiToken;
         }
 
         /// <summary>
@@ -111,7 +111,7 @@ namespace Dapr.Client
 
             try
             {
-                if (this.apiToken is string)
+                if (!string.IsNullOrWhiteSpace(this.apiToken))
                 {
                     request.Headers.Add("dapr-api-token", this.apiToken);
                 }

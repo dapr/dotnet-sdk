@@ -44,7 +44,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var task = client.InvokeMethodAsync("app1", "mymethod");
 
@@ -68,7 +69,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var task = client.InvokeMethodAsync(HttpMethod.Put, "app1", "mymethod");
 
@@ -92,7 +94,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var task = client.InvokeMethodAsync<Widget>("app1", "mymethod");
 
@@ -122,7 +125,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var task = client.InvokeMethodAsync<Widget>(HttpMethod.Put, "app1", "mymethod");
 
@@ -152,7 +156,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var data = new Widget()
             {
@@ -184,7 +189,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var data = new Widget()
             {
@@ -216,7 +222,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var data = new Widget()
             {
@@ -249,7 +256,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var data = new Widget()
             {
@@ -424,7 +432,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var request = client.CreateInvokeMethodRequest("test-app", method);
             Assert.Equal(new Uri(expected).AbsoluteUri, request.RequestUri.AbsoluteUri);
@@ -440,7 +449,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var data = new Widget
             {
@@ -467,7 +477,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var request = client.CreateInvokeMethodRequest("test-app", "test");
             var task = client.InvokeMethodWithResponseAsync(request);
@@ -514,7 +525,8 @@ namespace Dapr.Client.Test
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
-                jsonSerializerOptions);
+                jsonSerializerOptions,
+                null);
 
             var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => 

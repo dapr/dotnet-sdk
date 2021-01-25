@@ -23,8 +23,8 @@ namespace Dapr.Client.Test
             var httpClient = new TestHttpClient();
             var daprClient = new DaprClientBuilder()
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .UseDaprApiToken("test_token")
                 .Build();
-            daprClient.SetDaprApiToken("test_token");
 
             var task = daprClient.GetSecretAsync("testStore", "test_key");
 
