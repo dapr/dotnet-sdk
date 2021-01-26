@@ -76,6 +76,27 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task InvokeBindingAsync_WithNullPayload_ValidateRequest()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", null);
+
+            // Get Request and validate                     
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
+            request.Name.Should().Be("test");
+            request.Metadata.Count.Should().Be(0);
+            var json = request.Data.ToStringUtf8();
+            Assert.Equal("null", json);
+        }
+
+
+        [Fact]
         public async Task InvokeBindingAsync_WithCancelledToken()
         {
             // Configure Client
