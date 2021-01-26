@@ -17,6 +17,7 @@ namespace Dapr.Client.Test
     using Dapr.Client.Autogen.Test.Grpc.v1;
     using FluentAssertions;
     using Grpc.Core;
+    using Grpc.Net.Client;
     using Moq;
     using Xunit;
 
@@ -41,6 +42,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -64,6 +66,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -87,6 +90,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -116,6 +120,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -145,6 +150,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -176,6 +182,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -207,6 +214,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -239,6 +247,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -279,6 +288,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -294,6 +304,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -320,6 +331,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
@@ -340,6 +352,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new TestHttpClient();
             var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
                 Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
                 httpClient,
                 new Uri("https://test-endpoint:3501"),

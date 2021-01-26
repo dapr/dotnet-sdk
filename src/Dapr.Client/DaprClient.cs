@@ -14,11 +14,21 @@ namespace Dapr.Client
     using Google.Protobuf;
 
     /// <summary>
+    /// <para>
     /// Defines client methods for interacting with Dapr endpoints.
-    /// Use <see cref="DaprClientBuilder"/> to create <see cref="DaprClient"/>
+    /// Use <see cref="DaprClientBuilder"/> to create <see cref="DaprClient"/>.
+    /// </para>
+    /// <para>
+    /// Implementations of <see cref="DaprClient" /> implement <see cref="IDisposable" /> because the client
+    /// accesses network resources. For best performance, create a single long-lived client instance and share
+    /// it for the lifetime of the application. Avoid creating and disposing a client instance for each operation
+    /// that the application performs - this can lead to socket exhaustion and other problems.
+    /// </para>
     /// </summary>
-    public abstract class DaprClient
+    public abstract class DaprClient : IDisposable
     {
+        private bool disposed;
+
         /// <summary>
         /// Gets the <see cref="JsonSerializerOptions" /> used for JSON serialization operations.
         /// </summary>
@@ -684,5 +694,23 @@ namespace Dapr.Client
             string storeName,
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            if (!this.disposed)
+            {
+                Dispose(disposing: true);
+                this.disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Disposes the resources associated with the object.
+        /// </summary>
+        /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+        }
     }
 }

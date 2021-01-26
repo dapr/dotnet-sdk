@@ -18,7 +18,7 @@ namespace Samples.Client
         // Note: the data types used in this sample are generated from data.proto in GrpcServiceSample
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
-            var client = new DaprClientBuilder().Build();
+            using var client = new DaprClientBuilder().Build();
 
             Console.WriteLine("Invoking grpc balance");
             var request = new GetAccountRequest() { Id = "17", };
