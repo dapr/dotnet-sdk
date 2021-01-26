@@ -14,8 +14,13 @@ using Xunit;
 
 namespace Dapr.Actors.Test
 {
-    public class ApiTokenTests
+    public class ApiTokenTests : IDisposable
     {
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "");
+        }
+        
         [Fact]
         public void CreateProxyWithRemoting_WithApiToken()
         {

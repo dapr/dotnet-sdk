@@ -54,15 +54,10 @@ namespace Dapr.Client
         public InvocationHandler()
         {
             this.parsedEndpoint = new Uri(GetDefaultDaprEndpoint(), UriKind.Absolute);
-        }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="InvocationHandler" />.
-        /// </summary>
-        public InvocationHandler(string daprApiToken)
-        {
-            this.parsedEndpoint = new Uri(GetDefaultDaprEndpoint(), UriKind.Absolute);
-            this.apiToken = daprApiToken;
+            if(string.IsNullOrWhiteSpace(this.apiToken))
+            {
+                this.apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+            }
         }
 
         /// <summary>
@@ -111,6 +106,11 @@ namespace Dapr.Client
 
             try
             {
+                if (string.IsNullOrWhiteSpace(this.apiToken))
+                {
+                    this.apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                }
+
                 if (!string.IsNullOrWhiteSpace(this.apiToken))
                 {
                     request.Headers.Add("dapr-api-token", this.apiToken);

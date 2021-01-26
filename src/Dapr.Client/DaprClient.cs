@@ -62,7 +62,11 @@ namespace Dapr.Client
         /// </remarks>
         public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null, string daprApiToken = null)
         {
-            var handler = new InvocationHandler(daprApiToken){ InnerHandler = new HttpClientHandler(), };
+            var handler = new InvocationHandler()
+            {
+                InnerHandler = new HttpClientHandler(),
+                DaprApiToken = daprApiToken
+            };
 
             if (daprEndpoint is string)
             {

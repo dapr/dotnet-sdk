@@ -21,8 +21,13 @@ namespace Dapr.Actors.Test
     /// <summary>
     /// Contains tests for DaprHttpInteractor.
     /// </summary>
-    public class DaprHttpInteractorTest
+    public class DaprHttpInteractorTest : IDisposable
     {
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "");
+        }
+        
         public class Entry
         {
             public Entry(HttpRequestMessage request)
