@@ -19,7 +19,7 @@ namespace Samples.Client
 
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
-            var client = new DaprClientBuilder().Build();
+            using var client = new DaprClientBuilder().Build();
 
             // Save state which will create a new etag
             await client.SaveStateAsync<Widget>(storeName, stateKeyName,  new Widget() { Size = "small", Color = "yellow", }, cancellationToken: cancellationToken);

@@ -18,7 +18,7 @@ namespace Samples.Client
 
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
-            var client = new DaprClientBuilder().Build();
+            using var client = new DaprClientBuilder().Build();
 
             var eventData = new { Id = "17", Amount = 10m, };
             await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);

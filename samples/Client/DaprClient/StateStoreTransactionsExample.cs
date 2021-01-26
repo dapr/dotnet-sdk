@@ -20,7 +20,7 @@ namespace Samples.Client
 
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
-            var client = new DaprClientBuilder().Build();
+            using var client = new DaprClientBuilder().Build();
 
             var value = new Widget() { Size = "small", Color = "yellow", };
 

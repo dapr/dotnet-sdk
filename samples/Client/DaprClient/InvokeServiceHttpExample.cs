@@ -17,7 +17,7 @@ namespace Samples.Client
 
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
-            var client = new DaprClientBuilder().Build();
+            using var client = new DaprClientBuilder().Build();
 
             // Invokes a POST method named "deposit" that takes input of type "Transaction" as define in the RoutingSample.
             Console.WriteLine("Invoking deposit");
