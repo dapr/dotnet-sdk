@@ -1089,9 +1089,16 @@ namespace Dapr.Client
 
         private void AddDaprApiTokenHeader(Metadata headers)
         {
-            if(!string.IsNullOrWhiteSpace(this.daprApiToken ))
+            if (!string.IsNullOrWhiteSpace(this.daprApiToken))
             {
-                    headers.Add("dapr-api-token", daprApiToken);
+                headers.Add("dapr-api-token", this.daprApiToken);
+                return;
+            }
+
+            var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+            if(!string.IsNullOrWhiteSpace(apiToken))
+            {
+                headers.Add("dapr-api-token", apiToken);
             }
         }
         #endregion Helper Methods
