@@ -12,7 +12,9 @@ namespace Dapr.Client.Test
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
+    using Grpc.Core;
     using Grpc.Net.Client;
+    using Moq;
     using Xunit;
 
     public class PublishEventApiTest
@@ -87,7 +89,7 @@ namespace Dapr.Client.Test
 
             request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be("\"\"");
+            request.Data.Length.Should().Be(0);
 
             request.Metadata.Count.Should().Be(0);
         }
@@ -109,11 +111,10 @@ namespace Dapr.Client.Test
             var task = daprClient.PublishEventAsync(TestPubsubName, "test", metadata);
             httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
-            var jsonFromRequest = request.Data.ToStringUtf8();
 
             request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be("\"\"");
+            request.Data.Length.Should().Be(0);
 
             request.Metadata.Count.Should().Be(2);
             request.Metadata.Keys.Contains("key1").Should().BeTrue();
@@ -136,6 +137,27 @@ namespace Dapr.Client.Test
 
             await FluentActions.Awaiting(async () => await daprClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: ct))
                 .Should().ThrowAsync<OperationCanceledException>();
+        }
+
+        // All overloads call through a common path that does exception handling.
+        [Fact]
+        public async Task PublishEventAsync_WrapsRpcException()
+        {
+            var client = new MockClient();
+
+            var rpcStatus = new Status(StatusCode.Internal, "not gonna work");
+            var rpcException = new RpcException(rpcStatus, new Metadata(), "not gonna work");
+
+            // Setup the mock client to throw an Rpc Exception with the expected details info
+            client.Mock
+                .Setup(m => m.PublishEventAsync(It.IsAny<Autogen.Grpc.v1.PublishEventRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ex = await Assert.ThrowsAsync<DaprException>(async () => 
+            {
+                await client.DaprClient.PublishEventAsync("test", "test");
+            });
+            Assert.Same(rpcException, ex.InnerException);
         }
 
         private class PublishData
