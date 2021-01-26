@@ -6,6 +6,7 @@
 namespace Dapr.Actors.Client
 {
     using System;
+    using System.Net.Http;
     using System.Text.Json;
 
     /// <summary>
@@ -17,7 +18,8 @@ namespace Dapr.Actors.Client
 
         private JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-        private string daprApiToken;
+                private string daprApiToken;
+        private HttpClientHandler httpClientMessageHandler;
 
         /// <summary>
         /// The <see cref="JsonSerializerOptions"/> used for actor proxy message serialization in non-remoting invocation.
@@ -35,8 +37,17 @@ namespace Dapr.Actors.Client
         public string DaprApiToken
         {
             get => this.daprApiToken;
-            set => this.daprApiToken = value ??
-                    throw new ArgumentNullException(nameof(DaprApiToken), $"{nameof(ActorProxyOptions)}.{nameof(DaprApiToken)} cannot be null");
+            set => this.daprApiToken = value;
+        }
+
+        /// <summary>
+        /// The HTTP message handler. Used for testing purpose
+        /// </summary>>
+        public HttpClientHandler HttpClientMessageHandler
+        {
+            get => this.httpClientMessageHandler;
+            set => this.httpClientMessageHandler = value ??
+                    throw new ArgumentNullException(nameof(HttpClientMessageHandler), $"{nameof(ActorProxyOptions)}.{nameof(HttpClientMessageHandler)} cannot be null");
         }
     }
 }

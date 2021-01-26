@@ -198,10 +198,27 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public void Call_WithApiTokenEnvVar()
+        public void Call_WithApiTokenSet()
         {
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token");
             var handler = new TestHttpClientHandler();
+            var httpInteractor = new DaprHttpInteractor(handler, apiToken: "test_token");
+            var actorType = "ActorType_Test";
+            var actorId = "ActorId_Test";
+            var timerName = "TimerName";
+
+            var task = httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+
+            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
+            headerValues.Count().Should().Be(1);
+            headerValues.First().Should().Be("test_token");
+        }
+
+        [Fact]
+        public void Call_WithApiTokenNotSetButEnvVarSet()
+        {
+            var handler = new TestHttpClientHandler();
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token");
             var httpInteractor = new DaprHttpInteractor(handler);
             var actorType = "ActorType_Test";
             var actorId = "ActorId_Test";
@@ -216,7 +233,25 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public void Call_WithoutApiTokenEnvVar()
+        public void Call_WithApiTokenAndEnvVarSet_EnvVarIsIgnored()
+        {
+            var handler = new TestHttpClientHandler();
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token1");
+            var httpInteractor = new DaprHttpInteractor(handler, apiToken:"test_token2");
+            var actorType = "ActorType_Test";
+            var actorId = "ActorId_Test";
+            var timerName = "TimerName";
+
+            var task = httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+
+            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
+            headerValues.Count().Should().Be(1);
+            headerValues.First().Should().Be("test_token2");
+        }
+
+        [Fact]
+        public void Call_WithoutApiToken()
         {
             var handler = new TestHttpClientHandler();
             var httpInteractor = new DaprHttpInteractor(handler);

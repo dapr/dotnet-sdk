@@ -55,7 +55,7 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public IReadOnlyList<ActorRegistration> RegisteredActors => this.options.Actors;
 
-        internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor();
+        internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor(new System.Net.Http.HttpClientHandler());
 
         internal Task SerializeSettingsAndRegisteredTypes(IBufferWriter<byte> output)
         {

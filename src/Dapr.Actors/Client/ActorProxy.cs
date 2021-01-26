@@ -23,7 +23,7 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// The default factory used to create an actor proxy
         /// </summary>
-        public static IActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();
+        public static IActorProxyFactory DefaultProxyFactory { get; } = new ActorProxyFactory();
 
         private ActorRemotingClient actorRemotingClient;
         private ActorNonRemotingClient actorNonRemotingClient;
@@ -45,6 +45,7 @@ namespace Dapr.Actors.Client
 
         internal IActorMessageBodyFactory ActorMessageBodyFactory { get; set; }
         internal JsonSerializerOptions JsonSerializerOptions { get; set; }
+        internal string DaprApiToken;
 
         /// <summary>
         /// Creates a proxy to the actor object that implements an actor interface.
@@ -171,6 +172,7 @@ namespace Dapr.Actors.Client
             this.ActorType = actorType;
             this.ActorMessageBodyFactory = client.GetRemotingMessageBodyFactory();
             this.JsonSerializerOptions = options?.JsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            this.DaprApiToken = options?.DaprApiToken;
         }
 
         /// <summary>
@@ -186,10 +188,7 @@ namespace Dapr.Actors.Client
             this.ActorId = actorId;
             this.ActorType = actorType;
             this.JsonSerializerOptions = options?.JsonSerializerOptions ?? this.JsonSerializerOptions;
-            if(options?.DaprApiToken != null)
-            {
-                this.SetDaprApiToken(options?.DaprApiToken);
-            }
+            this.DaprApiToken = options?.DaprApiToken;
         }
 
         /// <summary>
@@ -309,16 +308,6 @@ namespace Dapr.Actors.Client
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Sets the Dapr Api Token which will be added to the header in all requests
-        /// </summary>
-        /// <param name="apiToken">Dapr Api Token value.</param>
-        public void SetDaprApiToken(string apiToken)
-        {
-            ArgumentVerifier.ThrowIfNull(apiToken, nameof(apiToken));
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", apiToken);
         }
     }
 }

@@ -28,15 +28,17 @@ namespace Dapr.Actors
         private readonly JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
         private readonly string daprPort;
-        private readonly HttpClientHandler innerHandler;
         private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
         private readonly ClientSettings clientSettings;
+        private readonly HttpClientHandler innerHandler;
         private HttpClient httpClient = null;
         private bool disposed = false;
+        private string daprApiToken;
 
         public DaprHttpInteractor(
             HttpClientHandler innerHandler = null,
             ClientSettings clientSettings = null,
+            string apiToken = null,
             params DelegatingHandler[] delegateHandlers)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
@@ -45,7 +47,7 @@ namespace Dapr.Actors
             this.innerHandler = innerHandler ?? new HttpClientHandler();
             this.delegateHandlers = delegateHandlers;
             this.clientSettings = clientSettings;
-
+            this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
         }
 
@@ -411,11 +413,7 @@ namespace Dapr.Actors
             var request = requestFunc.Invoke();
 
             // add token for dapr api token based authentication
-            var daprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
-            if (daprApiToken != null)
-            {
-                request.Headers.Add("dapr-api-token", daprApiToken);
-            }
+            this.AddDaprApiTokenHeader(request);
 
             response = await this.httpClient.SendAsync(request, cancellationToken);
 
@@ -460,6 +458,27 @@ namespace Dapr.Actors
             }
 
             return httpClientInstance;
+        }
+
+        private void AddDaprApiTokenHeader(HttpRequestMessage request)
+        {
+            if (!string.IsNullOrWhiteSpace(this.daprApiToken))
+            {
+                request.Headers.Add("dapr-api-token", this.daprApiToken);
+                return;
+            }
+
+            // Check if the env variable DAPR_API_TOKEN is set and use it as the default value
+            var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+            if (!string.IsNullOrWhiteSpace(apiToken))
+            {
+                request.Headers.Add("dapr-api-token", apiToken);
+            }
+        }
+
+        public void SetDaprApiToken(string apiToken)
+        {
+            this.daprApiToken = apiToken;
         }
     }
 }
