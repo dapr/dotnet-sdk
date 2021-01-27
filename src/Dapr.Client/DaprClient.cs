@@ -108,7 +108,7 @@ namespace Dapr.Client
         /// <param name="topicName">The name of the topic the request should be published to.</param>
         /// <param name="data">The data that will be JSON serialized and provided as the event payload.</param>
         /// <param name="metadata">
-        /// A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values 
+        /// A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values 
         /// are determined by the type of pubsub component used.
         /// </param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
@@ -138,7 +138,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
-        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task PublishEventAsync(
@@ -180,6 +180,17 @@ namespace Dapr.Client
             string operation,
             TRequest data,
             IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Invokes a binding with the provided <paramref name="request" />. This method allows for control of the binding
+        /// input and output using raw bytes.
+        /// </summary>
+        /// <param name="request">The <see cref="BindingRequest" /> to send.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will complete when the operation has completed.</returns>
+        public abstract Task<BindingResponse> InvokeBindingAsync(
+            BindingRequest request,
             CancellationToken cancellationToken = default);
 
         /// <summary>
