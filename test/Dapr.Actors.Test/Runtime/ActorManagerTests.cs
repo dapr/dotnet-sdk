@@ -17,7 +17,7 @@ namespace Dapr.Actors.Runtime
         private ActorManager CreateActorManager(Type type, ActorActivator activator = null)
         {
             var registration = new ActorRegistration(ActorTypeInformation.Get(type));
-            return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
+            return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, new DaprHttpInteractor());
         }
 
         [Fact]

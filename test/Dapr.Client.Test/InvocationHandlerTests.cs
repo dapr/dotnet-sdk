@@ -16,13 +16,8 @@ using Xunit;
 
 namespace Dapr.Client
 {
-    public class InvocationHandlerTests : IDisposable
+    public class InvocationHandlerTests
     {
-        public void Dispose()
-        {
-            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "");
-        }
-
         [Fact]
         public void DaprEndpoint_InvalidScheme()
         {
@@ -148,55 +143,6 @@ namespace Dapr.Client
 
             Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
             Assert.Equal("super-duper-secure", capture.DaprApiToken);
-
-            Assert.Equal(uri, request.RequestUri?.OriginalString);
-            Assert.False(request.Headers.TryGetValues("dapr-api-token", out _));
-        }
-
-        [Fact]
-        public async Task SendAsync_RewritesUri_AndAddsApiToken_WithEnvVarSet()
-        {
-            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "super-duper-secure");
-            var uri = "http://bank/accounts/17?";
-
-            var capture = new CaptureHandler();
-            var handler = new InvocationHandler()
-            {
-                InnerHandler = capture,
-
-                DaprEndpoint = "https://localhost:5000",
-            };
-
-            var request = new HttpRequestMessage(HttpMethod.Post, uri);
-            var response = await CallSendAsync(handler, request);
-
-            Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
-            Assert.Equal("super-duper-secure", capture.DaprApiToken);
-
-            Assert.Equal(uri, request.RequestUri?.OriginalString);
-            Assert.False(request.Headers.TryGetValues("dapr-api-token", out _));
-        }
-
-        [Fact]
-        public async Task SendAsync_RewritesUri_WithApiTokenAndEnvVarSet_EnvVarIsIgnored()
-        {
-            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "super-duper-secure2");
-            var uri = "http://bank/accounts/17?";
-
-            var capture = new CaptureHandler();
-            var handler = new InvocationHandler()
-            {
-                InnerHandler = capture,
-
-                DaprEndpoint = "https://localhost:5000",
-                DaprApiToken = "super-duper-secure1"
-            };
-
-            var request = new HttpRequestMessage(HttpMethod.Post, uri);
-            var response = await CallSendAsync(handler, request);
-
-            Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
-            Assert.Equal("super-duper-secure1", capture.DaprApiToken);
 
             Assert.Equal(uri, request.RequestUri?.OriginalString);
             Assert.False(request.Headers.TryGetValues("dapr-api-token", out _));

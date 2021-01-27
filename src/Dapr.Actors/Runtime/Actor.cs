@@ -210,7 +210,7 @@ namespace Dapr.Actors.Runtime
             var reminderInfo = new ReminderInfo(state, dueTime, period);
             var reminder = new ActorReminder(this.Id, reminderName, reminderInfo);
             var serializedReminderInfo = await reminderInfo.SerializeAsync();
-            await ActorRuntime.GetDaprInteractor(this.actorTypeName).RegisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminderName, serializedReminderInfo);
+            await this.Host.DaprInteractor.RegisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminderName, serializedReminderInfo);
             return reminder;
         }
 
@@ -223,7 +223,7 @@ namespace Dapr.Actors.Runtime
         /// </returns>
         protected Task UnregisterReminderAsync(IActorReminder reminder)
         {
-            return ActorRuntime.GetDaprInteractor(this.actorTypeName).UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminder.Name);
+            return this.Host.DaprInteractor.UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminder.Name);
         }
 
         /// <summary>
@@ -235,7 +235,7 @@ namespace Dapr.Actors.Runtime
         /// </returns>
         protected Task UnregisterReminderAsync(string reminderName)
         {
-            return ActorRuntime.GetDaprInteractor(this.actorTypeName).UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminderName);
+            return this.Host.DaprInteractor.UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminderName);
         }
 
         /// <summary>
@@ -275,7 +275,7 @@ namespace Dapr.Actors.Runtime
             var timerInfo = new TimerInfo(callback, callbackParams, dueTime, period);
             var actorTimer = new ActorTimer(timerName, timerInfo);
             var serializedTimer = JsonSerializer.Serialize<TimerInfo>(timerInfo);
-            await ActorRuntime.GetDaprInteractor(this.actorTypeName).RegisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName, serializedTimer);
+            await this.Host.DaprInteractor.RegisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName, serializedTimer);
 
             return actorTimer;
         }
@@ -287,7 +287,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>Task representing the Unregister timer operation.</returns>
         protected async Task UnregisterTimerAsync(ActorTimer timer)
         {
-            await ActorRuntime.GetDaprInteractor(this.actorTypeName).UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timer.Name);
+            await this.Host.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timer.Name);
         }
 
         /// <summary>
@@ -297,7 +297,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>Task representing the Unregister timer operation.</returns>
         protected async Task UnregisterTimerAsync(string timerName)
         {
-            await ActorRuntime.GetDaprInteractor(this.actorTypeName).UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName);
+            await this.Host.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName);
         }
 
         internal MethodInfo GetMethodInfoUsingReflection(Type actorType, string callback)

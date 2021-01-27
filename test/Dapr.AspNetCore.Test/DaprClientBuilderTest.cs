@@ -6,13 +6,8 @@ using Xunit;
 
 namespace Dapr.AspNetCore.Test
 {
-    public class DaprClientBuilderTest : IDisposable
+    public class DaprClientBuilderTest
     {
-        public void Dispose()
-        {
-            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "");
-        }
-
         [Fact]
         public void DaprClientBuilder_UsesPropertyNameCaseHandlingInsensitiveByDefault()
         {

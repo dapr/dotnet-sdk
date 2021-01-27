@@ -22,8 +22,6 @@ namespace Dapr.Actors.Runtime
     {
         // Map of ActorType --> ActorManager.
         private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
-
-        private static Dictionary<string, IDaprInteractor> daprInteractors = new Dictionary<string, IDaprInteractor>();
         private readonly ActorRuntimeOptions options;
         private readonly ILogger logger;
         private readonly ActorActivatorFactory activatorFactory;
@@ -43,13 +41,14 @@ namespace Dapr.Actors.Runtime
             // Revisit this if actor initialization becomes a significant source of delay for large projects.
             foreach (var actor in options.Actors)
             {
+                var daprInteractor = new DaprHttpInteractor();
                 this.actorManagers[actor.Type.ActorTypeName] = new ActorManager(
                     actor,
                     actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),
                     this.options.JsonSerializerOptions,
                     loggerFactory, 
-                    proxyFactory);
-                daprInteractors[actor.Type.ActorTypeName] = new DaprHttpInteractor();
+                    proxyFactory,
+                    daprInteractor);
             }
         }
 
@@ -141,16 +140,6 @@ namespace Dapr.Actors.Runtime
             {
                 return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), requestBodyStream, cancellationToken);
             }
-        }
-
-        internal static IDaprInteractor GetDaprInteractor(string actorTypeName)
-        {
-            if(!daprInteractors.ContainsKey(actorTypeName))
-            {
-                var errorMsg = $"Actor type {actorTypeName} is not registered with Actor runtime.";
-                throw new InvalidOperationException(errorMsg);
-            }
-            return daprInteractors[actorTypeName];
         }
 
         private ActorManager GetActorManager(string actorTypeName)

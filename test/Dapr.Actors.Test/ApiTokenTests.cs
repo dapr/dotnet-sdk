@@ -14,13 +14,8 @@ using Xunit;
 
 namespace Dapr.Actors.Test
 {
-    public class ApiTokenTests : IDisposable
+    public class ApiTokenTests
     {
-        public void Dispose()
-        {
-            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "");
-        }
-        
         [Fact]
         public void CreateProxyWithRemoting_WithApiToken()
         {
@@ -31,24 +26,6 @@ namespace Dapr.Actors.Test
                 DaprApiToken = "test_token",
             };
             var factory = new ActorProxyFactory(options, handler);
-            var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
-            var task = proxy.SetCountAsync(1, new CancellationToken());
-
-            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var headerValues = entry.Request.Headers.GetValues("dapr-api-token");
-            headerValues.Should().Contain("test_token");
-        }
-
-        [Fact]
-        public void CreateProxyWithRemoting_WithApiTokenEnvVarSet()
-        {
-            var actorId = new ActorId("abc");
-            var handler = new TestHttpClientHandler();
-            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "test_token");
-            var factory = new ActorProxyFactory(null, handler);
-            // Verify that if no api token is set but env var is set, then the default
-            // actor proxy options have the token set
-            Assert.Equal("test_token", factory.DefaultOptions.DaprApiToken);
             var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
             var task = proxy.SetCountAsync(1, new CancellationToken());
 
@@ -82,24 +59,6 @@ namespace Dapr.Actors.Test
             };
             var factory = new ActorProxyFactory(options, handler);
             var proxy = factory.Create(actorId, "TestActor");
-            var task = proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
-
-            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var headerValues = entry.Request.Headers.GetValues("dapr-api-token");
-            headerValues.Should().Contain("test_token");
-        }
-
-        [Fact]
-        public void CreateProxyWithNoRemoting_WithApiTokenEnvVarSet()
-        {
-            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "test_token");
-            var actorId = new ActorId("abc");
-            var handler = new TestHttpClientHandler();
-            var factory = new ActorProxyFactory(null, handler);
-            var proxy = factory.Create(actorId, "TestActor");
-            // Verify that if no api token is set but env var is set, then the default
-            // actor proxy options have the token set
-            Assert.Equal("test_token", factory.DefaultOptions.DaprApiToken);
             var task = proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
 
             handler.Requests.TryDequeue(out var entry).Should().BeTrue();

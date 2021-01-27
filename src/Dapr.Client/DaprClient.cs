@@ -94,10 +94,6 @@ namespace Dapr.Client
 
         internal static KeyValuePair<string, string> GetDaprApiTokenHeader(string apiToken)
         {
-            if(string.IsNullOrWhiteSpace(apiToken))
-            {
-                apiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
-            }
             KeyValuePair<string, string> apiTokenHeader = default;
             if(!string.IsNullOrWhiteSpace(apiToken))
             {

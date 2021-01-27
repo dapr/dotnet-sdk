@@ -27,7 +27,6 @@ namespace Dapr.Actors.Client
             {
                 this.defaultOptions = value ??
                     throw new ArgumentNullException(nameof(DefaultOptions), $"{nameof(ActorProxyFactory)}.{nameof(DefaultOptions)} cannot be null");
-                this.daprInteractor = new DaprHttpInteractor(this.handler, this.defaultOptions.DaprApiToken);
             }
         }
 
@@ -38,7 +37,6 @@ namespace Dapr.Actors.Client
         {
             this.defaultOptions = options ?? new ActorProxyOptions();
             this.handler = handler;
-            this.daprInteractor = new DaprHttpInteractor(handler, this.defaultOptions.DaprApiToken);
         }
 
         /// <inheritdoc/>
@@ -50,8 +48,8 @@ namespace Dapr.Actors.Client
         public ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null)
         {
             var actorProxy = new ActorProxy();
-            this.daprInteractor = new DaprHttpInteractor(this.handler, this.DefaultOptions.DaprApiToken);
-            var nonRemotingClient = new ActorNonRemotingClient(this.daprInteractor);
+            var daprInteractor = new DaprHttpInteractor(this.handler, this.DefaultOptions.DaprApiToken);
+            var nonRemotingClient = new ActorNonRemotingClient(daprInteractor);
             actorProxy.Initialize(nonRemotingClient, actorId, actorType, options ?? this.defaultOptions);
 
             return actorProxy;

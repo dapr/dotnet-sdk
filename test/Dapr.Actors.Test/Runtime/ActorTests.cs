@@ -116,7 +116,7 @@ namespace Dapr.Actors.Test.Runtime
         {
             var actorTypeInformation = ActorTypeInformation.Get(typeof(TestActor));
             var loggerFactory = new LoggerFactory();
-            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, loggerFactory, ActorProxy.DefaultProxyFactory);
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, loggerFactory, ActorProxy.DefaultProxyFactory, new DaprHttpInteractor());
             var testActor = new TestActor(host, actorStateManager);
             return testActor;
         }

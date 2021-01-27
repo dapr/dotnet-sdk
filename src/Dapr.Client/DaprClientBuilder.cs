@@ -39,6 +39,7 @@ namespace Dapr.Client
             };
 
             this.JsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            this.DaprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
         }
 
         // property exposed for testing purposes
@@ -121,10 +122,6 @@ namespace Dapr.Client
         public DaprClientBuilder UseDaprApiToken(string apiToken)
         {
             this.DaprApiToken = apiToken;
-            if(string.IsNullOrWhiteSpace(apiToken))
-            {
-                this.DaprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
-            }
             return this;
         }
 
