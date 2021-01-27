@@ -40,14 +40,16 @@
                 })
                 .ConfigureAppConfiguration((configBuilder) =>
                 {
+                    // To retrive specific secrets use secretDescriptors
                     // Create descriptors for the secrets you want to rerieve from the Dapr Secret Store.
-                    var secretDescriptors = new DaprSecretDescriptor[]
-                    {
-                        new DaprSecretDescriptor("super-secret")
-                    };
+                    // var secretDescriptors = new DaprSecretDescriptor[]
+                    // {
+                    //     new DaprSecretDescriptor("super-secret")
+                    // };
+                    // configBuilder.AddDaprSecretStore("demosecrets", secretDescriptors, client);
 
                     // Add the secret store Configuration Provider to the configuration builder.
-                    configBuilder.AddDaprSecretStore("demosecrets", secretDescriptors, client);
+                    configBuilder.AddDaprSecretStore("demosecrets", client);
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {

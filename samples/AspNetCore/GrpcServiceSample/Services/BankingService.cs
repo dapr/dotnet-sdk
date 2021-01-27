@@ -5,15 +5,13 @@
 
 using System;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Dapr.Client;
 using Dapr.Client.Autogen.Grpc.v1;
-using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using GrpcServiceSample.Models;
+using GrpcServiceSample.Generated;
 using Microsoft.Extensions.Logging;
 
 namespace GrpcServiceSample
@@ -55,24 +53,18 @@ namespace GrpcServiceSample
             var response = new InvokeResponse();
             switch (request.Method)
             {
-                case "getaccount":
-                    var input = JsonSerializer.Deserialize<GetAccountInput>(request.Data.Value.ToByteArray(), this.jsonOptions);
+                case "getaccount":                
+                    var input = request.Data.Unpack<GrpcServiceSample.Generated.GetAccountRequest>();
                     var output = await GetAccount(input, context);
-                    response.Data = new Any
-                    {
-                        Value = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes<Account>(output, this.jsonOptions)),
-                    };
+                    response.Data = Any.Pack(output);
                     break;
                 case "deposit":
                 case "withdraw":
-                    var transaction = JsonSerializer.Deserialize<Transaction>(request.Data.Value.ToByteArray(), this.jsonOptions);
+                    var transaction = request.Data.Unpack<GrpcServiceSample.Generated.Transaction>();
                     var account = request.Method == "deposit" ?
                         await Deposit(transaction, context) :
                         await Withdraw(transaction, context);
-                    response.Data = new Any
-                    {
-                        Value = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes<Account>(account, this.jsonOptions)),
-                    };
+                    response.Data = Any.Pack(account);
                     break;
                 default:
                     break;
@@ -112,11 +104,16 @@ namespace GrpcServiceSample
         {
             if (request.PubsubName == "pubsub")
             {
-                var transaction = JsonSerializer.Deserialize<Transaction>(request.Data.ToStringUtf8(), this.jsonOptions);
+                var input = JsonSerializer.Deserialize<Models.Transaction>(request.Data.ToStringUtf8(), this.jsonOptions);
+                var transaction = new GrpcServiceSample.Generated.Transaction() { Id = input.Id, Amount = (int)input.Amount, };
                 if (request.Topic == "deposit")
+                {
                     await Deposit(transaction, context);
+                }
                 else
+                {
                     await Withdraw(transaction, context);
+                }
             }
 
             return await Task.FromResult(default(TopicEventResponse));
@@ -128,11 +125,10 @@ namespace GrpcServiceSample
         /// <param name="input"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async Task<Account> GetAccount(GetAccountInput input, ServerCallContext context)
+        public async Task<GrpcServiceSample.Generated.Account> GetAccount(GetAccountRequest input, ServerCallContext context)
         {
-            var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, input.Id);
-
-            return state.Value;
+            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
+            return new GrpcServiceSample.Generated.Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, }; 
         }
 
         /// <summary>
@@ -141,14 +137,14 @@ namespace GrpcServiceSample
         /// <param name="transaction"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async Task<Account> Deposit(Transaction transaction, ServerCallContext context)
+        public async Task<GrpcServiceSample.Generated.Account> Deposit(GrpcServiceSample.Generated.Transaction transaction, ServerCallContext context)
         {
             _logger.LogDebug("Enter deposit");
-            var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
-            state.Value ??= new Account() { Id = transaction.Id, };
+            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
+            state.Value ??= new Models.Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
             await state.SaveAsync();
-            return state.Value;
+            return new GrpcServiceSample.Generated.Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, }; 
         }
 
         /// <summary>
@@ -157,19 +153,19 @@ namespace GrpcServiceSample
         /// <param name="transaction"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async Task<Account> Withdraw(Transaction transaction, ServerCallContext context)
+        public async Task<GrpcServiceSample.Generated.Account> Withdraw(GrpcServiceSample.Generated.Transaction transaction, ServerCallContext context)
         {
             _logger.LogDebug("Enter withdraw");
-            var state = await _daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
 
-            if (state.Value != null)
+            if (state.Value == null)
             {
-                state.Value.Balance -= transaction.Amount;
-                await state.SaveAsync();
-                return state.Value;
-            }
-            else
                 throw new Exception($"NotFound: {transaction.Id}");
+            }
+
+            state.Value.Balance -= transaction.Amount;
+            await state.SaveAsync();
+            return new GrpcServiceSample.Generated.Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, };
         }
     }
 }

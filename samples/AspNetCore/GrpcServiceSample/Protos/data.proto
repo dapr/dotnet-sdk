@@ -1,0 +1,24 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+syntax = "proto3";
+
+option csharp_namespace = "GrpcServiceSample.Generated";
+
+message Account {
+    string Id = 1;
+    // Ideally we'd use the Money data type here, but to keep the sample simple we're using an int.
+    int32 Balance = 2; 
+}
+
+message GetAccountRequest {
+    string Id = 1;
+}
+
+message Transaction {
+    string Id = 1;
+    // Ideally we'd use the Money data type here, but to keep the sample simple we're using an int.
+    int32 Amount = 2;
+}

@@ -76,17 +76,6 @@ namespace Dapr
             return message;
         }
 
-        public static HttpResponseMessage CreateResponseFromHttpServer(
-            HttpStatusCode statusCode,
-            HttpContent payload)
-        {
-            var message = CreateResponse(statusCode, payload);
-            // Add Dapr HTTP status header
-            message.Headers.Add("dapr-http-status", "200");
-
-            return message;
-        }
-
         public static Task<StreamContent> CreateResponseContent<TResponse>(TResponse response) where TResponse : IMessage<TResponse>
         {
             return CreateResponseContentCore(new[] { response });

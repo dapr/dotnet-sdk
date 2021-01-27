@@ -6,7 +6,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Protobuf Include="Protos\*.proto" ProtoRoot="Protos" GrpcServices="None" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.30.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.13.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.35.0" PrivateAssets="All" />
+    <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>

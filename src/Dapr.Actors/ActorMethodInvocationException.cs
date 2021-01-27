@@ -11,7 +11,7 @@ namespace Dapr.Actors
     /// Exception for Remote Actor Method Invocation.
     /// </summary>
     [Serializable]
-    public class ActorMethodInvocationException : DaprException
+    public class ActorMethodInvocationException : DaprApiException
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorMethodInvocationException"/> class.

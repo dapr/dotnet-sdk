@@ -19,33 +19,29 @@ namespace Dapr.Actors
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
-    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Class to interact with Dapr runtime over http.
     /// </summary>
     internal class DaprHttpInteractor : IDaprInteractor
     {
+        private readonly JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
         private readonly string daprPort;
-        private readonly HttpClientHandler innerHandler;
-        private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
-        private readonly ClientSettings clientSettings;
+        private static HttpClientHandler innerHandler = new HttpClientHandler();
         private HttpClient httpClient = null;
         private bool disposed = false;
+        private string daprApiToken;
 
         public DaprHttpInteractor(
-            HttpClientHandler innerHandler = null,
-            ClientSettings clientSettings = null,
-            params DelegatingHandler[] delegateHandlers)
+            HttpClientHandler clientHandler = null,
+            string apiToken = null)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
             this.daprPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? Constants.DaprDefaultPort;
 
-            this.innerHandler = innerHandler ?? new HttpClientHandler();
-            this.delegateHandlers = delegateHandlers;
-            this.clientSettings = clientSettings;
-
+            innerHandler = clientHandler ?? new HttpClientHandler();
+            this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
         }
 
@@ -330,15 +326,6 @@ namespace Dapr.Actors
             }
         }
 
-        private static ActorMessageSerializersManager IntializeSerializationManager(
-           IActorMessageBodySerializationProvider serializationProvider)
-        {
-            // TODO serializer settings
-            return new ActorMessageSerializersManager(
-                serializationProvider,
-                new ActorMessageHeaderSerializer());
-        }
-
         /// <summary>
         /// Sends an HTTP get request to cluster http gateway.
         /// </summary>
@@ -377,35 +364,30 @@ namespace Dapr.Actors
                     var contentStream = await response.Content.ReadAsStreamAsync();
                     if (contentStream.Length != 0)
                     {
-                        var options = new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        };
-
-                        error = await JsonSerializer.DeserializeAsync<DaprError>(contentStream, options);
+                        error = await JsonSerializer.DeserializeAsync<DaprError>(contentStream, jsonSerializerOptions);
                     }
                 }
                 catch (Exception ex)
                 {
-                    throw new DaprException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode), ex);
+                    throw new DaprApiException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode), ex);
                 }
 
                 if (error != null)
                 {
-                    throw new DaprException(error.Message, error.ErrorCode ?? Constants.Unknown, false);
+                    throw new DaprApiException(error.Message, error.ErrorCode, false);
                 }
                 else
                 {
                     // Handle NotFound 404, without any ErrorCode.
                     if (response.StatusCode.Equals(HttpStatusCode.NotFound))
                     {
-                        throw new DaprException("ErrorMessageHTTP404", Constants.ErrorDoesNotExist, false);
+                        throw new DaprApiException("ErrorMessageHTTP404", Constants.ErrorDoesNotExist, false);
                     }
                 }
             }
 
             // Couldn't determine Error information from response., throw exception with status code.
-            throw new DaprException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode));
+            throw new DaprApiException(string.Format("ServerErrorNoMeaningFulResponse", response.StatusCode));
         }
 
         /// <summary>
@@ -425,11 +407,7 @@ namespace Dapr.Actors
             var request = requestFunc.Invoke();
 
             // add token for dapr api token based authentication
-            var daprApiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-            if (daprApiToken != null)
-            {
-                request.Headers.Add("dapr-api-token", daprApiToken);
-            }
+            this.AddDaprApiTokenHeader(request);
 
             response = await this.httpClient.SendAsync(request, cancellationToken);
 
@@ -455,25 +433,16 @@ namespace Dapr.Actors
 
         private HttpClient CreateHttpClient()
         {
-            // Chain Delegating Handlers.
-            HttpMessageHandler pipeline = this.innerHandler;
-            if (this.delegateHandlers != null)
-            {
-                for (var i = this.delegateHandlers.Count - 1; i >= 0; i--)
-                {
-                    var handler = this.delegateHandlers[i];
-                    handler.InnerHandler = pipeline;
-                    pipeline = handler;
-                }
-            }
+            return new HttpClient(innerHandler, false);
+        }
 
-            var httpClientInstance = new HttpClient(pipeline, true);
-            if (this.clientSettings?.ClientTimeout != null)
+        private void AddDaprApiTokenHeader(HttpRequestMessage request)
+        {
+            if (!string.IsNullOrWhiteSpace(this.daprApiToken))
             {
-                httpClientInstance.Timeout = (TimeSpan)this.clientSettings.ClientTimeout;
+                request.Headers.Add("dapr-api-token", this.daprApiToken);
+                return;
             }
-
-            return httpClientInstance;
         }
     }
 }

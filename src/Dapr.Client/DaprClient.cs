@@ -5,26 +5,137 @@
 
 namespace Dapr.Client
 {
+    using System;
     using System.Collections.Generic;
+    using System.Net.Http;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Google.Protobuf;
+    using Grpc.Core;
 
     /// <summary>
+    /// <para>
     /// Defines client methods for interacting with Dapr endpoints.
-    /// Use <see cref="DaprClientBuilder"/> to create <see cref="DaprClient"/>
+    /// Use <see cref="DaprClientBuilder"/> to create <see cref="DaprClient"/>.
+    /// </para>
+    /// <para>
+    /// Implementations of <see cref="DaprClient" /> implement <see cref="IDisposable" /> because the client
+    /// accesses network resources. For best performance, create a single long-lived client instance and share
+    /// it for the lifetime of the application. Avoid creating and disposing a client instance for each operation
+    /// that the application performs - this can lead to socket exhaustion and other problems.
+    /// </para>
     /// </summary>
-    public abstract class DaprClient
+    public abstract class DaprClient : IDisposable
     {
+        private bool disposed;
+
+        /// <summary>
+        /// Gets the <see cref="JsonSerializerOptions" /> used for JSON serialization operations.
+        /// </summary>
+        public abstract JsonSerializerOptions JsonSerializerOptions { get; }
+        
+        /// <summary>
+        /// <para>
+        /// Creates an <see cref="HttpClient" /> that can be used to perform Dapr service
+        /// invocation using <see cref="HttpRequestMessage" /> objects.
+        /// </para>
+        /// <para>
+        /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
+        /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
+        /// property will be replaced with a new URI with the authority section replaced by <paramref name="daprEndpoint" />
+        /// and the path portion of the URI rewitten to follow the format of a Dapr service invocation request.
+        /// </para>
+        /// </summary>
+        /// <param name="appId">
+        /// An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
+        /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used.
+        /// </param>
+        /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
+        /// <param name="daprApiToken">The token to be added to all request headers to Dapr runtime.</param>
+        /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
+        /// <remarks>
+        /// <para>
+        /// The <see cref="HttpClient" /> object is intended to be a long-lived and holds access to networking resources.
+        /// Since the value of <paramref name="daprEndpoint" /> will not change during the lifespan of the application,
+        /// a single client object can be reused for the life of the application.
+        /// </para>
+        /// </remarks>
+        public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null, string daprApiToken = null)
+        {
+            var handler = new InvocationHandler()
+            {
+                InnerHandler = new HttpClientHandler(),
+                DaprApiToken = daprApiToken
+            };
+
+            if (daprEndpoint is string)
+            {
+                // DaprEndpoint performs validation.
+                handler.DaprEndpoint = daprEndpoint;
+            }
+
+            var httpClient = new HttpClient(handler);
+            
+            if (appId is string)
+            {
+                try
+                {
+                    httpClient.BaseAddress = new Uri($"http://{appId}");
+                }
+                catch (UriFormatException inner)
+                {
+                    throw new ArgumentException("The appId must be a valid hostname.", nameof(appId), inner);
+                }
+            }
+
+            return httpClient;
+        }
+
+        internal static KeyValuePair<string, string> GetDaprApiTokenHeader(string apiToken)
+        {
+            KeyValuePair<string, string> apiTokenHeader = default;
+            if(!string.IsNullOrWhiteSpace(apiToken))
+            {
+                apiTokenHeader = new KeyValuePair<string, string>("dapr-api-token", apiToken);
+            }
+            return apiTokenHeader;
+        }
+
         /// <summary>
         /// Publishes an event to the specified topic.
         /// </summary>
         /// <param name="pubsubName">The name of the pubsub component to use.</param>
         /// <param name="topicName">The name of the topic the request should be published to.</param>
-        /// <param name="data">The  event data.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the event payload.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TData">The data type of the object that will be serialized.</typeparam>
+        /// <typeparam name="TData">The type of the data that will be JSON serialized and provided as the event payload.</typeparam>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync<TData>(string pubsubName, string topicName, TData data, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync<TData>(
+            string pubsubName,
+            string topicName,
+            TData data,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Publishes an event to the specified topic.
+        /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="topicName">The name of the topic the request should be published to.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the event payload.</param>
+        /// <param name="metadata">
+        /// A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values 
+        /// are determined by the type of pubsub component used.
+        /// </param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <typeparam name="TData">The type of the data that will be JSON serialized and provided as the event payload.</typeparam>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task PublishEventAsync<TData>(
+            string pubsubName,
+            string topicName,
+            TData data,
+            Dictionary<string, string> metadata,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Publishes an event to the specified topic.
@@ -33,138 +144,409 @@ namespace Dapr.Client
         /// <param name="topicName">The name of the topic the request should be published to.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public abstract Task PublishEventAsync(string pubsubName, string topicName, CancellationToken cancellationToken = default);
+        public abstract Task PublishEventAsync(
+            string pubsubName,
+            string topicName,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Publishes an event to the specified topic.
+        /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="topicName">The name of the topic the request should be published to.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values are determined by the type of binding used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task PublishEventAsync(
+            string pubsubName,
+            string topicName,
+            Dictionary<string, string> metadata,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes an output binding.
         /// </summary>
-        /// <typeparam name="TRequest"></typeparam>
-        /// <param name="name">The name of the binding to sent the event to.</param>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the binding payload.</typeparam>
+        /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
-        /// <param name="data">The data of the event to send.</param>
-        /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the binding payload.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task InvokeBindingAsync<TRequest>(
-            string name,
+            string bindingName,
             string operation,
             TRequest data,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes an output binding.
         /// </summary>
-        /// <typeparam name="TRequest">The type of the object for the data to send.</typeparam>
-        /// <typeparam name="TResponse">The type of the object for the return value.</typeparam>
-        /// <param name="name">The name of the binding to sent the event to.</param>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the binding payload.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the binding response.</typeparam>
+        /// <param name="bindingName">The name of the binding to sent the event to.</param>
         /// <param name="operation">The type of operation to perform on the binding.</param>
-        /// <param name="data">The data of the event to send.</param>
-        /// <param name="metadata">An open key/value pair that may be consumed by the binding component.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the binding payload.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{T}" /> that will complete when the operation has completed.</returns>
-        public abstract ValueTask<TResponse> InvokeBindingAsync<TRequest, TResponse>(
-            string name,
+        /// <returns>A <see cref="Task{T}" /> that will complete when the operation has completed.</returns>
+        public abstract Task<TResponse> InvokeBindingAsync<TRequest, TResponse>(
+            string bindingName,
             string operation,
             TRequest data,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
-        /// </summary>        
-        /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>        
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// Invokes a binding with the provided <paramref name="request" />. This method allows for control of the binding
+        /// input and output using raw bytes.
+        /// </summary>
+        /// <param name="request">The <see cref="BindingRequest" /> to send.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>      
-        public abstract Task InvokeMethodAsync(
+        /// <returns>A <see cref="Task{T}" /> that will complete when the operation has completed.</returns>
+        public abstract Task<BindingResponse> InvokeBindingAsync(
+            BindingRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the <c>POST</c> HTTP method.
+        /// </summary>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public HttpRequestMessage CreateInvokeMethodRequest(string appId, string methodName)
+        {
+            return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName);
+        }
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" />.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public abstract HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName);
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the <c>POST</c> HTTP method and a JSON serialized request body specified by <paramref name="data" />.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public HttpRequestMessage CreateInvokeMethodRequest<TRequest>(string appId, string methodName, TRequest data)
+        {
+            return CreateInvokeMethodRequest<TRequest>(HttpMethod.Post, appId, methodName, data);
+        }
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
+        /// <paramref name="data" />.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data);
+
+        /// <summary>
+        /// Perform service invocation using the request provided by <paramref name="request" />. The response will
+        /// be returned without performing any validation on the status code.
+        /// </summary>
+        /// <param name="request">
+        /// The <see cref="HttpRequestMessage" /> to send. The request must be a conforming Dapr service invocation request. 
+        /// Use the <c>CreateInvokeMethodRequest</c> to create service invocation requests.
+        /// </param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Perform service invocation using the request provided by <paramref name="request" />. If the response has a non-success
+        /// status an exception will be thrown.
+        /// </summary>
+        /// <param name="request">
+        /// The <see cref="HttpRequestMessage" /> to send. The request must be a conforming Dapr service invocation request. 
+        /// Use the <c>CreateInvokeMethodRequest</c> to create service invocation requests.
+        /// </param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task InvokeMethodAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Perform service invocation using the request provided by <paramref name="request" />. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="request">
+        /// The <see cref="HttpRequestMessage" /> to send. The request must be a conforming Dapr service invocation request. 
+        /// Use the <c>CreateInvokeMethodRequest</c> to create service invocation requests.
+        /// </param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<TResponse> InvokeMethodAsync<TResponse>(HttpRequestMessage request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method and an empty request body. 
+        /// If the response has a non-success status code an exception will be thrown.
+        /// </summary>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync(
             string appId,
             string methodName,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(appId, methodName);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="methodName" />
+        /// and an empty request body. If the response has a non-success status code an exception will be thrown.
         /// </summary>
-        /// <typeparam name="TRequest">The type of data to send.</typeparam>       
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Data to pass to the method</param>
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>        
-        public abstract Task InvokeMethodAsync<TRequest>(
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync(
+            HttpMethod httpMethod,
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
+        /// status code an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync<TRequest>(
             string appId,
             string methodName,
             TRequest data,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(appId, methodName, data);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
-        /// </summary>        
-        /// <typeparam name="TResponse">The type of the object in the response.</typeparam>
-        /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>         
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>    
-        public abstract ValueTask<TResponse> InvokeMethodAsync<TResponse>(
-            string appId,
-            string methodName,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
+        /// status code an exception will be thrown.
         /// </summary>
-        /// <typeparam name="TRequest">The type of data to send.</typeparam>
-        /// <typeparam name="TResponse">The type of the object in the response.</typeparam>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Data to pass to the method</param>      
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>  
-        public abstract ValueTask<TResponse> InvokeMethodAsync<TRequest, TResponse>(
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public Task InvokeMethodAsync<TRequest>(
+            HttpMethod httpMethod,
             string appId,
             string methodName,
             TRequest data,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, data);
+            return InvokeMethodAsync(request, cancellationToken);
+        }
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
+        /// and an empty request body. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
         /// </summary>
-       /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Data to pass to the method</param>      
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task{InvokeResponse}" /> that will return the value when the operation has completed.</returns>
-        public abstract Task<InvocationResponse<TResponse>> InvokeMethodWithResponseAsync<TRequest, TResponse>(
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TResponse>(
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(appId, methodName);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
+        /// and an empty request body. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TResponse>(
+            HttpMethod httpMethod,
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
             string appId,
             string methodName,
             TRequest data,
-            HttpInvocationOptions httpOptions = default,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(appId, methodName, data);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
+        /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
+        /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be JSON deserialized from the response body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
+            HttpMethod httpMethod,
+            string appId,
+            string methodName,
+            TRequest data,
+            CancellationToken cancellationToken = default)
+        {
+            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, data);
+            return InvokeMethodAsync<TResponse>(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with an empty request body. 
+        /// If the response has a non-success status code an exception will be thrown.
+        /// </summary>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task InvokeMethodGrpcAsync(
+            string appId,
+            string methodName,
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Invokes a method on a Dapr app.
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />.
+        /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be Protobuf serialized and provided as the request body.</typeparam>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>  
-        /// <param name="data">Byte array to pass to the method</param>      
-        /// <param name="httpOptions">Additional fields that may be needed if the receiving app is listening on HTTP.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be Protobuf serialized and provided as the request body.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>  
-        public abstract Task<InvocationResponse<byte[]>> InvokeMethodRawAsync(
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task InvokeMethodGrpcAsync<TRequest>(
             string appId,
             string methodName,
-            byte[] data,
-            HttpInvocationOptions httpOptions = default,
-            CancellationToken cancellationToken = default);
+            TRequest data,
+            CancellationToken cancellationToken = default)
+        where TRequest : IMessage;
+
+        /// <summary>
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with an empty request body. If the response has a success
+        /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the data that will be Protobuf deserialized from the response body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<TResponse> InvokeMethodGrpcAsync<TResponse>(
+            string appId,
+            string methodName,
+            CancellationToken cancellationToken = default)
+        where TResponse : IMessage, new();
+
+        /// <summary>
+        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />. If the response has a success
+        /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
+        /// otherwise an exception will be thrown.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be Protobuf serialized and provided as the request body.</typeparam>
+        /// <typeparam name="TResponse">The type of the data that will be Protobuf deserialized from the response body.</typeparam>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be Protobuf serialized and provided as the request body.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<TResponse> InvokeMethodGrpcAsync<TRequest, TResponse>(
+            string appId,
+            string methodName,
+            TRequest data,
+            CancellationToken cancellationToken = default)
+        where TRequest : IMessage
+        where TResponse : IMessage, new();
 
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store.
@@ -172,11 +554,11 @@ namespace Dapr.Client
         /// <param name="storeName">The name of state store to read from.</param>
         /// <param name="key">The state key.</param>
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to read.</typeparam>
-        /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>
-        public abstract ValueTask<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, Dictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a list of values associated with the <paramref name="keys" /> from the Dapr state store.
@@ -184,10 +566,11 @@ namespace Dapr.Client
         /// <param name="storeName">The name of state store to read from.</param>
         /// <param name="keys">The list of keys to get values for.</param>
         /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store. a value equal to or smaller than 0 means max parallelism.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
+        /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
+        public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
-        public abstract ValueTask<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, CancellationToken cancellationToken = default);
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
         /// </summary>
@@ -195,9 +578,10 @@ namespace Dapr.Client
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.  This wraps the read value and an ETag.</returns>
-        public abstract ValueTask<(TValue value, string etag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default);
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.  This wraps the read value and an ETag.</returns>
+        public abstract Task<(TValue value, string etag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a <see cref="StateEntry{T}" /> for the current value associated with the <paramref name="key" /> from
@@ -206,15 +590,16 @@ namespace Dapr.Client
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
         /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to read.</typeparam>
-        /// <returns>A <see cref="ValueTask" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
-        public async ValueTask<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, CancellationToken cancellationToken = default)
+        /// <typeparam name="TValue">The type of the data that will be JSON deserialized from the state store response.</typeparam>
+        /// <returns>A <see cref="Task" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
+        public async Task<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
-            var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, cancellationToken);
+            var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, metadata, cancellationToken);
             return new StateEntry<TValue>(this, storeName, key, state, etag);
         }
 
@@ -224,18 +609,18 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
-        /// <param name="value">The value to save.</param>        
+        /// <param name="value">The data that will be JSON serialized and stored in the state store.</param>        
         /// <param name="stateOptions">Options for performing save state operation.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to save.</typeparam>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        /// <typeparam name="TValue">The type of the data that will be JSON serialized and stored in the state store.</typeparam>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task SaveStateAsync<TValue>(
             string storeName,
             string key,
             TValue value,
             StateOptions stateOptions = default,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -245,20 +630,20 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="key">The state key.</param>
-        /// <param name="value">The value to save.</param>
-        /// <param name="etag">An ETag.</param>        
+        /// <param name="value">The data that will be JSON serialized and stored in the state store.</param>
+        /// <param name="etag">An ETag.</param>
         /// <param name="stateOptions">Options for performing save state operation.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <typeparam name="TValue">The data type of the value to save.</typeparam>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation succeeded.</returns>
-        public abstract ValueTask<bool> TrySaveStateAsync<TValue>(
+        /// <typeparam name="TValue">The type of the data that will be JSON serialized and stored in the state store.</typeparam>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation succeeded.</returns>
+        public abstract Task<bool> TrySaveStateAsync<TValue>(
             string storeName,
             string key,
             TValue value,
             string etag,
             StateOptions stateOptions = default,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -267,13 +652,13 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="storeName">The name of the state store.</param>
         /// <param name="operations">A list of StateTransactionRequests.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.</returns>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task ExecuteStateTransactionAsync(
             string storeName,
             IReadOnlyList<StateTransactionRequest> operations,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -282,14 +667,14 @@ namespace Dapr.Client
         /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
         public abstract Task DeleteStateAsync(
             string storeName,
             string key,
             StateOptions stateOptions = default,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -300,29 +685,59 @@ namespace Dapr.Client
         /// <param name="key">The state key.</param>
         /// <param name="etag">An ETag.</param>
         /// <param name="stateOptions">A <see cref="StateOptions" />.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
-        public abstract ValueTask<bool> TryDeleteStateAsync(
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
+        public abstract Task<bool> TryDeleteStateAsync(
             string storeName,
             string key,
             string etag,
             StateOptions stateOptions = default,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets the secret value ffrom the secret store.
+        /// Gets the secret value from the secret store.
         /// </summary>
         /// <param name="storeName">Secret store name.</param>
         /// <param name="key">Key for the secret.</param>
-        /// <param name="metadata">An key/value pair that may be consumed by the secret store.  This depends on the secret store used.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="ValueTask{T}" /> that will return the value when the operation has completed.</returns>
-        public abstract ValueTask<Dictionary<string, string>> GetSecretAsync(
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<Dictionary<string, string>> GetSecretAsync(
             string storeName,
             string key,
-            Dictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets all secret values that the application is allowed to access from the secret store.
+        /// </summary>
+        /// <param name="storeName">Secret store name.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<Dictionary<string, Dictionary<string, string>>> GetBulkSecretAsync(
+            string storeName,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            if (!this.disposed)
+            {
+                Dispose(disposing: true);
+                this.disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Disposes the resources associated with the object.
+        /// </summary>
+        /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+        }
     }
 }

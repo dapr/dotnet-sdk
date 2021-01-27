@@ -238,31 +238,6 @@ namespace Dapr.Actors.Runtime
             return addValue;
         }
 
-        public async Task<IEnumerable<string>> GetStateNamesAsync(CancellationToken cancellationToken = default)
-        {
-            // TODO: Get all state names from Dapr once implemented.
-            // var namesFromStateProvider = await this.stateProvider.EnumerateStateNamesAsync(this.actor.Id, cancellationToken);
-            await Task.CompletedTask;
-            var stateNameList = new List<string>();
-
-            var kvPairEnumerator = this.stateChangeTracker.GetEnumerator();
-
-            while (kvPairEnumerator.MoveNext())
-            {
-                switch (kvPairEnumerator.Current.Value.ChangeKind)
-                {
-                    case StateChangeKind.Add:
-                        stateNameList.Add(kvPairEnumerator.Current.Key);
-                        break;
-                    case StateChangeKind.Remove:
-                        stateNameList.Remove(kvPairEnumerator.Current.Key);
-                        break;
-                }
-            }
-
-            return stateNameList;
-        }
-
         public Task ClearCacheAsync(CancellationToken cancellationToken)
         {
             this.stateChangeTracker.Clear();
@@ -326,7 +301,7 @@ namespace Dapr.Actors.Runtime
 
         private sealed class StateMetadata
         {
-            private StateMetadata(object value,     Type type, StateChangeKind changeKind)
+            private StateMetadata(object value, Type type, StateChangeKind changeKind)
             {
                 this.Value = value;
                 this.Type = type;

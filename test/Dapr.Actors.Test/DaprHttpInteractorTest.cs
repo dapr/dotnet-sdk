@@ -198,11 +198,10 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public void Call_WithApiTokenEnvVar()
+        public void Call_WithApiTokenSet()
         {
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token");
             var handler = new TestHttpClientHandler();
-            var httpInteractor = new DaprHttpInteractor(handler);
+            var httpInteractor = new DaprHttpInteractor(handler, apiToken: "test_token");
             var actorType = "ActorType_Test";
             var actorId = "ActorId_Test";
             var timerName = "TimerName";
@@ -216,7 +215,7 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public void Call_WithoutApiTokenEnvVar()
+        public void Call_WithoutApiToken()
         {
             var handler = new TestHttpClientHandler();
             var httpInteractor = new DaprHttpInteractor(handler);
@@ -255,7 +254,7 @@ namespace Dapr.Actors.Test
             };
 
             entry.Completion.SetResult(message);
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprException>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprApiException>();
         }
 
         [Fact]
@@ -273,7 +272,7 @@ namespace Dapr.Actors.Test
             var message = new HttpResponseMessage(HttpStatusCode.NotFound);
 
             entry.Completion.SetResult(message);
-            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprException>();
+            await FluentActions.Awaiting(async () => await task).Should().ThrowAsync<DaprApiException>();
         }
 
         [Fact]

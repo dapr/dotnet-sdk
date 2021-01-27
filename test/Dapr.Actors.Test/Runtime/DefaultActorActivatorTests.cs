@@ -1,10 +1,11 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
 using System;
 using System.Threading.Tasks;
+using Dapr.Actors.Client;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -17,7 +18,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = new DefaultActorActivator();
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, new DaprHttpInteractor());
             var state = await activator.CreateAsync(host);
             Assert.IsType<TestActor>(state.Actor);
         }
@@ -27,7 +28,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = new DefaultActorActivator();
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, new DaprHttpInteractor());
             var actor = new TestActor(host);
             var state = new ActorActivatorState(actor);
 
@@ -39,7 +40,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = new DefaultActorActivator();
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(DisposableActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(DisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, new DaprHttpInteractor());
             var actor = new DisposableActor(host);
             var state = new ActorActivatorState(actor);
 
@@ -53,7 +54,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = new DefaultActorActivator();
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(AsyncDisposableActor)), ActorId.CreateRandom(), NullLoggerFactory.Instance);
+            var host = new ActorHost(ActorTypeInformation.Get(typeof(AsyncDisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, new DaprHttpInteractor());
             var actor = new AsyncDisposableActor(host);
             var state = new ActorActivatorState(actor);
 
@@ -68,7 +69,7 @@ namespace Dapr.Actors.Runtime
 
         private class TestActor : Actor, ITestActor
         {
-            public TestActor(ActorHost host) 
+            public TestActor(ActorHost host)
                 : base(host)
             {
             }
@@ -76,7 +77,7 @@ namespace Dapr.Actors.Runtime
 
         private class DisposableActor : Actor, ITestActor, IDisposable
         {
-            public DisposableActor(ActorHost host) 
+            public DisposableActor(ActorHost host)
                 : base(host)
             {
             }
@@ -91,7 +92,7 @@ namespace Dapr.Actors.Runtime
 
         private class AsyncDisposableActor : Actor, ITestActor, IAsyncDisposable
         {
-            public AsyncDisposableActor(ActorHost host) 
+            public AsyncDisposableActor(ActorHost host)
                 : base(host)
             {
             }

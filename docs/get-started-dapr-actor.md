@@ -1,7 +1,7 @@
 # Getting started with Actors
 
 ## Prerequistes
-* [.Net Core SDK 3.0](https://dotnet.microsoft.com/download)
+* [.Net Core SDK 3.1 or newer](https://dotnet.microsoft.com/download)
 * [Dapr CLI](https://github.com/dapr/cli)
 * [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
 
@@ -38,7 +38,7 @@ Actor interface is defined with the below requirements:
 
 ```bash
 # Create Actor Interfaces
-dotnet new classlib -f netcoreapp3.1 -o MyActor.Interfaces
+dotnet new classlib -o MyActor.Interfaces
 
 cd MyActor.Interfaces
 
@@ -90,7 +90,7 @@ Dapr uses ASP.NET web service to host Actor service. This section will implement
 
 ```bash
 # Create ASP.Net Web service to host Dapr actor
-dotnet new webapi -f netcoreapp3.1 -o MyActorService
+dotnet new webapi -o MyActorService
 
 cd MyActorService
 
@@ -119,10 +119,13 @@ namespace MyActorService
 {
     internal class MyActor : Actor, IMyActor, IRemindable
     {
+        // The constructor must accept ActorHost as a parameter, and can also accept additional
+        // parameters that will be retrieved from the dependency injection container
+        //
         /// <summary>
         /// Initializes a new instance of MyActor
         /// </summary>
-         /// <param name="host">The <see cref="ActorHost"/> that will host this actor instance.</param>
+        /// <param name="host">The Dapr.Actors.Runtime.ActorHost that will host this actor instance.</param>
         public MyActor(ActorHost host)
             : base(host)
         {
@@ -212,7 +215,7 @@ namespace MyActorService
         {
             return this.RegisterTimerAsync(
                 "MyTimer",                  // The name of the timer
-                this.OnTimerCallBack,       // Timer callback
+                nameof(this.OnTimerCallBack),       // Timer callback
                 null,                       // User state passed to OnTimerCallback()
                 TimeSpan.FromSeconds(5),    // Time to delay before the async callback is first invoked
                 TimeSpan.FromSeconds(5));   // Time interval between invocations of the async callback
@@ -251,74 +254,30 @@ By default, the "type" of the actor as seen by clients is derived from the name 
     }
 ```
 
-### Register Actor to Dapr Runtime
+### Register Actor runtime with ASP.NET Core startup
 
-Register `MyActor` actor type to actor runtime and set the localhost port (`https://localhost:3000`) which Dapr Runtime can call Actor through.
+The Actor runtime is configured through ASP.NET Core `Startup.cs`. 
+
+The runtime uses the ASP.NET Core dependency injection system to register actor types and essential services. This integration is provided through the `AddActors(...)` method call in `ConfigureServices(...)`. Use the delegate passed to `AddActors(...)` to register actor types and configure actor runtime settings. You can register additional types for dependency injection inside `ConfigureServices(...)`. These will be available to be injected into the constructors of your Actor types.
+
+Actors are implemented via HTTP calls with the Dapr runtime. This functionality is part of the application's HTTP processing pipeline and is registered inside `UseEndpoints(...)` inside `Configure(...)`.
+
 
 ```csharp
-        using Dapr.Actors;
-        using Dapr.Actors.AspNetCore;
-        
-        ...
-
-        private const int AppChannelHttpPort = 3000;
-
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .ConfigureServices(services => 
-                {
-                    // Services registered here are available for Actor types to accept in their
-                    // constructor.
-                    services.AddSingleton<BankService>();
-                })
-                .UseActors(options =>
-                {
-                    options.Actors.RegisterActor<MyActor>();
-                })
-                .UseUrls($"http://localhost:{AppChannelHttpPort}/");
-```
-
-### **Optional** - Override Default Actor Settings
-
-Actor Settings are per app.  The settings described [here](https://docs.dapr.io/reference/api/actors_api/) are available on the options and can be modified as below.
-
-The following code extends the previous section to do this.  Please note the values below are an **example** only.
-
-```csharp
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .ConfigureServices(services => 
-                {
-                    // Services registered here are available for Actor types to accept in their
-                    // constructor.
-                    services.AddSingleton<BankService>();
-                })
-                .UseActors(options =>
-                {
-                    options.Actors.RegisterActor<MyActor>();
-                    options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
-                    options.ActorScanInterval = TimeSpan.FromSeconds(35);
-                    options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
-                    options.DrainRebalancedActors = true;
-                })
-                .UseUrls($"http://localhost:{AppChannelHttpPort}/");
-```
-
-
-### Update Startup.cs
-
-```csharp
-    public class Startup
-    {
-        ...
-        
+        // In Startup.cs
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddRouting();
+            // Register actor runtime with DI
+            services.AddActors(options =>
+            {
+                // Register actor types and configure actor settings
+                options.Actors.RegisterActor<MyActor>();
+            });
+
+            // Register additional services for use with actors
+            services.AddSingleton<BankService>();
         }
-        
+
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
@@ -329,10 +288,44 @@ The following code extends the previous section to do this.  Please note the val
             {
                 app.UseHsts();
             }
+
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
+            {
+                // Register actors handlers that interface with the Dapr runtime.
+                endpoints.MapActorsHandlers();
+            });
         }
-    }
 ```
 
+### **Optional** - Override Default Actor Settings
+
+Actor Settings are per app.  The settings described [here](https://docs.dapr.io/reference/api/actors_api/) are available on the options and can be modified as below.
+
+The following code extends the previous section to do this.  Please note the values below are an **example** only.
+
+```csharp
+
+        // In Startup.cs
+        public void ConfigureServices(IServiceCollection services)
+        {
+            // Register actor runtime with DI
+            services.AddActors(options =>
+            {
+                // Register actor types and configure actor settings
+                options.Actors.RegisterActor<MyActor>();
+                
+                options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
+                options.ActorScanInterval = TimeSpan.FromSeconds(35);
+                options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
+                options.DrainRebalancedActors = true;
+            });
+
+            // Register additional services for use with actors
+            services.AddSingleton<BankService>();
+        }
+```
 
 ## STEP 3 - Add a client
 
@@ -342,7 +335,7 @@ Create a simple console app to call the actor service. Dapr SDK provides Actor P
 
 ```bash
 # Create Actor's Client
-dotnet new console -f netcoreapp3.1 -o MyActorClient
+dotnet new console -o MyActorClient
 
 cd MyActorClient
 
@@ -413,14 +406,14 @@ namespace MyActorClient
             // Create Actor Proxy instance to invoke the methods defined in the interface
             var proxy = ActorProxy.Create(actorID, actorType);
             // Need to specify the method name and response type explicitly
-            var response = await proxy.InvokeAsync<MyData, string>("SetDataAsync", new MyData()
+            var response = await proxy.InvokeMethodAsync<MyData, string>("SetDataAsync", new MyData()
             {
                 PropertyA = "ValueA",
                 PropertyB = "ValueB",
             });
             Console.WriteLine(response);
 
-            var savedData = await proxy.InvokeAsync<MyData>("GetDataAsync");
+            var savedData = await proxy.InvokeMethodAsync<MyData>("GetDataAsync");
             Console.WriteLine(savedData);
         }
     ...
@@ -434,10 +427,10 @@ In order to validate and debug actor service and client, we need to run actor se
 1. Run Dapr Runtime via Dapr cli
 
    ```bash
-   $ dapr run --app-id myapp --app-port 3000 --dapr-http-port 3500 dotnet run
+   $ dapr run --app-id myapp --app-port 5000 --dapr-http-port 3500 dotnet run
    ```
 
-   After executing MyActorService via Dapr runtime, make sure that application is discovered on port 3000 and actor connection is established successfully.
+   After executing MyActorService via Dapr runtime, make sure that application is discovered on port 5000 and actor connection is established successfully.
 
    ```bash
     INFO[0000] starting Dapr Runtime -- version  -- commit
@@ -445,8 +438,8 @@ In order to validate and debug actor service and client, we need to run actor se
     INFO[0000] standalone mode configured
     INFO[0000] dapr id: myapp
     INFO[0000] loaded component statestore (state.redis)
-    INFO[0000] application protocol: http. waiting on port 3000
-    INFO[0000] application discovered on port 3000
+    INFO[0000] application protocol: http. waiting on port 5000
+    INFO[0000] application discovered on port 5000
     INFO[0000] application configuration loaded
     2019/08/27 14:42:06 redis: connecting to localhost:6379
     2019/08/27 14:42:06 redis: connected to localhost:6379 (localAddr: [::1]:53155, remAddr: [::1]:6379)

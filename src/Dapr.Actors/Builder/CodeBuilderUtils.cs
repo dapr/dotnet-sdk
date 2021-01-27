@@ -33,7 +33,7 @@ namespace Dapr.Actors.Builder
             DmAttrIsRequiredPropInfo = dmAttrType.GetProperty("IsRequired");
         }
 
-        public static AssemblyBuilder CreateAssemblyBuilder(string assemblyName, bool saveOnDisk = false)
+        public static AssemblyBuilder CreateAssemblyBuilder(string assemblyName)
         {
              return AssemblyBuilder.DefineDynamicAssembly(
                 new AssemblyName(assemblyName),
@@ -42,8 +42,7 @@ namespace Dapr.Actors.Builder
 
         public static ModuleBuilder CreateModuleBuilder(
             AssemblyBuilder assemblyBuilder,
-            string moduleName,
-            bool saveOnDisk = false)
+            string moduleName)
         {
             return assemblyBuilder.DefineDynamicModule(moduleName);
         }

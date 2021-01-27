@@ -15,7 +15,7 @@ namespace Dapr.Actors
     {
         /// <summary>
         /// Creates an <see cref="ActorProxy"/> that implements an actor interface for the actor using the
-        ///     <see cref="ActorProxyFactory.CreateActorProxy(ActorId, Type, string)"/>
+        ///     <see cref="ActorProxyFactory.CreateActorProxy(Dapr.Actors.ActorId, System.Type, string, ActorProxyOptions)"/>
         /// method.
         /// </summary>
         /// <param name="actorInterfaceType">Actor interface for the created <see cref="ActorProxy"/> to implement.</param>

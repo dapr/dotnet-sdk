@@ -202,17 +202,6 @@ namespace Dapr.Actors.Runtime
         Task<T> AddOrUpdateStateAsync<T>(string stateName, T addValue, Func<string, T, T> updateValueFactory, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Creates an enumerable of all actor state names for current actor.
-        /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>
-        /// A task that represents the asynchronous enumeration operation. The value of TResult
-        /// parameter is an enumerable of all actor state names.
-        /// </returns>
-        /// <exception cref="OperationCanceledException">The operation was canceled.</exception>
-        Task<IEnumerable<string>> GetStateNamesAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Clears all the cached actor states and any operation(s) performed on <see cref="IActorStateManager"/>
         /// since last state save operation.
         /// </summary>
