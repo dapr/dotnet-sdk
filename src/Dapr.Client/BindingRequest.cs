@@ -34,12 +34,12 @@ namespace Dapr.Client
         /// Gets the name of the binding.
         /// </summary>
         /// <value></value>
-        public string BindingName { get; set;  }
+        public string BindingName { get; }
 
         /// <summary>
         /// Gets the type of operation to perform on the binding.
         /// </summary>
-        public string Operation { get; set; }
+        public string Operation { get; }
 
         /// <summary>
         /// Gets or sets the binding request payload.
@@ -47,7 +47,7 @@ namespace Dapr.Client
         public ReadOnlyMemory<byte> Data { get; set; }
 
         /// <summary>
-        /// Gets a the metadata; a collection of metadata key-value pairs that will be provided to the binding. 
+        /// Gets the metadata; a collection of metadata key-value pairs that will be provided to the binding. 
         /// The valid metadata keys and values are determined by the type of binding used.
         /// </summary>
         public Dictionary<string, string> Metadata { get; }

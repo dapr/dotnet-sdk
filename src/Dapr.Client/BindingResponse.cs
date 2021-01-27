@@ -38,11 +38,11 @@ namespace Dapr.Client
         /// <summary>
         /// Gets the response payload.
         /// </summary>
-        public ReadOnlyMemory<byte> Data { get; set; }
+        public ReadOnlyMemory<byte> Data { get; }
 
         /// <summary>
         /// Gets the response metadata.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; set; }
+        public IReadOnlyDictionary<string, string> Metadata { get; }
     }
 }
