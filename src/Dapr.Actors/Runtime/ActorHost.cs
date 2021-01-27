@@ -36,7 +36,7 @@ namespace Dapr.Actors.Runtime
             this.LoggerFactory = loggerFactory;
             this.ProxyFactory = proxyFactory;
             this.DaprInteractor = daprInteractor;
-            this.StateProvider = new DaprStateProvider(jsonSerializerOptions, this.DaprInteractor);
+            this.StateProvider = new DaprStateProvider(this.DaprInteractor, jsonSerializerOptions);
         }
 
         /// <summary>
