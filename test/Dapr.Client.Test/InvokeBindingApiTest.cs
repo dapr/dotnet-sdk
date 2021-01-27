@@ -95,6 +95,66 @@ namespace Dapr.Client.Test
             Assert.Equal("null", json);
         }
 
+        [Fact]
+        public async Task InvokeBindingAsync_WithRequest_ValidateRequest()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var payload = new InvokeRequest() { RequestParameter = "Hello " };
+            var request = new BindingRequest("test", "create")
+            {
+                Data = JsonSerializer.SerializeToUtf8Bytes(payload, daprClient.JsonSerializerOptions),
+                Metadata = 
+                {
+                    { "key1", "value1" },
+                    { "key2", "value2" }
+                }
+            };
+
+            var task = daprClient.InvokeBindingAsync(request);
+
+            // Get Request and validate
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+
+            var gRpcRequest = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
+            gRpcRequest.Name.Should().Be("test");
+            gRpcRequest.Metadata.Count.Should().Be(2);
+            gRpcRequest.Metadata.Keys.Contains("key1").Should().BeTrue();
+            gRpcRequest.Metadata.Keys.Contains("key2").Should().BeTrue();
+            gRpcRequest.Metadata["key1"].Should().Be("value1");
+            gRpcRequest.Metadata["key2"].Should().Be("value2");
+
+            var json = gRpcRequest.Data.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, daprClient.JsonSerializerOptions);
+            typeFromRequest.RequestParameter.Should().Be("Hello ");
+
+            var gRpcResponse = new Autogen.Grpc.v1.InvokeBindingResponse()
+            {
+                Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, daprClient.JsonSerializerOptions)),
+                Metadata = 
+                {
+                    { "anotherkey", "anothervalue" },
+                }
+            };
+            var streamContent = await GrpcUtils.CreateResponseContent(gRpcResponse);
+            entry.Completion.SetResult(GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent));
+
+            var response = await task;
+            Assert.Same(request, response.Request);
+            Assert.Equal("red", JsonSerializer.Deserialize<Widget>(response.Data.Span, daprClient.JsonSerializerOptions).Color);
+            Assert.Collection(
+                response.Metadata, 
+                kvp => 
+                { 
+                    Assert.Equal("anotherkey", kvp.Key); 
+                    Assert.Equal("anothervalue", kvp.Value); 
+                });
+        }
+
 
         [Fact]
         public async Task InvokeBindingAsync_WithCancelledToken()
