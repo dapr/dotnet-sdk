@@ -42,19 +42,23 @@ namespace Dapr.Actors.Runtime
         private readonly ActorMethodInfoMap actorMethodInfoMap;
 
         private readonly ILogger logger;
+        private IDaprInteractor daprInteractor { get; }
+
 
         internal ActorManager(
             ActorRegistration registration,
             ActorActivator activator, 
             JsonSerializerOptions jsonSerializerOptions, 
             ILoggerFactory loggerFactory,
-            IActorProxyFactory proxyFactory)
+            IActorProxyFactory proxyFactory,
+            IDaprInteractor daprInteractor)
         {
             this.registration = registration;
             this.activator = activator;
             this.jsonSerializerOptions = jsonSerializerOptions;
             this.loggerFactory = loggerFactory;
             this.proxyFactory = proxyFactory;
+            this.daprInteractor = daprInteractor;
 
             // map for remoting calls.
             this.methodDispatcherMap = new ActorMethodDispatcherMap(this.registration.Type.InterfaceTypes);
@@ -259,7 +263,7 @@ namespace Dapr.Actors.Runtime
         private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory);
+            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.daprInteractor);
             var state =  await this.activator.CreateAsync(host);
             this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             return state;

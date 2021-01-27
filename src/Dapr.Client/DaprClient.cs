@@ -12,6 +12,7 @@ namespace Dapr.Client
     using System.Threading;
     using System.Threading.Tasks;
     using Google.Protobuf;
+    using Grpc.Core;
 
     /// <summary>
     /// <para>
@@ -51,6 +52,7 @@ namespace Dapr.Client
         /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used.
         /// </param>
         /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
+        /// <param name="daprApiToken">The token to be added to all request headers to Dapr runtime.</param>
         /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
         /// <remarks>
         /// <para>
@@ -59,9 +61,13 @@ namespace Dapr.Client
         /// a single client object can be reused for the life of the application.
         /// </para>
         /// </remarks>
-        public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null)
+        public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null, string daprApiToken = null)
         {
-            var handler = new InvocationHandler(){ InnerHandler = new HttpClientHandler(), };
+            var handler = new InvocationHandler()
+            {
+                InnerHandler = new HttpClientHandler(),
+                DaprApiToken = daprApiToken
+            };
 
             if (daprEndpoint is string)
             {
@@ -84,6 +90,16 @@ namespace Dapr.Client
             }
 
             return httpClient;
+        }
+
+        internal static KeyValuePair<string, string> GetDaprApiTokenHeader(string apiToken)
+        {
+            KeyValuePair<string, string> apiTokenHeader = default;
+            if(!string.IsNullOrWhiteSpace(apiToken))
+            {
+                apiTokenHeader = new KeyValuePair<string, string>("dapr-api-token", apiToken);
+            }
+            return apiTokenHeader;
         }
 
         /// <summary>

@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Dapr.Client
 {
-    public class InvocationHandlerTests 
+    public class InvocationHandlerTests
     {
         [Fact]
         public void DaprEndpoint_InvalidScheme()

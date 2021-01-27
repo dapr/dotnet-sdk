@@ -41,12 +41,14 @@ namespace Dapr.Actors.Runtime
             // Revisit this if actor initialization becomes a significant source of delay for large projects.
             foreach (var actor in options.Actors)
             {
+                var daprInteractor = new DaprHttpInteractor(apiToken:options.DaprApiToken);
                 this.actorManagers[actor.Type.ActorTypeName] = new ActorManager(
                     actor,
                     actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),
                     this.options.JsonSerializerOptions,
                     loggerFactory, 
-                    proxyFactory);
+                    proxyFactory,
+                    daprInteractor);
             }
         }
 
@@ -54,8 +56,6 @@ namespace Dapr.Actors.Runtime
         /// Gets actor registrations registered with the runtime.
         /// </summary>
         public IReadOnlyList<ActorRegistration> RegisteredActors => this.options.Actors;
-
-        internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor();
 
         internal Task SerializeSettingsAndRegisteredTypes(IBufferWriter<byte> output)
         {

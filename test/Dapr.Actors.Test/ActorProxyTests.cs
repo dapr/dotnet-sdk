@@ -48,10 +48,9 @@ namespace Dapr.Actors.Client
         {
             var factory = new ActorProxyFactory();
             factory.DefaultOptions.JsonSerializerOptions = new JsonSerializerOptions();
-            ActorProxy.DefaultProxyFactory = factory;
 
             var actorId = new ActorId("abc");
-            var proxy = (ActorProxy)ActorProxy.Create(actorId, typeof(ITestActor), "TestActor");
+            var proxy = (ActorProxy)factory.Create(actorId, "TestActor");
 
             Assert.Same(factory.DefaultOptions.JsonSerializerOptions, proxy.JsonSerializerOptions);
         }
@@ -83,10 +82,9 @@ namespace Dapr.Actors.Client
         {
             var factory = new ActorProxyFactory();
             factory.DefaultOptions.JsonSerializerOptions = new JsonSerializerOptions();
-            ActorProxy.DefaultProxyFactory = factory;
 
             var actorId = new ActorId("abc");
-            var proxy = (ActorProxy)ActorProxy.Create<ITestActor>(actorId, "TestActor");
+            var proxy = (ActorProxy)factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
 
             Assert.Same(factory.DefaultOptions.JsonSerializerOptions, proxy.JsonSerializerOptions);
         }

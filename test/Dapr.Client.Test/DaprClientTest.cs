@@ -58,5 +58,20 @@ namespace Dapr.Client
 
             Assert.Contains("The URI scheme of the Dapr endpoint must be http or https.", ex.Message);
         }
+
+        [Fact]
+        public void GetDaprApiTokenHeader_ApiTokenSet_SetsApiTokenHeader()
+        {
+            var token = "test_token";
+            var entry = DaprClient.GetDaprApiTokenHeader(token);
+            Assert.Equal("test_token", entry.Value);
+        }
+
+        [Fact]
+        public void GetDaprApiTokenHeader_ApiTokenNotSet_NullApiTokenHeader()
+        {
+            var entry = DaprClient.GetDaprApiTokenHeader(null);
+            Assert.Equal(default, entry);
+        }
     }
 }

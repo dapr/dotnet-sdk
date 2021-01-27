@@ -6,6 +6,7 @@
 namespace Dapr.Actors.Client
 {
     using System;
+    using System.Net.Http;
     using Dapr.Actors.Builder;
     using Dapr.Actors.Communication.Client;
 
@@ -14,23 +15,27 @@ namespace Dapr.Actors.Client
     /// </summary>
     public class ActorProxyFactory : IActorProxyFactory
     {
-        private readonly IDaprInteractor daprInteractor;
-        private ActorProxyOptions defaultOptions = new ActorProxyOptions();
+        private ActorProxyOptions defaultOptions;
+        private readonly HttpClientHandler handler;
 
         /// <inheritdoc/>
         public ActorProxyOptions DefaultOptions
         {
             get => this.defaultOptions;
-            set => this.defaultOptions = value ??
+            set
+            {
+                this.defaultOptions = value ??
                     throw new ArgumentNullException(nameof(DefaultOptions), $"{nameof(ActorProxyFactory)}.{nameof(DefaultOptions)} cannot be null");
+            }
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
         /// </summary>
-        public ActorProxyFactory()
+        public ActorProxyFactory(ActorProxyOptions options = null, HttpClientHandler handler = null)
         {
-            this.daprInteractor = new DaprHttpInteractor();
+            this.defaultOptions = options ?? new ActorProxyOptions();
+            this.handler = handler;
         }
 
         /// <inheritdoc/>
@@ -42,7 +47,8 @@ namespace Dapr.Actors.Client
         public ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null)
         {
             var actorProxy = new ActorProxy();
-            var nonRemotingClient = new ActorNonRemotingClient(this.daprInteractor);
+            var daprInteractor = new DaprHttpInteractor(this.handler, this.DefaultOptions.DaprApiToken);
+            var nonRemotingClient = new ActorNonRemotingClient(daprInteractor);
             actorProxy.Initialize(nonRemotingClient, actorId, actorType, options ?? this.defaultOptions);
 
             return actorProxy;
@@ -51,7 +57,8 @@ namespace Dapr.Actors.Client
         /// <inheritdoc/>
         public object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null)
         {
-            var remotingClient = new ActorRemotingClient(this.daprInteractor);
+            var daprInteractor = new DaprHttpInteractor(this.handler, this.DefaultOptions.DaprApiToken);
+            var remotingClient = new ActorRemotingClient(daprInteractor);
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
             var actorProxy = proxyGenerator.CreateActorProxy();
             actorProxy.Initialize(remotingClient, actorId, actorType, options ?? this.defaultOptions);

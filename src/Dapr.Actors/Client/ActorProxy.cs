@@ -23,7 +23,7 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// The default factory used to create an actor proxy
         /// </summary>
-        public static IActorProxyFactory DefaultProxyFactory = new ActorProxyFactory();
+        public static IActorProxyFactory DefaultProxyFactory { get; } = new ActorProxyFactory();
 
         private ActorRemotingClient actorRemotingClient;
         private ActorNonRemotingClient actorNonRemotingClient;
@@ -45,6 +45,7 @@ namespace Dapr.Actors.Client
 
         internal IActorMessageBodyFactory ActorMessageBodyFactory { get; set; }
         internal JsonSerializerOptions JsonSerializerOptions { get; set; }
+        internal string DaprApiToken;
 
         /// <summary>
         /// Creates a proxy to the actor object that implements an actor interface.
@@ -90,10 +91,11 @@ namespace Dapr.Actors.Client
         /// </summary>
         /// <param name="actorId">Actor Id.</param>
         /// <param name="actorType">Type of actor.</param>
+        /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Actor proxy to interact with remote actor object.</returns>
-        public static ActorProxy Create(ActorId actorId, string actorType)
+        public static ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null)
         {
-            return DefaultProxyFactory.Create(actorId, actorType);
+            return DefaultProxyFactory.Create(actorId, actorType, options);
         }
 
         /// <summary>
@@ -170,6 +172,7 @@ namespace Dapr.Actors.Client
             this.ActorType = actorType;
             this.ActorMessageBodyFactory = client.GetRemotingMessageBodyFactory();
             this.JsonSerializerOptions = options?.JsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            this.DaprApiToken = options?.DaprApiToken;
         }
 
         /// <summary>

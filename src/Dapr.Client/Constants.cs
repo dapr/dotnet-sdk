@@ -9,5 +9,6 @@ namespace Dapr.Client
     {
         public const string ContentTypeApplicationJson = "application/json";
         public const string ContentTypeApplicationGrpc = "application/grpc";
+        public const string DaprApiTokenEnvironmentVariable = "DAPR_API_TOKEN";
     }
 }
