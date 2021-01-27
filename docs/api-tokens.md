@@ -30,4 +30,4 @@ With actors, you can specify the api token using ActorProxyOptions as below:-
 The calls made using the proxy created with the above code will have the request headers with:-
 "dapr-api-token":"your_token"
 
-Alternatively, the user can set an environment variable "DAPR_API_TOKEN" with the token value. In case, the user has specified the token using code as well as the environment variable is set, the value set via code will be used.
+Alternatively, the user can set an environment variable "DAPR_API_TOKEN" with the token value. In case the user has specified the token using code as well as the environment variable is set, the value set via code will be used.

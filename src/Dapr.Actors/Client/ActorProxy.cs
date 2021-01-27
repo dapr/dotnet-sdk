@@ -27,6 +27,7 @@ namespace Dapr.Actors.Client
 
         private ActorRemotingClient actorRemotingClient;
         private ActorNonRemotingClient actorNonRemotingClient;
+        private string daprApiToken;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxy"/> class.
@@ -188,7 +189,7 @@ namespace Dapr.Actors.Client
             this.ActorId = actorId;
             this.ActorType = actorType;
             this.JsonSerializerOptions = options?.JsonSerializerOptions ?? this.JsonSerializerOptions;
-            this.DaprApiToken = options?.DaprApiToken;
+            this.daprApiToken = options?.DaprApiToken;
         }
 
         /// <summary>

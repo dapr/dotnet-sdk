@@ -34,7 +34,7 @@ namespace Dapr.Actors.Runtime
         public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
             var result = new ConditionalValue<T>(false, default);
-            var stringResult = await ActorRuntime.DaprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
+            var stringResult = await ActorRuntime.GetDaprInteractor(actorType).GetStateAsync(actorType, actorId, stateName, cancellationToken);
 
             if (stringResult.Length != 0)
             {
@@ -59,7 +59,7 @@ namespace Dapr.Actors.Runtime
 
         public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
-            var byteResult = await ActorRuntime.DaprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
+            var byteResult = await ActorRuntime.GetDaprInteractor(actorType).GetStateAsync(actorType, actorId, stateName, cancellationToken);
             return byteResult.Length != 0;
         }
 
@@ -133,7 +133,7 @@ namespace Dapr.Actors.Runtime
 
             await writer.FlushAsync();
             var content = Encoding.UTF8.GetString(stream.ToArray());
-            await ActorRuntime.DaprInteractor.SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
+            await ActorRuntime.GetDaprInteractor(actorType).SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
         }
 
         private string GetDaprStateOperation(StateChangeKind changeKind)

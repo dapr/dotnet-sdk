@@ -18,7 +18,7 @@ namespace Dapr.Actors.Test
     {
         public void Dispose()
         {
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "");
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "");
         }
         
         [Fact]
@@ -29,9 +29,8 @@ namespace Dapr.Actors.Test
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
-                HttpClientMessageHandler = handler
             };
-            var factory = new ActorProxyFactory(options);
+            var factory = new ActorProxyFactory(options, handler);
             var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
             var task = proxy.SetCountAsync(1, new CancellationToken());
 
@@ -45,12 +44,11 @@ namespace Dapr.Actors.Test
         {
             var actorId = new ActorId("abc");
             var handler = new TestHttpClientHandler();
-            var options = new ActorProxyOptions
-            {
-                HttpClientMessageHandler = handler
-            };
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token");
-            var factory = new ActorProxyFactory(options);
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "test_token");
+            var factory = new ActorProxyFactory(null, handler);
+            // Verify that if no api token is set but env var is set, then the default
+            // actor proxy options have the token set
+            Assert.Equal("test_token", factory.DefaultOptions.DaprApiToken);
             var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
             var task = proxy.SetCountAsync(1, new CancellationToken());
 
@@ -64,11 +62,7 @@ namespace Dapr.Actors.Test
         {
             var actorId = new ActorId("abc");
             var handler = new TestHttpClientHandler();
-            var options = new ActorProxyOptions
-            {
-                HttpClientMessageHandler = handler
-            };
-            var factory = new ActorProxyFactory(options);
+            var factory = new ActorProxyFactory(null, handler);
             var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
             var task = proxy.SetCountAsync(1, new CancellationToken());
 
@@ -85,9 +79,8 @@ namespace Dapr.Actors.Test
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
-                HttpClientMessageHandler = handler
             };
-            var factory = new ActorProxyFactory(options);
+            var factory = new ActorProxyFactory(options, handler);
             var proxy = factory.Create(actorId, "TestActor");
             var task = proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
 
@@ -99,15 +92,14 @@ namespace Dapr.Actors.Test
         [Fact]
         public void CreateProxyWithNoRemoting_WithApiTokenEnvVarSet()
         {
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "test_token");
             var actorId = new ActorId("abc");
             var handler = new TestHttpClientHandler();
-            var options = new ActorProxyOptions
-            {
-                HttpClientMessageHandler = handler
-            };
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token");
-            var factory = new ActorProxyFactory(options);
+            var factory = new ActorProxyFactory(null, handler);
             var proxy = factory.Create(actorId, "TestActor");
+            // Verify that if no api token is set but env var is set, then the default
+            // actor proxy options have the token set
+            Assert.Equal("test_token", factory.DefaultOptions.DaprApiToken);
             var task = proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
 
             handler.Requests.TryDequeue(out var entry).Should().BeTrue();
@@ -120,11 +112,7 @@ namespace Dapr.Actors.Test
         {
             var actorId = new ActorId("abc");
             var handler = new TestHttpClientHandler();
-            var options = new ActorProxyOptions
-            {
-                HttpClientMessageHandler = handler
-            };
-            var factory = new ActorProxyFactory(options);
+            var factory = new ActorProxyFactory(null, handler);
             var proxy = factory.Create(actorId, "TestActor");
             var task = proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
 

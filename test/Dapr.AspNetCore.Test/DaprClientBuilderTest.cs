@@ -6,8 +6,13 @@ using Xunit;
 
 namespace Dapr.AspNetCore.Test
 {
-    public class DaprClientBuilderTest
+    public class DaprClientBuilderTest : IDisposable
     {
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "");
+        }
+
         [Fact]
         public void DaprClientBuilder_UsesPropertyNameCaseHandlingInsensitiveByDefault()
         {
@@ -61,6 +66,41 @@ namespace Dapr.AspNetCore.Test
             
             var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
             Assert.Equal("The HTTP endpoint must use http or https.", ex.Message);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_SetsApiToken()
+        {
+            var builder = new DaprClientBuilder();
+            builder.UseDaprApiToken("test_token");
+            builder.Build();
+            Assert.Equal("test_token", builder.DaprApiToken);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_SetsNullApiToken()
+        {
+            var builder = new DaprClientBuilder();
+            builder.UseDaprApiToken(null);
+            builder.Build();
+            Assert.Null(builder.DaprApiToken);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_ApiTokenSet_SetsApiTokenHeader()
+        {
+            var builder = new DaprClientBuilder();
+            builder.UseDaprApiToken("test_token");
+            var entry = DaprClient.GetDaprApiTokenHeader(builder.DaprApiToken);
+            Assert.Equal("test_token", entry.Value);
+        }
+
+        [Fact]
+        public void DaprClientBuilder_ApiTokenNotSet_EmptyApiTokenHeader()
+        {
+            var builder = new DaprClientBuilder();
+            var entry = DaprClient.GetDaprApiTokenHeader(builder.DaprApiToken);
+            Assert.Equal(default, entry);
         }
     }
 }

@@ -42,6 +42,8 @@ namespace Dapr.Actors.Runtime
         private readonly ActorMethodInfoMap actorMethodInfoMap;
 
         private readonly ILogger logger;
+        internal IDaprInteractor DaprInteractor { get; }
+
 
         internal ActorManager(
             ActorRegistration registration,
@@ -68,6 +70,7 @@ namespace Dapr.Actors.Runtime
             this.messageBodyFactory = new WrappedRequestMessageFactory();
 
             this.logger = loggerFactory.CreateLogger(this.GetType());
+            this.DaprInteractor = new DaprHttpInteractor();
         }
 
         internal ActorTypeInformation ActorTypeInfo => this.registration.Type;

@@ -12,6 +12,7 @@ namespace Dapr.Client
     using System.Threading;
     using System.Threading.Tasks;
     using Google.Protobuf;
+    using Grpc.Core;
 
     /// <summary>
     /// <para>
@@ -89,6 +90,20 @@ namespace Dapr.Client
             }
 
             return httpClient;
+        }
+
+        internal static KeyValuePair<string, string> GetDaprApiTokenHeader(string apiToken)
+        {
+            if(string.IsNullOrWhiteSpace(apiToken))
+            {
+                apiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
+            }
+            KeyValuePair<string, string> apiTokenHeader = default;
+            if(!string.IsNullOrWhiteSpace(apiToken))
+            {
+                apiTokenHeader = new KeyValuePair<string, string>("dapr-api-token", apiToken);
+            }
+            return apiTokenHeader;
         }
 
         /// <summary>

@@ -20,7 +20,7 @@ namespace Dapr.Client
     {
         public void Dispose()
         {
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "");
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "");
         }
 
         [Fact]
@@ -156,6 +156,7 @@ namespace Dapr.Client
         [Fact]
         public async Task SendAsync_RewritesUri_AndAddsApiToken_WithEnvVarSet()
         {
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "super-duper-secure");
             var uri = "http://bank/accounts/17?";
 
             var capture = new CaptureHandler();
@@ -166,7 +167,6 @@ namespace Dapr.Client
                 DaprEndpoint = "https://localhost:5000",
             };
 
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "super-duper-secure");
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
             var response = await CallSendAsync(handler, request);
 
@@ -180,6 +180,7 @@ namespace Dapr.Client
         [Fact]
         public async Task SendAsync_RewritesUri_WithApiTokenAndEnvVarSet_EnvVarIsIgnored()
         {
+            Environment.SetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable, "super-duper-secure2");
             var uri = "http://bank/accounts/17?";
 
             var capture = new CaptureHandler();
@@ -191,7 +192,6 @@ namespace Dapr.Client
                 DaprApiToken = "super-duper-secure1"
             };
 
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "super-duper-secure2");
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
             var response = await CallSendAsync(handler, request);
 

@@ -45,7 +45,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var task = client.InvokeMethodAsync("app1", "mymethod");
 
@@ -70,7 +70,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var task = client.InvokeMethodAsync(HttpMethod.Put, "app1", "mymethod");
 
@@ -95,7 +95,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var task = client.InvokeMethodAsync<Widget>("app1", "mymethod");
 
@@ -126,7 +126,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var task = client.InvokeMethodAsync<Widget>(HttpMethod.Put, "app1", "mymethod");
 
@@ -157,7 +157,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var data = new Widget()
             {
@@ -190,7 +190,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var data = new Widget()
             {
@@ -223,7 +223,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var data = new Widget()
             {
@@ -257,7 +257,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var data = new Widget()
             {
@@ -433,7 +433,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var request = client.CreateInvokeMethodRequest("test-app", method);
             Assert.Equal(new Uri(expected).AbsoluteUri, request.RequestUri.AbsoluteUri);
@@ -450,7 +450,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var data = new Widget
             {
@@ -478,7 +478,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var request = client.CreateInvokeMethodRequest("test-app", "test");
             var task = client.InvokeMethodWithResponseAsync(request);
@@ -526,7 +526,7 @@ namespace Dapr.Client.Test
                 httpClient,
                 new Uri("https://test-endpoint:3501"),
                 jsonSerializerOptions,
-                null);
+                default);
 
             var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => 

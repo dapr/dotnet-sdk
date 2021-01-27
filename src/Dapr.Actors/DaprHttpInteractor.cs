@@ -28,25 +28,19 @@ namespace Dapr.Actors
         private readonly JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
         private readonly string daprPort;
-        private readonly IReadOnlyList<DelegatingHandler> delegateHandlers;
-        private readonly ClientSettings clientSettings;
-        private readonly HttpClientHandler innerHandler;
+        private static HttpClientHandler innerHandler = new HttpClientHandler();
         private HttpClient httpClient = null;
         private bool disposed = false;
         private string daprApiToken;
 
         public DaprHttpInteractor(
-            HttpClientHandler innerHandler = null,
-            ClientSettings clientSettings = null,
-            string apiToken = null,
-            params DelegatingHandler[] delegateHandlers)
+            HttpClientHandler clientHandler = null,
+            string apiToken = null)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
             this.daprPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? Constants.DaprDefaultPort;
 
-            this.innerHandler = innerHandler ?? new HttpClientHandler();
-            this.delegateHandlers = delegateHandlers;
-            this.clientSettings = clientSettings;
+            innerHandler = clientHandler ?? new HttpClientHandler();
             this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
         }
@@ -439,25 +433,7 @@ namespace Dapr.Actors
 
         private HttpClient CreateHttpClient()
         {
-            // Chain Delegating Handlers.
-            HttpMessageHandler pipeline = this.innerHandler;
-            if (this.delegateHandlers != null)
-            {
-                for (var i = this.delegateHandlers.Count - 1; i >= 0; i--)
-                {
-                    var handler = this.delegateHandlers[i];
-                    handler.InnerHandler = pipeline;
-                    pipeline = handler;
-                }
-            }
-
-            var httpClientInstance = new HttpClient(pipeline, true);
-            if (this.clientSettings?.ClientTimeout != null)
-            {
-                httpClientInstance.Timeout = (TimeSpan)this.clientSettings.ClientTimeout;
-            }
-
-            return httpClientInstance;
+            return new HttpClient(innerHandler, false);
         }
 
         private void AddDaprApiTokenHeader(HttpRequestMessage request)
@@ -466,13 +442,6 @@ namespace Dapr.Actors
             {
                 request.Headers.Add("dapr-api-token", this.daprApiToken);
                 return;
-            }
-
-            // Check if the env variable DAPR_API_TOKEN is set and use it as the default value
-            var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-            if (!string.IsNullOrWhiteSpace(apiToken))
-            {
-                request.Headers.Add("dapr-api-token", apiToken);
             }
         }
 
