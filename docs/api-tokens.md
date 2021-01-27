@@ -26,6 +26,21 @@ With actors, you can specify the api token using ActorProxyOptions as below:-
     // Making calls without Remoting, this shows method invocation using InvokeMethodAsync methods, the method name and its payload is provided as arguments to InvokeMethodAsync methods.
     var nonRemotingProxy = factory.Create(actorId, "DemoActor");
 ```
+You need to configure the token in the actor itself as below:-
+```
+.....
+
+    public void ConfigureServices(IServiceCollection services)
+    {
+        ....
+        services.AddActors(options =>
+        {
+            options.DaprApiToken = "your_token";
+            options.Actors.RegisterActor<YourActor>();
+        });
+        ....
+    }
+```
 
 The calls made using the proxy created with the above code will have the request headers with:-
 "dapr-api-token":"your_token"
