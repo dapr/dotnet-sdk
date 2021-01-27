@@ -12,6 +12,7 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Dapr.Actors.Client;
     using Microsoft.Extensions.Logging;
 
     /// <summary>
@@ -24,12 +25,14 @@ namespace Dapr.Actors.Runtime
         private readonly ActorRuntimeOptions options;
         private readonly ILogger logger;
         private readonly ActorActivatorFactory activatorFactory;
+        private readonly IActorProxyFactory proxyFactory;
 
-        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory)
+        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory, IActorProxyFactory proxyFactory)
         {
             this.options = options;
             this.logger = loggerFactory.CreateLogger(this.GetType());
             this.activatorFactory = activatorFactory;
+            this.proxyFactory = proxyFactory;
 
             // Loop through actor registrations and create the actor manager for each one. 
             // We do this up front so that we can catch initialization errors early, and so
@@ -38,10 +41,14 @@ namespace Dapr.Actors.Runtime
             // Revisit this if actor initialization becomes a significant source of delay for large projects.
             foreach (var actor in options.Actors)
             {
+                var daprInteractor = new DaprHttpInteractor(apiToken:options.DaprApiToken);
                 this.actorManagers[actor.Type.ActorTypeName] = new ActorManager(
-                    actor, 
-                    actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type), 
-                    loggerFactory);
+                    actor,
+                    actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),
+                    this.options.JsonSerializerOptions,
+                    loggerFactory, 
+                    proxyFactory,
+                    daprInteractor);
             }
         }
 
@@ -49,8 +56,6 @@ namespace Dapr.Actors.Runtime
         /// Gets actor registrations registered with the runtime.
         /// </summary>
         public IReadOnlyList<ActorRegistration> RegisteredActors => this.options.Actors;
-
-        internal static IDaprInteractor DaprInteractor => new DaprHttpInteractor();
 
         internal Task SerializeSettingsAndRegisteredTypes(IBufferWriter<byte> output)
         {
@@ -130,7 +135,7 @@ namespace Dapr.Actors.Runtime
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, TimerName: {Timer}", actorTypeName, actorId, timerName))
             {
-                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), timerName, requestBodyStream, cancellationToken);
+                return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), requestBodyStream, cancellationToken);
             }
         }
 

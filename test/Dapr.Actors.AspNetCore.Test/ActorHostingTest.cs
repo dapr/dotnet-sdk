@@ -4,8 +4,9 @@
 // ------------------------------------------------------------
 
 using System.Linq;
+using System.Text.Json;
+using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -16,18 +17,16 @@ namespace Dapr.Actors.AspNetCore
         [Fact]
         public void CanRegisterActorsInSingleCalls()
         {
-            var builder = new WebHostBuilder();
-            builder.UseActors(options =>
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
             {
                 options.Actors.RegisterActor<TestActor1>();
                 options.Actors.RegisterActor<TestActor2>();
             });
             
-            // Configuring the HTTP pipeline is required. It's ok if it's empty.
-            builder.Configure(_ => {});
-
-            var host = builder.Build();
-            var runtime = host.Services.GetRequiredService<ActorRuntime>();
+            var runtime = services.BuildServiceProvider().GetRequiredService<ActorRuntime>();
 
             Assert.Collection(
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
@@ -38,27 +37,47 @@ namespace Dapr.Actors.AspNetCore
         [Fact]
         public void CanRegisterActorsInMultipleCalls()
         {
-            var builder = new WebHostBuilder();
-            builder.UseActors(options =>
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
             {
                 options.Actors.RegisterActor<TestActor1>();
             });
             
-            builder.UseActors(options =>
+            services.AddActors(options =>
             {
                 options.Actors.RegisterActor<TestActor2>();
             });
 
-            // Configuring the HTTP pipeline is required. It's ok if it's empty.
-            builder.Configure(_ => {});
-
-            var host = builder.Build();
-            var runtime = host.Services.GetRequiredService<ActorRuntime>();
+            var runtime = services.BuildServiceProvider().GetRequiredService<ActorRuntime>();
 
             Assert.Collection(
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1)).ActorTypeName, t),
                 t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2)).ActorTypeName, t));
+        }
+
+        [Fact]
+        public void CanAccessProxyFactoryWithCustomJsonOptions()
+        {
+            var jsonOptions = new JsonSerializerOptions();
+
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
+            {
+                options.JsonSerializerOptions = jsonOptions;
+            });
+            
+            services.AddActors(options =>
+            {
+                options.Actors.RegisterActor<TestActor2>();
+            });
+
+            var factory = (ActorProxyFactory)services.BuildServiceProvider().GetRequiredService<IActorProxyFactory>();
+            Assert.Same(jsonOptions, factory.DefaultOptions.JsonSerializerOptions);
         }
 
         private interface ITestActor : IActor

@@ -5,7 +5,8 @@
 
 namespace Dapr.Actors.Runtime
 {
-    using System;
+    using System.Text.Json;
+    using Dapr.Actors.Client;
     using Microsoft.Extensions.Logging;
 
     /// <summary>
@@ -18,16 +19,24 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <param name="actorTypeInfo">The type information of the Actor.</param>
         /// <param name="id">The id of the Actor instance.</param>
+        /// <param name="jsonSerializerOptions">The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization.</param>
         /// <param name="loggerFactory">The logger factory.</param>
-        public ActorHost(
+        /// <param name="proxyFactory">The <see cref="ActorProxyFactory" />.</param>
+        /// <param name="daprInteractor">The <see cref="IDaprInteractor" />.</param>
+        internal ActorHost(
             ActorTypeInformation actorTypeInfo,
             ActorId id,
-            ILoggerFactory loggerFactory)
+            JsonSerializerOptions jsonSerializerOptions,
+            ILoggerFactory loggerFactory,
+            IActorProxyFactory proxyFactory,
+            IDaprInteractor daprInteractor)
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.Id = id;
             this.LoggerFactory = loggerFactory;
-            this.StateProvider = new DaprStateProvider();
+            this.ProxyFactory = proxyFactory;
+            this.DaprInteractor = daprInteractor;
+            this.StateProvider = new DaprStateProvider(this.DaprInteractor, jsonSerializerOptions);
         }
 
         /// <summary>
@@ -40,11 +49,23 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public ActorId Id { get; }
 
-        internal DaprStateProvider StateProvider { get; }
-
         /// <summary>
         /// Gets the LoggerFactory for actor service
         /// </summary>
         public ILoggerFactory LoggerFactory { get; }
+
+        /// <summary>
+        /// Gets the <see cref="DaprStateProvider" />.
+        /// </summary>
+        public JsonSerializerOptions JsonSerializerOptions { get; }
+
+        /// <summary>
+        /// Gets the <see cref="IActorProxyFactory" />.
+        /// </summary>
+        public IActorProxyFactory ProxyFactory { get; }
+
+        internal DaprStateProvider StateProvider { get; }
+
+        internal IDaprInteractor DaprInteractor { get; set; }
     }
 }

@@ -13,7 +13,7 @@ using Xunit.Sdk;
 
 namespace Dapr.Actors.AspNetCore.IntegrationTest
 {
-    public class CloudEventsIntegrationTest
+    public class ActivationTests
     {
         private readonly JsonSerializerOptions options = new JsonSerializerOptions()
         {

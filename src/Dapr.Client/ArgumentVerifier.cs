@@ -42,7 +42,7 @@ namespace Dapr.Client
 
             if (string.IsNullOrEmpty(value))
             {
-                throw new ArgumentException("The value cannot be null or empty", nameof(name));
+                throw new ArgumentException("The value cannot be null or empty", name);
             }
         }
     }

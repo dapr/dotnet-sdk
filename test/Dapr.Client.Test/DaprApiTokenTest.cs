@@ -17,13 +17,13 @@ namespace Dapr.Client.Test
     public class DaprApiTokenTest
     {
         [Fact]
-        public async Task DaprCall_WithApiTokenEnvVar()
+        public async Task DaprCall_WithApiTokenSet()
         {
             // Configure Client
-            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "test_token");
             var httpClient = new TestHttpClient();
             var daprClient = new DaprClientBuilder()
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .UseDaprApiToken("test_token")
                 .Build();
 
             var task = daprClient.GetSecretAsync("testStore", "test_key");
@@ -38,7 +38,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task DaprCall_WithoutApiTokenEnvVar()
+        public async Task DaprCall_WithoutApiToken()
         {
             // Configure Client
             var httpClient = new TestHttpClient();

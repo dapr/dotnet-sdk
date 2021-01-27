@@ -14,6 +14,7 @@ namespace Dapr.Actors.Runtime
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
+    using Dapr.Actors.Client;
     using Dapr.Actors.Communication;
     using Microsoft.Extensions.Logging;
 
@@ -26,11 +27,13 @@ namespace Dapr.Actors.Runtime
         private readonly ActorRegistration registration;
         private readonly ActorActivator activator;
         private readonly ILoggerFactory loggerFactory;
+        private readonly IActorProxyFactory proxyFactory;
         private readonly ConcurrentDictionary<ActorId, ActorActivatorState> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMethodContext timerMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
         private readonly IActorMessageBodyFactory messageBodyFactory;
+        private readonly JsonSerializerOptions jsonSerializerOptions;
 
         // method dispatchermap used by remoting calls.
         private readonly ActorMethodDispatcherMap methodDispatcherMap;
@@ -39,12 +42,23 @@ namespace Dapr.Actors.Runtime
         private readonly ActorMethodInfoMap actorMethodInfoMap;
 
         private readonly ILogger logger;
+        private IDaprInteractor daprInteractor { get; }
 
-        internal ActorManager(ActorRegistration registration, ActorActivator activator, ILoggerFactory loggerFactory)
+
+        internal ActorManager(
+            ActorRegistration registration,
+            ActorActivator activator, 
+            JsonSerializerOptions jsonSerializerOptions, 
+            ILoggerFactory loggerFactory,
+            IActorProxyFactory proxyFactory,
+            IDaprInteractor daprInteractor)
         {
             this.registration = registration;
             this.activator = activator;
+            this.jsonSerializerOptions = jsonSerializerOptions;
             this.loggerFactory = loggerFactory;
+            this.proxyFactory = proxyFactory;
+            this.daprInteractor = daprInteractor;
 
             // map for remoting calls.
             this.methodDispatcherMap = new ActorMethodDispatcherMap(this.registration.Type.InterfaceTypes);
@@ -83,7 +97,7 @@ namespace Dapr.Actors.Runtime
             }
 
             // Call the method on the method dispatcher using the Func below.
-            var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId, actorMessageHeader.MethodId);
+            var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId);
 
             // Create a Func to be invoked by common method.
             async Task<Tuple<string, byte[]>> RequestFunc(Actor actor, CancellationToken ct)
@@ -131,7 +145,7 @@ namespace Dapr.Actors.Runtime
                 {
                     // deserialize using stream.
                     var type = parameters[0].ParameterType;
-                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type);
+                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
                     awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
                 }
                 else
@@ -161,7 +175,7 @@ namespace Dapr.Actors.Runtime
             // Serialize result if it has result (return type was not just Task.)
             if (methodInfo.ReturnType.Name != typeof(Task).Name)
             {
-                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType());
+                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType(), jsonSerializerOptions);
             }
         }
 
@@ -189,7 +203,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        internal async Task FireTimerAsync(ActorId actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+        internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
              var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
 
@@ -249,13 +263,13 @@ namespace Dapr.Actors.Runtime
         private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-            var host = new ActorHost(this.ActorTypeInfo, actorId, this.loggerFactory);
+            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.daprInteractor);
             var state =  await this.activator.CreateAsync(host);
             this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             return state;
         }
 
-        internal async ValueTask DeactivateActorAsync(ActorId actorId)
+        internal async Task DeactivateActorAsync(ActorId actorId)
         {
             if (this.activeActors.TryRemove(actorId, out var deactivatedActor))
             {
@@ -263,7 +277,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        private async ValueTask DeactivateActorCore(ActorActivatorState state)
+        private async Task DeactivateActorCore(ActorActivatorState state)
         {
             try
             {
@@ -276,7 +290,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        private async ValueTask DeleteActorAsync(ActorActivatorState state)
+        private async Task DeleteActorAsync(ActorActivatorState state)
         {
             this.logger.LogDebug("Deleting Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, state.Actor.Id);
             await this.activator.DeleteAsync(state);
