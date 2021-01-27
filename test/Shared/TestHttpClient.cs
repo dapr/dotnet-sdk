@@ -73,6 +73,11 @@ namespace Dapr
 
                 this.Completion.SetResult(response);
             }
+
+            public void Throw(Exception exception)
+            {
+                this.Completion.SetException(exception);
+            }
         }
 
         private class TestHttpClientHandler : HttpMessageHandler

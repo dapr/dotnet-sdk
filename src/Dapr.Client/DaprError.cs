@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr.Actors
+namespace Dapr
 {
     /// <summary>
     /// The REST API operations for Dapr runtime return standard HTTP status codes. This type defines the additional

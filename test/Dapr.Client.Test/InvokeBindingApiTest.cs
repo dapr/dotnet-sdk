@@ -7,12 +7,17 @@ namespace Dapr.Client.Test
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
+    using Google.Protobuf;
+    using Grpc.Core;
     using Grpc.Net.Client;
+    using Moq;
     using Xunit;
 
     public class InvokeBindingApiTest
@@ -71,6 +76,27 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task InvokeBindingAsync_WithNullPayload_ValidateRequest()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", null);
+
+            // Get Request and validate                     
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
+            request.Name.Should().Be("test");
+            request.Metadata.Count.Should().Be(0);
+            var json = request.Data.ToStringUtf8();
+            Assert.Equal("null", json);
+        }
+
+
+        [Fact]
         public async Task InvokeBindingAsync_WithCancelledToken()
         {
             // Configure Client
@@ -95,9 +121,60 @@ namespace Dapr.Client.Test
                 .Should().ThrowAsync<OperationCanceledException>();
         }
 
+        [Fact]
+        public async Task InvokeBindingAsync_WrapsRpcException()
+        {
+            var client = new MockClient();
+
+            var rpcStatus = new Status(StatusCode.Internal, "not gonna work");
+            var rpcException = new RpcException(rpcStatus, new Metadata(), "not gonna work");
+
+            client.Mock
+                .Setup(m => m.InvokeBindingAsync(It.IsAny<Autogen.Grpc.v1.InvokeBindingRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ex = await Assert.ThrowsAsync<DaprException>(async () => 
+            {
+                await client.DaprClient.InvokeBindingAsync("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+            });
+            Assert.Same(rpcException, ex.InnerException);
+        }
+
+        [Fact]
+        public async Task InvokeBindingAsync_WrapsJsonException()
+        {
+            var httpClient = new TestHttpClient();
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var response = new Autogen.Grpc.v1.InvokeBindingResponse();
+            var bytes = JsonSerializer.SerializeToUtf8Bytes<Widget>(new Widget(){ Color = "red", }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            response.Data = ByteString.CopyFrom(bytes.Take(10).ToArray()); // trim it to make invalid JSON blog
+
+            var task = daprClient.InvokeBindingAsync<InvokeRequest, Widget>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
+
+            var streamContent = await GrpcUtils.CreateResponseContent(response);
+            entry.Completion.SetResult(GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent));
+
+            var ex = await Assert.ThrowsAsync<DaprException>(async () => 
+            {
+                await task;
+            });
+            Assert.IsType<JsonException>(ex.InnerException);
+        }
+
         private class InvokeRequest
         {
             public string RequestParameter { get; set; }
+        }
+
+        private class Widget
+        {
+            public string Color { get; set; }
         }
     }
 }

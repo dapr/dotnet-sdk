@@ -9,12 +9,10 @@ namespace Dapr.Client.Test
     using System.Net;
     using System.Net.Http;
     using System.Net.Http.Json;
+    using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using Dapr.AppCallback.Autogen.Grpc.v1;
     using Dapr.Client;
-    using Dapr.Client.Autogen.Grpc.v1;
-    using Dapr.Client.Autogen.Test.Grpc.v1;
     using FluentAssertions;
     using Grpc.Core;
     using Grpc.Net.Client;
@@ -274,6 +272,140 @@ namespace Dapr.Client.Test
             Assert.Equal(data.Color, actual.Color);
         }
 
+        [Fact]
+        public async Task InvokeMethodAsync_WrapsHttpRequestException()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
+                Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
+                httpClient,
+                new Uri("https://test-endpoint:3501"),
+                jsonSerializerOptions);
+
+            var request = client.CreateInvokeMethodRequest("test-app", "test");
+            var task = client.InvokeMethodAsync(request);
+
+            var exception = new HttpRequestException();
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Throw(exception);
+
+            var thrown = await Assert.ThrowsAsync<InvocationException>(async () => await task);
+            Assert.Equal("test-app", thrown.AppId);
+            Assert.Equal("test", thrown.MethodName);
+            Assert.Same(exception, thrown.InnerException);
+            Assert.Null(thrown.Response);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_WrapsHttpRequestException_FromEnsureSuccessStatus()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
+                Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
+                httpClient,
+                new Uri("https://test-endpoint:3501"),
+                jsonSerializerOptions);
+
+            var request = client.CreateInvokeMethodRequest("test-app", "test");
+            var task = client.InvokeMethodAsync(request);
+
+            var response = new HttpResponseMessage(HttpStatusCode.NotFound);
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Respond(response);
+
+            var thrown = await Assert.ThrowsAsync<InvocationException>(async () => await task);
+            Assert.Equal("test-app", thrown.AppId);
+            Assert.Equal("test", thrown.MethodName);
+            Assert.IsType<HttpRequestException>(thrown.InnerException);
+            Assert.Same(response, thrown.Response);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_WithBody_WrapsHttpRequestException()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
+                Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
+                httpClient,
+                new Uri("https://test-endpoint:3501"),
+                jsonSerializerOptions);
+
+            var request = client.CreateInvokeMethodRequest("test-app", "test");
+            var task = client.InvokeMethodAsync<Widget>(request);
+
+            var exception = new HttpRequestException();
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Throw(exception);
+
+            var thrown = await Assert.ThrowsAsync<InvocationException>(async () => await task);
+            Assert.Equal("test-app", thrown.AppId);
+            Assert.Equal("test", thrown.MethodName);
+            Assert.Same(exception, thrown.InnerException);
+            Assert.Null(thrown.Response);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_WithBody_WrapsHttpRequestException_FromEnsureSuccessStatus()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
+                Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
+                httpClient,
+                new Uri("https://test-endpoint:3501"),
+                jsonSerializerOptions);
+
+            var request = client.CreateInvokeMethodRequest("test-app", "test");
+            var task = client.InvokeMethodAsync<Widget>(request);
+
+            var response = new HttpResponseMessage(HttpStatusCode.NotFound);
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Respond(response);
+
+            var thrown = await Assert.ThrowsAsync<InvocationException>(async () => await task);
+            Assert.Equal("test-app", thrown.AppId);
+            Assert.Equal("test", thrown.MethodName);
+            Assert.IsType<HttpRequestException>(thrown.InnerException);
+            Assert.Same(response, thrown.Response);
+        }
+
+        [Fact]
+        public async Task InvokeMethodAsync_WrapsHttpRequestException_FromSerialization()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
+                Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
+                httpClient,
+                new Uri("https://test-endpoint:3501"),
+                jsonSerializerOptions);
+
+            var request = client.CreateInvokeMethodRequest("test-app", "test");
+            var task = client.InvokeMethodAsync<Widget>(request);
+
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{ \"invalid\": true", Encoding.UTF8, "application/json")
+            };
+
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Respond(response);
+
+            var thrown = await Assert.ThrowsAsync<InvocationException>(async () => await task);
+            Assert.Equal("test-app", thrown.AppId);
+            Assert.Equal("test", thrown.MethodName);
+            Assert.IsType<JsonException>(thrown.InnerException);
+            Assert.Same(response, thrown.Response);
+        }
+
         [Theory]
         [InlineData("", "https://test-endpoint:3501/v1.0/invoke/test-app/method/")]
         [InlineData("/", "https://test-endpoint:3501/v1.0/invoke/test-app/method/")]
@@ -344,6 +476,32 @@ namespace Dapr.Client.Test
             entry.Respond(new HttpResponseMessage(HttpStatusCode.BadRequest)); // Non-2xx response
 
             var response = await task;
+        }
+
+        [Fact]
+        public async Task InvokeMethodWithResponseAsync_WrapsHttpRequestException()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient();
+            var client = new DaprClientGrpc(
+                GrpcChannel.ForAddress("http://localhost"),
+                Mock.Of<global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient>(), 
+                httpClient,
+                new Uri("https://test-endpoint:3501"),
+                jsonSerializerOptions);
+
+            var request = client.CreateInvokeMethodRequest("test-app", "test");
+            var task = client.InvokeMethodWithResponseAsync(request);
+
+            var exception = new HttpRequestException();
+            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
+            entry.Throw(exception);
+
+            var thrown = await Assert.ThrowsAsync<InvocationException>(async () => await task);
+            Assert.Equal("test-app", thrown.AppId);
+            Assert.Equal("test", thrown.MethodName);
+            Assert.Same(exception, thrown.InnerException);
+            Assert.Null(thrown.Response);
         }
 
         [Fact]

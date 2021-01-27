@@ -44,7 +44,7 @@ namespace Dapr.Actors.Client
         public string ActorType { get; private set; }
 
         internal IActorMessageBodyFactory ActorMessageBodyFactory { get; set; }
-        internal JsonSerializerOptions JsonSerializerOptions = JsonSerializerDefaults.Web;
+        internal JsonSerializerOptions JsonSerializerOptions { get; set; }
 
         /// <summary>
         /// Creates a proxy to the actor object that implements an actor interface.
@@ -169,7 +169,7 @@ namespace Dapr.Actors.Client
             this.ActorId = actorId;
             this.ActorType = actorType;
             this.ActorMessageBodyFactory = client.GetRemotingMessageBodyFactory();
-            this.JsonSerializerOptions = options?.JsonSerializerOptions ?? this.JsonSerializerOptions;
+            this.JsonSerializerOptions = options?.JsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
         }
 
         /// <summary>

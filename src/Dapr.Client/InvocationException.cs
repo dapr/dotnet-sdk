@@ -20,8 +20,8 @@ namespace Dapr.Client
         public InvocationException(string appId, string methodName, Exception innerException, HttpResponseMessage response)
             : base(FormatExceptionForFailedRequest(appId, methodName), innerException)
         {
-            this.AppId = appId;
-            this.MethodName = methodName;
+            this.AppId = appId ?? "unknown";
+            this.MethodName = methodName ?? "unknown";
             this.Response = response;
         }
 
@@ -31,8 +31,8 @@ namespace Dapr.Client
         public InvocationException(string appId, string methodName, RpcException innerException)
             : base(FormatExceptionForFailedRequest(appId, methodName), innerException)
         {
-            this.AppId = appId;
-            this.MethodName = methodName;
+            this.AppId = appId ?? "unknown";
+            this.MethodName = methodName ?? "unknown";
         }
 
         /// <summary>
