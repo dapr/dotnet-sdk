@@ -15,7 +15,6 @@ namespace Dapr.Actors.Client
     /// </summary>
     public class ActorProxyFactory : IActorProxyFactory
     {
-        private IDaprInteractor daprInteractor;
         private ActorProxyOptions defaultOptions;
         private readonly HttpClientHandler handler;
 
@@ -58,8 +57,8 @@ namespace Dapr.Actors.Client
         /// <inheritdoc/>
         public object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null)
         {
-            this.daprInteractor = new DaprHttpInteractor(this.handler, this.DefaultOptions.DaprApiToken);
-            var remotingClient = new ActorRemotingClient(this.daprInteractor);
+            var daprInteractor = new DaprHttpInteractor(this.handler, this.DefaultOptions.DaprApiToken);
+            var remotingClient = new ActorRemotingClient(daprInteractor);
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
             var actorProxy = proxyGenerator.CreateActorProxy();
             actorProxy.Initialize(remotingClient, actorId, actorType, options ?? this.defaultOptions);
