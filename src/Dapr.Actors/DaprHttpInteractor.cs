@@ -444,10 +444,5 @@ namespace Dapr.Actors
                 return;
             }
         }
-
-        public void SetDaprApiToken(string apiToken)
-        {
-            this.daprApiToken = apiToken;
-        }
     }
 }

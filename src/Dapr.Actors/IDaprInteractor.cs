@@ -96,11 +96,5 @@ namespace Dapr.Actors
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Set the API token set in the request headers to Dapr runtime
-        /// </summary>
-        /// <param name="apiToken">Type of actor.</param>
-        void SetDaprApiToken(string apiToken);
     }
 }
