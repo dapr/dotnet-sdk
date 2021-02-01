@@ -20,7 +20,7 @@ namespace Dapr.Actors.Test.Runtime
         {
             var actorType = typeof(TestActor);
             var actorTypeInformation = ActorTypeInformation.Get(actorType);
-            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, new LoggerFactory(), ActorProxy.DefaultProxyFactory, new DaprHttpInteractor());
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, new LoggerFactory(), ActorProxy.DefaultProxyFactory);
             var actor = new TestActor(host);
 
             var activator = Mock.Of<ActorActivator>();

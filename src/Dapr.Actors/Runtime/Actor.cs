@@ -207,6 +207,8 @@ namespace Dapr.Actors.Runtime
             TimeSpan dueTime,
             TimeSpan period)
         {
+            EnsureInteractorInitialized();
+
             var reminderInfo = new ReminderInfo(state, dueTime, period);
             var reminder = new ActorReminder(this.Id, reminderName, reminderInfo);
             var serializedReminderInfo = await reminderInfo.SerializeAsync();
@@ -223,6 +225,7 @@ namespace Dapr.Actors.Runtime
         /// </returns>
         protected Task UnregisterReminderAsync(IActorReminder reminder)
         {
+            EnsureInteractorInitialized();
             return this.Host.DaprInteractor.UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminder.Name);
         }
 
@@ -235,6 +238,7 @@ namespace Dapr.Actors.Runtime
         /// </returns>
         protected Task UnregisterReminderAsync(string reminderName)
         {
+            EnsureInteractorInitialized();
             return this.Host.DaprInteractor.UnregisterReminderAsync(this.actorTypeName, this.Id.ToString(), reminderName);
         }
 
@@ -263,6 +267,8 @@ namespace Dapr.Actors.Runtime
             TimeSpan dueTime,
             TimeSpan period)
         {
+            EnsureInteractorInitialized();
+
             // Validate that the timer callback specified meets all the required criteria for a valid callback method
             this.ValidateTimerCallback(this.Host, callback);
 
@@ -287,6 +293,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>Task representing the Unregister timer operation.</returns>
         protected async Task UnregisterTimerAsync(ActorTimer timer)
         {
+            EnsureInteractorInitialized();
             await this.Host.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timer.Name);
         }
 
@@ -297,6 +304,7 @@ namespace Dapr.Actors.Runtime
         /// <returns>Task representing the Unregister timer operation.</returns>
         protected async Task UnregisterTimerAsync(string timerName)
         {
+            EnsureInteractorInitialized();
             await this.Host.DaprInteractor.UnregisterTimerAsync(this.actorTypeName, this.Id.ToString(), timerName);
         }
 
@@ -338,6 +346,16 @@ namespace Dapr.Actors.Runtime
             if (methodInfo.ReturnType != typeof(Task))
             {
                 throw new ArgumentException("Timer callback can only return type Task");
+            }
+        }
+
+        private void EnsureInteractorInitialized()
+        {
+            if (this.Host.DaprInteractor == null)
+            {
+                throw new InvalidOperationException(
+                    "The actor was initialized without an HTTP client, and so cannot interact with timers or reminders. " +
+                    "This is likely to happen inside a unit test.");
             }
         }
     }
