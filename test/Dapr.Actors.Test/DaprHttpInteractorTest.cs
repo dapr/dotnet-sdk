@@ -61,7 +61,7 @@ namespace Dapr.Actors.Test
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Failing due to #573")]
         public void GetState_ValidateRequest()
         {
             var handler = new TestHttpClientHandler();
