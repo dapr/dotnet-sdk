@@ -8,9 +8,9 @@ description: Guidelines for contributing to the Dapr .NET SDK
 
 When contributing to the [.NET SDK](https://github.com/dapr/dotnet-sdk) the following rules and best-practices should be followed.
 
-## Samples
+## Examples
 
-The `samples` directory contains code samples for users to run to try out specific functionality of the various .NET SDK packages and extensions. When writing new and updated samples keep in mind:
+The `examples` directory contains code samples for users to run to try out specific functionality of the various .NET SDK packages and extensions. When writing new and updated samples keep in mind:
 
 - All examples should be runnable on Windows, Linux, and MacOS. While .NET Core code is consistent among operating systems, any pre/post example commands should provide options through [codetabs]({{< ref "contributing-docs.md#tabbed-content" >}})
 - Contain steps to download/install any required pre-requisites. Someone coming in with a fresh OS install should be able to start on the example and complete it without an error. Links to external download pages are fine.
