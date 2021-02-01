@@ -1,32 +1,23 @@
-# Dapr Actor Sample
+# Dapr Actor example
 
-The Actor sample shows how to create an Actor (`DemoActor`) and invoke its methods on the client application.
+The Actor example shows how to create a virtual actor (`DemoActor`) and invoke its methods on the client application.
 
-## Prerequistes
+## Prerequisites
 
-* [.Net Core SDK 3.0](https://dotnet.microsoft.com/download)
-* [Dapr CLI](https://github.com/dapr/cli)
-* [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
+- [.NET Core SDK](https://dotnet.microsoft.com/download)
+- [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
+- [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
+- [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
 
 ## Projects in sample
 
-* **The interface project (`\IDemoActor`).** This project contains the interface definition for the actor. The interface defines the actor contract that is shared by the actor implementation and the clients calling the actor. Because client projects may depend on it, it typically makes sense to define it in an assembly that is separate from the actor implementation.
+- The **interface project (`\IDemoActor`)** contains the interface definition for the actor. The interface defines the actor contract that is shared by the actor implementation and the clients calling the actor. Because client projects may depend on it, it typically makes sense to define it in an assembly that is separate from the actor implementation.
 
-* **The actor service project (`\DemoActor`).** This project implements ASP.Net Core web service that is going to host the actor. It contains the implementation of the actor. An actor implementation is a class that derives from the base type `Actor` and implements the interfaces defined in the corresponding interfaces project. An actor class must also implement a constructor that accepts an `ActorService` instance and an `ActorId` and passes them to the base `Actor` class.
+- The **actor service project (`\DemoActor`)** implements ASP.Net Core web service that is going to host the actor. It contains the implementation of the actor. An actor implementation is a class that derives from the base type `Actor` and implements the interfaces defined in the corresponding interfaces project. An actor class must also implement a constructor that accepts an `ActorService` instance and an `ActorId` and passes them to the base `Actor` class.
 
-* **The actor client project (`\ActorClient`)** This project contains the implementation of the actor client which calls `DemoActor`'s methods defined in `IDemoActor`'s Interfaces.
+- The **actor client project (`\ActorClient`)** contains the implementation of the actor client which calls `DemoActor`'s methods defined in `IDemoActor`'s Interfaces.
 
-```text
-Actor
-|
-+---ActorClient
-|
-+---DemoActor
-|
-+---IDemoActor
-```
-
-## Running the Sample
+## Running the example
 
 To run the actor service locally run this command in `DemoActor` directory:
 
@@ -38,7 +29,7 @@ The `DemoActor` service will listen on port `5000` for HTTP.
 
 *Note: For Running the sample with ISS express, change the launchsettings.json to use 127.0.0.1 instead of localhost.*
 
-### Making Client calls
+### Make client calls
 
 The `ActorClient` project shows how to make client calls for actor using Remoting which provides a strongly typed invocation experience.
 Run the client project from `ActorClient` directory as:

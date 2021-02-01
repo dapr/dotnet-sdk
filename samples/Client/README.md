@@ -1,12 +1,12 @@
-# Dapr Client Sample
+# Dapr Client examples
 
-The client sample shows how to use the Dapr Client to:
+The following examples will show you how to:
 
 - Invoke services
 - Publish events
 - Use the state store to get, set, and delete data
 
-## Prerequistes
+## Prerequisites
 
 * [.Net Core SDK](https://dotnet.microsoft.com/download)
 * [Dapr CLI](https://github.com/dapr/cli)

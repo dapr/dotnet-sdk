@@ -3,7 +3,7 @@
 
   <PropertyGroup>
     <!-- Set Output Path for samples-->
-    <OutputPath>$(RepoRoot)bin\$(Configuration)\samples\$(MSBuildProjectName)\</OutputPath>
+    <OutputPath>$(RepoRoot)bin\$(Configuration)\examples\$(MSBuildProjectName)\</OutputPath>
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>

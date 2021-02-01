@@ -1,4 +1,4 @@
-# ASP.NET Core Routing Sample
+# ASP.NET Core routing example
 
 This sample shows using Dapr with ASP.NET Core routing. This application is a simple and not-so-secure banking application. The application uses the Dapr state-store for its data storage.
 
@@ -9,7 +9,14 @@ It exposes the following endpoints over HTTP:
 
 The application also registers for pub/sub with the `deposit` and `withdraw` topics.
 
- ## Running the Sample
+## Prerequisites
+
+- [.NET Core SDK](https://dotnet.microsoft.com/download)
+- [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
+- [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
+- [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
+
+## Running the Sample
 
  To run the sample locally run this command in this project root directory:
  ```sh

@@ -8,11 +8,11 @@ description: How to get up and running with the Dapr .NET SDK
 
 The Dapr actor package allows you to interact with Dapr virtual actors from a Python application.
 
-## Pre-requisites
+## Prerequisites
 
 - [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
 - Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [Dotnet 5.0+](https://dotnet.microsoft.com/download) installed
+- [.NET 5.0+](https://dotnet.microsoft.com/download) installed
 
 ## Actor interface
 
@@ -26,6 +26,6 @@ An actor service hosts the virtual actor. It is implemented a class that derives
 
 An actor client contains the implementation of the actor client which calls the actor methods defined in the actor interface.
 
-## Sample
+## Example
 
-Visit [this page](https://github.com/dapr/dotnet-sdk/tree/master/samples/Actor) for a runnable actor sample.
+Visit [this page](https://github.com/dapr/dotnet-sdk/tree/master/example/Actor) for a runnable actor sample.

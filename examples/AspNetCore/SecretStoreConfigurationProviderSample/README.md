@@ -1,9 +1,11 @@
-# Dapr Secret Store Configuration Provider in ASP.NET Core
+# Dapr secret store configuration provider in ASP.NET Core
 
-## Prerequistes
-* [.Net Core SDK 3.1](https://dotnet.microsoft.com/download)
-* [Dapr CLI](https://github.com/dapr/cli)
-* [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
+## Prerequisites
+
+- [.NET Core SDK](https://dotnet.microsoft.com/download)
+- [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
+- [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
+- [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
 
 ## Overview
 
@@ -11,7 +13,7 @@ This document describes how to use the Dapr Secret Store Configuration Provider 
 
 To load secrets into configuration call the _AddDaprSecretStore_ extension method with the name of the Secret Store and a list of secrets descriptors or related metadata.
 
-## Using the Dapr Secret Store Configuration Provider ASP.NET Core sample
+## Using the Dapr Secret Store Configuration Provider ASP.NET Core example
 
 ### 1. Use Dapr to run the application 
 
