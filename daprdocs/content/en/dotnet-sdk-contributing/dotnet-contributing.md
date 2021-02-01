@@ -12,7 +12,7 @@ When contributing to the [.NET SDK](https://github.com/dapr/dotnet-sdk) the foll
 
 The `samples` directory contains code samples for users to run to try out specific functionality of the various .NE SDK packages and extensions. When writing new and updated samples keep in mind:
 
-- All examples should be runnable on Windows, Linux, and MacOS. While Python code is consistent among operating systems, any pre/post example commands should provide options through [codetabs]({{< ref "contributing-docs.md#tabbed-content" >}})
+- All examples should be runnable on Windows, Linux, and MacOS. While .NET Core code is consistent among operating systems, any pre/post example commands should provide options through [codetabs]({{< ref "contributing-docs.md#tabbed-content" >}})
 - Contain steps to download/install any required pre-requisites. Someone coming in with a fresh OS install should be able to start on the example and complete it without an error. Links to external download pages are fine.
 
 ## Docs
