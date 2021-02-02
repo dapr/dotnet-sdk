@@ -19,8 +19,7 @@ services:
       DAPR_NETWORK: dapr-dev-container
       DAPR_REDIS_HOST: dapr_redis
       DAPR_PLACEMENT_HOST: dapr_placement
-
-    init: true
+      
     volumes:
       # Forwards the local Docker socket to the container.
       - /var/run/docker.sock:/var/run/docker-host.sock 
