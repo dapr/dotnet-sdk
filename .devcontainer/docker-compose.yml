@@ -6,7 +6,7 @@ services:
     # and its sub-processes (terminals, tasks, debugging) to execute as the user. On Linux,
     # you may need to update USER_UID and USER_GID in .devcontainer/Dockerfile to match your
     # user if not 1000. See https://aka.ms/vscode-remote/containers/non-root for details.
-    # user: vscode
+    user: vscode
 
     build: 
       context: .
