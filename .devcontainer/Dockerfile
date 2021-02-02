@@ -1,6 +1,5 @@
-# [Choice] .NET Core version: 3.1, 2.1
-ARG VARIANT=5.0
-FROM mcr.microsoft.com/vscode/devcontainers/dotnetcore:0-${VARIANT}
+# Base container
+FROM mcr.microsoft.com/dotnet/runtime:5.0.2
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
