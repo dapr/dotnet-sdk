@@ -36,6 +36,7 @@ namespace Dapr.Client.Test
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
             var jsonFromRequest = request.Data.ToStringUtf8();
 
+            request.DataContentType.Should().Be("application/json");
             request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, daprClient.JsonSerializerOptions));
@@ -63,6 +64,7 @@ namespace Dapr.Client.Test
             var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
             var jsonFromRequest = request.Data.ToStringUtf8();
 
+            request.DataContentType.Should().Be("application/json");
             request.PubsubName.Should().Be(TestPubsubName);
             request.Topic.Should().Be("test");
             jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, daprClient.JsonSerializerOptions));
