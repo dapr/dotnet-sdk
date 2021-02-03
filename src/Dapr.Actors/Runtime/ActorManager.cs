@@ -263,7 +263,11 @@ namespace Dapr.Actors.Runtime
         private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.daprInteractor);
+            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory)
+            {
+                DaprInteractor = this.daprInteractor,
+                StateProvider = new DaprStateProvider(this.daprInteractor, this.jsonSerializerOptions),
+            };
             var state =  await this.activator.CreateAsync(host);
             this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             return state;
