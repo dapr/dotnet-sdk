@@ -22,21 +22,17 @@ namespace Dapr.Actors.Runtime
         /// <param name="jsonSerializerOptions">The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization.</param>
         /// <param name="loggerFactory">The logger factory.</param>
         /// <param name="proxyFactory">The <see cref="ActorProxyFactory" />.</param>
-        /// <param name="daprInteractor">The <see cref="IDaprInteractor" />.</param>
-        internal ActorHost(
+        public ActorHost(
             ActorTypeInformation actorTypeInfo,
             ActorId id,
             JsonSerializerOptions jsonSerializerOptions,
             ILoggerFactory loggerFactory,
-            IActorProxyFactory proxyFactory,
-            IDaprInteractor daprInteractor)
+            IActorProxyFactory proxyFactory)
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.Id = id;
             this.LoggerFactory = loggerFactory;
             this.ProxyFactory = proxyFactory;
-            this.DaprInteractor = daprInteractor;
-            this.StateProvider = new DaprStateProvider(this.DaprInteractor, jsonSerializerOptions);
         }
 
         /// <summary>
@@ -64,7 +60,7 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public IActorProxyFactory ProxyFactory { get; }
 
-        internal DaprStateProvider StateProvider { get; }
+        internal DaprStateProvider StateProvider { get; set; }
 
         internal IDaprInteractor DaprInteractor { get; set; }
     }
