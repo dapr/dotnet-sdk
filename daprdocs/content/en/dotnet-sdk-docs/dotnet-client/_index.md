@@ -2,8 +2,9 @@
 type: docs
 title: "Getting started with the Dapr client .NET SDK"
 linkTitle: "Client"
-weight: 10000
+weight: 20000
 description: How to get up and running with the Dapr .NET SDK
+no_list: true
 ---
 
 The Dapr client package allows you to interact with other Dapr applications from a .NET application.

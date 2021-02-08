@@ -1,3 +1,11 @@
+---
+type: docs
+title: "Troubleshoot Pub/Sub with the .NET SDK"
+linkTitle: "Troubleshoot pub/sub"
+weight: 100000
+description: Try out .NET virtual actors with this example
+---
+
 # Troubleshooting Pub/Sub
 
 The most common problem with pub/sub is that the pub/sub endpoint in your application is not being called.

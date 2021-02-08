@@ -7,19 +7,24 @@ description: .NET SDK packages for developing Dapr applications
 no_list: true
 ---
 
-Dapr offers a variety of packages to help with the development of Python applications. Using them you can create .NE clients, servers, and virtual actors with Dapr.
+Dapr offers a variety of packages to help with the development of Python applications. Using them you can create .NET clients, servers, and virtual actors with Dapr.
 
-## Available packages
+## Client
 
-- [**Dapr client**]({{< ref dotnet-client.md >}}) for writing .NET applications to interact with the Dapr sidecar and other Dapr applications
-- [**Dapr actor**]({{< ref dotnet-actor.md >}}) for creating for creating and interacting with stateful virtual actors in .NET
-- [**Extensions**]({{< ref dotnet-sdk-extensions >}}) for adding Dapr capabilities to other .NET frameworks
-    - [**ASP.NET**]({{< ref dotnet-aspnet.md >}})
-    - [**Configuration**]({{< ref dotnet-configuration.md >}})
+Create .NET [**clients**]({{< ref dotnet-client >}}) that interact with a Dapr sidecar and other Dapr applications.
 
-## Try it out
+## Server
 
-Clone the .NET SDK repo to try out some of the [samples](https://github.com/dapr/dotnet-sdk/tree/master/samples).
+Write [**servers and services**]({{< ref dotnet-server >}}) in .NET using the Dapr SDK.
+
+## Actors
+
+Create [**virtual actors**]({{< ref dotnet-actors >}}) with state, reminders/timers, and methods in .NET.
+
+
+## Examples
+
+Clone the .NET SDK repo to try out some of the [examples](https://github.com/dapr/dotnet-sdk/tree/master/examples).
 
 ```bash
 git clone https://github.com/dapr/dotnet-sdk.git

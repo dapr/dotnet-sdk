@@ -1,6 +1,13 @@
-# Getting started with Actors
+---
+type: docs
+title: "Getting started with the Dapr actor .NET SDK"
+linkTitle: "Example"
+weight: 100000
+description: Try out .NET virtual actors with this example
+---
 
 ## Prerequistes
+
 * [.Net Core SDK 3.1 or newer](https://dotnet.microsoft.com/download)
 * [Dapr CLI](https://github.com/dapr/cli)
 * [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
