@@ -13,7 +13,7 @@ namespace Dapr.Actors
     /// <summary>
     /// Interface for interacting with Dapr runtime.
     /// </summary>
-    internal interface IDaprInteractor
+    public interface IDaprInteractor
     {
         /// <summary>
         /// Invokes an Actor method on Dapr without remoting.

@@ -10,7 +10,7 @@ namespace Dapr.Actors.Communication
     /// <summary>
     /// Defines the interface that must be implemented to provide a serializer/deserializer for remoting request message body.
     /// </summary>
-    internal interface IActorRequestMessageBodySerializer
+    public interface IActorRequestMessageBodySerializer
     {
         /// <summary>
         /// Serialize the remoting request body object to a message body that can be sent over the wire.

@@ -21,7 +21,8 @@ namespace Dapr.Actors.Test.Runtime
         public void TestNewActorWithMockStateManager()
         {
             var mockStateManager = new Mock<IActorStateManager>();
-            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
             testDemoActor.Host.Should().NotBeNull();
             testDemoActor.Id.Should().NotBeNull();
         }
@@ -31,7 +32,8 @@ namespace Dapr.Actors.Test.Runtime
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.SaveStateAsync(It.IsAny<CancellationToken>()));
-            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
             await testDemoActor.SaveTestState();
             mockStateManager.Verify(manager => manager.SaveStateAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -41,9 +43,32 @@ namespace Dapr.Actors.Test.Runtime
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
-            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
             await testDemoActor.ResetTestStateAsync();
             mockStateManager.Verify(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task TestRegisterTimerAsync()
+        {
+            var mockStateManager = new Mock<IActorStateManager>();
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            mockDaprInteractor.Setup(interactor => interactor.RegisterTimerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
+            await testDemoActor.RegisterTimerAsync("test", "TimerCallbackPrivate", null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
+            mockDaprInteractor.Verify(interactor => interactor.RegisterTimerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task TestRegisterReminderAsync()
+        {
+            var mockStateManager = new Mock<IActorStateManager>();
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            mockDaprInteractor.Setup(interactor => interactor.RegisterReminderAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()));
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
+            await testDemoActor.RegisterReminderAsync("test", null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
+            mockDaprInteractor.Verify(interactor => interactor.RegisterReminderAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]
@@ -55,7 +80,8 @@ namespace Dapr.Actors.Test.Runtime
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
-            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
 
             ;
             FluentActions.Invoking(() =>
@@ -75,7 +101,8 @@ namespace Dapr.Actors.Test.Runtime
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
-            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
 
             ;
             FluentActions.Invoking(() =>
@@ -91,7 +118,8 @@ namespace Dapr.Actors.Test.Runtime
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
-            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
             var methodInfo = testDemoActor.GetMethodInfoUsingReflection(testDemoActor.Host.ActorTypeInfo.ImplementationType, callback);
             Assert.NotNull(methodInfo);
         }
@@ -102,7 +130,8 @@ namespace Dapr.Actors.Test.Runtime
         {
             var mockStateManager = new Mock<IActorStateManager>();
             mockStateManager.Setup(manager => manager.ClearCacheAsync(It.IsAny<CancellationToken>()));
-            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object);
+            var mockDaprInteractor = new Mock<IDaprInteractor>();
+            var testDemoActor = this.CreateTestDemoActor(mockStateManager.Object, mockDaprInteractor.Object);
             var methodInfo = testDemoActor.GetMethodInfoUsingReflection(testDemoActor.Host.ActorTypeInfo.ImplementationType, callback);
             Assert.Null(methodInfo);
         }
@@ -112,12 +141,15 @@ namespace Dapr.Actors.Test.Runtime
         /// </summary>
         /// <param name="actorStateManager">Mock StateManager.</param>
         /// <returns>TestActor.</returns>
-        private TestActor CreateTestDemoActor(IActorStateManager actorStateManager)
+        private TestActor CreateTestDemoActor(IActorStateManager actorStateManager, IDaprInteractor daprInteractor)
         {
             var actorTypeInformation = ActorTypeInformation.Get(typeof(TestActor));
             var loggerFactory = new LoggerFactory();
-            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, loggerFactory, ActorProxy.DefaultProxyFactory);
-            var testActor = new TestActor(host, actorStateManager);
+            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, loggerFactory, ActorProxy.DefaultProxyFactory)
+            {
+                DaprInteractor = daprInteractor
+            };
+            var testActor = new TestActor(host, actorStateManager, daprInteractor);
             return testActor;
         }
 

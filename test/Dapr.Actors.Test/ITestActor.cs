@@ -34,14 +34,19 @@ namespace Dapr.Actors.Test
     /// <summary>
     /// Test Actor Class.
     /// </summary>
-    public class TestActor : Actor,  ITestActor
+    internal class TestActor : Actor,  ITestActor
     {
-        public TestActor(ActorHost host, IActorStateManager stateManager = null)
+        public TestActor(ActorHost host, IActorStateManager stateManager = null, IDaprInteractor daprInteractor = null)
             : base(host)
         {
             if (stateManager != null)
             {
                 this.StateManager = stateManager;
+            }
+
+            if(daprInteractor != null)
+            {
+                this.DaprInteractor = daprInteractor;
             }
         }
 

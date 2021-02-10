@@ -10,7 +10,7 @@ namespace Dapr.Actors.Communication
     /// <summary>
     /// Represents a serializer that can serialize remoting layer message header to messaging layer header.
     /// </summary>
-    internal interface IActorMessageHeaderSerializer
+    public interface IActorMessageHeaderSerializer
     {
         /// <summary>
         ///  Serializes the remoting request message header to a message header.

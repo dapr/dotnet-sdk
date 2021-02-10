@@ -10,7 +10,7 @@ namespace Dapr.Actors.Communication
     /// <summary>
     /// Defines the interface that must be implemented to provide a serializer/deserializer for actor response message body.
     /// </summary>
-    internal interface IActorResponseMessageBodySerializer
+    public interface IActorResponseMessageBodySerializer
     {
         /// <summary>
         /// Serialize the actor response body object to a message body that can be sent over the wire.

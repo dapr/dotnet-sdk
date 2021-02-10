@@ -37,6 +37,7 @@ namespace Dapr.Actors.Runtime
         {
             this.Host = host;
             this.StateManager = new ActorStateManager(this);
+            this.DaprInteractor = this.Host.DaprInteractor;
             this.actorTypeName = this.Host.ActorTypeInfo.ActorTypeName;
             this.Logger = host.LoggerFactory.CreateLogger(this.GetType());
         }
@@ -63,6 +64,11 @@ namespace Dapr.Actors.Runtime
         /// Gets the StateManager for the actor.
         /// </summary>
         protected IActorStateManager StateManager { get; set; }
+
+        /// <summary>
+        /// Gets the DaprInteractor for the actor.
+        /// </summary>
+        internal IDaprInteractor DaprInteractor { get; set; }
 
         internal async Task OnActivateInternalAsync()
         {
@@ -201,7 +207,7 @@ namespace Dapr.Actors.Runtime
         /// The class deriving from <see cref="Dapr.Actors.Runtime.Actor" /> must implement <see cref="Dapr.Actors.Runtime.IRemindable" /> to consume reminder invocations. Multiple reminders can be registered at any time, uniquely identified by <paramref name="reminderName" />. Existing reminders can also be updated by calling this method again. Reminder invocations are synchronized both with other reminders and other actor method callbacks.
         /// </para>
         /// </remarks>
-        protected async Task<IActorReminder> RegisterReminderAsync(
+        public async Task<IActorReminder> RegisterReminderAsync(
             string reminderName,
             byte[] state,
             TimeSpan dueTime,
