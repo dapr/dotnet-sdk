@@ -7,6 +7,7 @@ namespace Dapr
 {
     using System;
     using System.IO;
+    using System.Net;
     using System.Net.Http.Headers;
     using System.Text;
     using System.Text.Json;
@@ -74,57 +75,29 @@ namespace Dapr
             var isDataSet = json.TryGetProperty("data", out var data);
             var isBinaryDataSet = json.TryGetProperty("data_base64", out var binaryData);
 
-            if(isDataSet && isBinaryDataSet)
+            if (isDataSet && isBinaryDataSet)
             {
-                throw new DaprException("Both, data and data_base64 fields set in the Cloudevents envelope. Invalid request");
+                await httpContext.Response.WriteAsync("Both, data and data_base64 fields set in the Cloudevents envelope. Invalid request");
+                httpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                return;
             }
-            // Data is optional.
             else if (isDataSet)
             {
                 body = new MemoryStream();
                 await JsonSerializer.SerializeAsync<JsonElement>(body, data);
                 body.Seek(0L, SeekOrigin.Begin);
 
-                if (json.TryGetProperty("datacontenttype", out var dataContentType) &&
-                    dataContentType.ValueKind == JsonValueKind.String)
-                {
-                    contentType = dataContentType.GetString();
-
-                    // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
-                    // to remove any charset information. We generally just assume utf-8 everywhere, so omitting
-                    // a charset is a safe bet.
-                    if (contentType.Contains("charset") && MediaTypeHeaderValue.TryParse(contentType, out var parsed))
-                    {
-                        parsed.CharSet = null;
-                        contentType = parsed.ToString();
-                    }
-                }
-                else
-                {
-                    // assume JSON is not specified.
-                    contentType = "application/json";
-                }
+                contentType = this.GetDataContentType(json);
             }
             else if (isBinaryDataSet)
             {
                 // As per the spec, if the implementation determines that the type of data is Binary,
                 // the value MUST be represented as a JSON string expression containing the Base64 encoded
                 // binary value, and use the member name data_base64 to store it inside the JSON object.
-                var decodedBody = Encoding.UTF8.GetString(binaryData.GetBytesFromBase64());
-                try
-                {
-                    JsonDocument.Parse(decodedBody);
-                }
-                catch(JsonException)
-                {
-                    throw new DaprException("Base64 encoded data is not in Json format.");
-                }
-                body = new MemoryStream();
-                var sw = new StreamWriter(body);
-                sw.Write(decodedBody);
-                sw.Flush();
+                var decodedBody = binaryData.GetBytesFromBase64();
+                body = new MemoryStream(decodedBody);
                 body.Seek(0L, SeekOrigin.Begin);
-                contentType = "application/json";
+                contentType = this.GetDataContentType(json);
             }
             else
             {
@@ -147,6 +120,32 @@ namespace Dapr
                 httpContext.Request.ContentType = originalContentType;
                 httpContext.Request.Body = originalBody;
             }
+        }
+
+        private string GetDataContentType(JsonElement json)
+        {
+            string contentType;
+            if (json.TryGetProperty("datacontenttype", out var dataContentType) &&
+                    dataContentType.ValueKind == JsonValueKind.String)
+            {
+                contentType = dataContentType.GetString();
+
+                // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
+                // to remove any charset information. We generally just assume utf-8 everywhere, so omitting
+                // a charset is a safe bet.
+                if (contentType.Contains("charset") && MediaTypeHeaderValue.TryParse(contentType, out var parsed))
+                {
+                    parsed.CharSet = null;
+                    contentType = parsed.ToString();
+                }
+            }
+            else
+            {
+                // assume JSON is not specified.
+                contentType = "application/json";
+            }
+
+            return contentType;
         }
 
         private bool MatchesContentType(HttpContext httpContext, out string charSet)
