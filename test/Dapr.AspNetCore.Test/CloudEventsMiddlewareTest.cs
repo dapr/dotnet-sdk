@@ -104,12 +104,109 @@ namespace Dapr.AspNetCore.Test
             await pipeline.Invoke(context);
         }
 
+        [Fact]
+        public async Task InvokeAsync_ReadsOctetStream()
+        {
+            var dataContentType = "application/octet-stream";
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents();
+            var data = "{\"id\": \"1\"}";
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be("application/json");
+                var body = ReadBody(httpContext.Request.Body);
+                body.Should().Equals(data);
+                return Task.CompletedTask;
+            });
+
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/cloudevents+json";
+            var bytes = Encoding.UTF8.GetBytes(data);
+            var base64Str = System.Convert.ToBase64String(bytes);
+
+            context.Request.Body = 
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data_base64\": \"{base64Str}\"}}");
+
+            await pipeline.Invoke(context);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_Base64EncodedNonJsonData_ThrowsException()
+        {
+            var dataContentType = "application/octet-stream";
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents();
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be(dataContentType);
+                var body = ReadBody(httpContext.Request.Body);
+                body.Should().Be("Hello World");
+                return Task.CompletedTask;
+            });
+
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/cloudevents+json";
+            var data = "Hello World";
+            var bytes = Encoding.UTF8.GetBytes(data);
+            var base64Str = System.Convert.ToBase64String(bytes);
+
+            context.Request.Body = 
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data_base64\": \"{base64Str}\"}}");
+
+            await FluentActions.Awaiting(async () => 
+            {
+                await pipeline.Invoke(context);
+            }).Should().ThrowAsync<DaprException>().WithMessage("Base64 encoded data is not in Json format.");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_DataAndData64Set_ThrowsException()
+        {
+            var dataContentType = "application/octet-stream";
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents();
+            var data = "{\"id\": \"1\"}";
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be("application/json");
+                var body = ReadBody(httpContext.Request.Body);
+                body.Should().Equals(data);
+                return Task.CompletedTask;
+            });
+
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/cloudevents+json";
+            var bytes = Encoding.UTF8.GetBytes(data);
+            var base64Str = System.Convert.ToBase64String(bytes);
+
+            context.Request.Body = 
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data_base64\": \"{base64Str}\", \"data\": {data} }}");
+
+            await FluentActions.Awaiting(async () => 
+            {
+                await pipeline.Invoke(context);
+            }).Should().ThrowAsync<DaprException>().WithMessage("Both, data and data_base64 fields set in the Cloudevents envelope. Invalid request");
+        }
+
         private static Stream MakeBody(string text, Encoding encoding = null)
         {
             encoding ??= Encoding.UTF8;
 
             var stream = new MemoryStream();
-            stream.Write(encoding.GetBytes(text));
+            var bytes = encoding.GetBytes(text);
+            stream.Write(bytes);
             stream.Seek(0L, SeekOrigin.Begin);
             return stream;
         }

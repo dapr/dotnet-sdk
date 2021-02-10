@@ -70,8 +70,16 @@ namespace Dapr
             string originalContentType;
             string contentType;
 
+            // Check whether to use data or data_base64 as per https://github.com/cloudevents/spec/blob/v1.0.1/json-format.md#31-handling-of-data
+            var isDataSet = json.TryGetProperty("data", out var data);
+            var isBinaryDataSet = json.TryGetProperty("data_base64", out var binaryData);
+
+            if(isDataSet && isBinaryDataSet)
+            {
+                throw new DaprException("Both, data and data_base64 fields set in the Cloudevents envelope. Invalid request");
+            }
             // Data is optional.
-            if (json.TryGetProperty("data", out var data))
+            else if (isDataSet)
             {
                 body = new MemoryStream();
                 await JsonSerializer.SerializeAsync<JsonElement>(body, data);
@@ -96,6 +104,27 @@ namespace Dapr
                     // assume JSON is not specified.
                     contentType = "application/json";
                 }
+            }
+            else if (isBinaryDataSet)
+            {
+                // As per the spec, if the implementation determines that the type of data is Binary,
+                // the value MUST be represented as a JSON string expression containing the Base64 encoded
+                // binary value, and use the member name data_base64 to store it inside the JSON object.
+                var decodedBody = Encoding.UTF8.GetString(binaryData.GetBytesFromBase64());
+                try
+                {
+                    JsonDocument.Parse(decodedBody);
+                }
+                catch(JsonException)
+                {
+                    throw new DaprException("Base64 encoded data is not in Json format.");
+                }
+                body = new MemoryStream();
+                var sw = new StreamWriter(body);
+                sw.Write(decodedBody);
+                sw.Flush();
+                body.Seek(0L, SeekOrigin.Begin);
+                contentType = "application/json";
             }
             else
             {
