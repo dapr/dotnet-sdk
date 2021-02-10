@@ -7,6 +7,7 @@ namespace Dapr
 {
     using System;
     using System.IO;
+    using System.Net;
     using System.Net.Http.Headers;
     using System.Text;
     using System.Text.Json;
@@ -70,32 +71,32 @@ namespace Dapr
             string originalContentType;
             string contentType;
 
-            // Data is optional.
-            if (json.TryGetProperty("data", out var data))
+            // Check whether to use data or data_base64 as per https://github.com/cloudevents/spec/blob/v1.0.1/json-format.md#31-handling-of-data
+            var isDataSet = json.TryGetProperty("data", out var data);
+            var isBinaryDataSet = json.TryGetProperty("data_base64", out var binaryData);
+
+            if (isDataSet && isBinaryDataSet)
+            {
+                httpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                return;
+            }
+            else if (isDataSet)
             {
                 body = new MemoryStream();
                 await JsonSerializer.SerializeAsync<JsonElement>(body, data);
                 body.Seek(0L, SeekOrigin.Begin);
 
-                if (json.TryGetProperty("datacontenttype", out var dataContentType) &&
-                    dataContentType.ValueKind == JsonValueKind.String)
-                {
-                    contentType = dataContentType.GetString();
-
-                    // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
-                    // to remove any charset information. We generally just assume utf-8 everywhere, so omitting
-                    // a charset is a safe bet.
-                    if (contentType.Contains("charset") && MediaTypeHeaderValue.TryParse(contentType, out var parsed))
-                    {
-                        parsed.CharSet = null;
-                        contentType = parsed.ToString();
-                    }
-                }
-                else
-                {
-                    // assume JSON is not specified.
-                    contentType = "application/json";
-                }
+                contentType = this.GetDataContentType(json);
+            }
+            else if (isBinaryDataSet)
+            {
+                // As per the spec, if the implementation determines that the type of data is Binary,
+                // the value MUST be represented as a JSON string expression containing the Base64 encoded
+                // binary value, and use the member name data_base64 to store it inside the JSON object.
+                var decodedBody = binaryData.GetBytesFromBase64();
+                body = new MemoryStream(decodedBody);
+                body.Seek(0L, SeekOrigin.Begin);
+                contentType = this.GetDataContentType(json);
             }
             else
             {
@@ -118,6 +119,32 @@ namespace Dapr
                 httpContext.Request.ContentType = originalContentType;
                 httpContext.Request.Body = originalBody;
             }
+        }
+
+        private string GetDataContentType(JsonElement json)
+        {
+            string contentType;
+            if (json.TryGetProperty("datacontenttype", out var dataContentType) &&
+                    dataContentType.ValueKind == JsonValueKind.String)
+            {
+                contentType = dataContentType.GetString();
+
+                // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
+                // to remove any charset information. We generally just assume utf-8 everywhere, so omitting
+                // a charset is a safe bet.
+                if (contentType.Contains("charset") && MediaTypeHeaderValue.TryParse(contentType, out var parsed))
+                {
+                    parsed.CharSet = null;
+                    contentType = parsed.ToString();
+                }
+            }
+            else
+            {
+                // assume JSON is not specified.
+                contentType = "application/json";
+            }
+
+            return contentType;
         }
 
         private bool MatchesContentType(HttpContext httpContext, out string charSet)
