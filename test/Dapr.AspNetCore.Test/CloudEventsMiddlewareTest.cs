@@ -6,6 +6,7 @@
 namespace Dapr.AspNetCore.Test
 {
     using System.IO;
+    using System.Net;
     using System.Text;
     using System.Threading.Tasks;
     using FluentAssertions;
@@ -104,12 +105,73 @@ namespace Dapr.AspNetCore.Test
             await pipeline.Invoke(context);
         }
 
+        [Fact]
+        public async Task InvokeAsync_ReadsBinaryData()
+        {
+            var dataContentType = "application/octet-stream";
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents();
+            var data = new byte[] { 1, 2, 3 };
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be(dataContentType);
+                var bytes = new byte[httpContext.Request.Body.Length];
+                httpContext.Request.Body.Read(bytes, 0, bytes.Length);
+                bytes.Should().Equal(data);
+                return Task.CompletedTask;
+            });
+
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/cloudevents+json";
+            var base64Str = System.Convert.ToBase64String(data);
+
+            context.Request.Body =
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data_base64\": \"{base64Str}\"}}");
+
+            await pipeline.Invoke(context);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_DataAndData64Set_ReturnsBadRequest()
+        {
+            var dataContentType = "application/octet-stream";
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents();
+            var data = "{\"id\": \"1\"}";
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be("application/json");
+                var body = ReadBody(httpContext.Request.Body);
+                body.Should().Equals(data);
+                return Task.CompletedTask;
+            });
+
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/cloudevents+json";
+            var bytes = Encoding.UTF8.GetBytes(data);
+            var base64Str = System.Convert.ToBase64String(bytes);
+            context.Request.Body =
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data_base64\": \"{base64Str}\", \"data\": {data} }}");
+
+            await pipeline.Invoke(context);
+            context.Response.StatusCode.Should().Be((int)HttpStatusCode.BadRequest);
+        }
+
         private static Stream MakeBody(string text, Encoding encoding = null)
         {
             encoding ??= Encoding.UTF8;
 
             var stream = new MemoryStream();
-            stream.Write(encoding.GetBytes(text));
+            var bytes = encoding.GetBytes(text);
+            stream.Write(bytes);
             stream.Seek(0L, SeekOrigin.Begin);
             return stream;
         }
@@ -120,7 +182,8 @@ namespace Dapr.AspNetCore.Test
 
             var bytes = new byte[stream.Length];
             stream.Read(bytes, 0, bytes.Length);
-            return encoding.GetString(bytes);
+            var str = encoding.GetString(bytes);
+            return str;
         }
     }
 }
