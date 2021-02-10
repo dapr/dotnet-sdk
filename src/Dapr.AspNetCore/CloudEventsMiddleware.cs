@@ -77,7 +77,6 @@ namespace Dapr
 
             if (isDataSet && isBinaryDataSet)
             {
-                await httpContext.Response.WriteAsync("Both, data and data_base64 fields set in the Cloudevents envelope. Invalid request");
                 httpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 return;
             }
