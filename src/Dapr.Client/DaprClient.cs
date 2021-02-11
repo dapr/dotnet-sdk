@@ -272,7 +272,7 @@ namespace Dapr.Client
         /// </param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken);
+        public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. If the response has a non-success
