@@ -65,6 +65,8 @@ namespace Dapr
                 }
             }
 
+            httpContext.Features.Set<ICloudEventFeature>(new Feature(json));
+
             Stream originalBody;
             Stream body;
 
@@ -177,6 +179,16 @@ namespace Dapr
 
             charSet = parsed.CharSet ?? "UTF-8";
             return true;
+        }
+
+        private class Feature : ICloudEventFeature
+        {
+            public Feature(JsonElement envelope)
+            {
+                this.Envelope = envelope;
+            }
+
+            public JsonElement Envelope { get; }
         }
     }
 }

@@ -110,6 +110,13 @@ namespace RoutingSample
             async Task Deposit(HttpContext context)
             {
                 Console.WriteLine("Enter Deposit");
+
+                var envelope = context.GetCloudEvent();
+                if (envelope is JsonElement json)
+                {
+                    // use the JSON api to read whatever data you want....
+                    var propertyValue = json.GetProperty("some-property").GetString();
+                }
                 
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
 
