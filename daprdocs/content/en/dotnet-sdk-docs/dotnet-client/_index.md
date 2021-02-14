@@ -13,7 +13,7 @@ The Dapr client package allows you to interact with other Dapr applications from
 
 - [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
 - Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [.NET 5.0+](https://dotnet.microsoft.com/download) installed
+- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
 
 ## Building blocks
 

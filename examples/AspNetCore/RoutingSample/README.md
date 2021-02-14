@@ -11,7 +11,7 @@ The application also registers for pub/sub with the `deposit` and `withdraw` top
 
 ## Prerequisites
 
-- [.NET Core SDK](https://dotnet.microsoft.com/download)
+- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)

@@ -10,7 +10,7 @@ description: Try out .NET virtual actors with this example
 
 - [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
 - Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [.NET 3.1+](https://dotnet.microsoft.com/download) installed
+- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
 
 ## Overview
 

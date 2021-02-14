@@ -8,7 +8,7 @@ The following examples will show you how to:
 
 ## Prerequisites
 
-* [.Net Core SDK](https://dotnet.microsoft.com/download)
+* [.Net Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download)
 * [Dapr CLI](https://github.com/dapr/cli)
 * [Dapr DotNet SDK](https://github.com/dapr/dotnet-sdk)
 
