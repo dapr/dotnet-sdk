@@ -31,7 +31,7 @@ jobs:
         run: dotnet build --configuration release
       - name: Generate Packages
         run: dotnet pack --configuration release
-      - name: Update packages
+      - name: Upload packages
         uses: actions/upload-artifact@master
         with:
           name: packages
@@ -86,6 +86,8 @@ jobs:
           /p:GITHUB_ACTIONS=false
     - name: Upload test coverage
       uses: codecov/codecov-action@v1
+      with:
+        flags: ${{ matrix.framework }}
     - name: Parse Trx files
       uses: NasAmin/trx-parser@v0.1.0
       id: trx-parser
