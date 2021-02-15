@@ -38,17 +38,30 @@ jobs:
           path: ${{ env.NUPKG_OUTDIR }}
 
   test:
-    name: Test
+    name: Test .NET ${{ matrix.dotnet-version }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ['3.1', '5.0']
+        include:
+        - dotnet-version: '3.1'
+          install-3: true
+          display-name: '.NET Core 3.1'
+          framework: 'netcoreapp3.1'
+        - dotnet-version: '5.0'
+          install-3: false
+          display-name: '.NET 5.0'
+          framework: 'net5'
     steps:
     - uses: actions/checkout@v1
     - name: Parse release version
       run: python ./.github/scripts/get_release_version.py
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
+      if: matrix.install-3
       with:
         dotnet-version: 3.1.x
-    - name: Setup .NET Core
+    - name: Setup .NET Core 5.0
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
@@ -60,6 +73,7 @@ jobs:
       run: |
         dotnet test \
           --configuration release \
+          --framework ${{ matrix.framework }} \
           --no-build \
           --no-restore \
           --logger trx \
