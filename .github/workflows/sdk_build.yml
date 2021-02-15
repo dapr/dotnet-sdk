@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    name: Build Projects
+    name: Build
     runs-on: ubuntu-latest
     env:
       NUPKG_OUTDIR: bin/Release/nugets
@@ -26,50 +26,90 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.1.x
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v1
-        with:
           dotnet-version: 5.0.x
-      - name: Test solution - release
-        run: |
-          # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-          dotnet test --configuration release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:GITHUB_ACTIONS=false
-          dotnet clean # remove the artifacts so they can be rebuild with deterministic builds enabled
-      - name: Build solution - release
+      - name: Build
         run: dotnet build --configuration release
-      - name: Generate Nuget Packages - release
+      - name: Generate Packages
         run: dotnet pack --configuration release
-      - name: upload artifacts
+      - name: Update packages
         uses: actions/upload-artifact@master
         with:
-          name: release_drop
+          name: packages
           path: ${{ env.NUPKG_OUTDIR }}
-      - name: Upload test coverage
-        uses: codecov/codecov-action@v1
-      - name: Publish binaries to github for tags
-        if: startswith(github.ref, 'refs/tags/v')
-        run: |
-          sudo npm install --silent --no-progress -g github-release-cli@1.3.1
-          
-          # Parse repository to get owner and repo names
-          OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          
-          # Get the list of files
-          RELEASE_ARTIFACT=(${{ env.NUPKG_OUTDIR }}/*)
-          
-          export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
-          echo "Uploading Nuget packages to GitHub Release"
-          github-release upload \
-            --owner $OWNER_NAME \
-            --repo $REPO_NAME \
-            --body "Release dapr dotnet SDK v${REL_VERSION}" \
-            --tag "v${REL_VERSION}" \
-            --name "Dapr dotnet SDK v${REL_VERSION}" \
-            --prerelease true \
-            ${RELEASE_ARTIFACT[*]}
-      - name: Publish nuget packages to nuget.org
-        if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
-        run: |
-          dotnet nuget push "${{ env.NUPKG_OUTDIR }}/Dapr*.nupkg" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Parse release version
+      run: python ./.github/scripts/get_release_version.py
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.x
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    - name: Build
+      # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+      run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+    - name: Test
+      continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
+      run: |
+        dotnet test \
+          --configuration release \
+          --no-build \
+          --no-restore \
+          --logger trx \
+          --logger "GitHubActions;report-warnings=false" \
+          --results-directory "${{ github.workspace }}/TestResults" \
+          /p:CollectCoverage=true \
+          /p:CoverletOutputFormat=opencover \
+          /p:GITHUB_ACTIONS=false
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v1
+    - name: Parse Trx files
+      uses: NasAmin/trx-parser@v0.1.0
+      id: trx-parser
+      with:
+        TRX_PATH: ${{ github.workspace }}/TestResults
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish Packages
+    needs: ['build', 'test']
+    runs-on: ubuntu-latest
+    if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+    steps:
+    - name: Download release artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: packages
+    - name: Publish binaries to github for tags
+      if: startswith(github.ref, 'refs/tags/v')
+      run: |
+        sudo npm install --silent --no-progress -g github-release-cli@1.3.1
+        
+        # Parse repository to get owner and repo names
+        OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
+        REPO_NAME="${GITHUB_REPOSITORY#*/}"
+        
+        # Get the list of files
+        RELEASE_ARTIFACT=(./packages/*)
+        
+        export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
+        echo "Uploading Nuget packages to GitHub Release"
+        github-release upload \
+          --owner $OWNER_NAME \
+          --repo $REPO_NAME \
+          --body "Release dapr dotnet SDK v${REL_VERSION}" \
+          --tag "v${REL_VERSION}" \
+          --name "Dapr dotnet SDK v${REL_VERSION}" \
+          --prerelease true \
+          ${RELEASE_ARTIFACT[*]}
+    - name: Publish nuget packages to nuget.org
+      if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+      run: |
+        dotnet nuget push "./packages/Dapr*.nupkg" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
