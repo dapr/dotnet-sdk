@@ -23,7 +23,6 @@ namespace Dapr.Actors.Client
         {
             var options = new ActorProxyOptions();
             Assert.NotNull(options);
-            throw null;
         }
 
         [Fact]
