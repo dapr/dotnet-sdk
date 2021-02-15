@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\Shared\TestHttpClient.cs" />
     <Compile Include="..\Shared\GrpcUtils.cs" />
+    <Compile Include="..\Shared\TestClient.cs" />
   </ItemGroup>
 
   <ItemGroup>

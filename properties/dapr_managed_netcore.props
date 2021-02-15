@@ -3,10 +3,15 @@
   <Import Project="dapr_common.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <LangVersion>9.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
     <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
    </PropertyGroup>
+
+   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)\IsExternalInit.cs" />
+   </ItemGroup>
 
   <!-- Cls Compliant -->
   <PropertyGroup>

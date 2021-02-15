@@ -24,32 +24,30 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task PublishEventAsync_CanPublishTopicWithData()
         {
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions{ HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var publishData = new PublishData() { PublishObjectParameter = "testparam" };
-            var task = daprClient.PublishEventAsync<PublishData>(TestPubsubName, "test", publishData);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.PublishEventAsync<PublishData>(TestPubsubName, "test", publishData);
+            });
 
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
-            var jsonFromRequest = request.Data.ToStringUtf8();
+            request.Dismiss();
 
-            request.DataContentType.Should().Be("application/json");
-            request.PubsubName.Should().Be(TestPubsubName);
-            request.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, daprClient.JsonSerializerOptions));
-            request.Metadata.Count.Should().Be(0);
+            var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
+            var jsonFromRequest = envelope.Data.ToStringUtf8();
+
+            envelope.DataContentType.Should().Be("application/json");
+            envelope.PubsubName.Should().Be(TestPubsubName);
+            envelope.Topic.Should().Be("test");
+            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
+            envelope.Metadata.Count.Should().Be(0);
         }
 
         [Fact]
         public async Task PublishEventAsync_CanPublishTopicWithData_WithMetadata()
         {
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions{ HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var metadata = new Dictionary<string, string>
             {
@@ -58,51 +56,53 @@ namespace Dapr.Client.Test
             };
 
             var publishData = new PublishData() { PublishObjectParameter = "testparam" };
-            var task = daprClient.PublishEventAsync<PublishData>(TestPubsubName, "test", publishData, metadata);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.PublishEventAsync<PublishData>(TestPubsubName, "test", publishData, metadata);
+            });
 
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
-            var jsonFromRequest = request.Data.ToStringUtf8();
+            request.Dismiss();
 
-            request.DataContentType.Should().Be("application/json");
-            request.PubsubName.Should().Be(TestPubsubName);
-            request.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, daprClient.JsonSerializerOptions));
+            var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
+            var jsonFromRequest = envelope.Data.ToStringUtf8();
 
-            request.Metadata.Count.Should().Be(2);
-            request.Metadata.Keys.Contains("key1").Should().BeTrue();
-            request.Metadata.Keys.Contains("key2").Should().BeTrue();
-            request.Metadata["key1"].Should().Be("value1");
-            request.Metadata["key2"].Should().Be("value2");
+            envelope.DataContentType.Should().Be("application/json");
+            envelope.PubsubName.Should().Be(TestPubsubName);
+            envelope.Topic.Should().Be("test");
+            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
+
+            envelope.Metadata.Count.Should().Be(2);
+            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
+            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
+            envelope.Metadata["key1"].Should().Be("value1");
+            envelope.Metadata["key2"].Should().Be("value2");
         }
 
         [Fact]
         public async Task PublishEventAsync_CanPublishTopicWithNoContent()
         {
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.PublishEventAsync(TestPubsubName, "test");
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
-            var jsonFromRequest = request.Data.ToStringUtf8();
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.PublishEventAsync(TestPubsubName, "test");
+            });
 
-            request.PubsubName.Should().Be(TestPubsubName);
-            request.Topic.Should().Be("test");
-            request.Data.Length.Should().Be(0);
+            request.Dismiss();
 
-            request.Metadata.Count.Should().Be(0);
+            var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
+            var jsonFromRequest = envelope.Data.ToStringUtf8();
+
+            envelope.PubsubName.Should().Be(TestPubsubName);
+            envelope.Topic.Should().Be("test");
+            envelope.Data.Length.Should().Be(0);
+            envelope.Metadata.Count.Should().Be(0);
         }
 
         [Fact]
         public async Task PublishEventAsync_CanPublishTopicWithNoContent_WithMetadata()
         {
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var metadata = new Dictionary<string, string>
             {
@@ -110,35 +110,37 @@ namespace Dapr.Client.Test
                 { "key2", "value2" }
             };
 
-            var task = daprClient.PublishEventAsync(TestPubsubName, "test", metadata);
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<PublishEventRequest>(entry.Request);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.PublishEventAsync(TestPubsubName, "test", metadata);
+            });
 
-            request.PubsubName.Should().Be(TestPubsubName);
-            request.Topic.Should().Be("test");
-            request.Data.Length.Should().Be(0);
+            request.Dismiss();
 
-            request.Metadata.Count.Should().Be(2);
-            request.Metadata.Keys.Contains("key1").Should().BeTrue();
-            request.Metadata.Keys.Contains("key2").Should().BeTrue();
-            request.Metadata["key1"].Should().Be("value1");
-            request.Metadata["key2"].Should().Be("value2");
+            var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
+            envelope.PubsubName.Should().Be(TestPubsubName);
+            envelope.Topic.Should().Be("test");
+            envelope.Data.Length.Should().Be(0);
+
+            envelope.Metadata.Count.Should().Be(2);
+            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
+            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
+            envelope.Metadata["key1"].Should().Be("value1");
+            envelope.Metadata["key2"].Should().Be("value2");
         }
 
         [Fact]
         public async Task PublishEventAsync_WithCancelledToken()
         {
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var ctSource = new CancellationTokenSource();
-            CancellationToken ct = ctSource.Token;
-            ctSource.Cancel();
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
 
-            await FluentActions.Awaiting(async () => await daprClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>();
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await client.InnerClient.PublishEventAsync(TestPubsubName, "test", cancellationToken: cts.Token);
+            });
         }
 
         // All overloads call through a common path that does exception handling.

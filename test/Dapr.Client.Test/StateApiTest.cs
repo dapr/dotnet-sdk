@@ -27,21 +27,21 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetStateAsync_CanReadState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateAsync<Widget>("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAsync<Widget>("testStore", "test");
+            });
+
+            request.Dismiss();
 
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState(data, entry);
+            var envelope = MakeGetStateResponse(data);
+            var state = await request.CompleteWithMessageAsync(envelope);
 
             // Get response and validate
-            var state = await task;
             state.Size.Should().Be("small");
             state.Color.Should().Be("yellow");
         }
@@ -49,87 +49,81 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetBulkStateAsync_CanReadState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var key = "test";
-            var task = daprClient.GetBulkStateAsync("testStore", new List<string>() { key }, null);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetBulkStateAsync("testStore", new List<string>() { key }, null);
+            });
 
             // Create Response & Respond
             var data = "value";
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithBulkState(key, data, entry);
+            var envelope = MakeGetBulkStateResponse(key, data);
+            var state = await request.CompleteWithMessageAsync(envelope);
 
             // Get response and validate
-            var state = await task;
             state.Should().HaveCount(1);
         }
 
         [Fact]
         public async Task GetBulkStateAsync_WrapsRpcException()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var key = "test";
-            var task = daprClient.GetBulkStateAsync("testStore", new List<string>() { key }, null);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetBulkStateAsync("testStore", new List<string>() { key }, null);
+            });
 
             // Create Response & Respond
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            entry.Respond(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteAsync(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+            });
             Assert.IsType<RpcException>(ex.InnerException);
         }
 
         [Fact]
         public async Task GetBulkStateAsync_ValidateRequest()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
+            var key = "test";
             var metadata = new Dictionary<string, string>
             {
                 { "partitionKey", "mypartition" }
             };
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetBulkStateAsync("testStore", new List<string>() { key }, null, metadata: metadata);
+            });
 
-            var key = "test";
-            var task = daprClient.GetBulkStateAsync("testStore", new List<string>() { key }, null, metadata : metadata);
+            request.Dismiss();
 
             // Create Response & Validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.GetBulkStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.Metadata.Should().BeEquivalentTo(metadata);
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.GetBulkStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Metadata.Should().BeEquivalentTo(metadata);
         }
 
         [Fact]
         public async Task GetStateAndEtagAsync_CanReadState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateAndETagAsync<Widget>("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAndETagAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState(data, entry, "Test_Etag");
+            var envelope = MakeGetStateResponse(data, "Test_Etag");
+            var (state, etag) = await request.CompleteWithMessageAsync(envelope);
 
             // Get response and validate
-            var (state, etag) = await task;
             state.Size.Should().Be("small");
             state.Color.Should().Be("yellow");
             etag.Should().Be("Test_Etag");
@@ -138,66 +132,59 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetStateAndETagAsync_WrapsRpcException()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAndETagAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
-            var task = daprClient.GetStateAndETagAsync<Widget>("testStore", "test");
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteAsync(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+            });
             Assert.IsType<RpcException>(ex.InnerException);
         }
 
         [Fact]
         public async Task GetStateAndETagAsync_WrapsJsonException()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAndETagAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
-            var task = daprClient.GetStateAndETagAsync<Widget>("testStore", "test");
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-
-            var stateResponse = new Autogenerated.GetStateResponse()
+            var envelope = new Autogenerated.GetStateResponse()
             {
                 // Totally NOT valid JSON
                 Data = ByteString.CopyFrom(0x5b, 0x7b, 0x5b, 0x7b),
             };
-
-            var streamContent = await GrpcUtils.CreateResponseContent(stateResponse);
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
-            entry.Completion.SetResult(response);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteWithMessageAsync(envelope);
+            });
             Assert.IsType<JsonException>(ex.InnerException);
         }
 
         [Fact]
         public async Task GetStateAsync_CanReadEmptyState_ReturnsDefault()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateAsync<Widget>("testStore", "test", ConsistencyMode.Eventual);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAsync<Widget>("testStore", "test", ConsistencyMode.Eventual);
+            });
 
             // Create Response & Respond
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState<Widget>(null, entry);
+            var envelope = MakeGetStateResponse<Widget>(null);
+            var state = await request.CompleteWithMessageAsync(envelope);
 
             // Get response and validate
-            var state = await task;
             state.Should().BeNull();
         }
 
@@ -206,128 +193,117 @@ namespace Dapr.Client.Test
         [InlineData(ConsistencyMode.Strong, StateConsistency.ConsistencyStrong)]
         public async Task GetStateAsync_ValidateRequest(ConsistencyMode consistencyMode, StateConsistency expectedConsistencyMode)
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateAsync<Widget>("testStore", "test", consistencyMode);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAsync<Widget>("testStore", "test", consistencyMode);
+            });
 
             // Get Request & Validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.GetStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.Key.Should().Be("test");
-            request.Consistency.Should().Be(expectedConsistencyMode);
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.GetStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Key.Should().Be("test");
+            envelope.Consistency.Should().Be(expectedConsistencyMode);
 
             // Create Response & Respond
-            await SendResponseWithState<Widget>(null, entry);
+            var state = await request.CompleteWithMessageAsync(MakeGetStateResponse<Widget>(null));
 
             // Get response and validate
-            var state = await task;
             state.Should().BeNull();
         }
 
         [Fact]
         public async Task GetStateAndEtagAsync_ValidateRequest()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
+
             var metadata = new Dictionary<string, string>
             {
                 { "partitionKey", "mypartition" }
             };
-
-            var task = daprClient.GetStateAsync<Widget>("testStore", "test", metadata : metadata);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAsync<Widget>("testStore", "test", metadata: metadata);
+            });
 
             // Get Request & Validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.GetStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.Key.Should().Be("test");
-            request.Metadata.Should().BeEquivalentTo(metadata);
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.GetStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Key.Should().Be("test");
+            envelope.Metadata.Should().BeEquivalentTo(metadata);
 
             // Create Response & Respond
-            await SendResponseWithState<Widget>(null, entry);
+            var state = await request.CompleteWithMessageAsync(MakeGetStateResponse<Widget>(null));
 
             // Get response and validate
-            var state = await task;
             state.Should().BeNull();
         }
 
         [Fact]
         public async Task GetStateAsync_WrapsRpcException()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
-            var task = daprClient.GetStateAsync<Widget>("testStore", "test");
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteAsync(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+            });
             Assert.IsType<RpcException>(ex.InnerException);
         }
 
         [Fact]
         public async Task GetStateAsync_WrapsJsonException()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
-            var task = daprClient.GetStateAsync<Widget>("testStore", "test");
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-
             var stateResponse = new Autogenerated.GetStateResponse()
             {
                 // Totally NOT valid JSON
                 Data = ByteString.CopyFrom(0x5b, 0x7b, 0x5b, 0x7b),
             };
 
-            var streamContent = await GrpcUtils.CreateResponseContent(stateResponse);
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
-            entry.Completion.SetResult(response);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteWithMessageAsync(stateResponse);
+            });
             Assert.IsType<JsonException>(ex.InnerException);
         }
 
         [Fact]
         public async Task SaveStateAsync_CanSaveState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var widget = new Widget() { Size = "small", Color = "yellow", };
-            var task = daprClient.SaveStateAsync("testStore", "test", widget);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.SaveStateAsync("testStore", "test", widget);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.SaveStateRequest>(entry.Request);
-
-            request.StoreName.Should().Be("testStore");
-            request.States.Count.Should().Be(1);
-            var state = request.States[0];
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.SaveStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.States.Count.Should().Be(1);
+            var state = envelope.States[0];
             state.Key.Should().Be("test");
 
             var stateJson = state.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, client.InnerClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be(widget.Size);
             stateFromRequest.Color.Should().Be(widget.Color);
         }
@@ -335,91 +311,76 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetStateAsync_WithCancelledToken()
         {
-           // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var widget = new Widget() { Size = "small", Color = "yellow", };
-            var task = daprClient.SaveStateAsync("testStore", "test", widget);
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
 
-            var ctSource = new CancellationTokenSource();
-            CancellationToken ct = ctSource.Token;
-            ctSource.Cancel();
-
-            await FluentActions.Awaiting(async () => await daprClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>();
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await client.InnerClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: cts.Token);
+            });
         }
 
         [Fact]
         public async Task SaveStateAsync_CanClearState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.SaveStateAsync<object>("testStore", "test", null);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.SaveStateAsync<object>("testStore", "test", null);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.SaveStateRequest>(entry.Request);
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.SaveStateRequest>();
 
-            request.StoreName.Should().Be("testStore");
-            request.States.Count.Should().Be(1);
-            var state = request.States[0];
+            envelope.StoreName.Should().Be("testStore");
+            envelope.States.Count.Should().Be(1);
+            var state = envelope.States[0];
             state.Key.Should().Be("test");
-
             state.Value.Should().Equal(ByteString.Empty);
         }
 
         [Fact]
         public async Task SaveStateAsync_WithCancelledToken()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var ctSource = new CancellationTokenSource();
-            CancellationToken ct = ctSource.Token;
-            ctSource.Cancel();
-            await FluentActions.Awaiting(async () => await daprClient.SaveStateAsync<object>("testStore", "test", null, cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>();
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await client.InnerClient.SaveStateAsync<object>("testStore", "test", null, cancellationToken: cts.Token);
+            });
         }
 
         [Fact]
         public async Task SetStateAsync_ThrowsForNonSuccess()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var widget = new Widget() { Size = "small", Color = "yellow", };
-            var task = daprClient.SaveStateAsync("testStore", "test", widget);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.SaveStateAsync("testStore", "test", widget);
+            });
 
             // Create Response & Respond
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteAsync(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+            });
             Assert.IsType<RpcException>(ex.InnerException);
         }
 
         [Fact]
         public async Task ExecuteStateTransactionAsync_CanSaveState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var stateValue1 = new Widget() { Size = "small", Color = "yellow", };
             var metadata1 = new Dictionary<string, string>()
@@ -445,20 +406,24 @@ namespace Dapr.Client.Test
                 state3
             };
 
-            var task = daprClient.ExecuteStateTransactionAsync("testStore", states);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.ExecuteStateTransactionAsync("testStore", states);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var transactionRequest = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.ExecuteStateTransactionRequest>(entry.Request);
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.ExecuteStateTransactionRequest>();
 
-            transactionRequest.StoreName.Should().Be("testStore");
-            transactionRequest.Operations.Count.Should().Be(3);
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Operations.Count.Should().Be(3);
 
-            var req1 = transactionRequest.Operations[0];
+            var req1 = envelope.Operations[0];
             req1.Request.Key.Should().Be("stateKey1");
             req1.OperationType.Should().Be(StateOperationType.Upsert.ToString().ToLower());
             var valueJson1 = req1.Request.Value.ToStringUtf8();
-            var value1 = JsonSerializer.Deserialize<Widget>(valueJson1, daprClient.JsonSerializerOptions);
+            var value1 = JsonSerializer.Deserialize<Widget>(valueJson1, client.InnerClient.JsonSerializerOptions);
             value1.Size.Should().Be(stateValue1.Size);
             value1.Color.Should().Be(stateValue1.Color);
             req1.Request.Etag.Value.Should().Be("testEtag");
@@ -466,29 +431,25 @@ namespace Dapr.Client.Test
             req1.Request.Metadata["a"].Should().Be("b");
             req1.Request.Options.Concurrency.Should().Be(2);
 
-            var req2 = transactionRequest.Operations[1];
+            var req2 = envelope.Operations[1];
             req2.Request.Key.Should().Be("stateKey2");
             req2.OperationType.Should().Be(StateOperationType.Delete.ToString().ToLower());
             var valueJson2 = req2.Request.Value.ToStringUtf8();
-            var value2 = JsonSerializer.Deserialize<int>(valueJson2, daprClient.JsonSerializerOptions);
+            var value2 = JsonSerializer.Deserialize<int>(valueJson2, client.InnerClient.JsonSerializerOptions);
             value2.Should().Be(100);
 
-            var req3 = transactionRequest.Operations[2];
+            var req3 = envelope.Operations[2];
             req3.Request.Key.Should().Be("stateKey3");
             req3.OperationType.Should().Be(StateOperationType.Upsert.ToString().ToLower());
             var valueJson3 = req3.Request.Value.ToStringUtf8();
-            var value3 = JsonSerializer.Deserialize<string>(valueJson3, daprClient.JsonSerializerOptions);
+            var value3 = JsonSerializer.Deserialize<string>(valueJson3, client.InnerClient.JsonSerializerOptions);
             value3.Should().Be("teststring");
         }
 
         [Fact]
         public async Task ExecuteStateTransactionAsync_ThrowsForNonSuccess()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var widget1 = new Widget() { Size = "small", Color = "yellow", };
             var state1 = new StateTransactionRequest("stateKey1", JsonSerializer.SerializeToUtf8Bytes(widget1), StateOperationType.Upsert);
@@ -496,110 +457,105 @@ namespace Dapr.Client.Test
             {
                 state1
             };
-            var task = daprClient.ExecuteStateTransactionAsync("testStore", states);
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.ExecuteStateTransactionAsync("testStore", states);
+            });
 
             // Create Response & Respond
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteAsync(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+            });
             Assert.IsType<RpcException>(ex.InnerException);
         }
 
         [Fact]
         public async Task ExecuteStateTransactionAsync_WithCancelledToken()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
-                .Build();
-
-            var ctSource = new CancellationTokenSource();
-            CancellationToken ct = ctSource.Token;
-            ctSource.Cancel();
+            await using var client = TestClient.CreateForDaprClient();
 
             var operation = new StateTransactionRequest("test", null, StateOperationType.Delete);
             var operations = new List<StateTransactionRequest>
             {
-                operation
+                operation,
             };
-            await FluentActions.Awaiting(async () => await daprClient.ExecuteStateTransactionAsync("testStore", operations, new Dictionary<string, string>(), cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>();
+
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await client.InnerClient.ExecuteStateTransactionAsync("testStore", operations, new Dictionary<string, string>(), cancellationToken: cts.Token);
+            });
         }
 
         [Fact]
         public async Task DeleteStateAsync_CanDeleteState()
         {
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.DeleteStateAsync("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.DeleteStateAsync("testStore", "test");
+            });
 
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.DeleteStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.Key.Should().Be("test");
+            request.Dismiss();
+
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.DeleteStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Key.Should().Be("test");
         }
 
         [Fact]
         public async Task DeleteStateAsync_ThrowsForNonSuccess()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.DeleteStateAsync("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.DeleteStateAsync("testStore", "test");
+            });
 
             // Create Response & Respond
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.NotAcceptable);
-            entry.Completion.SetResult(response);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => await task);
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await request.CompleteAsync(new HttpResponseMessage(HttpStatusCode.NotAcceptable));
+            });
             Assert.IsType<RpcException>(ex.InnerException);
         }
 
         [Fact]
         public async Task DeleteStateAsync_WithCancelledToken()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var ctSource = new CancellationTokenSource();
-            CancellationToken ct = ctSource.Token;
-            ctSource.Cancel();
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
 
-            await FluentActions.Awaiting(async () => await daprClient.DeleteStateAsync("testStore", "key", cancellationToken: ct))
-                .Should().ThrowAsync<OperationCanceledException>();
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await client.InnerClient.DeleteStateAsync("testStore", "key", cancellationToken: cts.Token);
+            });
         }
 
         [Fact]
         public async Task GetStateEntryAsync_CanReadState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState(data, entry);
+            var envelope = MakeGetStateResponse(data);
+            var state = await request.CompleteWithMessageAsync(envelope);
 
             // Get response and validate
-            var state = await task;
             state.Value.Size.Should().Be("small");
             state.Value.Color.Should().Be("yellow");
         }
@@ -607,19 +563,17 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetStateEntryAsync_CanReadEmptyState_ReturnsDefault()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState<Widget>(null, entry);
+            var envelope = MakeGetStateResponse<Widget>(null);
+            var state = await request.CompleteWithMessageAsync(envelope);
 
-            var state = await task;
             state.Key.Should().Be("test");
             state.Value.Should().BeNull();
         }
@@ -627,39 +581,41 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetStateEntryAsync_CanSaveState()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState(data, entry);
+            var state = await request.CompleteWithMessageAsync(MakeGetStateResponse(data));
 
-            var state = await task;
             state.Key.Should().Be("test");
             state.Value.Size.Should().Be("small");
             state.Value.Color.Should().Be("yellow");
 
             // Modify the state and save it
             state.Value.Color = "green";
-            var task2 = state.SaveAsync();
+
+            var request2 = await client.CaptureGrpcRequestAsync(async _ =>
+            {
+                await state.SaveAsync();
+            });
+
+            request2.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.SaveStateRequest>(entry.Request);
+            var envelope = await request2.GetRequestEnvelopeAsync<Autogenerated.SaveStateRequest>();
 
-            request.StoreName.Should().Be("testStore");
-            request.States.Count.Should().Be(1);
-            var requestState = request.States[0];
+            envelope.StoreName.Should().Be("testStore");
+            envelope.States.Count.Should().Be(1);
+            var requestState = envelope.States[0];
             requestState.Key.Should().Be("test");
 
             var stateJson = requestState.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, client.InnerClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be("small");
             stateFromRequest.Color.Should().Be("green");
         }
@@ -667,32 +623,34 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task GetStateEntryAsync_CanDeleteState()
         {
-            // Configure client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetStateEntryAsync<Widget>("testStore", "test");
+            });
 
             // Create Response & Respond
             var data = new Widget() { Size = "small", Color = "yellow", };
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState(data, entry);
+            var state = await request.CompleteWithMessageAsync(MakeGetStateResponse(data));
 
-            var state = await task;
             state.Key.Should().Be("test");
             state.Value.Size.Should().Be("small");
             state.Value.Color.Should().Be("yellow");
 
             state.Value.Color = "green";
-            var task2 = state.DeleteAsync();
+            var request2 = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await state.DeleteAsync();
+            });
+
+            request2.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.DeleteStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.Key.Should().Be("test");
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.DeleteStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Key.Should().Be("test");
+
         }
 
         [Theory]
@@ -706,11 +664,7 @@ namespace Dapr.Client.Test
             StateConsistency expectedConsistency,
             StateConcurrency expectedConcurrency)
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var widget = new Widget() { Size = "small", Color = "yellow", };
             var stateOptions = new StateOptions
@@ -724,14 +678,19 @@ namespace Dapr.Client.Test
                 { "key1", "value1" },
                 { "key2", "value2" }
             };
-            var task = daprClient.SaveStateAsync("testStore", "test", widget, stateOptions, metadata);
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.SaveStateAsync("testStore", "test", widget, stateOptions, metadata);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.SaveStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.States.Count.Should().Be(1);
-            var state = request.States[0];
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.SaveStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.States.Count.Should().Be(1);
+            var state = envelope.States[0];
             state.Key.Should().Be("test");
             state.Metadata.Count.Should().Be(2);
             state.Metadata.Keys.Contains("key1").Should().BeTrue();
@@ -742,7 +701,7 @@ namespace Dapr.Client.Test
             state.Options.Consistency.Should().Be(expectedConsistency);
 
             var stateJson = state.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, client.InnerClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be(widget.Size);
             stateFromRequest.Color.Should().Be(widget.Color);
         }
@@ -758,11 +717,7 @@ namespace Dapr.Client.Test
             StateConsistency expectedConsistency,
             StateConcurrency expectedConcurrency)
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var widget = new Widget() { Size = "small", Color = "yellow", };
             var stateOptions = new StateOptions
@@ -776,14 +731,18 @@ namespace Dapr.Client.Test
                 { "key1", "value1" },
                 { "key2", "value2" }
             };
-            var task = daprClient.TrySaveStateAsync("testStore", "test", widget, "Test_Etag", stateOptions, metadata);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.TrySaveStateAsync("testStore", "test", widget, "Test_Etag", stateOptions, metadata);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.SaveStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.States.Count.Should().Be(1);
-            var state = request.States[0];
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.SaveStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.States.Count.Should().Be(1);
+            var state = envelope.States[0];
             state.Etag.Value.Should().Be("Test_Etag");
             state.Metadata.Count.Should().Be(2);
             state.Metadata.Keys.Contains("key1").Should().BeTrue();
@@ -794,7 +753,7 @@ namespace Dapr.Client.Test
             state.Options.Consistency.Should().Be(expectedConsistency);
 
             var stateJson = state.Value.ToStringUtf8();
-            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, daprClient.JsonSerializerOptions);
+            var stateFromRequest = JsonSerializer.Deserialize<Widget>(stateJson, client.InnerClient.JsonSerializerOptions);
             stateFromRequest.Size.Should().Be(widget.Size);
             stateFromRequest.Color.Should().Be(widget.Color);
         }
@@ -814,7 +773,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => 
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
             {
                 await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "someETag");
             });
@@ -946,11 +905,7 @@ namespace Dapr.Client.Test
             StateConsistency expectedConsistency,
             StateConcurrency expectedConcurrency)
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var stateOptions = new StateOptions
             {
@@ -958,15 +913,20 @@ namespace Dapr.Client.Test
                 Consistency = consistencyMode
             };
 
-            var task = daprClient.DeleteStateAsync("testStore", "test", stateOptions);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.DeleteStateAsync("testStore", "test", stateOptions);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.DeleteStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.Key.Should().Be("test");
-            request.Options.Concurrency.Should().Be(expectedConcurrency);
-            request.Options.Consistency.Should().Be(expectedConsistency);
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.DeleteStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Key.Should().Be("test");
+            envelope.Options.Concurrency.Should().Be(expectedConcurrency);
+            envelope.Options.Consistency.Should().Be(expectedConsistency);
+
         }
 
         [Theory]
@@ -980,11 +940,7 @@ namespace Dapr.Client.Test
             StateConsistency expectedConsistency,
             StateConcurrency expectedConcurrency)
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var stateOptions = new StateOptions
             {
@@ -992,49 +948,54 @@ namespace Dapr.Client.Test
                 Consistency = consistencyMode
             };
 
-            var task = daprClient.TryDeleteStateAsync("testStore", "test", "Test_Etag", stateOptions);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.TryDeleteStateAsync("testStore", "test", "Test_Etag", stateOptions);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<Autogenerated.DeleteStateRequest>(entry.Request);
-            request.StoreName.Should().Be("testStore");
-            request.Key.Should().Be("test");
-            request.Etag.Value.Should().Be("Test_Etag");
-            request.Options.Concurrency.Should().Be(expectedConcurrency);
-            request.Options.Consistency.Should().Be(expectedConsistency);
+            var envelope = await request.GetRequestEnvelopeAsync<Autogenerated.DeleteStateRequest>();
+            envelope.StoreName.Should().Be("testStore");
+            envelope.Key.Should().Be("test");
+            envelope.Etag.Value.Should().Be("Test_Etag");
+            envelope.Options.Concurrency.Should().Be(expectedConcurrency);
+            envelope.Options.Consistency.Should().Be(expectedConsistency);
         }
 
-        private async Task SendResponseWithState<T>(T state, TestHttpClient.Entry entry, string etag = null)
+        private Autogenerated.GetStateResponse MakeGetStateResponse<T>(T state, string etag = null)
         {
-            var stateDate = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            var stateResponse = new Autogenerated.GetStateResponse
+            var data = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            var response = new Autogenerated.GetStateResponse
             {
-                Data = stateDate
+                Data = data
             };
 
             if (etag != null)
             {
-                stateResponse.Etag = etag;
+                response.Etag = etag;
             }
 
-            var streamContent = await GrpcUtils.CreateResponseContent(stateResponse);
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
-            entry.Completion.SetResult(response);
+            return response;
         }
 
-        private async Task SendResponseWithBulkState(string key, string state, TestHttpClient.Entry entry)
+        private Autogenerated.GetBulkStateResponse MakeGetBulkStateResponse<T>(string key, T state)
         {
-            var stateDate = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            var bulkResponse = new Autogenerated.GetBulkStateResponse();
-            bulkResponse.Items.Add(new Autogenerated.BulkStateItem()
+            var data = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            var response = new Autogenerated.GetBulkStateResponse
             {
-                Key = key,
-                Data = ByteString.CopyFromUtf8(state)
-            });
+                Items =
+                {
+                    new Autogenerated.BulkStateItem()
+                    {
+                        Key = key,
+                        Data = data,
+                    }
+                }
+            };
 
-            var streamContent = await GrpcUtils.CreateResponseContent(bulkResponse);
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
-            entry.Completion.SetResult(response);
+            return response;
         }
 
         private class Widget
@@ -1045,3 +1006,4 @@ namespace Dapr.Client.Test
         }
     }
 }
+

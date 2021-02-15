@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\AppCallbackClient.cs" />
-    <Compile Include="..\Shared\TestHttpClient.cs" />
+    <Compile Include="..\Shared\TestClient.cs" />
     <Compile Include="..\Shared\GrpcUtils.cs" />
   </ItemGroup>
 
