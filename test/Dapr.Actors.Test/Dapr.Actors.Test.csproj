@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1;net5</TargetFrameworks>
     <RootNamespace>Dapr.Actors</RootNamespace>
+    <DefineConstants>$(DefineConstants);ACTORS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\GrpcUtils.cs" />
+    <Compile Include="..\Shared\TestClient.cs" />
   </ItemGroup>
 
   <ItemGroup>

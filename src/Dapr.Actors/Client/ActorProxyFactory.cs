@@ -16,7 +16,7 @@ namespace Dapr.Actors.Client
     public class ActorProxyFactory : IActorProxyFactory
     {
         private ActorProxyOptions defaultOptions;
-        private readonly HttpClientHandler handler;
+        private readonly HttpMessageHandler handler;
 
         /// <inheritdoc/>
         public ActorProxyOptions DefaultOptions
@@ -32,7 +32,16 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
         /// </summary>
-        public ActorProxyFactory(ActorProxyOptions options = null, HttpClientHandler handler = null)
+        [Obsolete("Use the constructor that accepts HttpMessageHandler. This will be removed in the future.")]
+        public ActorProxyFactory(ActorProxyOptions options, HttpClientHandler handler)
+            : this(options, (HttpMessageHandler)handler)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
+        /// </summary>
+        public ActorProxyFactory(ActorProxyOptions options = null, HttpMessageHandler handler = null)
         {
             this.defaultOptions = options ?? new ActorProxyOptions();
             this.handler = handler;
