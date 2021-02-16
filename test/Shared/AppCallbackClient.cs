@@ -21,20 +21,15 @@ namespace Dapr
     public class AppCallbackClient : HttpClient
     {
         public AppCallbackClient(AppCallbackBase callbackService)
-            : this(new TestHttpClientHandler(callbackService))
+            : base(new Handler(callbackService))
         {
         }
 
-        private AppCallbackClient(TestHttpClientHandler handler)
-            : base(handler)
-        {
-        }
-
-        private class TestHttpClientHandler : HttpMessageHandler
+        private class Handler : HttpMessageHandler
         {
             private readonly AppCallbackBase callbackService;
 
-            public TestHttpClientHandler(AppCallbackBase callbackService)
+            public Handler(AppCallbackBase callbackService)
             {
                 this.callbackService = callbackService;
             }

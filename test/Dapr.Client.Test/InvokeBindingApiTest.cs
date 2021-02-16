@@ -8,7 +8,6 @@ namespace Dapr.Client.Test
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Net;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
@@ -16,7 +15,6 @@ namespace Dapr.Client.Test
     using FluentAssertions;
     using Google.Protobuf;
     using Grpc.Core;
-    using Grpc.Net.Client;
     using Moq;
     using Xunit;
 
@@ -25,33 +23,29 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeBindingAsync_ValidateRequest()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest);
+            });
 
-            // Get Request and validate                     
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
-            request.Name.Should().Be("test");
-            request.Metadata.Count.Should().Be(0);
-            var json = request.Data.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, daprClient.JsonSerializerOptions);
+            request.Dismiss();
+
+            // Get Request and validate
+            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("test");
+            envelope.Metadata.Count.Should().Be(0);
+            var json = envelope.Data.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
         }
 
         [Fact]
         public async Task InvokeBindingAsync_ValidateRequest_WithMetadata()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var metadata = new Dictionary<string, string>
             {
@@ -59,55 +53,55 @@ namespace Dapr.Client.Test
                 { "key2", "value2" }
             };
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata);
+            });
+
+            request.Dismiss();
 
             // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
-            request.Name.Should().Be("test");
-            request.Metadata.Count.Should().Be(2);
-            request.Metadata.Keys.Contains("key1").Should().BeTrue();
-            request.Metadata.Keys.Contains("key2").Should().BeTrue();
-            request.Metadata["key1"].Should().Be("value1");
-            request.Metadata["key2"].Should().Be("value2");
-            var json = request.Data.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, daprClient.JsonSerializerOptions);
+            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("test");
+            envelope.Metadata.Count.Should().Be(2);
+            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
+            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
+            envelope.Metadata["key1"].Should().Be("value1");
+            envelope.Metadata["key2"].Should().Be("value2");
+            var json = envelope.Data.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
             typeFromRequest.RequestParameter.Should().Be("Hello ");
         }
 
         [Fact]
         public async Task InvokeBindingAsync_WithNullPayload_ValidateRequest()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", null);
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", null);
+            });
 
-            // Get Request and validate                     
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
-            request.Name.Should().Be("test");
-            request.Metadata.Count.Should().Be(0);
-            var json = request.Data.ToStringUtf8();
+            request.Dismiss();
+
+            // Get Request and validate
+            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("test");
+            envelope.Metadata.Count.Should().Be(0);
+            var json = envelope.Data.ToStringUtf8();
             Assert.Equal("null", json);
         }
 
         [Fact]
         public async Task InvokeBindingAsync_WithRequest_ValidateRequest()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var payload = new InvokeRequest() { RequestParameter = "Hello " };
-            var request = new BindingRequest("test", "create")
+            var bindingRequest = new BindingRequest("test", "create")
             {
-                Data = JsonSerializer.SerializeToUtf8Bytes(payload, daprClient.JsonSerializerOptions),
+                Data = JsonSerializer.SerializeToUtf8Bytes(payload, client.InnerClient.JsonSerializerOptions),
                 Metadata = 
                 {
                     { "key1", "value1" },
@@ -115,37 +109,35 @@ namespace Dapr.Client.Test
                 }
             };
 
-            var task = daprClient.InvokeBindingAsync(request);
-
-            // Get Request and validate
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-
-            var gRpcRequest = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
-            gRpcRequest.Name.Should().Be("test");
-            gRpcRequest.Metadata.Count.Should().Be(2);
-            gRpcRequest.Metadata.Keys.Contains("key1").Should().BeTrue();
-            gRpcRequest.Metadata.Keys.Contains("key2").Should().BeTrue();
-            gRpcRequest.Metadata["key1"].Should().Be("value1");
-            gRpcRequest.Metadata["key2"].Should().Be("value2");
-
-            var json = gRpcRequest.Data.ToStringUtf8();
-            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, daprClient.JsonSerializerOptions);
-            typeFromRequest.RequestParameter.Should().Be("Hello ");
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.InvokeBindingAsync(bindingRequest);
+            });
 
             var gRpcResponse = new Autogen.Grpc.v1.InvokeBindingResponse()
             {
-                Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, daprClient.JsonSerializerOptions)),
+                Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, client.InnerClient.JsonSerializerOptions)),
                 Metadata = 
                 {
                     { "anotherkey", "anothervalue" },
                 }
             };
-            var streamContent = await GrpcUtils.CreateResponseContent(gRpcResponse);
-            entry.Completion.SetResult(GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent));
+            var response = await request.CompleteWithMessageAsync(gRpcResponse);
 
-            var response = await task;
-            Assert.Same(request, response.Request);
-            Assert.Equal("red", JsonSerializer.Deserialize<Widget>(response.Data.Span, daprClient.JsonSerializerOptions).Color);
+            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("test");
+            envelope.Metadata.Count.Should().Be(2);
+            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
+            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
+            envelope.Metadata["key1"].Should().Be("value1");
+            envelope.Metadata["key2"].Should().Be("value2");
+
+            var json = envelope.Data.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
+            typeFromRequest.RequestParameter.Should().Be("Hello ");
+
+            Assert.Same(bindingRequest, response.Request);
+            Assert.Equal("red", JsonSerializer.Deserialize<Widget>(response.Data.Span, client.InnerClient.JsonSerializerOptions).Color);
             Assert.Collection(
                 response.Metadata, 
                 kvp => 
@@ -159,15 +151,10 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeBindingAsync_WithCancelledToken()
         {
-            // Configure Client
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
-            var ctSource = new CancellationTokenSource();
-            CancellationToken ct = ctSource.Token;
-            ctSource.Cancel();
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
 
             var metadata = new Dictionary<string, string>
             {
@@ -175,10 +162,10 @@ namespace Dapr.Client.Test
                 { "key2", "value2" }
             };
             var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            var task = daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata, ct);
-
-            await FluentActions.Awaiting(async () => await task)
-                .Should().ThrowAsync<OperationCanceledException>();
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await client.InnerClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata, cts.Token);
+            });
         }
 
         [Fact]
@@ -203,26 +190,21 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeBindingAsync_WrapsJsonException()
         {
-            var httpClient = new TestHttpClient();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
+            await using var client = TestClient.CreateForDaprClient();
 
             var response = new Autogen.Grpc.v1.InvokeBindingResponse();
-            var bytes = JsonSerializer.SerializeToUtf8Bytes<Widget>(new Widget(){ Color = "red", }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            response.Data = ByteString.CopyFrom(bytes.Take(10).ToArray()); // trim it to make invalid JSON blog
+            var bytes = JsonSerializer.SerializeToUtf8Bytes<Widget>(new Widget(){ Color = "red", }, client.InnerClient.JsonSerializerOptions);
+            response.Data = ByteString.CopyFrom(bytes.Take(10).ToArray()); // trim it to make invalid JSON blob
 
-            var task = daprClient.InvokeBindingAsync<InvokeRequest, Widget>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.InvokeBindingAsync<InvokeRequest, Widget>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+            });
 
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var request = await GrpcUtils.GetRequestFromRequestMessageAsync<InvokeBindingRequest>(entry.Request);
-
-            var streamContent = await GrpcUtils.CreateResponseContent(response);
-            entry.Completion.SetResult(GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent));
-
+            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
             var ex = await Assert.ThrowsAsync<DaprException>(async () => 
             {
-                await task;
+                await request.CompleteWithMessageAsync(response);
             });
             Assert.IsType<JsonException>(ex.InnerException);
         }

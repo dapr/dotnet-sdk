@@ -16,6 +16,10 @@ using System.Threading.Tasks;
 
 namespace Dapr.Extensions.Configuration.Test
 {
+    // These tests use the outdated TestHttpClient infrastructure because they need to 
+    // support testing with synchronous HTTP requests.
+    //
+    // Don't copy this pattern elsewhere.
     public class DaprSecretStoreConfigurationProviderTest
     {
 
