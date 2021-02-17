@@ -13,13 +13,7 @@ namespace Samples.Client
     {
         private static readonly Example[] Examples = new Example[]
         {
-            new InvokeServiceGrpcExample(),
-            new InvokeServiceHttpExample(),
-            new InvokeServiceHttpClientExample(),
             new PublishEventExample(),
-            new StateStoreExample(),
-            new StateStoreTransactionsExample(),
-            new StateStoreETagsExample(),
         };
 
         static async Task<int> Main(string[] args)

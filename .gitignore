@@ -18,6 +18,9 @@
 # MSBuild's log file
 msbuild.log
 
+# test results
+TestResults/
+
 # Build.exe
 *.err
 *.wrn
