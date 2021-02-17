@@ -1,17 +1,44 @@
 # Dapr SDK for .NET
 
-Dapr is a portable, event-driven, serverless runtime for building distributed applications across cloud and edge.
-
 [![Build Status](https://github.com/dapr/dotnet-sdk/workflows/build/badge.svg)](https://github.com/dapr/dotnet-sdk/actions?workflow=build)
-[![Gitter](https://badges.gitter.im/Dapr/community.svg)](https://gitter.im/Dapr/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![codecov](https://codecov.io/gh/dapr/dotnet-sdk/branch/master/graph/badge.svg)](https://codecov.io/gh/dapr/dotnet-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- [dapr.io](https://dapr.io)
-- [@DaprDev](https://twitter.com/DaprDev)
 
+Dapr SDK for .NET allows you to:
+- Interact with Dapr applications through a Dapr client
+- Build routes and controllers in ASP.NET
+- Implement the Virtual Actor model, based on the actor design pattern
 
-Dapr SDK for .NET allows you to implement the Virtual Actor model, based on the actor design pattern. This SDK can run locally, in a container and in any distributed systems environment.
+This SDK can run locally, in a container, and in any distributed systems environment.
+
+## Releases
+
+We publish [nuget packages](https://www.nuget.org/profiles/dapr.io) to nuget.org for each release.
+
+### Using nugets built locally in your project
+
+\<RepoRoot\> is the path where you cloned this repository.
+Nuget packages are dropped under *<RepoRoot>/bin/<Debug|Release>/nugets* when you build locally.
+
+**Example**
+```bash
+# Add Dapr.Actors nuget package
+dotnet add package Dapr.Actors -s <RepoRoot>/bin/<Debug|Release>/nugets
+
+# Add Dapr.Actors.AspNetCore nuget package
+dotnet add package Dapr.Actors.AspNetCore -s <RepoRoot>/bin/<Debug|Release>/nugets
+```
+
+## Documentation
+
+The docs for the Dapr .NET SDK can be found on the [Dapr docs site](https://docs.dapr.io/developing-applications/sdks/dotnet/).
+
+## Examples
+
+Visit the [examples folder](./examples) for a variety of examples to get you up and running with the Dapr .NET SDK.
+
+## Contributing
 
 This repo builds the following packages:
 
@@ -21,16 +48,15 @@ This repo builds the following packages:
 - Dapr.Actors.AspNetCore
 - Dapr.Extensions.Configuration
 
-## Getting Started
-
-### Prerequesites
+### Prerequisites
 
 Each project is a normal C# project. At minimum, you need [.NET Core SDK 5.0](https://dotnet.microsoft.com/download/dotnet-core/5.0) to build, test, and generate NuGet packages.
+
+Also make sure to reference the [.NET SDK contribution guide](https://docs.dapr.io/contributing/dotnet-contributing/)
 
 **macOS/Linux:**
 
 On macOS or Linux we recommend [Visual Studio Code](https://code.visualstudio.com/) with the [C# Extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp). See [here](https://code.visualstudio.com/docs/languages/dotnet) for a getting started guide for VS Code and .NET.
-
 
 **Windows:**
 
@@ -55,29 +81,3 @@ dotnet pack
 ```
 
 Each project can also be built individually directly through the CLI or your editor/IDE. You can open the solution file all.sln in repo root to load all sdk, samples and test projects.
-
-## Releases
-
-We publish nuget packages to nuget.org for each release.
-
-## Using nugets built locally in your project
-
-\<RepoRoot\> is the path where you cloned this repository.
-Nuget packages are dropped under *<RepoRoot>/bin/<Debug|Release>/nugets* when you build locally.
-
-Examples:
-```bash
-# Add Dapr.Actors nuget package
-dotnet add package Dapr.Actors -s <RepoRoot>/bin/<Debug|Release>/nugets
-
-# Add Dapr.Actors.AspNetCore nuget package
-dotnet add package Dapr.Actors.AspNetCore -s <RepoRoot>/bin/<Debug|Release>/nugets
-```
-
-## Documentation
-
-These articles will help get you started with Dapr runtime and Dapr Actors:
-
-- [Getting started with Dapr Actor](docs/get-started-dapr-actor.md)
-- [Dapr CLI](https://github.com/dapr/cli)
-- [Dapr Actors API Reference](https://docs.dapr.io/reference/api/actors_api/)
