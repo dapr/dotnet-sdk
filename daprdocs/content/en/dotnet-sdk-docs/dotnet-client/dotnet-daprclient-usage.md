@@ -40,7 +40,7 @@ The SDK will read the following environment variables to configure the default v
 
 ### Configuring gRPC Channel Options
 
-Dapr's use `CancellationToken` for cancellation relies on the configuration of the gRPC channel options. If you need to configure these options yourself, make sure to enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation).
+Dapr's use of `CancellationToken` for cancellation relies on the configuration of the gRPC channel options. If you need to configure these options yourself, make sure to enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation).
 
 ```C#
 var httpClient = new HttpClient();
