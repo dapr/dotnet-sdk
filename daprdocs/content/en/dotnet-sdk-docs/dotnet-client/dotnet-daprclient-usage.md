@@ -1,12 +1,12 @@
 ---
 type: docs
-title: "DaprClient Usage"
-linkTitle: "DaprClient Usage"
+title: "DaprClient usage"
+linkTitle: "DaprClient sage"
 weight: 100000
 description: Essential tips and advice for using DaprClient
 ---
 
-## Lifetime Management
+## Lifetime management
 
 A `DaprClient` holds access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar. `DaprClient` implements `IDisposable` to support eager cleanup of resources.
 
@@ -38,24 +38,23 @@ The SDK will read the following environment variables to configure the default v
 - `DAPR_GRPC_PORT`: used to find the gRPC endpoint of the Dapr sidecar
 - `DAPR_API_TOKEN`: used to set the API Token
 
-### Configuring gRPC Channel Options
+### Configuring gRPC channel options
 
 Dapr's use of `CancellationToken` for cancellation relies on the configuration of the gRPC channel options. If you need to configure these options yourself, make sure to enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation).
 
 ```C#
-var httpClient = new HttpClient();
 var daprClient = new DaprClientBuilder()
     .UseGrpcChannelOptions(new GrpcChannelOptions { ... ThrowOperationCanceledOnCancellation = true })
     .Build();
 ```
 
-## Using Cancellation with DaprClient
+## Using cancellation with DaprClient
 
 The APIs on DaprClient that perform asynchronous operations accept an optional `CancellationToken` parameter. This follows a standard .NET idiom for cancellable operations. Note that when cancellation occurs, there is no guarantee that the remote endpoint stops processing the request, only that the client has stopped waiting for completion.
 
 When an operation is cancelled, it will throw an `OperationCancelledException`. 
 
-## Understanding DaprClient JSON Serialization
+## Understanding DaprClient JSON serialization
 
 Many method on `DaprClient` perform JSON serialization using the `System.Text.Json` serializer. Methods that accept an application data type as an argument will JSON serialize it, unless the documentation clearly states otherwise.
 
@@ -65,7 +64,7 @@ It is worth reading the [System.Text.Json documentation](https://docs.microsoft.
 
 `System.Text.Json` as of .NET 5.0 does not have good support for all of F# language features built-in. If you are using F# you may want to use one of the converter packages that add support for F#'s features such as [FSharp.SystemTextJson](https://github.com/Tarmil/FSharp.SystemTextJson).
 
-### Simple Guidance for JSON Serialization
+### Simple guidance for JSON serialization
 
 Your experience using JSON serialization and `DaprClient` will be smooth if you use a feature set that maps to JSON's type system. These are general guidelines that will simplify your code where they can be applied.
 
@@ -76,7 +75,7 @@ Your experience using JSON serialization and `DaprClient` will be smooth if you 
 - Create your own classes for top-level messages, events, or state values so you can add properties in the future
 - Design types with `get`/`set` properties OR use the [supported pattern](https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-immutability?pivots=dotnet-5-0) for immutable types with JSON
 
-### Polymorphism and Serialization
+### Polymorphism and serialization
 
 The `System.Text.Json` serializer used by `DaprClient` uses the declared type of values when performing serialization.
 
@@ -124,7 +123,7 @@ Widget widget = new SuperWidget() { Color = "Green", HasSelfCleaningFeature = tr
 await client.SaveStateAsync<object>("mystatestore", "mykey", widget);
 ```
 
-## Error Handling
+## Error handling
 
 Methods on `DaprClient` will throw `DaprException` or a subclass when a failure is encountered. 
 
