@@ -10,13 +10,13 @@ description: Essential tips and advice for using DaprClient
 
 A `DaprClient` holds access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar. `DaprClient` implements `IDisposable` to support eager cleanup of resources.
 
-For best performance, create a single long-lived instance of `DaprClient` and provide access that shared instance throughout your application. `DaprClient` instances are thread-safe and intended to be shared.
+For best performance, create a single long-lived instance of `DaprClient` and provide access to that shared instance throughout your application. `DaprClient` instances are thread-safe and intended to be shared.
 
 Avoid creating a `DaprClient` per-operation and disposing it when the operation is complete. 
 
 ## Configuring DaprClient
 
-A `DaprClient` can configured by invoking methods on `DaprClientBuilder` class before calling `.Build()` to create the client. The settings for each `DaprClient` object are separate and cannot be changed after calling `.Build()`.
+A `DaprClient` can be configured by invoking methods on `DaprClientBuilder` class before calling `.Build()` to create the client. The settings for each `DaprClient` object are separate and cannot be changed after calling `.Build()`.
 
 ```C#
 var daprClient = new DaprClientBuilder()
