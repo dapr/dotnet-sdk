@@ -78,7 +78,7 @@ Your experience using JSON serialization and `DaprClient` will be smooth if you 
 
 ### Polymorphism and Serialization
 
-The `System.Text.Json` serializer used by `DaprClient` uses the declared type of values when performation serialization.
+The `System.Text.Json` serializer used by `DaprClient` uses the declared type of values when performing serialization.
 
 This section will use `DaprClient.SaveStateAsync<TValue>(...)` in examples, but the advice is applicable to any Dapr building block exposed by the SDK.
 
