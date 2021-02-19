@@ -7,7 +7,7 @@ description: .NET SDK packages for developing Dapr applications
 no_list: true
 ---
 
-Dapr offers a variety of packages to help with the development of Python applications. Using them you can create .NET clients, servers, and virtual actors with Dapr.
+Dapr offers a variety of packages to help with the development of .NET applications. Using them you can create .NET clients, servers, and virtual actors with Dapr.
 
 ## Client
 
@@ -33,4 +33,3 @@ git clone https://github.com/dapr/dotnet-sdk.git
 ## More information
 
 - [NuGet packages](https://www.nuget.org/profiles/dapr.io)
-- [Dapr SDK serialization]({{< ref sdk-serialization.md >}})
