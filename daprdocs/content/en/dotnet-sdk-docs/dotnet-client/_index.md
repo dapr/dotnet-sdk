@@ -21,6 +21,8 @@ The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< 
 
 ### Invoke a service
 
+You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke your services.
+
 {{< tabs SDK HTTP>}}
 
 {{% codetab %}}
@@ -36,6 +38,8 @@ Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance)
 
 {{% codetab %}}
 ```csharp
+var client = DaprClient.CreateInvokeHttpClient(appId: "routing");
+
 var deposit = new Transaction  { Id = "17", Amount = 99m };
 var response = await client.PostAsJsonAsync("/deposit", deposit, cancellationToken);
 var account = await response.Content.ReadFromJsonAsync<Account>(cancellationToken: cancellationToken);
@@ -76,7 +80,7 @@ Console.WriteLine("Published deposit event!");
 ```
 
 - For a full list of state operations visit [How-To: Publish & subscribe]({{< ref howto-publish-subscribe.md >}}).
-- Visit [Python SDK examples](https://github.com/dapr/python-sdk/tree/daprdocs-setup/examples/pubsub-simple) for code samples and instructions to try out pub/sub
+- Visit [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples/client/PublishSubscribe) for code samples and instructions to try out pub/sub
 
 ### Interact with output bindings
 
