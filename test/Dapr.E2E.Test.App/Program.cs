@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Dapr.E2E.Test.App
+namespace Dapr.E2E.Test
 {
     public class Program
     {
