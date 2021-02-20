@@ -2,7 +2,6 @@ namespace Dapr.E2E.Test
 {
     using System;
     using System.Diagnostics;
-    using System.IO;
     using System.Threading;
 
     public class ShellCommand
@@ -15,8 +14,6 @@ namespace Dapr.E2E.Test
 
         public void Run()
         {
-            var dir = Directory.GetCurrentDirectory();
-            Console.WriteLine(dir);
             Console.WriteLine($"Running command: {this.Command}");
             var escapedArgs = Command.Replace("\"", "\\\"");
             var process = new Process()
