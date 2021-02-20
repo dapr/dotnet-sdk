@@ -6,13 +6,11 @@
 namespace Dapr.AspNetCore.Test
 {
     using System;
-    using System.Net;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
-    using Grpc.Net.Client;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -25,37 +23,41 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task BindAsync_WithoutMatchingRouteValue_ReportsError()
         {
-            var binder = new StateEntryModelBinder("testStore", "test", isStateEntry: false, typeof(Widget));
+            await using var client = TestClient.CreateForDaprClient();
 
-            var httpClient = new TestHttpClient();
-            var context = CreateContext(CreateServices(httpClient));
+            var binder = new StateEntryModelBinder("testStore", "test", isStateEntry: false, typeof(Widget));
+            var context = CreateContext(CreateServices(client.InnerClient));
 
             await binder.BindModelAsync(context);
+
             context.Result.IsModelSet.Should().BeFalse();
             context.ModelState.ErrorCount.Should().Be(1);
             context.ModelState["testParameter"].Errors.Count.Should().Be(1);
 
-            httpClient.Requests.Count.Should().Be(0);
+            // No request to state store, validated by disposing client
         }
 
         [Fact]
         public async Task BindAsync_CanBindValue()
         {
+            await using var client = TestClient.CreateForDaprClient();
+
             var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
 
             // Configure Client
-            var httpClient = new TestHttpClient();
-            var context = CreateContext(CreateServices(httpClient));
+            var context = CreateContext(CreateServices(client.InnerClient));
             context.HttpContext.Request.RouteValues["id"] = "test";
-            var task = binder.BindModelAsync(context);
+
+            var request = await client.CaptureGrpcRequestAsync(async _ =>
+            {
+                await binder.BindModelAsync(context);
+            });
 
             // Create Response & Respond
             var state = new Widget() { Size = "small", Color = "yellow", };
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState(state, entry);
+            await SendResponseWithState(state, request);
 
             // Get response and validate
-            await task;
             context.Result.IsModelSet.Should().BeTrue();
             context.Result.Model.As<Widget>().Size.Should().Be("small");
             context.Result.Model.As<Widget>().Color.Should().Be("yellow");
@@ -67,21 +69,24 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task BindAsync_CanBindStateEntry()
         {
+            await using var client = TestClient.CreateForDaprClient();
+
             var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
 
             // Configure Client
-            var httpClient = new TestHttpClient();
-            var context = CreateContext(CreateServices(httpClient));
+            var context = CreateContext(CreateServices(client.InnerClient));
             context.HttpContext.Request.RouteValues["id"] = "test";
-            var task = binder.BindModelAsync(context);
+
+            var request = await client.CaptureGrpcRequestAsync(async _ =>
+            {
+                await binder.BindModelAsync(context);
+            });
 
             // Create Response & Respond
             var state = new Widget() { Size = "small", Color = "yellow", };
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState(state, entry);
+            await SendResponseWithState(state, request);
 
             // Get response and validate
-            await task;
             context.Result.IsModelSet.Should().BeTrue();
             context.Result.Model.As<StateEntry<Widget>>().Key.Should().Be("test");
             context.Result.Model.As<StateEntry<Widget>>().Value.Size.Should().Be("small");
@@ -94,18 +99,21 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task BindAsync_ReturnsNullForNonExistentStateEntry()
         {
+            await using var client = TestClient.CreateForDaprClient();
+
             var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
 
             // Configure Client
-            var httpClient = new TestHttpClient();
-            var context = CreateContext(CreateServices(httpClient));
+            var context = CreateContext(CreateServices(client.InnerClient));
             context.HttpContext.Request.RouteValues["id"] = "test";
-            var task = binder.BindModelAsync(context);
 
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState<string>(null, entry);
+            var request = await client.CaptureGrpcRequestAsync(async _ =>
+            {
+                await binder.BindModelAsync(context);
+            });
 
-            await task;
+            await SendResponseWithState<string>(null, request);
+
             context.ModelState.IsValid.Should().BeTrue();
             context.Result.IsModelSet.Should().BeFalse();
             context.Result.Should().Be(ModelBindingResult.Failed());
@@ -114,18 +122,21 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task BindAsync_WithStateEntry_ForNonExistentStateEntry()
         {
+            await using var client = TestClient.CreateForDaprClient();
+
             var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
 
             // Configure Client
-            var httpClient = new TestHttpClient();
-            var context = CreateContext(CreateServices(httpClient));
+            var context = CreateContext(CreateServices(client.InnerClient));
             context.HttpContext.Request.RouteValues["id"] = "test";
-            var task = binder.BindModelAsync(context);
 
-            httpClient.Requests.TryDequeue(out var entry).Should().BeTrue();
-            await SendResponseWithState<string>(null, entry);
+            var request = await client.CaptureGrpcRequestAsync(async _ =>
+            {
+                await binder.BindModelAsync(context);
+            });
 
-            await task;
+            await SendResponseWithState<string>(null, request);
+
             context.ModelState.IsValid.Should().BeTrue();
             context.Result.IsModelSet.Should().BeTrue();
             ((StateEntry<Widget>)context.Result.Model).Value.Should().BeNull();
@@ -148,27 +159,21 @@ namespace Dapr.AspNetCore.Test
             };
         }
 
-        private async Task SendResponseWithState<T>(T state, TestHttpClient.Entry entry)
+        private async Task SendResponseWithState<T>(T state, TestClient<DaprClient>.TestGrpcRequest request)
         {
             var stateData = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            var stateResponse = new GetStateResponse
+            var stateResponse = new GetStateResponse()
             {
                 Data = stateData,
                 Etag = "test",
             };
 
-            var streamContent = await GrpcUtils.CreateResponseContent(stateResponse);
-            var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
-            entry.Completion.SetResult(response);
+            await request.CompleteWithMessageAsync(stateResponse);
         }
 
-        private static IServiceProvider CreateServices(TestHttpClient httpClient)
+        private static IServiceProvider CreateServices(DaprClient daprClient)
         {
             var services = new ServiceCollection();
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
-                .Build();
-
             services.AddSingleton(daprClient);
             return services.BuildServiceProvider();
         }

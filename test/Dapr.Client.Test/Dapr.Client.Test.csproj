@@ -13,7 +13,7 @@
     <PackageReference Include="Grpc.Core.Testing" Version="2.32.0" />
     <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
     <PackageReference Include="Grpc.Tools" Version="2.32.0" PrivateAssets="All" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
     <PackageReference Include="moq" Version="4.14.7" />
     <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.0.123" />      
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="3.1.8" />      
@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\AppCallbackClient.cs" />
-    <Compile Include="..\Shared\TestHttpClient.cs" />
+    <Compile Include="..\Shared\TestClient.cs" />
     <Compile Include="..\Shared\GrpcUtils.cs" />
   </ItemGroup>
 

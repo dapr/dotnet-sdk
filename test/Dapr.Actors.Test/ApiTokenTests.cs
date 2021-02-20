@@ -4,8 +4,6 @@
 // ------------------------------------------------------------
 
 using System;
-using System.Collections.Concurrent;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Client;
@@ -16,107 +14,96 @@ namespace Dapr.Actors.Test
 {
     public class ApiTokenTests
     {
-        [Fact(Skip = "Failing due to #573")]
-        public void CreateProxyWithRemoting_WithApiToken()
+        [Fact]
+        public async Task CreateProxyWithRemoting_WithApiToken()
         {
+            await using var client = TestClient.CreateForMessageHandler();
+
             var actorId = new ActorId("abc");
-            var handler = new TestHttpClientHandler();
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
             };
-            var factory = new ActorProxyFactory(options, handler);
-            var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
-            var task = proxy.SetCountAsync(1, new CancellationToken());
 
-            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var headerValues = entry.Request.Headers.GetValues("dapr-api-token");
+            var request = await client.CaptureHttpRequestAsync(async handler =>
+            {
+                var factory = new ActorProxyFactory(options, handler);
+                var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
+                await proxy.SetCountAsync(1, new CancellationToken());
+            });
+
+            request.Dismiss();
+
+            var headerValues = request.Request.Headers.GetValues("dapr-api-token");
             headerValues.Should().Contain("test_token");
         }
 
-        [Fact(Skip = "Failing due to #573")]
-        public void CreateProxyWithRemoting_WithNoApiToken()
+        [Fact]
+        public async Task CreateProxyWithRemoting_WithNoApiToken()
         {
-            var actorId = new ActorId("abc");
-            var handler = new TestHttpClientHandler();
-            var factory = new ActorProxyFactory(null, handler);
-            var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
-            var task = proxy.SetCountAsync(1, new CancellationToken());
+            await using var client = TestClient.CreateForMessageHandler();
 
-            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
-            Action action = () => entry.Request.Headers.GetValues("dapr-api-token");
-            action.Should().Throw<InvalidOperationException>();
+            var actorId = new ActorId("abc");
+
+            var request = await client.CaptureHttpRequestAsync(async handler =>
+            {
+                var factory = new ActorProxyFactory(null, handler);
+                var proxy = factory.CreateActorProxy<ITestActor>(actorId, "TestActor");
+                await proxy.SetCountAsync(1, new CancellationToken());
+            });
+
+            request.Dismiss();
+
+            Assert.Throws<InvalidOperationException>(() =>
+            {
+                request.Request.Headers.GetValues("dapr-api-token");
+            });
         }
 
-        [Fact(Skip = "Failing due to #573")]
-        public void CreateProxyWithNoRemoting_WithApiToken()
+        [Fact]
+        public async Task CreateProxyWithNoRemoting_WithApiToken()
         {
+            await using var client = TestClient.CreateForMessageHandler();
+
             var actorId = new ActorId("abc");
-            var handler = new TestHttpClientHandler();
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
             };
-            var factory = new ActorProxyFactory(options, handler);
-            var proxy = factory.Create(actorId, "TestActor");
-            var task = proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
 
-            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
-            var headerValues = entry.Request.Headers.GetValues("dapr-api-token");
+            var request = await client.CaptureHttpRequestAsync(async handler =>
+            {
+                var factory = new ActorProxyFactory(options, handler);
+                var proxy = factory.Create(actorId, "TestActor");
+                await proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
+            });
+
+            request.Dismiss();
+
+            var headerValues = request.Request.Headers.GetValues("dapr-api-token");
             headerValues.Should().Contain("test_token");
         }
 
-        [Fact(Skip = "Failing due to #573")]
-        public void CreateProxyWithNoRemoting_WithNoApiToken()
+        [Fact]
+        public async Task CreateProxyWithNoRemoting_WithNoApiToken()
         {
+            await using var client = TestClient.CreateForMessageHandler();
+
             var actorId = new ActorId("abc");
-            var handler = new TestHttpClientHandler();
-            var factory = new ActorProxyFactory(null, handler);
-            var proxy = factory.Create(actorId, "TestActor");
-            var task = proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
 
-            handler.Requests.TryDequeue(out var entry).Should().BeTrue();
-            Action action = () => entry.Request.Headers.GetValues("dapr-api-token");
-            action.Should().Throw<InvalidOperationException>();
-        }
-
-
-        public class Entry
-        {
-            public Entry(HttpRequestMessage request)
+            var request = await client.CaptureHttpRequestAsync(async handler =>
             {
-                this.Request = request;
+                var factory = new ActorProxyFactory(null, handler);
+                var proxy = factory.Create(actorId, "TestActor");
+                await proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
+            });
 
-                this.Completion = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            request.Dismiss();
 
-            public TaskCompletionSource<HttpResponseMessage> Completion { get; }
-
-            public HttpRequestMessage Request { get; }
-        }
-
-        private class TestHttpClientHandler : HttpClientHandler
-        {
-            public TestHttpClientHandler()
+            Assert.Throws<InvalidOperationException>(() =>
             {
-                this.Requests = new ConcurrentQueue<Entry>();
-            }
-
-            public ConcurrentQueue<Entry> Requests { get; }
-
-            public Action<Entry> Handler { get; set; }
-
-            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                var entry = new Entry(request);
-                this.Handler?.Invoke(entry);
-                this.Requests.Enqueue(entry);
-
-                using (cancellationToken.Register(() => entry.Completion.TrySetCanceled()))
-                {
-                    return await entry.Completion.Task.ConfigureAwait(false);
-                }
-            }
+                request.Request.Headers.GetValues("dapr-api-token");
+            });
         }
     }
 }

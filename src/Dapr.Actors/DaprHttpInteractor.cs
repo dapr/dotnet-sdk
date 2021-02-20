@@ -28,19 +28,20 @@ namespace Dapr.Actors
         private readonly JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
         private readonly string daprPort;
-        private static HttpClientHandler innerHandler = new HttpClientHandler();
-        private HttpClient httpClient = null;
-        private bool disposed = false;
+        private readonly static HttpMessageHandler defaultHandler = new HttpClientHandler();
+        private readonly HttpMessageHandler handler;
+        private HttpClient httpClient;
+        private bool disposed;
         private string daprApiToken;
 
         public DaprHttpInteractor(
-            HttpClientHandler clientHandler = null,
+            HttpMessageHandler clientHandler = null,
             string apiToken = null)
         {
             // Get Dapr port from Environment Variable if it has been overridden.
             this.daprPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? Constants.DaprDefaultPort;
 
-            innerHandler = clientHandler ?? new HttpClientHandler();
+            this.handler = clientHandler ?? defaultHandler;
             this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
         }
@@ -433,7 +434,7 @@ namespace Dapr.Actors
 
         private HttpClient CreateHttpClient()
         {
-            return new HttpClient(innerHandler, false);
+            return new HttpClient(this.handler, false);
         }
 
         private void AddDaprApiTokenHeader(HttpRequestMessage request)
