@@ -7,4 +7,9 @@
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <!-- Used to annotate PR with test failures: https://github.com/Tyrrrz/GitHubActionsTestLogger -->
+  <ItemGroup>
+    <PackageReference Include="GitHubActionsTestLogger" Version="1.1.2" />
+  </ItemGroup>
 </Project>
