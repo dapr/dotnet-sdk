@@ -14,8 +14,8 @@ namespace Dapr.E2E.Test
     {
         static string shellExeName = SetShell();
         private string appId;
-        private int appPort;
-        const string outputToMatchOnStart = "You're up and running";
+        private bool useAppPort;
+        const string outputToMatchOnStart = "dapr initialized. Status: Running.";
         const string outputToMatchOnStop = "app stopped successfully";
 
         private static string SetShell()
@@ -27,23 +27,27 @@ namespace Dapr.E2E.Test
             return "/bin/bash";
         }
 
-        public DaprApp(string appId, int appPort = 0)
+        public DaprApp(string appId, bool useAppPort = false)
         {
             this.appId = appId;
-            this.appPort = appPort;
+            this.useAppPort = useAppPort;
         }
 
         public (string, string) Start()
         {
-            var (httpPort, grpcPort, metricsPort) = GetFreePorts();
+            var (appPort, httpPort, grpcPort, metricsPort) = GetFreePorts();
             var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
             var daprStartCommand = $"dapr run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path {componentsPath}";
-            if (this.appPort != 0)
+            var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
+            var daprDotnetCommand = $" -- dotnet run --project {projectPath}";
+            if (this.useAppPort)
             {
                 daprStartCommand += $" --app-port {appPort}";
+                daprDotnetCommand += $" --urls http://localhost:{appPort}";
             }
-            var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
             daprStartCommand += $" -- dotnet run --project {projectPath}";
+            daprStartCommand += daprDotnetCommand;
+
             var daprStart = new ShellCommand()
             {
                 ShellExeName = DaprApp.shellExeName,
@@ -70,25 +74,26 @@ namespace Dapr.E2E.Test
             daprStop.Run();
         }
 
-        private static (int, int, int) GetFreePorts()
+        private static (int, int, int, int) GetFreePorts()
         {
+            const int NUM_LISTENERS = 4;
             IPAddress ip = IPAddress.Loopback;
-            var listeners = new TcpListener[3];
-            var ports = new int[3];
+            var listeners = new TcpListener[NUM_LISTENERS];
+            var ports = new int[NUM_LISTENERS];
             // Note: Starting only one listener at a time might end up returning the
             // same port each time.
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < NUM_LISTENERS; i++)
             {
                 listeners[i] = new TcpListener(ip, 0);
                 listeners[i].Start();
                 ports[i] = ((IPEndPoint)listeners[i].LocalEndpoint).Port;
             }
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < NUM_LISTENERS; i++)
             {
                 listeners[i].Stop();
             }
-            return (ports[0], ports[1], ports[2]);
+            return (ports[0], ports[1], ports[2], ports[3]);
         }
 
     }
