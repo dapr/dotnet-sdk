@@ -5,7 +5,6 @@
 
 namespace Dapr.E2E.Test
 {
-    using System.Text.Json;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;

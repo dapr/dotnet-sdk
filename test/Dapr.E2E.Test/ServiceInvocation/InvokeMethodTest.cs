@@ -1,3 +1,7 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 namespace Dapr.E2E.Test
 {
     using System;
@@ -8,10 +12,10 @@ namespace Dapr.E2E.Test
     using Dapr.Client;
     using Xunit;
 
-    public class Main
+    public class ServiceInvocationTests
     {
         [Fact]
-        public async void TestServiceInvocation()
+        public async Task TestServiceInvocation()
         {
             var testApp = new DaprApp("testapp", 5000);
             try

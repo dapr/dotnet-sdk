@@ -3,24 +3,20 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Linq;
 using System.Runtime.InteropServices;
+using static System.IO.Path;
 
 namespace Dapr.E2E.Test
 {
     public class DaprApp
     {
-        // private string pathSeparator;
         static string shellExeName = SetShell();
         private string appId;
         private int appPort;
         const string outputToMatchOnStart = "You're up and running";
         const string outputToMatchOnStop = "app stopped successfully";
-
-        static char pathSeparator = System.IO.Path.DirectorySeparatorChar;
 
         private static string SetShell()
         {
@@ -40,14 +36,14 @@ namespace Dapr.E2E.Test
         public (string, string) Start()
         {
             var (httpPort, grpcPort, metricsPort) = GetFreePorts();
-            var componentsPath = string.Format($"..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}test{DaprApp.pathSeparator}Dapr.E2E.Test{DaprApp.pathSeparator}components");
-            var daprStartCommand = string.Format($"dapr run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path .{DaprApp.pathSeparator}{componentsPath}");
-            if(this.appPort != 0)
+            var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
+            var daprStartCommand = $"dapr run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path {componentsPath}";
+            if (this.appPort != 0)
             {
-                daprStartCommand += string.Format($" --app-port {appPort}");
+                daprStartCommand += $" --app-port {appPort}";
             }
-            var projectPath = string.Format($"..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}..{DaprApp.pathSeparator}test{DaprApp.pathSeparator}Dapr.E2E.Test.App{DaprApp.pathSeparator}Dapr.E2E.Test.App.csproj");
-            daprStartCommand += string.Format($" -- dotnet run --project {projectPath}");
+            var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
+            daprStartCommand += $" -- dotnet run --project {projectPath}";
             var daprStart = new ShellCommand()
             {
                 ShellExeName = DaprApp.shellExeName,
@@ -56,15 +52,14 @@ namespace Dapr.E2E.Test
                 Timeout = 5000
             };
             daprStart.Run();
-            var httpEndpoint = string.Format($"http://localhost:{httpPort}");
-            var grpcEndpoint = string.Format($"http://localhost:{grpcPort}");
-            Console.WriteLine("Dapr App started successfully");
+            var httpEndpoint = $"http://localhost:{httpPort}";
+            var grpcEndpoint = $"http://localhost:{grpcPort}";
             return (httpEndpoint, grpcEndpoint);
         }
 
         public void Stop()
         {
-            var daprStopCommand = string.Format($"dapr stop --app-id {appId}");
+            var daprStopCommand = $"dapr stop --app-id {appId}";
             var daprStop = new ShellCommand()
             {
                 ShellExeName = DaprApp.shellExeName,
@@ -73,7 +68,6 @@ namespace Dapr.E2E.Test
                 Timeout = 10000
             };
             daprStop.Run();
-            Console.WriteLine("Dapr App stopped successfully");
         }
 
         private static (int, int, int) GetFreePorts()
@@ -81,14 +75,16 @@ namespace Dapr.E2E.Test
             IPAddress ip = IPAddress.Loopback;
             var listeners = new TcpListener[3];
             var ports = new int[3];
-            foreach (int i in Enumerable.Range(0, 3))
+            // Note: Starting only one listener at a time might end up returning the
+            // same port each time.
+            for (int i = 0; i < 3; i++)
             {
                 listeners[i] = new TcpListener(ip, 0);
                 listeners[i].Start();
                 ports[i] = ((IPEndPoint)listeners[i].LocalEndpoint).Port;
             }
 
-            foreach (int i in Enumerable.Range(0, 3))
+            for (int i = 0; i < 3; i++)
             {
                 listeners[i].Stop();
             }
