@@ -10,7 +10,7 @@ using static System.IO.Path;
 
 namespace Dapr.E2E.Test
 {
-    public class DaprApp
+    public class DaprTestApp
     {
         static string shellExeName = SetShell();
         private string appId;
@@ -27,7 +27,7 @@ namespace Dapr.E2E.Test
             return "/bin/bash";
         }
 
-        public DaprApp(string appId, bool useAppPort = false)
+        public DaprTestApp(string appId, bool useAppPort = false)
         {
             this.appId = appId;
             this.useAppPort = useAppPort;
@@ -50,7 +50,7 @@ namespace Dapr.E2E.Test
 
             var daprStart = new ShellCommand()
             {
-                ShellExeName = DaprApp.shellExeName,
+                ShellExeName = DaprTestApp.shellExeName,
                 Command = daprStartCommand,
                 OutputToMatch = outputToMatchOnStart,
                 Timeout = 10000
@@ -66,7 +66,7 @@ namespace Dapr.E2E.Test
             var daprStopCommand = $"dapr stop --app-id {appId}";
             var daprStop = new ShellCommand()
             {
-                ShellExeName = DaprApp.shellExeName,
+                ShellExeName = DaprTestApp.shellExeName,
                 Command = daprStopCommand,
                 OutputToMatch = outputToMatchOnStop,
                 Timeout = 10000
