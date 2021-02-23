@@ -1,0 +1,155 @@
+name: build
+
+on: 
+  push:
+    branches:
+      - master
+      - release-*
+    tags:
+      - v*
+    
+  pull_request:
+    branches: 
+    - master
+    - release-*
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      NUPKG_OUTDIR: bin/Release/nugets
+      GOVER: 1.15.0
+      GOOS: linux
+      GOARCH: amd64
+      GOPROXY: https://proxy.golang.org
+      DAPR_CLI_VER: 1.0.0
+      DAPR_RUNTIME_VER: 1.0.0
+      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/3dacfb672d55f1436c249057aaebbe597e1066f3/install/install.sh
+      DAPR_CLI_REF: 3dacfb672d55f1436c249057aaebbe597e1066f3
+      DAPR_REF: 3cca3cc1567f1cb955ae69b8fd784f075f62ad42
+    steps:
+      - name: Set up Dapr CLI
+        run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
+      - name: Set up Go ${{ env.GOVER }}
+        if: env.DAPR_REF != '' || env.DAPR_CLI_REF != ''
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Checkout Dapr CLI repo to override dapr command.
+        uses: actions/checkout@v2
+        if: env.DAPR_CLI_REF != ''
+        with:
+          repository: dapr/cli
+          ref: ${{ env.DAPR_CLI_REF }}
+          path: cli
+      - name: Checkout Dapr repo to override daprd.
+        uses: actions/checkout@v2
+        if: env.DAPR_REF != ''
+        with:
+          repository: dapr/dapr
+          ref: ${{ env.DAPR_REF }}
+          path: dapr
+      - name: Build and override dapr cli with referenced commit.
+        if: env.DAPR_CLI_REF != ''
+        run: |
+          cd cli
+          make
+          sudo cp dist/linux_amd64/release/dapr /usr/local/bin/dapr
+          cd ..
+      - name: Initialize Dapr runtime ${{ env.DAPR_RUNTIME_VER }}
+        run: |
+          dapr uninstall --all
+          dapr init --runtime-version ${{ env.DAPR_RUNTIME_VER }}
+      - name: Build and override daprd with referenced commit.
+        if: env.DAPR_REF != ''
+        run: |
+          cd dapr
+          make
+          mkdir -p $HOME/.dapr/bin/
+          cp dist/linux_amd64/release/daprd $HOME/.dapr/bin/daprd
+          cd ..
+      - name: Override placement service.
+        if: env.DAPR_REF != ''
+        run: |
+          docker stop dapr_placement
+          cd dapr
+          ./dist/linux_amd64/release/placement &
+      - name: Install Local kafka using docker-compose
+        run: |
+          docker-compose -f ./test/Dapr.E2E.Test/deploy/local-test-kafka.yml up -d
+          docker ps
+      - name: Install Local Hashicorp Vault using docker-compose
+        run: |
+          docker-compose -f ./test/Dapr.E2E.Test/deploy/local-test-vault.yml up -d
+          docker ps
+      - name: Setup Vault's test token
+        run: echo myroot > /tmp/.hashicorp_vault_token
+      - uses: actions/checkout@v1
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+      - name: Build
+        run: dotnet build --configuration release
+
+  integration_test:
+    name: Test .NET ${{ matrix.dotnet-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ['3.1', '5.0']
+        include:
+        - dotnet-version: '3.1'
+          install-3: true
+          display-name: '.NET Core 3.1'
+          framework: 'netcoreapp3.1'
+          prefix: 'netcoreapp31'
+        - dotnet-version: '5.0'
+          install-3: false
+          display-name: '.NET 5.0'
+          framework: 'net5'
+          prefix: 'net5'
+    steps:
+    - uses: actions/checkout@v1
+    - name: Parse release version
+      run: python ./.github/scripts/get_release_version.py
+    - name: Setup .NET Core 3.1
+      uses: actions/setup-dotnet@v1
+      if: matrix.install-3
+      with:
+        dotnet-version: 3.1.x
+    - name: Setup .NET 5.0
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    - name: Build
+      # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+      run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+    - name: Test
+      continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
+      run: |
+        cd test/Dapr.E2E.Test
+        dotnet test \
+          --configuration release \
+          --framework ${{ matrix.framework }} \
+          --no-build \
+          --no-restore \
+          --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+          --logger "GitHubActions;report-warnings=false" \
+          --results-directory "${{ github.workspace }}/TestResults" \
+          /p:CollectCoverage=true \
+          /p:CoverletOutputFormat=opencover \
+          /p:GITHUB_ACTIONS=false
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v1
+      with:
+        flags: ${{ matrix.framework }}
+    - name: Parse Trx files
+      uses: NasAmin/trx-parser@v0.1.0
+      id: trx-parser
+      with:
+        TRX_PATH: ${{ github.workspace }}/TestResults
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
