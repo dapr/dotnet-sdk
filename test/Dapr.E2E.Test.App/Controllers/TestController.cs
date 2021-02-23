@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace ControllerSample.Controllers
+namespace Dapr.E2E.Test
 {
     using System;
     using System.Threading.Tasks;
@@ -30,16 +30,19 @@ namespace ControllerSample.Controllers
         private readonly ILogger<TestController> logger;
 
         /// <summary>
-        /// Echoes the input string
+        /// Returns the account details
         /// </summary>
-        /// <param name="name">string to echo.</param>
-        /// <returns>string with the input name in it.</returns>
-        [HttpGet("hello/{name}")]
-        public ActionResult<string> Get(string name)
+        /// <param name="transaction">Transaction to process.</param>
+        /// <returns>Account</returns>
+       [HttpPost("accountDetails")]
+        public ActionResult<Account> AccountDetails(Transaction transaction)
         {
-            var result = string.Format($"Hello {name}!");
-            logger.LogInformation(result);
-            return result;
+            var account = new Account()
+            {
+                Id = transaction.Id,
+                Balance = transaction.Amount + 100
+            };
+            return account;
         }
     }
 }

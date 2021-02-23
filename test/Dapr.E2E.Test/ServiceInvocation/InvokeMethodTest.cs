@@ -5,6 +5,8 @@
 namespace Dapr.E2E.Test
 {
     using System;
+    using System.Net.Http.Json;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
     using Xunit;
@@ -26,9 +28,29 @@ namespace Dapr.E2E.Test
         public async Task TestServiceInvocation()
         {
             var (daprHttpEndpoint, _) = this.testApp.Start();
-            var client = DaprClient.CreateInvokeHttpClient(appId: "testapp", daprEndpoint: daprHttpEndpoint);
-            var response = await client.GetStringAsync("/hello/John");
-            Assert.Equal("Hello John!", response);
+            var client = DaprClient.CreateInvokeHttpClient(appId: "testApp", daprEndpoint: daprHttpEndpoint);
+            var cts = new CancellationTokenSource();
+            var transaction = new Transaction()
+            {
+                Id = "1",
+                Amount = 50
+            };
+            var response = await client.PostAsJsonAsync<Transaction>("/accountDetails", transaction, cts.Token);
+            var account = await response.Content.ReadFromJsonAsync<Account>();
+            Assert.Equal("1", account.Id);
+            Assert.Equal(150, account.Balance);
         }
+    }
+
+    internal class Transaction
+    {
+        public string Id { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    internal class Account
+    {
+        public string Id { get; set; }
+        public decimal Balance { get; set; }
     }
 }
