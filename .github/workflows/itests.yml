@@ -122,7 +122,7 @@ jobs:
             --framework ${{ matrix.framework }} \
             --no-build \
             --no-restore \
-            test/Dapr.E2E.Test \
+            "${{ github.workspace }}/test/Dapr.E2E.Test" \
             --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
             --logger "GitHubActions;report-warnings=false" \
             --results-directory "${{ github.workspace }}/TestResults" \
