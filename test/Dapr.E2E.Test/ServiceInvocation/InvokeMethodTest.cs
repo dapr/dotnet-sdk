@@ -10,13 +10,15 @@ namespace Dapr.E2E.Test
     using System.Threading.Tasks;
     using Dapr.Client;
     using Xunit;
+    using Xunit.Abstractions;
 
     public class ServiceInvocationTests : IDisposable
     {
-        private DaprApp testApp;
-        public ServiceInvocationTests()
+        private DaprTestApp testApp;
+
+        public ServiceInvocationTests(ITestOutputHelper testOutput)
         {
-            this.testApp = new DaprApp("testapp", true);
+            this.testApp = new DaprTestApp(testOutput, "testapp", true);
         }
 
         public void Dispose()

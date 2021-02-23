@@ -6,6 +6,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using Xunit.Abstractions;
 using static System.IO.Path;
 
 namespace Dapr.E2E.Test
@@ -18,6 +19,8 @@ namespace Dapr.E2E.Test
         const string outputToMatchOnStart = "dapr initialized. Status: Running.";
         const string outputToMatchOnStop = "app stopped successfully";
 
+        private ITestOutputHelper testOutput;
+
         private static string SetShell()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -27,10 +30,11 @@ namespace Dapr.E2E.Test
             return "/bin/bash";
         }
 
-        public DaprTestApp(string appId, bool useAppPort = false)
+        public DaprTestApp(ITestOutputHelper output, string appId, bool useAppPort = false)
         {
             this.appId = appId;
             this.useAppPort = useAppPort;
+            this.testOutput = output;
         }
 
         public (string, string) Start()
@@ -56,6 +60,7 @@ namespace Dapr.E2E.Test
                 Timeout = 10000
             };
             daprStart.Run();
+            testOutput.WriteLine($"Dapr app: {appId} started successfully");
             var httpEndpoint = $"http://localhost:{httpPort}";
             var grpcEndpoint = $"http://localhost:{grpcPort}";
             return (httpEndpoint, grpcEndpoint);
@@ -72,6 +77,7 @@ namespace Dapr.E2E.Test
                 Timeout = 10000
             };
             daprStop.Run();
+            testOutput.WriteLine($"Dapr app: {appId} stopped successfully");
         }
 
         private static (int, int, int, int) GetFreePorts()
