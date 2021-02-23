@@ -15,8 +15,22 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: run integration tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ['3.1', '5.0']
+        include:
+        - dotnet-version: '3.1'
+          install-3: true
+          display-name: '.NET Core 3.1'
+          framework: 'netcoreapp3.1'
+          prefix: 'netcoreapp31'
+        - dotnet-version: '5.0'
+          install-3: false
+          display-name: '.NET 5.0'
+          framework: 'net5'
+          prefix: 'net5'
     env:
       NUPKG_OUTDIR: bin/Release/nugets
       GOVER: 1.15.0
@@ -94,62 +108,43 @@ jobs:
           dotnet-version: 5.0.x
       - name: Build
         run: dotnet build --configuration release
-
-  integration_test:
-    name: Test .NET ${{ matrix.dotnet-version }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dotnet-version: ['3.1', '5.0']
-        include:
-        - dotnet-version: '3.1'
-          install-3: true
-          display-name: '.NET Core 3.1'
-          framework: 'netcoreapp3.1'
-          prefix: 'netcoreapp31'
-        - dotnet-version: '5.0'
-          install-3: false
-          display-name: '.NET 5.0'
-          framework: 'net5'
-          prefix: 'net5'
-    steps:
-    - uses: actions/checkout@v1
-    - name: Parse release version
-      run: python ./.github/scripts/get_release_version.py
-    - name: Setup .NET Core 3.1
-      uses: actions/setup-dotnet@v1
-      if: matrix.install-3
-      with:
-        dotnet-version: 3.1.x
-    - name: Setup .NET 5.0
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 5.0.x
-    - name: Build
-      # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-      run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
-    - name: Test
-      continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
-      run: |
-        dotnet test \
-          --configuration release \
-          --framework ${{ matrix.framework }} \
-          --no-build \
-          --no-restore \
-          test/Dapr.E2E.Test \
-          --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-          --logger "GitHubActions;report-warnings=false" \
-          --results-directory "${{ github.workspace }}/TestResults" \
-          /p:CollectCoverage=true \
-          /p:CoverletOutputFormat=opencover \
-          /p:GITHUB_ACTIONS=false
-    - name: Upload test coverage
-      uses: codecov/codecov-action@v1
-      with:
-        flags: ${{ matrix.framework }}
-    - name: Parse Trx files
-      uses: NasAmin/trx-parser@v0.1.0
-      id: trx-parser
-      with:
-        TRX_PATH: ${{ github.workspace }}/TestResults
-        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v1
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup .NET Core 3.1
+        uses: actions/setup-dotnet@v1
+        if: matrix.install-3
+        with:
+          dotnet-version: 3.1.x
+      - name: Setup .NET 5.0
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+      - name: Build
+        # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+        run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+      - name: Test
+        continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
+        run: |
+          dotnet test \
+            --configuration release \
+            --framework ${{ matrix.framework }} \
+            --no-build \
+            --no-restore \
+            test/Dapr.E2E.Test \
+            --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+            --logger "GitHubActions;report-warnings=false" \
+            --results-directory "${{ github.workspace }}/TestResults" \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=opencover \
+            /p:GITHUB_ACTIONS=false
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v1
+        with:
+          flags: ${{ matrix.framework }}
+      - name: Parse Trx files
+        uses: NasAmin/trx-parser@v0.1.0
+        id: trx-parser
+        with:
+          TRX_PATH: ${{ github.workspace }}/TestResults
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
