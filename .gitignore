@@ -15,6 +15,9 @@
 # launchSettings.json for samples and tests
 /test/**/Properties/launchSettings.json
 
+# Test logs
+TestResults/
+
 # MSBuild's log file
 msbuild.log
 

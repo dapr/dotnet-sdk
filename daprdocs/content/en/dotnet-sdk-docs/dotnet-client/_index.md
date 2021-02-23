@@ -21,6 +21,8 @@ The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< 
 
 ### Invoke a service
 
+You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke your services.
+
 {{< tabs SDK HTTP>}}
 
 {{% codetab %}}
@@ -36,6 +38,8 @@ Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance)
 
 {{% codetab %}}
 ```csharp
+var client = DaprClient.CreateInvokeHttpClient(appId: "routing");
+
 var deposit = new Transaction  { Id = "17", Amount = 99m };
 var response = await client.PostAsJsonAsync("/deposit", deposit, cancellationToken);
 var account = await response.Content.ReadFromJsonAsync<Account>(cancellationToken: cancellationToken);
@@ -76,21 +80,63 @@ Console.WriteLine("Published deposit event!");
 ```
 
 - For a full list of state operations visit [How-To: Publish & subscribe]({{< ref howto-publish-subscribe.md >}}).
-- Visit [Python SDK examples](https://github.com/dapr/python-sdk/tree/daprdocs-setup/examples/pubsub-simple) for code samples and instructions to try out pub/sub
+- Visit [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples/client/PublishSubscribe) for code samples and instructions to try out pub/sub
 
 ### Interact with output bindings
 
 ```csharp
-//TODO
+using var client = new DaprClientBuilder().Build();
+
+// Example payload for the Twilio SendGrid binding
+var email = new 
+{
+    metadata = new 
+    {
+        emailTo = "customer@example.com",
+        subject = "An email from Dapr SendGrid binding",    
+    }, 
+    data =  "<h1>Testing Dapr Bindings</h1>This is a test.<br>Bye!",
+};
+await client.InvokeBindingAsync("send-email", "create", email);
 ```
 
 - For a full guide on output bindings visit [How-To: Use bindings]({{< ref howto-bindings.md >}}).
 
 ### Retrieve secrets
 
+{{< tabs Multi-value-secret Single-value-secret >}}
+
+{{% codetab %}}
+
 ```csharp
-//TODO
+var client = new DaprClientBuilder().Build();
+
+// Retrieve a key-value-pair-based secret - returns a Dictionary<string, string>
+var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secret");
+Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
 ```
+
+{{% / codetab %}}
+
+{{% codetab %}}
+
+```csharp
+var client = new DaprClientBuilder().Build();
+
+// Retrieve a key-value-pair-based secret - returns a Dictionary<string, string>
+var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secret");
+Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
+
+// Retrieve a single-valued secret - returns a Dictionary<string, string>
+// containing a single value with the secret name as the key
+var data = await client.GetSecretAsync("mysecretstore", "single-value-secret");
+var value = data["single-value-secret"]
+Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secret!");
+```
+
+{{% /codetab %}}
+
+{{< /tabs >}}
 
 - For a full guide on secrets visit [How-To: Retrieve secrets]({{< ref howto-secrets.md >}}).
 

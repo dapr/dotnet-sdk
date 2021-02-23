@@ -37,9 +37,8 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public void DaprClientBuilder_DoesNotOverrideUserGrpcChannelOptions()
         {
-            var httpClient = new TestHttpClient();
             var builder = new DaprClientBuilder();
-            var daprClient = builder.UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient }).Build();
+            var daprClient = builder.UseGrpcChannelOptions(new GrpcChannelOptions()).Build();
             Assert.False(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
 

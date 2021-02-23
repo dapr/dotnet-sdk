@@ -14,7 +14,7 @@ namespace Dapr
     using System.Threading;
     using System.Threading.Tasks;
 
-    // This client will capture all requests, and put them in .Requests for you to inspect.
+    // This is an old piece of infrastructure with some limitations, don't use it in new places.
     public class TestHttpClient : HttpClient
     {
         private readonly TestHttpClientHandler handler;
