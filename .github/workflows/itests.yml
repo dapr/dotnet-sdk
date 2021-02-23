@@ -131,12 +131,12 @@ jobs:
     - name: Test
       continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
       run: |
-        cd test/Dapr.E2E.Test
         dotnet test \
           --configuration release \
           --framework ${{ matrix.framework }} \
           --no-build \
           --no-restore \
+          test/Dapr.E2E.Test \
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
           --logger "GitHubActions;report-warnings=false" \
           --results-directory "${{ github.workspace }}/TestResults" \
