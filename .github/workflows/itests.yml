@@ -1,4 +1,4 @@
-name: build
+name: integration-test
 
 on: 
   push:
@@ -75,19 +75,19 @@ jobs:
           docker stop dapr_placement
           cd dapr
           ./dist/linux_amd64/release/placement &
-      - name: Install Local kafka using docker-compose
-        run: |
-          docker-compose -f ./test/Dapr.E2E.Test/deploy/local-test-kafka.yml up -d
-          docker ps
-      - name: Install Local Hashicorp Vault using docker-compose
-        run: |
-          docker-compose -f ./test/Dapr.E2E.Test/deploy/local-test-vault.yml up -d
-          docker ps
-      - name: Setup Vault's test token
-        run: echo myroot > /tmp/.hashicorp_vault_token
       - uses: actions/checkout@v1
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
+      - name: Install Local kafka using docker-compose
+        run: |
+          docker-compose -f test/Dapr.E2E.Test/deploy/local-test-kafka.yml up -d
+          docker ps
+      - name: Install Local Hashicorp Vault using docker-compose
+        run: |
+          docker-compose -f test/Dapr.E2E.Test/deploy/local-test-vault.yml up -d
+          docker ps
+      - name: Setup Vault's test token
+        run: echo myroot > /tmp/.hashicorp_vault_token
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
