@@ -53,7 +53,7 @@ namespace Dapr.E2E.Test
                 ShellExeName = DaprApp.shellExeName,
                 Command = daprStartCommand,
                 OutputToMatch = outputToMatchOnStart,
-                Timeout = 5000
+                Timeout = 10000
             };
             daprStart.Run();
             var httpEndpoint = $"http://localhost:{httpPort}";
