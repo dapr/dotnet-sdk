@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Xunit.Abstractions;
 using static System.IO.Path;
+using System.Runtime.Versioning;
 
 namespace Dapr.E2E.Test
 {
@@ -32,15 +33,13 @@ namespace Dapr.E2E.Test
 
         public (string, string) Start()
         {
-            var targetFrameworkAttribute = Assembly.GetExecutingAssembly()
-    .GetCustomAttributes(typeof(System.Runtime.Versioning.TargetFrameworkAttribute), false)
-    .SingleOrDefault();
-
+            var frameworkName = GetTargetFrameworkName();
+            testOutput.WriteLine($"frameworkname: {frameworkName}");
             var (appPort, httpPort, grpcPort, metricsPort) = GetFreePorts();
             var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
             var daprStartCommand = $" run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path {componentsPath}";
             var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
-            var daprDotnetCommand = $" -- dotnet run --project {projectPath} --framework netcoreapp3.1";
+            var daprDotnetCommand = $" -- dotnet run --project {projectPath} --framework {frameworkName}";
             if (this.useAppPort)
             {
                 daprStartCommand += $" --app-port {appPort}";
@@ -74,6 +73,14 @@ namespace Dapr.E2E.Test
             };
             daprStop.Run();
             testOutput.WriteLine($"Dapr app: {appId} stopped successfully");
+        }
+
+        private static string GetTargetFrameworkName()
+        {
+            var targetFrameworkName = ((TargetFrameworkAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(TargetFrameworkAttribute), false).FirstOrDefault()).FrameworkName;
+            string frameworkMoniker;
+            frameworkMoniker = targetFrameworkName == ".NETCoreApp,Version=v3.1" ? "netcoreapp3.1" : "net5";
+            return frameworkMoniker;
         }
 
         private static (int, int, int, int) GetFreePorts()
