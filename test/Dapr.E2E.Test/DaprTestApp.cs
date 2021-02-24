@@ -3,8 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Xunit.Abstractions;
 using static System.IO.Path;
@@ -13,22 +15,13 @@ namespace Dapr.E2E.Test
 {
     public class DaprTestApp
     {
-        static string shellExeName = SetShell();
+        static string daprBinaryName = "dapr";
         private string appId;
         private bool useAppPort;
         const string outputToMatchOnStart = "dapr initialized. Status: Running.";
         const string outputToMatchOnStop = "app stopped successfully";
 
         private ITestOutputHelper testOutput;
-
-        private static string SetShell()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return "cmd.exe";
-            }
-            return "/bin/bash";
-        }
 
         public DaprTestApp(ITestOutputHelper output, string appId, bool useAppPort = false)
         {
@@ -39,22 +32,25 @@ namespace Dapr.E2E.Test
 
         public (string, string) Start()
         {
+            var targetFrameworkAttribute = Assembly.GetExecutingAssembly()
+    .GetCustomAttributes(typeof(System.Runtime.Versioning.TargetFrameworkAttribute), false)
+    .SingleOrDefault();
+
             var (appPort, httpPort, grpcPort, metricsPort) = GetFreePorts();
             var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
-            var daprStartCommand = $"dapr run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path {componentsPath}";
+            var daprStartCommand = $" run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path {componentsPath}";
             var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
-            var daprDotnetCommand = $" -- dotnet run --project {projectPath}";
+            var daprDotnetCommand = $" -- dotnet run --project {projectPath} --framework netcoreapp3.1";
             if (this.useAppPort)
             {
                 daprStartCommand += $" --app-port {appPort}";
                 daprDotnetCommand += $" --urls http://localhost:{appPort}";
             }
-            daprStartCommand += $" -- dotnet run --project {projectPath}";
             daprStartCommand += daprDotnetCommand;
 
-            var daprStart = new ShellCommand()
+            var daprStart = new DaprCommand()
             {
-                ShellExeName = DaprTestApp.shellExeName,
+                DaprBinaryName = DaprTestApp.daprBinaryName,
                 Command = daprStartCommand,
                 OutputToMatch = outputToMatchOnStart,
                 Timeout = 10000
@@ -68,10 +64,10 @@ namespace Dapr.E2E.Test
 
         public void Stop()
         {
-            var daprStopCommand = $"dapr stop --app-id {appId}";
-            var daprStop = new ShellCommand()
+            var daprStopCommand = $" stop --app-id {appId}";
+            var daprStop = new DaprCommand()
             {
-                ShellExeName = DaprTestApp.shellExeName,
+                DaprBinaryName = DaprTestApp.daprBinaryName,
                 Command = daprStopCommand,
                 OutputToMatch = outputToMatchOnStop,
                 Timeout = 10000

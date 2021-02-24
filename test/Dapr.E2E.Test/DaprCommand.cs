@@ -4,10 +4,10 @@ namespace Dapr.E2E.Test
     using System.Diagnostics;
     using System.Threading;
 
-    public class ShellCommand
+    public class DaprCommand
     {
         private EventWaitHandle outputReceived = new EventWaitHandle(false, EventResetMode.ManualReset);
-        public string ShellExeName { get; set; }
+        public string DaprBinaryName { get; set; }
         public string Command { get; set; }
         public string OutputToMatch { get; set; }
         public int Timeout { get; set; }
@@ -20,8 +20,8 @@ namespace Dapr.E2E.Test
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = this.ShellExeName,
-                    Arguments = $"-c \"{escapedArgs}\"",
+                    FileName = this.DaprBinaryName,
+                    Arguments = escapedArgs,
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
