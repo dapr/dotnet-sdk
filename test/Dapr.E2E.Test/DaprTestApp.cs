@@ -33,13 +33,11 @@ namespace Dapr.E2E.Test
 
         public (string, string) Start()
         {
-            var frameworkName = GetTargetFrameworkName();
-            testOutput.WriteLine($"frameworkname: {frameworkName}");
             var (appPort, httpPort, grpcPort, metricsPort) = GetFreePorts();
             var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
             var daprStartCommand = $" run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path {componentsPath}";
             var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
-            var daprDotnetCommand = $" -- dotnet run --project {projectPath} --framework {frameworkName}";
+            var daprDotnetCommand = $" -- dotnet run --project {projectPath} --framework {GetTargetFrameworkName()}";
             if (this.useAppPort)
             {
                 daprStartCommand += $" --app-port {appPort}";
