@@ -40,8 +40,8 @@ jobs:
       DAPR_CLI_VER: 1.0.0
       DAPR_RUNTIME_VER: 1.0.0
       DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/3dacfb672d55f1436c249057aaebbe597e1066f3/install/install.sh
-      DAPR_CLI_REF: 3dacfb672d55f1436c249057aaebbe597e1066f3
-      DAPR_REF: 3cca3cc1567f1cb955ae69b8fd784f075f62ad42
+      DAPR_CLI_REF: ''
+      DAPR_REF: ''
     steps:
       - name: Set up Dapr CLI
         run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
@@ -118,7 +118,7 @@ jobs:
         continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
         run: |
           dotnet test ${{ github.workspace }}/test/Dapr.E2E.Test/Dapr.E2E.Test.csproj \
-            --configuration release \
+            --configuration Release \
             --framework ${{ matrix.framework }} \
             --no-build \
             --no-restore \
