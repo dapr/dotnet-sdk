@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "DaprClient usage"
-linkTitle: "DaprClient sage"
+linkTitle: "DaprClient usage"
 weight: 100000
 description: Essential tips and advice for using DaprClient
 ---
