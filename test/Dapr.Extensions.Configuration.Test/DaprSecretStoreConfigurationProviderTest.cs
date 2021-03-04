@@ -306,6 +306,55 @@ namespace Dapr.Extensions.Configuration.Test
             config["second_secret"].Should().Be("secret2");
         }
 
+        [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsNonNormalizedKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>() { { "secretName__value", "secret" } };
+                    await SendResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore("store", new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName__value") }, daprClient)
+                    .Build();
+
+            config["secretName:value"].Should().Be("secret");
+        }
+
+        [Fact]
+        public void BulkLoadSecrets_FromSecretStoreThatReturnsNonNormalizedKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>() {
+                           { "first_secret__value", "secret1" }};
+                    await SendBulkResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore("store", daprClient)
+                    .Build();
+
+            config["first_secret:value"].Should().Be("secret1");
+        }
+
         private IConfigurationBuilder CreateBuilder()
         {
             return new ConfigurationBuilder();
