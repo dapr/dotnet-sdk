@@ -63,6 +63,11 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             this.client = client;
         }
 
+        private static string NormalizeKey(string key)
+        {
+            return key.Replace("__", ConfigurationPath.KeyDelimiter);
+        }
+
         public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
         private async Task LoadAsync()
@@ -82,7 +87,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                             throw new InvalidOperationException($"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(key, result[key]);
+                        data.Add(NormalizeKey(key), result[key]);
                     }
                 }
 
@@ -100,7 +105,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                             throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(secret.Key, secret.Value);
+                        data.Add(NormalizeKey(secret.Key), secret.Value);
                     }
                 }
                 Data = data;
