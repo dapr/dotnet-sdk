@@ -135,6 +135,7 @@ jobs:
       - name: Parse Trx files
         uses: NasAmin/trx-parser@v0.1.0
         id: trx-parser
+        if: github.repository == 'dapr/dotnet-sdk'
         with:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
