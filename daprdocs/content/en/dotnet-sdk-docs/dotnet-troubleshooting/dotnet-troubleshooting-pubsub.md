@@ -163,7 +163,7 @@ Keep this output, as we'll use the `route` information to test the application.
 
 1. Start the application as you would normally (`dapr run ...`).
    
-2. Use `curl` at the command line (or another HTTP testing tool) to access one of the routes registered a pub/sub endpoint.
+2. Use `curl` at the command line (or another HTTP testing tool) to access one of the routes registered with a pub/sub endpoint.
 
 Here's an example command assuming your application's listening port is 5000, and one of your pub/sub routes is `withdraw`:
 
