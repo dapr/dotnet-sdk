@@ -6,10 +6,12 @@
 namespace Dapr.AspNetCore.IntegrationTest.App
 {
     using System;
+    using System.Text;
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.WebUtilities;
 
     [ApiController]
     public class DaprController : ControllerBase
@@ -25,6 +27,15 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         public ActionResult<UserInfo> RegisterUser(UserInfo user)
         {
             return user; // echo back the user for testing
+        }
+
+        [Topic("pubsub", "register-user-plaintext")]
+        [HttpPost("/register-user-plaintext")]
+        public async Task<ActionResult> RegisterUserPlaintext()
+        {
+            using var reader = new HttpRequestStreamReader(Request.Body, Encoding.UTF8);
+            var user = await reader.ReadToEndAsync();
+            return Content(user, "text/plain"); // echo back the user for testing
         }
 
         [HttpPost("/controllerwithoutstateentry/{widget}")]

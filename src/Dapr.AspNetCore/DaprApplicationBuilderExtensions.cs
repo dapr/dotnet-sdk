@@ -26,7 +26,24 @@ namespace Microsoft.AspNetCore.Builder
                 throw new ArgumentNullException(nameof(builder));
             }
 
-            builder.UseMiddleware<CloudEventsMiddleware>();
+            return UseCloudEvents(builder, new CloudEventsMiddlewareOptions());
+        }
+
+        /// <summary>
+        /// Adds the cloud events middleware to the middleware pipeline. The cloud events middleware will unwrap
+        /// requests that use the cloud events structured format, allowing the event payload to be read directly.
+        /// </summary>
+        /// <param name="builder">An <see cref="IApplicationBuilder" />.</param>
+        /// <param name="options">The <see cref="CloudEventsMiddlewareOptions" /> to configure optional settings.</param>
+        /// <returns>The <see cref="IApplicationBuilder" />.</returns>
+        public static IApplicationBuilder UseCloudEvents(this IApplicationBuilder builder, CloudEventsMiddlewareOptions options)
+        {
+            if (builder is null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            builder.UseMiddleware<CloudEventsMiddleware>(options);
             return builder;
         }
     }

@@ -101,6 +101,34 @@ namespace Dapr.AspNetCore.IntegrationTest
             }
         }
 
+        [Fact]
+        public async Task CanSendStructuredCloudEvent_WithNonJsonContentType()
+        {
+            using (var factory = new AppWebApplicationFactory())
+            {
+                var httpClient = factory.CreateClient();
+
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user-plaintext")
+                {
+                    Content = new StringContent(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            data = "jimmy \"the cool guy\" smith",
+                            datacontenttype = "text/plain",
+                        }),
+                    Encoding.UTF8)
+                };
+                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
+
+                var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var user = await response.Content.ReadAsStringAsync();
+                user.Should().Be("jimmy \"the cool guy\" smith");
+            }
+        }
+
         // Yeah, I know, binary isn't a great term for this, it's what the cloudevents spec uses.
         // Basically this is here to test that an endpoint can handle requests with and without
         // an envelope.
