@@ -22,9 +22,9 @@ There are a few layers to this problem with different solutions:
 
 Adjust the logging verbosity to include `Information` logging for ASP.NET Core as described [here](https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/routing?view=aspnetcore-5.0#debug-diagnostics). Set the `Microsoft` key to `Information`.
 
-## Step 2: Verify you can recieve traffic from Dapr
+## Step 2: Verify you can receive traffic from Dapr
 
-1. Start the application as you would normally (`dapr run ...`). Make sure that you're including an `--app-port` argument in the commandline. Dapr needs to know that your application is listening for traffic. Usually this is port 5000 in development.
+1. Start the application as you would normally (`dapr run ...`). Make sure that you're including an `--app-port` argument in the commandline. Dapr needs to know that your application is listening for traffic. By default an ASP.NET Core application will listen for HTTP on port 5000 in local development.
 
 2. Wait for Dapr to finish starting
 
@@ -37,7 +37,7 @@ info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
       Request starting HTTP/1.1 GET http://localhost:5000/.....
 ```
 
-During initialization Dapr will make some request to your application for configuration. If you can't find these then it means that something has gone wrong. Please ask for help either via an issue or in Discord (include the logs). If you see requests made to your application, then continue to step 3.
+During initialization Dapr will make some requests to your application for configuration. If you can't find these then it means that something has gone wrong. Please ask for help either via an issue or in Discord (include the logs). If you see requests made to your application, then continue to step 3.
 
 ## Step 3: Verify endpoint registration
 
@@ -148,7 +148,7 @@ In this example the call to `WithTopic(...)` is required but other details might
 
 **After correcting this code and re-testing if the JSON output is still the empty array (like `[]`) then please open an issue on this repository and include the contents of `Startup.cs` and your pub/sub endpoint.**
 
-## Step 3: Verify endpoint reachability
+## Step 4: Verify endpoint reachability
 
 In this step we'll verify that the entries registered with pub/sub are reachable. The last step should have left you with some JSON output like the following:
 
