@@ -19,6 +19,8 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
     {
         private readonly string store;
 
+        private readonly bool normalizeKey;
+
         private readonly IEnumerable<DaprSecretDescriptor> secretDescriptors;
 
         private readonly IReadOnlyDictionary<string, string> metadata;
@@ -29,9 +31,10 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
         /// </summary>
         /// <param name="store">Dapr Secre Store name.</param>
+        /// <param name="normalizeKey">Replace "__" with delimiter ":".</param>
         /// <param name="secretDescriptors">The secrets to retrieve.</param>
         /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(string store, IEnumerable<DaprSecretDescriptor> secretDescriptors, DaprClient client)
+        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IEnumerable<DaprSecretDescriptor> secretDescriptors, DaprClient client)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
@@ -43,6 +46,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             }
 
             this.store = store;
+            this.normalizeKey = normalizeKey;
             this.secretDescriptors = secretDescriptors;
             this.client = client;
         }
@@ -51,14 +55,16 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
         /// </summary>
         /// <param name="store">Dapr Secre Store name.</param>
+        /// <param name="normalizeKey">Replace "__" with delimiter ":".</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
         /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(string store, IReadOnlyDictionary<string, string> metadata, DaprClient client)
+        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IReadOnlyDictionary<string, string> metadata, DaprClient client)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(client, nameof(client));
 
             this.store = store;
+            this.normalizeKey = normalizeKey;
             this.metadata = metadata;
             this.client = client;
         }
@@ -87,7 +93,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                             throw new InvalidOperationException($"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(NormalizeKey(key), result[key]);
+                        data.Add(normalizeKey ? NormalizeKey(key) : key, result[key]);
                     }
                 }
 
@@ -105,7 +111,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                             throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(NormalizeKey(secret.Key), secret.Value);
+                        data.Add(normalizeKey ? NormalizeKey(key) : key, secret.Value);
                     }
                 }
                 Data = data;
