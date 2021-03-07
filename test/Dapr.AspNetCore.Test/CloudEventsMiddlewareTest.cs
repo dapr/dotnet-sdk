@@ -8,6 +8,7 @@ namespace Dapr.AspNetCore.Test
     using System.IO;
     using System.Net;
     using System.Text;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using FluentAssertions;
     using Microsoft.AspNetCore.Builder;
@@ -72,6 +73,64 @@ namespace Dapr.AspNetCore.Test
             context.Request.Body = dataContentType == null ?
                 MakeBody("{ \"data\": { \"name\":\"jimmy\" } }", encoding) :
                 MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+
+            await pipeline.Invoke(context);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_ReplacesBodyNonJsonData()
+        {
+            // Our logic is based on the content-type, not the content.
+            // Since this is for text-plain content, we're going to encode it as a JSON string
+            // and store it in the data attribute - the middleware should JSON-decode it.
+            var input = "{ \"message\": \"hello, world\"}";
+            var expected = input;
+
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents();
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be("text/plain");
+                ReadBody(httpContext.Request.Body).Should().Be(expected);
+                return Task.CompletedTask;
+            });
+
+            
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/cloudevents+json";
+            context.Request.Body = MakeBody($"{{ \"datacontenttype\": \"text/plain\", \"data\": {JsonSerializer.Serialize(input)} }}");
+
+            await pipeline.Invoke(context);
+        }
+
+        [Fact]
+        public async Task InvokeAsync_ReplacesBodyNonJsonData_ExceptWhenSuppressed()
+        {
+            // Our logic is based on the content-type, not the content. This test tests the old bad behavior.
+            var input = "{ \"message\": \"hello, world\"}";
+            var expected = JsonSerializer.Serialize(input);
+
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents(new CloudEventsMiddlewareOptions() { SuppressJsonDecodingOfTextPayloads = true, });
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be("text/plain");
+                ReadBody(httpContext.Request.Body).Should().Be(expected);
+                return Task.CompletedTask;
+            });
+
+            
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = "application/cloudevents+json";
+            context.Request.Body = MakeBody($"{{ \"datacontenttype\": \"text/plain\", \"data\": {JsonSerializer.Serialize(input)} }}");
 
             await pipeline.Invoke(context);
         }
