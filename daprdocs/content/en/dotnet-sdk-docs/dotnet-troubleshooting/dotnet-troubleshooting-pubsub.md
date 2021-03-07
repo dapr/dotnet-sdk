@@ -10,12 +10,36 @@ description: Try out .NET virtual actors with this example
 
 The most common problem with pub/sub is that the pub/sub endpoint in your application is not being called.
 
-There are two layers to this problem with different solutions:
+There are a few layers to this problem with different solutions:
 
+- The application is not recieving any traffic from Dapr
 - The application is not registering pub/sub endpoints with Dapr
 - The pub/sub endpoints are registered with Dapr, but the request is not reaching the desired endpoint
 
-## Step 1: Verify endpoint registration
+## Step 1: Turn up the logs
+
+**This is important. Future steps will depend on your ability to see logging output. ASP.NET Core logs almost nothing with the default log settings, so you will need to change it.**
+
+Adjust the logging verbosity to include `Information` logging for ASP.NET Core as described [here](https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/routing?view=aspnetcore-5.0#debug-diagnostics). Set the `Microsoft` key to `Information`.
+
+## Step 2: Verify you can receive traffic from Dapr
+
+1. Start the application as you would normally (`dapr run ...`). Make sure that you're including an `--app-port` argument in the commandline. Dapr needs to know that your application is listening for traffic. By default an ASP.NET Core application will listen for HTTP on port 5000 in local development.
+
+2. Wait for Dapr to finish starting
+
+3. Examine the logs
+
+You should see a log entry like:
+
+```
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/.....
+```
+
+During initialization Dapr will make some requests to your application for configuration. If you can't find these then it means that something has gone wrong. Please ask for help either via an issue or in Discord (include the logs). If you see requests made to your application, then continue to step 3.
+
+## Step 3: Verify endpoint registration
 
 1. Start the application as you would normally (`dapr run ...`).
 
@@ -124,7 +148,7 @@ In this example the call to `WithTopic(...)` is required but other details might
 
 **After correcting this code and re-testing if the JSON output is still the empty array (like `[]`) then please open an issue on this repository and include the contents of `Startup.cs` and your pub/sub endpoint.**
 
-## Step 2: Verify endpoint reachability
+## Step 4: Verify endpoint reachability
 
 In this step we'll verify that the entries registered with pub/sub are reachable. The last step should have left you with some JSON output like the following:
 
@@ -139,9 +163,7 @@ Keep this output, as we'll use the `route` information to test the application.
 
 1. Start the application as you would normally (`dapr run ...`).
    
-2. Adjust the logging verbosity to include `Information` logging for ASP.NET Core as described [here](https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/routing?view=aspnetcore-5.0#debug-diagnostics). Set the `Microsoft` key to `Information`.
-
-3. Use `curl` at the command line (or another HTTP testing tool) to access one of the routes registered a pub/sub endpoint.
+2. Use `curl` at the command line (or another HTTP testing tool) to access one of the routes registered with a pub/sub endpoint.
 
 Here's an example command assuming your application's listening port is 5000, and one of your pub/sub routes is `withdraw`:
 

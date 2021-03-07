@@ -8,21 +8,24 @@ namespace Dapr
     using System;
     using System.IO;
     using System.Net;
-    using System.Net.Http.Headers;
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.WebUtilities;
+    using Microsoft.Extensions.Primitives;
+    using Microsoft.Net.Http.Headers;
 
     internal class CloudEventsMiddleware
     {
         private const string ContentType = "application/cloudevents+json";
         private readonly RequestDelegate next;
+        private readonly CloudEventsMiddlewareOptions options;
 
-        public CloudEventsMiddleware(RequestDelegate next)
+        public CloudEventsMiddleware(RequestDelegate next, CloudEventsMiddlewareOptions options)
         {
             this.next = next;
+            this.options = options;
         }
 
         public Task InvokeAsync(HttpContext httpContext)
@@ -82,11 +85,27 @@ namespace Dapr
             }
             else if (isDataSet)
             {
-                body = new MemoryStream();
-                await JsonSerializer.SerializeAsync<JsonElement>(body, data);
-                body.Seek(0L, SeekOrigin.Begin);
+                contentType = this.GetDataContentType(json, out var isJson);
 
-                contentType = this.GetDataContentType(json);
+                // If the value is anything other than a JSON string, treat it as JSON. Cloud Events requires
+                // non-JSON text to be enclosed in a JSON string.
+                isJson |= data.ValueKind != JsonValueKind.String;
+
+                body = new MemoryStream();
+                if (isJson || options.SuppressJsonDecodingOfTextPayloads)
+                {
+                    // Rehydrate body from JSON payload
+                    await JsonSerializer.SerializeAsync<JsonElement>(body, data);
+                }
+                else
+                {
+                    // Rehydrate body from contents of the string
+                    var text = data.GetString();
+                    using var writer = new HttpResponseStreamWriter(body, Encoding.UTF8);
+                    writer.Write(text);
+                }
+
+                body.Seek(0L, SeekOrigin.Begin);
             }
             else if (isBinaryDataSet)
             {
@@ -96,7 +115,7 @@ namespace Dapr
                 var decodedBody = binaryData.GetBytesFromBase64();
                 body = new MemoryStream(decodedBody);
                 body.Seek(0L, SeekOrigin.Begin);
-                contentType = this.GetDataContentType(json);
+                contentType = this.GetDataContentType(json, out _);
             }
             else
             {
@@ -121,20 +140,24 @@ namespace Dapr
             }
         }
 
-        private string GetDataContentType(JsonElement json)
+        private string GetDataContentType(JsonElement json, out bool isJson)
         {
             string contentType;
             if (json.TryGetProperty("datacontenttype", out var dataContentType) &&
-                    dataContentType.ValueKind == JsonValueKind.String)
+                dataContentType.ValueKind == JsonValueKind.String && 
+                MediaTypeHeaderValue.TryParse(dataContentType.GetString(), out var parsed))
             {
                 contentType = dataContentType.GetString();
+                isJson = 
+                    parsed.MediaType.Equals( "application/json", StringComparison.Ordinal) ||
+                    parsed.Suffix.EndsWith("+json", StringComparison.Ordinal);
 
                 // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
                 // to remove any charset information. We generally just assume utf-8 everywhere, so omitting
                 // a charset is a safe bet.
-                if (contentType.Contains("charset") && MediaTypeHeaderValue.TryParse(contentType, out var parsed))
+                if (contentType.Contains("charset"))
                 {
-                    parsed.CharSet = null;
+                    parsed.Charset = StringSegment.Empty;
                     contentType = parsed.ToString();
                 }
             }
@@ -142,6 +165,7 @@ namespace Dapr
             {
                 // assume JSON is not specified.
                 contentType = "application/json";
+                isJson = true;
             }
 
             return contentType;
@@ -175,7 +199,7 @@ namespace Dapr
                 return false;
             }
 
-            charSet = parsed.CharSet ?? "UTF-8";
+            charSet = parsed.Charset.Length > 0 ? parsed.Charset.Value : "UTF-8";
             return true;
         }
     }
