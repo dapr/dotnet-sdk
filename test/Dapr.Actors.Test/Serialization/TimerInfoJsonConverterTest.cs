@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
 
+#pragma warning disable 0618
 namespace Dapr.Actors.Runtime
 {
     public class TimerInfoJsonConverterTest
@@ -34,3 +35,4 @@ namespace Dapr.Actors.Runtime
         }
     }
 }
+#pragma warning restore 0618

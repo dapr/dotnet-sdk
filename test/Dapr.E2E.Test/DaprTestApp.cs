@@ -7,10 +7,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using Xunit.Abstractions;
 using static System.IO.Path;
 using System.Runtime.Versioning;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Dapr.E2E.Test
 {
@@ -19,8 +21,8 @@ namespace Dapr.E2E.Test
         static string daprBinaryName = "dapr";
         private string appId;
         private bool useAppPort;
-        const string outputToMatchOnStart = "dapr initialized. Status: Running.";
-        const string outputToMatchOnStop = "app stopped successfully";
+        private readonly string[] outputToMatchOnStart = new string[]{ "You're up and running", };
+        private readonly string[] outputToMatchOnStop = new string[]{ "app stopped successfully", "failed to stop app id", };
 
         private ITestOutputHelper testOutput;
 
@@ -31,28 +33,59 @@ namespace Dapr.E2E.Test
             this.testOutput = output;
         }
 
-        public (string, string) Start()
+        public string AppId => this.appId;
+
+        public (string httpEndpoint, string grpcEndpoint) Start()
         {
             var (appPort, httpPort, grpcPort, metricsPort) = GetFreePorts();
+
             var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
-            var daprStartCommand = $" run --app-id {appId} --dapr-http-port {httpPort} --dapr-grpc-port {grpcPort} --metrics-port {metricsPort} --components-path {componentsPath}";
             var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
-            var daprDotnetCommand = $" -- dotnet run --project {projectPath} --framework {GetTargetFrameworkName()}";
+            var arguments = new List<string>()
+            {
+                // `dapr run` args
+                "run",
+                "--app-id", appId,
+                "--dapr-http-port", httpPort.ToString(CultureInfo.InvariantCulture),
+                "--dapr-grpc-port", grpcPort.ToString(CultureInfo.InvariantCulture),
+                "--metrics-port", metricsPort.ToString(CultureInfo.InvariantCulture),
+                "--components-path", componentsPath,
+                "--log-level", "debug",
+                
+            };
+
             if (this.useAppPort)
             {
-                daprStartCommand += $" --app-port {appPort}";
-                daprDotnetCommand += $" --urls http://localhost:{appPort}";
+                arguments.AddRange(new[]{ "--app-port", appPort.ToString(CultureInfo.InvariantCulture), });
             }
-            daprStartCommand += daprDotnetCommand;
 
-            var daprStart = new DaprCommand()
+            arguments.AddRange(new[]
+            {
+                // separator
+                "--",
+
+                // `dotnet run` args
+                "dotnet", "run",
+                "--project", projectPath,
+                "--framework", GetTargetFrameworkName(),
+            });
+
+            if (this.useAppPort)
+            {
+                arguments.AddRange(new[]{ "--urls", $"http://localhost:{appPort.ToString(CultureInfo.InvariantCulture)}", });
+            }
+
+            // TODO: we don't do any quoting right now because our paths are guaranteed not to contain spaces
+            var daprStart = new DaprCommand(this.testOutput)
             {
                 DaprBinaryName = DaprTestApp.daprBinaryName,
-                Command = daprStartCommand,
+                Command = string.Join(" ", arguments),
                 OutputToMatch = outputToMatchOnStart,
-                Timeout = 10000
+                Timeout = TimeSpan.FromSeconds(30),
             };
+
             daprStart.Run();
+
             testOutput.WriteLine($"Dapr app: {appId} started successfully");
             var httpEndpoint = $"http://localhost:{httpPort}";
             var grpcEndpoint = $"http://localhost:{grpcPort}";
@@ -62,12 +95,12 @@ namespace Dapr.E2E.Test
         public void Stop()
         {
             var daprStopCommand = $" stop --app-id {appId}";
-            var daprStop = new DaprCommand()
+            var daprStop = new DaprCommand(this.testOutput)
             {
                 DaprBinaryName = DaprTestApp.daprBinaryName,
                 Command = daprStopCommand,
                 OutputToMatch = outputToMatchOnStop,
-                Timeout = 10000
+                Timeout = TimeSpan.FromSeconds(30),
             };
             daprStop.Run();
             testOutput.WriteLine($"Dapr app: {appId} stopped successfully");
@@ -102,6 +135,5 @@ namespace Dapr.E2E.Test
             }
             return (ports[0], ports[1], ports[2], ports[3]);
         }
-
     }
 }

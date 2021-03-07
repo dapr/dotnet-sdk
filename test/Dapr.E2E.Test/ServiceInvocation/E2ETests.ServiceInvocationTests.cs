@@ -10,35 +10,24 @@ namespace Dapr.E2E.Test
     using System.Threading.Tasks;
     using Dapr.Client;
     using Xunit;
-    using Xunit.Abstractions;
 
-    public class ServiceInvocationTests : IDisposable
+    public partial class E2ETests
     {
-        private DaprTestApp testApp;
-
-        public ServiceInvocationTests(ITestOutputHelper testOutput)
-        {
-            this.testApp = new DaprTestApp(testOutput, "testapp", true);
-        }
-
-        public void Dispose()
-        {
-            this.testApp.Stop();
-        }
-
         [Fact]
         public async Task TestServiceInvocation()
         {
-            var (daprHttpEndpoint, _) = this.testApp.Start();
-            var client = DaprClient.CreateInvokeHttpClient(appId: "testApp", daprEndpoint: daprHttpEndpoint);
-            var cts = new CancellationTokenSource();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+            using var client = DaprClient.CreateInvokeHttpClient(appId: this.AppId, daprEndpoint: this.HttpEndpoint);
             var transaction = new Transaction()
             {
                 Id = "1",
                 Amount = 50
             };
+
             var response = await client.PostAsJsonAsync<Transaction>("/accountDetails", transaction, cts.Token);
-            var account = await response.Content.ReadFromJsonAsync<Account>();
+            var (account, _) = await HttpAssert.AssertJsonResponseAsync<Account>(response);
+
             Assert.Equal("1", account.Id);
             Assert.Equal(150, account.Balance);
         }

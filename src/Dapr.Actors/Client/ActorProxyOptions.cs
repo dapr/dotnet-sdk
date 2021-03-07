@@ -6,7 +6,6 @@
 namespace Dapr.Actors.Client
 {
     using System;
-    using System.Net.Http;
     using System.Text.Json;
 
     /// <summary>
@@ -17,6 +16,14 @@ namespace Dapr.Actors.Client
         // TODO: Add actor retry settings
 
         private JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        /// <summary>
+        /// The constructor
+        /// </summary>
+        public ActorProxyOptions()
+        {
+            this.DaprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
+        }
 
         /// <summary>
         /// The <see cref="JsonSerializerOptions"/> used for actor proxy message serialization in non-remoting invocation.
@@ -34,14 +41,20 @@ namespace Dapr.Actors.Client
         public string DaprApiToken { get; set; }
 
         /// <summary>
-        /// The constructor
+        /// Gets or sets the HTTP endpoint URI used to communicate with the Dapr sidecar.
         /// </summary>
-        public ActorProxyOptions()
+        /// <remarks>
+        /// The URI endpoint to use for HTTP calls to the Dapr runtime. The default value will be 
+        /// <c>http://127.0.0.1:DAPR_HTTP_PORT</c> where <c>DAPR_HTTP_PORT</c> represents the value of the 
+        /// <c>DAPR_HTTP_PORT</c> environment variable.
+        /// </remarks>
+        /// <value></value>
+        public string HttpEndpoint { get; set; } = GetDefaultHttpEndpoint();
+
+        private static string GetDefaultHttpEndpoint()
         {
-            if(string.IsNullOrWhiteSpace(this.DaprApiToken))
-            {
-                this.DaprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
-            }
+            var daprHttpPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? "3500";
+            return $"http://127.0.0.1:{daprHttpPort}";
         }
     }
 }

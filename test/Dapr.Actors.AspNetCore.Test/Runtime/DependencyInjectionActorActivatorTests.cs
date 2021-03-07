@@ -32,7 +32,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(TestActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
+            var host = ActorHost.CreateForTest<TestActor>();
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<TestActor>(state.Actor);
 
@@ -45,11 +45,11 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(TestActor));
 
-            var host1 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
+            var host1 = ActorHost.CreateForTest<TestActor>();
             var state1 = await activator.CreateAsync(host1);
             var actor1 = Assert.IsType<TestActor>(state1.Actor);
 
-            var host2 = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
+            var host2 = ActorHost.CreateForTest<TestActor>();
             var state2 = await activator.CreateAsync(host2);
             var actor2 = Assert.IsType<TestActor>(state2.Actor);
 
@@ -62,7 +62,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(TestActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(TestActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
+            var host = ActorHost.CreateForTest<TestActor>();
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<TestActor>(state.Actor);
 
@@ -78,7 +78,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(DisposableActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(DisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
+            var host = ActorHost.CreateForTest<DisposableActor>();
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<DisposableActor>(state.Actor);
 
@@ -92,7 +92,7 @@ namespace Dapr.Actors.Runtime
         {
             var activator = CreateActivator(typeof(AsyncDisposableActor));
 
-            var host = new ActorHost(ActorTypeInformation.Get(typeof(AsyncDisposableActor)), ActorId.CreateRandom(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory);
+            var host = ActorHost.CreateForTest<AsyncDisposableActor>();
             var state = await activator.CreateAsync(host);
             var actor = Assert.IsType<AsyncDisposableActor>(state.Actor);
 

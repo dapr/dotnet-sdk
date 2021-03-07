@@ -5,6 +5,8 @@
 
 namespace Dapr.E2E.Test
 {
+    using Dapr.E2E.Test.Actors.Reminders;
+    using Dapr.E2E.Test.Actors.Timers;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
@@ -37,6 +39,11 @@ namespace Dapr.E2E.Test
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers().AddDapr();
+            services.AddActors(options =>
+            {
+                options.Actors.RegisterActor<ReminderActor>();
+                options.Actors.RegisterActor<TimerActor>();
+            });
         }
 
         /// <summary>
@@ -60,6 +67,7 @@ namespace Dapr.E2E.Test
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapSubscribeHandler();
+                endpoints.MapActorsHandlers();
                 endpoints.MapControllers();
             });
         }

@@ -7,13 +7,11 @@ namespace Dapr.Actors.Test.Runtime
 {
     using System;
     using System.Threading;
+    using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using FluentAssertions;
     using Moq;
     using Xunit;
-    using Microsoft.Extensions.Logging;
-    using System.Threading.Tasks;
-    using Dapr.Actors.Client;
 
     public sealed class ActorTests
     {
@@ -114,9 +112,7 @@ namespace Dapr.Actors.Test.Runtime
         /// <returns>TestActor.</returns>
         private TestActor CreateTestDemoActor(IActorStateManager actorStateManager)
         {
-            var actorTypeInformation = ActorTypeInformation.Get(typeof(TestActor));
-            var loggerFactory = new LoggerFactory();
-            var host = new ActorHost(actorTypeInformation, ActorId.CreateRandom(), JsonSerializerDefaults.Web, loggerFactory, ActorProxy.DefaultProxyFactory);
+            var host = ActorHost.CreateForTest<TestActor>();
             var testActor = new TestActor(host, actorStateManager);
             return testActor;
         }

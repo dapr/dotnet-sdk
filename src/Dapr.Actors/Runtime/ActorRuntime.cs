@@ -41,7 +41,7 @@ namespace Dapr.Actors.Runtime
             // Revisit this if actor initialization becomes a significant source of delay for large projects.
             foreach (var actor in options.Actors)
             {
-                var daprInteractor = new DaprHttpInteractor(apiToken:options.DaprApiToken);
+                var daprInteractor = new DaprHttpInteractor(clientHandler: null, httpEndpoint: options.HttpEndpoint, apiToken: options.DaprApiToken);
                 this.actorManagers[actor.Type.ActorTypeName] = new ActorManager(
                     actor,
                     actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),

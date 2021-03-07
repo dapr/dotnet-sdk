@@ -26,8 +26,7 @@ namespace Dapr.Actors
     internal class DaprHttpInteractor : IDaprInteractor
     {
         private readonly JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
-        private const string DaprEndpoint = Constants.DaprDefaultEndpoint;
-        private readonly string daprPort;
+        private readonly string httpEndpoint;
         private readonly static HttpMessageHandler defaultHandler = new HttpClientHandler();
         private readonly HttpMessageHandler handler;
         private HttpClient httpClient;
@@ -35,13 +34,12 @@ namespace Dapr.Actors
         private string daprApiToken;
 
         public DaprHttpInteractor(
-            HttpMessageHandler clientHandler = null,
-            string apiToken = null)
+            HttpMessageHandler clientHandler,
+            string httpEndpoint,
+            string apiToken)
         {
-            // Get Dapr port from Environment Variable if it has been overridden.
-            this.daprPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? Constants.DaprDefaultPort;
-
             this.handler = clientHandler ?? defaultHandler;
+            this.httpEndpoint = httpEndpoint;
             this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
         }
@@ -342,7 +340,7 @@ namespace Dapr.Actors
             HttpRequestMessage FinalRequestFunc()
             {
                 var request = requestFunc.Invoke();
-                request.RequestUri = new Uri($"http://{DaprEndpoint}:{this.daprPort}/{relativeUri}");
+                request.RequestUri = new Uri($"{this.httpEndpoint}/{relativeUri}");
                 return request;
             }
 

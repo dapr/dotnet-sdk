@@ -30,7 +30,7 @@ namespace Dapr
         internal static TestClient<DaprHttpInteractor> CreateForDaprHttpInterator(string? apiToken = null)
         {
             var handler = new CapturingHandler();
-            return new TestClient<DaprHttpInteractor>(new DaprHttpInteractor(handler, apiToken), handler);
+            return new TestClient<DaprHttpInteractor>(new DaprHttpInteractor(handler, "http://localhost:3500", apiToken), handler);
         }
         #endif
 
