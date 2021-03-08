@@ -31,6 +31,13 @@ Dapr offers a variety of packages to help with the development of .NET applicati
       <a href="{{< ref dotnet-actors >}}" class="stretched-link"></a>
     </div>
   </div>
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title"><b>Development</b></h5>
+      <p class="card-text">Learn about local development options for .NET Dapr applications</p>
+      <a href="{{< ref dotnet-development >}}" class="stretched-link"></a>
+    </div>
+  </div>
 </div>
 <br />
 <div class="card-deck">
