@@ -111,7 +111,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                             throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(normalizeKey ? NormalizeKey(key) : key, secret.Value);
+                        data.Add(normalizeKey ? NormalizeKey(secret.Key) : secret.Key, secret.Value);
                     }
                 }
                 Data = data;
