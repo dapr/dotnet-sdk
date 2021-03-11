@@ -21,10 +21,15 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         public string Store { get; set; }
 
         /// <summary>
-        /// Gets or sets if replace "__" with delimiter ":".
+        /// Gets or sets if replace "__" and any custom delimiters with the delimiter ":".
         /// Default value true.
         /// </summary>
         public bool NormalizeKey { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the custom key delimiters.
+        /// </summary>
+        public IEnumerable<string> CustomDelimiters { get; set; }
 
         /// <summary>
         /// Gets or sets the secret descriptors.
@@ -51,11 +56,11 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                     throw new ArgumentException($"{nameof(Metadata)} must be null when {nameof(SecretDescriptors)} is set", nameof(Metadata));
                 }
 
-                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, SecretDescriptors, Client);
+                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, CustomDelimiters, SecretDescriptors, Client);
             }
             else
             {
-                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, Metadata, Client);
+                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, CustomDelimiters, Metadata, Client);
             }
         }
     }

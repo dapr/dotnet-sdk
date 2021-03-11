@@ -72,6 +72,33 @@ namespace Dapr.Extensions.Configuration
         }
 
         /// <summary>
+        /// Adds an <see cref="IConfigurationProvider"/> that reads configuration values from the Dapr Secret Store.
+        /// </summary>
+        /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
+        /// <param name="store">Dapr secret store name.</param>
+        /// <param name="customDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+        /// <param name="client">The Dapr client</param>
+        /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
+        public static IConfigurationBuilder AddDaprSecretStore(
+            this IConfigurationBuilder configurationBuilder,
+            string store,
+            DaprClient client,
+            IEnumerable<string> customDelimiters)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+            ArgumentVerifier.ThrowIfNull(client, nameof(client));
+
+            configurationBuilder.Add(new DaprSecretStoreConfigurationSource()
+            {
+                Store = store,
+                CustomDelimiters = customDelimiters,
+                Client = client
+            });
+
+            return configurationBuilder;
+        }
+
+        /// <summary>
         /// Adds an <see cref="IConfigurationProvider"/> that reads configuration values from the command line.
         /// </summary>
         /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
