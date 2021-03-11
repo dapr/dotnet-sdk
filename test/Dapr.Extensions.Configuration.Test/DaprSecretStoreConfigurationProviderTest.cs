@@ -441,7 +441,7 @@ namespace Dapr.Extensions.Configuration.Test
                         conf.Store = "store";
                         conf.Client = daprClient;
                         conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
-                        conf.CustomDelimiters = new[] { "--" };
+                        conf.KeyDelimiters = new[] { "--" };
                     })
                     .Build();
 
@@ -489,7 +489,7 @@ namespace Dapr.Extensions.Configuration.Test
                             new DaprSecretDescriptor("secretName--value"),
                             new DaprSecretDescriptor("otherSecretName≡value"),
                         };
-                        conf.CustomDelimiters = new[] { "--", "≡" };
+                        conf.KeyDelimiters = new[] { "--", "≡" };
                     })
                     .Build();
 
@@ -563,7 +563,7 @@ namespace Dapr.Extensions.Configuration.Test
                 {
                     var secrets = new Dictionary<string, string>()
                     {
-                        ["first_secret__value"] = "secret1",
+                        ["first_secret:value"] = "secret1",
                         ["second_secret--value"] = "secret2",
                         ["third_secret≡value"] = "secret3",
                     };
@@ -611,7 +611,7 @@ namespace Dapr.Extensions.Configuration.Test
                         conf.Client = daprClient;
                         conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
                         conf.NormalizeKey = false;
-                        conf.CustomDelimiters = new[] { "--" };
+                        conf.KeyDelimiters = new[] { "--" };
                     })
                     .Build();
 
@@ -644,7 +644,7 @@ namespace Dapr.Extensions.Configuration.Test
                         conf.Store = "store";
                         conf.Client = daprClient;
                         conf.NormalizeKey = false;
-                        conf.CustomDelimiters = new[] { "--" };
+                        conf.KeyDelimiters = new[] { "--" };
                     })
                     .Build();
 
