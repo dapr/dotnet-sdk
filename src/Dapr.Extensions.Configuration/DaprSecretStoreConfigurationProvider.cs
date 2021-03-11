@@ -21,7 +21,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
 
         private readonly bool normalizeKey;
 
-        private readonly IEnumerable<string> keyDelimiters;
+        private readonly IList<string> keyDelimiters;
 
         private readonly IEnumerable<DaprSecretDescriptor> secretDescriptors;
 
@@ -61,7 +61,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
         /// <param name="secretDescriptors">The secrets to retrieve.</param>
         /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IEnumerable<string> keyDelimiters, IEnumerable<DaprSecretDescriptor> secretDescriptors, DaprClient client)
+        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IList<string> keyDelimiters, IEnumerable<DaprSecretDescriptor> secretDescriptors, DaprClient client)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
@@ -105,7 +105,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
         /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IEnumerable<string> keyDelimiters, IReadOnlyDictionary<string, string> metadata, DaprClient client)
+        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IList<string> keyDelimiters, IReadOnlyDictionary<string, string> metadata, DaprClient client)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(client, nameof(client));
@@ -119,7 +119,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
 
         private string NormalizeKey(string key)
         {
-            if (this.keyDelimiters?.Any() == true)
+            if (this.keyDelimiters?.Count > 0)
             {
                 foreach (var keyDelimiter in this.keyDelimiters)
                 {

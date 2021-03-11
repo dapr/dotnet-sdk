@@ -449,6 +449,72 @@ namespace Dapr.Extensions.Configuration.Test
         }
 
         [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKey_NullDelimiters()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["secretName--value"] = "secret",
+                    };
+                    await SendResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
+                        conf.KeyDelimiters = null;
+                    })
+                    .Build();
+
+            config["secretName--value"].Should().Be("secret");
+        }
+
+        [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKey_EmptyDelimiters()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["secretName--value"] = "secret",
+                    };
+                    await SendResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
+                        conf.KeyDelimiters = new List<string>();
+                    })
+                    .Build();
+
+            config["secretName--value"].Should().Be("secret");
+        }
+
+        [Fact]
         public void LoadSecrets_FromSecretStoreThatReturnsDifferentCustomDelimitedKeys()
         {
             // Configure Client

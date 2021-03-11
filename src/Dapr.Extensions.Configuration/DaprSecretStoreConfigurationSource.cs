@@ -29,7 +29,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <summary>
         /// Gets or sets the custom key delimiters. Contains the '__' delimiter by default.
         /// </summary>
-        public IEnumerable<string> KeyDelimiters { get; set; } = new List<string> { "__" };
+        public IList<string> KeyDelimiters { get; set; } = new List<string> { "__" };
 
         /// <summary>
         /// Gets or sets the secret descriptors.
