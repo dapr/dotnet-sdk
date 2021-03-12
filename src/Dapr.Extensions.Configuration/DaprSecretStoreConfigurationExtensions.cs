@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 using Dapr.Extensions.Configuration.DaprSecretStore;
+using System.Linq;
 
 namespace Dapr.Extensions.Configuration
 {
@@ -91,7 +92,7 @@ namespace Dapr.Extensions.Configuration
             configurationBuilder.Add(new DaprSecretStoreConfigurationSource()
             {
                 Store = store,
-                KeyDelimiters = keyDelimiters,
+                KeyDelimiters = keyDelimiters?.ToList(),
                 Client = client
             });
 
