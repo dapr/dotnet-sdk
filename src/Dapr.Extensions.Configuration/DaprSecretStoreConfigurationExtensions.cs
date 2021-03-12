@@ -83,7 +83,7 @@ namespace Dapr.Extensions.Configuration
             this IConfigurationBuilder configurationBuilder,
             string store,
             DaprClient client,
-            IList<string> keyDelimiters)
+            IEnumerable<string> keyDelimiters)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(client, nameof(client));
