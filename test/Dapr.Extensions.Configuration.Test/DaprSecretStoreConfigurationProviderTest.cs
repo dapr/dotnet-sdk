@@ -415,6 +415,308 @@ namespace Dapr.Extensions.Configuration.Test
             config["first_secret__value"].Should().Be("secret1");
         }
 
+        [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["secretName--value"] = "secret",
+                    };
+                    await SendResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
+                        conf.KeyDelimiters = new[] { "--" };
+                    })
+                    .Build();
+
+            config["secretName:value"].Should().Be("secret");
+        }
+
+        [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKey_NullDelimiters()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["secretName--value"] = "secret",
+                    };
+                    await SendResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
+                        conf.KeyDelimiters = null;
+                    })
+                    .Build();
+
+            config["secretName--value"].Should().Be("secret");
+        }
+
+        [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKey_EmptyDelimiters()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["secretName--value"] = "secret",
+                    };
+                    await SendResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
+                        conf.KeyDelimiters = new List<string>();
+                    })
+                    .Build();
+
+            config["secretName--value"].Should().Be("secret");
+        }
+
+        [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsDifferentCustomDelimitedKeys()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    // The following is an attempt at handling multiple secret descriptors for unit tests.
+                    var content = await entry.Request.Content.ReadAsStringAsync();
+                    if (content.Contains("secretName--value"))
+                    {
+                        await SendResponseWithSecrets(new Dictionary<string, string>()
+                        {
+                            ["secretName--value"] = "secret",
+                        }, entry);
+                    }
+                    else if (content.Contains("otherSecretName≡value"))
+                    {
+                        await SendResponseWithSecrets(new Dictionary<string, string>()
+                        {
+                            ["otherSecretName≡value"] = "secret",
+                        }, entry);
+                    }
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.SecretDescriptors = new DaprSecretDescriptor[]
+                        {
+                            new DaprSecretDescriptor("secretName--value"),
+                            new DaprSecretDescriptor("otherSecretName≡value"),
+                        };
+                        conf.KeyDelimiters = new[] { "--", "≡" };
+                    })
+                    .Build();
+
+            config["secretName:value"].Should().Be("secret");
+            config["otherSecretName:value"].Should().Be("secret");
+        }
+
+        [Fact]
+        public void BulkLoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["first_secret--value"] = "secret1"
+                    };
+                    await SendBulkResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore("store", daprClient, new[] { "--" })
+                    .Build();
+
+            config["first_secret:value"].Should().Be("secret1");
+        }
+
+        [Fact]
+        public void BulkLoadSecrets_FromSecretStoreThatReturnsDifferentCustomDelimitedKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["first_secret--value"] = "secret1",
+                        ["second_secret≡value"] = "secret2",
+                    };
+                    await SendBulkResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore("store", daprClient, new[] { "--", "≡" })
+                    .Build();
+
+            config["first_secret:value"].Should().Be("secret1");
+            config["second_secret:value"].Should().Be("secret2");
+        }
+
+        [Fact]
+        public void BulkLoadSecrets_FromSecretStoreThatReturnsPlainAndCustomDelimitedKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["first_secret:value"] = "secret1",
+                        ["second_secret--value"] = "secret2",
+                        ["third_secret≡value"] = "secret3",
+                    };
+                    await SendBulkResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore("store", daprClient, new[] { "--", "≡" })
+                    .Build();
+
+            config["first_secret:value"].Should().Be("secret1");
+            config["second_secret:value"].Should().Be("secret2");
+            config["third_secret:value"].Should().Be("secret3");
+        }
+
+        [Fact]
+        public void LoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKeyDisabledNormalizeKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["secretName--value"] = "secret"
+                    };
+                    await SendResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.SecretDescriptors = new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName--value") };
+                        conf.NormalizeKey = false;
+                        conf.KeyDelimiters = new[] { "--" };
+                    })
+                    .Build();
+
+            config["secretName--value"].Should().Be("secret");
+        }
+
+        [Fact]
+        public void BulkLoadSecrets_FromSecretStoreThatReturnsCustomDelimitedKeyDisabledNormalizeKey()
+        {
+            // Configure Client
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    var secrets = new Dictionary<string, string>()
+                    {
+                        ["first_secret--value"] = "secret1"
+                    };
+                    await SendBulkResponseWithSecrets(secrets, entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            var config = CreateBuilder()
+                    .AddDaprSecretStore((conf) =>
+                    {
+                        conf.Store = "store";
+                        conf.Client = daprClient;
+                        conf.NormalizeKey = false;
+                        conf.KeyDelimiters = new[] { "--" };
+                    })
+                    .Build();
+
+            config["first_secret--value"].Should().Be("secret1");
+        }
+
         private IConfigurationBuilder CreateBuilder()
         {
             return new ConfigurationBuilder();

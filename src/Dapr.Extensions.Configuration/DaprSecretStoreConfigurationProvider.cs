@@ -21,6 +21,8 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
 
         private readonly bool normalizeKey;
 
+        private readonly IList<string> keyDelimiters;
+
         private readonly IEnumerable<DaprSecretDescriptor> secretDescriptors;
 
         private readonly IReadOnlyDictionary<string, string> metadata;
@@ -31,7 +33,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
         /// </summary>
         /// <param name="store">Dapr Secre Store name.</param>
-        /// <param name="normalizeKey">Replace "__" with delimiter ":".</param>
+        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
         /// <param name="secretDescriptors">The secrets to retrieve.</param>
         /// <param name="client">Dapr client used to retrieve Secrets</param>
         public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IEnumerable<DaprSecretDescriptor> secretDescriptors, DaprClient client)
@@ -55,7 +57,33 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
         /// </summary>
         /// <param name="store">Dapr Secre Store name.</param>
-        /// <param name="normalizeKey">Replace "__" with delimiter ":".</param>
+        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+        /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+        /// <param name="secretDescriptors">The secrets to retrieve.</param>
+        /// <param name="client">Dapr client used to retrieve Secrets</param>
+        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IList<string> keyDelimiters, IEnumerable<DaprSecretDescriptor> secretDescriptors, DaprClient client)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+            ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
+            ArgumentVerifier.ThrowIfNull(client, nameof(client));
+
+            if (secretDescriptors.Count() == 0)
+            {
+                throw new ArgumentException("No secret descriptor was provided", nameof(secretDescriptors));
+            }
+
+            this.store = store;
+            this.normalizeKey = normalizeKey;
+            this.keyDelimiters = keyDelimiters;
+            this.secretDescriptors = secretDescriptors;
+            this.client = client;
+        }
+
+        /// <summary>
+        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
+        /// </summary>
+        /// <param name="store">Dapr Secre Store name.</param>
+        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
         /// <param name="client">Dapr client used to retrieve Secrets</param>
         public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IReadOnlyDictionary<string, string> metadata, DaprClient client)
@@ -69,9 +97,37 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             this.client = client;
         }
 
-        private static string NormalizeKey(string key)
+        /// <summary>
+        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
+        /// </summary>
+        /// <param name="store">Dapr Secre Store name.</param>
+        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+        /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+        /// <param name="client">Dapr client used to retrieve Secrets</param>
+        public DaprSecretStoreConfigurationProvider(string store, bool normalizeKey, IList<string> keyDelimiters, IReadOnlyDictionary<string, string> metadata, DaprClient client)
         {
-            return key.Replace("__", ConfigurationPath.KeyDelimiter);
+            ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+            ArgumentVerifier.ThrowIfNull(client, nameof(client));
+
+            this.store = store;
+            this.normalizeKey = normalizeKey;
+            this.keyDelimiters = keyDelimiters;
+            this.metadata = metadata;
+            this.client = client;
+        }
+
+        private string NormalizeKey(string key)
+        {
+            if (this.keyDelimiters?.Count > 0)
+            {
+                foreach (var keyDelimiter in this.keyDelimiters)
+                {
+                    key = key.Replace(keyDelimiter, ConfigurationPath.KeyDelimiter);
+                }
+            }
+
+            return key;
         }
 
         public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 using Dapr.Extensions.Configuration.DaprSecretStore;
+using System.Linq;
 
 namespace Dapr.Extensions.Configuration
 {
@@ -65,6 +66,33 @@ namespace Dapr.Extensions.Configuration
             {
                 Store = store,
                 Metadata = metadata,
+                Client = client
+            });
+
+            return configurationBuilder;
+        }
+
+        /// <summary>
+        /// Adds an <see cref="IConfigurationProvider"/> that reads configuration values from the Dapr Secret Store.
+        /// </summary>
+        /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
+        /// <param name="store">Dapr secret store name.</param>
+        /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+        /// <param name="client">The Dapr client</param>
+        /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
+        public static IConfigurationBuilder AddDaprSecretStore(
+            this IConfigurationBuilder configurationBuilder,
+            string store,
+            DaprClient client,
+            IEnumerable<string> keyDelimiters)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+            ArgumentVerifier.ThrowIfNull(client, nameof(client));
+
+            configurationBuilder.Add(new DaprSecretStoreConfigurationSource()
+            {
+                Store = store,
+                KeyDelimiters = keyDelimiters?.ToList(),
                 Client = client
             });
 
