@@ -7,6 +7,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
     using System.Linq;
+    using System.Net.Http;
     using Dapr.Client;
 
     /// <summary>
@@ -46,6 +47,29 @@ namespace Microsoft.Extensions.DependencyInjection
 
                 return builder.Build();
             });
+        }
+
+        /// <summary>
+        /// Adds a Dapr HTTP client to the provided <see cref="IServiceCollection" />. 
+        /// </summary>
+        /// <typeparam name="TClient"></typeparam>
+        /// <typeparam name="TImplementation"></typeparam>
+        /// <param name="services"></param>
+        /// <param name="appId"></param>
+        public static void AddDaprHTTPClient<TClient, TImplementation>(this IServiceCollection services, string appId) where TClient : class 
+                                                                                                                       where TImplementation : class, TClient
+        {
+            if (services is null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            services.AddHttpClient<TClient, TImplementation>((httpClient) => httpClient.BaseAddress = new Uri($"http://{appId}"))
+                .ConfigurePrimaryHttpMessageHandler(
+                    () => new Dapr.Client.InvocationHandler()
+                    {
+                        InnerHandler = new HttpClientHandler()
+                    });
         }
 
         private class DaprClientMarkerService
