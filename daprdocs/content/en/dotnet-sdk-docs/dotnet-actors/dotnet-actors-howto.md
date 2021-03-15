@@ -95,7 +95,7 @@ namespace MyActor.Interfaces
 }
 ```
 
-## Step 2: create actor service
+## Step 2: Create actor service
 
 Dapr uses ASP.NET web service to host Actor service. This section will implement `IMyActor` actor interface and register Actor to Dapr Runtime.
 
