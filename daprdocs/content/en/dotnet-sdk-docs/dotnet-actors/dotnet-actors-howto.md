@@ -32,7 +32,7 @@ MyActor --- MyActor.Interfaces
 
 * **The actor client project(\MyActor\MyActorClient)** This project contains the implementation of the actor client which calls MyActor's method defined in Actor Interfaces.
 
-## Step 0: prepare
+## Step 0: Prepare
 
 Since we'll be creating 3 projects, choose an empty directory to start from, and open it in your terminal of choice.
 
