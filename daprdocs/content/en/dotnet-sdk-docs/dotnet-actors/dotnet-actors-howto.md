@@ -1,10 +1,12 @@
 ---
 type: docs
-title: "Getting started with the Dapr actor .NET SDK"
-linkTitle: "Example"
+title: "How to use Dapr virtual actors with the .NET SDK"
+linkTitle: "Actors"
 weight: 100000
-description: Try out .NET virtual actors with this example
+description: Try out .NET Dapr virtual actors with this example
 ---
+
+The Dapr actor package allows you to interact with Dapr virtual actors from a .NET application.
 
 ## Prerequisites
 
@@ -14,7 +16,7 @@ description: Try out .NET virtual actors with this example
 
 ## Overview
 
-This document describes how to create an Actor(`MyActor`) and invoke its methods on the client application. 
+This document describes how to create an Actor (`MyActor`) and invoke its methods on the client application. 
 
 ```
 MyActor --- MyActor.Interfaces
@@ -30,8 +32,11 @@ MyActor --- MyActor.Interfaces
 
 * **The actor client project(\MyActor\MyActorClient)** This project contains the implementation of the actor client which calls MyActor's method defined in Actor Interfaces.
 
+## Step 0: Prepare
 
-## STEP 1 - Create Actor Interface
+Since we'll be creating 3 projects, choose an empty directory to start from, and open it in your terminal of choice.
+
+## Step 1: Create actor interfaces
 
 Actor interface defines the actor contract that is shared by the actor implementation and the clients calling the actor.
 
@@ -41,7 +46,7 @@ Actor interface is defined with the below requirements:
 * The return type of Actor method must be `Task` or `Task<object>`
 * Actor method can have one argument at a maximum
 
-### Create project and add dependencies
+### Create interface project and add dependencies
 
 ```bash
 # Create Actor Interfaces
@@ -50,13 +55,14 @@ dotnet new classlib -o MyActor.Interfaces
 cd MyActor.Interfaces
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 1.0.0-rc02
+dotnet add package Dapr.Actors -v 1.0.0
+
+cd ..
 ```
 
+### Implement IMyActor interface
 
-### Implement IMyActor Interface
-
-Define IMyActor Interface and MyData data object.
+Define `IMyActor` interface and `MyData` data object. Paste the following code into `MyActor.cs` in the `MyActor.Interfaces` project.
 
 ```csharp
 using Dapr.Actors;
@@ -89,31 +95,32 @@ namespace MyActor.Interfaces
 }
 ```
 
-## STEP 2 - Create Actor Service
+## Step 2: Create actor service
 
 Dapr uses ASP.NET web service to host Actor service. This section will implement `IMyActor` actor interface and register Actor to Dapr Runtime.
 
-### Create project and add dependencies
+### Create actor service project and add dependencies
 
 ```bash
 # Create ASP.Net Web service to host Dapr actor
-dotnet new webapi -o MyActorService
+dotnet new web -o MyActorService
 
 cd MyActorService
 
-# Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 1.0.0-rc02
-
 # Add Dapr.Actors.AspNetCore nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors.AspNetCore -v 1.0.0-rc02
+dotnet add package Dapr.Actors.AspNetCore -v 1.0.0
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
+
+cd ..
 ```
 
-### Add Actor implementation
+### Add actor implementation
 
 Implement IMyActor interface and derive from `Dapr.Actors.Actor` class. Following example shows how to use Actor Reminders as well. For Actors to use Reminders, it must derive from IRemindable. If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder specific methods which are shown in the code below.
+
+Paste the following code into `MyActor.cs` in the `MyActorService` project:
 
 ```csharp
 using Dapr.Actors;
@@ -249,19 +256,7 @@ namespace MyActorService
 }
 ```
 
-#### Using an explicit actor type name
-
-By default, the "type" of the actor as seen by clients is derived from the name of the actor implementation class. If desired, you can specify an explicit type name by attaching an `ActorAttribute` attribute to the actor implementation class.
-
-```csharp
-    [Actor(TypeName = "MyCustomActorTypeName")]
-    internal class MyActor : Actor, IMyActor
-    {
-        // ...
-    }
-```
-
-### Register Actor runtime with ASP.NET Core startup
+### Register actor runtime with ASP.NET Core startup
 
 The Actor runtime is configured through ASP.NET Core `Startup.cs`. 
 
@@ -269,20 +264,25 @@ The runtime uses the ASP.NET Core dependency injection system to register actor 
 
 Actors are implemented via HTTP calls with the Dapr runtime. This functionality is part of the application's HTTP processing pipeline and is registered inside `UseEndpoints(...)` inside `Configure(...)`.
 
+Paste the following code into `Startup.cs` in the `MyActorService` project:
 
 ```csharp
-        // In Startup.cs
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace MyActorService
+{
+    public class Startup
+    {
         public void ConfigureServices(IServiceCollection services)
         {
-            // Register actor runtime with DI
             services.AddActors(options =>
             {
                 // Register actor types and configure actor settings
                 options.Actors.RegisterActor<MyActor>();
             });
-
-            // Register additional services for use with actors
-            services.AddSingleton<BankService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -291,10 +291,8 @@ Actors are implemented via HTTP calls with the Dapr runtime. This functionality 
             {
                 app.UseDeveloperExceptionPage();
             }
-            else
-            {
-                app.UseHsts();
-            }
+
+            app.UseHttpsRedirection();
 
             app.UseRouting();
 
@@ -304,41 +302,15 @@ Actors are implemented via HTTP calls with the Dapr runtime. This functionality 
                 endpoints.MapActorsHandlers();
             });
         }
+    }
+}
 ```
 
-### **Optional** - Override Default Actor Settings
-
-Actor Settings are per app.  The settings described [here](https://docs.dapr.io/reference/api/actors_api/) are available on the options and can be modified as below.
-
-The following code extends the previous section to do this.  Please note the values below are an **example** only.
-
-```csharp
-
-        // In Startup.cs
-        public void ConfigureServices(IServiceCollection services)
-        {
-            // Register actor runtime with DI
-            services.AddActors(options =>
-            {
-                // Register actor types and configure actor settings
-                options.Actors.RegisterActor<MyActor>();
-                
-                options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
-                options.ActorScanInterval = TimeSpan.FromSeconds(35);
-                options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(35);
-                options.DrainRebalancedActors = true;
-            });
-
-            // Register additional services for use with actors
-            services.AddSingleton<BankService>();
-        }
-```
-
-## STEP 3 - Add a client
+## Step 3: Add a client
 
 Create a simple console app to call the actor service. Dapr SDK provides Actor Proxy client to invoke actor methods defined in Actor Interface.
 
-### Create project and add dependencies
+### Create actor client project and add dependencies
 
 ```bash
 # Create Actor's Client
@@ -347,129 +319,130 @@ dotnet new console -o MyActorClient
 cd MyActorClient
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 1.0.0-rc02
+dotnet add package Dapr.Actors -v 1.0.0
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
+
+cd ..
 ```
 
-### Invoke Actor method with Actor Service Remoting
+### Invoke actor methods with strongly-typed client
 
-We recommend to use the local proxy to actor instance because `ActorProxy.Create<IMyActor>(actorID, actorType)` returns strongly-typed actor instance to set up the remote procedure call.
+You can use `ActorProxy.Create<IMyActor>(..)` to create a strongly-typed client and invoke methods on the actor.
+
+Paste the following code into `Program.cs` in the `MyActorClient` project:
 
 ```csharp
+using System;
+using System.Threading.Tasks;
+using Dapr.Actors;
+using Dapr.Actors.Client;
+using MyActor.Interfaces;
+
 namespace MyActorClient
 {
-    using Dapr.Actors;
-    using Dapr.Actors.Client;
-    using MyActor.Interfaces;
-    using System;
-    using System.Threading.Tasks;
-
-    ...
-        static async Task InvokeActorMethodWithRemotingAsync()
+    class Program
+    {
+        static async Task MainAsync(string[] args)
         {
-            var actorType = "MyActor";      // Registered Actor Type in Actor Service
-            var actorID = new ActorId("1");
+            Console.WriteLine("Startup up...");
 
-            // Create the local proxy by using the same interface that the service implements
-            // By using this proxy, you can call strongly typed methods on the interface using Remoting.
-            var proxy = ActorProxy.Create<IMyActor>(actorID, actorType);
+            // Registered Actor Type in Actor Service
+            var actorType = "MyActor";
+
+            // An ActorId uniquely identifies an actor instance
+            // If the actor matching this id does not exist, it will be created
+            var actorId = new ActorId("1");
+
+            // Create the local proxy by using the same interface that the service implements.
+            //
+            // You need to provide the type and id so the actor can be located. 
+            var proxy = ActorProxy.Create<IMyActor>(actorId, actorType);
+
+            // Now you can use the actor interface to call the actor's methods.
+            Console.WriteLine($"Calling SetDataAsync on {actorType}:{actorId}...");
             var response = await proxy.SetDataAsync(new MyData()
             {
                 PropertyA = "ValueA",
                 PropertyB = "ValueB",
             });
-            Console.WriteLine(response);
+            Console.WriteLine($"Got response: {response}");
 
+            Console.WriteLine($"Calling GetDataAsync on {actorType}:{actorId}...");
             var savedData = await proxy.GetDataAsync();
-            Console.WriteLine(savedData);
+            Console.WriteLine($"Got response: {response}");
         }
-    ...
+    }
 }
 ```
 
-### Invoke Actor method without Actor Service Remoting
-You can invoke Actor methods without remoting (directly over http or using helper methods provided in ActorProxy), if Actor method accepts at-most one argument. Actor runtime will deserialize the incoming request body from client and use it as method argument to invoke the actor method.
-When making non-remoting calls Actor method arguments and return types are serialized, deserialized as JSON.
+## Running the code
 
-`ActorProxy.Create(actorID, actorType)` returns ActorProxy instance and allow to use the raw http client to invoke the method defined in `IMyActor`.
+The projects that you've created can now to test the sample.
 
-```csharp
-namespace MyActorClient
-{
-    using Dapr.Actors;
-    using Dapr.Actors.Client;
-    using MyActor.Interfaces;
-    using System;
-    using System.Threading.Tasks;
+1. Run MyActorService
 
+    Since `MyActorService` is hosting actors, it needs to be run with the Dapr CLI.
+
+    ```bash
+    cd MyActorService
+    dapr run --app-id myapp --app-port 5000 --dapr-http-port 3500 -- dotnet run
+    ```
+
+    You will see commandline output from both `daprd` and `MyActorService` in this terminal. You should see something like the following, which indicates that the application started successfully.
+
+    ```txt
     ...
-        static async Task InvokeActorMethodWithoutRemotingAsync()
-        {
-            var actorType = "MyActor";
-            var actorID = new ActorId("1");
+    ℹ️  Updating metadata for app command: dotnet run
+    ✅  You're up and running! Both Dapr and your app logs will appear here.
 
-            // Create Actor Proxy instance to invoke the methods defined in the interface
-            var proxy = ActorProxy.Create(actorID, actorType);
-            // Need to specify the method name and response type explicitly
-            var response = await proxy.InvokeMethodAsync<MyData, string>("SetDataAsync", new MyData()
-            {
-                PropertyA = "ValueA",
-                PropertyB = "ValueB",
-            });
-            Console.WriteLine(response);
+    == APP == info: Microsoft.Hosting.Lifetime[0]
 
-            var savedData = await proxy.InvokeMethodAsync<MyData>("GetDataAsync");
-            Console.WriteLine(savedData);
-        }
-    ...
-}
-```
+    == APP ==       Now listening on: https://localhost:5001
 
-## Run Actor
+    == APP == info: Microsoft.Hosting.Lifetime[0]
 
-In order to validate and debug actor service and client, we need to run actor services via Dapr CLI first.
+    == APP ==       Now listening on: http://localhost:5000
 
-1. Run Dapr Runtime via Dapr cli
+    == APP == info: Microsoft.Hosting.Lifetime[0]
 
-   ```bash
-   $ dapr run --app-id myapp --app-port 5000 --dapr-http-port 3500 dotnet run
-   ```
+    == APP ==       Application started. Press Ctrl+C to shut down.
 
-   After executing MyActorService via Dapr runtime, make sure that application is discovered on port 5000 and actor connection is established successfully.
+    == APP == info: Microsoft.Hosting.Lifetime[0]
 
-   ```bash
-    INFO[0000] starting Dapr Runtime -- version  -- commit
-    INFO[0000] log level set to: info
-    INFO[0000] standalone mode configured
-    INFO[0000] dapr id: myapp
-    INFO[0000] loaded component statestore (state.redis)
-    INFO[0000] application protocol: http. waiting on port 5000
-    INFO[0000] application discovered on port 5000
-    INFO[0000] application configuration loaded
-    2019/08/27 14:42:06 redis: connecting to localhost:6379
-    2019/08/27 14:42:06 redis: connected to localhost:6379 (localAddr: [::1]:53155, remAddr: [::1]:6379)
-    INFO[0000] actor runtime started. actor idle timeout: 1h0m0s. actor scan interval: 30s
-    INFO[0000] actors: starting connection attempt to placement service at localhost:50005
-    INFO[0000] http server is running on port 3500
-    INFO[0000] gRPC server is running on port 50001
-    INFO[0000] dapr initialized. Status: Running. Init Elapsed 19.699438ms
-    INFO[0000] actors: established connection to placement service at localhost:50005
-    INFO[0000] actors: placement order received: lock
-    INFO[0000] actors: placement order received: update
-    INFO[0000] actors: placement tables updated
-    INFO[0000] actors: placement order received: unlock
-    ...
-   ```
+    == APP ==       Hosting environment: Development
+
+    == APP == info: Microsoft.Hosting.Lifetime[0]
+
+    == APP ==       Content root path: /Users/ryan/actortest/MyActorService
+    ```
 
 2. Run MyActorClient
 
-   MyActorClient will console out if it calls actor hosted in MyActorService successfully.
+    `MyActorClient` is acting as the client, and it can be run normally with `dotnet run`.
 
-   > If you specify the different Dapr runtime http port (default port: 3500), you need to set DAPR_HTTP_PORT environment variable before running the client.
+    Open a new terminal an navigate to the `MyActorClient` directory. Then run the project with:
 
-   ```bash
-   Success
-   PropertyA: ValueA, PropertyB: ValueB
-   ```
+    ```bash
+    dotnet run
+    ```
+
+    You should see commandline output like:
+
+    ```txt
+    Startup up...
+    Calling SetDataAsync on MyActor:1...
+    Got response: Success
+    Calling GetDataAsync on MyActor:1...
+    Got response: Success
+    ```
+
+> 💡 This sample relies on a few assumptions. The default listening port for an ASP.NET Core web project is 5000, which is being passed to `dapr run` as `--app-port 5000`. The default HTTP port for the Dapr sidecar is 3500. We're telling the sidecar for `MyActorService` to use 3500 so that `MyActorClient` can rely on the default value.
+
+Now you have successfully created an actor service and client. See the related links section to learn more.
+
+## Related links
+
+- [.NET Dapr Actors client guide]({{< ref dotnet-actor-client.md >}})
+- [.NET Dapr Actors usage guide]({{< ref dotnet-actor-usage.md >}})
