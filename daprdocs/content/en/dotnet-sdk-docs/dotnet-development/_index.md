@@ -2,7 +2,7 @@
 type: docs
 title: "Dapr .NET SDK Development"
 linkTitle: "Development"
-weight: 1000
+weight: 50000
 description: Learn about local development options for .NET Dapr applications
 no_list: true
 ---
