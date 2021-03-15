@@ -306,7 +306,7 @@ namespace MyActorService
 }
 ```
 
-## Step 3: add a client
+## Step 3: Add a client
 
 Create a simple console app to call the actor service. Dapr SDK provides Actor Proxy client to invoke actor methods defined in Actor Interface.
 
