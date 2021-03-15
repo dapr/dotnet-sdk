@@ -56,7 +56,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TImplementation"></typeparam>
         /// <param name="services"></param>
         /// <param name="appId"></param>
-        public static void AddDaprHTTPClient<TClient, TImplementation>(this IServiceCollection services, string appId) where TClient : class 
+        public static void AddDaprHttpClient<TClient, TImplementation>(this IServiceCollection services, string appId) where TClient : class 
                                                                                                                        where TImplementation : class, TClient
         {
             if (services is null)
