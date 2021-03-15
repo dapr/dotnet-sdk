@@ -36,7 +36,7 @@ MyActor --- MyActor.Interfaces
 
 Since we'll be creating 3 projects, choose an empty directory to start from, and open it in your terminal of choice.
 
-## Step 1: create actor interfaces
+## Step 1: Create actor interfaces
 
 Actor interface defines the actor contract that is shared by the actor implementation and the clients calling the actor.
 
