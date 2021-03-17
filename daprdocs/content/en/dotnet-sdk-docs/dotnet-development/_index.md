@@ -33,7 +33,3 @@ Creating a folder within your source code repository to store components and con
 ## Development options
 
 Choose one of these links to learn about tools you can use in local development scenarios. These articles are ordered from lowest investment to highest investment. You may want to read them all to get an overview of your options.
-
-- [Dapr CLI]({{< ref dotnet-development-dapr-cli >}})
-- [Project Tye]({{< ref dotnet-development-tye >}})
-- [Docker-Compose]({{< ref dotnet-development-docker-compose >}})
