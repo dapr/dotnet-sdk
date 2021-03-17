@@ -12,10 +12,10 @@ description: Learn about local development with the Dapr CLI
 
 The Dapr CLI provides you with a good base to work from by initializing a local redis container, zipkin container, the placement service, and component manifests for redis. This will enable you to work with the following building blocks on a fresh install with no additional setup:
 
-- Service invocation
-- Actors
-- State Store
-- Pub/Sub
+- [Service invocation]({{< ref service-invocation >}})
+- [State Store]({{< ref state-management >}})
+- [Pub/Sub]({{< ref pubsub >}})
+- [Actors]({{< ref actors >}})
 
 You can run .NET services with `dapr run` as your strategy for developing locally. Plan on running one of these commands per-service in order to launch your application.
 
