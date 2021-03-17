@@ -10,9 +10,7 @@ description: Learn about local development with Docker-Compose
 
 *Consider this to be a .NET companion to the [Dapr Self-Hosted with Docker Guide]({{ ref self-hosted-with-docker.md }}))*.
 
-`docker-compose` is a CLI tool included with Docker Desktop that you can use to run multiple containers at a time.
-
-`docker-compose` is a way to automate the lifecycle of multiple containers together, and offers a development experience similar to a production environment for applications targeting Kubernetes.
+`docker-compose` is a CLI tool included with Docker Desktop that you can use to run multiple containers at a time. It is a way to automate the lifecycle of multiple containers together, and offers a development experience similar to a production environment for applications targeting Kubernetes.
 
 **Pro:** Since `docker-compose` manages containers for you, you can make dependencies part of the application definition and stop the long-running containers on your machine.
 
