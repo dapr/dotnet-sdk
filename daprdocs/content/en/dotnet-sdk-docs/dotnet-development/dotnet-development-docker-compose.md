@@ -12,11 +12,9 @@ description: Learn about local development with Docker-Compose
 
 `docker-compose` is a CLI tool included with Docker Desktop that you can use to run multiple containers at a time. It is a way to automate the lifecycle of multiple containers together, and offers a development experience similar to a production environment for applications targeting Kubernetes.
 
-**Pro:** Since `docker-compose` manages containers for you, you can make dependencies part of the application definition and stop the long-running containers on your machine.
-
-**Con:** most investment required, services need to be containerized to get started.
-
-**Con:** can be difficult to debug and troubleshoot if you are unfamilar with Docker.
+- **Pro:** Since `docker-compose` manages containers for you, you can make dependencies part of the application definition and stop the long-running containers on your machine.
+- **Con:** most investment required, services need to be containerized to get started.
+- **Con:** can be difficult to debug and troubleshoot if you are unfamilar with Docker.
 
 ### Using docker-compose
 
