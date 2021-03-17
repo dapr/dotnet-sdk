@@ -4,7 +4,6 @@ title: "Developing applications with the Dapr .NET SDK"
 linkTitle: "Development"
 weight: 50000
 description: Learn about local development options for .NET Dapr applications
-no_list: true
 ---
 
 ## Thinking more than one at a time
