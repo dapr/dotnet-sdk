@@ -24,7 +24,9 @@ description: Learn about local development with Docker-Compose
 
 From the .NET perspective, there is no specialized guidance needed for `docker-compose` with Dapr. `docker-compose` runs containers, and once your service is in a container, configuring it similar to any other programming technology.
 
-> 💡 in a container, an ASP.NET Core app will listen on port 80 by default. Remember this for when you need to configure the `--app-port` later.
+{{% alert title="💡 App Port" color="primary" %}}
+In a container, an ASP.NET Core app will listen on port 80 by default. Remember this for when you need to configure the `--app-port` later.
+{{% /alert %}}
 
 To summarize the approach:
 
