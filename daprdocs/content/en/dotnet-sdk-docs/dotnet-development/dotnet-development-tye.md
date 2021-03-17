@@ -16,9 +16,9 @@ Tye is advantageous for a .NET Dapr developer because:
 - Tye understands .NET's conventions and requires almost no configuration for .NET services
 - Tye can manage the lifetime of your dependencies in containers
 
-**Pro:** Tye can automate all of the steps described above. You no longer need to think about concepts like ports or app-ids.
-
-**Pro:** Since Tye can also manage containers for you, you can make those part of the application definition and stop the long-running containers on your machine.
+Pros/cons:
+- **Pro:** Tye can automate all of the steps described above. You no longer need to think about concepts like ports or app-ids.
+- **Pro:** Since Tye can also manage containers for you, you can make those part of the application definition and stop the long-running containers on your machine.
 
 ### Using Tye
 
