@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Dapr .NET SDK Development"
+title: "Developing applications with the Dapr .NET SDK"
 linkTitle: "Development"
 weight: 50000
 description: Learn about local development options for .NET Dapr applications
