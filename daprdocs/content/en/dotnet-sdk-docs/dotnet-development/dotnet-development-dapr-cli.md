@@ -19,11 +19,9 @@ The Dapr CLI provides you with a good base to work from by initializing a local 
 
 You can run .NET services with `dapr run` as your strategy for developing locally. Plan on running one of these commands per-service in order to launch your application.
 
-**Pro:** this is easy to set up since its part of the default Dapr installation
-
-**Con:** this uses long-running docker containers on your machine, which might not be desirable
-
-**Con:** the scalability of this approach is poor since it requires running a separate command per-service
+- **Pro:** this is easy to set up since its part of the default Dapr installation
+- **Con:** this uses long-running docker containers on your machine, which might not be desirable
+- **Con:** the scalability of this approach is poor since it requires running a separate command per-service
 
 ### Using the Dapr CLI
 
