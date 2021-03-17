@@ -40,7 +40,9 @@ dapr run --app-id <app-id> --app-port <port> --components-path <components-path>
 
 **Explanation:** this command will use `dapr run` to launch each service and its sidecar. The first half of the command (before `--`) passes required configuration to the Dapr CLI. The second half of the command (after `--`) passes required configuration to the `dotnet run` command.
 
-> 💡 since you need to configure a unique port for each service, you can use this command to pass that port value to **both** Dapr and the service. `--urls http://localhost:<port>` will configure ASP.NET Core to listen for traffic on the provided port. Using configuration at the commandline is a more flexible approach than hardcoding a listening port elsewhere.
+{{% alert title="💡 Ports" color="primary" %}}
+Since you need to configure a unique port for each service, you can use this command to pass that port value to **both** Dapr and the service. `--urls http://localhost:<port>` will configure ASP.NET Core to listen for traffic on the provided port. Using configuration at the commandline is a more flexible approach than hardcoding a listening port elsewhere.
+{{% /alert %}}
 
 If any of your services do not accept HTTP traffic, then modify the command above by removing the `--app-port` and `--urls` arguments.
 
