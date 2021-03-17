@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Dapr .NET SDK Development with Project Tye"
-linkTitle: "Development"
+linkTitle: "Project Tye"
 weight: 40000
 description: Learn about local development with Project Tye
 ---
