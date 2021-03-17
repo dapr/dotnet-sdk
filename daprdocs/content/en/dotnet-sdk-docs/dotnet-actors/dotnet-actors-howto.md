@@ -444,5 +444,5 @@ Now you have successfully created an actor service and client. See the related l
 
 ## Related links
 
-- [.NET Dapr Actors client guide]({{< ref dotnet-actor-client.md >}})
-- [.NET Dapr Actors usage guide]({{< ref dotnet-actor-usage.md >}})
+- [.NET Dapr Actors client guide]({{< ref dotnet-actors-client.md >}})
+- [.NET Dapr Actors usage guide]({{< ref dotnet-actors-usage.md >}})
