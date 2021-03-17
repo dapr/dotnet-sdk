@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Dapr .NET SDK Development with Dapr CLI"
-linkTitle: "Development"
+linkTitle: "Dapr CLI"
 weight: 30000
 description: Learn about local development with the Dapr CLI
 ---
