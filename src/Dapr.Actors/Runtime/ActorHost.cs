@@ -5,6 +5,7 @@
 
 namespace Dapr.Actors.Runtime
 {
+    using System;
     using System.Text.Json;
     using Dapr.Actors.Client;
     using Microsoft.Extensions.Logging;
@@ -15,6 +16,42 @@ namespace Dapr.Actors.Runtime
     public sealed class ActorHost
     {
         /// <summary>
+        /// Creates an instance of <see cref="ActorHost" /> for unit testing an actor instance.
+        /// </summary>
+        /// <param name="options">The <see cref="ActorTestOptions" /> for configuring the host.</param>
+        /// <typeparam name="TActor">The actor type.</typeparam>
+        /// <returns>An <see cref="ActorHost" /> instance.</returns>
+        public static ActorHost CreateForTest<TActor>(ActorTestOptions options = null)
+            where TActor : Actor
+        {
+            return CreateForTest(typeof(TActor), options);
+        }
+
+        /// <summary>
+        /// Creates an instance of <see cref="ActorHost" /> for unit testing an actor instance.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="options">The <see cref="ActorTestOptions" /> for configuring the host.</param>
+        /// <returns>An <see cref="ActorHost" /> instance.</returns>
+        public static ActorHost CreateForTest(Type actorType, ActorTestOptions options = null)
+        {
+            if (actorType == null)
+            {
+                throw new ArgumentNullException(nameof(actorType));
+            }
+
+            options ??= new ActorTestOptions();
+            
+            return new ActorHost(
+                ActorTypeInformation.Get(actorType),
+                options.ActorId, 
+                options.JsonSerializerOptions,
+                options.LoggerFactory,
+                options.ProxyFactory,
+                options.TimerManager);
+        }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="ActorHost"/> class.
         /// </summary>
         /// <param name="actorTypeInfo">The type information of the Actor.</param>
@@ -22,6 +59,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="jsonSerializerOptions">The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization.</param>
         /// <param name="loggerFactory">The logger factory.</param>
         /// <param name="proxyFactory">The <see cref="ActorProxyFactory" />.</param>
+        [Obsolete("Application code should not call this method. Use CreateForTest for unit testing.")]
         public ActorHost(
             ActorTypeInformation actorTypeInfo,
             ActorId id,
@@ -33,6 +71,30 @@ namespace Dapr.Actors.Runtime
             this.Id = id;
             this.LoggerFactory = loggerFactory;
             this.ProxyFactory = proxyFactory;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActorHost"/> class.
+        /// </summary>
+        /// <param name="actorTypeInfo">The type information of the Actor.</param>
+        /// <param name="id">The id of the Actor instance.</param>
+        /// <param name="jsonSerializerOptions">The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization.</param>
+        /// <param name="loggerFactory">The logger factory.</param>
+        /// <param name="proxyFactory">The <see cref="ActorProxyFactory" />.</param>
+        /// <param name="timerManager">The <see cref="ActorTimerManager" />.</param>
+        internal ActorHost(
+            ActorTypeInformation actorTypeInfo,
+            ActorId id,
+            JsonSerializerOptions jsonSerializerOptions,
+            ILoggerFactory loggerFactory,
+            IActorProxyFactory proxyFactory,
+            ActorTimerManager timerManager)
+        {
+            this.ActorTypeInfo = actorTypeInfo;
+            this.Id = id;
+            this.LoggerFactory = loggerFactory;
+            this.ProxyFactory = proxyFactory;
+            this.TimerManager = timerManager;
         }
 
         /// <summary>
@@ -60,8 +122,11 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public IActorProxyFactory ProxyFactory { get; }
 
-        internal DaprStateProvider StateProvider { get; set; }
+        /// <summary>
+        /// Gets the <see cref="ActorTimerManager" />.
+        /// </summary>
+        public ActorTimerManager TimerManager { get; }
 
-        internal IDaprInteractor DaprInteractor { get; set; }
+        internal DaprStateProvider StateProvider { get; set; }
     }
 }

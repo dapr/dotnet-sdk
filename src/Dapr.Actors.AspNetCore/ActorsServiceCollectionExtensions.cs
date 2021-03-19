@@ -52,6 +52,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         JsonSerializerOptions = options.JsonSerializerOptions,
                         DaprApiToken = options.DaprApiToken,
+                        HttpEndpoint = options.HttpEndpoint,
                     }
                 };
 

@@ -8,16 +8,15 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Globalization;
     using System.IO;
-    using System.Text;
     using System.Text.Json;
     using System.Text.Json.Serialization;
     using System.Threading;
-    using System.Threading.Tasks;
     using Dapr.Actors.Resources;
 
     /// <summary>
     /// Represents the details of the timer set on an Actor.
     /// </summary>
+    [Obsolete("This class is an implementation detail of the framework and will be made internal in a future release.")]
     [JsonConverter(typeof(TimerInfoConverter))]
     public class TimerInfo
     {
@@ -73,7 +72,7 @@ namespace Dapr.Actors.Runtime
             }
         }
     }
-
+    #pragma warning disable 0618
     internal class TimerInfoConverter : JsonConverter<TimerInfo>
     {
         public override TimerInfo Read(
@@ -148,4 +147,5 @@ namespace Dapr.Actors.Runtime
             await writer.FlushAsync();
         }
     }
+    #pragma warning restore 0618
 }

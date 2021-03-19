@@ -5,7 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj">
-    </ProjectReference>
+    <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
+    <ProjectReference Include="..\Dapr.E2E.Test.Actors\Dapr.E2E.Test.Actors.csproj" />
   </ItemGroup>
 </Project>

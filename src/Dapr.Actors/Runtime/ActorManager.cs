@@ -28,6 +28,7 @@ namespace Dapr.Actors.Runtime
         private readonly ActorActivator activator;
         private readonly ILoggerFactory loggerFactory;
         private readonly IActorProxyFactory proxyFactory;
+        private readonly ActorTimerManager timerManager;
         private readonly ConcurrentDictionary<ActorId, ActorActivatorState> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMethodContext timerMethodContext;
@@ -59,6 +60,8 @@ namespace Dapr.Actors.Runtime
             this.loggerFactory = loggerFactory;
             this.proxyFactory = proxyFactory;
             this.daprInteractor = daprInteractor;
+
+            this.timerManager = new DefaultActorTimerManager(this.daprInteractor);
 
             // map for remoting calls.
             this.methodDispatcherMap = new ActorMethodDispatcherMap(this.registration.Type.InterfaceTypes);
@@ -205,7 +208,9 @@ namespace Dapr.Actors.Runtime
 
         internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-             var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
+            #pragma warning disable 0618
+            var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
+            #pragma warning restore 0618
 
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
@@ -263,9 +268,8 @@ namespace Dapr.Actors.Runtime
         private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory)
+            var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.timerManager)
             {
-                DaprInteractor = this.daprInteractor,
                 StateProvider = new DaprStateProvider(this.daprInteractor, this.jsonSerializerOptions),
             };
             var state =  await this.activator.CreateAsync(host);

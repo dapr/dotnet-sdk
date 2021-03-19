@@ -3,41 +3,74 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System;
+using System.Globalization;
+using System.Threading;
+using Dapr.Actors.Resources;
+
 namespace Dapr.Actors.Runtime
 {
-    using System;
-
-    internal class ActorReminder : IActorReminder
+    /// <summary>
+    /// Represents a reminder registered by an actor.
+    /// </summary>
+    public class ActorReminder : ActorReminderToken, IActorReminder
     {
+        private static readonly TimeSpan MiniumPeriod = Timeout.InfiniteTimeSpan;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorReminder" />.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorId">The actor id.</param>
+        /// <param name="name">The reminder name.</param>
+        /// <param name="state">The state associated with the reminder.</param>
+        /// <param name="dueTime">The reminder due time.</param>
+        /// <param name="period">The reminder period.</param>
         public ActorReminder(
+            string actorType,
             ActorId actorId,
-            string reminderName,
-            ReminderInfo reminderInfo)
+            string name,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period)
+            : base(actorType, actorId, name)
         {
-            this.OwnerActorId = actorId;
-            this.Name = reminderName;
-            this.ReminderInfo = reminderInfo;
+            if (dueTime < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(dueTime), string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.TimerArgumentOutOfRange,
+                    TimeSpan.Zero.TotalMilliseconds,
+                    TimeSpan.MaxValue.TotalMilliseconds));
+            }
+
+            if (period < MiniumPeriod)
+            {
+                throw new ArgumentOutOfRangeException(nameof(period), string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.TimerArgumentOutOfRange,
+                    MiniumPeriod.TotalMilliseconds,
+                    TimeSpan.MaxValue.TotalMilliseconds));
+            }
+
+            this.State = state;
+            this.DueTime = dueTime;
+            this.Period = period;
         }
 
-        public string Name { get; }
+        /// <summary>
+        /// Gets the reminder state.
+        /// </summary>
+        public byte[] State { get; }
 
-        public byte[] State
-        {
-            get { return this.ReminderInfo.Data; }
-        }
+        /// <summary>
+        /// Gets the reminder due time.
+        /// </summary>
+        public TimeSpan DueTime { get; }
 
-        public TimeSpan DueTime
-        {
-            get { return this.ReminderInfo.DueTime; }
-        }
-
-        public TimeSpan Period
-        {
-            get { return this.ReminderInfo.Period; }
-        }
-
-        internal ReminderInfo ReminderInfo { get; }
-
-        internal ActorId OwnerActorId { get; }
+        /// <summary>
+        /// Gets the reminder period.
+        /// </summary>
+        public TimeSpan Period { get; }
     }
 }

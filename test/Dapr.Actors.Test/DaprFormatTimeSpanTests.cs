@@ -3,6 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+#pragma warning disable 0618
 namespace Dapr.Actors.Test
 {
     using System;
@@ -79,3 +80,4 @@ namespace Dapr.Actors.Test
         }
     }
 }
+#pragma warning restore 0618
