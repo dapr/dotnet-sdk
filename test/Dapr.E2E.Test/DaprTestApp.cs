@@ -21,7 +21,7 @@ namespace Dapr.E2E.Test
         static string daprBinaryName = "dapr";
         private string appId;
         private bool useAppPort;
-        private readonly string[] outputToMatchOnStart = new string[]{ "You're up and running", };
+        private readonly string[] outputToMatchOnStart = new string[]{ "dapr initialized. Status: Running.", };
         private readonly string[] outputToMatchOnStop = new string[]{ "app stopped successfully", "failed to stop app id", };
 
         private ITestOutputHelper testOutput;

@@ -22,7 +22,6 @@ namespace Dapr.Actors.Client
         /// </summary>
         public ActorProxyOptions()
         {
-            this.DaprApiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
         }
 
         /// <summary>
@@ -38,7 +37,7 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// The Dapr Api Token that is added to the header for all requests.
         /// </summary>
-        public string DaprApiToken { get; set; }
+        public string DaprApiToken { get; set; } = DaprDefaults.GetDefaultApiToken();
 
         /// <summary>
         /// Gets or sets the HTTP endpoint URI used to communicate with the Dapr sidecar.
@@ -49,12 +48,6 @@ namespace Dapr.Actors.Client
         /// <c>DAPR_HTTP_PORT</c> environment variable.
         /// </remarks>
         /// <value></value>
-        public string HttpEndpoint { get; set; } = GetDefaultHttpEndpoint();
-
-        private static string GetDefaultHttpEndpoint()
-        {
-            var daprHttpPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? "3500";
-            return $"http://127.0.0.1:{daprHttpPort}";
-        }
+        public string HttpEndpoint { get; set; } = DaprDefaults.GetDefaultHttpEndpoint();
     }
 }

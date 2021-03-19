@@ -171,12 +171,6 @@ namespace Dapr.Actors.Runtime
         /// <c>DAPR_HTTP_PORT</c> environment variable.
         /// </remarks>
         /// <value></value>
-        public string HttpEndpoint { get; set; } = GetDefaultHttpEndpoint();
-
-        private static string GetDefaultHttpEndpoint()
-        {
-            var daprHttpPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? "3500";
-            return $"http://127.0.0.1:{daprHttpPort}";
-        }
+        public string HttpEndpoint { get; set; } = DaprDefaults.GetDefaultHttpEndpoint();
     }
 }

@@ -28,7 +28,7 @@ namespace Dapr.E2E.Test.Actors.Reminders
         }
 
         // Starts a reminder that will fire N times before stopping itself
-        public async Task StartTimer(StartReminderOptions options)
+        public async Task StartReminder(StartReminderOptions options)
         {
             var bytes = JsonSerializer.SerializeToUtf8Bytes(options, this.Host.JsonSerializerOptions);
             await this.RegisterReminderAsync("test-reminder", bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromMilliseconds(50));
@@ -52,9 +52,7 @@ namespace Dapr.E2E.Test.Actors.Reminders
                 state.IsReminderRunning = false;
             }
 
-            await this.StateManager.SetStateAsync("timer-state", state);
+            await this.StateManager.SetStateAsync("reminder-state", state);
         }
-
-        
     }
 }

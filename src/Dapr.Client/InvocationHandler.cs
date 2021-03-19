@@ -34,17 +34,6 @@ namespace Dapr.Client
     /// </remarks>
     public class InvocationHandler : DelegatingHandler
     {
-        private const string DefaultDaprHttpPort = "3500";
-
-        private static string GetDefaultDaprEndpoint()
-        {
-            var port = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? DefaultDaprHttpPort;
-            
-            // Since we're dealing with environment variables, treat empty the same as null.
-            port = port == string.Empty ? DefaultDaprHttpPort : port;
-            return $"http://127.0.0.1:{port}";
-        }
-
         private Uri parsedEndpoint;
         private string? apiToken;
 
@@ -53,11 +42,8 @@ namespace Dapr.Client
         /// </summary>
         public InvocationHandler()
         {
-            this.parsedEndpoint = new Uri(GetDefaultDaprEndpoint(), UriKind.Absolute);
-            if(string.IsNullOrWhiteSpace(this.apiToken))
-            {
-                this.apiToken = Environment.GetEnvironmentVariable(Constants.DaprApiTokenEnvironmentVariable);
-            }
+            this.parsedEndpoint = new Uri(DaprDefaults.GetDefaultHttpEndpoint(), UriKind.Absolute);
+            this.apiToken = DaprDefaults.GetDefaultApiToken();
         }
 
         /// <summary>

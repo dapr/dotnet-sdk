@@ -13,8 +13,6 @@ namespace Dapr.Actors
         public const string RequestIdHeaderName = "X-DaprRequestId";
         public const string RequestHeaderName = "X-DaprRequestHeader";
         public const string ErrorResponseHeaderName = "X-DaprErrorResponseHeader";
-        public const string DaprApiTokenEnvironmentVariable = "DAPR_API_TOKEN";
-        public const string DaprHttpPortEnvironmentVariable = "DAPR_HTTP_PORT";
         public const string Dapr = "dapr";
         public const string Config = "config";
         public const string State = "state";

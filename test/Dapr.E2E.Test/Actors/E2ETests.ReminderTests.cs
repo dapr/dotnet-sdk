@@ -22,7 +22,7 @@ namespace Dapr.E2E.Test
             await WaitForActorRuntimeAsync(proxy, cts.Token);
 
             // Start reminder, to count up to 10
-            await proxy.StartTimer(new StartReminderOptions(){ Total = 10, });
+            await proxy.StartReminder(new StartReminderOptions(){ Total = 10, });
 
             State state; 
             while (true)

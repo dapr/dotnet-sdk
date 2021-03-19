@@ -18,15 +18,15 @@ namespace Dapr.Actors.Runtime
         private static readonly TimeSpan MiniumPeriod = Timeout.InfiniteTimeSpan;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="ActorReminder" />.
+        /// Initializes a new instance of <see cref="ActorTimer" />.
         /// </summary>
         /// <param name="actorType">The actor type.</param>
         /// <param name="actorId">The actor id.</param>
-        /// <param name="name">The reminder name.</param>
+        /// <param name="name">The timer name.</param>
         /// <param name="timerCallback">The name of the callback associated with the timer.</param>
-        /// <param name="data">The state associated with the reminder.</param>
-        /// <param name="dueTime">The reminder due time.</param>
-        /// <param name="period">The reminder period.</param>
+        /// <param name="data">The state associated with the timer.</param>
+        /// <param name="dueTime">The timer due time.</param>
+        /// <param name="period">The timer period.</param>
         public ActorTimer(
             string actorType,
             ActorId actorId,
@@ -64,7 +64,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// The constructor
         /// </summary>
-        [Obsolete("This conctructor does not provide all required data and should not be used.")]
+        [Obsolete("This constructor does not provide all required data and should not be used.")]
         public ActorTimer(
             string timerName,
             TimerInfo timerInfo)
