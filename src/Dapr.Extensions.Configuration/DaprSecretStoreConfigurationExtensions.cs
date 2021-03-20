@@ -57,7 +57,7 @@ namespace Dapr.Extensions.Configuration
             this IConfigurationBuilder configurationBuilder,
             string store,
             DaprClient client,
-            IReadOnlyDictionary<string, string> metadata = null)
+            IReadOnlyDictionary<string, string>? metadata = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(client, nameof(client));
@@ -84,7 +84,7 @@ namespace Dapr.Extensions.Configuration
             this IConfigurationBuilder configurationBuilder,
             string store,
             DaprClient client,
-            IEnumerable<string> keyDelimiters)
+            IEnumerable<string>? keyDelimiters)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(client, nameof(client));
