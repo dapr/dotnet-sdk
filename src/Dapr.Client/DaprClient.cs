@@ -572,6 +572,15 @@ namespace Dapr.Client
         public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Deletes a list of <paramref name="items" /> from the Dapr state store.
+        /// </summary>
+        /// <param name="storeName">The name of state store to delete from.</param>
+        /// <param name="items">The list of items to delete</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task DeleteBulkStateAsync(string storeName, IReadOnlyList<BulkDeleteStateItem> items, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
         /// </summary>
         /// <typeparam name="TValue">The data type of the value to read.</typeparam>
