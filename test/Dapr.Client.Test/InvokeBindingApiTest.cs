@@ -147,6 +147,66 @@ namespace Dapr.Client.Test
                 });
         }
 
+        [Fact]
+        public async Task InvokeBindingAsync_WithCustomRequest_ValidateRequest()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var data = new InvokeRequest() { RequestParameter = "Hello " };
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.InvokeBindingAsync<InvokeRequest, Widget>("test","create", data, metadata);
+            });
+
+            var resp = new Autogen.Grpc.v1.InvokeBindingResponse();
+            resp.Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, client.InnerClient.JsonSerializerOptions));
+            var response = await request.CompleteWithMessageAsync(resp);
+
+            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("test");
+            envelope.Metadata.Count.Should().Be(2);
+            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
+            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
+            envelope.Metadata["key1"].Should().Be("value1");
+            envelope.Metadata["key2"].Should().Be("value2");
+
+            var json = envelope.Data.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
+            typeFromRequest.RequestParameter.Should().Be("Hello ");
+
+            Assert.Equal("red", response.Color);
+        }
+
+        [Fact]
+        public async Task InvokeBindingAsync_WithCustomNullPayload_ValidateRequestResponse()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.InvokeBindingAsync<InvokeRequest, Widget>("test", "create", null);
+            });
+
+            var resp = new Autogen.Grpc.v1.InvokeBindingResponse();
+            resp.Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, client.InnerClient.JsonSerializerOptions));
+            var response = await request.CompleteWithMessageAsync(resp);
+
+            // Get Request and validate
+            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("test");
+            envelope.Metadata.Count.Should().Be(0);
+            var json = envelope.Data.ToStringUtf8();
+            Assert.Equal("null", json);
+
+            Assert.Equal("red", response.Color);
+        }
+
 
         [Fact]
         public async Task InvokeBindingAsync_WithCancelledToken()
