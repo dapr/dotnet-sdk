@@ -184,7 +184,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task InvokeBindingAsync_WithCustomNullPayload_ValidateRequestResponse()
+        public async Task InvokeBindingAsync_WithNullPayload_ValidateRequestResponse()
         {
             await using var client = TestClient.CreateForDaprClient();
 
