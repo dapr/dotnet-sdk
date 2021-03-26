@@ -14,7 +14,7 @@ namespace Dapr.Actors.Test
 {
     public class ApiTokenTests
     {
-        [Fact]
+        [Fact(Skip = "https://github.com/dapr/dotnet-sdk/issues/596")]
         public async Task CreateProxyWithRemoting_WithApiToken()
         {
             await using var client = TestClient.CreateForMessageHandler();
@@ -38,7 +38,7 @@ namespace Dapr.Actors.Test
             headerValues.Should().Contain("test_token");
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/dapr/dotnet-sdk/issues/596")]
         public async Task CreateProxyWithRemoting_WithNoApiToken()
         {
             await using var client = TestClient.CreateForMessageHandler();
