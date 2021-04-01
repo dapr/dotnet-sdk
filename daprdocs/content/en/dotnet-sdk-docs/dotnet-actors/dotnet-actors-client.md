@@ -1,8 +1,8 @@
 ---
 type: docs
 title: "Dapr actor .NET usage guide"
-linkTitle: "Actors Usage"
-weight: 10000
+linkTitle: "Actors client"
+weight: 100000
 description: Learn all about using the actor client with the .NET SDK
 ---
 
