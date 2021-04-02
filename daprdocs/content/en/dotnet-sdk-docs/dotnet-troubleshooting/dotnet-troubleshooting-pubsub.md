@@ -3,7 +3,7 @@ type: docs
 title: "Troubleshoot Pub/Sub with the .NET SDK"
 linkTitle: "Troubleshoot pub/sub"
 weight: 100000
-description: Try out .NET virtual actors with this example
+description: Troubleshoot Pub/Sub with the .NET SDK
 ---
 
 # Troubleshooting Pub/Sub
