@@ -3,8 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+// TODO: Remove this when every project that uses this file has nullable enabled.
+#nullable enable
 
-namespace Dapr.Extensions.Configuration
+namespace Dapr
 {
     using System;
     using System.Diagnostics.CodeAnalysis;
