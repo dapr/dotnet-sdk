@@ -53,7 +53,7 @@ namespace Dapr.Client
         /// </param>
         /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
         /// <param name="daprApiToken">The token to be added to all request headers to Dapr runtime.</param>
-        /// <param name="clientHandler">An optional handler to handle outgoing requests.</param>
+        /// <param name="handler">An optional handler to handle outgoing requests.</param>
         /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
         /// <remarks>
         /// <para>
@@ -62,21 +62,21 @@ namespace Dapr.Client
         /// a single client object can be reused for the life of the application.
         /// </para>
         /// </remarks>
-        public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null, string daprApiToken = null, HttpClientHandler clientHandler = null)
+        public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null, string daprApiToken = null, HttpClientHandler handler = null)
         {
-            var handler = new InvocationHandler()
+            var internalHandler = new InvocationHandler()
             {
-                InnerHandler = clientHandler ?? new HttpClientHandler(),
+                InnerHandler = handler ?? new HttpClientHandler(),
                 DaprApiToken = daprApiToken
             };
 
             if (daprEndpoint is string)
             {
                 // DaprEndpoint performs validation.
-                handler.DaprEndpoint = daprEndpoint;
+                internalHandler.DaprEndpoint = daprEndpoint;
             }
 
-            var httpClient = new HttpClient(handler);
+            var httpClient = new HttpClient(internalHandler);
             
             if (appId is string)
             {
