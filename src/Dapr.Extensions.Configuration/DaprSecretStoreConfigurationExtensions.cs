@@ -89,12 +89,18 @@ namespace Dapr.Extensions.Configuration
             ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
             ArgumentVerifier.ThrowIfNull(client, nameof(client));
 
-            configurationBuilder.Add(new DaprSecretStoreConfigurationSource()
+            var source = new DaprSecretStoreConfigurationSource
             {
                 Store = store,
-                KeyDelimiters = keyDelimiters?.ToList(),
                 Client = client
-            });
+            };
+
+            if (keyDelimiters != null)
+            {
+                source.KeyDelimiters = keyDelimiters.ToList();
+            }
+
+            configurationBuilder.Add(source);
 
             return configurationBuilder;
         }
