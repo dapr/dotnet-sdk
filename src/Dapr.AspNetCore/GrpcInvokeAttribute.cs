@@ -1,12 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Dapr.AspNetCore
 {
     /// <summary>
     /// Make a method as gRPC Service Invocation
     /// </summary>
+    /// <remarks>
+    /// Service Invocation method have two parameters, 
+    /// the first parameter must be <see cref="Google.Protobuf.IMessage"/>,
+    /// the secode parameter must be <see cref="Grpc.Core.ServerCallContext"/>,
+    /// the return type must be <see cref="System.Threading.Tasks.Task{TResult}"/>, and TResult must be <see cref="Google.Protobuf.IMessage"/>
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
     public class GrpcInvokeAttribute : Attribute
     {
@@ -31,8 +35,8 @@ namespace Dapr.AspNetCore
                 throw new ArgumentNullException(nameof(inputModelType));
             }
 
-            if (!inputModelType.IsSubclassOf(typeof(Google.Protobuf.IMessage)))
-                throw new ArgumentException("inputModelType must derive from Google.Protobuf.IMessage");
+            if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(inputModelType))
+                throw new ArgumentException("inputModelType must implement Google.Protobuf.IMessage");
 
             InputModelType = inputModelType;
 

@@ -7,6 +7,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
     using System.Linq;
+    using Dapr.AspNetCore;
     using Dapr.Client;
 
     /// <summary>
@@ -50,6 +51,24 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private class DaprClientMarkerService
         {
+        }
+
+        /// <summary>
+        /// Extracts method info from grpc service and adds it into service provider
+        /// </summary>
+        /// <typeparam name="TGrpcService"></typeparam>
+        /// <param name="services"></param>
+        public static void AddGrpcService<TGrpcService>(this IServiceCollection services)
+            where TGrpcService:GrpcBaseService
+        {
+            if (services is null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(TGrpcService));
+
+            services.AddScoped<TGrpcService>();
         }
     }
 }

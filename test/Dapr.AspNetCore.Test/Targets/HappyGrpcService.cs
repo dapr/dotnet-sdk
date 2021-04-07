@@ -11,10 +11,6 @@ namespace Dapr.AspNetCore.Test
 {
     public class HappyGrpcService : GrpcBaseService
     {
-        public HappyGrpcService(DaprClient daprClient, ILogger logger) : base(daprClient, logger)
-        {
-        }
-
         [GrpcInvoke(typeof(AccountRequest))]
         public Task<Account> GetAccount(AccountRequest model, ServerCallContext context)
         {
