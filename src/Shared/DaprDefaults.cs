@@ -36,7 +36,7 @@ namespace Dapr
             if (httpEndpoint == null)
             {
                 var port = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT");
-                port = string.IsNullOrEmpty(port) ? "3500" : port;
+                port = string.IsNullOrEmpty(port) ? "50001" : port;
                 httpEndpoint = $"http://127.0.0.1:{port}";
             }
 
@@ -48,7 +48,7 @@ namespace Dapr
             if (grpcEndpoint == null)
             {
                 var port = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-                port = string.IsNullOrEmpty(port) ? "50001" : port;
+                port = string.IsNullOrEmpty(port) ? "3500" : port;
                 grpcEndpoint = $"http://127.0.0.1:{port}";
             }
 
