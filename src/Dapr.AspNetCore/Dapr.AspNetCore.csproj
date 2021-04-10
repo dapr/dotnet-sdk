@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Grpc.AspNetCore.Server" Version="2.36.0" />
 
     <!--
       This is a workaround for https://github.com/dotnet/sdk/issues/14019

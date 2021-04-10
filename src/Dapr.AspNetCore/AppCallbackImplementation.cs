@@ -18,24 +18,31 @@ namespace Dapr.AspNetCore
     public class AppCallbackImplementation : global::Dapr.AppCallback.Autogen.Grpc.v1.AppCallback.AppCallbackBase
     {
         /// <summary>
-        /// logger for GrpcBaseService
+        /// logger for AppCallbackImplementation
         /// </summary>
-        private readonly ILogger<AppCallbackImplementation> _logger;
+        private readonly ILogger<AppCallbackImplementation> logger;
 
         /// <summary>
-        /// DaprClient for GrpcBaseService
+        /// The <see cref="IServiceProvider"/>, will use it to get instance of GrpcBaseService
         /// </summary>
-        private readonly DaprClient _daprClient;
+        private readonly IServiceProvider serviceProvider;
+
+        /// <summary>
+        /// DaprClient for AppCallbackImplementation
+        /// </summary>
+        private readonly DaprClient daprClient;
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="daprClient"></param>
         /// <param name="logger"></param>
-        public AppCallbackImplementation(DaprClient daprClient, ILogger<AppCallbackImplementation> logger)
+        /// <param name="serviceProvider"></param>
+        public AppCallbackImplementation(DaprClient daprClient, ILogger<AppCallbackImplementation> logger, IServiceProvider serviceProvider)
         {
-            _daprClient = daprClient;
-            _logger = logger;
+            this.daprClient = daprClient;
+            this.logger = logger;
+            this.serviceProvider = serviceProvider;
         }
 
         internal static Dictionary<string, (System.Type, MethodInfo)> invokeMethods = new Dictionary<string, (System.Type, MethodInfo)>();
@@ -79,8 +86,8 @@ namespace Dapr.AspNetCore
             if (invokeMethods.ContainsKey(request.Method.ToLower()))
             {
                 var response = new InvokeResponse();
-                var (serviceType,method) = invokeMethods[request.Method.ToLower()];
-                var serviceInstance = Activator.CreateInstance(serviceType);
+                var (serviceType, method) = invokeMethods[request.Method.ToLower()];
+                var serviceInstance = serviceProvider.GetService(serviceType);
                 var input = JsonSerializer.Deserialize(request.Data.Value.ToByteArray(), method.GetParameters()[0].ParameterType, jsonOptions);
                 var task = (Task)method.Invoke(serviceInstance, new object[] { input, context });
                 await task;
