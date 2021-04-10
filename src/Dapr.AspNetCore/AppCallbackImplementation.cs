@@ -50,15 +50,15 @@ namespace Dapr.AspNetCore
 
                     if (paras.Length != 2)
                         throw new MissingMethodException("Service Invocation method must have two parameters.");
-                    if (!paras[0].ParameterType.IsSubclassOf(typeof(Google.Protobuf.IMessage)))
+                    if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(paras[0].ParameterType))
                         throw new MissingMethodException("The type of first parameter must derive from Google.Protobuf.IMessage.");
                     if (paras[0].ParameterType != att.InputModelType)
                         throw new MissingMethodException("The type of first parameter must equals with InputModelType");
                     if (paras[1].ParameterType != typeof(ServerCallContext))
                         throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext.");
-                    if (item.ReturnType != typeof(Task<>))
+                    if (item.ReturnType.GetGenericTypeDefinition() != typeof(Task<>))
                         throw new MissingMethodException("The return type must be Task<>.");
-                    if (!item.ReturnType.GetGenericTypeDefinition().IsSubclassOf(typeof(Google.Protobuf.IMessage)))
+                    if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
                         throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage.");
 
                     invokeMethods[(att.MethodName ?? item.Name).ToLower()] = (serviceType.GetType(), item);

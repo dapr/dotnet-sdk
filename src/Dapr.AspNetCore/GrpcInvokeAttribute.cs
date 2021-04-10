@@ -31,16 +31,10 @@ namespace Dapr.AspNetCore
         public GrpcInvokeAttribute(Type inputModelType, string methodName)
         {
             if (inputModelType is null)
-            {
                 throw new ArgumentNullException(nameof(inputModelType));
-            }
-
             if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(inputModelType))
                 throw new ArgumentException("inputModelType must implement Google.Protobuf.IMessage");
-
             InputModelType = inputModelType;
-
-            ArgumentVerifier.ThrowIfNullOrEmpty(methodName, nameof(methodName));
 
             MethodName = methodName;
         }
