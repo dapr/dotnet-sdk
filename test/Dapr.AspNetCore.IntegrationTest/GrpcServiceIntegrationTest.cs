@@ -30,9 +30,19 @@ namespace Dapr.AspNetCore.IntegrationTest
                     Data = Any.Pack(new App.Generated.AccountRequest { Id = "any" })
                 };
                 var response = await client.OnInvokeAsync(request);
-                var content = response.Data.Unpack<App.Generated.Account>();
-                content.Id.Should().Be("test");
-                content.Balance.Should().Be(123);
+                var content1 = response.Data.Unpack<App.Generated.Account>();
+                content1.Id.Should().Be("test");
+                content1.Balance.Should().Be(123);
+
+                request = new App.Generated.InvokeRequest()
+                {
+                    Method = "grpcservicewithdraw",
+                    Data = Any.Pack(new App.Generated.AccountRequest { Id = "any" })
+                };
+                response = await client.OnInvokeAsync(request);
+                var content2 = response.Data.Unpack<App.Generated.Transaction>();
+                content2.Id.Should().Be("test");
+                content2.Amount.Should().Be(100000);
             }
         }
 
