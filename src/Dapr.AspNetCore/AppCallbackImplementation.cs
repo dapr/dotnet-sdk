@@ -56,17 +56,17 @@ namespace Dapr.AspNetCore
                     var paras = item.GetParameters();
 
                     if (paras.Length != 2)
-                        throw new MissingMethodException("Service Invocation method must have two parameters.");
+                        throw new MissingMethodException("Service Invocation method must have two parameters. ErrorNumber: 0");
                     if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(paras[0].ParameterType))
-                        throw new MissingMethodException("The type of first parameter must derive from Google.Protobuf.IMessage.");
+                        throw new MissingMethodException("The type of first parameter must derive from Google.Protobuf.IMessage. ErrorNumber: 1");
                     if (paras[0].ParameterType != att.InputModelType)
-                        throw new MissingMethodException("The type of first parameter must equals with InputModelType");
+                        throw new MissingMethodException("The type of first parameter must equals with InputModelType. ErrorNumber: 2");
                     if (paras[1].ParameterType != typeof(ServerCallContext))
-                        throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext.");
+                        throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext. ErrorNumber: 3");
                     if (item.ReturnType.GetGenericTypeDefinition() != typeof(Task<>))
-                        throw new MissingMethodException("The return type must be Task<>.");
+                        throw new MissingMethodException("The return type must be Task<>. ErrorNumber: 4");
                     if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
-                        throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage.");
+                        throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 5");
 
                     invokeMethods[(att.MethodName ?? item.Name).ToLower()] = (serviceType.GetType(), item);
                 }

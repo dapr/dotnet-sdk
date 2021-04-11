@@ -7,7 +7,7 @@ using Dapr.Client;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
-namespace Dapr.AspNetCore.Test
+namespace Dapr.AspNetCore.Test.Targets
 {
     public class HappyGrpcService : GrpcBaseService
     {
@@ -17,10 +17,15 @@ namespace Dapr.AspNetCore.Test
             return Task.FromResult(new Account { Id = "test", Balance = 123 });
         }
 
-        [GrpcInvoke(typeof(AccountRequest), "rich")]
-        public Task<Transaction> LetUsRich(AccountRequest model, ServerCallContext context)
+        [GrpcInvoke(typeof(AccountRequest), "withdraw")]
+        public Task<Transaction> WithdrawAccount(AccountRequest model, ServerCallContext context)
         {
             return Task.FromResult(new Transaction { Id = "test", Amount = 100000 });
+        }
+
+        public void Another()
+        {
+            throw new NotSupportedException();
         }
     }
 }
