@@ -59,7 +59,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TGrpcService"></typeparam>
         /// <param name="services"></param>
         public static void AddGrpcService<TGrpcService>(this IServiceCollection services)
-            where TGrpcService:GrpcBaseService
+            where TGrpcService : GrpcBaseService
         {
             if (services is null)
             {

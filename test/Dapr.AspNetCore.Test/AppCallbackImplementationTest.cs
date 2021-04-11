@@ -16,7 +16,13 @@ namespace Dapr.AspNetCore.Test
             AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(HappyGrpcService));
             AppCallbackImplementation.invokeMethods.Count.Should().Be(2);
             AppCallbackImplementation.invokeMethods.ContainsKey("getaccount").Should().BeTrue();
+            var (serviceType, method) = AppCallbackImplementation.invokeMethods["getaccount"];
+            serviceType.Should().Be(typeof(HappyGrpcService));
+            method.Name.Should().Be("GetAccount");
             AppCallbackImplementation.invokeMethods.ContainsKey("withdraw").Should().BeTrue();
+            (serviceType, method) = AppCallbackImplementation.invokeMethods["withdraw"];
+            serviceType.Should().Be(typeof(HappyGrpcService));
+            method.Name.Should().Be("WithdrawAccount");
         }
 
         [Fact]

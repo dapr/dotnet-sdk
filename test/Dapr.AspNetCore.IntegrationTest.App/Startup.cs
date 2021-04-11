@@ -24,7 +24,11 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddGrpc();
+
             services.AddControllers().AddDapr();
+
+            services.AddGrpcService<DaprGrpcService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -42,6 +46,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapAppCallback();
+
                 endpoints.MapSubscribeHandler();
                 endpoints.MapControllers();
 

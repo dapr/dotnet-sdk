@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr.Client;
 using Dapr.Client.Autogen.Grpc.v1;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -68,7 +69,7 @@ namespace Dapr.AspNetCore
                     if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
                         throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 5");
 
-                    invokeMethods[(att.MethodName ?? item.Name).ToLower()] = (serviceType.GetType(), item);
+                    invokeMethods[(att.MethodName ?? item.Name).ToLower()] = (serviceType, item);
                 }
             }
         }
@@ -85,17 +86,27 @@ namespace Dapr.AspNetCore
         {
             if (invokeMethods.ContainsKey(request.Method.ToLower()))
             {
-                var response = new InvokeResponse();
-                var (serviceType, method) = invokeMethods[request.Method.ToLower()];
-                var serviceInstance = serviceProvider.GetService(serviceType);
-                var input = JsonSerializer.Deserialize(request.Data.Value.ToByteArray(), method.GetParameters()[0].ParameterType, jsonOptions);
-                var task = (Task)method.Invoke(serviceInstance, new object[] { input, context });
-                await task;
-                var output = task.GetType().GetProperty("Result").GetValue(task) as Google.Protobuf.IMessage;
-                response.Data = Any.Pack(output);
-                return response;
+                try
+                {
+                    var response = new InvokeResponse();
+                    var (serviceType, method) = invokeMethods[request.Method.ToLower()];
+                    var serviceInstance = serviceProvider.GetService(serviceType);
+                    var input = Activator.CreateInstance(method.GetParameters()[0].ParameterType) as IMessage;
+                    input.MergeFrom(request.Data.Value);
+                    var task = (Task)method.Invoke(serviceInstance, new object[] { input, context });
+                    await task;
+                    var output = task.GetType().GetProperty("Result").GetValue(task) as IMessage;
+                    response.Data = Any.Pack(output);
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    context.Status = new Status(StatusCode.Internal, ex.Message);
+                    return default;
+                }
             }
-            throw new MissingMethodException($"The method be not found: {request.Method}");
+            context.Status = new Status(StatusCode.NotFound, $"Method not found: {request.Method}");
+            return default;
         }
     }
 }
