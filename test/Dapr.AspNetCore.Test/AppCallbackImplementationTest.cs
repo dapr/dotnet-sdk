@@ -43,38 +43,32 @@ namespace Dapr.AspNetCore.Test
                   AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService1))
               );
             ex.Message.Should().Contain("1");
-
-            //throw new MissingMethodException("The type of first parameter must equals with InputModelType. ErrorNumber: 2");
-            ex = Assert.Throws<MissingMethodException>(() =>
-                 AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService2))
-             );
-            ex.Message.Should().Contain("2");
         }
 
         [Fact]
         public void ExtractMethodInfoFromGrpcBaseService_Unhappy_Parameter2TypeCondition()
         {
-            //throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext. ErrorNumber: 3");
+            //throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext. ErrorNumber: 2");
             var ex = Assert.Throws<MissingMethodException>(() =>
-                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService3))
+                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService2))
               );
-            ex.Message.Should().Contain("3");
+            ex.Message.Should().Contain("2");
         }
 
         [Fact]
         public void ExtractMethodInfoFromGrpcBaseService_Unhappy_ReturnTypeCondition()
         {
-            //throw new MissingMethodException("The return type must be Task<>. ErrorNumber: 4");
+            //throw new MissingMethodException("The return type must be Task<>. ErrorNumber: 3");
             var ex = Assert.Throws<MissingMethodException>(() =>
+                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService3))
+              );
+            ex.Message.Should().Contain("3");
+
+            //throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 4");
+            ex = Assert.Throws<MissingMethodException>(() =>
                   AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService4))
               );
             ex.Message.Should().Contain("4");
-
-            //throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 5");
-            ex = Assert.Throws<MissingMethodException>(() =>
-                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService5))
-              );
-            ex.Message.Should().Contain("5");
         }
     }
 }

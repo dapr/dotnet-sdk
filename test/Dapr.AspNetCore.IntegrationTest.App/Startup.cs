@@ -28,7 +28,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
             services.AddControllers().AddDapr();
 
-            services.AddGrpcService<DaprGrpcService>();
+            services.AddDaprGrpcService<DaprGrpcService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

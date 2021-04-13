@@ -17,32 +17,19 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// Default constructor, method name is from Method self
         /// </summary>
-        /// <param name="inputModelType"></param>
-        public GrpcInvokeAttribute(Type inputModelType)
-            : this(inputModelType, null)
+        public GrpcInvokeAttribute()
+            : this(null)
         {
         }
 
         /// <summary>
         /// Custom constructor, use parameter methodName to set method name
         /// </summary>
-        /// <param name="inputModelType"></param>
         /// <param name="methodName">The method name of grpc invocation</param>
-        public GrpcInvokeAttribute(Type inputModelType, string methodName)
+        public GrpcInvokeAttribute(string methodName)
         {
-            if (inputModelType is null)
-                throw new ArgumentNullException(nameof(inputModelType));
-            if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(inputModelType))
-                throw new ArgumentException("inputModelType must implement Google.Protobuf.IMessage");
-            InputModelType = inputModelType;
-
             MethodName = methodName;
         }
-
-        /// <summary>
-        /// The type of input model, must be the <see cref="Google.Protobuf.IMessage{T}"/>
-        /// </summary>
-        public Type InputModelType { get; set; }
 
         /// <summary>
         /// Mehtod name of grpc invocation

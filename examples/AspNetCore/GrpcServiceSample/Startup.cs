@@ -25,6 +25,8 @@ namespace GrpcServiceSample
             services.AddGrpc();
 
             services.AddDaprClient();
+
+            services.AddDaprGrpcService<BankingService2>();
         }
 
         /// <summary>
@@ -43,7 +45,8 @@ namespace GrpcServiceSample
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapGrpcService<BankingService>();
+                //endpoints.MapGrpcService<BankingService>();
+                endpoints.MapAppCallback();
 
                 endpoints.MapGet("/", async context =>
                 {

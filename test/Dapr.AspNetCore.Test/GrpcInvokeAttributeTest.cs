@@ -13,22 +13,13 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public void Constructor_Happy()
         {
-            var target = new GrpcInvokeAttribute(typeof(AccountRequest));
+            var target = new GrpcInvokeAttribute();
             target.Should().NotBeNull();
-            target.InputModelType.Should().Be(typeof(AccountRequest));
             target.MethodName.Should().BeNull();
 
-            target = new GrpcInvokeAttribute(typeof(AccountRequest), "mymethod");
+            target = new GrpcInvokeAttribute("mymethod");
             target.Should().NotBeNull();
-            target.InputModelType.Should().Be(typeof(AccountRequest));
             target.MethodName.Should().Be("mymethod");
-        }
-
-        [Fact]
-        public void Constructor_Unhappy()
-        {
-            Assert.Throws<ArgumentNullException>(() => new GrpcInvokeAttribute(null));
-            Assert.Throws<ArgumentException>(() => new GrpcInvokeAttribute(typeof(AnotherAccountRequest)));
         }
     }
 }

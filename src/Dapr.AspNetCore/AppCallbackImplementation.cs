@@ -58,16 +58,14 @@ namespace Dapr.AspNetCore
 
                     if (paras.Length != 2)
                         throw new MissingMethodException("Service Invocation method must have two parameters. ErrorNumber: 0");
-                    if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(paras[0].ParameterType))
+                    if (!typeof(IMessage).IsAssignableFrom(paras[0].ParameterType))
                         throw new MissingMethodException("The type of first parameter must derive from Google.Protobuf.IMessage. ErrorNumber: 1");
-                    if (paras[0].ParameterType != att.InputModelType)
-                        throw new MissingMethodException("The type of first parameter must equals with InputModelType. ErrorNumber: 2");
                     if (paras[1].ParameterType != typeof(ServerCallContext))
-                        throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext. ErrorNumber: 3");
+                        throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext. ErrorNumber: 2");
                     if (!item.ReturnType.IsGenericType || item.ReturnType.GetGenericTypeDefinition() != typeof(Task<>))
-                        throw new MissingMethodException("The return type must be Task<>. ErrorNumber: 4");
-                    if (!typeof(Google.Protobuf.IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
-                        throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 5");
+                        throw new MissingMethodException("The return type must be Task<>. ErrorNumber: 3");
+                    if (!typeof(IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
+                        throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 4");
 
                     invokeMethods[(att.MethodName ?? item.Name).ToLower()] = (serviceType, item);
                 }
