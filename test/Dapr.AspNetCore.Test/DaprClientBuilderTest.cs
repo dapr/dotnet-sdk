@@ -86,7 +86,8 @@ namespace Dapr.AspNetCore.Test
             var builder = new DaprClientBuilder();
             builder.UseDaprApiToken("test_token");
             var entry = DaprClient.GetDaprApiTokenHeader(builder.DaprApiToken);
-            Assert.Equal("test_token", entry.Value);
+            Assert.NotNull(entry);
+            Assert.Equal("test_token", entry.Value.Value);
         }
 
         [Fact]

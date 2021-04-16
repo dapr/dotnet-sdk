@@ -64,7 +64,8 @@ namespace Dapr.Client
         {
             var token = "test_token";
             var entry = DaprClient.GetDaprApiTokenHeader(token);
-            Assert.Equal("test_token", entry.Value);
+            Assert.NotNull(entry);
+            Assert.Equal("test_token", entry.Value.Value);
         }
 
         [Fact]
