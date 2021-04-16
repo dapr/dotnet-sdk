@@ -34,7 +34,7 @@ namespace Dapr.Client
         /// Gets the <see cref="JsonSerializerOptions" /> used for JSON serialization operations.
         /// </summary>
         public abstract JsonSerializerOptions JsonSerializerOptions { get; }
-        
+
         /// <summary>
         /// <para>
         /// Creates an <see cref="HttpClient" /> that can be used to perform Dapr service
@@ -76,7 +76,7 @@ namespace Dapr.Client
             }
 
             var httpClient = new HttpClient(handler);
-            
+
             if (appId is string)
             {
                 try
@@ -92,14 +92,14 @@ namespace Dapr.Client
             return httpClient;
         }
 
-        internal static KeyValuePair<string, string> GetDaprApiTokenHeader(string apiToken)
+        internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
         {
-            KeyValuePair<string, string> apiTokenHeader = default;
-            if(!string.IsNullOrWhiteSpace(apiToken))
+            if (string.IsNullOrWhiteSpace(apiToken))
             {
-                apiTokenHeader = new KeyValuePair<string, string>("dapr-api-token", apiToken);
+                return null;
             }
-            return apiTokenHeader;
+
+            return new KeyValuePair<string, string>("dapr-api-token", apiToken);
         }
 
         /// <summary>
