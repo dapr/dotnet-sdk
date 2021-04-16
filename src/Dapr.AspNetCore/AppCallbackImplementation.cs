@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Dapr.AppCallback.Autogen.Grpc.v1;
 using Dapr.Client;
 using Dapr.Client.Autogen.Grpc.v1;
 using Google.Protobuf;
@@ -105,6 +106,29 @@ namespace Dapr.AspNetCore
             }
             context.Status = new Status(StatusCode.NotFound, $"Method not found: {request.Method}");
             return default;
+        }
+
+        /// <summary>
+        /// implement ListTopicSubscriptions to register GrpcBaseService's topic method
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public override Task<ListTopicSubscriptionsResponse> ListTopicSubscriptions(Empty request, ServerCallContext context)
+        {
+            var result = new ListTopicSubscriptionsResponse();
+            return Task.FromResult(result);
+        }
+
+        /// <summary>
+        /// implement OnTopicEvent to handle GrpcBaseService's topic method
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public override async Task<TopicEventResponse> OnTopicEvent(TopicEventRequest request, ServerCallContext context)
+        {
+            return await Task.FromResult(default(TopicEventResponse));
         }
     }
 }
