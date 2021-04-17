@@ -1,9 +1,9 @@
 ---
 type: docs
 title: "Dapr actor .NET usage guide"
-linkTitle: "Actors Usage"
-weight: 10000
-description: Learn all about using actors with the .NET SDK
+linkTitle: "Authoriung actors"
+weight: 200000
+description: Learn all about authoring and running actors with the .NET SDK
 ---
 
 ## Authoring actors

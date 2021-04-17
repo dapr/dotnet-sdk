@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "How to use Dapr virtual actors with the .NET SDK"
-linkTitle: "Actors"
-weight: 100000
+title: "Example of running and using virtual actors in the .NET SDK"
+linkTitle: "Example"
+weight: 300000
 description: Try out .NET Dapr virtual actors with this example
 ---
 

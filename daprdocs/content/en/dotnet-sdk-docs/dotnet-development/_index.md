@@ -1,9 +1,9 @@
 ---
 type: docs
 title: "Developing applications with the Dapr .NET SDK"
-linkTitle: "Development"
+linkTitle: "Dev integrations"
 weight: 50000
-description: Learn about local development options for .NET Dapr applications
+description: Learn about local development integration options for .NET Dapr applications
 ---
 
 ## Thinking more than one at a time
