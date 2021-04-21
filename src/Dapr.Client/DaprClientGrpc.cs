@@ -271,6 +271,12 @@ namespace Dapr.Client
             return request;
         }
 
+        public override HttpRequestMessage CreateInvokeHealthMethodRequest()
+        {
+            var path = "/v1.0/healthz";
+            return new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+        }
+
         public override HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data)
         {
             ArgumentVerifier.ThrowIfNull(httpMethod, nameof(httpMethod));
