@@ -59,14 +59,26 @@ namespace Dapr.AspNetCore
 
                     if (paras.Length != 2)
                         throw new MissingMethodException("Service Invocation method must have two parameters. ErrorNumber: 0");
+
                     if (!typeof(IMessage).IsAssignableFrom(paras[0].ParameterType))
                         throw new MissingMethodException("The type of first parameter must derive from Google.Protobuf.IMessage. ErrorNumber: 1");
+
                     if (paras[1].ParameterType != typeof(ServerCallContext))
                         throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext. ErrorNumber: 2");
-                    if (!item.ReturnType.IsGenericType || item.ReturnType.GetGenericTypeDefinition() != typeof(Task<>))
-                        throw new MissingMethodException("The return type must be Task<>. ErrorNumber: 3");
-                    if (!typeof(IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
-                        throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 4");
+
+                    if (item.ReturnType.IsGenericType)
+                    {
+                        if (item.ReturnType.GetGenericTypeDefinition() != typeof(Task<>))
+                            throw new MissingMethodException("The return type must be Task or Task<>. ErrorNumber: 3");
+
+                        if (!typeof(IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
+                            throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 4");
+                    }
+                    else
+                    {
+                        if (item.ReturnType != typeof(Task))
+                            throw new MissingMethodException("The return type must be Task or Task<>. ErrorNumber: 3");
+                    }
 
                     invokeMethods[(att.MethodName ?? item.Name).ToLower()] = (serviceType, item);
                 }
@@ -89,13 +101,19 @@ namespace Dapr.AspNetCore
                 {
                     var response = new InvokeResponse();
                     var (serviceType, method) = invokeMethods[request.Method.ToLower()];
-                    var serviceInstance = serviceProvider.GetService(serviceType);
+                    var serviceInstance = serviceProvider.GetService(serviceType) as GrpcBaseService;
+                    if (serviceInstance == null)
+                        throw new NullReferenceException("ServiceInstance is null or is not GrpcBaseService");
+                    serviceInstance.Context = context;
                     var input = Activator.CreateInstance(method.GetParameters()[0].ParameterType) as IMessage;
                     input.MergeFrom(request.Data.Value);
                     var task = (Task)method.Invoke(serviceInstance, new object[] { input, context });
                     await task;
-                    var output = task.GetType().GetProperty("Result").GetValue(task) as IMessage;
-                    response.Data = Any.Pack(output);
+                    if (method.ReturnType.IsGenericType)
+                    {
+                        var output = task.GetType().GetProperty("Result").GetValue(task) as IMessage;
+                        response.Data = Any.Pack(output);
+                    }
                     return response;
                 }
                 catch (Exception ex)

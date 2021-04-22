@@ -20,5 +20,11 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
             return Task.FromResult(new Transaction { Id = "test", Amount = 100000 });
         }
+
+        [GrpcInvoke("grpcservicedeposit")]
+        public Task DepositAccount(AccountRequest model, ServerCallContext context)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

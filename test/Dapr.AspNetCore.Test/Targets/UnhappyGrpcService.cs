@@ -34,12 +34,21 @@ namespace Dapr.AspNetCore.Test.Targets
         }
     }
 
-    public class UnhappyGrpcService3 : GrpcBaseService
+    public class UnhappyGrpcService3a : GrpcBaseService
     {
         [GrpcInvoke]
         public Account GetAccount(AccountRequest model, ServerCallContext context)
         {
             return new Account { Id = "test", Balance = 123 };
+        }
+    }
+
+    public class UnhappyGrpcService3b : GrpcBaseService
+    {
+        [GrpcInvoke]
+        public List<Account> GetAccount(AccountRequest model, ServerCallContext context)
+        {
+            return new List<Account> { new Account { Id = "test", Balance = 123 } };
         }
     }
 

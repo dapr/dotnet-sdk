@@ -23,6 +23,12 @@ namespace Dapr.AspNetCore.Test.Targets
             return Task.FromResult(new Transaction { Id = "test", Amount = 100000 });
         }
 
+        [GrpcInvoke]
+        public Task Deposit(AccountRequest model, ServerCallContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public void Another()
         {
             throw new NotSupportedException();

@@ -23,6 +23,9 @@ namespace Dapr.AspNetCore
     /// </summary>
     public abstract class GrpcBaseService
     {
-        
+        /// <summary>
+        /// call context for the current invocation
+        /// </summary>
+        public ServerCallContext Context { get; set; }
     }
 }

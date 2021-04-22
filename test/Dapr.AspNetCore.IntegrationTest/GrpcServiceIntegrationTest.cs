@@ -43,6 +43,14 @@ namespace Dapr.AspNetCore.IntegrationTest
                 var content2 = response.Data.Unpack<App.Generated.Transaction>();
                 content2.Id.Should().Be("test");
                 content2.Amount.Should().Be(100000);
+
+                request = new App.Generated.InvokeRequest()
+                {
+                    Method = "grpcservicedeposit",
+                    Data = Any.Pack(new App.Generated.AccountRequest { Id = "any" })
+                };
+                response = await client.OnInvokeAsync(request);
+                response.Data.Should().BeNull();
             }
         }
 
