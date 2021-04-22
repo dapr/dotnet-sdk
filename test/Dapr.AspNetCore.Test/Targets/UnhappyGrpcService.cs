@@ -10,7 +10,7 @@ namespace Dapr.AspNetCore.Test.Targets
     public class UnhappyGrpcService0 : GrpcBaseService
     {
         [GrpcInvoke]
-        public Task<Account> GetAccount(AccountRequest model)
+        public Task<Account> GetAccount(AccountRequest model, AnotherAccountRequest model2)
         {
             return Task.FromResult(new Account { Id = "test", Balance = 123 });
         }
@@ -19,7 +19,7 @@ namespace Dapr.AspNetCore.Test.Targets
     public class UnhappyGrpcService1 : GrpcBaseService
     {
         [GrpcInvoke]
-        public Task<Account> GetAccount(AnotherAccountRequest model, ServerCallContext context)
+        public Task<Account> GetAccount(AnotherAccountRequest model)
         {
             return Task.FromResult(new Account { Id = "test", Balance = 123 });
         }
@@ -28,25 +28,16 @@ namespace Dapr.AspNetCore.Test.Targets
     public class UnhappyGrpcService2 : GrpcBaseService
     {
         [GrpcInvoke]
-        public Task<Account> GetAccount(AccountRequest model, AnotherAccountRequest model2)
-        {
-            return Task.FromResult(new Account { Id = "test", Balance = 123 });
-        }
-    }
-
-    public class UnhappyGrpcService3a : GrpcBaseService
-    {
-        [GrpcInvoke]
-        public Account GetAccount(AccountRequest model, ServerCallContext context)
+        public Account GetAccount(AccountRequest model)
         {
             return new Account { Id = "test", Balance = 123 };
         }
     }
 
-    public class UnhappyGrpcService3b : GrpcBaseService
+    public class UnhappyGrpcService3 : GrpcBaseService
     {
         [GrpcInvoke]
-        public List<Account> GetAccount(AccountRequest model, ServerCallContext context)
+        public List<Account> GetAccount(AccountRequest model)
         {
             return new List<Account> { new Account { Id = "test", Balance = 123 } };
         }
@@ -55,7 +46,7 @@ namespace Dapr.AspNetCore.Test.Targets
     public class UnhappyGrpcService4 : GrpcBaseService
     {
         [GrpcInvoke]
-        public Task<AnotherAccount> GetAccount(AccountRequest model, ServerCallContext context)
+        public Task<AnotherAccount> GetAccount(AccountRequest model)
         {
             return Task.FromResult(new AnotherAccount { Id = "test", Balance = 123 });
         }

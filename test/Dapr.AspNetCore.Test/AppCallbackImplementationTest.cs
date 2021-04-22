@@ -36,47 +36,38 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public void ExtractMethodInfoFromGrpcBaseService_Unhappy_ParameterLengthCondition()
         {
-            var ex = Assert.Throws<MissingMethodException>(() =>
+            var ex = Assert.Throws<GrpcMethodSignatureException>(() =>
                   AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService0))
               );
-            ex.Message.Should().Contain("0");
+            ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ParameterLength);
         }
 
         [Fact]
         public void ExtractMethodInfoFromGrpcBaseService_Unhappy_Parameter1TypeCondition()
         {
-            var ex = Assert.Throws<MissingMethodException>(() =>
+            var ex = Assert.Throws<GrpcMethodSignatureException>(() =>
                   AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService1))
               );
-            ex.Message.Should().Contain("1");
-        }
-
-        [Fact]
-        public void ExtractMethodInfoFromGrpcBaseService_Unhappy_Parameter2TypeCondition()
-        {
-            var ex = Assert.Throws<MissingMethodException>(() =>
-                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService2))
-              );
-            ex.Message.Should().Contain("2");
+            ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ParameterType);
         }
 
         [Fact]
         public void ExtractMethodInfoFromGrpcBaseService_Unhappy_ReturnTypeCondition()
         {
-            var ex = Assert.Throws<MissingMethodException>(() =>
-                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService3a))
+            var ex = Assert.Throws<GrpcMethodSignatureException>(() =>
+                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService2))
               );
-            ex.Message.Should().Contain("3");
+            ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ReturnType);
 
-            ex = Assert.Throws<MissingMethodException>(() =>
-                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService3b))
+            ex = Assert.Throws<GrpcMethodSignatureException>(() =>
+                  AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService3))
               );
-            ex.Message.Should().Contain("3");
+            ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ReturnType);
 
-            ex = Assert.Throws<MissingMethodException>(() =>
+            ex = Assert.Throws<GrpcMethodSignatureException>(() =>
                   AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(UnhappyGrpcService4))
               );
-            ex.Message.Should().Contain("4");
+            ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ReturnGenericTypeArgument);
         }
     }
 }

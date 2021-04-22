@@ -12,19 +12,19 @@ namespace Dapr.AspNetCore.Test.Targets
     public class HappyGrpcService : GrpcBaseService
     {
         [GrpcInvoke]
-        public Task<Account> GetAccount(AccountRequest model, ServerCallContext context)
+        public Task<Account> GetAccount(AccountRequest model)
         {
             return Task.FromResult(new Account { Id = "test", Balance = 123 });
         }
 
         [GrpcInvoke("withdraw")]
-        public Task<Transaction> WithdrawAccount(AccountRequest model, ServerCallContext context)
+        public Task<Transaction> WithdrawAccount(AccountRequest model)
         {
             return Task.FromResult(new Transaction { Id = "test", Amount = 100000 });
         }
 
         [GrpcInvoke]
-        public Task Deposit(AccountRequest model, ServerCallContext context)
+        public Task Deposit(AccountRequest model)
         {
             return Task.CompletedTask;
         }

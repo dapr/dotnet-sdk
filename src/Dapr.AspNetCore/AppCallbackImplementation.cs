@@ -57,27 +57,37 @@ namespace Dapr.AspNetCore
                 {
                     var paras = item.GetParameters();
 
-                    if (paras.Length != 2)
-                        throw new MissingMethodException("Service Invocation method must have two parameters. ErrorNumber: 0");
+                    if (paras.Length != 1)
+                    {
+                        throw new GrpcMethodSignatureException(GrpcMethodSignatureException.ErrorType.ParameterLength,
+                            "Service Invocation method must have only one parameter.");
+                    }
 
                     if (!typeof(IMessage).IsAssignableFrom(paras[0].ParameterType))
-                        throw new MissingMethodException("The type of first parameter must derive from Google.Protobuf.IMessage. ErrorNumber: 1");
-
-                    if (paras[1].ParameterType != typeof(ServerCallContext))
-                        throw new MissingMethodException("The type of second parameter must be Grpc.CoreServerCallContext. ErrorNumber: 2");
+                    {
+                        throw new GrpcMethodSignatureException(GrpcMethodSignatureException.ErrorType.ParameterType,
+                            "The type of first parameter must derive from Google.Protobuf.IMessage.");
+                    }
 
                     if (item.ReturnType.IsGenericType)
                     {
                         if (item.ReturnType.GetGenericTypeDefinition() != typeof(Task<>))
-                            throw new MissingMethodException("The return type must be Task or Task<>. ErrorNumber: 3");
+                        {
+                            throw new GrpcMethodSignatureException(GrpcMethodSignatureException.ErrorType.ReturnType,
+                                "The return type must be Task or Task<>.");
+                        }
 
                         if (!typeof(IMessage).IsAssignableFrom(item.ReturnType.GenericTypeArguments[0]))
-                            throw new MissingMethodException("The type of return type's generic type must derive from Google.Protobuf.IMessage. ErrorNumber: 4");
+                        {
+                            throw new GrpcMethodSignatureException(GrpcMethodSignatureException.ErrorType.ReturnGenericTypeArgument,
+                                "The type of return type's generic type must derive from Google.Protobuf.IMessage.");
+                        }
                     }
                     else
                     {
                         if (item.ReturnType != typeof(Task))
-                            throw new MissingMethodException("The return type must be Task or Task<>. ErrorNumber: 3");
+                            throw new GrpcMethodSignatureException(GrpcMethodSignatureException.ErrorType.ReturnType,
+                                "The return type must be Task or Task<>.");
                     }
 
                     invokeMethods[(att.MethodName ?? item.Name).ToLower()] = (serviceType, item);
