@@ -117,7 +117,7 @@ namespace Dapr.AspNetCore
                     serviceInstance.Context = context;
                     var input = Activator.CreateInstance(method.GetParameters()[0].ParameterType) as IMessage;
                     input.MergeFrom(request.Data.Value);
-                    var task = (Task)method.Invoke(serviceInstance, new object[] { input, context });
+                    var task = (Task)method.Invoke(serviceInstance, new object[] { input});
                     await task;
                     if (method.ReturnType.IsGenericType)
                     {

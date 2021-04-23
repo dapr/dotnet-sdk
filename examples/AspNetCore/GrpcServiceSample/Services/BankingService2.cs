@@ -38,7 +38,7 @@ namespace GrpcServiceSample
         /// <param name="context"></param>
         /// <returns></returns>
         [GrpcInvoke]
-        public async Task<Account> GetAccount(GetAccountRequest input, ServerCallContext context)
+        public async Task<Account> GetAccount(GetAccountRequest input)
         {
             var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
             return new Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, };
@@ -51,7 +51,7 @@ namespace GrpcServiceSample
         /// <param name="context"></param>
         /// <returns></returns>
         [GrpcInvoke]
-        public async Task<Account> Deposit(Transaction transaction, ServerCallContext context)
+        public async Task<Account> Deposit(Transaction transaction)
         {
             _logger.LogDebug("Enter deposit");
             var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
@@ -68,7 +68,7 @@ namespace GrpcServiceSample
         /// <param name="context"></param>
         /// <returns></returns>
         [GrpcInvoke]
-        public async Task<Account> Withdraw(Transaction transaction, ServerCallContext context)
+        public async Task<Account> Withdraw(Transaction transaction)
         {
             _logger.LogDebug("Enter withdraw");
             var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
@@ -81,6 +81,20 @@ namespace GrpcServiceSample
             state.Value.Balance -= transaction.Amount;
             await state.SaveAsync();
             return new Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, };
+        }
+
+        [GrpcInvoke]
+        public async Task CloseAccount(GetAccountRequest input)
+        {
+            _logger.LogDebug("Enter close");
+            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
+
+            if (state.Value == null)
+            {
+                throw new Exception($"NotFound: {input.Id}");
+            }
+
+            await _daprClient.TryDeleteStateAsync(StoreName, input.Id, state.ETag);
         }
     }
 }
