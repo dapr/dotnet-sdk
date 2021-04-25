@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
             }
 
-            AppCallbackImplementation.ExtractMethodInfoFromGrpcBaseService(typeof(TGrpcService));
+            AppCallbackImplementation.ExtractGrpcInvoke(typeof(TGrpcService));
 
             services.AddScoped<TGrpcService>();
         }

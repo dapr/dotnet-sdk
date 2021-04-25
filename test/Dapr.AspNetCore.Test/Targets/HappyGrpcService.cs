@@ -17,14 +17,22 @@ namespace Dapr.AspNetCore.Test.Targets
             return Task.FromResult(new Account { Id = "test", Balance = 123 });
         }
 
-        [GrpcInvoke("withdraw")]
-        public Task<Transaction> WithdrawAccount(AccountRequest model)
+        [GrpcInvoke("deposit")]
+        [Topic("pubsub", "deposit")]
+        public Task<Transaction> DepositAccount(AccountRequest model)
         {
             return Task.FromResult(new Transaction { Id = "test", Amount = 100000 });
         }
 
+        [GrpcInvoke("withdraw")]
+        [Topic("pubsub", "withdraw")]
+        public Task<Transaction> WithdrawAccount(AccountRequest model)
+        {
+            return Task.FromResult(new Transaction { Id = "test", Amount = 100 });
+        }      
+
         [GrpcInvoke]
-        public Task Deposit(AccountRequest model)
+        public Task Close(AccountRequest model)
         {
             return Task.CompletedTask;
         }

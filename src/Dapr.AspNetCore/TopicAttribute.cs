@@ -10,6 +10,7 @@ namespace Dapr
     /// <summary>
     /// Metadata that describes an endpoint as a subscriber to a topic.
     /// </summary>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     public class TopicAttribute : Attribute
     {
         /// <summary>
