@@ -161,7 +161,7 @@ namespace Dapr.AspNetCore
             }
             else
             {
-                var warningMessage = $"Method not found: {request.Method}";
+                var warningMessage = $"The method for Service Invocation is not defined in this Grpc service: {request.Method}";
                 logger.LogWarning(warningMessage);
                 context.Status = new Status(StatusCode.NotFound, warningMessage);
             }
@@ -182,9 +182,14 @@ namespace Dapr.AspNetCore
 
                     MethodReturnTypeIsTask(item);
 
-                    topicMethods[$"{att.PubsubName}|{att.Name}"] = (serviceType, item);
+                    topicMethods[GenerateKeyForTopic(att.PubsubName, att.Name)] = (serviceType, item);
                 }
             }
+        }
+
+        private static string GenerateKeyForTopic(string pubsubName, string topic)
+        {
+            return $"pubsubName|topic";
         }
 
 
@@ -217,12 +222,8 @@ namespace Dapr.AspNetCore
         /// <returns></returns>
         public override async Task<TopicEventResponse> OnTopicEvent(TopicEventRequest request, ServerCallContext context)
         {
-            var query = from item in topicMethods.Keys
-                        let split = item.Split('|')
-                        where split[0] == request.PubsubName && split[1] == request.Topic
-                        select item;
-            var key = query.SingleOrDefault();
-            if (key != null)
+            var key = GenerateKeyForTopic(request.PubsubName, request.Topic);
+            if (invokeMethods.ContainsKey(key))
             {
                 try
                 {
@@ -245,7 +246,7 @@ namespace Dapr.AspNetCore
             }
             else
             {
-                logger.LogWarning("The method for the PubsubName and the Topic is not defined in this Grpc service");
+                logger.LogWarning($"The method for Topic is not defined in this Grpc service: {request.PubsubName} | {request.Topic}");
                 return new TopicEventResponse { Status = TopicEventResponse.Types.TopicEventResponseStatus.Drop };
             }
         }

@@ -11,7 +11,7 @@ namespace Dapr.AspNetCore.Test
     public class AppCallbackImplementationTest
     {
         [Fact]
-        public void ExtractMethodInfoFromGrpcBaseService_Happy()
+        public void ExtractGrpcInvoke_Happy()
         {
             AppCallbackImplementation.invokeMethods.Clear();
             AppCallbackImplementation.ExtractGrpcInvoke(typeof(HappyGrpcService));
@@ -39,25 +39,21 @@ namespace Dapr.AspNetCore.Test
         }
 
         [Fact]
-        public void ExtractMethodInfoFromGrpcBaseService_Unhappy_ParameterLengthCondition()
+        public void ExtractGrpcInvoke_Unhappy_ParameterCondition()
         {
             var ex = Assert.Throws<GrpcMethodSignatureException>(() =>
                   AppCallbackImplementation.ExtractGrpcInvoke(typeof(UnhappyGrpcService0))
               );
             ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ParameterLength);
-        }
 
-        [Fact]
-        public void ExtractMethodInfoFromGrpcBaseService_Unhappy_Parameter1TypeCondition()
-        {
-            var ex = Assert.Throws<GrpcMethodSignatureException>(() =>
+            ex = Assert.Throws<GrpcMethodSignatureException>(() =>
                   AppCallbackImplementation.ExtractGrpcInvoke(typeof(UnhappyGrpcService1))
               );
             ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ParameterType);
         }
 
         [Fact]
-        public void ExtractMethodInfoFromGrpcBaseService_Unhappy_ReturnTypeCondition()
+        public void ExtractGrpcInvoke_Unhappy_ReturnTypeCondition()
         {
             var ex = Assert.Throws<GrpcMethodSignatureException>(() =>
                   AppCallbackImplementation.ExtractGrpcInvoke(typeof(UnhappyGrpcService2))
