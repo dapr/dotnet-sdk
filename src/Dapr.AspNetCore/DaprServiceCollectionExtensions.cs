@@ -67,6 +67,7 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             AppCallbackImplementation.ExtractGrpcInvoke(typeof(TGrpcService));
+            AppCallbackImplementation.ExtractTopic(typeof(TGrpcService));
 
             services.AddScoped<TGrpcService>();
         }

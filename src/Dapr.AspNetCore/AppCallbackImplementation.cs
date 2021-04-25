@@ -35,6 +35,8 @@ namespace Dapr.AspNetCore
         /// </summary>
         private readonly DaprClient daprClient;
 
+        private readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -180,7 +182,14 @@ namespace Dapr.AspNetCore
 
                     MethodFirstParameterIsIMessage(item);
 
-                    MethodReturnTypeIsTask(item);
+                    if (item.ReturnType.IsGenericType)
+                    {
+                        MethodReturnTypeIsTaskGeneric(item);
+                    }
+                    else
+                    {
+                        MethodReturnTypeIsTask(item);
+                    }
 
                     topicMethods[GenerateKeyForTopic(att.PubsubName, att.Name)] = (serviceType, item);
                 }
@@ -189,7 +198,7 @@ namespace Dapr.AspNetCore
 
         private static string GenerateKeyForTopic(string pubsubName, string topic)
         {
-            return $"pubsubName|topic";
+            return $"{pubsubName}|{topic}";
         }
 
 

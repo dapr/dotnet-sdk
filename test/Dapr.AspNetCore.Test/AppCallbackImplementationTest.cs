@@ -70,5 +70,23 @@ namespace Dapr.AspNetCore.Test
               );
             ex.Type.Should().Be(GrpcMethodSignatureException.ErrorType.ReturnGenericTypeArgument);
         }
+
+        [Fact]
+        public void ExtractTopic_Happy()
+        {
+            AppCallbackImplementation.topicMethods.Clear();
+            AppCallbackImplementation.ExtractTopic(typeof(HappyGrpcService));
+            AppCallbackImplementation.topicMethods.Count.Should().Be(2);
+
+            AppCallbackImplementation.topicMethods.ContainsKey("pubsub|deposit").Should().BeTrue();
+            var (serviceType, method) = AppCallbackImplementation.topicMethods["pubsub|deposit"];
+            serviceType.Should().Be(typeof(HappyGrpcService));
+            method.Name.Should().Be("DepositAccount");
+
+            AppCallbackImplementation.topicMethods.ContainsKey("pubsub|withdraw").Should().BeTrue();
+            (serviceType, method) = AppCallbackImplementation.topicMethods["pubsub|withdraw"];
+            serviceType.Should().Be(typeof(HappyGrpcService));
+            method.Name.Should().Be("WithdrawAccount");
+        }
     }
 }

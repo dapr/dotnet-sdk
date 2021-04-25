@@ -15,16 +15,18 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             return Task.FromResult(new Account { Id = "test", Balance = 123 });
         }
 
-        [GrpcInvoke("grpcservicewithdraw")]
-        public Task<Transaction> WithdrawAccount(AccountRequest model)
-        {
-            return Task.FromResult(new Transaction { Id = "test", Amount = 100000 });
-        }
-
         [GrpcInvoke("grpcservicedeposit")]
+        [Topic("pubsub", "deposit")]
         public Task DepositAccount(AccountRequest model)
         {
             return Task.CompletedTask;
+        }
+
+        [GrpcInvoke("grpcservicewithdraw")]
+        [Topic("pubsub", "withdraw")]
+        public Task<Transaction> WithdrawAccount(AccountRequest model)
+        {
+            return Task.FromResult(new Transaction { Id = "test", Amount = 100000 });
         }
     }
 }
