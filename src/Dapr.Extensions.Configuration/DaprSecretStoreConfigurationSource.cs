@@ -18,7 +18,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <summary>
         /// Gets or sets the store name.
         /// </summary>
-        public string Store { get; set; } = string.Empty;
+        public string Store { get; set; } = default!;
 
         /// <summary>
         /// Gets or sets a value indicating whether any key delimiters should be replaced with the delimiter ":".
