@@ -132,21 +132,19 @@ namespace Dapr.AspNetCore
         /// <returns></returns>
         public override async Task<InvokeResponse> OnInvoke(InvokeRequest request, ServerCallContext context)
         {
-            if (invokeMethods.ContainsKey(request.Method.ToLower()))
+            var key = request.Method.ToLower();
+            if (invokeMethods.ContainsKey(key))
             {
                 try
                 {
-                    var response = new InvokeResponse();
-
-                    var (serviceType, method) = invokeMethods[request.Method.ToLower()];
-                    if (!(serviceProvider.GetService(serviceType) is GrpcBaseService serviceInstance))
-                        throw new NullReferenceException("ServiceInstance is null or is not GrpcBaseService");
-                    serviceInstance.Context = context;
+                    var (serviceType, method) = invokeMethods[key];
+                    var serviceInstance = CreateServiceInstance(serviceType, context);
 
                     var input = Activator.CreateInstance(method.GetParameters()[0].ParameterType) as IMessage;
                     input.MergeFrom(request.Data.Value);
                     var task = (Task)method.Invoke(serviceInstance, new object[] { input });
                     await task;
+                    var response = new InvokeResponse();
                     if (method.ReturnType.IsGenericType)
                     {
                         var output = task.GetType().GetProperty("Result").GetValue(task) as IMessage;
@@ -232,20 +230,17 @@ namespace Dapr.AspNetCore
         public override async Task<TopicEventResponse> OnTopicEvent(TopicEventRequest request, ServerCallContext context)
         {
             var key = GenerateKeyForTopic(request.PubsubName, request.Topic);
-            if (invokeMethods.ContainsKey(key))
+            if (topicMethods.ContainsKey(key))
             {
                 try
                 {
                     var (serviceType, method) = topicMethods[key];
-                    if (!(serviceProvider.GetService(serviceType) is GrpcBaseService serviceInstance))
-                        throw new NullReferenceException("ServiceInstance is null or is not GrpcBaseService");
-                    serviceInstance.Context = context;
+                    var serviceInstance = CreateServiceInstance(serviceType, context);
 
-                    var input = Activator.CreateInstance(method.GetParameters()[0].ParameterType) as IMessage;
-                    input.MergeFrom(request.Data);
+                    var input = JsonSerializer.Deserialize(request.Data.Span, method.GetParameters()[0].ParameterType, jsonOptions);
                     var task = (Task)method.Invoke(serviceInstance, new object[] { input });
                     await task;
-                    return default;
+                    return new TopicEventResponse();
                 }
                 catch (Exception ex)
                 {
@@ -258,6 +253,17 @@ namespace Dapr.AspNetCore
                 logger.LogWarning($"The method for Topic is not defined in this Grpc service: {request.PubsubName} | {request.Topic}");
                 return new TopicEventResponse { Status = TopicEventResponse.Types.TopicEventResponseStatus.Drop };
             }
+        }
+
+        private GrpcBaseService CreateServiceInstance(System.Type serviceType, ServerCallContext context)
+        {
+            if (!(serviceProvider.GetService(serviceType) is GrpcBaseService serviceInstance))
+                throw new NullReferenceException("ServiceInstance is null or is not GrpcBaseService");
+
+            serviceInstance.Context = context;
+            serviceInstance.DaprClient = daprClient;
+
+            return serviceInstance;
         }
     }
 }
