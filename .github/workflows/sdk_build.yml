@@ -107,6 +107,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: packages
+        path: packages
+    - name: List packages (for sanity check)
+      run: ls -R
+      working-directory: packages
     - name: Publish binaries to github for tags
       if: startswith(github.ref, 'refs/tags/v')
       run: |
