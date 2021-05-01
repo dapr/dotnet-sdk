@@ -178,8 +178,6 @@ namespace Dapr.AspNetCore
                 {
                     MethodHasOneParameter(item);
 
-                    MethodFirstParameterIsIMessage(item);
-
                     if (item.ReturnType.IsGenericType)
                     {
                         MethodReturnTypeIsTaskGeneric(item);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Dapr;
 using Dapr.AspNetCore;
 using Dapr.Client;
 using Grpc.Core;
@@ -51,6 +52,7 @@ namespace GrpcServiceSample
         /// <param name="context"></param>
         /// <returns></returns>
         [GrpcInvoke]
+        [Topic("pubsub", "deposit")]
         public async Task<Account> Deposit(Transaction transaction)
         {
             _logger.LogDebug("Enter deposit");
@@ -68,6 +70,7 @@ namespace GrpcServiceSample
         /// <param name="context"></param>
         /// <returns></returns>
         [GrpcInvoke]
+        [Topic("pubsub", "withdraw")]
         public async Task<Account> Withdraw(Transaction transaction)
         {
             _logger.LogDebug("Enter withdraw");
