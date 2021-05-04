@@ -271,12 +271,6 @@ namespace Dapr.Client
             return request;
         }
 
-        public override HttpRequestMessage CreateInvokeHealthMethodRequest()
-        {
-            var path = "/v1.0/healthz";
-            return new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
-        }
-
         public override HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data)
         {
             ArgumentVerifier.ThrowIfNull(httpMethod, nameof(httpMethod));
@@ -286,6 +280,14 @@ namespace Dapr.Client
             var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
             request.Content = JsonContent.Create<TRequest>(data, options: this.JsonSerializerOptions);
             return request;
+        }
+        
+        public override async Task<bool> InvokeHealthMethodAsync(CancellationToken cancellationToken = default)
+        {
+            var path = "/v1.0/healthz";
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+            var response = await InvokeMethodWithResponseAsync(request, cancellationToken);
+            return response.IsSuccessStatusCode;
         }
 
         public override async Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
