@@ -234,12 +234,6 @@ namespace Dapr.Client
         public abstract HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName);
 
         /// <summary>
-        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform health-check of Dapr sidecar
-        /// </summary>
-        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>InvokeHealthMethodAsync</c>.</returns>
-        public abstract HttpRequestMessage CreateInvokeHealthMethodRequest();
-
-        /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
         /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the <c>POST</c> HTTP method and a JSON serialized request body specified by <paramref name="data" />.
@@ -267,7 +261,14 @@ namespace Dapr.Client
         /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
         /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data);
-
+        
+        /// <summary>
+        /// Perform health-check of Dapr sidecar. Return 'true' if sidecar is healthy. Otherwise 'false'. 
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<bool> InvokeHealthMethodAsync(CancellationToken cancellationToken = default);
+        
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. The response will
         /// be returned without performing any validation on the status code.
@@ -342,18 +343,6 @@ namespace Dapr.Client
         {
             var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
             return InvokeMethodAsync(request, cancellationToken);
-        }
-
-        /// <summary>
-        /// Perform health-check of Dapr sidecar. Return 'true' if sidecar is healthy. Otherwise 'false'. 
-        /// </summary>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public async Task<bool> InvokeHealthMethodAsync(CancellationToken cancellationToken = default)
-        {
-            var request = CreateInvokeHealthMethodRequest();
-            var response = await InvokeMethodWithResponseAsync(request, cancellationToken);
-            return response.IsSuccessStatusCode;
         }
 
         /// <summary>
