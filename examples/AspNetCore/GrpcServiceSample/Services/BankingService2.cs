@@ -19,16 +19,14 @@ namespace GrpcServiceSample
         public const string StoreName = "statestore";
 
         private readonly ILogger<BankingService2> _logger;
-        private readonly DaprClient _daprClient;
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="daprClient"></param>
         /// <param name="logger"></param>
-        public BankingService2(DaprClient daprClient, ILogger<BankingService2> logger)
+        public BankingService2(ILogger<BankingService2> logger)
         {
-            _daprClient = daprClient;
             _logger = logger;
         }
 
@@ -41,7 +39,7 @@ namespace GrpcServiceSample
         [GrpcInvoke]
         public async Task<Account> GetAccount(GetAccountRequest input)
         {
-            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
+            var state = await DaprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
             return new Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, };
         }
 
@@ -56,7 +54,7 @@ namespace GrpcServiceSample
         public async Task<Account> Deposit(Transaction transaction)
         {
             _logger.LogDebug("Enter deposit");
-            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
+            var state = await DaprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
             state.Value ??= new Models.Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
             await state.SaveAsync();
@@ -74,7 +72,7 @@ namespace GrpcServiceSample
         public async Task<Account> Withdraw(Transaction transaction)
         {
             _logger.LogDebug("Enter withdraw");
-            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
+            var state = await DaprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
 
             if (state.Value == null)
             {
@@ -90,14 +88,14 @@ namespace GrpcServiceSample
         public async Task CloseAccount(GetAccountRequest input)
         {
             _logger.LogDebug("Enter close");
-            var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
+            var state = await DaprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
 
             if (state.Value == null)
             {
                 throw new Exception($"NotFound: {input.Id}");
             }
 
-            await _daprClient.TryDeleteStateAsync(StoreName, input.Id, state.ETag);
+            await DaprClient.TryDeleteStateAsync(StoreName, input.Id, state.ETag);
         }
     }
 }
