@@ -93,9 +93,9 @@ namespace Dapr.Client
             try
             {
                 var apiTokenHeader = DaprClient.GetDaprApiTokenHeader(this.apiToken);
-                if ((apiTokenHeader.Key, apiTokenHeader.Value) != default)
+                if (apiTokenHeader is not null)
                 {
-                    request.Headers.Add(apiTokenHeader.Key, apiTokenHeader.Value);
+                    request.Headers.Add(apiTokenHeader.Value.Key, apiTokenHeader.Value.Value);
                 }
                 request.RequestUri = rewritten;
 
