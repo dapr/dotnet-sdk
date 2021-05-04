@@ -34,7 +34,7 @@ namespace Dapr.Client
         /// Gets the <see cref="JsonSerializerOptions" /> used for JSON serialization operations.
         /// </summary>
         public abstract JsonSerializerOptions JsonSerializerOptions { get; }
-        
+
         /// <summary>
         /// <para>
         /// Creates an <see cref="HttpClient" /> that can be used to perform Dapr service
@@ -76,7 +76,7 @@ namespace Dapr.Client
             }
 
             var httpClient = new HttpClient(handler);
-            
+
             if (appId is string)
             {
                 try
@@ -92,14 +92,14 @@ namespace Dapr.Client
             return httpClient;
         }
 
-        internal static KeyValuePair<string, string> GetDaprApiTokenHeader(string apiToken)
+        internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
         {
-            KeyValuePair<string, string> apiTokenHeader = default;
-            if(!string.IsNullOrWhiteSpace(apiToken))
+            if (string.IsNullOrWhiteSpace(apiToken))
             {
-                apiTokenHeader = new KeyValuePair<string, string>("dapr-api-token", apiToken);
+                return null;
             }
-            return apiTokenHeader;
+
+            return new KeyValuePair<string, string>("dapr-api-token", apiToken);
         }
 
         /// <summary>
@@ -570,6 +570,15 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
         public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Deletes a list of <paramref name="items" /> from the Dapr state store.
+        /// </summary>
+        /// <param name="storeName">The name of state store to delete from.</param>
+        /// <param name="items">The list of items to delete</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task DeleteBulkStateAsync(string storeName, IReadOnlyList<BulkDeleteStateItem> items, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets the current value associated with the <paramref name="key" /> from the Dapr state store and an ETag.

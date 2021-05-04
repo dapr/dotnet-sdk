@@ -1,18 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <Compile Include="..\Shared\DaprDefaults.cs" />
-    </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\ArgumentVerifier.cs" />
+    <Compile Include="..\Shared\DaprDefaults.cs" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
-        <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
-        <Protobuf Include="Protos\dapr\proto\dapr\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
-    </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
+    <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
+    <Protobuf Include="Protos\dapr\proto\dapr\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
+  </ItemGroup>
 
     <!-- Additional Nuget package properties. -->
     <PropertyGroup>

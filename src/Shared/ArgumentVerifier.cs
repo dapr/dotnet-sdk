@@ -3,10 +3,13 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+// TODO: Remove this when every project that uses this file has nullable enabled.
+#nullable enable
 
 namespace Dapr
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
 
     /// <summary>
     /// A utility class to perform argument validations. 
@@ -18,7 +21,7 @@ namespace Dapr
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
-        public static void ThrowIfNull(object value, string name)
+        public static void ThrowIfNull([NotNull] object? value, string name)
         {
             if (value == null)
             {
@@ -33,7 +36,7 @@ namespace Dapr
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
-        public static void ThrowIfNullOrEmpty(string value, string name)
+        public static void ThrowIfNullOrEmpty([NotNull] string? value, string name)
         {
             if (value == null)
             {
@@ -42,7 +45,7 @@ namespace Dapr
 
             if (string.IsNullOrEmpty(value))
             {
-                throw new ArgumentException("The value cannot be null or empty", nameof(name));
+                throw new ArgumentException("The value cannot be null or empty", name);
             }
         }
     }
