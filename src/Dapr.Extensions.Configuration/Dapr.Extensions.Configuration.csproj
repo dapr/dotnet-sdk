@@ -2,7 +2,12 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\ArgumentVerifier.cs" />
+  </ItemGroup>
 
    <!-- Additional Nuget package properties. -->
   <PropertyGroup>
@@ -11,10 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\Dapr.Client\ArgumentVerifier.cs" />
   </ItemGroup>
 
   <ItemGroup>
