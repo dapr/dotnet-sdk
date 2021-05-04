@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -50,7 +51,7 @@ namespace Dapr.AspNetCore
             this.serviceProvider = serviceProvider;
         }
 
-        internal static Dictionary<string, (System.Type, MethodInfo)> invokeMethods = new Dictionary<string, (System.Type, MethodInfo)>();
+        internal static ConcurrentDictionary<string, (System.Type, MethodInfo)> invokeMethods = new();
         internal static void ExtractGrpcInvoke(System.Type serviceType)
         {
             foreach (var item in serviceType.GetTypeInfo().DeclaredMethods)
@@ -168,7 +169,7 @@ namespace Dapr.AspNetCore
             return default;
         }
 
-        internal static Dictionary<string, (System.Type, MethodInfo)> topicMethods = new Dictionary<string, (System.Type, MethodInfo)>();
+        internal static ConcurrentDictionary<string, (System.Type, MethodInfo)> topicMethods = new();
         internal static void ExtractTopic(System.Type serviceType)
         {
             foreach (var item in serviceType.GetTypeInfo().DeclaredMethods)
