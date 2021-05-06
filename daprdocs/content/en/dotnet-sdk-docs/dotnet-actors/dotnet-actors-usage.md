@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Dapr actor .NET usage guide"
-linkTitle: "Authoriung actors"
+linkTitle: "Authoring actors"
 weight: 200000
 description: Learn all about authoring and running actors with the .NET SDK
 ---
