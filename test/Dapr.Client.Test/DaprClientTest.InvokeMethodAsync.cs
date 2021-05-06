@@ -244,7 +244,7 @@ namespace Dapr.Client.Test
         }
         
         [Fact]
-        public async Task InvokeHealthMethodAsync_Success()
+        public async Task CheckHealthAsync_Success()
         {
             await using var client = TestClient.CreateForDaprClient(c => 
             {
@@ -252,7 +252,7 @@ namespace Dapr.Client.Test
             });
 
             var request = await client.CaptureHttpRequestAsync<bool>(async daprClient => 
-                await daprClient.InvokeHealthMethodAsync());
+                await daprClient.CheckHealthAsync());
 
             // Get Request and validate
             Assert.Equal(request.Request.Method, HttpMethod.Get);
@@ -263,7 +263,7 @@ namespace Dapr.Client.Test
         }
         
         [Fact]
-        public async Task InvokeHealthMethodAsync_NotSuccess()
+        public async Task CheckHealthAsync_NotSuccess()
         {
             await using var client = TestClient.CreateForDaprClient(c => 
             {
@@ -271,7 +271,7 @@ namespace Dapr.Client.Test
             });
 
             var request = await client.CaptureHttpRequestAsync<bool>(async daprClient => 
-                await daprClient.InvokeHealthMethodAsync());
+                await daprClient.CheckHealthAsync());
 
             // Get Request and validate
             Assert.Equal(request.Request.Method, HttpMethod.Get);
@@ -282,7 +282,7 @@ namespace Dapr.Client.Test
         }
         
         [Fact]
-        public async Task InvokeHealthMethodAsync_WrapsHttpRequestException()
+        public async Task CheckHealthAsync_WrapsHttpRequestException()
         {
             await using var client = TestClient.CreateForDaprClient(c => 
             {
@@ -290,12 +290,14 @@ namespace Dapr.Client.Test
             });
 
             var request = await client.CaptureHttpRequestAsync<bool>(async daprClient => 
-                await daprClient.InvokeHealthMethodAsync());
+                await daprClient.CheckHealthAsync());
 
+            Assert.Equal(request.Request.Method, HttpMethod.Get);
+            Assert.Equal(new Uri("https://test-endpoint:3501/v1.0/healthz").AbsoluteUri, request.Request.RequestUri.AbsoluteUri);
+            
             var exception = new HttpRequestException();
-            var thrown = await Assert.ThrowsAsync<InvocationException>(async () => await request.CompleteWithExceptionAsync(exception));
-            Assert.Same(exception, thrown.InnerException);
-            Assert.Null(thrown.Response);
+            var result = await request.CompleteWithExceptionAndResultAsync(exception);
+            Assert.False(result);
         }
 
         [Fact]

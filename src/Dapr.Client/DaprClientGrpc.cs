@@ -282,12 +282,19 @@ namespace Dapr.Client
             return request;
         }
         
-        public override async Task<bool> InvokeHealthMethodAsync(CancellationToken cancellationToken = default)
+        public override async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
         {
             var path = "/v1.0/healthz";
             var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
-            var response = await InvokeMethodWithResponseAsync(request, cancellationToken);
-            return response.IsSuccessStatusCode;
+            try
+            {
+                var response = await this.httpClient.SendAsync(request, cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
         }
 
         public override async Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
