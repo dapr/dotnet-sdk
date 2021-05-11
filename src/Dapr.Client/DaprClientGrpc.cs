@@ -129,7 +129,7 @@ namespace Dapr.Client
             if (content != null)
             {
                 envelope.Data = content;
-                envelope.DataContentType = "application/json";
+                envelope.DataContentType = Constants.ContentTypeApplicationJson;
             }
 
             if (metadata != null)
