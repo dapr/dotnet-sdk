@@ -1,10 +1,12 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
 namespace Dapr.Actors.Test
 {
+    using System;
+    using System.Reflection;
     using Dapr.Actors;
     using Dapr.Actors.Runtime;
     using Xunit;
@@ -12,6 +14,7 @@ namespace Dapr.Actors.Test
     public sealed class ActorTypeInformationTests
     {
         private const string RenamedActorTypeName = "MyRenamedActor";
+        private const string ParamActorTypeName = "AnotherRenamedActor";
 
         private interface ITestActor : IActor
         {
@@ -36,6 +39,19 @@ namespace Dapr.Actors.Test
             var actorTypeInformation = ActorTypeInformation.Get(actorType);
 
             Assert.Equal(RenamedActorTypeName, actorTypeInformation.ActorTypeName);
+        }
+
+        [Theory]
+        [InlineData(typeof(TestActor))]
+        [InlineData(typeof(RenamedActor))]
+        public void TestExplicitActorTypeAsParam(Type actorType)
+        {
+            Assert.NotEqual(ParamActorTypeName, actorType.Name);
+            Assert.NotEqual(ParamActorTypeName, actorType.GetCustomAttribute<ActorAttribute>()?.TypeName);
+
+            var actorTypeInformation = ActorTypeInformation.Get(actorType, ParamActorTypeName);
+
+            Assert.Equal(ParamActorTypeName, actorTypeInformation.ActorTypeName);
         }
 
         private sealed class TestActor : Actor, ITestActor
