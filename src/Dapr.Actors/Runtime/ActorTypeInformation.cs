@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,6 +101,23 @@ namespace Dapr.Actors.Runtime
         /// </exception>
         public static ActorTypeInformation Get(Type actorType)
         {
+            return Get(actorType, actorTypeName: null);
+        }
+
+        /// <summary>
+        /// Creates an <see cref="ActorTypeInformation"/> from actorType.
+        /// </summary>
+        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInformation for.</param>
+        /// <param name="actorTypeName">The name of the actor type represented by the actor.</param>
+        /// <returns><see cref="ActorTypeInformation"/> created from actorType.</returns>
+        /// <exception cref="System.ArgumentException">
+        /// <para>When <see cref="System.Type.BaseType"/> for actorType is not of type <see cref="Actor"/>.</para>
+        /// <para>When actorType does not implement an interface deriving from <see cref="IActor"/>
+        /// and is not marked as abstract.</para>
+        /// </exception>
+        /// <remarks>The value of <paramref name="actorTypeName"/> will have precedence over the default actor type name derived from the actor implementation type or any type name set via <see cref="ActorAttribute"/>.</remarks>
+        public static ActorTypeInformation Get(Type actorType, string actorTypeName)
+        {
             if (!actorType.IsActor())
             {
                 throw new ArgumentException(
@@ -129,7 +146,7 @@ namespace Dapr.Actors.Runtime
 
             var actorAttribute = actorType.GetCustomAttribute<ActorAttribute>();
 
-            string actorTypeName = actorAttribute?.TypeName ?? actorType.Name;
+            actorTypeName ??= actorAttribute?.TypeName ?? actorType.Name;
 
             return new ActorTypeInformation()
             {
