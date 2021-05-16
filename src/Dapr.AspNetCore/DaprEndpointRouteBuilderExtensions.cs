@@ -39,9 +39,9 @@ namespace Microsoft.AspNetCore.Builder
                 var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
                 var entries = dataSource.Endpoints
                     .OfType<RouteEndpoint>()
-                    .Where(e => e.Metadata.GetMetadata<TopicAttribute>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
+                    .Where(e => e.Metadata.GetMetadata<ITopicMetadata>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
                     .Distinct()
-                    .Select(e => (e.Metadata.GetMetadata<TopicAttribute>().PubsubName, e.Metadata.GetMetadata<TopicAttribute>().Name, e.RoutePattern));
+                    .Select(e => (e.Metadata.GetMetadata<ITopicMetadata>().PubsubName, e.Metadata.GetMetadata<ITopicMetadata>().Name, e.RoutePattern));
 
                 context.Response.ContentType = "application/json";
                 using var writer = new Utf8JsonWriter(context.Response.BodyWriter);

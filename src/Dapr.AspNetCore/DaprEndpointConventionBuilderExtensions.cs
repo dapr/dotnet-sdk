@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Builder
     public static class DaprEndpointConventionBuilderExtensions
     {
         /// <summary>
-        /// Adds <see cref="TopicAttribute" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
+        /// Adds <see cref="ITopicMetadata" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
         /// </summary>
         /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
         /// <param name="pubsubName">The name of the pubsub component to use.</param>
