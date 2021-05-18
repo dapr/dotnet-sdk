@@ -1,4 +1,9 @@
-﻿namespace Dapr
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+namespace Dapr
 {
     /// <summary>
     /// Metadata that describes an endpoint as a subscriber to a topic.
