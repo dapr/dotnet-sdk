@@ -193,7 +193,7 @@
   <data name="ErrorRemotedMethodHasOutRefOptionalParameter" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' has out/ref/optional parameter '{3}'. The {0} interface methods must not have out, ref or optional parameters.</value>
   </data>
-  <data name="ErrorRemotedMethodHasVaArgParameter" xml:space="preserve">
+  <data name="ErrorRemotedMethodHasVarArgParameter" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' has variable length parameter '{3}'. The {0} interface methods must not have variable length parameters.</value>
   </data>
   <data name="ErrorRemotedMethodHasVarArgs" xml:space="preserve">
