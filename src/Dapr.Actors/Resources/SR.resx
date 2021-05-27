@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -179,7 +179,7 @@
     <value>The {0} interface '{1}' is using generics. Generic interfaces cannot be remoted.</value>
   </data>
   <data name="ErrorRemotedMethodCancellationTokenOutOfOrder" xml:space="preserve">
-    <value>Method '{1}' of {0} interface '{2}' has '{4}' parameter '{3}', and it is not the last parameter. If a method of the {0} interface has parameter of type '{4}' it must be the last parameter.</value>
+    <value>Method '{1}' of {0} interface '{2}' has a '{4}' parameter that is not the last parameter. If an actor method accepts a '{4}' parameter, it must be the last parameter.</value>
   </data>
   <data name="ErrorRemotedMethodDoesNotReturnTask" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' does not return Task or Task&lt;&gt;. The {0} interface methods must be async and must return either Task or Task&lt;&gt;.</value>
