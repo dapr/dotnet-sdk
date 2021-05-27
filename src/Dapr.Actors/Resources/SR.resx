@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -196,7 +196,7 @@
   <data name="ErrorRemotedMethodHasVaArgParameter" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' has variable length parameter '{3}'. The {0} interface methods must not have variable length parameters.</value>
   </data>
-  <data name="ErrorRemotedMethodHasVaArgs" xml:space="preserve">
+  <data name="ErrorRemotedMethodHasVarArgs" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' is using a variable argument list. The {0} interface methods cannot have a variable argument list.</value>
   </data>
   <data name="ErrorRemotedMethodsIsOverloaded" xml:space="preserve">
