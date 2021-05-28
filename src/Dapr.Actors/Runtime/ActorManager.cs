@@ -209,7 +209,7 @@ namespace Dapr.Actors.Runtime
         internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             #pragma warning disable 0618
-            var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
+            var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream, jsonSerializerOptions);
             #pragma warning restore 0618
 
             // Create a Func to be invoked by common method.
@@ -217,26 +217,9 @@ namespace Dapr.Actors.Runtime
             {
                 var methodInfo = this.actorMethodInfoMap.LookupActorMethodInfo(timerData.Callback);
                 var parameters = methodInfo.GetParameters();
-                dynamic awaitable;
 
-                if (parameters.Length == 0)
-                {
-                    awaitable = methodInfo.Invoke(actor, null);
-                }
-                else if (parameters.Length == 1)
-                {
-                    // deserialize using stream.
-                    var type = parameters[0].ParameterType;
-                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
-                    awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
-                }
-                else
-                {
-                    var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
-                    throw new ArgumentException(errorMsg);
-                }
-
-                await awaitable;
+                // The timer callback routine needs to return a type Task
+                await (Task)(methodInfo.Invoke(actor, (parameters.Length == 0) ? null : new object[] { timerData.Data }));
 
                 return default;
             }
