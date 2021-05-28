@@ -215,14 +215,28 @@ namespace Dapr.Actors.Runtime
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
-                var actorType = actor.Host.ActorTypeInfo.ImplementationType;
-                var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
-
+                var methodInfo = this.actorMethodInfoMap.LookupActorMethodInfo(timerData.Callback);
                 var parameters = methodInfo.GetParameters();
+                dynamic awaitable;
 
-                // The timer callback routine needs to return a type Task
-                await (Task)(methodInfo.Invoke(actor, (parameters.Length == 0) ? null : new object[] { timerData.Data }));
+                if (parameters.Length == 0)
+                {
+                    awaitable = methodInfo.Invoke(actor, null);
+                }
+                else if (parameters.Length == 1)
+                {
+                    // deserialize using stream.
+                    var type = parameters[0].ParameterType;
+                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
+                    awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
+                }
+                else
+                {
+                    var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
+                    throw new ArgumentException(errorMsg);
+                }
+
+                await awaitable;
 
                 return default;
             }
