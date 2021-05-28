@@ -102,5 +102,21 @@ namespace ControllerSample.Controllers
             await task;
             return BadRequest(new { statusCode = 400, message = "bad request" });
         }
+
+        /// <summary>
+        /// <para>
+        /// Method which uses <see cref="CustomTopicAttribute" /> for binding this endpoint to a subscription.
+        /// </para>
+        /// <para>
+        /// This endpoint will be bound to a subscription where the topic name is the value of the environment variable 'CUSTOM_TOPIC'
+        /// and the pubsub name is the value of the environment variable 'CUSTOM_PUBSUB'.
+        /// </para>
+        /// </summary>
+        [CustomTopic("%CUSTOM_PUBSUB%", "%CUSTOM_TOPIC%")]
+        [HttpPost("exampleCustomTopic")]
+        public ActionResult<Account> ExampleCustomTopic(Transaction transaction)
+        {
+            return Ok();
+        }
     }
 }
