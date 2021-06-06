@@ -5,7 +5,27 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Grpc.Tools" Version="2.37.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\appcallback.proto" GrpcServices="Client">
+      <ProtoRoot>Protos</ProtoRoot>
+    </Protobuf>
+    <Protobuf Include="Protos\common.proto" GrpcServices="Client,Server">
+      <ProtoRoot>Protos</ProtoRoot>
+    </Protobuf>
+    <Protobuf Include="Protos\data.proto">
+      <ProtoRoot>Protos</ProtoRoot>
+      <GrpcServices>None</GrpcServices>
+    </Protobuf>
   </ItemGroup>
 
 </Project>

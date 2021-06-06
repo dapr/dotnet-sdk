@@ -11,6 +11,8 @@ namespace Microsoft.AspNetCore.Builder
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.AspNetCore;
+    using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.AspNetCore.Routing.Patterns;
     using Microsoft.Extensions.DependencyInjection;
@@ -77,6 +79,16 @@ namespace Microsoft.AspNetCore.Builder
                 writer.WriteEndArray();
                 await writer.FlushAsync();
             });
+        }
+
+        /// <summary>
+        /// Maps an  gRPC service endpoint for <see cref="AppCallbackImplementation"/>
+        /// </summary>
+        /// <param name="endpoints">The <see cref="IEndpointRouteBuilder" />.</param>
+        /// <returns>The <see cref="GrpcServiceEndpointConventionBuilder" />.</returns>
+        public static GrpcServiceEndpointConventionBuilder MapAppCallback(this IEndpointRouteBuilder endpoints)
+        {
+            return endpoints.MapGrpcService<AppCallbackImplementation>();
         }
     }
 }
