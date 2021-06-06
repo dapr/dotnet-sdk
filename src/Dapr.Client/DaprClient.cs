@@ -261,7 +261,15 @@ namespace Dapr.Client
         /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
         /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data);
-
+        
+        /// <summary>
+        /// Perform health-check of Dapr sidecar. Return 'true' if sidecar is healthy. Otherwise 'false'.
+        /// CheckHealthAsync handle <see cref="HttpRequestException"/> and will return 'false' if error will occur on transport level
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default);
+        
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. The response will
         /// be returned without performing any validation on the status code.
