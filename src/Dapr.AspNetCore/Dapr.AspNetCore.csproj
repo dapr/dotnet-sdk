@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\ArgumentVerifier.cs" />
+    <Compile Include="..\Shared\DaprDefaults.cs" />
   </ItemGroup>
 
   <ItemGroup>

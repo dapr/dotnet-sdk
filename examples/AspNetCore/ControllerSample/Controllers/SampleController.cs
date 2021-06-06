@@ -9,6 +9,7 @@ namespace ControllerSample.Controllers
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
 
@@ -58,6 +59,7 @@ namespace ControllerSample.Controllers
         ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
         [Topic("pubsub", "deposit")]
         [HttpPost("deposit")]
+        [Authorize("Dapr")]
         public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] DaprClient daprClient)
         {
             logger.LogDebug("Enter deposit");
@@ -77,6 +79,7 @@ namespace ControllerSample.Controllers
         ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
         [Topic("pubsub", "withdraw")]
         [HttpPost("withdraw")]
+        [Authorize("Dapr")]
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] DaprClient daprClient)
         {
             logger.LogDebug("Enter withdraw");
