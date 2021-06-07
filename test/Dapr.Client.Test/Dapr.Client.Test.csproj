@@ -28,6 +28,11 @@
     <Protobuf Include="Protos\test.proto" ProtoRoot="Protos" GrpcServices="Client" />
   </ItemGroup>
 
+  <Target Name="WriteToFile" AfterTargets="Protobuf_Compile" Condition="'$(BuildingForLiveUnitTesting)' == 'true'">
+    <!-- Workaround to generate the empty file on a LUT build -->
+    <WriteLinesToFile File="$(IntermediateOutputPath)TestGrpc.cs" Lines="" Overwrite="true" />
+  </Target>
+
   <ItemGroup>
     <Compile Include="..\Shared\AppCallbackClient.cs" />
     <Compile Include="..\Shared\TestClient.cs" />

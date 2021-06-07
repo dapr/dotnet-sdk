@@ -14,6 +14,11 @@
     <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
     <Protobuf Include="Protos\dapr\proto\dapr\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
   </ItemGroup>
+  
+  <Target Name="WriteToFile" AfterTargets="Protobuf_Compile" Condition="'$(BuildingForLiveUnitTesting)' == 'true'">
+    <!-- Workaround to generate the empty file on a LUT build -->
+    <WriteLinesToFile File="$(IntermediateOutputPath)dapr\proto\common\v1\CommonGrpc.cs" Lines="" Overwrite="true" />
+  </Target>
 
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
