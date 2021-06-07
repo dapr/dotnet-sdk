@@ -209,16 +209,13 @@ namespace Dapr.Actors.Runtime
         internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             #pragma warning disable 0618
-            var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
+            var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream, jsonSerializerOptions);
             #pragma warning restore 0618
 
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
-                var actorType = actor.Host.ActorTypeInfo.ImplementationType;
-                var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
-
+                var methodInfo = this.actorMethodInfoMap.LookupActorMethodInfo(timerData.Callback);
                 var parameters = methodInfo.GetParameters();
 
                 // The timer callback routine needs to return a type Task

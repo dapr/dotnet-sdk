@@ -300,7 +300,8 @@ namespace Dapr.Actors.Runtime
 
         internal MethodInfo GetMethodInfoUsingReflection(Type actorType, string callback)
         {
-            return actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static);
+            return actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static)
+                ?? actorType.GetMethod($"get_{callback}", BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static); // F# support
         }
 
         internal void ValidateTimerCallback(ActorHost host, string callback)
@@ -333,7 +334,8 @@ namespace Dapr.Actors.Runtime
             }
 
             // The timer callback should return only Task return type
-            if (methodInfo.ReturnType != typeof(Task))
+            if (methodInfo.ReturnType != typeof(Task) 
+                && methodInfo.ReturnType.GetMethod("Invoke")?.ReturnType != typeof(Task)) // Support for F# 'task' computation expressions
             {
                 throw new ArgumentException("Timer callback can only return type Task");
             }
