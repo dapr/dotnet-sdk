@@ -11,6 +11,10 @@ namespace Microsoft.AspNetCore.Builder
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.AspNetCore;
+    using Dapr.Client;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc.ApplicationModels;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.AspNetCore.Routing.Patterns;
     using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +25,39 @@ namespace Microsoft.AspNetCore.Builder
     /// </summary>
     public static class DaprEndpointRouteBuilderExtensions
     {
+        /// <summary>
+        /// Adds Dapr integration for Minimal APIs to the provided <see cref="IEndpointRouteBuilder" />.
+        /// </summary>
+        /// <param name="builder">The <see cref="IEndpointRouteBuilder" />.</param>
+        /// <param name="services">The <see cref="IServiceCollection" />.</param>
+        /// <param name="configureClient">The (optional) <see cref="DaprClientBuilder" /> to use for configuring the DaprClient.</param>
+        /// <returns>The <see cref="IEndpointRouteBuilder" /> builder.</returns>
+        public static IEndpointRouteBuilder AddDapr(this IEndpointRouteBuilder builder, IServiceCollection services, Action<DaprClientBuilder> configureClient = null)
+        {
+            if (builder is null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            // This pattern prevents registering services multiple times in the case AddDapr is called
+            // by non-user-code.
+            if (services.Any(s => s.ImplementationType == typeof(DaprMinimalApisMarkerService)))
+            {
+                return builder;
+            }
+
+            services.AddDaprClient(configureClient);
+
+            services.AddSingleton<DaprMinimalApisMarkerService>();
+            services.AddSingleton<IApplicationModelProvider, StateEntryApplicationModelProvider>();
+            services.Configure<MvcOptions>(options =>
+            {
+                options.ModelBinderProviders.Insert(0, new StateEntryModelBinderProvider());
+            });
+
+            return builder;
+        }
+
         /// <summary>
         /// Maps an endpoint that will respond to requests to <c>/dapr/subscribe</c> from the
         /// Dapr runtime.
@@ -77,6 +114,10 @@ namespace Microsoft.AspNetCore.Builder
                 writer.WriteEndArray();
                 await writer.FlushAsync();
             });
+        }
+
+        private class DaprMinimalApisMarkerService
+        {
         }
     }
 }
