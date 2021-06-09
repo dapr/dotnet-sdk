@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,11 +75,12 @@ namespace Dapr.Actors.Runtime
         /// <para>1. <see cref="System.Type.BaseType"/> for actorType is not of type <see cref="Actor"/>.</para>
         /// <para>2. actorType does not implement an interface deriving from <see cref="IActor"/> and is not marked as abstract.</para>
         /// </remarks>
+        [Obsolete("Use Get(Type, string) instead. This will be removed in the future.")]
         public static bool TryGet(Type actorType, out ActorTypeInformation actorTypeInformation)
         {
             try
             {
-                actorTypeInformation = Get(actorType);
+                actorTypeInformation = Get(actorType, actorTypeName: null);
                 return true;
             }
             catch (ArgumentException)
@@ -99,6 +100,7 @@ namespace Dapr.Actors.Runtime
         /// <para>When actorType does not implement an interface deriving from <see cref="IActor"/>
         /// and is not marked as abstract.</para>
         /// </exception>
+        [Obsolete("Use Get(Type, string) instead. This will be removed in the future.")]
         public static ActorTypeInformation Get(Type actorType)
         {
             return Get(actorType, actorTypeName: null);

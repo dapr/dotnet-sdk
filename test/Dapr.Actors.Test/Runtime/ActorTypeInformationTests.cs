@@ -32,7 +32,7 @@ namespace Dapr.Actors.Test
         public void TestInferredActorType()
         {
             var actorType = typeof(TestActor);
-            var actorTypeInformation = ActorTypeInformation.Get(actorType);
+            var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
 
             Assert.Equal(actorType.Name, actorTypeInformation.ActorTypeName);
         }
@@ -44,7 +44,7 @@ namespace Dapr.Actors.Test
 
             Assert.NotEqual(RenamedActorTypeName, actorType.Name);
 
-            var actorTypeInformation = ActorTypeInformation.Get(actorType);
+            var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
 
             Assert.Equal(RenamedActorTypeName, actorTypeInformation.ActorTypeName);
         }

@@ -39,10 +39,7 @@ namespace Dapr.Actors.Runtime
         public void RegisterActor<TActor>(Action<ActorRegistration> configure = null)
             where TActor : Actor
         {
-            var actorTypeInfo = ActorTypeInformation.Get(typeof(TActor));
-            var registration = new ActorRegistration(actorTypeInfo);
-            configure?.Invoke(registration);
-            this.Add(registration);
+            RegisterActor<TActor>(actorTypeName: null, configure);
         }
 
         /// <summary>
