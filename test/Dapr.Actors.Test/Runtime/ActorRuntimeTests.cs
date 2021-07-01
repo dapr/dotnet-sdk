@@ -149,9 +149,17 @@ namespace Dapr.Actors.Test
             bool found = root.TryGetProperty("remindersStoragePartitions", out element);
             Assert.False(found, "remindersStoragePartitions should not be serialized");
 
+            try
+            {
+                element = root.GetProperty("reentrancy");
+                Assert.True(false);
+            } catch (System.Collections.Generic.KeyNotFoundException) 
+            {
+                // Expected.
+            }
         }
 
-                [Fact]
+        [Fact]
         public async Task TestActorSettingsWithRemindersStoragePartitions()
         {
             var actorType = typeof(TestActor);
@@ -184,7 +192,127 @@ namespace Dapr.Actors.Test
 
             element = root.GetProperty("remindersStoragePartitions");
             Assert.Equal(12, element.GetInt64());
+        }
 
+        [Fact]
+        public async Task TestActorSettingsWithReentrancy() 
+        {
+            var actorType = typeof(TestActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<TestActor>();
+            options.ActorIdleTimeout = TimeSpan.FromSeconds(33);
+            options.ActorScanInterval = TimeSpan.FromSeconds(44);
+            options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(55);
+            options.DrainRebalancedActors = true;
+            options.ReentrancyConfig = new Reentrancy.ActorReentrancyConfig {
+                Enabled = true,
+                MaxStackDepth = 32
+            };
+
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+
+            ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+            await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+            // read back the serialized json
+            var array = writer.WrittenSpan.ToArray();
+            string s = Encoding.UTF8.GetString(array, 0, array.Length);
+
+            JsonDocument document = JsonDocument.Parse(s);
+            JsonElement root = document.RootElement;
+
+            // parse out the entities array 
+            JsonElement element = root.GetProperty("entities");
+            Assert.Equal(1, element.GetArrayLength());
+
+            JsonElement arrayElement = element[0];
+            string actor = arrayElement.GetString();
+            Assert.Equal("TestActor", actor);
+
+            // validate the other properties have expected values
+            element = root.GetProperty("actorIdleTimeout");
+            Assert.Equal(TimeSpan.FromSeconds(33), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = root.GetProperty("actorScanInterval");
+            Assert.Equal(TimeSpan.FromSeconds(44), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = root.GetProperty("drainOngoingCallTimeout");
+            Assert.Equal(TimeSpan.FromSeconds(55), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = root.GetProperty("drainRebalancedActors");
+            Assert.True(element.GetBoolean());
+
+            element = root.GetProperty("reentrancy").GetProperty("enabled");
+            Assert.True(element.GetBoolean());
+
+            element = root.GetProperty("reentrancy").GetProperty("maxStackDepth");
+            Assert.Equal(32, element.GetInt32());
+        }
+
+        [Fact]
+        public async Task TestActorSettingsWithReentrancyWithoutMaxStackDepth() 
+        {
+            var actorType = typeof(TestActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<TestActor>();
+            options.ActorIdleTimeout = TimeSpan.FromSeconds(33);
+            options.ActorScanInterval = TimeSpan.FromSeconds(44);
+            options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(55);
+            options.DrainRebalancedActors = true;
+            options.ReentrancyConfig = new Reentrancy.ActorReentrancyConfig {
+                Enabled = true
+            };
+
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+
+            ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+            await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+            // read back the serialized json
+            var array = writer.WrittenSpan.ToArray();
+            string s = Encoding.UTF8.GetString(array, 0, array.Length);
+
+            JsonDocument document = JsonDocument.Parse(s);
+            JsonElement root = document.RootElement;
+
+            // parse out the entities array 
+            JsonElement element = root.GetProperty("entities");
+            Assert.Equal(1, element.GetArrayLength());
+
+            JsonElement arrayElement = element[0];
+            string actor = arrayElement.GetString();
+            Assert.Equal("TestActor", actor);
+
+            // validate the other properties have expected values
+            element = root.GetProperty("actorIdleTimeout");
+            Assert.Equal(TimeSpan.FromSeconds(33), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = root.GetProperty("actorScanInterval");
+            Assert.Equal(TimeSpan.FromSeconds(44), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = root.GetProperty("drainOngoingCallTimeout");
+            Assert.Equal(TimeSpan.FromSeconds(55), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = root.GetProperty("drainRebalancedActors");
+            Assert.True(element.GetBoolean());
+
+            element = root.GetProperty("reentrancy").GetProperty("enabled");
+            Assert.True(element.GetBoolean());
+
+            try
+            {
+                element = root.GetProperty("reentrancy").GetProperty("maxStackDepth");
+                Assert.True(false);
+            } catch (System.Collections.Generic.KeyNotFoundException) 
+            {
+                // Expected.
+            }
         }
 
         private sealed class TestActor : Actor, ITestActor

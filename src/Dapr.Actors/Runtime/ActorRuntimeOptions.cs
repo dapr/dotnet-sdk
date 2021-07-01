@@ -5,6 +5,7 @@
 
 using System;
 using System.Text.Json;
+using Dapr.Actors.Reentrancy;
 
 namespace Dapr.Actors.Runtime
 {
@@ -20,6 +21,7 @@ namespace Dapr.Actors.Runtime
         private TimeSpan? actorScanInterval;
         private TimeSpan? drainOngoingCallTimeout;
         private bool drainRebalancedActors;
+        private ActorReentrancyConfig reentrancyConfig;
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private string daprApiToken = null;
         private int? remindersStoragePartitions = null;
@@ -117,6 +119,25 @@ namespace Dapr.Actors.Runtime
             set
             {
                 this.drainRebalancedActors = value;
+            }
+        }
+
+        /// <summary>
+        /// A configuration that defines the Actor Reentrancy parameters. If set and enabled, Actors
+        /// will be able to perform reentrant calls to themselves/others. If not set or false, Actors
+        /// will continue to lock for every request.
+        /// See https://docs.dapr.io/developing-applications/building-blocks/actors/actor-reentrancy/
+        /// </summary>
+        public ActorReentrancyConfig ReentrancyConfig
+        {
+            get
+            {
+                return this.reentrancyConfig;
+            }
+
+            set
+            {
+                this.reentrancyConfig = value;
             }
         }
 

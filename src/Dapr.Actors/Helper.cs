@@ -8,6 +8,7 @@ namespace Dapr.Actors
     using System;
     using System.Globalization;
     using Dapr.Actors.Communication;
+    using Dapr.Actors.Reentrancy;
 
     internal class Helper
     {
@@ -25,6 +26,20 @@ namespace Dapr.Actors
             {
                 return Guid.NewGuid().ToString();
             }
+        }
+
+        public static string GetReentrancyContext()
+        {
+            if (ActorLogicalReentrancyContext.TryGet(out var reentrancyContext))
+            {
+                return reentrancyContext;
+            }
+            return string.Empty;
+        }
+
+        public static void SetReentrancyContext(string reentrancyId)
+        {
+            ActorLogicalReentrancyContext.Set(reentrancyId);
         }
     }
 }

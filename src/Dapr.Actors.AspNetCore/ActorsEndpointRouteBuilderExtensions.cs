@@ -11,6 +11,7 @@ namespace Microsoft.AspNetCore.Builder
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Contains extension methods for using Dapr Actors with endpoint routing.
@@ -71,12 +72,19 @@ namespace Microsoft.AspNetCore.Builder
         private static IEndpointConventionBuilder MapActorMethodEndpoint(this IEndpointRouteBuilder endpoints)
         {
             var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
+            var logger = endpoints.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<ILogger>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
                 var actorTypeName = (string)routeValues["actorTypeName"];
                 var actorId = (string)routeValues["actorId"];
                 var methodName = (string)routeValues["methodName"];
+
+                if (context.Request.Headers.ContainsKey(Constants.ReentrancyRequestHeaderName))
+                {
+                    var daprReentrancyHeader = context.Request.Headers[Constants.ReentrancyRequestHeaderName];
+                    Helper.SetReentrancyContext(daprReentrancyHeader);
+                }
 
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.
                 if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
