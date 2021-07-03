@@ -41,6 +41,7 @@ namespace Dapr.E2E.Test
 
             var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
             var projectPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test.App", "Dapr.E2E.Test.App.csproj");
+            var configPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "configuration", "featureconfig.yaml");
             var arguments = new List<string>()
             {
                 // `dapr run` args
@@ -50,6 +51,7 @@ namespace Dapr.E2E.Test
                 "--dapr-grpc-port", grpcPort.ToString(CultureInfo.InvariantCulture),
                 "--metrics-port", metricsPort.ToString(CultureInfo.InvariantCulture),
                 "--components-path", componentsPath,
+                "--config", configPath,
                 "--log-level", "debug",
                 
             };
