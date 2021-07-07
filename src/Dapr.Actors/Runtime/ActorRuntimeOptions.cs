@@ -22,6 +22,7 @@ namespace Dapr.Actors.Runtime
         private bool drainRebalancedActors;
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private string daprApiToken = null;
+        private int? remindersStoragePartitions = null;
 
         /// <summary>
         /// Gets the collection of <see cref="ActorRegistration" /> instances.
@@ -159,6 +160,27 @@ namespace Dapr.Actors.Runtime
                 }
 
                 this.daprApiToken = value;
+            }
+        }
+
+        /// <summary>
+        /// An int used to determine how many partitions to use for reminders storage.
+        /// </summary>
+        public int? RemindersStoragePartitions
+        {
+            get
+            {
+                return this.remindersStoragePartitions;
+            }
+
+            set
+            {
+                if (value < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(remindersStoragePartitions), remindersStoragePartitions, "must be positive");
+                }
+
+                this.remindersStoragePartitions = value;
             }
         }
 

@@ -7,6 +7,7 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
+    using System.Collections.Generic;
     using System.Linq;
     using System.IO;
     using System.Text;
@@ -144,6 +145,51 @@ namespace Dapr.Actors.Test
 
             element = root.GetProperty("drainRebalancedActors");
             Assert.True(element.GetBoolean());
+
+            try {
+                element = root.GetProperty("remindersStoragePartitions");
+                Assert.False(true, "remindersStoragePartitions should not be serialized");
+            }
+            catch (Exception ex) {
+                Assert.IsType<KeyNotFoundException>(ex);
+            }
+
+        }
+
+                [Fact]
+        public async Task TestActorSettingsWithRemindersStoragePartitions()
+        {
+            var actorType = typeof(TestActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<TestActor>();
+            options.RemindersStoragePartitions = 12;
+
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+
+            ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+            await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+            // read back the serialized json
+            var array = writer.WrittenSpan.ToArray();
+            string s = Encoding.UTF8.GetString(array, 0, array.Length);
+
+            JsonDocument document = JsonDocument.Parse(s);
+            JsonElement root = document.RootElement;
+
+            // parse out the entities array 
+            JsonElement element = root.GetProperty("entities");
+            Assert.Equal(1, element.GetArrayLength());
+
+            JsonElement arrayElement = element[0];
+            string actor = arrayElement.GetString();
+            Assert.Equal("TestActor", actor);
+
+            element = root.GetProperty("remindersStoragePartitions");
+            Assert.Equal(12, element.GetInt64());
+
         }
 
         private sealed class TestActor : Actor, ITestActor
