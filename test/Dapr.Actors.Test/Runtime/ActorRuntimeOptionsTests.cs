@@ -113,5 +113,14 @@ namespace Dapr.Actors.Test.Runtime
 
             action.Should().Throw<ArgumentNullException>();
         }
+
+        [Fact]
+        public void SettingRemindersStoragePartitionsToLessThanZero_Fails()
+        {
+            var options = new ActorRuntimeOptions();
+            Action action = () => options.RemindersStoragePartitions = -1;
+
+            action.Should().Throw<ArgumentOutOfRangeException>();
+        }
     }
 }

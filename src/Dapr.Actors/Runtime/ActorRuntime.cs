@@ -93,6 +93,12 @@ namespace Dapr.Actors.Runtime
                 writer.WriteBoolean("drainRebalancedActors", (this.options.DrainRebalancedActors));
             }
 
+            // default is null, don't write it if default
+            if (this.options.RemindersStoragePartitions != null)
+            {
+                writer.WriteNumber("remindersStoragePartitions", this.options.RemindersStoragePartitions.Value);
+            }
+
             writer.WriteEndObject();
             return writer.FlushAsync();
         }
