@@ -119,7 +119,7 @@ Actor registration is part `ConfigureServices` in `Startup.cs`. The `ConfigureSe
 
 Inside `ConfigureServices` you can:
 
-- Register the actor runtime (`UseActors`)
+- Register the actor runtime (`AddActors`)
 - Register actor types (`options.Actors.RegisterActor<>`)
 - Configure actor runtime settings `options`
 - Register additional service types for dependency injection into actors (`services`)

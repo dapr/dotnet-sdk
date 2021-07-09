@@ -158,6 +158,12 @@ namespace Dapr
                 this.Capture.Response.SetException(ex);
                 await WithTimeout(this.Task, TimeSpan.FromSeconds(10), "Waiting for response to be completed timed out.");
             }
+            
+            public async Task<T> CompleteWithExceptionAndResultAsync(Exception ex)
+            {
+                this.Capture.Response.SetException(ex);
+                return await WithTimeout(this.Task, TimeSpan.FromSeconds(10), "Waiting for response to be completed timed out.");
+            }
 
             public void Dismiss()
             {

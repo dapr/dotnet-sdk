@@ -10,7 +10,7 @@ namespace Dapr
     /// <summary>
     /// Metadata that describes an endpoint as a subscriber to a topic.
     /// </summary>
-    public class TopicAttribute : Attribute
+    public class TopicAttribute : Attribute, ITopicMetadata
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="TopicAttribute" /> class.
@@ -26,14 +26,10 @@ namespace Dapr
             this.PubsubName = pubsubName;
         }
 
-        /// <summary>
-        /// Gets the topic name.
-        /// </summary>
+        /// <inheritdoc/>
         public string Name { get; }
 
-        /// <summary>
-        /// Gets the pubsub component name name.
-        /// </summary>
+        /// <inheritdoc/>
         public string PubsubName { get; }
     }
 }

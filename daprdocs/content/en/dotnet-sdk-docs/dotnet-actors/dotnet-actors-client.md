@@ -8,7 +8,7 @@ description: Learn all about using the actor client with the .NET SDK
 
 ## Using the IActorProxyFactory
 
-Inside of an `Actor` class or otherwisde inside of an ASP.NET Core project you should use the `IActorProxyFactory` interface to create actor clients.
+Inside of an `Actor` class or otherwise inside of an ASP.NET Core project you should use the `IActorProxyFactory` interface to create actor clients.
 
 The `AddActors(...)` method will register actor services with ASP.NET Core dependency injection. 
 

@@ -129,7 +129,7 @@ namespace Dapr.Client
             if (content != null)
             {
                 envelope.Data = content;
-                envelope.DataContentType = "application/json";
+                envelope.DataContentType = Constants.ContentTypeApplicationJson;
             }
 
             if (metadata != null)
@@ -280,6 +280,21 @@ namespace Dapr.Client
             var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
             request.Content = JsonContent.Create<TRequest>(data, options: this.JsonSerializerOptions);
             return request;
+        }
+        
+        public override async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
+        {
+            var path = "/v1.0/healthz";
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+            try
+            {
+                var response = await this.httpClient.SendAsync(request, cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
         }
 
         public override async Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
