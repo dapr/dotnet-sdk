@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -16,6 +16,7 @@ namespace Dapr.Actors.Builder
     internal class MethodDispatcherBuilder<TMethodDispatcher> : CodeBuilderModule
         where TMethodDispatcher : ActorMethodDispatcherBase
     {
+        private static readonly MethodInfo getTypeFromHandle = typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle));
         private readonly Type methodDispatcherBaseType;
         private readonly MethodInfo continueWithResultMethodInfo;
         private readonly MethodInfo continueWithMethodInfo;
@@ -102,6 +103,7 @@ namespace Dapr.Actors.Builder
                     ilGen.Emit(OpCodes.Ldc_I4, i);
                     ilGen.Emit(OpCodes.Ldstr, argument.Name);
                     ilGen.Emit(OpCodes.Ldtoken, argument.ArgumentType);
+                    ilGen.Emit(OpCodes.Call, getTypeFromHandle);
                     ilGen.Emit(OpCodes.Callvirt, method);
                     ilGen.Emit(OpCodes.Unbox_Any, argument.ArgumentType);
                 }
