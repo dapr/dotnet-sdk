@@ -162,13 +162,13 @@ namespace Dapr.Actors.Description
             Type remotedInterfaceType,
             MethodInfo methodInfo)
         {
-            if (methodInfo.CallingConvention == CallingConventions.VarArgs)
+            if (methodInfo.CallingConvention.HasFlag(CallingConventions.VarArgs))
             {
                 ThrowArgumentExceptionForMethodChecks(
                     remotedInterfaceKindName,
                     remotedInterfaceType,
                     methodInfo,
-                    SR.ErrorRemotedMethodHasVaArgs);
+                    SR.ErrorRemotedMethodHasVarArgs);
             }
         }
 
