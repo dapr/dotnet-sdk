@@ -4,14 +4,16 @@
 // ------------------------------------------------------------
 
 using System.Threading.Tasks;
-using Dapr.Actors;
 
-namespace Dapr.E2E.Test.Actors.Reentrancy
+namespace Dapr.Actors.Runtime
 {
-    public interface IReentrantActor : IPingActor, IActor
+    /// <summary>
+    ///
+    /// </summary>
+    public interface IActorContextualState
     {
-        Task ReentrantCall(ReentrantCallOptions callOptions);
-
-        Task<State> GetState(int callNumber);
+        /// <summary>
+        /// </summary>
+        Task SetStateContext(string stateContext);
     }
 }

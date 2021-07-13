@@ -45,9 +45,7 @@ namespace Dapr.E2E.Test
                 options.Actors.RegisterActor<ReminderActor>();
                 options.Actors.RegisterActor<TimerActor>();
                 options.Actors.RegisterActor<ReentrantActor>();
-                options.ReentrancyConfig = new Dapr.Actors.Reentrancy.ActorReentrancyConfig {
-                    Enabled = true,
-                };
+                options.ReentrancyConfig.Enabled = true;
             });
         }
 

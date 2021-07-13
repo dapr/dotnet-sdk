@@ -72,7 +72,6 @@ namespace Microsoft.AspNetCore.Builder
         private static IEndpointConventionBuilder MapActorMethodEndpoint(this IEndpointRouteBuilder endpoints)
         {
             var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
-            var logger = endpoints.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<ILogger>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
@@ -83,7 +82,7 @@ namespace Microsoft.AspNetCore.Builder
                 if (context.Request.Headers.ContainsKey(Constants.ReentrancyRequestHeaderName))
                 {
                     var daprReentrancyHeader = context.Request.Headers[Constants.ReentrancyRequestHeaderName];
-                    Helper.SetReentrancyContext(daprReentrancyHeader);
+                    ActorReentrancyContextAccessor.ReentrancyContext = daprReentrancyHeader;
                 }
 
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.

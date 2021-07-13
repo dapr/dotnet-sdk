@@ -5,7 +5,6 @@
 
 namespace Dapr.Actors.Test.Runtime
 {
-    using Dapr.Actors.Reentrancy;
     using Dapr.Actors.Runtime;
     using Moq;
     using Xunit;
@@ -125,22 +124,18 @@ namespace Dapr.Actors.Test.Runtime
         public void SettingReentrancyConfigWithoutMaxStackDepth_Succeeds()
         {
             var options = new ActorRuntimeOptions();
-            options.ReentrancyConfig = new ActorReentrancyConfig {
-                Enabled = true,
-            };
+            options.ReentrancyConfig.Enabled = true;
 
             Assert.True(options.ReentrancyConfig.Enabled);
-            Assert.Null(options.ReentrancyConfig.MaxStackDepth);
+            Assert.Equal(32, options.ReentrancyConfig.MaxStackDepth);
         }
 
         [Fact]
         public void SettingReentrancyConfigWithMaxStackDepth_Succeeds()
         {
             var options = new ActorRuntimeOptions();
-            options.ReentrancyConfig = new ActorReentrancyConfig {
-                Enabled = true,
-                MaxStackDepth = 64,
-            };
+            options.ReentrancyConfig.Enabled = true;
+            options.ReentrancyConfig.MaxStackDepth = 64;
 
             Assert.True(options.ReentrancyConfig.Enabled);
             Assert.Equal(64, options.ReentrancyConfig.MaxStackDepth);

@@ -5,7 +5,6 @@
 
 using System;
 using System.Text.Json;
-using Dapr.Actors.Reentrancy;
 
 namespace Dapr.Actors.Runtime
 {
@@ -21,7 +20,11 @@ namespace Dapr.Actors.Runtime
         private TimeSpan? actorScanInterval;
         private TimeSpan? drainOngoingCallTimeout;
         private bool drainRebalancedActors;
-        private ActorReentrancyConfig reentrancyConfig;
+        private ActorReentrancyConfig reentrancyConfig = new ActorReentrancyConfig
+        {
+            Enabled = false,
+            MaxStackDepth = 32,
+        };
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private string daprApiToken = null;
         private int? remindersStoragePartitions = null;

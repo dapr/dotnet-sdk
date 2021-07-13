@@ -99,16 +99,11 @@ namespace Dapr.Actors.Runtime
                 writer.WriteNumber("remindersStoragePartitions", this.options.RemindersStoragePartitions.Value);
             }
 
-            if (this.options.ReentrancyConfig != null) {
-                writer.WriteStartObject("reentrancy");
-
-                writer.WriteBoolean("enabled", this.options.ReentrancyConfig.Enabled);
-                if (this.options.ReentrancyConfig.MaxStackDepth != null) {
-                    writer.WriteNumber("maxStackDepth", this.options.ReentrancyConfig.MaxStackDepth.Value);
-                }
-
-                writer.WriteEndObject();
-            }
+            // Reentrancy has a default value so it is always included.
+            writer.WriteStartObject("reentrancy");            
+            writer.WriteBoolean("enabled", this.options.ReentrancyConfig.Enabled);
+            writer.WriteNumber("maxStackDepth", this.options.ReentrancyConfig.MaxStackDepth);
+            writer.WriteEndObject();            
 
             writer.WriteEndObject();
             return writer.FlushAsync();

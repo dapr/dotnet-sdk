@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-namespace Dapr.Actors.Reentrancy
+namespace Dapr.Actors
 {
     /// <summary>
     /// Represents the configuration required for Actor Reentrancy.
@@ -13,7 +13,7 @@ namespace Dapr.Actors.Reentrancy
     public sealed class ActorReentrancyConfig 
     {
         private bool enabled;
-        private int? maxStackDepth;
+        private int maxStackDepth;
 
         /// <summary>
         /// Determines if Actor Reentrancy is enabled or disabled.
@@ -35,7 +35,7 @@ namespace Dapr.Actors.Reentrancy
         /// Optional parameter that will stop a reentrant call from progressing past the defined
         /// limit. This is a safety measure against infinite reentrant calls.
         /// </summary>
-        public int? MaxStackDepth
+        public int MaxStackDepth
         {
             get
             {

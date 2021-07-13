@@ -113,8 +113,8 @@ namespace Dapr.Actors
 
                 request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeader, 0, serializedHeader.Length));
 
-                var reentrancyId = Helper.GetReentrancyContext();
-                if (reentrancyId != string.Empty)
+                var reentrancyId = ActorReentrancyContextAccessor.ReentrancyContext;
+                if (reentrancyId != null)
                 {
                     request.Headers.Add(Constants.ReentrancyRequestHeaderName, reentrancyId);
                 }
@@ -195,8 +195,8 @@ namespace Dapr.Actors
                     request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
                 }
 
-                var reentrancyId = Helper.GetReentrancyContext();
-                if (reentrancyId != string.Empty)
+                var reentrancyId = ActorReentrancyContextAccessor.ReentrancyContext;
+                if (reentrancyId != null)
                 {
                     request.Headers.Add(Constants.ReentrancyRequestHeaderName, reentrancyId);
                 }

@@ -313,7 +313,7 @@ namespace Dapr.Actors.Test
             var methodName = "MethodName";
             var payload = "JsonData";
 
-            Helper.SetReentrancyContext("1");
+            ActorReentrancyContextAccessor.ReentrancyContext = "1";
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
                 await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);

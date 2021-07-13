@@ -11,5 +11,7 @@ namespace Dapr.E2E.Test.Actors.Reentrancy
     {
         public bool IsEnter { get; set; }
         public DateTime Timestamp { get; set; }
+
+        public int CallNumber { get; set; }
     }
 }
