@@ -149,9 +149,11 @@ namespace Dapr.Actors.Test
             bool found = root.TryGetProperty("remindersStoragePartitions", out element);
             Assert.False(found, "remindersStoragePartitions should not be serialized");
 
+            JsonElement jsonValue;
+            Assert.False(root.GetProperty("reentrancy").TryGetProperty("maxStackDepth", out jsonValue));
         }
 
-                [Fact]
+        [Fact]
         public async Task TestActorSettingsWithRemindersStoragePartitions()
         {
             var actorType = typeof(TestActor);
@@ -184,7 +186,45 @@ namespace Dapr.Actors.Test
 
             element = root.GetProperty("remindersStoragePartitions");
             Assert.Equal(12, element.GetInt64());
+        }
 
+        [Fact]
+        public async Task TestActorSettingsWithReentrancy() 
+        {
+            var actorType = typeof(TestActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<TestActor>();
+            options.ActorIdleTimeout = TimeSpan.FromSeconds(33);
+            options.ActorScanInterval = TimeSpan.FromSeconds(44);
+            options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(55);
+            options.DrainRebalancedActors = true;
+            options.ReentrancyConfig.Enabled = true;
+            options.ReentrancyConfig.MaxStackDepth = 64;
+
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+
+            ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+            await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+            // read back the serialized json
+            var array = writer.WrittenSpan.ToArray();
+            string s = Encoding.UTF8.GetString(array, 0, array.Length);
+
+            JsonDocument document = JsonDocument.Parse(s);
+            JsonElement root = document.RootElement;
+
+            // parse out the entities array 
+            JsonElement element = root.GetProperty("entities");
+            Assert.Equal(1, element.GetArrayLength());
+
+            element = root.GetProperty("reentrancy").GetProperty("enabled");
+            Assert.True(element.GetBoolean());
+
+            element = root.GetProperty("reentrancy").GetProperty("maxStackDepth");
+            Assert.Equal(64, element.GetInt32());
         }
 
         private sealed class TestActor : Actor, ITestActor
