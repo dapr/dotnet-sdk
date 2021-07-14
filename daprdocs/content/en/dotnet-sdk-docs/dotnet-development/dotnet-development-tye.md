@@ -56,7 +56,7 @@ services:
     - port: 6973
 ```
 
-Checkin `tye.yaml` in source control wiht the application code. 
+Checkin `tye.yaml` in source control with the application code. 
 
 You can now use `tye run` to launch the whole application from one terminal. When running, Tye has a dashboard at `http://localhost:8000` to view application status and logs.
 

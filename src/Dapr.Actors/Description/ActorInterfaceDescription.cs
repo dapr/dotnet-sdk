@@ -63,7 +63,7 @@ namespace Dapr.Actors.Description
                     throw new ArgumentException(
                        string.Format(
                            CultureInfo.CurrentCulture,
-                           SR.ErrorNotAnActorInterface_DerivationCheck1,
+                           SR.ErrorNotAnActorInterface_DerivationCheck2,
                            actorInterfaceType.FullName,
                            nonActorParentInterface.FullName,
                            typeof(IActor).FullName),
