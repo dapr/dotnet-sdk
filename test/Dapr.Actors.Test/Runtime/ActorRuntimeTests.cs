@@ -146,13 +146,8 @@ namespace Dapr.Actors.Test
             element = root.GetProperty("drainRebalancedActors");
             Assert.True(element.GetBoolean());
 
-            try {
-                element = root.GetProperty("remindersStoragePartitions");
-                Assert.False(true, "remindersStoragePartitions should not be serialized");
-            }
-            catch (Exception ex) {
-                Assert.IsType<KeyNotFoundException>(ex);
-            }
+            bool found = root.TryGetProperty("remindersStoragePartitions", out element);
+            Assert.False(found, "remindersStoragePartitions should not be serialized");
 
         }
 
