@@ -340,10 +340,9 @@ namespace Dapr.Actors.Runtime
             try
             {
                 // Set the state context of the request, if possible.
-                var stateManager = state.Actor.StateManager;
-                if (typeof(IActorContextualState).IsAssignableFrom(stateManager.GetType()))
+                if (state.Actor.StateManager is IActorContextualState contextualStateManager)
                 {
-                    await (stateManager as IActorContextualState).SetStateContext(Helper.GetCallContext());
+                    await contextualStateManager.SetStateContext(Guid.NewGuid().ToString());
                 }
 
                 // invoke the function of the actor
@@ -357,6 +356,14 @@ namespace Dapr.Actors.Runtime
             {
                 await actor.OnInvokeFailedAsync();
                 throw;
+            }
+            finally
+            {
+                // Set the state context of the request, if possible.
+                if (state.Actor.StateManager is IActorContextualState contextualStateManager)
+                {
+                    await contextualStateManager.SetStateContext(null);
+                }
             }
 
             return retval;

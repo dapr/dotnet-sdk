@@ -11,7 +11,7 @@ namespace Dapr.Actors
     /// Accessor for the reentrancy context. This provides the necessary ID to continue a reentrant request
     /// across actor invocations.
     /// </summary>
-    public class ActorReentrancyContextAccessor
+    internal static class ActorReentrancyContextAccessor
     {
         private static readonly AsyncLocal<ActorReentrancyContextHolder> state = new AsyncLocal<ActorReentrancyContextHolder>();
 

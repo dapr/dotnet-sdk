@@ -102,7 +102,10 @@ namespace Dapr.Actors.Runtime
             // Reentrancy has a default value so it is always included.
             writer.WriteStartObject("reentrancy");            
             writer.WriteBoolean("enabled", this.options.ReentrancyConfig.Enabled);
-            writer.WriteNumber("maxStackDepth", this.options.ReentrancyConfig.MaxStackDepth);
+            if (this.options.ReentrancyConfig.MaxStackDepth != null)
+            {
+                writer.WriteNumber("maxStackDepth", this.options.ReentrancyConfig.MaxStackDepth.Value);
+            }
             writer.WriteEndObject();            
 
             writer.WriteEndObject();

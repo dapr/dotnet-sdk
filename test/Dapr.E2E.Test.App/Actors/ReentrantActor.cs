@@ -26,27 +26,21 @@ namespace Dapr.E2E.Test.Actors.Reentrancy
         // always make at least one additional call.
         public async Task ReentrantCall(ReentrantCallOptions callOptions)
         {
-            try
-            {
-                await UpdateState(true, callOptions.CallNumber);
-                var actor = this.ProxyFactory.CreateActorProxy<IReentrantActor>(this.Id, "ReentrantActor");
-                if (callOptions == null || callOptions.CallsRemaining <= 1)
-                {   
-                    await actor.Ping();
-                }
-                else
-                {
-                    await actor.ReentrantCall(new ReentrantCallOptions 
-                    { 
-                        CallsRemaining = callOptions.CallsRemaining - 1,
-                        CallNumber = callOptions.CallNumber + 1,
-                    });
-                }                
-            } 
-            finally 
-            {
-                await UpdateState(false, callOptions.CallNumber);
+            await UpdateState(true, callOptions.CallNumber);
+            var actor = this.ProxyFactory.CreateActorProxy<IReentrantActor>(this.Id, "ReentrantActor");
+            if (callOptions == null || callOptions.CallsRemaining <= 1)
+            {   
+                await actor.Ping();
             }
+            else
+            {
+                await actor.ReentrantCall(new ReentrantCallOptions 
+                { 
+                    CallsRemaining = callOptions.CallsRemaining - 1,
+                    CallNumber = callOptions.CallNumber + 1,
+                });
+            }
+            await UpdateState(false, callOptions.CallNumber);
         }
 
         public Task<State> GetState(int callNumber) 
@@ -59,7 +53,11 @@ namespace Dapr.E2E.Test.Actors.Reentrancy
             var state = await this.StateManager.GetOrAddStateAsync<State>($"reentrant-record{callNumber}", new State());
             state.Records.Add(new CallRecord { IsEnter = isEnter, Timestamp = System.DateTime.Now, CallNumber = callNumber });
             await this.StateManager.SetStateAsync<State>($"reentrant-record{callNumber}", state);
-            await this.StateManager.SaveStateAsync();      
+
+            if (!isEnter)
+            {
+                await this.StateManager.SaveStateAsync();
+            }
         }
     }
 }

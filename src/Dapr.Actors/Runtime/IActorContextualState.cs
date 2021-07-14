@@ -10,7 +10,7 @@ namespace Dapr.Actors.Runtime
     /// <summary>
     ///
     /// </summary>
-    public interface IActorContextualState
+    internal interface IActorContextualState
     {
         /// <summary>
         /// </summary>

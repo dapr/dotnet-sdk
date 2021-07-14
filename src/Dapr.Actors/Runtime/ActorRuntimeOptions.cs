@@ -23,7 +23,6 @@ namespace Dapr.Actors.Runtime
         private ActorReentrancyConfig reentrancyConfig = new ActorReentrancyConfig
         {
             Enabled = false,
-            MaxStackDepth = 32,
         };
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private string daprApiToken = null;

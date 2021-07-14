@@ -17,17 +17,14 @@ namespace Dapr.Actors.Runtime
     {
         private readonly Actor actor;
         private readonly string actorTypeName;
-        private readonly ConcurrentDictionary<string, Dictionary<string, StateMetadata>> contextualStateChangeTracker;
-        private static AsyncLocal<string> context = new AsyncLocal<string>();
+        private readonly Dictionary<string, StateMetadata> defaultTracker;
+        private static AsyncLocal<(string id, Dictionary<string, StateMetadata> tracker)> context = new AsyncLocal<(string, Dictionary<string, StateMetadata>)>();
 
         internal ActorStateManager(Actor actor)
         {
             this.actor = actor;
             this.actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
-            this.contextualStateChangeTracker = new ConcurrentDictionary<string, Dictionary<string, StateMetadata>>();
-
-            // If there is no context set, we use the default tracker.
-            this.contextualStateChangeTracker.TryAdd(string.Empty, new Dictionary<string, StateMetadata>());
+            this.defaultTracker = new Dictionary<string, StateMetadata>();
         }
 
         public async Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken)
@@ -332,12 +329,15 @@ namespace Dapr.Actors.Runtime
 
         public Task SetStateContext(string stateContext)
         {
-            if (!this.contextualStateChangeTracker.TryAdd(stateContext, new Dictionary<string, StateMetadata>()))
+            if (stateContext != null)
             {
-                // If we can't add the state because it already exists, we have overlapping state which is not an OK state.
-                throw new InvalidOperationException("Contextual state encountered already set state context.");
+                context.Value = (stateContext, new Dictionary<string, StateMetadata>());
             }
-            context.Value = stateContext;
+            else
+            {
+                context.Value = (null, null);
+            }
+
             return Task.CompletedTask;
         }
 
@@ -372,20 +372,13 @@ namespace Dapr.Actors.Runtime
 
         private Dictionary<string, StateMetadata> GetContextualStateTracker()
         {
-            if (context.Value != null)
+            if (context.Value.id != null)
             {
-                if (this.contextualStateChangeTracker.ContainsKey(context.Value))
-                {
-                    return this.contextualStateChangeTracker[context.Value];
-                }
-                else
-                {
-                    throw new InvalidOperationException("Tracker is referencing an invalid context.");
-                }
+                return context.Value.tracker;
             }
             else
             {
-                return this.contextualStateChangeTracker[string.Empty];
+                return defaultTracker;
             }
         }
 

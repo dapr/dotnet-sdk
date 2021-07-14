@@ -121,13 +121,14 @@ namespace Dapr.Actors.Test.Runtime
             action.Should().Throw<ArgumentOutOfRangeException>();
         }
 
+        [Fact]
         public void SettingReentrancyConfigWithoutMaxStackDepth_Succeeds()
         {
             var options = new ActorRuntimeOptions();
             options.ReentrancyConfig.Enabled = true;
 
             Assert.True(options.ReentrancyConfig.Enabled);
-            Assert.Equal(32, options.ReentrancyConfig.MaxStackDepth);
+            Assert.Null(options.ReentrancyConfig.MaxStackDepth);
         }
 
         [Fact]

@@ -149,14 +149,8 @@ namespace Dapr.Actors.Test
             bool found = root.TryGetProperty("remindersStoragePartitions", out element);
             Assert.False(found, "remindersStoragePartitions should not be serialized");
 
-            try
-            {
-                element = root.GetProperty("reentrancy");
-                Assert.True(false);
-            } catch (System.Collections.Generic.KeyNotFoundException) 
-            {
-                // Expected.
-            }
+            JsonElement jsonValue;
+            Assert.False(root.GetProperty("reentrancy").TryGetProperty("maxStackDepth", out jsonValue));
         }
 
         [Fact]

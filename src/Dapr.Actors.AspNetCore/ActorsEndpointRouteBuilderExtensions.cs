@@ -11,7 +11,6 @@ namespace Microsoft.AspNetCore.Builder
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Contains extension methods for using Dapr Actors with endpoint routing.
@@ -89,20 +88,35 @@ namespace Microsoft.AspNetCore.Builder
                 if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
                     var daprActorheader = context.Request.Headers[Constants.RequestHeaderName];
-                    var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
 
-                    // Item 1 is header , Item 2 is body
-                    if (header != string.Empty)
+                    try
                     {
-                        // exception case
-                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
-                    }
+                        var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
 
-                    await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
+                        // Item 1 is header , Item 2 is body
+                        if (header != string.Empty)
+                        {
+                            // exception case
+                            context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
+                        }
+
+                        await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
+                        }
+                    finally
+                    {
+                        ActorReentrancyContextAccessor.ReentrancyContext = null;
+                    }                    
                 }
                 else
                 {
-                    await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                    try
+                    {
+                        await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                    }
+                    finally
+                    {
+                        ActorReentrancyContextAccessor.ReentrancyContext = null;
+                    }
                 }
             }).WithDisplayName(b => "Dapr Actors Invoke");
         }
