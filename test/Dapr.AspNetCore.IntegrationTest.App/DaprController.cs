@@ -10,6 +10,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.WebUtilities;
 
@@ -78,5 +79,11 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             return widgetStateEntry.Value;
         }
 
+        [Authorize("Dapr")]
+        [HttpPost("/requires-api-token")]
+        public ActionResult<UserInfo> RequiresApiToken(UserInfo user)
+        {
+            return user;
+        }
     }
 }
