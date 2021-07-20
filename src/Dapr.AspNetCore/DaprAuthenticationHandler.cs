@@ -13,12 +13,12 @@ namespace Dapr.AspNetCore
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
 
-    internal class DaprAuthenticationHandler : AuthenticationHandler<DaprAuthenticationHandlerOptions>
+    internal class DaprAuthenticationHandler : AuthenticationHandler<DaprAuthenticationOptions>
     {
         const string DaprApiToken = "Dapr-Api-Token";
 
         public DaprAuthenticationHandler(
-            IOptionsMonitor<DaprAuthenticationHandlerOptions> options,
+            IOptionsMonitor<DaprAuthenticationOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder, 
             ISystemClock clock) : base(options, logger, encoder, clock)
@@ -37,15 +37,15 @@ namespace Dapr.AspNetCore
                 return AuthenticateResult.NoResult();
             }
 
-            var expectedToken = Options.TokenFactory?.Invoke();
+            var expectedToken = Options.Token;
             if (string.IsNullOrWhiteSpace(expectedToken))
             {
-                return AuthenticateResult.NoResult();
+                return AuthenticateResult.Fail("Dapr API Token not configured.");
             }
 
             if (!string.Equals(token, expectedToken))
             {
-                return AuthenticateResult.NoResult();
+                return AuthenticateResult.Fail("Not authenticated.");
             }
 
             var claims = new List<Claim>

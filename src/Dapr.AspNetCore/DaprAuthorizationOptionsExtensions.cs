@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Authorization
             options.AddPolicy(name, policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.AddAuthenticationSchemes(DaprAuthenticationHandlerOptions.DefaultScheme);
+                policy.AddAuthenticationSchemes(DaprAuthenticationOptions.DefaultScheme);
             });
         }
     }
