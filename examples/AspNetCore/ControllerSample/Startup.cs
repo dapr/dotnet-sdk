@@ -6,8 +6,6 @@
 namespace ControllerSample
 {
     using System.Text.Json;
-    using Microsoft.AspNetCore.Authentication;
-    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
@@ -39,10 +37,6 @@ namespace ControllerSample
         /// <param name="services">Service Collection.</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddAuthentication().AddDapr();
-
-            services.AddAuthorization(o => o.AddDapr());
-
             services.AddControllers().AddDapr();
         }
 
@@ -61,8 +55,6 @@ namespace ControllerSample
             app.UseRouting();
 
             app.UseCloudEvents();
-
-            app.UseAuthentication();
 
             app.UseAuthorization();
 

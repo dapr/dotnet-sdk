@@ -12,16 +12,14 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "DAPR_API_TOKEN": "this-is-a-token"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
     "ControllerSample": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "DAPR_API_TOKEN": "this-is-a-token"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "applicationUrl": "http://localhost:5000/"
     }
