@@ -17,16 +17,20 @@ namespace Dapr.Actors.Runtime
         public ReminderInfo(
             byte[] data,
             TimeSpan dueTime,
-            TimeSpan period)
+            TimeSpan period,
+            int repetitions)
         {
             this.Data = data;
             this.DueTime = dueTime;
             this.Period = period;
+            this.Repetitions = repetitions;
         }
 
         public TimeSpan DueTime { get; private set; }
 
         public TimeSpan Period { get; private set; }
+
+        public int Repetitions { get; private set; }
 
         public byte[] Data { get; private set; }
 
@@ -55,7 +59,8 @@ namespace Dapr.Actors.Runtime
                 data = dataProperty.GetBytesFromBase64();
             }
 
-            return new ReminderInfo(data, dueTime, period);
+            //TODO: correct this
+            return new ReminderInfo(data, dueTime, period, 0);
         }
 
         internal async ValueTask<string> SerializeAsync()

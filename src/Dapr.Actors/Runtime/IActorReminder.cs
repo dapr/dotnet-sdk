@@ -8,7 +8,7 @@ namespace Dapr.Actors.Runtime
     using System;
 
     /// <summary>
-    /// Represents a reminder registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync" />.
+    /// Represents a reminder registered using <see cref="o:Dapr.Actors.Runtime.Actor.RegisterReminderAsync" />.
     /// </summary>
     public interface IActorReminder
     {
@@ -41,5 +41,11 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <value>The user state passed to the reminder invocation.</value>
         byte[] State { get; }
+
+        /// <summary>
+        /// Gets the number of repetitions of the reminder left to be invoked.
+        /// </summary>
+        /// <value>The number of repetitions of the reminder left to be invoked.</value>
+        int RepetitionsLeft { get; }
     }
 }

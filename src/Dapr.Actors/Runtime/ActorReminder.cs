@@ -59,6 +59,33 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
+        /// Initializes a new instance of <see cref="ActorReminder" />.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorId">The actor id.</param>
+        /// <param name="name">The reminder name.</param>
+        /// <param name="state">The state associated with the reminder.</param>
+        /// <param name="dueTime">The reminder due time.</param>
+        /// <param name="period">The reminder period.</param>
+        /// <param name="repetitions">The number of time reminder should be invoked.</param>
+        public ActorReminder(
+            string actorType,
+            ActorId actorId,
+            string name,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period,
+            int repetitions)
+            : this(actorType, actorId, name, state, dueTime, period)
+        {
+            if (repetitions < 0)
+            {
+                throw new ArgumentException("TODO: fill in message");
+            }
+            this.RepetitionsLeft = repetitions;
+        }
+
+        /// <summary>
         /// Gets the reminder state.
         /// </summary>
         public byte[] State { get; }
@@ -72,5 +99,10 @@ namespace Dapr.Actors.Runtime
         /// Gets the reminder period.
         /// </summary>
         public TimeSpan Period { get; }
+
+        /// <summary>
+        /// Gets the number of invocations of the reminder left.
+        /// </summary>
+        public int RepetitionsLeft { get; }
     }
 }

@@ -65,7 +65,7 @@ namespace Dapr.Actors.Runtime
 
         private async ValueTask<string> SerializeReminderAsync(ActorReminder reminder)
         {
-            var info = new ReminderInfo(reminder.State, reminder.DueTime, reminder.Period);
+            var info = new ReminderInfo(reminder.State, reminder.DueTime, reminder.Period, reminder.RepetitionsLeft);
             return await info.SerializeAsync();
         }
     }

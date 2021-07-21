@@ -60,5 +60,17 @@ namespace Dapr.Actors.Runtime
 
             return stringValue;
         }
+
+        public static string ConvertTimeSpanValueInISO8601Format(TimeSpan? value, int repetitions)
+        {
+            //TODO: implement this
+            return string.Empty;
+        }
+        
+        public static (TimeSpan?, int) ConvertTimeSpanValueFromISO8601Format(TimeSpan? value, int repetitions)
+        {
+            //TODO: implement this
+            return (TimeSpan.Zero, 0);
+        }
     }
 }
