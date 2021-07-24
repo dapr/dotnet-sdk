@@ -339,10 +339,13 @@ namespace Dapr.Actors.Runtime
             T retval;
             try
             {
-                // Set the state context of the request, if possible.
-                if (state.Actor.StateManager is IActorContextualState contextualStateManager)
+                // Set the state context of the request, if required and possible.
+                if (ActorReentrancyContextAccessor.ReentrancyContext != null)
                 {
-                    await contextualStateManager.SetStateContext(Guid.NewGuid().ToString());
+                    if (state.Actor.StateManager is IActorContextualState contextualStateManager)
+                    {
+                        await contextualStateManager.SetStateContext(Guid.NewGuid().ToString());
+                    }
                 }
 
                 // invoke the function of the actor
