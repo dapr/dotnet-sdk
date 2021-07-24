@@ -6,9 +6,12 @@
 namespace Dapr.Actors.Runtime
 {
     using System;
+    using System.Text;
+    using System.Text.RegularExpressions;
 
     internal class ConverterUtils
     {
+        private static Regex regex = new Regex("^(R(?<repetition>\\d+)/)?P((?<year>\\d+)Y)?((?<month>\\d+)M)?((?<week>\\d+)W)?((?<day>\\d+)D)?(T((?<hour>\\d+)H)?((?<minute>\\d+)M)?((?<second>\\d+)S)?)?$");
         public static TimeSpan ConvertTimeSpanFromDaprFormat(string valueString)
         {
             if (string.IsNullOrEmpty(valueString))
@@ -61,16 +64,68 @@ namespace Dapr.Actors.Runtime
             return stringValue;
         }
 
-        public static string ConvertTimeSpanValueInISO8601Format(TimeSpan? value, int repetitions)
+        public static string ConvertTimeSpanValueInISO8601Format(TimeSpan value, int repetitions)
         {
-            //TODO: implement this
-            return string.Empty;
+            if (repetitions == -1)
+            {
+                return ConvertTimeSpanValueInDaprFormat(value);
+            }
+
+            StringBuilder builder = new StringBuilder();
+            builder.AppendFormat("R{0}/P", repetitions);
+
+            if(value.Days > 0)
+            {
+                builder.AppendFormat("{0}D", value.Days);
+            }
+
+            builder.Append("T");
+
+            if(value.Hours > 0)
+            {
+                builder.AppendFormat("{0}H", value.Hours);
+            }
+
+            if(value.Minutes > 0)
+            {
+                builder.AppendFormat("{0}M", value.Minutes);
+            }
+
+            if(value.Seconds > 0)
+            {
+                builder.AppendFormat("{0}S", value.Seconds);
+            }
+            return builder.ToString();
         }
         
-        public static (TimeSpan?, int) ConvertTimeSpanValueFromISO8601Format(TimeSpan? value, int repetitions)
+        public static (TimeSpan, int) ConvertTimeSpanValueFromISO8601Format(string valueString)
         {
-            //TODO: implement this
-            return (TimeSpan.Zero, 0);
+            // ISO 8601 format can be Rn/PaYbMcHTdHeMfS or PaYbMcHTdHeMfS so if it does 
+            // not start with R or P then assuming it to default Dapr format without repetition
+            if (!(valueString.StartsWith('R') || valueString.StartsWith('P')))
+            {
+                return (ConvertTimeSpanFromDaprFormat(valueString), -1);
+            }
+
+            var matches = regex.Match(valueString);
+            
+            var repetition = matches.Groups["repetition"].Success ? int.Parse(matches.Groups["repetition"].Value) : -1;
+
+            var days = 0;
+            var year = matches.Groups["year"].Success ? int.Parse(matches.Groups["year"].Value) : 0;
+            days = year * 365;
+
+            var month = matches.Groups["month"].Success ? int.Parse(matches.Groups["month"].Value) : 0;            
+            days += month * 30;
+
+            var day = matches.Groups["day"].Success ? int.Parse(matches.Groups["day"].Value) : 0;
+            days += day;
+
+            var hour = matches.Groups["hour"].Success ? int.Parse(matches.Groups["hour"].Value) : 0;
+            var minute = matches.Groups["minute"].Success ? int.Parse(matches.Groups["minute"].Value) : 0;
+            var second = matches.Groups["second"].Success ? int.Parse(matches.Groups["second"].Value) : 0;
+
+            return (new TimeSpan(days, hour, minute, second), repetition);
         }
     }
 }
