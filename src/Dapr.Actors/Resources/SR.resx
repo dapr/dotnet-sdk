@@ -176,10 +176,10 @@
     <value>The type '{0}' is not a service interface as it is not an interface. </value>
   </data>
   <data name="ErrorRemotedInterfaceIsGeneric" xml:space="preserve">
-    <value>The  {0} interface '{1}' is using generics. Generic interfaces cannot be remoted.</value>
+    <value>The {0} interface '{1}' is using generics. Generic interfaces cannot be remoted.</value>
   </data>
   <data name="ErrorRemotedMethodCancellationTokenOutOfOrder" xml:space="preserve">
-    <value>Method '{1}' of {0} interface '{2}' has '{4}' parameter '{3}', and it is not the last parameter. If a method of the {0} interface has parameter of type '{4}' it must be the last parameter.</value>
+    <value>Method '{1}' of {0} interface '{2}' has a '{4}' parameter that is not the last parameter. If an actor method accepts a '{4}' parameter, it must be the last parameter.</value>
   </data>
   <data name="ErrorRemotedMethodDoesNotReturnTask" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' does not return Task or Task&lt;&gt;. The {0} interface methods must be async and must return either Task or Task&lt;&gt;.</value>
@@ -193,10 +193,10 @@
   <data name="ErrorRemotedMethodHasOutRefOptionalParameter" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' has out/ref/optional parameter '{3}'. The {0} interface methods must not have out, ref or optional parameters.</value>
   </data>
-  <data name="ErrorRemotedMethodHasVaArgParameter" xml:space="preserve">
+  <data name="ErrorRemotedMethodHasVarArgParameter" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' has variable length parameter '{3}'. The {0} interface methods must not have variable length parameters.</value>
   </data>
-  <data name="ErrorRemotedMethodHasVaArgs" xml:space="preserve">
+  <data name="ErrorRemotedMethodHasVarArgs" xml:space="preserve">
     <value>Method '{1}' of {0} interface '{2}' is using a variable argument list. The {0} interface methods cannot have a variable argument list.</value>
   </data>
   <data name="ErrorRemotedMethodsIsOverloaded" xml:space="preserve">

@@ -334,7 +334,7 @@ namespace Dapr.Actors.Builder
             }
             else
             {
-                ilGen.Emit(OpCodes.Ldarg_0);
+                ilGen.Emit(OpCodes.Ldarg_0); // base
                 ilGen.Emit(OpCodes.Ldloc, invokeTask);
                 ilGen.EmitCall(OpCodes.Call, this.continueWithMethodInfo, null);
                 ilGen.Emit(OpCodes.Ret);

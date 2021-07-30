@@ -109,24 +109,45 @@ namespace Microsoft.AspNetCore.Builder
                 var actorId = (string)routeValues["actorId"];
                 var methodName = (string)routeValues["methodName"];
 
+                if (context.Request.Headers.ContainsKey(Constants.ReentrancyRequestHeaderName))
+                {
+                    var daprReentrancyHeader = context.Request.Headers[Constants.ReentrancyRequestHeaderName];
+                    ActorReentrancyContextAccessor.ReentrancyContext = daprReentrancyHeader;
+                }
+
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.
                 if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
                     var daprActorheader = context.Request.Headers[Constants.RequestHeaderName];
-                    var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
 
-                    // Item 1 is header , Item 2 is body
-                    if (header != string.Empty)
+                    try
                     {
-                        // exception case
-                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
-                    }
+                        var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
 
-                    await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
+                        // Item 1 is header , Item 2 is body
+                        if (header != string.Empty)
+                        {
+                            // exception case
+                            context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
+                        }
+
+                        await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
+                        }
+                    finally
+                    {
+                        ActorReentrancyContextAccessor.ReentrancyContext = null;
+                    }                    
                 }
                 else
                 {
-                    await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                    try
+                    {
+                        await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                    }
+                    finally
+                    {
+                        ActorReentrancyContextAccessor.ReentrancyContext = null;
+                    }
                 }
             }).WithDisplayName(b => "Dapr Actors Invoke");
         }

@@ -116,7 +116,7 @@ namespace GrpcServiceSample
                 }
             }
 
-            return await Task.FromResult(default(TopicEventResponse));
+            return new TopicEventResponse();
         }
 
         /// <summary>

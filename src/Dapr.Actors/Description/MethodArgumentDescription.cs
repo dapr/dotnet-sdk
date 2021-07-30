@@ -51,7 +51,7 @@ namespace Dapr.Actors.Description
                     remotedInterfaceType,
                     methodInfo,
                     param,
-                    SR.ErrorRemotedMethodHasVaArgParameter);
+                    SR.ErrorRemotedMethodHasVarArgParameter);
             }
         }
 
