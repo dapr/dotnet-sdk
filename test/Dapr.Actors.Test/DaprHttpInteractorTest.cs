@@ -302,5 +302,45 @@ namespace Dapr.Actors.Test
                 await request.CompleteAsync(message);
             });
         }
+
+        [Fact]
+        public async Task InvokeActorMethodAddsReentrancyIdIfSet_ValidateHeaders()
+        {
+            await using var client = TestClient.CreateForDaprHttpInterator();
+
+            var actorType = "ActorType_Test";
+            var actorId = "ActorId_Test";
+            var methodName = "MethodName";
+            var payload = "JsonData";
+
+            ActorReentrancyContextAccessor.ReentrancyContext = "1";
+            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+            {
+                await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
+            });
+
+            request.Dismiss();
+            Assert.True(request.Request.Headers.Contains(Constants.ReentrancyRequestHeaderName));
+            Assert.Contains("1", request.Request.Headers.GetValues(Constants.ReentrancyRequestHeaderName));
+        }
+
+        [Fact]
+        public async Task InvokeActorMethodOmitsReentrancyIdIfNotSet_ValidateHeaders()
+        {
+            await using var client = TestClient.CreateForDaprHttpInterator();
+
+            var actorType = "ActorType_Test";
+            var actorId = "ActorId_Test";
+            var methodName = "MethodName";
+            var payload = "JsonData";
+
+            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+            {
+                await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
+            });
+
+            request.Dismiss();
+            Assert.False(request.Request.Headers.Contains(Constants.ReentrancyRequestHeaderName));
+        }
     }
 }

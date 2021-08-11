@@ -8,7 +8,7 @@ description: Learn all about using the actor client with the .NET SDK
 
 ## Using the IActorProxyFactory
 
-Inside of an `Actor` class or otherwisde inside of an ASP.NET Core project you should use the `IActorProxyFactory` interface to create actor clients.
+Inside of an `Actor` class or otherwise inside of an ASP.NET Core project you should use the `IActorProxyFactory` interface to create actor clients.
 
 The `AddActors(...)` method will register actor services with ASP.NET Core dependency injection. 
 
@@ -91,4 +91,4 @@ var request = new MyRequest() { Message = "Hi, it's me.", };
 var response = await proxy.InvokeMethodAsync<MyRequest, MyResponse>("DoSomethingGreat", request);
 ```
 
-When using a weakly-typed proxy, it is your responsbility to define the correct actor method names and message types. This is done for you when using a strongly-typed proxy since the names and types are part of the interface definition.
+When using a weakly-typed proxy, it is your responsibility to define the correct actor method names and message types. This is done for you when using a strongly-typed proxy since the names and types are part of the interface definition.

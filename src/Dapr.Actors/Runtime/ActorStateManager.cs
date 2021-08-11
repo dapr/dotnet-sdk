@@ -3,26 +3,28 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Actors.Resources;
+
 namespace Dapr.Actors.Runtime
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Globalization;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Dapr.Actors.Resources;
-
-    internal sealed class ActorStateManager : IActorStateManager
+    internal sealed class ActorStateManager : IActorStateManager, IActorContextualState
     {
         private readonly Actor actor;
         private readonly string actorTypeName;
-        private readonly Dictionary<string, StateMetadata> stateChangeTracker;
+        private readonly Dictionary<string, StateMetadata> defaultTracker;
+        private static AsyncLocal<(string id, Dictionary<string, StateMetadata> tracker)> context = new AsyncLocal<(string, Dictionary<string, StateMetadata>)>();
 
         internal ActorStateManager(Actor actor)
         {
             this.actor = actor;
             this.actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
-            this.stateChangeTracker = new Dictionary<string, StateMetadata>();
+            this.defaultTracker = new Dictionary<string, StateMetadata>();
         }
 
         public async Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken)
@@ -41,14 +43,16 @@ namespace Dapr.Actors.Runtime
 
             EnsureStateProviderInitialized();
 
-            if (this.stateChangeTracker.ContainsKey(stateName))
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
             {
-                var stateMetadata = this.stateChangeTracker[stateName];
+                var stateMetadata = stateChangeTracker[stateName];
 
                 // Check if the property was marked as remove in the cache
                 if (stateMetadata.ChangeKind == StateChangeKind.Remove)
                 {
-                    this.stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update);
+                    stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update);
                     return true;
                 }
 
@@ -60,7 +64,7 @@ namespace Dapr.Actors.Runtime
                 return false;
             }
 
-            this.stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
+            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
             return true;
         }
 
@@ -84,9 +88,11 @@ namespace Dapr.Actors.Runtime
 
             EnsureStateProviderInitialized();
 
-            if (this.stateChangeTracker.ContainsKey(stateName))
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
             {
-                var stateMetadata = this.stateChangeTracker[stateName];
+                var stateMetadata = stateChangeTracker[stateName];
 
                 // Check if the property was marked as remove in the cache
                 if (stateMetadata.ChangeKind == StateChangeKind.Remove)
@@ -100,7 +106,7 @@ namespace Dapr.Actors.Runtime
             var conditionalResult = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
             if (conditionalResult.HasValue)
             {
-                this.stateChangeTracker.Add(stateName, StateMetadata.Create(conditionalResult.Value, StateChangeKind.None));
+                stateChangeTracker.Add(stateName, StateMetadata.Create(conditionalResult.Value, StateChangeKind.None));
             }
 
             return conditionalResult;
@@ -112,9 +118,11 @@ namespace Dapr.Actors.Runtime
 
             EnsureStateProviderInitialized();
 
-            if (this.stateChangeTracker.ContainsKey(stateName))
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
             {
-                var stateMetadata = this.stateChangeTracker[stateName];
+                var stateMetadata = stateChangeTracker[stateName];
                 stateMetadata.Value = value;
 
                 if (stateMetadata.ChangeKind == StateChangeKind.None ||
@@ -125,11 +133,11 @@ namespace Dapr.Actors.Runtime
             }
             else if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
             {
-                this.stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update));
+                stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update));
             }
             else
             {
-                this.stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
+                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
             }
         }
 
@@ -149,16 +157,18 @@ namespace Dapr.Actors.Runtime
 
             EnsureStateProviderInitialized();
 
-            if (this.stateChangeTracker.ContainsKey(stateName))
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
             {
-                var stateMetadata = this.stateChangeTracker[stateName];
+                var stateMetadata = stateChangeTracker[stateName];
 
                 switch (stateMetadata.ChangeKind)
                 {
                     case StateChangeKind.Remove:
                         return false;
                     case StateChangeKind.Add:
-                        this.stateChangeTracker.Remove(stateName);
+                        stateChangeTracker.Remove(stateName);
                         return true;
                 }
 
@@ -168,7 +178,7 @@ namespace Dapr.Actors.Runtime
 
             if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
             {
-                this.stateChangeTracker.Add(stateName, StateMetadata.CreateForRemove());
+                stateChangeTracker.Add(stateName, StateMetadata.CreateForRemove());
                 return true;
             }
 
@@ -181,9 +191,11 @@ namespace Dapr.Actors.Runtime
 
             EnsureStateProviderInitialized();
 
-            if (this.stateChangeTracker.ContainsKey(stateName))
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
             {
-                var stateMetadata = this.stateChangeTracker[stateName];
+                var stateMetadata = stateChangeTracker[stateName];
 
                 // Check if the property was marked as remove in the cache
                 return stateMetadata.ChangeKind != StateChangeKind.Remove;
@@ -210,7 +222,8 @@ namespace Dapr.Actors.Runtime
 
             var changeKind = this.IsStateMarkedForRemove(stateName) ? StateChangeKind.Update : StateChangeKind.Add;
 
-            this.stateChangeTracker[stateName] = StateMetadata.Create(value, changeKind);
+            var stateChangeTracker = GetContextualStateTracker();
+            stateChangeTracker[stateName] = StateMetadata.Create(value, changeKind);
             return value;
         }
 
@@ -224,14 +237,16 @@ namespace Dapr.Actors.Runtime
 
             EnsureStateProviderInitialized();
 
-            if (this.stateChangeTracker.ContainsKey(stateName))
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
             {
-                var stateMetadata = this.stateChangeTracker[stateName];
+                var stateMetadata = stateChangeTracker[stateName];
 
                 // Check if the property was marked as remove in the cache
                 if (stateMetadata.ChangeKind == StateChangeKind.Remove)
                 {
-                    this.stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Update);
+                    stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Update);
                     return addValue;
                 }
 
@@ -250,12 +265,12 @@ namespace Dapr.Actors.Runtime
             if (conditionalResult.HasValue)
             {
                 var newValue = updateValueFactory.Invoke(stateName, conditionalResult.Value);
-                this.stateChangeTracker.Add(stateName, StateMetadata.Create(newValue, StateChangeKind.Update));
+                stateChangeTracker.Add(stateName, StateMetadata.Create(newValue, StateChangeKind.Update));
 
                 return newValue;
             }
 
-            this.stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Add);
+            stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Add);
             return addValue;
         }
 
@@ -263,7 +278,9 @@ namespace Dapr.Actors.Runtime
         {
             EnsureStateProviderInitialized();
 
-            this.stateChangeTracker.Clear();
+            var stateChangeTracker = GetContextualStateTracker();
+
+            stateChangeTracker.Clear();
             return Task.CompletedTask;
         }
 
@@ -271,14 +288,16 @@ namespace Dapr.Actors.Runtime
         {
             EnsureStateProviderInitialized();
 
-            if (this.stateChangeTracker.Count > 0)
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.Count > 0)
             {
                 var stateChangeList = new List<ActorStateChange>();
                 var statesToRemove = new List<string>();
 
-                foreach (var stateName in this.stateChangeTracker.Keys)
+                foreach (var stateName in stateChangeTracker.Keys)
                 {
-                    var stateMetadata = this.stateChangeTracker[stateName];
+                    var stateMetadata = stateChangeTracker[stateName];
 
                     if (stateMetadata.ChangeKind != StateChangeKind.None)
                     {
@@ -303,15 +322,31 @@ namespace Dapr.Actors.Runtime
                 // Remove the states from tracker whcih were marked for removal.
                 foreach (var stateToRemove in statesToRemove)
                 {
-                    this.stateChangeTracker.Remove(stateToRemove);
+                    stateChangeTracker.Remove(stateToRemove);
                 }
             }
         }
 
+        public Task SetStateContext(string stateContext)
+        {
+            if (stateContext != null)
+            {
+                context.Value = (stateContext, new Dictionary<string, StateMetadata>());
+            }
+            else
+            {
+                context.Value = (null, null);
+            }
+
+            return Task.CompletedTask;
+        }
+
         private bool IsStateMarkedForRemove(string stateName)
         {
-            if (this.stateChangeTracker.ContainsKey(stateName) &&
-                this.stateChangeTracker[stateName].ChangeKind == StateChangeKind.Remove)
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName) &&
+                stateChangeTracker[stateName].ChangeKind == StateChangeKind.Remove)
             {
                 return true;
             }
@@ -332,6 +367,18 @@ namespace Dapr.Actors.Runtime
                 throw new InvalidOperationException(
                     "The actor was initialized without a state provider, and so cannot interact with state. " +
                     "If this is inside a unit test, replace Actor.StateProvider with a mock.");
+            }
+        }
+
+        private Dictionary<string, StateMetadata> GetContextualStateTracker()
+        {
+            if (context.Value.id != null)
+            {
+                return context.Value.tracker;
+            }
+            else
+            {
+                return defaultTracker;
             }
         }
 

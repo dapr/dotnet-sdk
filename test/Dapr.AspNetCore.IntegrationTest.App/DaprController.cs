@@ -23,6 +23,12 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
+        [CustomTopic("pubsub", "C")]
+        [HttpPost("/C")]
+        public void TopicC()
+        {
+        }
+
         [Topic("pubsub", "register-user")]
         [HttpPost("/register-user")]
         public ActionResult<UserInfo> RegisterUser(UserInfo user)

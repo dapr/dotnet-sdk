@@ -8,10 +8,8 @@ namespace Dapr.Actors.Test.Runtime
     using Dapr.Actors.Runtime;
     using Moq;
     using Xunit;
-    using Microsoft.Extensions.Logging;
     using System;
     using FluentAssertions;
-    using Dapr.Actors.Client;
 
     public sealed class ActorRuntimeOptionsTests
     {
@@ -112,6 +110,36 @@ namespace Dapr.Actors.Test.Runtime
             Action action = () => options.JsonSerializerOptions = null;
 
             action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Fact]
+        public void SettingRemindersStoragePartitionsToLessThanZero_Fails()
+        {
+            var options = new ActorRuntimeOptions();
+            Action action = () => options.RemindersStoragePartitions = -1;
+
+            action.Should().Throw<ArgumentOutOfRangeException>();
+        }
+
+        [Fact]
+        public void SettingReentrancyConfigWithoutMaxStackDepth_Succeeds()
+        {
+            var options = new ActorRuntimeOptions();
+            options.ReentrancyConfig.Enabled = true;
+
+            Assert.True(options.ReentrancyConfig.Enabled);
+            Assert.Null(options.ReentrancyConfig.MaxStackDepth);
+        }
+
+        [Fact]
+        public void SettingReentrancyConfigWithMaxStackDepth_Succeeds()
+        {
+            var options = new ActorRuntimeOptions();
+            options.ReentrancyConfig.Enabled = true;
+            options.ReentrancyConfig.MaxStackDepth = 64;
+
+            Assert.True(options.ReentrancyConfig.Enabled);
+            Assert.Equal(64, options.ReentrancyConfig.MaxStackDepth);
         }
     }
 }

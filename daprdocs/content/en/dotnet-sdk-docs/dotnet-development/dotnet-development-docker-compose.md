@@ -35,7 +35,7 @@ Similar to running locally with `dapr run` for each service you need to choose a
 
 The compose file will contain at a minimum:
 
-- A network that the containers use to communiate
+- A network that the containers use to communicate
 - Each service's container
 - A `<service>-daprd` sidecar container with the service's port and app-id specified
 - Additional dependencies that run in containers (redis for example)
