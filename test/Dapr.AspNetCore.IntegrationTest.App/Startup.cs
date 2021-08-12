@@ -7,6 +7,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 {
     using System.Threading.Tasks;
     using Dapr.Client;
+    using Microsoft.AspNetCore.Authentication;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
@@ -24,6 +26,10 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddAuthentication().AddDapr(options => options.Token = "abcdefg");
+
+            services.AddAuthorization(o => o.AddDapr());
+
             services.AddControllers().AddDapr();
         }
 
@@ -35,6 +41,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             }
 
             app.UseRouting();
+
+            app.UseAuthentication();
 
             app.UseAuthorization();
 
