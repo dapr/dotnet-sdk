@@ -1,7 +1,11 @@
-# Dapr Actor example
+# Dapr PubSub example
 
-The Actor example shows how to create a virtual actor (`DemoActor`) and invoke its methods on the client application.
+The PubSub example 
+shows how to create a service which will publish the event(`Publisher`).
 
+shows how to receive the event by Declarative using yaml file(`Subscriber`).
+
+shows how to receive the event by Programmatic using coding definition(`AnotherSubscriber`).
 ## Prerequisites
 
 - [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
@@ -12,10 +16,11 @@ The Actor example shows how to create a virtual actor (`DemoActor`) and invoke i
 ## Projects in sample
 - The **model project (`\PubSub.Domain`)** contains the model definition for the pub&sub.
 - The **publish project(`\Publisher`)** contains the way how to publish a message to the specified topic.
-- The **subscribe project (`\Subscriber`)** contains the way how to subscribe a topic and receive message.
+- The **subscribe project (`\Subscriber`)** contains the way how to subscribe a topic and receive message by Declarative way.
+- The **subscribe project (`\AnotherSubscriber`)** contains the way how to subscribe a topic and receive message by Programmatic way.
 ## Running the example
 
-To run the pubsub service locally 
+To run the pub&sub service locally 
 
 run this command in `Publisher` directory:
 ```sh
@@ -25,9 +30,14 @@ run this command in `Subscriber` directory:
 ```sh
 dapr run --app-id Subscriber --app-port 5001 --components-path ./components dotnet run
 ```
+run this command in `AnotherSubscriber` directory:
+```sh
+dapr run --app-id Subscriber --app-port 5002 --components-path ./components dotnet run
+```
 
 The `Publisher` service will listen on port `5000` for HTTP.
 The `Subscriber` service will listen on port `5001` for HTTP.
+The `AnotherSubscriber` service will listen on port `5002` for HTTP.
 
 *Note: For Running the sample with ISS express, change the launchsettings.json to use 127.0.0.1 instead of localhost.*
 
@@ -38,6 +48,8 @@ how to make client publish a event for pub&sub using Redis default.
 
 The `Sublisher` project shows
 how to subscribe a topic use yaml,and deal with event.
+The `AnotherSublisher` project shows
+how to subscribe a topic by using program,and deal with event.
 
 `See ./components/subscription.yaml`.
 
