@@ -5,9 +5,10 @@
 
 namespace Microsoft.AspNetCore.Builder
 {
-    using System.Collections;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Text.Json;
+    using System.Text.Json.Serialization;
     using Dapr;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
@@ -28,54 +29,7 @@ namespace Microsoft.AspNetCore.Builder
         /// <returns>The <see cref="IEndpointConventionBuilder" />.</returns>
         public static IEndpointConventionBuilder MapSubscribeHandler(this IEndpointRouteBuilder endpoints)
         {
-            if (endpoints is null)
-            {
-                throw new System.ArgumentNullException(nameof(endpoints));
-            }
-
-            return endpoints.MapGet("dapr/subscribe", async context =>
-            {
-                var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
-                var entries = dataSource.Endpoints
-                    .OfType<RouteEndpoint>()
-                    .Where(e => e.Metadata.GetMetadata<ITopicMetadata>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
-                    .Distinct()
-                    .Select(e => (e.Metadata.GetMetadata<ITopicMetadata>().PubsubName, e.Metadata.GetMetadata<ITopicMetadata>().Name, e.RoutePattern));
-
-                context.Response.ContentType = "application/json";
-                using var writer = new Utf8JsonWriter(context.Response.BodyWriter);
-                writer.WriteStartArray();
-
-                var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
-                foreach (var entry in entries)
-                {
-                    // only return topics which have routes without parameters.
-                    if (entry.RoutePattern.Parameters.Count > 0)
-                    {
-                        if (logger != null)
-                        {
-                            logger.LogError("Topic subscription doesn't support route with parameters. Subscription for topic {name} is removed.", entry.Name);
-                        }
-
-                        continue;
-                    }
-
-                    writer.WriteStartObject();
-                    writer.WriteString("topic", entry.Name);
-
-                    var route = string.Join("/",
-                        entry.RoutePattern.PathSegments
-                        .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
-                        .Select(part => part.Content))));
-
-                    writer.WriteString("route", route);
-                    writer.WriteString("pubsubName", entry.PubsubName);
-                    writer.WriteEndObject();
-                }
-
-                writer.WriteEndArray();
-                await writer.FlushAsync();
-            });
+            return CreateSubscribeEndPoint(endpoints);
         }
 
         /// <summary>
@@ -87,6 +41,11 @@ namespace Microsoft.AspNetCore.Builder
         /// <returns>The <see cref="IEndpointConventionBuilder" />.</returns>
         /// <seealso cref="MapSubscribeHandler(IEndpointRouteBuilder)"/>
         public static IEndpointConventionBuilder MapSubscribeHandler(this IEndpointRouteBuilder endpoints, SubscribeOptions options)
+        {
+            return CreateSubscribeEndPoint(endpoints, options);
+        }
+
+        private static IEndpointConventionBuilder CreateSubscribeEndPoint(IEndpointRouteBuilder endpoints, SubscribeOptions options = null)
         {
             if (endpoints is null)
             {
@@ -105,7 +64,7 @@ namespace Microsoft.AspNetCore.Builder
 
                 var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
 
-                ArrayList subscriptions = new();
+                List<Subscription> subscriptions = new();
                 foreach (var entry in entries)
                 {
                     // only return topics which have routes without parameters.
@@ -124,19 +83,30 @@ namespace Microsoft.AspNetCore.Builder
                         .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
                         .Select(part => part.Content))));
 
-                    subscriptions.Add(new
+                    var rawPayload = entry.EnableRawPayload ?? options?.EnableRawPayload;
+                    var subscription = new Subscription
                     {
-                        topic = entry.Name,
-                        pubsubName = entry.PubsubName,
-                        route,
-                        metadata = new
+                        Topic = entry.Name,
+                        PubsubName = entry.PubsubName,
+                        Route = route
+                    };
+
+                    if (rawPayload != null)
+                    {
+                        subscription.Metadata = new Metadata
                         {
-                            rawPayload = (entry.EnableRawPayload == true) ? "true" : (entry.EnableRawPayload == false) ? "false" : options.EnableRawPayload.ToString().ToLower()
-                        }
-                    }); ;
+                            RawPayload = rawPayload.ToString().ToLower()
+                        };
+                    }
+                    subscriptions.Add(subscription);
                 }
 
-                await context.Response.WriteAsync(JsonSerializer.Serialize(subscriptions));
+                await context.Response.WriteAsync(JsonSerializer.Serialize(subscriptions,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    }));
             });
         }
     }
