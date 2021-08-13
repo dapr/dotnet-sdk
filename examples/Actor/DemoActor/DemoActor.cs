@@ -10,6 +10,7 @@ namespace DaprDemoActor
     using System.Threading.Tasks;
     using Dapr.Actors.Runtime;
     using IDemoActorInterface;
+    using Microsoft.Extensions.Logging;
 
     // The following example showcases a few features of Actors
     //
@@ -59,7 +60,7 @@ namespace DaprDemoActor
 
         public async Task RegisterReminder()
         {
-            await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), 2);
         }
 
         public Task UnregisterReminder()
@@ -71,8 +72,9 @@ namespace DaprDemoActor
         {
             // This method is invoked when an actor reminder is fired.
             var actorState = await this.StateManager.GetStateAsync<MyData>(StateName);
-            actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}'";
+            actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}' with";
             await this.StateManager.SetStateAsync<MyData>(StateName, actorState);
+            this.Logger.LogInformation($"Received reminder invocation {this.Id} with data {period}.");
         }
 
         class TimerParams

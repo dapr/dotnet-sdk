@@ -54,6 +54,22 @@ namespace Dapr.Actors.Test
             }
         };
 
+        public static readonly IEnumerable<object[]> DaprReminderTimeSpanToDaprISO8601Format = new List<object[]>
+        {
+            new object[]
+            {
+                new TimeSpan(10, 10, 10, 10),
+                1,
+                "R1/P10DT10H10M10S"
+            },
+            new object[]
+            {
+                new TimeSpan(10, 10, 10, 10),
+                -1,
+                "250h10m10s0ms"
+            }
+        };
+
         [Theory]
         [MemberData(nameof(DaprFormatTimeSpanJsonStringsAndExpectedDeserializedValues))]
         public void DaprFormat_TimeSpan_Parsing(string daprFormatTimeSpanJsonString, TimeSpan expectedDeserializedValue)
@@ -108,6 +124,14 @@ namespace Dapr.Actors.Test
             (TimeSpan duration, int repetition) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(valueString);
             Assert.Equal(expectedDuration, duration);
             Assert.Equal(expectedRepetition, repetition);
+        }
+
+        [Theory]
+        [MemberData(nameof(DaprReminderTimeSpanToDaprISO8601Format))]
+        public void DaprReminderFormat_ConvertFromTimeSpan_ToDaprFormat(TimeSpan period, int repetitions, string expectedValue)
+        {
+            var actualValue = ConverterUtils.ConvertTimeSpanValueInISO8601Format(period, repetitions);
+            Assert.Equal(expectedValue, actualValue);
         }
     }
 }

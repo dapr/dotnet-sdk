@@ -217,14 +217,13 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <param name="reminderName">The name of the reminder to register. The name must be unique per actor.</param>
         /// <param name="state">User state passed to the reminder invocation.</param>
-        /// <param name="dueTime">The amount of time to delay before invoking the reminder for the first time. Specify negative one (-1) milliseconds to disable invocation. Specify zero (0) to invoke the reminder immediately after registration.
-        /// </param>
+        /// <param name="dueTime">The amount of time to delay before invoking the reminder for the first time. Specify negative one (-1) milliseconds to disable invocation. Specify zero (0) to invoke the reminder immediately after registration.</param>
         /// <param name="period">
         /// The time interval between reminder invocations after the first invocation. Specify negative one (-1) milliseconds to disable periodic invocation.
         /// </param>
+        /// <param name="repetitions">The number of repetitions for which the reminder should be invoked.</param>
         /// <returns>
-        /// <param name="repetitions"></param>
-        /// A task that represents the asynchronous registration operation. The result of the task provides information about the registered reminder and is used to unregister the reminder using UnregisterReminderAsync />.
+        /// A task that represents the asynchronous registration operation. The result of the task provides information about the registered reminder and is used to unregister the reminder using UnregisterReminderAsync.
         /// </returns>
         /// <remarks>
         /// <para>
@@ -244,7 +243,8 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
-        /// Unregisters a reminder previously registered using <see cref="o:Dapr.Actors.Runtime.Actor.RegisterReminderAsync" />.
+        /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(String,byte[],TimeSpan,TimeSpan,int)" /> or
+        /// <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(String,byte[],TimeSpan,TimeSpan)" />
         /// </summary>
         /// <param name="reminder">The actor reminder to unregister.</param>
         /// <returns>
