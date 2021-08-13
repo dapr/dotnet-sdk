@@ -286,7 +286,7 @@ namespace Dapr.Actors.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The  {0} interface &apos;{1}&apos; is using generics. Generic interfaces cannot be remoted..
+        ///   Looks up a localized string similar to The {0} interface &apos;{1}&apos; is using generics. Generic interfaces cannot be remoted..
         /// </summary>
         internal static string ErrorRemotedInterfaceIsGeneric {
             get {
@@ -295,7 +295,7 @@ namespace Dapr.Actors.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; has &apos;{4}&apos; parameter &apos;{3}&apos;, and it is not the last parameter. If a method of the {0} interface has parameter of type &apos;{4}&apos; it must be the last parameter..
+        ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; has a &apos;{4}&apos; parameter that is not the last parameter. If an actor method accepts a &apos;{4}&apos; parameter, it must be the last parameter..
         /// </summary>
         internal static string ErrorRemotedMethodCancellationTokenOutOfOrder {
             get {
@@ -372,6 +372,15 @@ namespace Dapr.Actors.Resources {
         internal static string InvalidActorKind {
             get {
                 return ResourceManager.GetString("InvalidActorKind", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Repetition must be a positive integer..
+        /// </summary>
+        internal static string RepetitionArgumentOutOfRange {
+            get {
+                return ResourceManager.GetString("RepetitionArgumentOutOfRange", resourceCulture);
             }
         }
         

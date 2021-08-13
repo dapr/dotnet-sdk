@@ -80,7 +80,7 @@ namespace Dapr.Actors.Runtime
         {
             if (repetitions < 0)
             {
-                throw new ArgumentException("TODO: fill in message");
+                throw new ArgumentException(SR.RepetitionArgumentOutOfRange);
             }
             this.RepetitionsLeft = repetitions;
         }
