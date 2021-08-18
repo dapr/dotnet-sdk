@@ -6,6 +6,7 @@
 namespace Microsoft.AspNetCore.Builder
 {
     using System;
+    using System.Text;
     using Dapr.Actors;
     using Dapr.Actors.Runtime;
     using Microsoft.AspNetCore.Http;
@@ -84,6 +85,7 @@ namespace Microsoft.AspNetCore.Builder
             {
                 context.Response.ContentType = "application/json";
                 await runtime.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
+                await context.Response.BodyWriter.FlushAsync();
             }).WithDisplayName(b => "Dapr Actors Config");
         }
 
@@ -132,11 +134,11 @@ namespace Microsoft.AspNetCore.Builder
                         }
 
                         await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
-                        }
+                    }
                     finally
                     {
                         ActorReentrancyContextAccessor.ReentrancyContext = null;
-                    }                    
+                    }
                 }
                 else
                 {
