@@ -5,12 +5,12 @@
 
 namespace Microsoft.AspNetCore.Builder
 {
-    using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Text.Json;
-    using System.Threading;
-    using System.Threading.Tasks;
+    using System.Text.Json.Serialization;
     using Dapr;
+    using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.AspNetCore.Routing.Patterns;
     using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +29,24 @@ namespace Microsoft.AspNetCore.Builder
         /// <returns>The <see cref="IEndpointConventionBuilder" />.</returns>
         public static IEndpointConventionBuilder MapSubscribeHandler(this IEndpointRouteBuilder endpoints)
         {
+            return CreateSubscribeEndPoint(endpoints);
+        }
+
+        /// <summary>
+        /// Maps an endpoint that will respond to requests to <c>/dapr/subscribe</c> from the
+        /// Dapr runtime.
+        /// </summary>
+        /// <param name="endpoints">The <see cref="IEndpointRouteBuilder" />.</param>
+        /// <param name="options">Configuration options</param>
+        /// <returns>The <see cref="IEndpointConventionBuilder" />.</returns>
+        /// <seealso cref="MapSubscribeHandler(IEndpointRouteBuilder)"/>
+        public static IEndpointConventionBuilder MapSubscribeHandler(this IEndpointRouteBuilder endpoints, SubscribeOptions options)
+        {
+            return CreateSubscribeEndPoint(endpoints, options);
+        }
+
+        private static IEndpointConventionBuilder CreateSubscribeEndPoint(IEndpointRouteBuilder endpoints, SubscribeOptions options = null)
+        {
             if (endpoints is null)
             {
                 throw new System.ArgumentNullException(nameof(endpoints));
@@ -41,13 +59,12 @@ namespace Microsoft.AspNetCore.Builder
                     .OfType<RouteEndpoint>()
                     .Where(e => e.Metadata.GetMetadata<ITopicMetadata>()?.Name != null)   // only endpoints which have  TopicAttribute with not null Name.
                     .Distinct()
-                    .Select(e => (e.Metadata.GetMetadata<ITopicMetadata>().PubsubName, e.Metadata.GetMetadata<ITopicMetadata>().Name, e.RoutePattern));
+                    .Select(e => (e.Metadata.GetMetadata<ITopicMetadata>().PubsubName, e.Metadata.GetMetadata<ITopicMetadata>().Name, e.Metadata.GetMetadata<IRawTopicMetadata>()?.EnableRawPayload, e.RoutePattern));
 
-                context.Response.ContentType = "application/json";
-                using var writer = new Utf8JsonWriter(context.Response.BodyWriter);
-                writer.WriteStartArray();
 
                 var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
+
+                List<Subscription> subscriptions = new();
                 foreach (var entry in entries)
                 {
                     // only return topics which have routes without parameters.
@@ -61,21 +78,35 @@ namespace Microsoft.AspNetCore.Builder
                         continue;
                     }
 
-                    writer.WriteStartObject();
-                    writer.WriteString("topic", entry.Name);
-
                     var route = string.Join("/",
                         entry.RoutePattern.PathSegments
                         .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
                         .Select(part => part.Content))));
 
-                    writer.WriteString("route", route);
-                    writer.WriteString("pubsubName", entry.PubsubName);
-                    writer.WriteEndObject();
+                    var rawPayload = entry.EnableRawPayload ?? options?.EnableRawPayload;
+                    var subscription = new Subscription
+                    {
+                        Topic = entry.Name,
+                        PubsubName = entry.PubsubName,
+                        Route = route
+                    };
+
+                    if (rawPayload != null)
+                    {
+                        subscription.Metadata = new Metadata
+                        {
+                            RawPayload = rawPayload.ToString().ToLower()
+                        };
+                    }
+                    subscriptions.Add(subscription);
                 }
 
-                writer.WriteEndArray();
-                await writer.FlushAsync();
+                await context.Response.WriteAsync(JsonSerializer.Serialize(subscriptions,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    }));
             });
         }
     }
