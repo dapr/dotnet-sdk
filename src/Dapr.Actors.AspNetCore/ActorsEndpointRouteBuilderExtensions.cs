@@ -6,7 +6,6 @@
 namespace Microsoft.AspNetCore.Builder
 {
     using System;
-    using System.Text;
     using Dapr.Actors;
     using Dapr.Actors.Runtime;
     using Microsoft.AspNetCore.Http;
