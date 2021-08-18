@@ -8,7 +8,7 @@ namespace Dapr
     /// <summary>
     /// This class defines subscribe endpoint response
     /// </summary>
-    public class Subscription
+    internal class Subscription
     {
         /// <summary>
         /// Gets or sets the topic name.
@@ -34,7 +34,7 @@ namespace Dapr
     /// <summary>
     /// This class defines the metadata for subscribe endpoint.
     /// </summary>
-    public class Metadata
+    internal class Metadata
     {
         /// <summary>
         /// Gets or sets the rawoayload
