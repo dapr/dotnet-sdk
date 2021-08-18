@@ -10,9 +10,9 @@
     </PackageReference>
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
     <PackageReference Include="Google.Protobuf" Version="3.13.0" />
-    <PackageReference Include="Grpc.Core.Testing" Version="2.32.0" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.32.0" PrivateAssets="All" />
+    <PackageReference Include="Grpc.Core.Testing" Version="2.38.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.38.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.38.1" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
     <PackageReference Include="moq" Version="4.14.7" />
     <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.0.123" />      
