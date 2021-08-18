@@ -35,51 +35,20 @@ namespace Microsoft.AspNetCore.Builder
 
             var builders = new[]
             {
-                MapDaprConfigEndpoint(endpoints,endpoints.ServiceProvider),
-                MapActorDeactivationEndpoint(endpoints,endpoints.ServiceProvider),
-                MapActorMethodEndpoint(endpoints,endpoints.ServiceProvider),
-                MapReminderEndpoint(endpoints,endpoints.ServiceProvider),
-                MapTimerEndpoint(endpoints,endpoints.ServiceProvider),
+                MapDaprConfigEndpoint(endpoints),
+                MapActorDeactivationEndpoint(endpoints),
+                MapActorMethodEndpoint(endpoints),
+                MapReminderEndpoint(endpoints),
+                MapTimerEndpoint(endpoints),
                 MapActorHealthChecks(endpoints),
             };
 
             return new CompositeEndpointConventionBuilder(builders);
         }
 
-
-        /// <summary>
-        /// Maps endpoints for Dapr Actors into the <see cref="IEndpointRouteBuilder" />.
-        /// </summary>
-        /// <param name="endpoints">The <see cref="IEndpointRouteBuilder" />.</param>
-        /// <param name="serviceProvider">The <see cref="IServiceProvider" />.</param>
-        /// <returns>
-        /// An <see cref="IEndpointConventionBuilder" /> that can be used to configure the endpoints.
-        /// </returns>
-        public static IEndpointConventionBuilder MapActorsHandlers(this IEndpointRouteBuilder endpoints, IServiceProvider serviceProvider)
+        private static IEndpointConventionBuilder MapDaprConfigEndpoint(this IEndpointRouteBuilder endpoints)
         {
-            if (serviceProvider.GetService<ActorRuntime>() is null)
-            {
-                throw new InvalidOperationException(
-                    "The ActorRuntime service is not registered with the dependency injection container. " +
-                    "Call AddActors() inside ConfigureServices() to register the actor runtime and actor types.");
-            }
-
-            var builders = new[]
-            {
-                MapDaprConfigEndpoint(endpoints, serviceProvider),
-                MapActorDeactivationEndpoint(endpoints, serviceProvider),
-                MapActorMethodEndpoint(endpoints, serviceProvider),
-                MapReminderEndpoint(endpoints, serviceProvider),
-                MapTimerEndpoint(endpoints, serviceProvider),
-                MapActorHealthChecks(endpoints),
-            };
-
-            return new CompositeEndpointConventionBuilder(builders);
-        }
-
-        private static IEndpointConventionBuilder MapDaprConfigEndpoint(this IEndpointRouteBuilder endpoints, IServiceProvider serviceProvider)
-        {
-            var runtime = serviceProvider.GetRequiredService<ActorRuntime>();
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapGet("dapr/config", async context =>
             {
                 context.Response.ContentType = "application/json";
@@ -88,9 +57,9 @@ namespace Microsoft.AspNetCore.Builder
             }).WithDisplayName(b => "Dapr Actors Config");
         }
 
-        private static IEndpointConventionBuilder MapActorDeactivationEndpoint(this IEndpointRouteBuilder endpoints, IServiceProvider serviceProvider)
+        private static IEndpointConventionBuilder MapActorDeactivationEndpoint(this IEndpointRouteBuilder endpoints)
         {
-            var runtime = serviceProvider.GetRequiredService<ActorRuntime>();
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapDelete("actors/{actorTypeName}/{actorId}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
@@ -100,9 +69,9 @@ namespace Microsoft.AspNetCore.Builder
             }).WithDisplayName(b => "Dapr Actors Deactivation");
         }
 
-        private static IEndpointConventionBuilder MapActorMethodEndpoint(this IEndpointRouteBuilder endpoints, IServiceProvider serviceProvider)
+        private static IEndpointConventionBuilder MapActorMethodEndpoint(this IEndpointRouteBuilder endpoints)
         {
-            var runtime = serviceProvider.GetRequiredService<ActorRuntime>();
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
@@ -153,9 +122,9 @@ namespace Microsoft.AspNetCore.Builder
             }).WithDisplayName(b => "Dapr Actors Invoke");
         }
 
-        private static IEndpointConventionBuilder MapReminderEndpoint(this IEndpointRouteBuilder endpoints, IServiceProvider serviceProvider)
+        private static IEndpointConventionBuilder MapReminderEndpoint(this IEndpointRouteBuilder endpoints)
         {
-            var runtime = serviceProvider.GetRequiredService<ActorRuntime>();
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/remind/{reminderName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
@@ -168,9 +137,9 @@ namespace Microsoft.AspNetCore.Builder
             }).WithDisplayName(b => "Dapr Actors Reminder");
         }
 
-        private static IEndpointConventionBuilder MapTimerEndpoint(this IEndpointRouteBuilder endpoints, IServiceProvider serviceProvider)
+        private static IEndpointConventionBuilder MapTimerEndpoint(this IEndpointRouteBuilder endpoints)
         {
-            var runtime = serviceProvider.GetRequiredService<ActorRuntime>();
+            var runtime = endpoints.ServiceProvider.GetRequiredService<ActorRuntime>();
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
