@@ -77,17 +77,6 @@ namespace Dapr.Actors.Runtime
                 app.UseRouting();
                 app.UseEndpoints(endpoints =>
                 {
-                    //endpoints.MapHealthChecks("/healthz", new HealthCheckOptions()
-                    //{
-                    //    // Write something different so we know this one is called.
-                    //    ResponseWriter = async (httpContext, report) =>
-                    //    {
-                    //        await httpContext.Response.WriteAsync(
-                    //            report.Status == HealthStatus.Healthy ?
-                    //            "Ice Cold, Solid Gold!" :
-                    //            "Oh Noes!");
-                    //    },
-                    //});
                     endpoints.MapActorsHandlers();
                 });
             }
