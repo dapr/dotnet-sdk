@@ -11,7 +11,7 @@ namespace Dapr.Actors.Runtime
 
     internal class ConverterUtils
     {
-        private static Regex regex = new Regex("^(R(?<repetition>\\d+)/)?P((?<year>\\d+)Y)?((?<month>\\d+)M)?((?<week>\\d+)W)?((?<day>\\d+)D)?(T((?<hour>\\d+)H)?((?<minute>\\d+)M)?((?<second>\\d+)S)?)?$");
+        private static Regex regex = new Regex("^(R(?<repetition>\\d+)/)?P((?<year>\\d+)Y)?((?<month>\\d+)M)?((?<week>\\d+)W)?((?<day>\\d+)D)?(T((?<hour>\\d+)H)?((?<minute>\\d+)M)?((?<second>\\d+)S)?)?$", RegexOptions.Compiled);
         public static TimeSpan ConvertTimeSpanFromDaprFormat(string valueString)
         {
             if (string.IsNullOrEmpty(valueString))
