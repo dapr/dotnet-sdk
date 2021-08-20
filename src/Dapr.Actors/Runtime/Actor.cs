@@ -257,7 +257,8 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
-        /// Unregisters a reminder previously registered using <see cref="o:Dapr.Actors.Runtime.Actor.RegisterReminderAsync" />.
+        /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(String,byte[],TimeSpan,TimeSpan,int)" /> or
+        /// <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(String,byte[],TimeSpan,TimeSpan)" />
         /// </summary>
         /// <param name="reminderName">The actor reminder name to unregister.</param>
         /// <returns>
