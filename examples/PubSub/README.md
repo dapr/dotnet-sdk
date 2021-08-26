@@ -14,7 +14,7 @@ shows how to receive the event by Programmatic using coding definition(`Programm
 - [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
 
 ## Projects in sample
-- The **model project (`\PubSub.Domain`)** contains the model definition for the pub&sub.
+- The **model project (`\PubSub.Domain`)** contains the model definition for the pubsub.
 - The **publish project(`\Publisher`)** shows how to publish a message to the specified topic.
 - The **subscribe project (`\DeclarativeSubscriber`)** shows how to subscribe to a topic and receive messages using the Declarative method.
 - The **subscribe project (`\ProgrammaticSubscriber`)** shows how to subscribe to a topic and receive messages using the Programmatic method.
