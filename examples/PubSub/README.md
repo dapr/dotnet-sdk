@@ -6,6 +6,8 @@ shows how to create a service which will publish the event(`Publisher`).
 shows how to receive the event by Declarative using yaml file(`DeclaretiveSubscriber`).
 
 shows how to receive the event by Programmatic using coding definition(`ProgrammaticSubscriber`).
+
+shows how to receive the event by SDK using coding definition(`ProgrammaticSubscriberDotNet`).
 ## Prerequisites
 
 - [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
