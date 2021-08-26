@@ -29,6 +29,18 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
+        [Topic("pubsub", "D", true)]
+        [HttpPost("/D")]
+        public void TopicD()
+        {
+        }
+
+        [Topic("pubsub", "E", false)]
+        [HttpPost("/E")]
+        public void TopicE()
+        {
+        }
+
         [Topic("pubsub", "register-user")]
         [HttpPost("/register-user")]
         public ActionResult<UserInfo> RegisterUser(UserInfo user)
