@@ -18,6 +18,7 @@ shows how to receive the event by Programmatic using coding definition(`Programm
 - The **publish project(`\Publisher`)** shows how to publish a message to the specified topic.
 - The **subscribe project (`\DeclarativeSubscriber`)** shows how to subscribe to a topic and receive messages using the Declarative method.
 - The **subscribe project (`\ProgrammaticSubscriber`)** shows how to subscribe to a topic and receive messages using the Programmatic method.
+- The **Subscribe project (`\ProgrammaticSubscriberDotNet`)** shows how to subscribe to a topic and receive messages using the SDK.
 ## Running the example
 
 To run the pub&sub service locally 
