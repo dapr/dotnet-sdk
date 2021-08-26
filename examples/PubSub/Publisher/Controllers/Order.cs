@@ -19,19 +19,26 @@ namespace Publisher.Controllers
             _daprClient = daprClient;
         }
 
+        private readonly Guid id = Guid.NewGuid();
+        private static Order order=null; 
         /// <summary>
         /// this is the demo to show
         /// how to publish a custom business event.
         /// </summary>
         [HttpPost]
-        public async void UpdateOrderAsync()
+        public async void UpdateOrderOwnerAsync(Guid newOwnerId)
         {
+            order ??= new Order() { OrderId = id, OwnerId = Guid.NewGuid() };
+            var oldValue = order.OwnerId;
+            order.OwnerId = newOwnerId;
+
             var payload = new DemoOrderETO()
             {
-                OrderId = Guid.NewGuid(),
+                OrderId = order.OrderId,
                 DateTime = DateTime.Now,
-                OldValue = "this is old value",
-                NewValue = "this is new value"
+                OldValue = oldValue.ToString(),
+                NewValue = newOwnerId.ToString(),
+                Type = nameof(order.OwnerId)
             };
             Console.WriteLine(JsonSerializer.Serialize(payload));
             

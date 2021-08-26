@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -7,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using PubSub.Domain;
 
-namespace Subscriber.Controllers
+namespace DeclarativeSubscriber.Controllers
 {
     [ApiController]
     [Route("Order")]
@@ -19,14 +18,6 @@ namespace Subscriber.Controllers
                                            "NewValue:\t\t{2}\r\n" +
                                            "OrderUpdateTime:\t{3}\r\n" +
                                            "====================";
-        [HttpGet]
-        [Route("/dapr/subscribe")]
-        public IActionResult DaprSubscribe()
-        {
-            var data =new {pubsubname = "pubsub",topic="order.update",route="/Order"};
-            return new JsonResult(new ArrayList(){data});
-        }
-        
         [HttpPost]
         public async Task<OkResult> OnOrderUpdateAsync(PubSubEto<DemoOrderETO> meta)
         {
