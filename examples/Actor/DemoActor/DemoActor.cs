@@ -72,7 +72,7 @@ namespace DaprDemoActor
         {
             // This method is invoked when an actor reminder is fired.
             var actorState = await this.StateManager.GetStateAsync<MyData>(StateName);
-            actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}' with";
+            actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}'";
             await this.StateManager.SetStateAsync<MyData>(StateName, actorState);
             this.Logger.LogInformation($"Received reminder invocation {this.Id} with data {period}.");
         }

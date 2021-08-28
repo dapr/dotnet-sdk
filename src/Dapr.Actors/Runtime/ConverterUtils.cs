@@ -66,7 +66,7 @@ namespace Dapr.Actors.Runtime
 
         public static string ConvertTimeSpanValueInISO8601Format(TimeSpan value, int repetitions)
         {
-            if (repetitions == -1)
+            if (repetitions <= 0)
             {
                 return ConvertTimeSpanValueInDaprFormat(value);
             }

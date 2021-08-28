@@ -1,4 +1,4 @@
-// ------------------------------------------------------------
+﻿// ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
@@ -67,7 +67,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="state">The state associated with the reminder.</param>
         /// <param name="dueTime">The reminder due time.</param>
         /// <param name="period">The reminder period.</param>
-        /// <param name="repetitions">The number of time reminder should be invoked.</param>
+        /// <param name="repetitions">The number of times reminder should be invoked.</param>
         public ActorReminder(
             string actorType,
             ActorId actorId,
