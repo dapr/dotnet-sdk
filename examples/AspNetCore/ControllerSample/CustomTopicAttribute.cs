@@ -18,12 +18,19 @@ namespace ControllerSample
         {
             this.PubsubName = Environment.ExpandEnvironmentVariables(pubsubName);
             this.Name = Environment.ExpandEnvironmentVariables(name);
+            this.Priority = int.MaxValue;
         }
+
+        /// <inheritdoc/>
+        public string PubsubName { get; }
 
         /// <inheritdoc/>
         public string Name { get; }
 
         /// <inheritdoc/>
-        public string PubsubName { get; }
+        public new string Match { get; }
+
+        /// <inheritdoc/>
+        public int Priority { get; }
     }
 }

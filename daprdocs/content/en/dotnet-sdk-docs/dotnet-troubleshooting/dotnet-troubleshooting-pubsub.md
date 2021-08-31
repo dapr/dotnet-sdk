@@ -130,6 +130,11 @@ If you're using a controller for pub/sub you should have a method like:
 [Topic("pubsub", "deposit")]
 [HttpPost("deposit")]
 public async Task<ActionResult> Deposit(...)
+
+// Using Pub/Sub routing
+[Topic("pubsub", "transactions", "event.type == \"withdraw.v2\"", 1)]
+[HttpPost("withdraw")]
+public async Task<ActionResult> Withdraw(...)
 ```
 
 In this example the `Topic` and `HttpPost` attributes are required, but other details might be different.
@@ -154,8 +159,23 @@ In this step we'll verify that the entries registered with pub/sub are reachable
 
 ```json
 [
-    {"topic":"deposit","route":"deposit","pubsubName":"pubsub"},
-    {"topic":"withdraw","route":"withdraw","pubsubName":"pubsub"}
+  {
+    "pubsubName": "pubsub",
+    "topic": "deposit",
+    "route": "deposit"
+  },
+  {
+    "pubsubName": "pubsub",
+    "topic": "deposit",
+    "routes": {
+      "rules": [
+        {
+          "match": "event.type == \"withdraw.v2\"",
+          "path": "withdraw"
+        }
+      ]
+    }
+  }
 ]
 ```
 

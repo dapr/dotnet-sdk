@@ -41,6 +41,18 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
+        [Topic("pubsub", "E", false, "event.type == \"critical\"", 1)]
+        [HttpPost("/E-Critical")]
+        public void TopicECritical()
+        {
+        }
+
+        [Topic("pubsub", "E", false, "event.type == \"important\"", 2)]
+        [HttpPost("/E-Important")]
+        public void TopicEImportant()
+        {
+        }
+
         [Topic("pubsub", "register-user")]
         [HttpPost("/register-user")]
         public ActionResult<UserInfo> RegisterUser(UserInfo user)

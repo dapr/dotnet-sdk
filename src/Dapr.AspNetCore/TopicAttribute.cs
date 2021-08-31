@@ -8,7 +8,7 @@ namespace Dapr
     using System;
 
     /// <summary>
-    /// Metadata that describes an endpoint as a subscriber to a topic.
+    /// TopicAttribute describes an endpoint as a subscriber to a topic.
     /// </summary>
     public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata
     {
@@ -24,6 +24,7 @@ namespace Dapr
 
             this.Name = name;
             this.PubsubName = pubsubName;
+            this.Priority = int.MaxValue;
         }
 
         /// <summary>
@@ -40,6 +41,45 @@ namespace Dapr
             this.Name = name;
             this.PubsubName = pubsubName;
             this.EnableRawPayload = enableRawPayload;
+            this.Priority = int.MaxValue;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TopicAttribute" /> class.
+        /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="name">The topic name.</param>
+        /// <param name="match">The CEL expression to test the cloud event with.</param>
+        /// <param name="priority">The priority of the rule (low-to-high values).</param>
+        public TopicAttribute(string pubsubName, string name, string match, int priority)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
+
+            this.Name = name;
+            this.PubsubName = pubsubName;
+            this.Match = match;
+            this.Priority = priority;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TopicAttribute" /> class.
+        /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="name">The topic name.</param>
+        /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
+        /// <param name="match">The CEL expression to test the cloud event with.</param>
+        /// <param name="priority">The priority of the rule (low-to-high values).</param>
+        public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string match, int priority)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
+
+            this.Name = name;
+            this.PubsubName = pubsubName;
+            this.EnableRawPayload = enableRawPayload;
+            this.Match = match;
+            this.Priority = priority;
         }
 
         /// <inheritdoc/>
@@ -50,5 +90,11 @@ namespace Dapr
 
         /// <inheritdoc/>
         public bool? EnableRawPayload { get; }
+
+        /// <inheritdoc/>
+        public new string Match { get; }
+
+        /// <inheritdoc/>
+        public int Priority { get; }
     }
 }
