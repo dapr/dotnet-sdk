@@ -18,7 +18,6 @@ namespace ControllerSample
         {
             this.PubsubName = Environment.ExpandEnvironmentVariables(pubsubName);
             this.Name = Environment.ExpandEnvironmentVariables(name);
-            this.Priority = int.MaxValue;
         }
 
         /// <inheritdoc/>
