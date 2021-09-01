@@ -24,7 +24,6 @@ namespace Dapr
 
             this.Name = name;
             this.PubsubName = pubsubName;
-            this.Priority = int.MaxValue;
         }
 
         /// <summary>
@@ -41,7 +40,6 @@ namespace Dapr
             this.Name = name;
             this.PubsubName = pubsubName;
             this.EnableRawPayload = enableRawPayload;
-            this.Priority = int.MaxValue;
         }
 
         /// <summary>

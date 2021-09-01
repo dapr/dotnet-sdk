@@ -71,9 +71,9 @@ namespace Dapr.AspNetCore.IntegrationTest
                     subscriptions.Should().Contain(("pubsub", "register-user", "register-user", string.Empty, string.Empty));
                     subscriptions.Should().Contain(("pubsub", "register-user-plaintext", "register-user-plaintext", string.Empty, string.Empty));
                     subscriptions.Should().Contain(("pubsub", "D", "D", "true", string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "E", "E", "false", string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "E", "E-Critical", "false", "event.type == \"critical\""));
-                    subscriptions.Should().Contain(("pubsub", "E", "E-Important", "false", "event.type == \"important\""));
+                    subscriptions.Should().Contain(("pubsub", "E", "E", string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "E", "E-Critical", string.Empty, "event.type == \"critical\""));
+                    subscriptions.Should().Contain(("pubsub", "E", "E-Important", string.Empty, "event.type == \"important\""));
 
                     // Test priority route sorting
                     var eTopic = subscriptions.FindAll(e => e.Topic == "E");

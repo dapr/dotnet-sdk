@@ -54,93 +54,78 @@ namespace Microsoft.AspNetCore.Builder
 
             return endpoints.MapGet("dapr/subscribe", async context =>
             {
+                var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
                 var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
-                var entries = dataSource.Endpoints
+                var subscriptions = dataSource.Endpoints
                     .OfType<RouteEndpoint>()
-                    .Where(e => e.Metadata.GetMetadata<ITopicMetadata>()?.Name != null)   // only endpoints which have TopicAttribute with not null Name.
+                    .Where(e => e.Metadata.GetMetadata<ITopicMetadata>()?.Name != null) // only endpoints which have TopicAttribute with not null Name.
                     .Distinct()
-                    .Select(e => (e.Metadata.GetMetadata<ITopicMetadata>().PubsubName, e.Metadata.GetMetadata<ITopicMetadata>().Name, e.Metadata.GetMetadata<IRawTopicMetadata>()?.EnableRawPayload, e.Metadata.GetMetadata<ITopicMetadata>().Match, e.Metadata.GetMetadata<ITopicMetadata>().Priority, e.RoutePattern))
+                    .Select(e => (
+                        e.Metadata.GetMetadata<ITopicMetadata>().PubsubName,
+                        e.Metadata.GetMetadata<ITopicMetadata>().Name,
+                        e.Metadata.GetMetadata<IRawTopicMetadata>()?.EnableRawPayload,
+                        e.Metadata.GetMetadata<ITopicMetadata>().Match,
+                        e.Metadata.GetMetadata<ITopicMetadata>().Priority,
+                        e.RoutePattern))
                     .GroupBy(e => new { e.PubsubName, e.Name })
                     .Select(e => e.OrderBy(e => e.Priority))
-                    .SelectMany(e => e);
-                var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
-
-                List<Subscription> subscriptions = new();
-                Dictionary<string, Subscription> subscriptionMap = new();
-                foreach (var entry in entries)
-                {
-                    // only return topics which have routes without parameters.
-                    if (entry.RoutePattern.Parameters.Count > 0)
+                    .Select(e =>
                     {
+                        var first = e.First();
+                        var rawPayload = e.Any(e => e.EnableRawPayload.GetValueOrDefault());
+                        var rules = e.Where(e => !string.IsNullOrEmpty(e.Match)).ToList();
+                        var defaultRoutes = e.Where(e => string.IsNullOrEmpty(e.Match)).Select(e => RoutePatternToString(e.RoutePattern)).ToList();
+                        var defaultRoute = defaultRoutes.FirstOrDefault();
+
                         if (logger != null)
                         {
-                            logger.LogError("Topic subscription doesn't support route with parameters. Subscription for topic {name} is removed.", entry.Name);
+                            if (defaultRoutes.Count() > 0)
+                            {
+                                logger.LogError("A default subscription to topic {name} on pubsub {pubsub} already exists.", first.Name, first.PubsubName);
+                            }
+
+                            var duplicatePriorities = rules.GroupBy(e => e.Priority)
+                              .Where(g => g.Count() > 1)
+                              .ToDictionary(x => x.Key, y => y.Count());
+
+                            foreach (var entry in duplicatePriorities)
+                            {
+                                logger.LogError("A subscription to topic {name} on pubsub {pubsub} has duplicate priorities for {priority}: found {count} occurrences.", first.Name, first.PubsubName, entry.Key, entry.Value);
+                            }
                         }
 
-                        continue;
-                    }
-
-                    var route = string.Join("/",
-                        entry.RoutePattern.PathSegments
-                        .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
-                        .Select(part => part.Content))));
-
-                    var rawPayload = entry.EnableRawPayload ?? options?.EnableRawPayload;
-                    var subscriptionKey = entry.PubsubName + ":" + entry.Name;
-                    Subscription subscription;
-                    try
-                    {
-                        subscription = subscriptionMap[subscriptionKey];
-                    } catch (KeyNotFoundException) {
-                        subscription = new Subscription
+                        var subscription = new Subscription
                         {
-                            Topic = entry.Name,
-                            PubsubName = entry.PubsubName,
+                            Topic = first.Name,
+                            PubsubName = first.PubsubName,
+                            Metadata = rawPayload ? new Metadata
+                            {
+                                RawPayload = "true",
+                            } : null,
                         };
-                        subscriptions.Add(subscription);
-                        subscriptionMap[subscriptionKey] = subscription;
-                    }
 
-                    if (string.IsNullOrEmpty(entry.Match))
-                    {
-                        if (subscription.Routes != null &&
-                            subscription.Routes.Rules.Count > 0)
-                        {
-                            subscription.Routes.Default = route;
-                        } else
-                        {
-                            subscription.Route = route;
-                        }
-                    } else
-                    {
-                        if (subscription.Routes == null)
+                        // Use the V2 routing rules structure
+                        if (rules.Count() > 0)
                         {
                             subscription.Routes = new Routes
                             {
-                                Rules = new(),
+                                Rules = rules.Select(e => new Rule
+                                {
+                                    Match = e.Match,
+                                    Path = RoutePatternToString(e.RoutePattern),
+                                }).ToList(),
+                                Default = defaultRoute,
                             };
                         }
-                        subscription.Routes.Rules.Add(new Rule
+                        // Use the V1 structure for backward compatibility.
+                        else
                         {
-                            Match = entry.Match,
-                            Path = route,
-                        });
-                        // Convert route to default route under routes section.
-                        if (!string.IsNullOrEmpty(subscription.Route))
-                        {
-                            subscription.Routes.Default = subscription.Route;
-                            subscription.Route = null;
+                            subscription.Route = defaultRoute;
                         }
-                    }
 
-                    if (rawPayload != null)
-                    {
-                        subscription.Metadata = new Metadata
-                        {
-                            RawPayload = rawPayload.ToString().ToLower()
-                        };
-                    }
-                }
+                        return subscription;
+                    })
+                    .OrderBy(e => (e.PubsubName, e.Topic));
 
                 await context.Response.WriteAsync(JsonSerializer.Serialize(subscriptions,
                     new JsonSerializerOptions
@@ -149,6 +134,12 @@ namespace Microsoft.AspNetCore.Builder
                         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                     }));
             });
+        }
+
+        private static string RoutePatternToString(RoutePattern routePattern) {
+            return string.Join("/", routePattern.PathSegments
+                                    .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
+                                    .Select(part => part.Content))));
         }
     }
 }
