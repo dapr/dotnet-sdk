@@ -44,6 +44,15 @@ namespace Dapr.Actors
             this.httpClient = this.CreateHttpClient();
         }
 
+        public DaprHttpInteractor(
+            HttpMessageHandler clientHandler,
+            string httpEndpoint,
+            string apiToken,
+            TimeSpan? requestTimeout) : this(clientHandler, httpEndpoint, apiToken)
+        {
+            this.httpClient.Timeout = requestTimeout ?? this.httpClient.Timeout;
+        }
+
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
