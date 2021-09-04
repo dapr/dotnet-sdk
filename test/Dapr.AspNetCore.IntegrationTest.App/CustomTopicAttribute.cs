@@ -18,5 +18,9 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         public string Name { get; }
 
         public string PubsubName { get; }
+
+        public new string Match { get; }
+
+        public int Priority { get; }
     }
 }
