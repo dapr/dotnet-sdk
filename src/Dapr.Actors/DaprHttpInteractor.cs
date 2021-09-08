@@ -36,20 +36,13 @@ namespace Dapr.Actors
         public DaprHttpInteractor(
             HttpMessageHandler clientHandler,
             string httpEndpoint,
-            string apiToken)
+            string apiToken,
+            TimeSpan? requestTimeout)
         {
             this.handler = clientHandler ?? defaultHandler;
             this.httpEndpoint = httpEndpoint;
             this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
-        }
-
-        public DaprHttpInteractor(
-            HttpMessageHandler clientHandler,
-            string httpEndpoint,
-            string apiToken,
-            TimeSpan? requestTimeout) : this(clientHandler, httpEndpoint, apiToken)
-        {
             this.httpClient.Timeout = requestTimeout ?? this.httpClient.Timeout;
         }
 

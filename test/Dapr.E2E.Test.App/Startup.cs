@@ -7,7 +7,6 @@ namespace Dapr.E2E.Test
 {
     using Dapr.E2E.Test.Actors.Reentrancy;
     using Dapr.E2E.Test.Actors.Reminders;
-    using Dapr.E2E.Test.Actors.Timeout;
     using Dapr.E2E.Test.Actors.Timers;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
@@ -46,7 +45,6 @@ namespace Dapr.E2E.Test
                 options.Actors.RegisterActor<ReminderActor>();
                 options.Actors.RegisterActor<TimerActor>();
                 options.Actors.RegisterActor<ReentrantActor>();
-                options.Actors.RegisterActor<TimeoutActor>();
                 options.ReentrancyConfig.Enabled = true;
             });
         }
