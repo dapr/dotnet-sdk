@@ -56,25 +56,25 @@ namespace Dapr.E2E.Test
             }
         }
 
-        public Task<State> StartAsync(ITestOutputHelper output)
+        public Task<State> StartAsync(ITestOutputHelper output, DaprRunConfiguration configuration)
         {
             lock (@lock)
             {
                 if (this.task is null)
                 {
-                    this.task = Task.Run(() => Launch(output));
+                    this.task = Task.Run(() => Launch(output, configuration));
                 }
 
                 return this.task;
             }
         }
 
-        private State Launch(ITestOutputHelper output)
+        private State Launch(ITestOutputHelper output, DaprRunConfiguration configuration)
         {
-            var app = new DaprTestApp(output, "testapp", useAppPort: true);
+            var app = new DaprTestApp(output, configuration.AppId);
             try
             {
-                var (httpEndpoint, grpcEndpoint) = app.Start();
+                var (httpEndpoint, grpcEndpoint) = app.Start(configuration);
                 return new State()
                 {
                     App = app,
