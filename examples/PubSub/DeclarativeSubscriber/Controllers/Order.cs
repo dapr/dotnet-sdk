@@ -12,22 +12,22 @@ namespace DeclarativeSubscriber.Controllers
     [Route("Order")]
     public class Order : ControllerBase
     {
-        private readonly string reporter = "====================\r\n" +
-                                           "OrderId:\t\t{0}\r\n" +
-                                           "OldValue:\t\t{1}\r\n" +
-                                           "NewValue:\t\t{2}\r\n" +
-                                           "OrderUpdateTime:\t{3}\r\n" +
-                                           "====================";
+        private readonly string reporter = 
+            @"====================
+OrderId:           {0}
+Type:              {1}
+OldValue:          {2}
+NewValue:          {3}
+OrderUpdateTime:   {4}
+====================";
+        
         [HttpPost]
-        public async Task<OkResult> OnOrderUpdateAsync(PubSubEto<DemoOrderETO> meta)
+        public IActionResult OnOrderUpdate(PubSubEto<DemoOrderETO> meta)
         {
-            return await Task.Run(() =>
-            {
-                Console.WriteLine(string.Format(reporter,meta.data.OrderId,meta.data.OldValue,meta.data.NewValue,meta.data.DateTime));
-                
-                //to tell Dapr message ACK.
-                return Ok();
-            });
+            Console.WriteLine(string.Format(reporter,meta.data.OrderId,meta.data.OldValue,meta.data.NewValue,meta.data.DateTime));
+            
+            //to tell Dapr message ACK.
+            return Ok();
         }   
     }
 }

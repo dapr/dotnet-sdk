@@ -45,5 +45,26 @@ namespace Publisher.Controllers
             //Dapr can publish custom model by generic like under.
             await _daprClient.PublishEventAsync<DemoOrderETO>("pubsub", "order.update",payload);
         }
+        
+        [HttpPost("/Order2")]
+        public async void UpdateOrderOwnerDotnetAsync(Guid newOwnerId)
+        {
+            order ??= new Order() { OrderId = id, OwnerId = Guid.NewGuid() };
+            var oldValue = order.OwnerId;
+            order.OwnerId = newOwnerId;
+
+            var payload = new DemoOrderETO()
+            {
+                OrderId = order.OrderId,
+                DateTime = DateTime.Now,
+                OldValue = oldValue.ToString(),
+                NewValue = newOwnerId.ToString(),
+                Type = nameof(order.OwnerId)
+            };
+            Console.WriteLine(JsonSerializer.Serialize(payload));
+            
+            //Dapr can publish custom model by generic like under.
+            await _daprClient.PublishEventAsync<DemoOrderETO>("pubsub", "order.update.dotnet",payload);
+        }
     }
 }

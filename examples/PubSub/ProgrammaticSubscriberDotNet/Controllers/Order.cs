@@ -12,7 +12,6 @@ using PubSub.Domain;
 namespace ProgrammaticSubscriberDotNet.Controllers
 {
     [ApiController]
-    [Route("Order")]
     public class Order : ControllerBase
     {
         private readonly string reporter = 
