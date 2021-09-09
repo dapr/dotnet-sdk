@@ -21,9 +21,15 @@ namespace ControllerSample
         }
 
         /// <inheritdoc/>
+        public string PubsubName { get; }
+
+        /// <inheritdoc/>
         public string Name { get; }
 
         /// <inheritdoc/>
-        public string PubsubName { get; }
+        public new string Match { get; }
+
+        /// <inheritdoc/>
+        public int Priority { get; }
     }
 }
