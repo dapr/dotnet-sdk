@@ -36,12 +36,14 @@ namespace Dapr.Actors
         public DaprHttpInteractor(
             HttpMessageHandler clientHandler,
             string httpEndpoint,
-            string apiToken)
+            string apiToken,
+            TimeSpan? requestTimeout)
         {
             this.handler = clientHandler ?? defaultHandler;
             this.httpEndpoint = httpEndpoint;
             this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
+            this.httpClient.Timeout = requestTimeout ?? this.httpClient.Timeout;
         }
 
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
