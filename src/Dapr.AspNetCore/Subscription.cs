@@ -3,6 +3,8 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System.Collections.Generic;
+
 namespace Dapr
 {
     /// <summary>
@@ -26,6 +28,11 @@ namespace Dapr
         public string Route { get; set; }
 
         /// <summary>
+        /// Gets or sets the routes
+        /// </summary>
+        public Routes Routes { get; set; }
+
+        /// <summary>
         /// Gets or sets the metadata.
         /// </summary>
         public Metadata Metadata { get; set; }
@@ -37,8 +44,34 @@ namespace Dapr
     internal class Metadata
     {
         /// <summary>
-        /// Gets or sets the rawoayload
+        /// Gets or sets the raw payload
         /// </summary>
         public string RawPayload { get; set; }
+    }
+
+    internal class Routes
+    {
+        /// <summary>
+        /// Gets or sets the default route
+        /// </summary>
+        public string Default { get; set; }
+
+        /// <summary>
+        /// Gets or sets the routing rules
+        /// </summary>
+        public List<Rule> Rules { get; set; }
+    }
+
+    internal class Rule
+    {
+        /// <summary>
+        /// Gets or sets the CEL expression to match this route.
+        /// </summary>
+        public string Match { get; set; }
+
+        /// <summary>
+        /// Gets or sets the path of the route.
+        /// </summary>
+        public string Path { get; set; }
     }
 }

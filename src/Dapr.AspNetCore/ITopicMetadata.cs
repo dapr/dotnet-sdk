@@ -6,7 +6,7 @@
 namespace Dapr
 {
     /// <summary>
-    /// Metadata that describes an endpoint as a subscriber to a topic.
+    /// ITopicMetadata that describes an endpoint as a subscriber to a topic.
     /// </summary>
     public interface ITopicMetadata
     {
@@ -19,5 +19,15 @@ namespace Dapr
         /// Gets the pubsub component name name.
         /// </summary>
         string PubsubName { get; }
+
+        /// <summary>
+        /// The CEL expression to use to match events for this handler.
+        /// </summary>
+        string Match { get; }
+
+        /// <summary>
+        /// The priority in which this rule should be evaluated (lower to higher).
+        /// </summary>
+        int Priority { get; }
     }
 }
