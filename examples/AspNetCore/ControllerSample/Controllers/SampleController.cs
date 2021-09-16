@@ -93,6 +93,35 @@ namespace ControllerSample.Controllers
         }
 
         /// <summary>
+        /// Method for withdrawing from account as specified in transaction.
+        /// </summary>
+        /// <param name="transaction">Transaction info.</param>
+        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
+        [Topic("pubsub", "withdraw", "event.type ==\"withdraw.v2\"", 1)]
+        [HttpPost("withdraw.v2")]
+        public async Task<ActionResult<Account>> WithdrawV2(TransactionV2 transaction, [FromServices] DaprClient daprClient)
+        {
+            logger.LogDebug("Enter withdraw.v2");
+            if (transaction.Channel == "mobile" && transaction.Amount > 10000)
+            {
+                return this.Unauthorized("mobile transactions for large amounts are not permitted.");
+            }
+
+            var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+
+            if (state.Value == null)
+            {
+                return this.NotFound();
+            }
+
+            state.Value.Balance -= transaction.Amount;
+            await state.SaveAsync();
+            return state.Value;
+        }
+
+        /// <summary>
         /// Method for returning a BadRequest result which will cause Dapr sidecar to throw an RpcException
         [HttpPost("throwException")]
         public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
