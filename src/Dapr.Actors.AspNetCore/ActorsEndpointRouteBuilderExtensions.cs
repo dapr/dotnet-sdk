@@ -29,11 +29,11 @@ namespace Microsoft.AspNetCore.Builder
             if (endpoints.ServiceProvider.GetService<ActorRuntime>() is null)
             {
                 throw new InvalidOperationException(
-                    "The ActorRuntime service is not registered with the dependency injection container. " + 
+                    "The ActorRuntime service is not registered with the dependency injection container. " +
                     "Call AddActors() inside ConfigureServices() to register the actor runtime and actor types.");
             }
 
-            var builders = new []
+            var builders = new[]
             {
                 MapDaprConfigEndpoint(endpoints),
                 MapActorDeactivationEndpoint(endpoints),
@@ -53,8 +53,9 @@ namespace Microsoft.AspNetCore.Builder
             {
                 context.Response.ContentType = "application/json";
                 await runtime.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
+                await context.Response.BodyWriter.FlushAsync();
             }).WithDisplayName(b => "Dapr Actors Config");
-        }     
+        }
 
         private static IEndpointConventionBuilder MapActorDeactivationEndpoint(this IEndpointRouteBuilder endpoints)
         {
@@ -101,11 +102,11 @@ namespace Microsoft.AspNetCore.Builder
                         }
 
                         await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
-                        }
+                    }
                     finally
                     {
                         ActorReentrancyContextAccessor.ReentrancyContext = null;
-                    }                    
+                    }
                 }
                 else
                 {
@@ -155,7 +156,7 @@ namespace Microsoft.AspNetCore.Builder
         private static IEndpointConventionBuilder MapActorHealthChecks(this IEndpointRouteBuilder endpoints)
         {
             var builder = endpoints.MapHealthChecks("/healthz");
-            builder.Add(b => 
+            builder.Add(b =>
             {
                 // Sets the route order so that this is matched with lower priority than an endpoint
                 // configured by default.
