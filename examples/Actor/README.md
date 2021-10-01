@@ -59,6 +59,16 @@ curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d 
 
 ```
 
+Or, using the Visual Studio Code [Rest Client Plugin](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
+
+[sample.http](sample.http)
+
+```http
+POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData
+
+{ "PropertyA": "ValueA", "PropertyB": "ValueB" }
+```
+
 **Get Data**
 Following curl call will get data for actor id "abc"
 (below calls on MacOs, Linux & Windows are exactly the same except for escaping quotes on Windows for curl)
@@ -73,4 +83,12 @@ On Windows:
 
 ```sh
 curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
+```
+
+Or, using the Visual Studio Code [Rest Client Plugin](https://marketplace.visualstudio.com/items?itemName=humao.rest-client)
+
+[sample.http](sample.http)
+
+```http
+GET http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData
 ```
