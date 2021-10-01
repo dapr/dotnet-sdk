@@ -33,14 +33,8 @@ The `ActorClient` project shows how to make client calls for actor using Remotin
 Run the client project from `ActorClient` directory as:
 
 ```sh
- dotnet run
- ```
-
- *Note: If you started the actor service with dapr port other than 3500, then set the environment variable DAPR_HTTP_PORT to the value of --dapr-http-port specified while starting the actor service before running the client in terminal.*
- ```
- On Windows: set DAPR_HTTP_PORT=<port>
- On Linux, MacOS: export DAPR_HTTP_PORT=<port>
- ```
+ dapr run --app-id actor_client dotnet run
+```
 
 ### Invoke Actor method without Remoting over Http
 
