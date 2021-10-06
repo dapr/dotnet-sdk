@@ -49,5 +49,10 @@ namespace Dapr.Actors.Client
         /// </remarks>
         /// <value></value>
         public string HttpEndpoint { get; set; } = DaprDefaults.GetDefaultHttpEndpoint();
+
+        /// <summary>
+        /// The timeout allowed for an actor request. Can be set to System.Threading.Timeout.InfiniteTimeSpan to disable any timeouts.
+        /// </summary>
+        public TimeSpan? RequestTimeout { get; set; } = null;
     }
 }
