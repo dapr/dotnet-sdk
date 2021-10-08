@@ -58,15 +58,25 @@ namespace Microsoft.AspNetCore.Builder
                 var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
                 var subscriptions = dataSource.Endpoints
                     .OfType<RouteEndpoint>()
-                    .Where(e => e.Metadata.GetMetadata<ITopicMetadata>()?.Name != null) // only endpoints which have TopicAttribute with not null Name.
+                    .Where(e => e.Metadata.GetOrderedMetadata<ITopicMetadata>().Any(t => t.Name != null)) // only endpoints which have TopicAttribute with not null Name.
+                    .SelectMany(e =>
+                    {
+                        var topicMetadata = e.Metadata.GetOrderedMetadata<ITopicMetadata>();
+                        var subs = new List<(string PubsubName, string Name, bool? EnableRawPayload, string Match, int Priority, RoutePattern RoutePattern)>();
+
+                        for (int i = 0; i < topicMetadata.Count(); i++)
+                        {
+                            subs.Add((topicMetadata[i].PubsubName,
+                                topicMetadata[i].Name,
+                                (topicMetadata[i] as IRawTopicMetadata)?.EnableRawPayload,
+                                topicMetadata[i].Match,
+                                topicMetadata[i].Priority,
+                                e.RoutePattern));
+                        }
+
+                        return subs;
+                    })
                     .Distinct()
-                    .Select(e => (
-                        e.Metadata.GetMetadata<ITopicMetadata>().PubsubName,
-                        e.Metadata.GetMetadata<ITopicMetadata>().Name,
-                        e.Metadata.GetMetadata<IRawTopicMetadata>()?.EnableRawPayload,
-                        e.Metadata.GetMetadata<ITopicMetadata>().Match,
-                        e.Metadata.GetMetadata<ITopicMetadata>().Priority,
-                        e.RoutePattern))
                     .GroupBy(e => new { e.PubsubName, e.Name })
                     .Select(e => e.OrderBy(e => e.Priority))
                     .Select(e =>
@@ -79,7 +89,7 @@ namespace Microsoft.AspNetCore.Builder
 
                         if (logger != null)
                         {
-                            if (defaultRoutes.Count() > 1)
+                            if (defaultRoutes.Count > 1)
                             {
                                 logger.LogError("A default subscription to topic {name} on pubsub {pubsub} already exists.", first.Name, first.PubsubName);
                             }
@@ -105,7 +115,7 @@ namespace Microsoft.AspNetCore.Builder
                         };
 
                         // Use the V2 routing rules structure
-                        if (rules.Count() > 0)
+                        if (rules.Count > 0)
                         {
                             subscription.Routes = new Routes
                             {

@@ -31,7 +31,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
                     json.ValueKind.Should().Be(JsonValueKind.Array);
-                    json.GetArrayLength().Should().Be(7);
+                    json.GetArrayLength().Should().Be(8);
                     var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, string match)>();
                     foreach (var element in json.EnumerateArray())
                     {
@@ -66,6 +66,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     }
 
                     subscriptions.Should().Contain(("testpubsub", "A", "topic-a", string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("testpubsub", "A.1", "topic-a", string.Empty, string.Empty));
                     subscriptions.Should().Contain(("pubsub", "B", "B", string.Empty, string.Empty));
                     subscriptions.Should().Contain(("custom-pubsub", "custom-C", "C", string.Empty, string.Empty));
                     subscriptions.Should().Contain(("pubsub", "register-user", "register-user", string.Empty, string.Empty));
