@@ -25,7 +25,7 @@ namespace Dapr.Client
     /// that the application performs - this can lead to socket exhaustion and other problems.
     /// </para>
     /// </summary>
-    public interface IDaprClient
+    public interface IDaprClient : IDisposable
     {
         /// <summary>
         /// Gets the <see cref="JsonSerializerOptions" /> used for JSON serialization operations.

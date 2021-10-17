@@ -26,7 +26,7 @@ namespace Dapr.Client
     /// that the application performs - this can lead to socket exhaustion and other problems.
     /// </para>
     /// </summary>
-    public abstract class DaprClient : IDisposable, IDaprClient
+    public abstract class DaprClient : IDaprClient
     {
         private bool disposed;
 
