@@ -79,7 +79,7 @@ namespace Microsoft.AspNetCore.Builder
 
                         if (logger != null)
                         {
-                            if (defaultRoutes.Count() > 0)
+                            if (defaultRoutes.Count() > 1)
                             {
                                 logger.LogError("A default subscription to topic {name} on pubsub {pubsub} already exists.", first.Name, first.PubsubName);
                             }
