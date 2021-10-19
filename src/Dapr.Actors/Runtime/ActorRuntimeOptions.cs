@@ -25,7 +25,7 @@ namespace Dapr.Actors.Runtime
             Enabled = false,
         };
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
-        private string daprApiToken = null;
+        private string daprApiToken = DaprDefaults.GetDefaultApiToken();
         private int? remindersStoragePartitions = null;
 
         /// <summary>
