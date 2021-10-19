@@ -3,17 +3,19 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Google.Protobuf;
+using Grpc.Core;
+using Grpc.Core.Interceptors;
+using Grpc.Net.Client;
+
 namespace Dapr.Client
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Net.Http;
-    using System.Text.Json;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Google.Protobuf;
-    using Grpc.Core;
-
     /// <summary>
     /// <para>
     /// Defines client methods for interacting with Dapr endpoints.
@@ -90,6 +92,39 @@ namespace Dapr.Client
             }
 
             return httpClient;
+        }
+
+        /// <summary>
+        /// <para>
+        /// Creates an <see cref="CallInvoker"/> that can be used to perform locally defined gRPC calls 
+        /// using the Dapr sidecar as a proxy.
+        /// </para>
+        /// <para>
+        /// The created <see cref="CallInvoker"/> is used to intercept a <see cref="GrpcChannel"/> with an
+        /// <see cref="InvocationInterceptor"/>. The interceptor inserts the <paramref name="appId"/> and, if present,
+        /// the <paramref name="daprApiToken"/> into the request's metadata.
+        /// </para>
+        /// </summary>
+        /// <param name="appId">
+        /// The appId that is targetted by Dapr for gRPC invocations.
+        /// </param>
+        /// <param name="daprEndpoint">
+        /// Optional gRPC endpoint for calling Dapr, defaults to <see cref="DaprDefaults.GetDefaultGrpcEndpoint"/>.
+        /// </param>
+        /// <param name="daprApiToken">
+        /// Optional token to be attached to all requests, defaults to <see cref="DaprDefaults.GetDefaultApiToken"/>.
+        /// </param>
+        /// <returns>An <see cref="CallInvoker"/> to be used for proxied gRPC calls through Dapr.</returns>
+        /// <remarks>
+        /// <para>
+        /// As the <paramref name="daprEndpoint"/> will remain constant, a single instance of the
+        /// <see cref="CallInvoker"/> can be used throughout the lifetime of the application.
+        /// </para>
+        /// </remarks>
+        public static CallInvoker CreateInvocationInvoker(string appId, string daprEndpoint = null, string daprApiToken = null)
+        {
+            var channel = GrpcChannel.ForAddress(daprEndpoint ?? DaprDefaults.GetDefaultGrpcEndpoint());
+            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultApiToken()));
         }
 
         internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)

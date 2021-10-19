@@ -1,0 +1,37 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation and Dapr Contributors.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package dapr.e2e.test;
+
+// The counter service definition.
+service Messager {
+  // Send a message to a recipient.
+  rpc SendMessage(SendMessageRequest) returns (google.protobuf.Empty);
+  // Get a message if any are available.
+  rpc GetMessage(GetMessageRequest) returns (MessageResponse);
+  // Send a series of broadcast messages.
+  rpc StreamBroadcast(stream Broadcast) returns (stream MessageResponse);
+}
+
+message SendMessageRequest {
+    string recipient = 1;
+    string message = 2;
+}
+
+message GetMessageRequest {
+    string recipient = 1;
+}
+
+message MessageResponse {
+    string message = 1;
+}
+
+message Broadcast {
+    string message = 1;
+}
