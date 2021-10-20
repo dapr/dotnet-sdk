@@ -53,6 +53,19 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
+        [Topic("pubsub", "F")]
+        [Topic("pubsub", "F.1", true)]
+        [HttpPost("/multiTopicAttr")]
+        public void MultipleTopics()
+        {
+        }
+
+        [Topic("pubsub", "splitTopicAttr", true)]
+        [HttpPost("/splitTopics")]
+        public void SplitTopic()
+        {
+        }
+
         [Topic("pubsub", "register-user")]
         [HttpPost("/register-user")]
         public ActionResult<UserInfo> RegisterUser(UserInfo user)

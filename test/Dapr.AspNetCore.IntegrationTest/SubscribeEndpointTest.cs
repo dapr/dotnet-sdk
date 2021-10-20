@@ -31,7 +31,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
                     json.ValueKind.Should().Be(JsonValueKind.Array);
-                    json.GetArrayLength().Should().Be(8);
+                    json.GetArrayLength().Should().Be(12);
                     var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, string match)>();
                     foreach (var element in json.EnumerateArray())
                     {
@@ -75,6 +75,10 @@ namespace Dapr.AspNetCore.IntegrationTest
                     subscriptions.Should().Contain(("pubsub", "E", "E", string.Empty, string.Empty));
                     subscriptions.Should().Contain(("pubsub", "E", "E-Critical", string.Empty, "event.type == \"critical\""));
                     subscriptions.Should().Contain(("pubsub", "E", "E-Important", string.Empty, "event.type == \"important\""));
+                    subscriptions.Should().Contain(("pubsub", "F", "multiTopicAttr", string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "F.1", "multiTopicAttr", "true", string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "splitTopicBuilder", "splitTopics", string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "splitTopicAttr", "splitTopics", "true", string.Empty));
 
                     // Test priority route sorting
                     var eTopic = subscriptions.FindAll(e => e.Topic == "E");
