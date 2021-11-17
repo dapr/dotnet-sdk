@@ -25,8 +25,6 @@ The application also registers for pub/sub with the `deposit` and `withdraw` top
 
  The application will listen on port 5000 for HTTP.
 
- *Note: For Running the sample in ISS express, change the launchsettings.json to use 127.0.0.1 instead of localhost.*
-
  ### Examples
 
 **Deposit Money**

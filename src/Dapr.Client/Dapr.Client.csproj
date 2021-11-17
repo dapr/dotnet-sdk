@@ -1,32 +1,34 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <Compile Include="..\Shared\DaprDefaults.cs" />
-    </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\ArgumentVerifier.cs" />
+    <Compile Include="..\Shared\DaprDefaults.cs" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
-        <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
-        <Protobuf Include="Protos\dapr\proto\dapr\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
-    </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
+    <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
+    <Protobuf Include="Protos\dapr\proto\dapr\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
+  </ItemGroup>
 
-    <!-- Additional Nuget package properties. -->
-    <PropertyGroup>
-        <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageReference Include="Google.Protobuf" Version="3.13.0" />
-        <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
-        <PackageReference Include="Grpc.Tools" Version="2.32.0" PrivateAssets="All" />
-        <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
-        <PackageReference Include="System.Net.Http.Json" Version="5.0.0" />
-    </ItemGroup>
-    <ItemGroup>
-        <Folder Include="Protos\" />
-    </ItemGroup>
+  <!-- Additional Nuget package properties. -->
+  <PropertyGroup>
+    <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.13.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.38.1" PrivateAssets="All" />
+    <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
+    <PackageReference Include="System.Net.Http.Json" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Protos\" />
+  </ItemGroup>
 
 </Project>

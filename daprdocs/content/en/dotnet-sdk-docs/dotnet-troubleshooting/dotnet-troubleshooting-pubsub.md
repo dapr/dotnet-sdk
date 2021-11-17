@@ -3,7 +3,7 @@ type: docs
 title: "Troubleshoot Pub/Sub with the .NET SDK"
 linkTitle: "Troubleshoot pub/sub"
 weight: 100000
-description: Try out .NET virtual actors with this example
+description: Troubleshoot Pub/Sub with the .NET SDK
 ---
 
 # Troubleshooting Pub/Sub
@@ -12,7 +12,7 @@ The most common problem with pub/sub is that the pub/sub endpoint in your applic
 
 There are a few layers to this problem with different solutions:
 
-- The application is not recieving any traffic from Dapr
+- The application is not receiving any traffic from Dapr
 - The application is not registering pub/sub endpoints with Dapr
 - The pub/sub endpoints are registered with Dapr, but the request is not reaching the desired endpoint
 
@@ -81,7 +81,7 @@ Pay particular attention to the HTTP status code, and the JSON output.
 A 200 status code indicates success.
 
 
-The JSON blob that's included near the end is the output of `/dapr/subscribe` that's procesed by the Dapr runtime. In this case it's using the `ControllerSample` in this repo - so this is an example of correct output.
+The JSON blob that's included near the end is the output of `/dapr/subscribe` that's processed by the Dapr runtime. In this case it's using the `ControllerSample` in this repo - so this is an example of correct output.
 
 ```json
 [
@@ -120,7 +120,7 @@ app.UseEndpoints(endpoints =>
 
 ### Option 2: The response contained JSON but it was empty (like `[]`)
 
-If the JSON output was an empty array (like `[]`) then the subcribe handler is registered, but no topic endpoints were registered.
+If the JSON output was an empty array (like `[]`) then the subscribe handler is registered, but no topic endpoints were registered.
 
 ---
 
@@ -130,6 +130,11 @@ If you're using a controller for pub/sub you should have a method like:
 [Topic("pubsub", "deposit")]
 [HttpPost("deposit")]
 public async Task<ActionResult> Deposit(...)
+
+// Using Pub/Sub routing
+[Topic("pubsub", "transactions", "event.type == \"withdraw.v2\"", 1)]
+[HttpPost("withdraw")]
+public async Task<ActionResult> Withdraw(...)
 ```
 
 In this example the `Topic` and `HttpPost` attributes are required, but other details might be different.
@@ -154,8 +159,23 @@ In this step we'll verify that the entries registered with pub/sub are reachable
 
 ```json
 [
-    {"topic":"deposit","route":"deposit","pubsubName":"pubsub"},
-    {"topic":"withdraw","route":"withdraw","pubsubName":"pubsub"}
+  {
+    "pubsubName": "pubsub",
+    "topic": "deposit",
+    "route": "deposit"
+  },
+  {
+    "pubsubName": "pubsub",
+    "topic": "deposit",
+    "routes": {
+      "rules": [
+        {
+          "match": "event.type == \"withdraw.v2\"",
+          "path": "withdraw"
+        }
+      ]
+    }
+  }
 ]
 ```
 

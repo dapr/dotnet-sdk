@@ -8,7 +8,6 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Collections.Concurrent;
     using System.IO;
-    using System.Reflection;
     using System.Text;
     using System.Text.Json;
     using System.Threading;
@@ -340,6 +339,15 @@ namespace Dapr.Actors.Runtime
             T retval;
             try
             {
+                // Set the state context of the request, if required and possible.
+                if (ActorReentrancyContextAccessor.ReentrancyContext != null)
+                {
+                    if (state.Actor.StateManager is IActorContextualState contextualStateManager)
+                    {
+                        await contextualStateManager.SetStateContext(Guid.NewGuid().ToString());
+                    }
+                }
+
                 // invoke the function of the actor
                 await actor.OnPreActorMethodAsyncInternal(actorMethodContext);
                 retval = await actorFunc.Invoke(actor, cancellationToken);
@@ -351,6 +359,14 @@ namespace Dapr.Actors.Runtime
             {
                 await actor.OnInvokeFailedAsync();
                 throw;
+            }
+            finally
+            {
+                // Set the state context of the request, if possible.
+                if (state.Actor.StateManager is IActorContextualState contextualStateManager)
+                {
+                    await contextualStateManager.SetStateContext(null);
+                }
             }
 
             return retval;

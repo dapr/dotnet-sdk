@@ -58,7 +58,7 @@ namespace Dapr.Actors.Client
             options ??= this.DefaultOptions;
 
             var actorProxy = new ActorProxy();
-            var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken);
+            var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
             var nonRemotingClient = new ActorNonRemotingClient(daprInteractor);
             actorProxy.Initialize(nonRemotingClient, actorId, actorType, options);
 
@@ -70,7 +70,7 @@ namespace Dapr.Actors.Client
         {
             options ??= this.DefaultOptions;
 
-            var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken);
+            var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
             var remotingClient = new ActorRemotingClient(daprInteractor);
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
             var actorProxy = proxyGenerator.CreateActorProxy();

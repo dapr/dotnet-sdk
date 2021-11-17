@@ -114,7 +114,7 @@ namespace Dapr.Actors.Client
             await stream.FlushAsync();
             var jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
-            return await JsonSerializer.DeserializeAsync<TResponse>(response);
+            return await JsonSerializer.DeserializeAsync<TResponse>(response, JsonSerializerOptions);
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace Dapr.Actors.Client
         public async Task<TResponse> InvokeMethodAsync<TResponse>(string method, CancellationToken cancellationToken = default)
         {
             var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
-            return await JsonSerializer.DeserializeAsync<TResponse>(response);
+            return await JsonSerializer.DeserializeAsync<TResponse>(response, JsonSerializerOptions);
         }
 
         /// <summary>

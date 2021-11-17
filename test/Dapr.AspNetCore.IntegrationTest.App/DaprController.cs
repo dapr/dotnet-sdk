@@ -10,6 +10,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.WebUtilities;
 
@@ -19,6 +20,49 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         [Topic("pubsub", "B")]
         [HttpPost("/B")]
         public void TopicB()
+        {
+        }
+
+        [CustomTopic("pubsub", "C")]
+        [HttpPost("/C")]
+        public void TopicC()
+        {
+        }
+
+        [Topic("pubsub", "D", true)]
+        [HttpPost("/D")]
+        public void TopicD()
+        {
+        }
+
+        [Topic("pubsub", "E", false)]
+        [HttpPost("/E")]
+        public void TopicE()
+        {
+        }
+
+        [Topic("pubsub", "E", false, "event.type == \"critical\"", 1)]
+        [HttpPost("/E-Critical")]
+        public void TopicECritical()
+        {
+        }
+
+        [Topic("pubsub", "E", false, "event.type == \"important\"", 2)]
+        [HttpPost("/E-Important")]
+        public void TopicEImportant()
+        {
+        }
+
+        [Topic("pubsub", "F")]
+        [Topic("pubsub", "F.1", true)]
+        [HttpPost("/multiTopicAttr")]
+        public void MultipleTopics()
+        {
+        }
+
+        [Topic("pubsub", "splitTopicAttr", true)]
+        [HttpPost("/splitTopics")]
+        public void SplitTopic()
         {
         }
 
@@ -78,5 +122,11 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             return widgetStateEntry.Value;
         }
 
+        [Authorize("Dapr")]
+        [HttpPost("/requires-api-token")]
+        public ActionResult<UserInfo> RequiresApiToken(UserInfo user)
+        {
+            return user;
+        }
     }
 }

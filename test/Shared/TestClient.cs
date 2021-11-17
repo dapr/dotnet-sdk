@@ -30,7 +30,7 @@ namespace Dapr
         internal static TestClient<DaprHttpInteractor> CreateForDaprHttpInterator(string? apiToken = null)
         {
             var handler = new CapturingHandler();
-            return new TestClient<DaprHttpInteractor>(new DaprHttpInteractor(handler, "http://localhost:3500", apiToken), handler);
+            return new TestClient<DaprHttpInteractor>(new DaprHttpInteractor(handler, "http://localhost:3500", apiToken, null), handler);
         }
         #endif
 
@@ -157,6 +157,12 @@ namespace Dapr
             {
                 this.Capture.Response.SetException(ex);
                 await WithTimeout(this.Task, TimeSpan.FromSeconds(10), "Waiting for response to be completed timed out.");
+            }
+            
+            public async Task<T> CompleteWithExceptionAndResultAsync(Exception ex)
+            {
+                this.Capture.Response.SetException(ex);
+                return await WithTimeout(this.Task, TimeSpan.FromSeconds(10), "Waiting for response to be completed timed out.");
             }
 
             public void Dismiss()

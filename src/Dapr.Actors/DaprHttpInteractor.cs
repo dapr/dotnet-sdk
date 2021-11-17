@@ -36,12 +36,14 @@ namespace Dapr.Actors
         public DaprHttpInteractor(
             HttpMessageHandler clientHandler,
             string httpEndpoint,
-            string apiToken)
+            string apiToken,
+            TimeSpan? requestTimeout)
         {
             this.handler = clientHandler ?? defaultHandler;
             this.httpEndpoint = httpEndpoint;
             this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
+            this.httpClient.Timeout = requestTimeout ?? this.httpClient.Timeout;
         }
 
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
@@ -112,6 +114,12 @@ namespace Dapr.Actors
                 }
 
                 request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeader, 0, serializedHeader.Length));
+
+                var reentrancyId = ActorReentrancyContextAccessor.ReentrancyContext;
+                if (reentrancyId != null)
+                {
+                    request.Headers.Add(Constants.ReentrancyRequestHeaderName, reentrancyId);
+                }
 
                 return request;
             }
@@ -187,6 +195,12 @@ namespace Dapr.Actors
                 {
                     request.Content = new StringContent(jsonPayload);
                     request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                }
+
+                var reentrancyId = ActorReentrancyContextAccessor.ReentrancyContext;
+                if (reentrancyId != null)
+                {
+                    request.Headers.Add(Constants.ReentrancyRequestHeaderName, reentrancyId);
                 }
 
                 return request;

@@ -3,7 +3,7 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:52195/",
+      "applicationUrl": "http://127.0.0.1:5000/",
       "sslPort": 0
     }
   },
@@ -12,14 +12,18 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "CUSTOM_PUBSUB": "custom-pubsub",
+        "CUSTOM_TOPIC": "custom-topic"
       }
     },
     "ControllerSample": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "CUSTOM_PUBSUB": "custom-pubsub",
+        "CUSTOM_TOPIC": "custom-topic"
       },
       "applicationUrl": "http://localhost:5000/"
     }

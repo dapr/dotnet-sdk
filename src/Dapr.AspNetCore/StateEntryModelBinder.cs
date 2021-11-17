@@ -64,7 +64,7 @@ namespace Dapr.AspNetCore
             {
                 // If we get here this is a configuration error. The error is somewhat opaque on
                 // purpose to avoid leaking too much information about the app.
-                var message = $"Required value {key} not present.";
+                var message = $"Required value {keyName} not present.";
                 bindingContext.Result = ModelBindingResult.Failed();
                 bindingContext.ModelState.TryAddModelError(bindingContext.ModelName, message);
                 return;

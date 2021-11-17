@@ -209,6 +209,88 @@ namespace Dapr.Client.Test
             Assert.IsType<JsonException>(ex.InnerException);
         }
 
+        [Fact]
+        public async Task InvokeBindingRequest_WithCustomRequest_ValidateRequest()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var data = new InvokeRequest { RequestParameter = "Test" };
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" }
+            };
+            var req = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.InvokeBindingAsync<InvokeRequest, Widget>("binding", "operation", data, metadata);
+            });
+
+            var resp = new InvokeBindingResponse
+            {
+                Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, client.InnerClient.JsonSerializerOptions))
+            };
+            var response = await req.CompleteWithMessageAsync(resp);
+
+            var envelope = await req.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("binding");
+            envelope.Operation.Should().Be("operation");
+            envelope.Metadata.Count.Should().Be(1);
+            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
+            envelope.Metadata["key1"].Should().Be("value1");
+
+            var json = envelope.Data.ToStringUtf8();
+            var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
+            typeFromRequest.RequestParameter.Should().Be("Test");
+
+            Assert.Equal("red", response.Color);
+        }
+
+        [Fact]
+        public async Task InvokeBindingRequest_WithNullData_ValidateRequest()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var req = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.InvokeBindingAsync<InvokeRequest, Widget>("binding", "operation", null);
+            });
+
+            var resp = new InvokeBindingResponse
+            {
+                Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, client.InnerClient.JsonSerializerOptions))
+            };
+            var response = await req.CompleteWithMessageAsync(resp);
+
+            var envelope = await req.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            envelope.Name.Should().Be("binding");
+            envelope.Operation.Should().Be("operation");
+
+            Assert.Equal("red", response.Color);
+        }
+
+        [Fact]
+        public async Task InvokeBindingRequest_WithBindingNull_CheckException()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var ex = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+            {
+                await client.InnerClient.InvokeBindingAsync<InvokeRequest, Widget>(null, "operation", null);
+            });
+            Assert.IsType<ArgumentNullException>(ex);
+        }
+
+        [Fact]
+        public async Task InvokeBindingRequest_WithOperationNull_CheckException()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var ex = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+            {
+                await client.InnerClient.InvokeBindingAsync<InvokeRequest, Widget>("binding", null, null);
+            });
+            Assert.IsType<ArgumentNullException>(ex);
+        }
+
         private class InvokeRequest
         {
             public string RequestParameter { get; set; }

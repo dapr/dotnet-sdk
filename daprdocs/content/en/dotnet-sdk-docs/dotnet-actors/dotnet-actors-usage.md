@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Dapr actor .NET usage guide"
-linkTitle: "Authoriung actors"
+linkTitle: "Authoring actors"
 weight: 200000
 description: Learn all about authoring and running actors with the .NET SDK
 ---
@@ -26,7 +26,7 @@ The `ActorHost` is provided by the runtime and contains all of the state that th
 
 ### Using dependency injection
 
-Actors support [depenendency injection](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection) of additonal parameters into the constructor. Any other parameters your define will have their values satisfied from the dependency injection container.
+Actors support [depenendency injection](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection) of additional parameters into the constructor. Any other parameters your define will have their values satisfied from the dependency injection container.
 
 ```csharp
 internal class MyActor : Actor, IMyActor, IRemindable
@@ -56,7 +56,7 @@ public void ConfigureServices(IServiceCollection services)
 
 Each actor instance has its own dependency injection scope. Each actor remains in memory for some time after performing an operation, and during that time the dependency injection scope associated with the actor is also considered live. The scope will be releases when the actor is deactivated.
 
-If an actor injects an `IServiceProvider` in the constructor, the actor will recieve a reference to the `IServiceProvider` associated with its scope. The `IServiceProvider` can be used to resolve services dynamically in the future.
+If an actor injects an `IServiceProvider` in the constructor, the actor will receive a reference to the `IServiceProvider` associated with its scope. The `IServiceProvider` can be used to resolve services dynamically in the future.
 
 ```csharp
 internal class MyActor : Actor, IMyActor, IRemindable
@@ -119,7 +119,7 @@ Actor registration is part `ConfigureServices` in `Startup.cs`. The `ConfigureSe
 
 Inside `ConfigureServices` you can:
 
-- Register the actor runtime (`UseActors`)
+- Register the actor runtime (`AddActors`)
 - Register actor types (`options.Actors.RegisterActor<>`)
 - Configure actor runtime settings `options`
 - Register additional service types for dependency injection into actors (`services`)
@@ -193,7 +193,7 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 }
 ```
 
-The `UseRouting` and `UseEndpoints` calls are necessary to configure routing. Adding `MapActorsHandlers` inside the endpoint middleware is what configures actors as part of the pipline.
+The `UseRouting` and `UseEndpoints` calls are necessary to configure routing. Adding `MapActorsHandlers` inside the endpoint middleware is what configures actors as part of the pipeline.
 
 This is a minimal example, it's valid for Actors functionality to existing alongside:
 

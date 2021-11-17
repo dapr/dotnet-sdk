@@ -18,7 +18,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <summary>
         /// Gets or sets the store name.
         /// </summary>
-        public string Store { get; set; }
+        public string Store { get; set; } = default!;
 
         /// <summary>
         /// Gets or sets a value indicating whether any key delimiters should be replaced with the delimiter ":".
@@ -34,17 +34,17 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// <summary>
         /// Gets or sets the secret descriptors.
         /// </summary>
-        public IEnumerable<DaprSecretDescriptor> SecretDescriptors { get; set; }
+        public IEnumerable<DaprSecretDescriptor>? SecretDescriptors { get; set; }
 
         /// <summary>
         /// A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; set; }
+        public IReadOnlyDictionary<string, string>? Metadata { get; set; }
 
         /// <summary>
         /// Gets or sets the http client.
         /// </summary>
-        public DaprClient Client { get; set; }
+        public DaprClient Client { get; set; } = default!;
 
         /// <inheritdoc />
         public IConfigurationProvider Build(IConfigurationBuilder builder)

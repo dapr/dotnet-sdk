@@ -20,10 +20,9 @@ namespace Dapr
             // for a running process.
             if (apiToken == null)
             {
-                var value = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-
                 // Treat empty the same as null since it's an environment variable
-                apiToken = value == string.Empty ? null : apiToken;
+                var value = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                apiToken = (value == string.Empty) ? null : value;
             }
 
             return apiToken;

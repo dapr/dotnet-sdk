@@ -41,7 +41,7 @@ namespace Dapr.Actors.Runtime
             // Revisit this if actor initialization becomes a significant source of delay for large projects.
             foreach (var actor in options.Actors)
             {
-                var daprInteractor = new DaprHttpInteractor(clientHandler: null, httpEndpoint: options.HttpEndpoint, apiToken: options.DaprApiToken);
+                var daprInteractor = new DaprHttpInteractor(clientHandler: null, httpEndpoint: options.HttpEndpoint, apiToken: options.DaprApiToken, requestTimeout: null);
                 this.actorManagers[actor.Type.ActorTypeName] = new ActorManager(
                     actor,
                     actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),
@@ -92,6 +92,21 @@ namespace Dapr.Actors.Runtime
             {
                 writer.WriteBoolean("drainRebalancedActors", (this.options.DrainRebalancedActors));
             }
+
+            // default is null, don't write it if default
+            if (this.options.RemindersStoragePartitions != null)
+            {
+                writer.WriteNumber("remindersStoragePartitions", this.options.RemindersStoragePartitions.Value);
+            }
+
+            // Reentrancy has a default value so it is always included.
+            writer.WriteStartObject("reentrancy");            
+            writer.WriteBoolean("enabled", this.options.ReentrancyConfig.Enabled);
+            if (this.options.ReentrancyConfig.MaxStackDepth != null)
+            {
+                writer.WriteNumber("maxStackDepth", this.options.ReentrancyConfig.MaxStackDepth.Value);
+            }
+            writer.WriteEndObject();            
 
             writer.WriteEndObject();
             return writer.FlushAsync();

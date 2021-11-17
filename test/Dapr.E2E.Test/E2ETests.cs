@@ -38,6 +38,13 @@ namespace Dapr.E2E.Test
 
         protected ITestOutputHelper Output { get; }
 
+        public DaprRunConfiguration Configuration { get; set; } = new DaprRunConfiguration
+        {
+            UseAppPort = true,
+            AppId = "testapp",
+            TargetProject = "./../../../../../test/Dapr.E2E.Test.App/Dapr.E2E.Test.App.csproj"
+        };
+
         public string AppId => this.state?.App.AppId;
 
         public string HttpEndpoint => this.state?.HttpEndpoint;
@@ -48,7 +55,7 @@ namespace Dapr.E2E.Test
 
         public async Task InitializeAsync()
         {
-            this.state = await this.fixture.StartAsync(this.Output);
+            this.state = await this.fixture.StartAsync(this.Output, this.Configuration);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             using var client = new HttpClient();

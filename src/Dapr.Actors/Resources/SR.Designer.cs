@@ -342,18 +342,18 @@ namespace Dapr.Actors.Resources {
         /// <summary>
         ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; has variable length parameter &apos;{3}&apos;. The {0} interface methods must not have variable length parameters..
         /// </summary>
-        internal static string ErrorRemotedMethodHasVaArgParameter {
+        internal static string ErrorRemotedMethodHasVarArgParameter {
             get {
-                return ResourceManager.GetString("ErrorRemotedMethodHasVaArgParameter", resourceCulture);
+                return ResourceManager.GetString("ErrorRemotedMethodHasVarArgParameter", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Method &apos;{1}&apos; of {0} interface &apos;{2}&apos; is using a variable argument list. The {0} interface methods cannot have a variable argument list..
         /// </summary>
-        internal static string ErrorRemotedMethodHasVaArgs {
+        internal static string ErrorRemotedMethodHasVarArgs {
             get {
-                return ResourceManager.GetString("ErrorRemotedMethodHasVaArgs", resourceCulture);
+                return ResourceManager.GetString("ErrorRemotedMethodHasVarArgs", resourceCulture);
             }
         }
         
