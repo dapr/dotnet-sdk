@@ -83,6 +83,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.App.Grpc", "t
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConfigurationApi", "examples\Client\ConfigurationApi\ConfigurationApi.csproj", "{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.App.ReentrantActors", "test\Dapr.E2E.Test.App.ReentrantActor\Dapr.E2E.Test.App.ReentrantActors.csproj", "{5BE7F505-7D77-4C3A-ABFD-54088774DAA7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -205,6 +207,10 @@ Global
 		{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BE7F505-7D77-4C3A-ABFD-54088774DAA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BE7F505-7D77-4C3A-ABFD-54088774DAA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BE7F505-7D77-4C3A-ABFD-54088774DAA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BE7F505-7D77-4C3A-ABFD-54088774DAA7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -242,6 +248,7 @@ Global
 		{2AED1542-A8ED-488D-B6D0-E16AB5D6EF6C} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{E8212911-344B-4638-ADC3-B215BCDCAFD1} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
+		{5BE7F505-7D77-4C3A-ABFD-54088774DAA7} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}

@@ -41,6 +41,8 @@ namespace Dapr.E2E.Test
 
         public string GrpcEndpoint => this.state?.GrpcEndpoint;
 
+        public ITestOutputHelper Output => this.output;
+
         public async Task InitializeAsync()
         {
             this.state = await this.fixture.StartAsync(this.output, this.Configuration);
