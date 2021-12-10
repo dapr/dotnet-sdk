@@ -6,16 +6,6 @@ This project welcomes contributions and suggestions. Most contributions require 
 agree to a Contributor License Agreement (CLA) declaring that you have the right to,
 and actually do, grant us the rights to use your contribution.
 
-For details, visit https://cla.microsoft.com.
-
-When you submit a pull request, a CLA-bot will automatically determine whether you need
-to provide a CLA and decorate the PR appropriately (e.g., label, comment). Simply follow the
-instructions provided by the bot. You will only need to do this once across all repositories using our CLA.
-
-This project has adopted the Microsoft Open Source Code of Conduct.
-For more information see the Code of Conduct FAQ
-or contact opencode@microsoft.com with any additional questions or comments.
-
 Contributions come in many forms: submitting issues, writing code, participating in discussions and community calls.
 
 This document provides the guidelines for how to contribute to the Dapr project.
@@ -87,4 +77,4 @@ A non-exclusive list of code that must be places in `vendor/`:
 
 ## Code of Conduct
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+This project follows the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/master/code-of-conduct.md).
