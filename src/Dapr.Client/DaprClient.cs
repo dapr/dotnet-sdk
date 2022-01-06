@@ -757,6 +757,22 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Queries the specified statestore with the given query. The query is a JSON representation of the query as described by the Dapr QueryState API.
+        /// Note that the underlying statestore must support queries.
+        /// </summary>
+        /// <param name="storeName">The name of the statestore.</param>
+        /// <param name="jsonQuery">A JSON formatted query string.</param>
+        /// <param name="metadata">Metadata to send to the statestore.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <typeparam name="TValue">The data type of the value to read.</typeparam>
+        /// <returns>A <see cref="StateQueryResponse{TValue}"/> that may be paginated, use <see cref="StateQueryResponse{TValue}.Token"/> to continue the query.</returns>
+        public abstract Task<StateQueryResponse<TValue>> QueryStateAsync<TValue>(
+            string storeName,
+            string jsonQuery,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets the secret value from the secret store.
         /// </summary>
         /// <param name="storeName">Secret store name.</param>
