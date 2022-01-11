@@ -8,7 +8,7 @@ description: Learn about local development with the Dapr CLI
 
 ## Dapr CLI
 
-*Consider this to be a .NET companion to the [Dapr Self-Hosted with Docker Guide]({{ ref self-hosted-overview.md }}))*.
+*Consider this to be a .NET companion to the [Dapr Self-Hosted with Docker Guide]({{< ref self-hosted-with-docker.md >}})*.
 
 The Dapr CLI provides you with a good base to work from by initializing a local redis container, zipkin container, the placement service, and component manifests for redis. This will enable you to work with the following building blocks on a fresh install with no additional setup:
 
