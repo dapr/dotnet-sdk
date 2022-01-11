@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -779,6 +780,21 @@ namespace Dapr.Client
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<Dictionary<string, Dictionary<string, string>>> GetBulkSecretAsync(
             string storeName,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get a list of configuration items based on keys from the given statestore. 
+        /// </summary>
+        /// <param name="storeName">The name of the statestore to be queried.</param>
+        /// <param name="keys">An optional list of keys to query for. If provided, the result will only contain those keys. An empty list indicates all keys should be fetched.</param>
+        /// <param name="metadata">Optional metadata that will be sent to the statestore being queried.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task"/> containing a <see cref="GetConfigurationResponse"/></returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<GetConfigurationResponse> GetConfiguration(
+            string storeName,
+            IReadOnlyList<string> keys,
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
