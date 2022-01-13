@@ -114,22 +114,14 @@ namespace Dapr.Actors.Runtime
             {
                 IActorResponseMessageBody responseMsgBody = null;
 
-                try
-                {
-                    responseMsgBody = (IActorResponseMessageBody)await methodDispatcher.DispatchAsync(
-                        actor,
-                        actorMessageHeader.MethodId,
-                        actorMessageBody,
-                        this.messageBodyFactory,
-                        ct);
+                responseMsgBody = (IActorResponseMessageBody)await methodDispatcher.DispatchAsync(
+                    actor,
+                    actorMessageHeader.MethodId,
+                    actorMessageBody,
+                    this.messageBodyFactory,
+                    ct);
 
-                    return this.CreateResponseMessage(responseMsgBody, interfaceId);
-                }
-                catch (Exception exception)
-                {
-                    // return exception response message
-                    return this.CreateExceptionResponseMessage(exception);
-                }
+                return this.CreateResponseMessage(responseMsgBody, interfaceId);
             }
 
             return await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
@@ -390,18 +382,6 @@ namespace Dapr.Actors.Runtime
             }
 
             return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
-        }
-
-        private Tuple<string, byte[]> CreateExceptionResponseMessage(Exception ex)
-        {
-            var responseHeader = new ActorResponseMessageHeader();
-            responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
-            var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
-            var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
-
-            var responseMsgBody = ActorInvokeException.FromException(ex);
-            
-            return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }
     }
 }

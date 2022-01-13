@@ -91,22 +91,7 @@ namespace Dapr.E2E.Test
 
         protected async Task WaitForActorRuntimeAsync(IPingActor proxy, CancellationToken cancellationToken)
         {
-            while (true)
-            {
-                this.Output.WriteLine($"Waiting for actor to be ready in: {this.AppId}");
-                cancellationToken.ThrowIfCancellationRequested();
-
-                try
-                {
-                    await proxy.Ping();
-                    this.Output.WriteLine($"Found actor in: {this.AppId}");
-                    break;
-                }
-                catch (DaprApiException)
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(250));
-                }
-            }
+            await ActorRuntimeChecker.WaitForActorRuntimeAsync(this.AppId, this.Output, proxy, cancellationToken);
         }
     }
 }
