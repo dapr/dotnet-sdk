@@ -100,6 +100,7 @@ namespace Dapr.Actors.Runtime
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.Id = id;
+            this.JsonSerializerOptions = jsonSerializerOptions;
             this.LoggerFactory = loggerFactory;
             this.ProxyFactory = proxyFactory;
             this.TimerManager = timerManager;
