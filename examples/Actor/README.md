@@ -25,7 +25,7 @@ To run the actor service locally run this command in `DemoActor` directory:
  dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5010 dotnet run
 ```
 
-The `DemoActor` service will listen on port `5000` for HTTP.
+The `DemoActor` service will listen on port `5010` for HTTP.
 
 ### Make client calls
 
