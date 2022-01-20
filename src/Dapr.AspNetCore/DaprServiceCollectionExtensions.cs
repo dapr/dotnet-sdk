@@ -28,7 +28,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection" />.</param>
         /// <param name="configure"></param>
-        public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder> configure = null)
+        /// <returns>The <see cref="IServiceCollection" /> instance.</returns>
+        public static IServiceCollection AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder> configure = null)
         {
             if (services is null)
             {
@@ -39,7 +40,7 @@ namespace Microsoft.Extensions.DependencyInjection
             // by non-user-code.
             if (services.Any(s => s.ImplementationType == typeof(DaprClientMarkerService)))
             {
-                return;
+                return services;
             }
 
             services.AddSingleton<DaprClientMarkerService>();
@@ -54,6 +55,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
                 return builder.Build();
             });
+
+            return services;
         }
 
         private class DaprClientMarkerService
