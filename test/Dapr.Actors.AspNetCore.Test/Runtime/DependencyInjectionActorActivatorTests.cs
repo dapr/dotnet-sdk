@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,6 +63,18 @@ namespace Dapr.Actors.Runtime
 
             Assert.Same(actor1.SingletonService, actor2.SingletonService);
             Assert.NotSame(actor1.ScopedService, actor2.ScopedService);
+        }
+
+        [Fact]
+        public async Task CreateAsync_CustomJsonOptions()
+        {
+            var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = false };
+            var activator = CreateActivator(typeof(TestActor));
+
+            var host = ActorHost.CreateForTest<TestActor>(new ActorTestOptions { JsonSerializerOptions = jsonOptions });
+            var state = await activator.CreateAsync(host);
+
+            Assert.Same(jsonOptions, state.Actor.Host.JsonSerializerOptions);
         }
 
         [Fact]
