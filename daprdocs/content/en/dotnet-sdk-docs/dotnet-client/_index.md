@@ -67,6 +67,31 @@ await client.DeleteStateAsync(storeName, stateKeyName, cancellationToken: cancel
 Console.WriteLine("Deleted State!");
 ```
 
+### Query State (Alpha)
+
+```csharp
+var query = "{" +
+                "\"filter\": {" +
+                    "\"EQ\": { \"value.Id\": \"1\" }" +
+                "}," +
+                "\"sort\": [" +
+                    "{" +
+                        "\"key\": \"value.Balance\"," +
+                        "\"order\": \"DESC\"" +
+                    "}" +
+                "]" +
+            "}";
+
+var client = new DaprClientBuilder().Build();
+var queryResponse = await client.QueryStateAsync<Account>("querystore", query, cancellationToken: cancellationToken);
+
+Console.WriteLine($"Got {queryResponse.Results.Count}");
+foreach (var account in queryResponse.Results)
+{
+    Console.WriteLine($"Account: {account.Data.Id} has {account.Data.Balance}");
+}
+```
+
 - For a full list of state operations visit [How-To: Get & save state]({{< ref howto-get-save-state.md >}}).
 
 ### Publish messages
@@ -140,7 +165,7 @@ Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secr
 
 - For a full guide on secrets visit [How-To: Retrieve secrets]({{< ref howto-secrets.md >}}).
 
-### Get Configuration Keys
+### Get Configuration Keys (Alpha)
 ```csharp
 var client = new DaprClientBuilder().Build();
 
