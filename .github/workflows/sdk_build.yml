@@ -26,7 +26,7 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 5.0.x
+          dotnet-version: 6.0.x
       - name: Build
         run: dotnet build --configuration release
       - name: Generate Packages
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['3.1', '5.0']
+        dotnet-version: ['3.1', '5.0', '6.0']
         include:
         - dotnet-version: '3.1'
           install-3: true
@@ -54,6 +54,11 @@ jobs:
           display-name: '.NET 5.0'
           framework: 'net5'
           prefix: 'net5'
+        - dotnet-version: '6.0'
+          install-3: false
+          display-name: '.NET 6.0'
+          framework: 'net6'
+          prefix: 'net6'
     steps:
     - uses: actions/checkout@v1
     - name: Parse release version
@@ -63,10 +68,10 @@ jobs:
       if: matrix.install-3
       with:
         dotnet-version: 3.1.x
-    - name: Setup .NET 5.0
+    - name: Setup .NET 6.0
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 5.0.x
+        dotnet-version: 6.0.x
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
