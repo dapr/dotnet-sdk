@@ -95,7 +95,7 @@ jobs:
       with:
         flags: ${{ matrix.framework }}
     - name: Parse Trx files
-      uses: NasAmin/trx-parser@v0.1.0
+      uses: NasAmin/trx-parser@v0.2.0
       id: trx-parser
       if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository # does not work on PRs from forks
       with:
