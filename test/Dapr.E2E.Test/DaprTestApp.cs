@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -124,7 +124,18 @@ namespace Dapr.E2E.Test
         {
             var targetFrameworkName = ((TargetFrameworkAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(TargetFrameworkAttribute), false).FirstOrDefault()).FrameworkName;
             string frameworkMoniker;
-            frameworkMoniker = targetFrameworkName == ".NETCoreApp,Version=v3.1" ? "netcoreapp3.1" : "net5";
+            if (targetFrameworkName == ".NETCoreApp,Version=v3.1")
+            {
+                frameworkMoniker = "netcoreapp3.1";
+            }
+            else if (targetFrameworkName == ".NETCoreApp,Version=v5.0")
+            {
+                frameworkMoniker = "net5";
+            }
+            else
+            {
+                frameworkMoniker = "net6";
+            }
             return frameworkMoniker;
         }
 
