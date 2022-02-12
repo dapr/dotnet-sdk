@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ namespace Dapr
         private static string httpEndpoint;
         private static string grpcEndpoint;
         private static string apiToken;
+        private static string appApiToken;
 
         public static string GetDefaultApiToken()
         {
@@ -34,8 +35,17 @@ namespace Dapr
             }
 
             return apiToken;
+        }
 
-            
+        public static string GetDefaultAppApiToken()
+        {
+            if (appApiToken == null)
+            {
+                var value = Environment.GetEnvironmentVariable("APP_API_TOKEN");
+                appApiToken = (value == string.Empty) ? null : value;
+            }
+
+            return appApiToken;
         }
 
         public static string GetDefaultHttpEndpoint()

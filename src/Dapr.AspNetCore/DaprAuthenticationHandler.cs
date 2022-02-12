@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ namespace Dapr.AspNetCore
         public DaprAuthenticationHandler(
             IOptionsMonitor<DaprAuthenticationOptions> options,
             ILoggerFactory logger,
-            UrlEncoder encoder, 
+            UrlEncoder encoder,
             ISystemClock clock) : base(options, logger, encoder, clock)
         {
         }
@@ -48,7 +48,7 @@ namespace Dapr.AspNetCore
             var expectedToken = Options.Token;
             if (string.IsNullOrWhiteSpace(expectedToken))
             {
-                return AuthenticateResult.Fail("Dapr API Token not configured.");
+                return AuthenticateResult.Fail("Dapr App API Token not configured.");
             }
 
             if (!string.Equals(token, expectedToken))
