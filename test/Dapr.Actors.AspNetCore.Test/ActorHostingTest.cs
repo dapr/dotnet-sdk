@@ -38,8 +38,8 @@ namespace Dapr.Actors.AspNetCore
 
             Assert.Collection(
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
-                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1)).ActorTypeName, t),
-                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2)).ActorTypeName, t));
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1), actorTypeName: null).ActorTypeName, t),
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2), actorTypeName: null).ActorTypeName, t));
         }
 
         [Fact]
@@ -62,8 +62,8 @@ namespace Dapr.Actors.AspNetCore
 
             Assert.Collection(
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
-                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1)).ActorTypeName, t),
-                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2)).ActorTypeName, t));
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1), actorTypeName: null).ActorTypeName, t),
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2), actorTypeName: null).ActorTypeName, t));
         }
 
         [Fact]

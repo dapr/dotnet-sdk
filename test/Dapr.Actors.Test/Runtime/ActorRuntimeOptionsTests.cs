@@ -25,7 +25,7 @@ namespace Dapr.Actors.Test.Runtime
         public void TestRegisterActor_SavesActivator()
         {
             var actorType = typeof(TestActor);
-            var actorTypeInformation = ActorTypeInformation.Get(actorType);
+            var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
             var host = ActorHost.CreateForTest<TestActor>();
             var actor = new TestActor(host);
 

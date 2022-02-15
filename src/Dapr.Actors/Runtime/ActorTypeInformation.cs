@@ -75,11 +75,12 @@ namespace Dapr.Actors.Runtime
         /// <para>1. <see cref="System.Type.BaseType"/> for actorType is not of type <see cref="Actor"/>.</para>
         /// <para>2. actorType does not implement an interface deriving from <see cref="IActor"/> and is not marked as abstract.</para>
         /// </remarks>
+        [Obsolete("Use Get(Type, string) instead. This will be removed in the future.")]
         public static bool TryGet(Type actorType, out ActorTypeInformation actorTypeInformation)
         {
             try
             {
-                actorTypeInformation = Get(actorType);
+                actorTypeInformation = Get(actorType, actorTypeName: null);
                 return true;
             }
             catch (ArgumentException)
@@ -99,7 +100,25 @@ namespace Dapr.Actors.Runtime
         /// <para>When actorType does not implement an interface deriving from <see cref="IActor"/>
         /// and is not marked as abstract.</para>
         /// </exception>
+        [Obsolete("Use Get(Type, string) instead. This will be removed in the future.")]
         public static ActorTypeInformation Get(Type actorType)
+        {
+            return Get(actorType, actorTypeName: null);
+        }
+
+        /// <summary>
+        /// Creates an <see cref="ActorTypeInformation"/> from actorType.
+        /// </summary>
+        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInformation for.</param>
+        /// <param name="actorTypeName">The name of the actor type represented by the actor.</param>
+        /// <returns><see cref="ActorTypeInformation"/> created from actorType.</returns>
+        /// <exception cref="System.ArgumentException">
+        /// <para>When <see cref="System.Type.BaseType"/> for actorType is not of type <see cref="Actor"/>.</para>
+        /// <para>When actorType does not implement an interface deriving from <see cref="IActor"/>
+        /// and is not marked as abstract.</para>
+        /// </exception>
+        /// <remarks>The value of <paramref name="actorTypeName"/> will have precedence over the default actor type name derived from the actor implementation type or any type name set via <see cref="ActorAttribute"/>.</remarks>
+        public static ActorTypeInformation Get(Type actorType, string actorTypeName)
         {
             if (!actorType.IsActor())
             {
@@ -129,7 +148,7 @@ namespace Dapr.Actors.Runtime
 
             var actorAttribute = actorType.GetCustomAttribute<ActorAttribute>();
 
-            string actorTypeName = actorAttribute?.TypeName ?? actorType.Name;
+            actorTypeName ??= actorAttribute?.TypeName ?? actorType.Name;
 
             return new ActorTypeInformation()
             {

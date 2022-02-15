@@ -32,7 +32,7 @@ namespace Dapr.Actors.Runtime
 
         private DependencyInjectionActorActivator CreateActivator(Type type)
         {
-            return new DependencyInjectionActorActivator(CreateServices(), ActorTypeInformation.Get(type));
+            return new DependencyInjectionActorActivator(CreateServices(), ActorTypeInformation.Get(type, actorTypeName: null));
         }
 
         [Fact]
