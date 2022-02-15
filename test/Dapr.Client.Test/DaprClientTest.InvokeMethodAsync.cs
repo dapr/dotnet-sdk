@@ -19,6 +19,7 @@ namespace Dapr.Client.Test
     using System.Net.Http.Json;
     using System.Text;
     using System.Text.Json;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
     using Xunit;
@@ -306,6 +307,78 @@ namespace Dapr.Client.Test
             var exception = new HttpRequestException();
             var result = await request.CompleteWithExceptionAndResultAsync(exception);
             Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CheckOutboundHealthAsync_Success()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+            var request = await client.CaptureHttpRequestAsync<bool>(async daprClient => await daprClient.CheckOutboundHealthAsync());
+
+            Assert.Equal(request.Request.Method, HttpMethod.Get);
+            Assert.Equal(new Uri("https://test-endpoint:3501/v1.0/healthz/outbound").AbsoluteUri, request.Request.RequestUri.AbsoluteUri);
+
+            var result = await request.CompleteAsync(new HttpResponseMessage());
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task CheckOutboundHealthAsync_NotSuccess()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+            var request = await client.CaptureHttpRequestAsync<bool>(async daprClient => await daprClient.CheckOutboundHealthAsync());
+
+            Assert.Equal(request.Request.Method, HttpMethod.Get);
+            Assert.Equal(new Uri("https://test-endpoint:3501/v1.0/healthz/outbound").AbsoluteUri, request.Request.RequestUri.AbsoluteUri);
+
+            var result = await request.CompleteAsync(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CheckOutboundHealthAsync_WrapsRequestException()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+            var request = await client.CaptureHttpRequestAsync<bool>(async daprClient => await daprClient.CheckOutboundHealthAsync());
+
+            Assert.Equal(request.Request.Method, HttpMethod.Get);
+            Assert.Equal(new Uri("https://test-endpoint:3501/v1.0/healthz/outbound").AbsoluteUri, request.Request.RequestUri.AbsoluteUri);
+
+            var result = await request.CompleteWithExceptionAndResultAsync(new HttpRequestException());
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task WaitForSidecarAsync_SuccessWhenSidecarHealthy()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+            var request = await client.CaptureHttpRequestAsync(async daprClient => await daprClient.WaitForSidecarAsync());
+
+            // If we don't throw, we're good.
+            await request.CompleteAsync(new HttpResponseMessage());
+        }
+
+        [Fact]
+        public async Task WaitForSidecarAsync_NotSuccessWhenSidecarNotHealthy()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+            using var cts = new CancellationTokenSource();
+            var waitRequest = await client.CaptureHttpRequestAsync(async daprClient => await daprClient.WaitForSidecarAsync(cts.Token));
+            var healthRequest = await client.CaptureHttpRequestAsync<bool>(async daprClient => await daprClient.CheckOutboundHealthAsync());
+
+            cts.Cancel();
+
+            await healthRequest.CompleteAsync(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await waitRequest.CompleteWithExceptionAsync(new TaskCanceledException()));
         }
 
         [Fact]
