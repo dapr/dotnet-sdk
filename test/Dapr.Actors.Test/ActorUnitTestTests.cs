@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
@@ -26,6 +27,22 @@ namespace Dapr.Actors
     // Tests that test that we can test... hmmmm...
     public class ActorUnitTestTests
     {
+        [Fact]
+        public async Task CanSupplyACustomStateStore()
+        {
+            var stateManager = new Mock<IDaprStateProvider>();
+            var host = ActorHost.CreateForTest<CoolTestActor>(new ActorTestOptions(){ DaprStateProvider = stateManager.Object });
+            var actor = new CoolTestActor(host);
+
+            await actor.CanTalkToStateManager();
+
+            stateManager.Verify(x => x.ContainsStateAsync(
+                "CoolTestActor", 
+                actor.Id.GetId(),
+                "cool-test-state", CancellationToken.None), Times.Once);
+            
+        }
+        
         [Fact]
         public async Task CanTestStartingAndStoppingTimer()
         {
@@ -131,6 +148,11 @@ namespace Dapr.Actors
             {
             }
 
+            public async Task CanTalkToStateManager()
+            {
+                await this.StateManager.ContainsStateAsync("cool-test-state");
+            }
+            
             public async Task StartTimerAsync(Message message)
             {
                 var bytes = JsonSerializer.SerializeToUtf8Bytes(message);

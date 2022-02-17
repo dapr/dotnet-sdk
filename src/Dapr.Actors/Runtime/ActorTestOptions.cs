@@ -12,7 +12,9 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Client;
 using Microsoft.Extensions.Logging;
@@ -53,6 +55,36 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         public ActorTimerManager TimerManager { get; set; } = new InvalidTimerManager();
 
+        /// <summary>
+        /// Gets or sets the <see cref="IDaprStateProvider"/>
+        /// </summary>
+        public IDaprStateProvider DaprStateProvider { get; set; } = new InvalidDaprStateProvider();
+
+        private class InvalidDaprStateProvider : IDaprStateProvider
+        {
+            private static readonly string Message = 
+                "This actor was initialized for tests without providing a replacement for the StateProvider " +
+                "Provide a mock implementation of IDaprStateProvider by setting 'ActorTestOptions.DaprStateProvider."; 
+            
+            public Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName,
+                CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException(Message);
+            }
+
+            public Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName,
+                CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException(Message);
+            }
+
+            public Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges,
+                CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException(Message);
+            }
+        }
+        
         private class InvalidProxyFactory : IActorProxyFactory
         {
             private static readonly string Message = 

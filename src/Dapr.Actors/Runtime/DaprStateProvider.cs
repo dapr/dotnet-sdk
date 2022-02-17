@@ -22,9 +22,44 @@ namespace Dapr.Actors.Runtime
     using System.Threading.Tasks;
 
     /// <summary>
+    /// 
+    /// </summary>
+    public interface IDaprStateProvider
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="actorType"></param>
+        /// <param name="actorId"></param>
+        /// <param name="stateName"></param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="actorType"></param>
+        /// <param name="actorId"></param>
+        /// <param name="stateName"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="actorType"></param>
+        /// <param name="actorId"></param>
+        /// <param name="stateChanges"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>
     /// State Provider to interact with Dapr runtime.
     /// </summary>
-    internal class DaprStateProvider
+    internal class DaprStateProvider : IDaprStateProvider
     {
         private readonly IActorStateSerializer actorStateSerializer;
         private readonly JsonSerializerOptions jsonSerializerOptions;

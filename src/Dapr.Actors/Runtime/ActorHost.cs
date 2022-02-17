@@ -81,7 +81,8 @@ namespace Dapr.Actors.Runtime
                 options.JsonSerializerOptions,
                 options.LoggerFactory,
                 options.ProxyFactory,
-                options.TimerManager);
+                options.TimerManager,
+                options.DaprStateProvider);
         }
 
         /// <summary>
@@ -115,13 +116,15 @@ namespace Dapr.Actors.Runtime
         /// <param name="loggerFactory">The logger factory.</param>
         /// <param name="proxyFactory">The <see cref="ActorProxyFactory" />.</param>
         /// <param name="timerManager">The <see cref="ActorTimerManager" />.</param>
+        /// <param name="daprStateProvider">The <see cref="DaprStateProvider" />.</param>
         internal ActorHost(
             ActorTypeInformation actorTypeInfo,
             ActorId id,
             JsonSerializerOptions jsonSerializerOptions,
             ILoggerFactory loggerFactory,
             IActorProxyFactory proxyFactory,
-            ActorTimerManager timerManager)
+            ActorTimerManager timerManager,
+            IDaprStateProvider daprStateProvider)
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.Id = id;
@@ -129,6 +132,7 @@ namespace Dapr.Actors.Runtime
             this.LoggerFactory = loggerFactory;
             this.ProxyFactory = proxyFactory;
             this.TimerManager = timerManager;
+            this.StateProvider = daprStateProvider;
         }
 
         /// <summary>
@@ -145,9 +149,9 @@ namespace Dapr.Actors.Runtime
         /// Gets the LoggerFactory for actor service
         /// </summary>
         public ILoggerFactory LoggerFactory { get; }
-
+        
         /// <summary>
-        /// Gets the <see cref="DaprStateProvider" />.
+        /// Gets the <see cref="JsonSerializerOptions"/>
         /// </summary>
         public JsonSerializerOptions JsonSerializerOptions { get; }
 
@@ -160,7 +164,10 @@ namespace Dapr.Actors.Runtime
         /// Gets the <see cref="ActorTimerManager" />.
         /// </summary>
         public ActorTimerManager TimerManager { get; }
-
-        internal DaprStateProvider StateProvider { get; set; }
+        
+        /// <summary>
+        /// Gets the <see cref="DaprStateProvider" />.
+        /// </summary>
+        internal IDaprStateProvider StateProvider { get; }
     }
 }
