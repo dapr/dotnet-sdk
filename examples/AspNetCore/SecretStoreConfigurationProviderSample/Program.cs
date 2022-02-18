@@ -19,6 +19,7 @@
     using Dapr.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using System.Collections.Generic;
+    using System;
 
     /// <summary>
     /// Secret Store Configuration Provider Sample.
@@ -62,7 +63,8 @@
                     // configBuilder.AddDaprSecretStore("demosecrets", secretDescriptors, client);
 
                     // Add the secret store Configuration Provider to the configuration builder.
-                    configBuilder.AddDaprSecretStore("demosecrets", client);
+                    // Including a TimeSpan allows us to dictate how long we should wait for the Sidecar to start.
+                    configBuilder.AddDaprSecretStore("demosecrets", client, TimeSpan.FromSeconds(10));
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {

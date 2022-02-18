@@ -305,6 +305,34 @@ namespace Dapr.Client
             }
         }
 
+        public override async Task<bool> CheckOutboundHealthAsync(CancellationToken cancellationToken = default)
+        {
+            var path = "/v1.0/healthz/outbound";
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+            try
+            {
+                var response = await this.httpClient.SendAsync(request, cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
+
+        public override async Task WaitForSidecarAsync(CancellationToken cancellationToken = default)
+        {
+            while (true)
+            { 
+                var response = await CheckOutboundHealthAsync(cancellationToken);
+                if (response)
+                {
+                    break;
+                }
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            }
+        }
+
         public override async Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNull(request, nameof(request));
