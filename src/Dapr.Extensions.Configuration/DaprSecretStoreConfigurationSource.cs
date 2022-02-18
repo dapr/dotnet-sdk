@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 
@@ -54,6 +55,11 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         /// </summary>
         public DaprClient Client { get; set; } = default!;
 
+        /// <summary>
+        /// Gets or sets the <see cref="TimeSpan"/> that is used to control the timeout waiting for the Dapr sidecar to become healthly.
+        /// </summary>
+        public TimeSpan? SidecarWaitTimeout { get; set; }
+
         /// <inheritdoc />
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
@@ -64,11 +70,11 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                     throw new ArgumentException($"{nameof(Metadata)} must be null when {nameof(SecretDescriptors)} is set", nameof(Metadata));
                 }
 
-                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, SecretDescriptors, Client);
+                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, SecretDescriptors, Client, SidecarWaitTimeout ?? DaprSecretStoreConfigurationProvider.DefaultSidecarWaitTimeout);
             }
             else
             {
-                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, Metadata, Client);
+                return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, Metadata, Client, SidecarWaitTimeout ?? DaprSecretStoreConfigurationProvider.DefaultSidecarWaitTimeout);
             }
         }
     }

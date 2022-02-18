@@ -125,6 +125,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -152,6 +153,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -178,6 +180,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -250,6 +253,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -277,6 +281,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -303,6 +308,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -328,6 +334,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -353,6 +360,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -377,6 +385,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -408,6 +417,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -440,6 +450,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -473,6 +484,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -506,6 +518,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -531,25 +544,33 @@ namespace Dapr.Extensions.Configuration.Test
                 Handler = async (entry) =>
                 {
                     // The following is an attempt at handling multiple secret descriptors for unit tests.
-                    var content = await entry.Request.Content.ReadAsStringAsync();
-                    if (content.Contains("secretName--value"))
+                    if (entry.Request.RequestUri.AbsoluteUri.Contains("healthz"))
                     {
-                        await SendResponseWithSecrets(new Dictionary<string, string>()
-                        {
-                            ["secretName--value"] = "secret",
-                        }, entry);
+                        await SendEmptyResponse(entry);
                     }
-                    else if (content.Contains("otherSecretName≡value"))
+                    else
                     {
-                        await SendResponseWithSecrets(new Dictionary<string, string>()
+                        var content = await entry.Request.Content.ReadAsStringAsync();
+                        if (content.Contains("secretName--value"))
                         {
-                            ["otherSecretName≡value"] = "secret",
-                        }, entry);
-                    }
+                            await SendResponseWithSecrets(new Dictionary<string, string>()
+                            {
+                                ["secretName--value"] = "secret",
+                            }, entry);
+                        }
+                        else if (content.Contains("otherSecretName≡value"))
+                        {
+                            await SendResponseWithSecrets(new Dictionary<string, string>()
+                            {
+                                ["otherSecretName≡value"] = "secret",
+                            }, entry);
+                        }
+                    }                    
                 }
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -588,6 +609,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -616,6 +638,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -646,6 +669,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -675,6 +699,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -709,6 +734,7 @@ namespace Dapr.Extensions.Configuration.Test
             };
 
             var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
                 .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
                 .Build();
 
@@ -723,6 +749,27 @@ namespace Dapr.Extensions.Configuration.Test
                     .Build();
 
             config["first_secret--value"].Should().Be("secret1");
+        }
+
+        [Fact]
+        public void LoadSecrets_FailsIfSidecarNotAvailable()
+        {
+            var httpClient = new TestHttpClient()
+            {
+                Handler = async (entry) =>
+                {
+                    await SendEmptyResponse(entry, HttpStatusCode.InternalServerError);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
+                .UseGrpcChannelOptions(new GrpcChannelOptions { HttpClient = httpClient })
+                .Build();
+
+            Assert.Throws<TaskCanceledException>(() => CreateBuilder()
+                .AddDaprSecretStore("store", daprClient, TimeSpan.FromMilliseconds(1))
+                .Build());
         }
 
         private IConfigurationBuilder CreateBuilder()
@@ -754,6 +801,13 @@ namespace Dapr.Extensions.Configuration.Test
             var streamContent = await GrpcUtils.CreateResponseContent(getBulkSecretResponse);
             var response = GrpcUtils.CreateResponse(HttpStatusCode.OK, streamContent);
             entry.Completion.SetResult(response);
+        }
+
+        private async Task SendEmptyResponse(TestHttpClient.Entry entry, HttpStatusCode code = HttpStatusCode.OK)
+        {
+            var response = new Autogenerated.GetSecretResponse();
+            var streamContent = await GrpcUtils.CreateResponseContent(response);
+            entry.Completion.SetResult(GrpcUtils.CreateResponse(code, streamContent));
         }
     }
 }

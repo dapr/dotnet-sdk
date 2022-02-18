@@ -313,6 +313,23 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Perform health-check of Dapr sidecar's outbound APIs. Return 'true' if the sidecar is healthy. Otherwise false. This method should
+        /// be used over <see cref="CheckHealthAsync(CancellationToken)"/> when the health of Dapr is being checked before it starts. This
+        /// health endpoint indicates that Dapr has stood up its APIs and is currently waiting on this application to report fully healthy.
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<bool> CheckOutboundHealthAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Calls <see cref="CheckOutboundHealthAsync(CancellationToken)"/> until the sidecar is reporting as healthy. If the sidecar
+        /// does not become healthy, an exception will be thrown.
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task WaitForSidecarAsync(CancellationToken cancellationToken = default);
         
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. The response will
