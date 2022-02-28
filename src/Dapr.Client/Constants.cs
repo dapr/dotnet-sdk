@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,14 @@ using System.Net.Mime;
 
 namespace Dapr.Client
 {
-    internal class Constants
+    internal static class Constants
     {
+#if NETSTANDARD2_0
+        public const string ContentTypeApplicationJson = "application/json";
+#else
         public const string ContentTypeApplicationJson = MediaTypeNames.Application.Json;
+#endif
+
         public const string ContentTypeApplicationGrpc = "application/grpc";
     }
 }

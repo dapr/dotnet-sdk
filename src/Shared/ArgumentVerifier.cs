@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,12 @@ namespace Dapr
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
+#if NETSTANDARD2_0
+        public static void ThrowIfNull(object? value, string name)
+#else
         public static void ThrowIfNull([NotNull] object? value, string name)
+#endif
+
         {
             if (value == null)
             {
@@ -44,7 +49,11 @@ namespace Dapr
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
+#if NETSTANDARD2_0
+        public static void ThrowIfNullOrEmpty(string? value, string name)
+#else
         public static void ThrowIfNullOrEmpty([NotNull] string? value, string name)
+#endif
         {
             if (value == null)
             {
