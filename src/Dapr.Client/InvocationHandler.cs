@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -117,7 +117,11 @@ namespace Dapr.Client
         }
 
         // Internal for testing
+#if NETSTANDARD2_0
+        internal bool TryRewriteUri(Uri uri, out Uri? rewritten)
+#else
         internal bool TryRewriteUri(Uri uri, [NotNullWhen(true)] out Uri? rewritten)
+#endif        
         {
             // For now the only invalid cases are when the request URI is missing or just silly.
             // We may support additional cases for validation in the future (like an allow-list of App-Ids).

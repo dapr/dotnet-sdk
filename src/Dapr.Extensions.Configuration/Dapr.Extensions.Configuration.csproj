@@ -22,4 +22,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" />
+  </ItemGroup>
+
 </Project>
