@@ -31,7 +31,7 @@ namespace Dapr.Client
         /// <returns>The given data as JSON based byte string.</returns>
         public static ByteString ToJsonByteString<T>(T data, JsonSerializerOptions options)
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(data, options);
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(data, data.GetType(), options);
             return ByteString.CopyFrom(bytes);
         }
 

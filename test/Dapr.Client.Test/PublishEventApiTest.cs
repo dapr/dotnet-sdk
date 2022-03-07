@@ -171,6 +171,38 @@ namespace Dapr.Client.Test
             });
             Assert.Same(rpcException, ex.InnerException);
         }
+        
+        [Fact]
+        public async Task PublishNonConcreteEventType_SerializesConcreteTypeInstead()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            IApplicationEvent evt = new ImplementedApplicationEvent() { SampleData = "Sample" };
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.PublishEventAsync(TestPubsubName, "test", evt);
+            });
+
+            request.Dismiss();
+    
+            var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
+            var jsonFromRequest = envelope.Data.ToStringUtf8();
+
+            var expectedJsonFromRequest = JsonSerializer.Serialize(
+                evt, evt.GetType(), client.InnerClient.JsonSerializerOptions);
+
+            jsonFromRequest.Should().Be(expectedJsonFromRequest);
+        }
+
+        private interface IApplicationEvent
+        {
+        }
+
+        private class ImplementedApplicationEvent : IApplicationEvent
+        {
+            public string SampleData { get; set; }
+        }
 
         private class PublishData
         {
