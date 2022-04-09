@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ namespace Dapr.E2E.Test
     using Dapr.E2E.Test.Actors.Reminders;
     using Dapr.E2E.Test.Actors.Timers;
     using Dapr.E2E.Test.App.ErrorTesting;
+    using Microsoft.AspNetCore.Authentication;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
@@ -48,6 +50,8 @@ namespace Dapr.E2E.Test
         /// <param name="services">Service Collection.</param>
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddAuthentication().AddDapr();
+            services.AddAuthorization(o => o.AddDapr());
             services.AddControllers().AddDapr();
             services.AddActors(options =>
             {
@@ -71,9 +75,11 @@ namespace Dapr.E2E.Test
 
             app.UseRouting();
 
-            app.UseCloudEvents();
+            app.UseAuthentication();
 
             app.UseAuthorization();
+
+            app.UseCloudEvents();
 
             app.UseEndpoints(endpoints =>
             {

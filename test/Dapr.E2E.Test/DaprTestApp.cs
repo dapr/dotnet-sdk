@@ -58,7 +58,7 @@ namespace Dapr.E2E.Test
                 "--components-path", componentsPath,
                 "--config", configPath,
                 "--log-level", "debug",
-                
+
             };
 
             if (configuration.UseAppPort)
@@ -68,7 +68,7 @@ namespace Dapr.E2E.Test
 
             if (!string.IsNullOrEmpty(configuration.AppProtocol))
             {
-                arguments.AddRange(new []{ "--app-protocol", configuration.AppProtocol });
+                arguments.AddRange(new[]{ "--app-protocol", configuration.AppProtocol });
             }
 
             arguments.AddRange(new[]
@@ -96,6 +96,10 @@ namespace Dapr.E2E.Test
                 Command = string.Join(" ", arguments),
                 OutputToMatch = outputToMatchOnStart,
                 Timeout = TimeSpan.FromSeconds(30),
+                EnvironmentVariables = new Dictionary<string, string>
+                {
+                    { "APP_API_TOKEN", "abcdefg" }
+                }
             };
 
             daprStart.Run();

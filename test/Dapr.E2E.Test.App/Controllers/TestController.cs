@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ namespace Dapr.E2E.Test
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
 
@@ -42,8 +43,20 @@ namespace Dapr.E2E.Test
         /// </summary>
         /// <param name="transaction">Transaction to process.</param>
         /// <returns>Account</returns>
-       [HttpPost("accountDetails")]
+        [HttpPost("accountDetails")]
         public ActionResult<Account> AccountDetails(Transaction transaction)
+        {
+            var account = new Account()
+            {
+                Id = transaction.Id,
+                Balance = transaction.Amount + 100
+            };
+            return account;
+        }
+
+        [Authorize("Dapr")]
+        [HttpPost("accountDetails-requires-api-token")]
+        public ActionResult<Account> AccountDetailsRequiresApiToken(Transaction transaction)
         {
             var account = new Account()
             {
