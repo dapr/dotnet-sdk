@@ -26,7 +26,7 @@ namespace Dapr.AspNetCore
         internal string Scheme { get; } = DefaultScheme;
 
         /// <summary>
-        /// Gets or sets the Dapr App API token.
+        /// Gets or sets the App API token.
         /// By default, the token will be read from the APP_API_TOKEN environment variable.
         /// </summary>
         public string Token { get; set; } = DaprDefaults.GetDefaultAppApiToken();

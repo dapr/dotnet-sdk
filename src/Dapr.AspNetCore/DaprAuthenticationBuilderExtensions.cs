@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Authentication
     public static class DaprAuthenticationBuilderExtensions
     {
         /// <summary>
-        /// Adds Dapr App API token authentication.
+        /// Adds App API token authentication.
         /// See https://docs.dapr.io/operations/security/app-api-token/ for more information about App API token authentication in Dapr.
         /// By default, the token will be read from the APP_API_TOKEN environment variable.
         /// </summary>
@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Authentication
         public static AuthenticationBuilder AddDapr(this AuthenticationBuilder builder) => builder.AddDapr(configureOptions: null);
 
         /// <summary>
-        /// Adds Dapr App API token authentication.
+        /// Adds App API token authentication.
         /// See https://docs.dapr.io/operations/security/app-api-token/ for more information about App API token authentication in Dapr.
         /// </summary>
         /// <param name="builder">The <see cref="AuthenticationBuilder"/>.</param>

@@ -48,7 +48,7 @@ namespace Dapr.AspNetCore
             var expectedToken = Options.Token;
             if (string.IsNullOrWhiteSpace(expectedToken))
             {
-                return AuthenticateResult.Fail("Dapr App API Token not configured.");
+                return AuthenticateResult.Fail("App API Token not configured.");
             }
 
             if (!string.Equals(token, expectedToken))

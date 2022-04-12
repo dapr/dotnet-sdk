@@ -19,24 +19,32 @@ namespace Dapr
     {
         private static string httpEndpoint;
         private static string grpcEndpoint;
-        private static string apiToken;
+        private static string daprApiToken;
         private static string appApiToken;
 
-        public static string GetDefaultApiToken()
+        /// <summary>
+        /// Get the value of environment variable DAPR_API_TOKEN
+        /// </summary>
+        /// <returns>The value of environment variable DAPR_API_TOKEN</returns>
+        public static string GetDefaultDaprApiToken()
         {
             // Lazy-init is safe because this is just populating the default
             // We don't plan to support the case where the user changes environment variables
             // for a running process.
-            if (apiToken == null)
+            if (daprApiToken == null)
             {
                 // Treat empty the same as null since it's an environment variable
                 var value = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-                apiToken = (value == string.Empty) ? null : value;
+                daprApiToken = (value == string.Empty) ? null : value;
             }
 
-            return apiToken;
+            return daprApiToken;
         }
 
+        /// <summary>
+        /// Get the value of environment variable APP_API_TOKEN
+        /// </summary>
+        /// <returns>The value of environment variable APP_API_TOKEN</returns>
         public static string GetDefaultAppApiToken()
         {
             if (appApiToken == null)
@@ -48,6 +56,10 @@ namespace Dapr
             return appApiToken;
         }
 
+        /// <summary>
+        /// Get the value of environment variable DAPR_HTTP_PORT
+        /// </summary>
+        /// <returns>The value of environment variable DAPR_HTTP_PORT</returns>
         public static string GetDefaultHttpEndpoint()
         {
             if (httpEndpoint == null)
@@ -60,6 +72,10 @@ namespace Dapr
             return httpEndpoint;
         }
 
+        /// <summary>
+        /// Get the value of environment variable DAPR_GRPC_PORT
+        /// </summary>
+        /// <returns>The value of environment variable DAPR_GRPC_PORT</returns>
         public static string GetDefaultGrpcEndpoint()
         {
             if (grpcEndpoint == null)
