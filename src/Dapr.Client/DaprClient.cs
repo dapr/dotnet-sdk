@@ -47,6 +47,23 @@ namespace Dapr.Client
         public abstract JsonSerializerOptions JsonSerializerOptions { get; }
 
         /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="storeName"></param>
+        /// <param name="keys"></param>
+        /// <param name="metadata"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public virtual IAsyncEnumerable<ConfigurationItem> Subscribe(
+            string storeName,
+            IReadOnlyList<string> keys,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default)
+        {
+            throw null; // TODO: halspang implement me plz
+        }
+
+        /// <summary>
         /// <para>
         /// Creates an <see cref="HttpClient" /> that can be used to perform Dapr service
         /// invocation using <see cref="HttpRequestMessage" /> objects.

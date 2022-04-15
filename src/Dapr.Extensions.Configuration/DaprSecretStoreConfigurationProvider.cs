@@ -24,7 +24,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
     /// <summary>
     /// A Dapr Secret Store based <see cref="ConfigurationProvider"/>.
     /// </summary>
-    internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
+    internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDisposable
     {
         internal static readonly TimeSpan DefaultSidecarWaitTimeout = TimeSpan.FromSeconds(5);
 
@@ -41,6 +41,9 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
         private readonly DaprClient client;
 
         private readonly TimeSpan sidecarWaitTimeout;
+
+        private readonly object @lock = new object();
+        private CancellationTokenSource? subscription;
 
         /// <summary>
         /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
@@ -168,6 +171,26 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             this.sidecarWaitTimeout = sidecarWaitTimeout;
         }
 
+        public DaprSecretStoreConfigurationProvider(
+            string store,
+            bool normalizeKey,
+            IList<string>? keyDelimiters,
+            IReadOnlyDictionary<string, string>? metadata,
+            DaprClient client,
+            TimeSpan sidecarWaitTimeout,
+            bool streaming)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+            ArgumentVerifier.ThrowIfNull(client, nameof(client));
+
+            this.store = store;
+            this.normalizeKey = normalizeKey;
+            this.keyDelimiters = keyDelimiters;
+            this.metadata = metadata;
+            this.client = client;
+            this.sidecarWaitTimeout = sidecarWaitTimeout;
+        }
+
         private string NormalizeKey(string key)
         {
             if (this.keyDelimiters?.Count > 0)
@@ -228,6 +251,40 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                     }
                 }
                 Data = data;
+
+                // Does this work with secret descriptors?
+                lock (@lock)
+                {
+                    subscription = new CancellationTokenSource();
+                    var stream = client.Subscribe(store, Array.Empty<string>(), cancellationToken: subscription.Token);
+                    _ = Task.Run(() => WatchConfiguration(stream, subscription.Token));
+                }
+            }
+        }
+
+        private async Task WatchConfiguration(IAsyncEnumerable<ConfigurationItem> stream, CancellationToken cancellationToken)
+        {
+            await foreach (var item in stream.WithCancellation(cancellationToken))
+            {
+                // Make a copy of the dictionary and do a copy-and-swap.
+                var data = new Dictionary<string, string>(this.Data, StringComparer.InvariantCultureIgnoreCase);
+                data[normalizeKey ? NormalizeKey(item.Key) : item.Key] = item.Value;
+                Data = data;
+
+                // Reload needs to happen after updating the data
+                this.OnReload();
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (@lock)
+            {
+                var subscription = this.subscription;
+                if (subscription != null)
+                {
+                    subscription.Cancel();
+                }
             }
         }
     }
