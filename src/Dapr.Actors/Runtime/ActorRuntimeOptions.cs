@@ -1,7 +1,15 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 using System;
 using System.Text.Json;
@@ -20,8 +28,13 @@ namespace Dapr.Actors.Runtime
         private TimeSpan? actorScanInterval;
         private TimeSpan? drainOngoingCallTimeout;
         private bool drainRebalancedActors;
+        private ActorReentrancyConfig reentrancyConfig = new ActorReentrancyConfig
+        {
+            Enabled = false,
+        };
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
-        private string daprApiToken = null;
+        private string daprApiToken = DaprDefaults.GetDefaultApiToken();
+        private int? remindersStoragePartitions = null;
 
         /// <summary>
         /// Gets the collection of <see cref="ActorRegistration" /> instances.
@@ -119,6 +132,25 @@ namespace Dapr.Actors.Runtime
             }
         }
 
+        /// <summary>
+        /// A configuration that defines the Actor Reentrancy parameters. If set and enabled, Actors
+        /// will be able to perform reentrant calls to themselves/others. If not set or false, Actors
+        /// will continue to lock for every request.
+        /// See https://docs.dapr.io/developing-applications/building-blocks/actors/actor-reentrancy/
+        /// </summary>
+        public ActorReentrancyConfig ReentrancyConfig
+        {
+            get
+            {
+                return this.reentrancyConfig;
+            }
+
+            set
+            {
+                this.reentrancyConfig = value;
+            }
+        }
+
         
         /// <summary>
         /// The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization
@@ -159,6 +191,27 @@ namespace Dapr.Actors.Runtime
                 }
 
                 this.daprApiToken = value;
+            }
+        }
+
+        /// <summary>
+        /// An int used to determine how many partitions to use for reminders storage.
+        /// </summary>
+        public int? RemindersStoragePartitions
+        {
+            get
+            {
+                return this.remindersStoragePartitions;
+            }
+
+            set
+            {
+                if (value < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(remindersStoragePartitions), remindersStoragePartitions, "must be positive");
+                }
+
+                this.remindersStoragePartitions = value;
             }
         }
 

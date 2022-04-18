@@ -67,6 +67,31 @@ await client.DeleteStateAsync(storeName, stateKeyName, cancellationToken: cancel
 Console.WriteLine("Deleted State!");
 ```
 
+### Query State (Alpha)
+
+```csharp
+var query = "{" +
+                "\"filter\": {" +
+                    "\"EQ\": { \"value.Id\": \"1\" }" +
+                "}," +
+                "\"sort\": [" +
+                    "{" +
+                        "\"key\": \"value.Balance\"," +
+                        "\"order\": \"DESC\"" +
+                    "}" +
+                "]" +
+            "}";
+
+var client = new DaprClientBuilder().Build();
+var queryResponse = await client.QueryStateAsync<Account>("querystore", query, cancellationToken: cancellationToken);
+
+Console.WriteLine($"Got {queryResponse.Results.Count}");
+foreach (var account in queryResponse.Results)
+{
+    Console.WriteLine($"Account: {account.Data.Id} has {account.Data.Balance}");
+}
+```
+
 - For a full list of state operations visit [How-To: Get & save state]({{< ref howto-get-save-state.md >}}).
 
 ### Publish messages
@@ -139,6 +164,23 @@ Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secr
 {{< /tabs >}}
 
 - For a full guide on secrets visit [How-To: Retrieve secrets]({{< ref howto-secrets.md >}}).
+
+### Get Configuration Keys (Alpha)
+```csharp
+var client = new DaprClientBuilder().Build();
+
+// Retrieve a specific set of keys.
+var specificItems = await client.GetConfiguration("configstore", new List<string>() { "key1", "key2" });
+Console.WriteLine($"Here are my values:\n{specificItems[0].Key} -> {specificItems[0].Value}\n{specificItems[1].Key} -> {specificItems[1].Value}");
+
+// Retrieve all configuration items by providing an empty list.
+var specificItems = await client.GetConfiguration("configstore", new List<string>());
+Console.WriteLine($"I got {configItems.Count} entires!");
+foreach (var item in configItems)
+{
+    Console.WriteLine($"{item.Key} -> {item.Value}")
+}
+```
 
 ## Related links
 - [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples)

@@ -1,7 +1,15 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 namespace ControllerSample.Controllers
 {
@@ -80,6 +88,35 @@ namespace ControllerSample.Controllers
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] DaprClient daprClient)
         {
             logger.LogDebug("Enter withdraw");
+            var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+
+            if (state.Value == null)
+            {
+                return this.NotFound();
+            }
+
+            state.Value.Balance -= transaction.Amount;
+            await state.SaveAsync();
+            return state.Value;
+        }
+
+        /// <summary>
+        /// Method for withdrawing from account as specified in transaction.
+        /// </summary>
+        /// <param name="transaction">Transaction info.</param>
+        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
+        [Topic("pubsub", "withdraw", "event.type ==\"withdraw.v2\"", 1)]
+        [HttpPost("withdraw.v2")]
+        public async Task<ActionResult<Account>> WithdrawV2(TransactionV2 transaction, [FromServices] DaprClient daprClient)
+        {
+            logger.LogDebug("Enter withdraw.v2");
+            if (transaction.Channel == "mobile" && transaction.Amount > 10000)
+            {
+                return this.Unauthorized("mobile transactions for large amounts are not permitted.");
+            }
+
             var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
 
             if (state.Value == null)

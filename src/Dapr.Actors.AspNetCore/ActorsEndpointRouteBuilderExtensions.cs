@@ -1,17 +1,27 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using System;
+using System.Text;
+using Dapr.Actors;
+using Dapr.Actors.Communication;
+using Dapr.Actors.Runtime;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.AspNetCore.Builder
 {
-    using System;
-    using Dapr.Actors;
-    using Dapr.Actors.Runtime;
-    using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Routing;
-    using Microsoft.Extensions.DependencyInjection;
-
     /// <summary>
     /// Contains extension methods for using Dapr Actors with endpoint routing.
     /// </summary>
@@ -29,11 +39,11 @@ namespace Microsoft.AspNetCore.Builder
             if (endpoints.ServiceProvider.GetService<ActorRuntime>() is null)
             {
                 throw new InvalidOperationException(
-                    "The ActorRuntime service is not registered with the dependency injection container. " + 
+                    "The ActorRuntime service is not registered with the dependency injection container. " +
                     "Call AddActors() inside ConfigureServices() to register the actor runtime and actor types.");
             }
 
-            var builders = new []
+            var builders = new[]
             {
                 MapDaprConfigEndpoint(endpoints),
                 MapActorDeactivationEndpoint(endpoints),
@@ -53,8 +63,9 @@ namespace Microsoft.AspNetCore.Builder
             {
                 context.Response.ContentType = "application/json";
                 await runtime.SerializeSettingsAndRegisteredTypes(context.Response.BodyWriter);
+                await context.Response.BodyWriter.FlushAsync();
             }).WithDisplayName(b => "Dapr Actors Config");
-        }     
+        }
 
         private static IEndpointConventionBuilder MapActorDeactivationEndpoint(this IEndpointRouteBuilder endpoints)
         {
@@ -78,24 +89,52 @@ namespace Microsoft.AspNetCore.Builder
                 var actorId = (string)routeValues["actorId"];
                 var methodName = (string)routeValues["methodName"];
 
+                if (context.Request.Headers.ContainsKey(Constants.ReentrancyRequestHeaderName))
+                {
+                    var daprReentrancyHeader = context.Request.Headers[Constants.ReentrancyRequestHeaderName];
+                    ActorReentrancyContextAccessor.ReentrancyContext = daprReentrancyHeader;
+                }
+
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.
                 if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
                 {
                     var daprActorheader = context.Request.Headers[Constants.RequestHeaderName];
-                    var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
 
-                    // Item 1 is header , Item 2 is body
-                    if (header != string.Empty)
+                    try
                     {
-                        // exception case
-                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
-                    }
+                        var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
 
-                    await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
+                        // Item 1 is header , Item 2 is body
+                        if (header != string.Empty)
+                        {
+                            // exception case
+                            context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
+                        }
+
+                        await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
+                    }
+                    catch (Exception ex)
+                    {
+                        var (header, body) = CreateExceptionResponseMessage(ex);
+
+                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header);
+                        await context.Response.Body.WriteAsync(body, 0, body.Length);
+                    }
+                    finally
+                    {
+                        ActorReentrancyContextAccessor.ReentrancyContext = null;
+                    }
                 }
                 else
                 {
-                    await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                    try
+                    {
+                        await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                    }
+                    finally
+                    {
+                        ActorReentrancyContextAccessor.ReentrancyContext = null;
+                    }
                 }
             }).WithDisplayName(b => "Dapr Actors Invoke");
         }
@@ -130,11 +169,10 @@ namespace Microsoft.AspNetCore.Builder
             }).WithDisplayName(b => "Dapr Actors Timer");
         }
 
-
         private static IEndpointConventionBuilder MapActorHealthChecks(this IEndpointRouteBuilder endpoints)
         {
             var builder = endpoints.MapHealthChecks("/healthz");
-            builder.Add(b => 
+            builder.Add(b =>
             {
                 // Sets the route order so that this is matched with lower priority than an endpoint
                 // configured by default.
@@ -147,7 +185,20 @@ namespace Microsoft.AspNetCore.Builder
             return builder.WithDisplayName(b => "Dapr Actors Health Check");
         }
 
-        private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
+    private static Tuple<string, byte[]> CreateExceptionResponseMessage(Exception ex)
+    {
+        var responseHeader = new ActorResponseMessageHeader();
+        responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
+        var headerSerializer = new ActorMessageHeaderSerializer();
+        var responseHeaderBytes = headerSerializer.SerializeResponseHeader(responseHeader);
+        var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
+
+        var responseMsgBody = ActorInvokeException.FromException(ex);
+            
+        return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
+    }
+
+    private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
         {
             private readonly IEndpointConventionBuilder[] inner;
 

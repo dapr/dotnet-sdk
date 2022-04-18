@@ -1,7 +1,15 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 namespace Dapr.Actors.Runtime
 {
@@ -24,7 +32,20 @@ namespace Dapr.Actors.Runtime
         public static ActorHost CreateForTest<TActor>(ActorTestOptions options = null)
             where TActor : Actor
         {
-            return CreateForTest(typeof(TActor), options);
+            return CreateForTest(typeof(TActor), actorTypeName: null, options);
+        }
+
+        /// <summary>
+        /// Creates an instance of <see cref="ActorHost" /> for unit testing an actor instance.
+        /// </summary>
+        /// <param name="actorTypeName">The name of the actor type represented by the actor.</param>
+        /// <param name="options">The <see cref="ActorTestOptions" /> for configuring the host.</param>
+        /// <typeparam name="TActor">The actor type.</typeparam>
+        /// <returns>An <see cref="ActorHost" /> instance.</returns>
+        public static ActorHost CreateForTest<TActor>(string actorTypeName, ActorTestOptions options = null)
+            where TActor : Actor
+        {
+            return CreateForTest(typeof(TActor), actorTypeName, options);
         }
 
         /// <summary>
@@ -35,16 +56,28 @@ namespace Dapr.Actors.Runtime
         /// <returns>An <see cref="ActorHost" /> instance.</returns>
         public static ActorHost CreateForTest(Type actorType, ActorTestOptions options = null)
         {
+            return CreateForTest(actorType, actorTypeName: null, options);
+        }
+
+        /// <summary>
+        /// Creates an instance of <see cref="ActorHost" /> for unit testing an actor instance.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorTypeName">The name of the actor type represented by the actor.</param>
+        /// <param name="options">The <see cref="ActorTestOptions" /> for configuring the host.</param>
+        /// <returns>An <see cref="ActorHost" /> instance.</returns>
+        public static ActorHost CreateForTest(Type actorType, string actorTypeName, ActorTestOptions options = null)
+        {
             if (actorType == null)
             {
                 throw new ArgumentNullException(nameof(actorType));
             }
 
             options ??= new ActorTestOptions();
-            
+
             return new ActorHost(
-                ActorTypeInformation.Get(actorType),
-                options.ActorId, 
+                ActorTypeInformation.Get(actorType, actorTypeName),
+                options.ActorId,
                 options.JsonSerializerOptions,
                 options.LoggerFactory,
                 options.ProxyFactory,
@@ -92,6 +125,7 @@ namespace Dapr.Actors.Runtime
         {
             this.ActorTypeInfo = actorTypeInfo;
             this.Id = id;
+            this.JsonSerializerOptions = jsonSerializerOptions;
             this.LoggerFactory = loggerFactory;
             this.ProxyFactory = proxyFactory;
             this.TimerManager = timerManager;

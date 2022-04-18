@@ -1,14 +1,21 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 namespace Dapr.Actors.Runtime
 {
     using System;
     using System.Collections.Concurrent;
     using System.IO;
-    using System.Reflection;
     using System.Text;
     using System.Text.Json;
     using System.Threading;
@@ -107,22 +114,14 @@ namespace Dapr.Actors.Runtime
             {
                 IActorResponseMessageBody responseMsgBody = null;
 
-                try
-                {
-                    responseMsgBody = (IActorResponseMessageBody)await methodDispatcher.DispatchAsync(
-                        actor,
-                        actorMessageHeader.MethodId,
-                        actorMessageBody,
-                        this.messageBodyFactory,
-                        ct);
+                responseMsgBody = (IActorResponseMessageBody)await methodDispatcher.DispatchAsync(
+                    actor,
+                    actorMessageHeader.MethodId,
+                    actorMessageBody,
+                    this.messageBodyFactory,
+                    ct);
 
-                    return this.CreateResponseMessage(responseMsgBody, interfaceId);
-                }
-                catch (Exception exception)
-                {
-                    // return exception response message
-                    return this.CreateExceptionResponseMessage(exception);
-                }
+                return this.CreateResponseMessage(responseMsgBody, interfaceId);
             }
 
             return await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
@@ -340,6 +339,15 @@ namespace Dapr.Actors.Runtime
             T retval;
             try
             {
+                // Set the state context of the request, if required and possible.
+                if (ActorReentrancyContextAccessor.ReentrancyContext != null)
+                {
+                    if (state.Actor.StateManager is IActorContextualState contextualStateManager)
+                    {
+                        await contextualStateManager.SetStateContext(Guid.NewGuid().ToString());
+                    }
+                }
+
                 // invoke the function of the actor
                 await actor.OnPreActorMethodAsyncInternal(actorMethodContext);
                 retval = await actorFunc.Invoke(actor, cancellationToken);
@@ -351,6 +359,14 @@ namespace Dapr.Actors.Runtime
             {
                 await actor.OnInvokeFailedAsync();
                 throw;
+            }
+            finally
+            {
+                // Set the state context of the request, if possible.
+                if (state.Actor.StateManager is IActorContextualState contextualStateManager)
+                {
+                    await contextualStateManager.SetStateContext(null);
+                }
             }
 
             return retval;
@@ -366,18 +382,6 @@ namespace Dapr.Actors.Runtime
             }
 
             return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
-        }
-
-        private Tuple<string, byte[]> CreateExceptionResponseMessage(Exception ex)
-        {
-            var responseHeader = new ActorResponseMessageHeader();
-            responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
-            var responseHeaderBytes = this.serializersManager.GetHeaderSerializer().SerializeResponseHeader(responseHeader);
-            var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
-
-            var responseMsgBody = ActorInvokeException.FromException(ex);
-            
-            return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
         }
     }
 }

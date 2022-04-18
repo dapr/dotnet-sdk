@@ -1,17 +1,23 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 namespace Dapr.Actors.Test.Runtime
 {
     using Dapr.Actors.Runtime;
     using Moq;
     using Xunit;
-    using Microsoft.Extensions.Logging;
     using System;
     using FluentAssertions;
-    using Dapr.Actors.Client;
 
     public sealed class ActorRuntimeOptionsTests
     {
@@ -19,7 +25,7 @@ namespace Dapr.Actors.Test.Runtime
         public void TestRegisterActor_SavesActivator()
         {
             var actorType = typeof(TestActor);
-            var actorTypeInformation = ActorTypeInformation.Get(actorType);
+            var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
             var host = ActorHost.CreateForTest<TestActor>();
             var actor = new TestActor(host);
 
@@ -112,6 +118,36 @@ namespace Dapr.Actors.Test.Runtime
             Action action = () => options.JsonSerializerOptions = null;
 
             action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Fact]
+        public void SettingRemindersStoragePartitionsToLessThanZero_Fails()
+        {
+            var options = new ActorRuntimeOptions();
+            Action action = () => options.RemindersStoragePartitions = -1;
+
+            action.Should().Throw<ArgumentOutOfRangeException>();
+        }
+
+        [Fact]
+        public void SettingReentrancyConfigWithoutMaxStackDepth_Succeeds()
+        {
+            var options = new ActorRuntimeOptions();
+            options.ReentrancyConfig.Enabled = true;
+
+            Assert.True(options.ReentrancyConfig.Enabled);
+            Assert.Null(options.ReentrancyConfig.MaxStackDepth);
+        }
+
+        [Fact]
+        public void SettingReentrancyConfigWithMaxStackDepth_Succeeds()
+        {
+            var options = new ActorRuntimeOptions();
+            options.ReentrancyConfig.Enabled = true;
+            options.ReentrancyConfig.MaxStackDepth = 64;
+
+            Assert.True(options.ReentrancyConfig.Enabled);
+            Assert.Equal(64, options.ReentrancyConfig.MaxStackDepth);
         }
     }
 }

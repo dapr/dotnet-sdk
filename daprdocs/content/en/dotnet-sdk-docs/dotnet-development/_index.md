@@ -8,7 +8,7 @@ description: Learn about local development integration options for .NET Dapr app
 
 ## Thinking more than one at a time
 
-Using your favorite IDE or editor to launch an application typically assumes that you only need to run one thing - the application you are debugging. However, developing microservices challenges you think about your local development process for *more than one at a time*. A microservices application has multiple services that you might need running at the same time as well as dependencies like state stores to manage.
+Using your favorite IDE or editor to launch an application typically assumes that you only need to run one thing: the application you're debugging. However, developing microservices challenges you to think about your local development process for *more than one at a time*. A microservices application has multiple services that you might need running simultaneously, and dependencies (like state stores) to manage.
 
 Adding Dapr to your development process means you need to manage the following concerns:
 
@@ -18,7 +18,7 @@ Adding Dapr to your development process means you need to manage the following c
 - Additional dependencies such as state stores
 - optional: the Dapr placement service for actors
 
-This document will assume that you're building a production application, and want to create a repeatable and robust set of development practices. The guidance here is general, and applies to any .NET server application using Dapr (including actors).
+This document assumes that you're building a production application, and want to create a repeatable and robust set of development practices. The guidance here is general, and applies to any .NET server application using Dapr (including actors).
 
 ## Managing components
 

@@ -1,7 +1,15 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 namespace Dapr.AspNetCore.IntegrationTest.App
 {
@@ -10,6 +18,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.WebUtilities;
 
@@ -25,6 +34,43 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         [CustomTopic("pubsub", "C")]
         [HttpPost("/C")]
         public void TopicC()
+        {
+        }
+
+        [Topic("pubsub", "D", true)]
+        [HttpPost("/D")]
+        public void TopicD()
+        {
+        }
+
+        [Topic("pubsub", "E", false)]
+        [HttpPost("/E")]
+        public void TopicE()
+        {
+        }
+
+        [Topic("pubsub", "E", false, "event.type == \"critical\"", 1)]
+        [HttpPost("/E-Critical")]
+        public void TopicECritical()
+        {
+        }
+
+        [Topic("pubsub", "E", false, "event.type == \"important\"", 2)]
+        [HttpPost("/E-Important")]
+        public void TopicEImportant()
+        {
+        }
+
+        [Topic("pubsub", "F")]
+        [Topic("pubsub", "F.1", true)]
+        [HttpPost("/multiTopicAttr")]
+        public void MultipleTopics()
+        {
+        }
+
+        [Topic("pubsub", "splitTopicAttr", true)]
+        [HttpPost("/splitTopics")]
+        public void SplitTopic()
         {
         }
 
@@ -84,5 +130,11 @@ namespace Dapr.AspNetCore.IntegrationTest.App
             return widgetStateEntry.Value;
         }
 
+        [Authorize("Dapr")]
+        [HttpPost("/requires-api-token")]
+        public ActionResult<UserInfo> RequiresApiToken(UserInfo user)
+        {
+            return user;
+        }
     }
 }

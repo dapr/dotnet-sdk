@@ -1,7 +1,15 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 namespace Dapr.Actors
 {
@@ -36,12 +44,14 @@ namespace Dapr.Actors
         public DaprHttpInteractor(
             HttpMessageHandler clientHandler,
             string httpEndpoint,
-            string apiToken)
+            string apiToken,
+            TimeSpan? requestTimeout)
         {
             this.handler = clientHandler ?? defaultHandler;
             this.httpEndpoint = httpEndpoint;
             this.daprApiToken = apiToken;
             this.httpClient = this.CreateHttpClient();
+            this.httpClient.Timeout = requestTimeout ?? this.httpClient.Timeout;
         }
 
         public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
@@ -112,6 +122,12 @@ namespace Dapr.Actors
                 }
 
                 request.Headers.Add(Constants.RequestHeaderName, Encoding.UTF8.GetString(serializedHeader, 0, serializedHeader.Length));
+
+                var reentrancyId = ActorReentrancyContextAccessor.ReentrancyContext;
+                if (reentrancyId != null)
+                {
+                    request.Headers.Add(Constants.ReentrancyRequestHeaderName, reentrancyId);
+                }
 
                 return request;
             }
@@ -187,6 +203,12 @@ namespace Dapr.Actors
                 {
                     request.Content = new StringContent(jsonPayload);
                     request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; charset=utf-8");
+                }
+
+                var reentrancyId = ActorReentrancyContextAccessor.ReentrancyContext;
+                if (reentrancyId != null)
+                {
+                    request.Headers.Add(Constants.ReentrancyRequestHeaderName, reentrancyId);
                 }
 
                 return request;
