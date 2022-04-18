@@ -32,6 +32,21 @@ namespace Microsoft.AspNetCore.Builder
         public static T WithTopic<T>(this T builder, string pubsubName, string name)
             where T : IEndpointConventionBuilder
         {
+            return WithTopic(builder, pubsubName, name, false);
+        }
+
+        /// <summary>
+        /// Adds <see cref="ITopicMetadata" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
+        /// </summary>
+        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="name">The topic name.</param>
+        /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
+        /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
+        /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
+        public static T WithTopic<T>(this T builder, string pubsubName, string name, bool enableRawPayload)
+            where T : IEndpointConventionBuilder
+        {
             if (builder is null)
             {
                 throw new ArgumentNullException(nameof(builder));
@@ -40,7 +55,7 @@ namespace Microsoft.AspNetCore.Builder
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
 
-            builder.WithMetadata(new TopicAttribute(pubsubName, name));
+            builder.WithMetadata(new TopicAttribute(pubsubName, name, enableRawPayload));
             return builder;
         }
     }
