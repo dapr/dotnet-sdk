@@ -10,3 +10,5 @@ spec:
   features:
     - name: "Actor.Reentrancy"
       enabled: true
+    - name: "proxy.grpc"
+      enabled: true

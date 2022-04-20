@@ -22,12 +22,10 @@ The Actor example shows how to create a virtual actor (`DemoActor`) and invoke i
 To run the actor service locally run this command in `DemoActor` directory:
 
 ```sh
- dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5000 dotnet run
+ dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5010 dotnet run
 ```
 
-The `DemoActor` service will listen on port `5000` for HTTP.
-
-*Note: For Running the sample with ISS express, change the launchsettings.json to use 127.0.0.1 instead of localhost.*
+The `DemoActor` service will listen on port `5010` for HTTP.
 
 ### Make client calls
 

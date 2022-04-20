@@ -1,7 +1,15 @@
-﻿// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Copyright 2021 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
 
 namespace Dapr.Actors.Test
 {
@@ -18,10 +26,12 @@ namespace Dapr.Actors.Test
     using Microsoft.Extensions.Logging;
     using Xunit;
     using Dapr.Actors.Client;
+    using System.Reflection;
 
     public sealed class ActorRuntimeTests
     {
         private const string RenamedActorTypeName = "MyRenamedActor";
+        private const string ParamActorTypeName = "AnotherRenamedActor";
         private readonly ILoggerFactory loggerFactory = new LoggerFactory();
         private readonly ActorActivatorFactory activatorFactory = new DefaultActorActivatorFactory();
 
@@ -53,6 +63,31 @@ namespace Dapr.Actors.Test
 
             Assert.NotEqual(RenamedActorTypeName, actorType.Name);
             Assert.Contains(RenamedActorTypeName, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+        }
+
+        [Fact]
+        public void TestExplicitActorTypeAsParamShouldOverrideInferred()
+        {
+            var actorType = typeof(TestActor);
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<TestActor>(ParamActorTypeName);
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.NotEqual(ParamActorTypeName, actorType.Name);
+            Assert.Contains(ParamActorTypeName, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+        }
+
+        [Fact]
+        public void TestExplicitActorTypeAsParamShouldOverrideActorAttribute()
+        {
+            var actorType = typeof(RenamedActor);
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<RenamedActor>(ParamActorTypeName);
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.NotEqual(ParamActorTypeName, actorType.Name);
+            Assert.NotEqual(ParamActorTypeName, actorType.GetCustomAttribute<ActorAttribute>().TypeName);
+            Assert.Contains(ParamActorTypeName, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
         }
 
         // This tests the change that removed the Activate message from Dapr runtime -> app.

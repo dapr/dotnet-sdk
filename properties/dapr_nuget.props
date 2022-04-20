@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Authors>dapr.io</Authors>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://dapr.io</PackageProjectUrl>
     <PackageIcon>images\logo-transparent.png</PackageIcon>
     <PackageTags>Dapr</PackageTags>
