@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ namespace Dapr.AspNetCore
 {
     /// <summary>
     /// Options class provides information needed to control Dapr Authentication handler behavior.
-    /// See https://docs.dapr.io/operations/security/api-token/ for more information about API token authentication in Dapr.
+    /// See https://docs.dapr.io/operations/security/app-api-token/ for more information about App API token authentication in Dapr.
     /// </summary>
     public class DaprAuthenticationOptions : AuthenticationSchemeOptions
     {
@@ -26,9 +26,9 @@ namespace Dapr.AspNetCore
         internal string Scheme { get; } = DefaultScheme;
 
         /// <summary>
-        /// Gets or sets the Dapr API token.
-        /// By default, the token will be read from the DAPR_API_TOKEN environment variable.
+        /// Gets or sets the App API token.
+        /// By default, the token will be read from the APP_API_TOKEN environment variable.
         /// </summary>
-        public string Token { get; set; } = DaprDefaults.GetDefaultApiToken();
+        public string Token { get; set; } = DaprDefaults.GetDefaultAppApiToken();
     }
 }

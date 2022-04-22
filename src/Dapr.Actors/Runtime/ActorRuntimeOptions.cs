@@ -33,7 +33,7 @@ namespace Dapr.Actors.Runtime
             Enabled = false,
         };
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
-        private string daprApiToken = DaprDefaults.GetDefaultApiToken();
+        private string daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
         private int? remindersStoragePartitions = null;
 
         /// <summary>
