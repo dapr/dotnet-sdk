@@ -121,7 +121,7 @@ namespace Dapr.Client
         /// Optional gRPC endpoint for calling Dapr, defaults to <see cref="DaprDefaults.GetDefaultGrpcEndpoint"/>.
         /// </param>
         /// <param name="daprApiToken">
-        /// Optional token to be attached to all requests, defaults to <see cref="DaprDefaults.GetDefaultApiToken"/>.
+        /// Optional token to be attached to all requests, defaults to <see cref="DaprDefaults.GetDefaultDaprApiToken"/>.
         /// </param>
         /// <returns>An <see cref="CallInvoker"/> to be used for proxied gRPC calls through Dapr.</returns>
         /// <remarks>
@@ -133,7 +133,7 @@ namespace Dapr.Client
         public static CallInvoker CreateInvocationInvoker(string appId, string daprEndpoint = null, string daprApiToken = null)
         {
             var channel = GrpcChannel.ForAddress(daprEndpoint ?? DaprDefaults.GetDefaultGrpcEndpoint());
-            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultApiToken()));
+            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultDaprApiToken()));
         }
 
         internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
