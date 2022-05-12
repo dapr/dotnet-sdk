@@ -1254,7 +1254,7 @@ namespace Dapr.Client
             }
 
             var options = CreateCallOptions(headers: null, cancellationToken: cancellationToken);
-            return Task.FromResult(new SubscribeConfigurationResponse(new DaprSubscribeConfigurationSource(client, request, options)));
+            return Task.FromResult(new SubscribeConfigurationResponse(new DaprSubscribeConfigurationSource(client.SubscribeConfigurationAlpha1(request, options))));
         }
 
         [Obsolete]

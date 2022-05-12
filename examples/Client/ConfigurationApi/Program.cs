@@ -39,7 +39,7 @@ namespace ConfigurationApi
                     // Get the initial value and continue to watch it for changes.
                     config.AddDaprConfigurationStore("redisconfig", new List<string>() { "greeting", "response" }, client, TimeSpan.FromSeconds(20));
                     config.AddStreamingDaprConfigurationStore("redisconfig", new List<string>() { "greeting", "response" }, client,
-                        TimeSpan.FromSeconds(20), cancellationToken: cts.Token);
+                        TimeSpan.FromSeconds(20));
                     
                 })
                 .ConfigureWebHostDefaults(webBuilder =>

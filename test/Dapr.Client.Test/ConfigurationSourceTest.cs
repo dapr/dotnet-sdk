@@ -53,7 +53,7 @@ namespace Dapr.Client.Test
                 .Returns(response);
 
             // Try and actually use the source.
-            var source = new SubscribeConfigurationResponse(new DaprSubscribeConfigurationSource(internalClient, streamRequest, callOptions));
+            var source = new SubscribeConfigurationResponse(new DaprSubscribeConfigurationSource(response));
             var readItems = new List<ConfigurationItem>();
             await foreach (var items in source.Source)
             {
