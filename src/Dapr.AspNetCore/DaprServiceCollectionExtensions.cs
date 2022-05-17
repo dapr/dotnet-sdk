@@ -16,6 +16,7 @@ namespace Microsoft.Extensions.DependencyInjection
     using System;
     using System.Linq;
     using Dapr.Client;
+    using Extensions;
 
     /// <summary>
     /// Provides extension methods for <see cref="IServiceCollection" />.
@@ -44,7 +45,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddSingleton<DaprClientMarkerService>();
 
-            services.AddSingleton(_ =>
+            services.TryAddSingleton(_ =>
             {
                 var builder = new DaprClientBuilder();
                 if (configure != null)
