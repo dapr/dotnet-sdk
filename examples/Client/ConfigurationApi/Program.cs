@@ -10,19 +10,12 @@ namespace ConfigurationApi
 {
     public class Program
     {
-        private static CancellationTokenSource cts;
-
         [Obsolete]
         public static void Main(string[] args)
         {
             Console.WriteLine("Starting application.");
-            // This cancellation token is used to stop the Streaming configuration.
-            using (cts = new CancellationTokenSource())
-            {
-                CreateHostBuilder(args).Build().Run();
-                Console.WriteLine("Closing application.");
-                cts.Cancel();
-            }                
+            CreateHostBuilder(args).Build().Run();
+            Console.WriteLine("Closing application.");
         }
 
         /// <summary>
@@ -37,9 +30,8 @@ namespace ConfigurationApi
                 .ConfigureAppConfiguration(config =>
                 {
                     // Get the initial value and continue to watch it for changes.
-                    config.AddDaprConfigurationStore("redisconfig", new List<string>() { "greeting", "response" }, client, TimeSpan.FromSeconds(20));
-                    config.AddStreamingDaprConfigurationStore("redisconfig", new List<string>() { "greeting", "response" }, client,
-                        TimeSpan.FromSeconds(20));
+                    config.AddDaprConfigurationStore("redisconfig", new List<string>() { "withdrawVersion" }, client, TimeSpan.FromSeconds(20));
+                    config.AddStreamingDaprConfigurationStore("redisconfig", new List<string>() { "withdrawVersion", "source" }, client, TimeSpan.FromSeconds(20));
                     
                 })
                 .ConfigureWebHostDefaults(webBuilder =>

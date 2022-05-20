@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ControllerSample;
+using Dapr;
 using Dapr.Client;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -42,48 +44,47 @@ namespace ConfigurationApi.Controllers
             }
         }
 
-        [HttpGet("subscribe/{configStore}/{queryKey}")]
-        public async Task SubscribeConfiguration([FromRoute] string configStore, [FromRoute] string queryKey)
-        {
-            logger.LogInformation($"Subscribing to {configStore} watching {queryKey}.");
-            var source = await client.SubscribeConfiguration(configStore, new List<string>() { queryKey });
-
-            logger.LogInformation("Watching configuration for 1 minute.");
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
-            await Task.Run(async () =>
-            {
-                try
-                {
-                    await foreach (var items in source.Source.WithCancellation(cts.Token))
-                    {
-                        foreach (var item in items)
-                        {
-                            logger.LogInformation($"Got item: {item.Key} -> {item.Value} - {item.Version}");
-                        }
-                    }
-                }
-                catch (TaskCanceledException)
-                {
-                    logger.LogInformation("Stopping listening to the subscription stream.");
-                }
-            });
-
-            if (!string.IsNullOrEmpty(source.Id))
-            {
-                logger.LogInformation("Cancelling subscription.");
-                await client.UnsubscribeConfiguration(configStore, source.Id);
-            }
-        }
-
         [HttpGet("extension")]
         public Task SubscribeAndWatchConfiguration()
         {
-            logger.LogInformation($"Getting values from Configuration Extension, watched values ['greeting', 'response'].");
+            logger.LogInformation($"Getting values from Configuration Extension, watched values ['withdrawVersion', 'source'].");
 
-            logger.LogInformation($"Greeting from extension: {configuration["greeting"]}");
-            logger.LogInformation($"Response from extension: {configuration["response"]}");
+            logger.LogInformation($"'withdrawVersion' from extension: {configuration["withdrawVersion"]}");
+            logger.LogInformation($"'source' from extension: {configuration["source"]}");
 
             return Task.CompletedTask;
         }
+
+#nullable enable
+        [HttpPost("withdraw")]
+        public async Task<ActionResult<Account>> CreateAccountHandler(Transaction transaction)
+        {
+            // Check if the V2 method is enabled.
+            if (configuration["withdrawVersion"] == "v2")
+            {
+                var source = !string.IsNullOrEmpty(configuration["source"]) ? configuration["source"] : "local";
+                var transactionV2 = new TransactionV2
+                {
+                    Id = transaction.Id,
+                    Amount = transaction.Amount,
+                    Channel = source
+                };
+                logger.LogInformation($"Calling V2 Withdraw API - Id: {transactionV2.Id} Amount: {transactionV2.Amount} Channel: {transactionV2.Channel}");
+                try
+                {
+                    return await this.client.InvokeMethodAsync<TransactionV2, Account>("controller", "withdraw.v2", transactionV2);
+                }
+                catch (DaprException ex)
+                {
+                    logger.LogError($"Error executing withdrawal: {ex.Message}");
+                    return BadRequest();
+                }
+            }
+
+            // Default to the original method.
+            logger.LogInformation($"Calling V1 Withdraw API: {transaction}");
+            return await this.client.InvokeMethodAsync<Transaction, Account>("controller", "withdraw", transaction);
+        }
+#nullable disable
     }
 }
