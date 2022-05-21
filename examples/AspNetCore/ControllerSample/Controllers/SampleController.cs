@@ -155,5 +155,19 @@ namespace ControllerSample.Controllers
         {
             return Ok();
         }
+
+        /// <summary>
+        /// Method which uses <see cref="TopicMetadataAttribute" /> for binding this endpoint to a subscription and adds routingkey metadata.
+        /// </summary>
+        /// <param name="transaction"></param>
+        /// <returns></returns>
+        /// 
+        [Topic("pubsub", "topicmetadata")]
+        [TopicMetadata("routingKey", "keyA")]
+        [HttpPost("examplecustomtopicmetadata")]
+        public ActionResult<Account> ExampleCustomTopicMetadata(Transaction transaction)
+        {
+            return Ok();
+        }
     }
 }
