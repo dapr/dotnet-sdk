@@ -138,6 +138,64 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task PublishEventAsync_CanPublishCloudEventWithData()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var publishData = new PublishData() { PublishObjectParameter = "testparam" };
+            var cloudEvent = new CloudEvent<PublishData>(publishData)
+            {
+                Source = new Uri("urn:testsource"),
+                Type = "testtype",
+                Subject = "testsubject",
+            };
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.PublishEventAsync<CloudEvent<PublishData>>(TestPubsubName, "test", cloudEvent);
+            });
+
+            request.Dismiss();
+
+            var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
+            var jsonFromRequest = envelope.Data.ToStringUtf8();
+
+            envelope.DataContentType.Should().Be("application/cloudevents+json");
+            envelope.PubsubName.Should().Be(TestPubsubName);
+            envelope.Topic.Should().Be("test");
+            jsonFromRequest.Should().Be(JsonSerializer.Serialize(cloudEvent, client.InnerClient.JsonSerializerOptions));
+            envelope.Metadata.Count.Should().Be(0);
+        }
+
+        [Fact]
+        public async Task PublishEventAsync_CanPublishCloudEventWithNoContent()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var publishData = new PublishData() { PublishObjectParameter = "testparam" };
+            var cloudEvent = new CloudEvent
+            {
+                Source = new Uri("urn:testsource"),
+                Type = "testtype",
+                Subject = "testsubject",
+            };
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.PublishEventAsync<CloudEvent>(TestPubsubName, "test", cloudEvent);
+            });
+
+            request.Dismiss();
+
+            var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
+            var jsonFromRequest = envelope.Data.ToStringUtf8();
+
+            envelope.DataContentType.Should().Be("application/cloudevents+json");
+            envelope.PubsubName.Should().Be(TestPubsubName);
+            envelope.Topic.Should().Be("test");
+            jsonFromRequest.Should().Be(JsonSerializer.Serialize(cloudEvent, client.InnerClient.JsonSerializerOptions));
+            envelope.Metadata.Count.Should().Be(0);
+        }
+
+        [Fact]
         public async Task PublishEventAsync_WithCancelledToken()
         {
             await using var client = TestClient.CreateForDaprClient();
