@@ -27,8 +27,15 @@ namespace Dapr.E2E.Test.App.ReentrantActors
         {
             services.AddActors(options =>
             {
-                options.Actors.RegisterActor<ReentrantActor>();
-                options.ReentrancyConfig = new() { Enabled = true };
+                // We force this to use a per-actor config as an easy way to validate that's working.
+                options.ReentrancyConfig = new() { Enabled = false };
+                options.Actors.RegisterActor<ReentrantActor>(typeOptions: new()
+                {
+                    ReentrancyConfig = new()
+                    {
+                        Enabled = true,
+                    }
+                });
             });
         }
 

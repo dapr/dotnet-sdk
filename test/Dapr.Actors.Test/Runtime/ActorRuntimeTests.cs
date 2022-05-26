@@ -262,6 +262,60 @@ namespace Dapr.Actors.Test
             Assert.Equal(64, element.GetInt32());
         }
 
+        [Fact]
+        public async Task TestActorSettingsWithPerActorConfigurations()
+        {
+            var actorType = typeof(TestActor);
+            var options = new ActorRuntimeOptions();
+            options.ActorIdleTimeout = TimeSpan.FromSeconds(33);
+            options.ActorScanInterval = TimeSpan.FromSeconds(44);
+            options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(55);
+            options.DrainRebalancedActors = true;
+            options.ReentrancyConfig.Enabled = true;
+            options.ReentrancyConfig.MaxStackDepth = 32;
+            options.Actors.RegisterActor<TestActor>(options);
+
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+
+            ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+            await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+            // read back the serialized json
+            var array = writer.WrittenSpan.ToArray();
+            string s = Encoding.UTF8.GetString(array, 0, array.Length);
+
+            JsonDocument document = JsonDocument.Parse(s);
+            JsonElement root = document.RootElement;
+
+            JsonElement element = root.GetProperty("entities");
+            Assert.Equal(1, element.GetArrayLength());
+
+            element = root.GetProperty("entitiesConfig");
+            Assert.Equal(1, element.GetArrayLength());
+
+            var perEntityConfig = element[0];
+
+            element = perEntityConfig.GetProperty("actorIdleTimeout");
+            Assert.Equal(TimeSpan.FromSeconds(33), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = perEntityConfig.GetProperty("actorScanInterval");
+            Assert.Equal(TimeSpan.FromSeconds(44), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = perEntityConfig.GetProperty("drainOngoingCallTimeout");
+            Assert.Equal(TimeSpan.FromSeconds(55), ConverterUtils.ConvertTimeSpanFromDaprFormat(element.GetString()));
+
+            element = perEntityConfig.GetProperty("drainRebalancedActors");
+            Assert.True(element.GetBoolean());
+
+            element = root.GetProperty("reentrancy").GetProperty("enabled");
+            Assert.True(element.GetBoolean());
+
+            element = root.GetProperty("reentrancy").GetProperty("maxStackDepth");
+            Assert.Equal(32, element.GetInt32());
+        }
+
         private sealed class TestActor : Actor, ITestActor
         {
             public TestActor(ActorHost host)

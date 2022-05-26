@@ -23,9 +23,19 @@ namespace Dapr.Actors.Runtime
         /// Initializes a new instance of <see cref="ActorRegistration" />.
         /// </summary>
         /// <param name="type">The <see cref="ActorTypeInformation" /> for the actor type.</param>
-        public ActorRegistration(ActorTypeInformation type)
+        public ActorRegistration(ActorTypeInformation type) : this(type, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorRegistration" />.
+        /// </summary>
+        /// <param name="type">The <see cref="ActorTypeInformation" /> for the actor type.</param>
+        /// <param name="options">The optional <see cref="ActorRuntimeOptions"/> that are specified for this type only.</param>
+        public ActorRegistration(ActorTypeInformation type, ActorRuntimeOptions options)
         {
             this.Type = type;
+            this.TypeOptions = options;
         }
 
         /// <summary>
@@ -38,5 +48,10 @@ namespace Dapr.Actors.Runtime
         /// activator of the runtime will be used.
         /// </summary>
         public ActorActivator Activator { get; set; }
+
+        /// <summary>
+        /// An optional set of options for this specific actor type. These will override the top level or default values.
+        /// </summary>
+        public ActorRuntimeOptions TypeOptions { get; }
     }
 }
