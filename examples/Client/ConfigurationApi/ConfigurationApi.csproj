@@ -6,6 +6,15 @@
 
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj"/>
+    <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Extensions.Configuration\Dapr.Extensions.Configuration.csproj" />
+    <ProjectReference Include="..\..\AspNetCore\ControllerSample\ControllerSample.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Controllers\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Controllers\" />
   </ItemGroup>
 </Project>
