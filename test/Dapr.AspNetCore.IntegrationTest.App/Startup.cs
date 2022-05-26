@@ -13,6 +13,7 @@
 
 namespace Dapr.AspNetCore.IntegrationTest.App
 {
+    using System.Collections.Generic;
     using System.Threading.Tasks;
     using Dapr.Client;
     using Microsoft.AspNetCore.Authentication;
