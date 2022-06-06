@@ -31,9 +31,19 @@ namespace Dapr.Extensions.Configuration
         public IReadOnlyDictionary<string, string> Metadata { get; }
 
         /// <summary>
+        /// Require flag indicates if this field's existence should trigger exception
+        /// </summary>
+        public bool IsRequired { get; }
+
+        /// <summary>
+        /// SecretKey value is mapping value to Vault Name. If The application's Secret Name and Secret in the Vault Name is different then you can use this flag to specify Vault Secret Name. 
+        /// </summary>
+        public string SecretKey { get; }
+
+        /// <summary>
         /// Secret Descriptor Construcutor
         /// </summary>
-        public DaprSecretDescriptor(string secretName) : this(secretName, new Dictionary<string, string>())
+        public DaprSecretDescriptor(string secretName) : this(secretName, new Dictionary<string, string>(), true, secretName)
         {
 
         }
@@ -41,10 +51,12 @@ namespace Dapr.Extensions.Configuration
         /// <summary>
         /// Secret Descriptor Construcutor
         /// </summary>
-        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata)
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, bool isRequired, string secretKey )
         {
             SecretName = secretName;
             Metadata = metadata;
+            IsRequired = isRequired;
+            SecretKey = secretKey;
         }
     }
 }
