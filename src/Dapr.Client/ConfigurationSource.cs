@@ -12,34 +12,21 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Dapr.Client
 {
     /// <summary>
-    /// Class representing the response from a GetConfiguration API call.
+    /// Abstraction around a configuration source.
     /// </summary>
-    public class GetConfigurationResponse
+    public abstract class ConfigurationSource : IAsyncEnumerable<IEnumerable<ConfigurationItem>>
     {
-        private readonly IReadOnlyList<ConfigurationItem> items;
-
         /// <summary>
-        /// Constructor for a GetConfigurationResponse.
+        /// The Id associated with this configuration source.
         /// </summary>
-        /// <param name="items">The items that were returned in the GetConfiguration call.</param>
-        public GetConfigurationResponse(IReadOnlyList<ConfigurationItem> items)
-        {
-            this.items = items;
-        }
+        public abstract string Id { get; }
 
-        /// <summary>
-        /// The items returned in a GetConfiguration call. <see cref="ConfigurationItem"/>
-        /// </summary>
-        public IReadOnlyList<ConfigurationItem> Items
-        {
-            get
-            {
-                return items;
-            }
-        }
+        /// <inheritdoc/>
+        public abstract IAsyncEnumerator<IEnumerable<ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
     }
 }
