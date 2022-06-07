@@ -161,7 +161,6 @@ namespace ControllerSample.Controllers
         /// </summary>
         /// <param name="transaction"></param>
         /// <returns></returns>
-        /// 
         [Topic("pubsub", "topicmetadata")]
         [TopicMetadata("routingKey", "keyA")]
         [HttpPost("examplecustomtopicmetadata")]

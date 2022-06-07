@@ -72,8 +72,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         [Topic("pubsub", "metadata.1", true)]
         [HttpPost("/multiMetadataTopicAttr")]
         [TopicMetadata("n1", "v1")]
-        [TopicMetadata("n1", "v2")]
         [TopicMetadata("id1", "n2", "v2")]
+        [TopicMetadata("id1", "n2", "v3")]
         public void MultipleMetadataTopics()
         {
         }

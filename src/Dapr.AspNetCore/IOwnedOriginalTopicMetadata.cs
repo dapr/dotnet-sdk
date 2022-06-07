@@ -23,5 +23,11 @@ namespace Dapr
         /// </summary>
         /// <remarks>When the <see cref="IOriginalTopicMetadata.Id"/> is not empty, the metadata owned by topic.</remarks>
         string[] OwnedMetadatas { get; }
+
+        /// <summary>
+        ///  Get separator to use for metadata
+        /// </summary>
+        /// <remarks>Separator to be used for <see cref="IOriginalTopicMetadata.Value"/> when multiple values exist for a <see cref="IOriginalTopicMetadata.Name"/>.</remarks>
+        string MetadataSeparator { get; }
     }
 }
