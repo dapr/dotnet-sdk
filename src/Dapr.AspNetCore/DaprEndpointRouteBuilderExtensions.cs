@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Builder
                                 topicMetadata[i].Priority,
                                 originalTopicMetadata.Where(m => (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.OwnedMetadatas?.Any(o => o.Equals(m.Id)) == true || string.IsNullOrEmpty(m.Id))
                                                      .GroupBy(c => c.Name)
-                                                     .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),//multiple identical names. only the first value is valid.
+                                                     .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),
                                 (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.MetadataSeparator,
                                 e.RoutePattern));
                         }
