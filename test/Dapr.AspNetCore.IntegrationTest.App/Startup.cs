@@ -68,7 +68,6 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
                 endpoints.MapPost("/splitMetadataTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitMetadataTopicBuilder", new Dictionary<string, string> { { "n1", "v1" }, { "n2", "v1" } });
 
-
                 endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
                 {
                     var daprClient = context.RequestServices.GetRequiredService<DaprClient>();

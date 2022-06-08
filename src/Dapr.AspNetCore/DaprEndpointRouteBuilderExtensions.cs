@@ -72,7 +72,7 @@ namespace Microsoft.AspNetCore.Builder
                         var topicMetadata = e.Metadata.GetOrderedMetadata<ITopicMetadata>();
                         var originalTopicMetadata = e.Metadata.GetOrderedMetadata<IOriginalTopicMetadata>();
 
-                        var subs = new List<(string PubsubName, string Name, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata,string MetadataSeparator, RoutePattern RoutePattern)>();
+                        var subs = new List<(string PubsubName, string Name, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string MetadataSeparator, RoutePattern RoutePattern)>();
 
                         for (int i = 0; i < topicMetadata.Count(); i++)
                         {
@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Builder
                                 topicMetadata[i].Priority,
                                 originalTopicMetadata.Where(m => (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.OwnedMetadatas?.Any(o => o.Equals(m.Id)) == true || string.IsNullOrEmpty(m.Id))
                                                      .GroupBy(c => c.Name)
-                                                     .ToDictionary(m => m.Key, m => m.Select(c=>c.Value).Distinct().ToArray()),//multiple identical names. only the first value is valid.
+                                                     .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),//multiple identical names. only the first value is valid.
                                 (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.MetadataSeparator,
                                 e.RoutePattern));
                         }
@@ -97,13 +97,13 @@ namespace Microsoft.AspNetCore.Builder
                     {
                         var first = e.First();
                         var rawPayload = e.Any(e => e.EnableRawPayload.GetValueOrDefault());
-                        var metadataSeparator= e.FirstOrDefault(e =>string.IsNullOrEmpty(e.MetadataSeparator)).MetadataSeparator??",";
+                        var metadataSeparator = e.FirstOrDefault(e => string.IsNullOrEmpty(e.MetadataSeparator)).MetadataSeparator ?? ",";
                         var rules = e.Where(e => !string.IsNullOrEmpty(e.Match)).ToList();
                         var defaultRoutes = e.Where(e => string.IsNullOrEmpty(e.Match)).Select(e => RoutePatternToString(e.RoutePattern)).ToList();
                         var defaultRoute = defaultRoutes.FirstOrDefault();
 
                         //multiple identical names. use comma separation.
-                        var metadata = new Metadata(e.SelectMany(c => c.OriginalTopicMetadata).GroupBy(c => c.Key).ToDictionary(c => c.Key, c =>string.Join(metadataSeparator, c.SelectMany(c=>c.Value).Distinct())));
+                        var metadata = new Metadata(e.SelectMany(c => c.OriginalTopicMetadata).GroupBy(c => c.Key).ToDictionary(c => c.Key, c => string.Join(metadataSeparator, c.SelectMany(c => c.Value).Distinct())));
                         if (rawPayload || options?.EnableRawPayload is true)
                         {
                             metadata.Add(Metadata.RawPayload, "true");

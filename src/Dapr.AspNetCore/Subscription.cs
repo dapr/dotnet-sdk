@@ -12,8 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Generic;
-using Google.Protobuf.WellKnownTypes;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace Dapr
 {
