@@ -16,6 +16,29 @@ using System.Collections.Generic;
 namespace Dapr.Client
 {
     /// <summary>
+    /// Enum representing the response from a Unlock API call.
+    /// </summary>
+    public enum LockStatus
+    {
+        /// <summary>
+        /// Succes stating the lock is released.
+        /// </summary>
+        Success,
+        /// <summary>
+        /// LockUnexist stating the lock does not exist.
+        /// </summary>
+        LockUnexist,
+        /// <summary>
+        /// LockBelongToOthers stating the lock is acquired by a different process.
+        /// </summary>
+        LockBelongToOthers,
+        /// <summary>
+        /// InternalError statign an error in unlocking.
+        /// </summary>
+        InternalError,
+    }
+
+    /// <summary>
     /// Class representing the response from a Unlock API call.
     /// </summary>
     public class UnlockResponse
@@ -23,15 +46,14 @@ namespace Dapr.Client
         /// <summary>
         /// The status of unlock API call
         /// </summary>
-        public string Status;
+        public LockStatus status { set; get; }
 
         /// <summary>
         /// Constructor for a UnlockResponse.
         /// </summary>
-        /// <param name="status">The status value that is returned in the Unlock call.</param>
-        public UnlockResponse(string status)
-        {
-            this.Status = status;
+        /// <param name="status">The status value that is returned in the UnLock call.</param>
+        public UnlockResponse(LockStatus status) {
+            this.status = status;
         }
     }
 }

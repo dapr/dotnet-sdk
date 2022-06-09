@@ -24,16 +24,15 @@ namespace DistributedLockApi
             Console.WriteLine("Getting deposited value: " + result);
 
             var unlockResponse = await client.Unlock(StoreName, ResourceId, LockOwner);
-            Console.WriteLine("Unlock API response: " + unlockResponse.Status);
+            Console.WriteLine("Unlock API response: " + unlockResponse.status);
 
             //Checking if the lock exists.
             var lockUnexistResponse = await client.Unlock(StoreName, ResourceId, LockOwner);
-            Console.WriteLine("Unlock API response when lock is not acquired: " + lockUnexistResponse.Status);
+            Console.WriteLine("Unlock API response when lock is not acquired: " + lockUnexistResponse.status);
 
-            //Testing
             ResourceId = "resourceId";
             LockOwner = "owner1";
-            ExpiryInSeconds = 1000;
+            ExpiryInSeconds = 25;
             var tryLockResponse1 = await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds);
             Console.WriteLine("Acquired Lock? " + tryLockResponse1.Success);
 

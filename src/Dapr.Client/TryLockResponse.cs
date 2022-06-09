@@ -23,7 +23,7 @@ namespace Dapr.Client
         /// <summary>
         /// The success value of the tryLock API call
         /// </summary>
-        public bool Success;
+        public bool Success { get; }
 
         /// <summary>
         /// Constructor for a TryLockResponse.

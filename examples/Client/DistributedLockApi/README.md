@@ -11,12 +11,11 @@ It demonstrates the following APIs:
 
 - [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
-- [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
+- Initialize Dapr environment by pulling the code from master branch of [Dapr](https://github.com/dapr/dapr)
 
 ## Overview
-This example shows the usage of two different Distributed Lock APIs. The TryLock call and
-the Unlock call. Both of these calls can be handled in two different ways.
+This example shows the usage of two different Distributed Lock APIs, TryLock call and Unlock call.
 
 #### TryLock Example
 ```csharp
@@ -40,7 +39,7 @@ dotnet build
 To run the `TryLockApplication`, execute the following command:
 
 ```bash
-dapr run  --app-id distributedLock --app-protocol grpc --components-path ./Components --log-level debug dotnet run
+dapr run  --app-id distributedLock --app-protocol grpc --components-path ./Components dotnet run
 ```
 
 You should see the following output from the application:
@@ -66,11 +65,16 @@ dotnet build
 To run the `UnLockApplication`, execute the following command:
 
 ```bash
-dapr run  --app-id distributedLock --app-protocol grpc --components-path ./Components --log-level debug dotnet run
+dapr run  --app-id distributedLock --app-protocol grpc --components-path ./Components dotnet run
 ```
 
 You should see the following output from the application:
 
 ```
+== APP == Acquired Lock? False
+== APP == Lock cannot be acquired as it belongs to the other process
 == APP == Unlock API response when lock is acquired by a different process: LockBelongToOthers
+== APP == Acquired lock after the lock from the other process expired? True
+== APP == Unlock API response when lock is released after the expiry time: Success
+== APP == Unlock API response when lock is released after the expiry time and lock does not exist: LockUnexist
 ```
