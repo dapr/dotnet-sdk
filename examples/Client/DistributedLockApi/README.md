@@ -46,9 +46,7 @@ You should see the following output from the application:
 
 ```
 == APP == Getting deposited value: 200
-== APP == Unlock API response: Success
-== APP == Unlock API response when lock is not acquired: LockUnexist
-== APP == Acquired Lock? True
+== APP == Acquired Lock for 50 seconds
 ```
 
 ### Start the DistributedLock UnLockApplication.
@@ -71,10 +69,10 @@ dapr run  --app-id distributedLock --app-protocol grpc --components-path ./Compo
 You should see the following output from the application:
 
 ```
-== APP == Acquired Lock? False
-== APP == Lock cannot be acquired as it belongs to the other process
-== APP == Unlock API response when lock is acquired by a different process: LockBelongToOthers
-== APP == Acquired lock after the lock from the other process expired? True
-== APP == Unlock API response when lock is released after the expiry time: Success
-== APP == Unlock API response when lock is released after the expiry time and lock does not exist: LockUnexist
+== APP == Lock is acquired by a different process
+== APP == Lock is acquired by a different process
+== APP == Lock is acquired by a different process
+== APP == Lock is acquired by a different process
+== APP == Lock is acquired by a different process
+== APP == Getting deposited value: 300
 ```

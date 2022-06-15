@@ -860,7 +860,7 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Get a response if the lock is acquired from the given lockstore. 
+        /// Attempt to lock the given resourceId with response indicating success.
         /// </summary>
         /// <param name="storeName">The name of the lock store to be queried.</param>
         /// <param name="resourceId">Lock key that stands for which resource to protect.</param>
@@ -869,7 +869,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="TryLockResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<TryLockResponse> TryLock(
+        public abstract Task<bool> TryLock(
             string storeName,
             string resourceId,
             string lockOwner,
@@ -878,7 +878,7 @@ namespace Dapr.Client
 
 
         /// <summary>
-        /// Get a response if the lock is unlocked. 
+        /// Attempt to unlock the given resourceId with response indicating success. 
         /// </summary>
         /// <param name="storeName">The name of the lock store to be queried.</param>
         /// <param name="resourceId">Lock key that stands for which resource to protect.</param>

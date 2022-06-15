@@ -6,7 +6,7 @@ using Dapr.Client;
 
 namespace DistributedLockApi
 {
-    public class Program2
+    public class Program
     {
         [Obsolete]
         public static async Task Main(string[] args)
@@ -16,29 +16,34 @@ namespace DistributedLockApi
             string ResourceId = "resourceId";
             string LockOwner = "owner2";
             Int32 ExpiryInSeconds = 25;
+            string DAPR_STORE_NAME = "statestore";
             
-            //Trying to acquire the lock which is being used by the other process(TryLockApplication)
-            var tryLockResponse = await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds);
-            Console.WriteLine("Acquired Lock? " + tryLockResponse.Success);
-            Console.WriteLine("Lock cannot be acquired as it belongs to the other process");
-
-            var lockResponse = await client.Unlock(StoreName, ResourceId, LockOwner);
-            Console.WriteLine("Unlock API response when lock is acquired by a different process: " + lockResponse.status);
-
-            System.Threading.Thread.Sleep(25000);
-
-            //Trying to acquire the lock after the other process lock is expired
-            tryLockResponse = await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds);
-            Console.WriteLine("Acquired lock after the lock from the other process expired? " + tryLockResponse.Success);
-
-            lockResponse = await client.Unlock(StoreName, ResourceId, LockOwner);
-            Console.WriteLine("Unlock API response when lock is released after the expiry time: " + lockResponse.status);
-
-            System.Threading.Thread.Sleep(25000);
-
-            //Trying to unlock the lock after the lock used by this process(UnLockApplication) is expired
-            lockResponse = await client.Unlock(StoreName, ResourceId, LockOwner);
-            Console.WriteLine("Unlock API response when lock is released after the expiry time and lock does not exist: " + lockResponse.status);
+            //This is the second process trying to acquire unexpired lock(Lock acquired by the first(TryLockApplication) process)
+            while(true) 
+            {
+                try
+                {
+                    if(await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds)) {
+                        try
+                        {
+                            await client.SaveStateAsync(DAPR_STORE_NAME, "deposit", "300");
+                            var result = await client.GetStateAsync<string>(DAPR_STORE_NAME, "deposit");
+                            Console.WriteLine("Getting deposited value: " + result);
+                        }
+                        finally
+                        {
+                            await client.Unlock(StoreName, ResourceId, LockOwner);
+                        }
+                        break;
+                    }
+                    Console.WriteLine("Lock is acquired by a different process");    
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine($"ERROR: Got exception while acquiring the lock. Exception: {ex}");   
+                }
+                await Task.Delay(TimeSpan.FromSeconds(10));
+            }
         }
     }                                                                                                                        
 }

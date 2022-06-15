@@ -48,7 +48,20 @@ namespace Dapr.Client.Test
             };
 
             var domainResponse = await request.CompleteWithMessageAsync(invokeResponse);
-            domainResponse.Success.Should().Be(true);
+            domainResponse.Should().Be(true);
+        }
+
+        [Fact]
+        public async Task TryLockAsync_WithAllValues_ArgumentVerifierException()
+        {
+            var client = new DaprClientBuilder().Build();
+            string storeName = "redis";
+            string resourceId = "resourceId";
+            string lockOwner = "owner1";
+            Int32 expiryInSeconds = 0;
+            // Get response and validate
+            var invokeResponse = new ArgumentException();
+            await Assert.ThrowsAsync<ArgumentException>(async () => await client.TryLock(storeName, resourceId, lockOwner, expiryInSeconds));
         }
 
         //Tests For Unlock API
