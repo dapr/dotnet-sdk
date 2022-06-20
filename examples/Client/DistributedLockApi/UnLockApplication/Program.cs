@@ -35,8 +35,7 @@ namespace DistributedLockApi
                             await client.Unlock(StoreName, ResourceId, LockOwner);
                         }
                         break;
-                    }
-                    Console.WriteLine("Lock is acquired by a different process");    
+                    } 
                 }
                 catch(Exception ex)
                 {
