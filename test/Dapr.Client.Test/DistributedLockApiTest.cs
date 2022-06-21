@@ -48,7 +48,7 @@ namespace Dapr.Client.Test
             };
 
             var domainResponse = await request.CompleteWithMessageAsync(invokeResponse);
-            domainResponse.Should().Be(true);
+            domainResponse.Success.Should().Be(true);
         }
 
         [Fact]

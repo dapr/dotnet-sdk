@@ -1281,7 +1281,7 @@ namespace Dapr.Client
         #region Distributed Lock API
         /// <inheritdoc/>
         [Obsolete]
-        public async override Task<bool> TryLock(
+        public async override Task<TryLockResponse> TryLock(
             string storeName,
             string resourceId,
             string lockOwner,
@@ -1316,11 +1316,10 @@ namespace Dapr.Client
                 throw new DaprException("TryLock operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
 
-            return response.Success;
+            return new TryLockResponse(response.Success);
         }
 
         /// <inheritdoc/>
-        [Obsolete]
         public async override Task<UnlockResponse> Unlock(
             string storeName,
             string resourceId,

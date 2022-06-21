@@ -11,19 +11,31 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Generic;
+using System;
 
 namespace Dapr.Client
 {
     /// <summary>
     /// Class representing the response from a TryLock API call.
     /// </summary>
-    public class TryLockResponse
+    public class TryLockResponse :  IDisposable
     {
         /// <summary>
         /// The success value of the tryLock API call
         /// </summary>
         public bool Success { get; }
+        /// <summary>
+        /// The resourceId required to unlock the lock
+        /// </summary>
+        public string ResourceId { get; }
+         /// <summary>
+        /// The LockOwner required to unlock the lock
+        /// </summary>
+        public string LockOwner { get; }
+         /// <summary>
+        /// The StoreName required to unlock the lock
+        /// </summary>
+        public string StoreName { get; }
 
         /// <summary>
         /// Constructor for a TryLockResponse.
@@ -32,6 +44,21 @@ namespace Dapr.Client
         public TryLockResponse(bool success)
         {
             this.Success = success;
+        }
+
+        /// <inheritdoc />
+        public void Dispose() {
+            using (var client = new DaprClientBuilder().Build()) {
+                client.Unlock(ResourceId, LockOwner, StoreName);
+            }
+        }
+
+        /// <summary>
+        /// Disposes the resources associated with the object.
+        /// </summary>
+        /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
+        protected virtual void Dispose(bool disposing)
+        {
         }
     }
 }
