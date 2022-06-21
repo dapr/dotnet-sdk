@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,6 +68,16 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
+        [Topic("pubsub", "metadata", new string[1] { "id1" })]
+        [Topic("pubsub", "metadata.1", true)]
+        [HttpPost("/multiMetadataTopicAttr")]
+        [TopicMetadata("n1", "v1")]
+        [TopicMetadata("id1", "n2", "v2")]
+        [TopicMetadata("id1", "n2", "v3")]
+        public void MultipleMetadataTopics()
+        {
+        }
+
         [Topic("pubsub", "splitTopicAttr", true)]
         [HttpPost("/splitTopics")]
         public void SplitTopic()
@@ -112,7 +122,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         }
 
         [HttpPost("/echo-user")]
-        public ActionResult<UserInfo> EchoUser([FromQuery]UserInfo user)
+        public ActionResult<UserInfo> EchoUser([FromQuery] UserInfo user)
         {
             // To simulate an action where there's no Dapr attribute, yet MVC still checks the list of available model binder providers.
             return user;

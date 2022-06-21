@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
 namespace Dapr.AspNetCore.IntegrationTest
 {
     using System.Collections.Generic;
+    using System.Linq;
     using System.Net.Http;
     using System.Text.Json;
-    using System.Text.Json.Serialization;
     using System.Threading.Tasks;
     using FluentAssertions;
     using Xunit;
@@ -39,21 +39,38 @@ namespace Dapr.AspNetCore.IntegrationTest
                     var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
                     json.ValueKind.Should().Be(JsonValueKind.Array);
-                    json.GetArrayLength().Should().Be(12);
-                    var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, string match)>();
+                    json.GetArrayLength().Should().Be(15);
+                    var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, string match, string metadata)>();
                     foreach (var element in json.EnumerateArray())
                     {
                         var pubsubName = element.GetProperty("pubsubName").GetString();
                         var topic = element.GetProperty("topic").GetString();
                         var rawPayload = string.Empty;
+                        Dictionary<string, string> originalMetadata = new Dictionary<string, string>();
                         if (element.TryGetProperty("metadata", out JsonElement metadata))
                         {
-                            rawPayload = metadata.GetProperty("rawPayload").GetString();
+                            if (metadata.TryGetProperty("rawPayload", out JsonElement rawPayloadJson))
+                            {
+                                rawPayload = rawPayloadJson.GetString();
+                            }
+                           
+                            foreach (var originalMetadataProperty in metadata.EnumerateObject().OrderBy(c=>c.Name))
+                            {
+                                if (!originalMetadataProperty.Name.Equals("rawPayload"))
+                                {
+                                    originalMetadata.Add(originalMetadataProperty.Name, originalMetadataProperty.Value.GetString());
+                                }
+                            }
+                        }
+                        var originalMetadataString= string.Empty;
+                        if (originalMetadata.Count > 0)
+                        {
+                            originalMetadataString = string.Join(";", originalMetadata.Select(c => $"{c.Key}={c.Value}"));
                         }
 
                         if (element.TryGetProperty("route", out JsonElement route))
                         {
-                            subscriptions.Add((pubsubName, topic, route.GetString(), rawPayload, string.Empty));
+                            subscriptions.Add((pubsubName, topic, route.GetString(), rawPayload, string.Empty, originalMetadataString));
                         }
                         else if (element.TryGetProperty("routes", out JsonElement routes))
                         {
@@ -63,30 +80,33 @@ namespace Dapr.AspNetCore.IntegrationTest
                                 {
                                     var match = rule.GetProperty("match").GetString();
                                     var path = rule.GetProperty("path").GetString();
-                                    subscriptions.Add((pubsubName, topic, path, rawPayload, match));
+                                    subscriptions.Add((pubsubName, topic, path, rawPayload, match, originalMetadataString));
                                 }
                             }
                             if (routes.TryGetProperty("default", out JsonElement defaultProperty))
                             {
-                                subscriptions.Add((pubsubName, topic, defaultProperty.GetString(), rawPayload, string.Empty));
-                            }                            
+                                subscriptions.Add((pubsubName, topic, defaultProperty.GetString(), rawPayload, string.Empty, originalMetadataString));
+                            }
                         }
                     }
 
-                    subscriptions.Should().Contain(("testpubsub", "A", "topic-a", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("testpubsub", "A.1", "topic-a", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "B", "B", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("custom-pubsub", "custom-C", "C", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "register-user", "register-user", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "register-user-plaintext", "register-user-plaintext", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "D", "D", "true", string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "E", "E", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "E", "E-Critical", string.Empty, "event.type == \"critical\""));
-                    subscriptions.Should().Contain(("pubsub", "E", "E-Important", string.Empty, "event.type == \"important\""));
-                    subscriptions.Should().Contain(("pubsub", "F", "multiTopicAttr", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "F.1", "multiTopicAttr", "true", string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "splitTopicBuilder", "splitTopics", string.Empty, string.Empty));
-                    subscriptions.Should().Contain(("pubsub", "splitTopicAttr", "splitTopics", "true", string.Empty));
+                    subscriptions.Should().Contain(("testpubsub", "A", "topic-a", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("testpubsub", "A.1", "topic-a", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "B", "B", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("custom-pubsub", "custom-C", "C", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "register-user", "register-user", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "register-user-plaintext", "register-user-plaintext", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "D", "D", "true", string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "E", "E", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "E", "E-Critical", string.Empty, "event.type == \"critical\"", string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "E", "E-Important", string.Empty, "event.type == \"important\"", string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "F", "multiTopicAttr", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "F.1", "multiTopicAttr", "true", string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "splitTopicBuilder", "splitTopics", string.Empty, string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "splitTopicAttr", "splitTopics", "true", string.Empty, string.Empty));
+                    subscriptions.Should().Contain(("pubsub", "metadata", "multiMetadataTopicAttr", string.Empty, string.Empty, "n1=v1;n2=v2,v3"));
+                    subscriptions.Should().Contain(("pubsub", "metadata.1", "multiMetadataTopicAttr", "true", string.Empty, "n1=v1"));
+                    subscriptions.Should().Contain(("pubsub", "splitMetadataTopicBuilder", "splitMetadataTopics", string.Empty, string.Empty, "n1=v1;n2=v1"));
 
                     // Test priority route sorting
                     var eTopic = subscriptions.FindAll(e => e.Topic == "E");

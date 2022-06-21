@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,7 +70,9 @@ namespace Microsoft.AspNetCore.Builder
                     .SelectMany(e =>
                     {
                         var topicMetadata = e.Metadata.GetOrderedMetadata<ITopicMetadata>();
-                        var subs = new List<(string PubsubName, string Name, bool? EnableRawPayload, string Match, int Priority, RoutePattern RoutePattern)>();
+                        var originalTopicMetadata = e.Metadata.GetOrderedMetadata<IOriginalTopicMetadata>();
+
+                        var subs = new List<(string PubsubName, string Name, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string MetadataSeparator, RoutePattern RoutePattern)>();
 
                         for (int i = 0; i < topicMetadata.Count(); i++)
                         {
@@ -79,6 +81,10 @@ namespace Microsoft.AspNetCore.Builder
                                 (topicMetadata[i] as IRawTopicMetadata)?.EnableRawPayload,
                                 topicMetadata[i].Match,
                                 topicMetadata[i].Priority,
+                                originalTopicMetadata.Where(m => (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.OwnedMetadatas?.Any(o => o.Equals(m.Id)) == true || string.IsNullOrEmpty(m.Id))
+                                                     .GroupBy(c => c.Name)
+                                                     .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),
+                                (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.MetadataSeparator,
                                 e.RoutePattern));
                         }
 
@@ -91,9 +97,17 @@ namespace Microsoft.AspNetCore.Builder
                     {
                         var first = e.First();
                         var rawPayload = e.Any(e => e.EnableRawPayload.GetValueOrDefault());
+                        var metadataSeparator = e.FirstOrDefault(e => string.IsNullOrEmpty(e.MetadataSeparator)).MetadataSeparator ?? ",";
                         var rules = e.Where(e => !string.IsNullOrEmpty(e.Match)).ToList();
                         var defaultRoutes = e.Where(e => string.IsNullOrEmpty(e.Match)).Select(e => RoutePatternToString(e.RoutePattern)).ToList();
                         var defaultRoute = defaultRoutes.FirstOrDefault();
+
+                        //multiple identical names. use comma separation.
+                        var metadata = new Metadata(e.SelectMany(c => c.OriginalTopicMetadata).GroupBy(c => c.Key).ToDictionary(c => c.Key, c => string.Join(metadataSeparator, c.SelectMany(c => c.Value).Distinct())));
+                        if (rawPayload || options?.EnableRawPayload is true)
+                        {
+                            metadata.Add(Metadata.RawPayload, "true");
+                        }
 
                         if (logger != null)
                         {
@@ -116,10 +130,7 @@ namespace Microsoft.AspNetCore.Builder
                         {
                             Topic = first.Name,
                             PubsubName = first.PubsubName,
-                            Metadata = rawPayload ? new Metadata
-                            {
-                                RawPayload = "true",
-                            } : null,
+                            Metadata = metadata.Count > 0 ? metadata : null,
                         };
 
                         // Use the V2 routing rules structure
@@ -154,7 +165,8 @@ namespace Microsoft.AspNetCore.Builder
             });
         }
 
-        private static string RoutePatternToString(RoutePattern routePattern) {
+        private static string RoutePatternToString(RoutePattern routePattern)
+        {
             return string.Join("/", routePattern.PathSegments
                                     .Select(segment => string.Concat(segment.Parts.Cast<RoutePatternLiteralPart>()
                                     .Select(part => part.Content))));

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -152,6 +152,19 @@ namespace ControllerSample.Controllers
         [CustomTopic("%CUSTOM_PUBSUB%", "%CUSTOM_TOPIC%")]
         [HttpPost("exampleCustomTopic")]
         public ActionResult<Account> ExampleCustomTopic(Transaction transaction)
+        {
+            return Ok();
+        }
+
+        /// <summary>
+        /// Method which uses <see cref="TopicMetadataAttribute" /> for binding this endpoint to a subscription and adds routingkey metadata.
+        /// </summary>
+        /// <param name="transaction"></param>
+        /// <returns></returns>
+        [Topic("pubsub", "topicmetadata")]
+        [TopicMetadata("routingKey", "keyA")]
+        [HttpPost("examplecustomtopicmetadata")]
+        public ActionResult<Account> ExampleCustomTopicMetadata(Transaction transaction)
         {
             return Ok();
         }
