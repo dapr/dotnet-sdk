@@ -20,7 +20,7 @@ namespace DistributedLockApi
             while(true) 
             {
                 try{
-                    using(var tryLock = await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds))
+                    using(var tryLock = await client.Lock(StoreName, ResourceId, LockOwner, ExpiryInSeconds))
                     {
                         if(tryLock != null && tryLock.Success == true) {
                             try
@@ -52,7 +52,7 @@ namespace DistributedLockApi
             while(true)
             {
                 try{
-                    using(var tryLock = await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds))
+                    using(var tryLock = await client.Lock(StoreName, ResourceId, LockOwner, ExpiryInSeconds))
                     {
                         if(tryLock != null && tryLock.Success == true) {
                             Console.WriteLine("Acquired Lock for 50 seconds");

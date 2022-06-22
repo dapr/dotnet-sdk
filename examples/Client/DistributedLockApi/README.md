@@ -15,11 +15,11 @@ It demonstrates the following APIs:
 - Initialize Dapr environment by pulling the code from master branch of [Dapr](https://github.com/dapr/dapr)
 
 ## Overview
-This example shows the usage of two different Distributed Lock APIs, TryLock call and Unlock call.
+This example shows the usage of two different Distributed Lock APIs, Lock call and Unlock call.
 
-#### TryLock Example
+#### Lock Example
 ```csharp
-var tryLockResponse = await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds);
+var tryLockResponse = await client.Lock(StoreName, ResourceId, LockOwner, ExpiryInSeconds);
 ```
 
 #### Unlock Example

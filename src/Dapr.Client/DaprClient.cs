@@ -869,7 +869,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="TryLockResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<TryLockResponse> TryLock(
+        public abstract Task<TryLockResponse> Lock(
             string storeName,
             string resourceId,
             string lockOwner,

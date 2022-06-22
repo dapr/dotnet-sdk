@@ -23,7 +23,7 @@ namespace DistributedLockApi
             {
                 try
                 {
-                    using(var tryLock = await client.TryLock(StoreName, ResourceId, LockOwner, ExpiryInSeconds))
+                    using(var tryLock = await client.Lock(StoreName, ResourceId, LockOwner, ExpiryInSeconds))
                     {
                         if(tryLock != null && tryLock.Success == true) {
                             try

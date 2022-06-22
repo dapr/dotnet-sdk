@@ -16,7 +16,7 @@ using System;
 namespace Dapr.Client
 {
     /// <summary>
-    /// Class representing the response from a TryLock API call.
+    /// Class representing the response from a Lock API call.
     /// </summary>
     public class TryLockResponse :  IDisposable
     {
@@ -24,14 +24,17 @@ namespace Dapr.Client
         /// The success value of the tryLock API call
         /// </summary>
         public bool Success { get; }
+
         /// <summary>
         /// The resourceId required to unlock the lock
         /// </summary>
         public string ResourceId { get; }
+
          /// <summary>
         /// The LockOwner required to unlock the lock
         /// </summary>
         public string LockOwner { get; }
+
          /// <summary>
         /// The StoreName required to unlock the lock
         /// </summary>
@@ -40,7 +43,7 @@ namespace Dapr.Client
         /// <summary>
         /// Constructor for a TryLockResponse.
         /// </summary>
-        /// <param name="success">The success value that is returned in the TryLock call.</param>
+        /// <param name="success">The success value that is returned in the Lock call.</param>
         public TryLockResponse(bool success)
         {
             this.Success = success;
@@ -49,16 +52,10 @@ namespace Dapr.Client
         /// <inheritdoc />
         public void Dispose() {
             using (var client = new DaprClientBuilder().Build()) {
-                client.Unlock(ResourceId, LockOwner, StoreName);
+                if(this.Success) {
+                    client.Unlock(ResourceId, LockOwner, StoreName);
+                }
             }
-        }
-
-        /// <summary>
-        /// Disposes the resources associated with the object.
-        /// </summary>
-        /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
-        protected virtual void Dispose(bool disposing)
-        {
         }
     }
 }

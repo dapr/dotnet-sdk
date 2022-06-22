@@ -32,7 +32,7 @@ namespace Dapr.Client.Test
             Int32 expiryInSeconds = 1000;
             var request = await client.CaptureGrpcRequestAsync(async daprClient =>
             {
-                return await daprClient.TryLock(storeName, resourceId, lockOwner, expiryInSeconds);
+                return await daprClient.Lock(storeName, resourceId, lockOwner, expiryInSeconds);
             });
 
             // Get Request and validate
@@ -61,7 +61,7 @@ namespace Dapr.Client.Test
             Int32 expiryInSeconds = 0;
             // Get response and validate
             var invokeResponse = new ArgumentException();
-            await Assert.ThrowsAsync<ArgumentException>(async () => await client.TryLock(storeName, resourceId, lockOwner, expiryInSeconds));
+            await Assert.ThrowsAsync<ArgumentException>(async () => await client.Lock(storeName, resourceId, lockOwner, expiryInSeconds));
         }
 
         //Tests For Unlock API
