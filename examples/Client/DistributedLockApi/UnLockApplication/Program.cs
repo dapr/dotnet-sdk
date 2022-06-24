@@ -26,16 +26,9 @@ namespace DistributedLockApi
                     using(var tryLock = await client.Lock(StoreName, ResourceId, LockOwner, ExpiryInSeconds))
                     {
                         if(tryLock != null && tryLock.Success == true) {
-                            try
-                            {
-                                await client.SaveStateAsync(DAPR_STORE_NAME, "deposit", "300");
-                                var result = await client.GetStateAsync<string>(DAPR_STORE_NAME, "deposit");
-                                Console.WriteLine("Getting deposited value: " + result);
-                            }
-                            finally
-                            {
-                                await client.Unlock(StoreName, ResourceId, LockOwner);
-                            }
+                            await client.SaveStateAsync(DAPR_STORE_NAME, "deposit", "300");
+                            var result = await client.GetStateAsync<string>(DAPR_STORE_NAME, "deposit");
+                            Console.WriteLine("Getting deposited value: " + result);
                             break;
                         } 
                     }

@@ -1320,6 +1320,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
+        [Obsolete]
         public async override Task<UnlockResponse> Unlock(
             string storeName,
             string resourceId,

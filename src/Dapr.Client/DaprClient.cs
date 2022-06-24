@@ -885,6 +885,7 @@ namespace Dapr.Client
         /// <param name="lockOwner">Indicates the identifier of lock owner.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="UnlockResponse"/></returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<UnlockResponse> Unlock(
             string storeName,
             string resourceId,
