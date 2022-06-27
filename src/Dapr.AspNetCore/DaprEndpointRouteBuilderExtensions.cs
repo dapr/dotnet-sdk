@@ -97,7 +97,7 @@ namespace Microsoft.AspNetCore.Builder
                     {
                         var first = e.First();
                         var rawPayload = e.Any(e => e.EnableRawPayload.GetValueOrDefault());
-                        var metadataSeparator = e.FirstOrDefault(e => string.IsNullOrEmpty(e.MetadataSeparator)).MetadataSeparator ?? ",";
+                        var metadataSeparator = e.FirstOrDefault(e => !string.IsNullOrEmpty(e.MetadataSeparator)).MetadataSeparator ?? ",";
                         var rules = e.Where(e => !string.IsNullOrEmpty(e.Match)).ToList();
                         var defaultRoutes = e.Where(e => string.IsNullOrEmpty(e.Match)).Select(e => RoutePatternToString(e.RoutePattern)).ToList();
                         var defaultRoute = defaultRoutes.FirstOrDefault();
