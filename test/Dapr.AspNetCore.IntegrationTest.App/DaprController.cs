@@ -78,7 +78,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
-        [Topic("pubsub", "metadataseparator",metadataSeparator:"|")]
+        [Topic("pubsub", "metadataseparator", metadataSeparator: "|")]
         [HttpPost("/topicmetadataseparatorattr")]
         [TopicMetadata("n1", "v1")]
         [TopicMetadata("n1", "v2")]

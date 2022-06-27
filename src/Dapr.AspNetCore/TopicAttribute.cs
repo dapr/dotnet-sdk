@@ -28,7 +28,7 @@ namespace Dapr
         /// <param name="name">The topic name.</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, string[] ownedMetadatas = null,string metadataSeparator = null)
+        public TopicAttribute(string pubsubName, string name, string[] ownedMetadatas = null, string metadataSeparator = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
