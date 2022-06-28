@@ -12,48 +12,48 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Threading.Tasks;
 
 namespace Dapr.Client
 {
     /// <summary>
     /// Class representing the response from a Lock API call.
     /// </summary>
-    public class TryLockResponse :  IDisposable
+    [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public sealed class TryLockResponse :  IAsyncDisposable
     {
         /// <summary>
         /// The success value of the tryLock API call
         /// </summary>
-        public bool Success { get; }
+        public bool Success { get; init; }
 
         /// <summary>
         /// The resourceId required to unlock the lock
         /// </summary>
-        public string ResourceId { get; }
+        public string ResourceId { get; init; }
 
          /// <summary>
         /// The LockOwner required to unlock the lock
         /// </summary>
-        public string LockOwner { get; }
+        public string LockOwner { get; init; }
 
          /// <summary>
         /// The StoreName required to unlock the lock
         /// </summary>
-        public string StoreName { get; }
+        public string StoreName { get; init; }
 
         /// <summary>
         /// Constructor for a TryLockResponse.
         /// </summary>
-        /// <param name="success">The success value that is returned in the Lock call.</param>
-        public TryLockResponse(bool success)
+        public TryLockResponse()
         {
-            this.Success = success;
         }
 
         /// <inheritdoc />
-        public void Dispose() {
+        public async ValueTask DisposeAsync() {
             using (var client = new DaprClientBuilder().Build()) {
                 if(this.Success) {
-                    client.Unlock(ResourceId, LockOwner, StoreName);
+                    await client.Unlock(StoreName, ResourceId, LockOwner);
                 }
             }
         }
