@@ -859,6 +859,39 @@ namespace Dapr.Client
             string id,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Attempt to lock the given resourceId with response indicating success.
+        /// </summary>
+        /// <param name="storeName">The name of the lock store to be queried.</param>
+        /// <param name="resourceId">Lock key that stands for which resource to protect.</param>
+        /// <param name="lockOwner">Indicates the identifier of lock owner.</param>
+        /// <param name="expiryInSeconds">The time after which the lock gets expired.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task"/> containing a <see cref="TryLockResponse"/></returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<TryLockResponse> Lock(
+            string storeName,
+            string resourceId,
+            string lockOwner,
+            Int32 expiryInSeconds,
+            CancellationToken cancellationToken = default);
+
+
+        /// <summary>
+        /// Attempt to unlock the given resourceId with response indicating success. 
+        /// </summary>
+        /// <param name="storeName">The name of the lock store to be queried.</param>
+        /// <param name="resourceId">Lock key that stands for which resource to protect.</param>
+        /// <param name="lockOwner">Indicates the identifier of lock owner.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task"/> containing a <see cref="UnlockResponse"/></returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<UnlockResponse> Unlock(
+            string storeName,
+            string resourceId,
+            string lockOwner,
+            CancellationToken cancellationToken = default);
+
         /// <inheritdoc />
         public void Dispose()
         {

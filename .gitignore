@@ -95,3 +95,6 @@ bld/
 coverage.json
 .fake
 .ionide
+
+# Examples bloat
+examples/**/tmp
