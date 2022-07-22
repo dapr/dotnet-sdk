@@ -65,9 +65,9 @@ namespace DaprDemoActor
             return Task.CompletedTask;
         }
 
-        public async Task RegisterReminder()
+        public async Task RegisterReminder(TimeSpan? ttl = null)
         {
-            await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), ttl);
         }
 
         public Task UnregisterReminder()
@@ -90,7 +90,7 @@ namespace DaprDemoActor
         }
 
         /// <inheritdoc/>
-        public Task RegisterTimer()
+        public Task RegisterTimer(TimeSpan? ttl)
         {
             var timerParams = new TimerParams
             {
@@ -99,7 +99,7 @@ namespace DaprDemoActor
             };
 
             var serializedTimerParams = JsonSerializer.SerializeToUtf8Bytes(timerParams);
-            return this.RegisterTimerAsync("TestTimer", nameof(this.TimerCallback), serializedTimerParams, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+            return this.RegisterTimerAsync("TestTimer", nameof(this.TimerCallback), serializedTimerParams, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3), ttl);
         }
 
         public Task UnregisterTimer()

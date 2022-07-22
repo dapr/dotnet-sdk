@@ -35,6 +35,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="data">The state associated with the timer.</param>
         /// <param name="dueTime">The timer due time.</param>
         /// <param name="period">The timer period.</param>
+        /// <param name="ttl">The time at which the timer will expire.</param>
         public ActorTimer(
             string actorType,
             ActorId actorId,
@@ -42,7 +43,8 @@ namespace Dapr.Actors.Runtime
             string timerCallback,
             byte[] data,
             TimeSpan dueTime,
-            TimeSpan period)
+            TimeSpan period,
+            TimeSpan? ttl = null)
             : base(actorType, actorId, name)
         {
             if (dueTime < TimeSpan.Zero)
@@ -63,10 +65,20 @@ namespace Dapr.Actors.Runtime
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
+            if (ttl != null && (ttl < dueTime || ttl < TimeSpan.Zero))
+            {
+                throw new ArgumentOutOfRangeException(nameof(ttl), string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.TimerArgumentOutOfRange,
+                    dueTime,
+                    TimeSpan.MaxValue.TotalMilliseconds));
+            }
+
             this.TimerCallback = timerCallback;
             this.Data = data;
             this.DueTime = dueTime;
             this.Period = period;
+            this.Ttl = ttl;
         }
 
         /// <summary>
@@ -108,5 +120,10 @@ namespace Dapr.Actors.Runtime
         /// Gets the time interval at which the timer is invoked periodically.
         /// </summary>
         public TimeSpan Period { get; }
+
+        /// <summary>
+        /// The optional <see cref="TimeSpan"/> that states when the reminder will expire.
+        /// </summary>
+        public TimeSpan? Ttl { get; }
     }
 }

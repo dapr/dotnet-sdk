@@ -34,13 +34,15 @@ namespace Dapr.Actors.Runtime
         /// <param name="state">The state associated with the reminder.</param>
         /// <param name="dueTime">The reminder due time.</param>
         /// <param name="period">The reminder period.</param>
+        /// <param name="ttl">The time at which the reminder will expire.</param>
         public ActorReminder(
             string actorType,
             ActorId actorId,
             string name,
             byte[] state,
             TimeSpan dueTime,
-            TimeSpan period)
+            TimeSpan period,
+            TimeSpan? ttl = null)
             : base(actorType, actorId, name)
         {
             if (dueTime < TimeSpan.Zero)
@@ -61,9 +63,19 @@ namespace Dapr.Actors.Runtime
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
+            if (ttl != null && (ttl < dueTime || ttl < TimeSpan.Zero))
+            {
+                throw new ArgumentOutOfRangeException(nameof(ttl), string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.TimerArgumentOutOfRange,
+                    dueTime,
+                    TimeSpan.MaxValue.TotalMilliseconds));
+            }
+
             this.State = state;
             this.DueTime = dueTime;
             this.Period = period;
+            this.Ttl = ttl;
         }
 
         /// <summary>
@@ -80,5 +92,10 @@ namespace Dapr.Actors.Runtime
         /// Gets the reminder period.
         /// </summary>
         public TimeSpan Period { get; }
+
+        /// <summary>
+        /// The optional <see cref="TimeSpan"/> that states when the reminder will expire.
+        /// </summary>
+        public TimeSpan? Ttl { get; }
     }
 }

@@ -13,6 +13,7 @@
 
 namespace IDemoActorInterface
 {
+    using System;
     using System.Threading.Tasks;
     using Dapr.Actors;
 
@@ -49,8 +50,9 @@ namespace IDemoActorInterface
         /// <summary>
         /// Registers a reminder.
         /// </summary>
+        /// <param name="ttl">Optional TimeSpan that dictates when the reminder expires.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task RegisterReminder();
+        Task RegisterReminder(TimeSpan? ttl);
 
         /// <summary>
         /// Unregisters the registered reminder.
@@ -61,8 +63,9 @@ namespace IDemoActorInterface
         /// <summary>
         /// Registers a timer.
         /// </summary>
+        /// <param name="ttl">Optional TimeSpan that dictates when the timer expires.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task RegisterTimer();
+        Task RegisterTimer(TimeSpan? ttl);
 
         /// <summary>
         /// Unregisters the registered timer.

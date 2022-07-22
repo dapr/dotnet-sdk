@@ -34,7 +34,8 @@ namespace Dapr.Actors.Runtime
             string callback,
             byte[] state,
             TimeSpan dueTime,
-            TimeSpan period)
+            TimeSpan period,
+            TimeSpan? ttl = null)
         {
             this.ValidateDueTime("DueTime", dueTime);
             this.ValidatePeriod("Period", period);
@@ -42,6 +43,7 @@ namespace Dapr.Actors.Runtime
             this.Data =  state;
             this.DueTime = dueTime;
             this.Period = period;
+            this.Ttl = ttl;
         }
 
         internal string Callback { get; private set; }
@@ -51,6 +53,8 @@ namespace Dapr.Actors.Runtime
         internal TimeSpan Period { get; private set; }
 
         internal byte[] Data { get; private set; }
+
+        internal TimeSpan? Ttl { get; private set; }
 
         private void ValidateDueTime(string argName, TimeSpan value)
         {
@@ -92,6 +96,7 @@ namespace Dapr.Actors.Runtime
             var period = default(TimeSpan);
             var data = default(byte[]);
             string callback = null;
+            TimeSpan? ttl = null;
 
             using (JsonDocument document = JsonDocument.ParseValue(ref reader))
             {
@@ -119,7 +124,13 @@ namespace Dapr.Actors.Runtime
                     callback = callbackProperty.GetString();
                 }
 
-                return new TimerInfo(callback, data, dueTime, period);
+                if (json.TryGetProperty("ttl", out var ttlProperty))
+                {
+                    var ttlString = ttlProperty.GetString();
+                    ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
+                }
+
+                return new TimerInfo(callback, data, dueTime, period, ttl);
             }
         }
 
@@ -149,6 +160,11 @@ namespace Dapr.Actors.Runtime
             if (value.Callback != null)
             {
                 writer.WriteString("callback", value.Callback);
+            }
+
+            if (value.Ttl != null)
+            {
+                writer.WriteString("ttl", ConverterUtils.ConvertTimeSpanValueInDaprFormat(value.Ttl));
             }
 
             writer.WriteEndObject();

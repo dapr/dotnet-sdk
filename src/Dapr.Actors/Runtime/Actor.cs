@@ -201,6 +201,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="period">
         /// The time interval between reminder invocations after the first invocation. Specify negative one (-1) milliseconds to disable periodic invocation.
         /// </param>
+        /// <param name="ttl">The <see cref="TimeSpan"/> that dictates when this reminder will expire.</param>
         /// <returns>
         /// A task that represents the asynchronous registration operation. The result of the task provides information about the registered reminder and is used to unregister the reminder using UnregisterReminderAsync />.
         /// </returns>
@@ -213,9 +214,10 @@ namespace Dapr.Actors.Runtime
             string reminderName,
             byte[] state,
             TimeSpan dueTime,
-            TimeSpan period)
+            TimeSpan period,
+            TimeSpan? ttl = null)
         {
-            var reminder = new ActorReminder(this.actorTypeName, this.Id, reminderName, state, dueTime, period);
+            var reminder = new ActorReminder(this.actorTypeName, this.Id, reminderName, state, dueTime, period, ttl);
             await this.Host.TimerManager.RegisterReminderAsync(reminder);
             return reminder;
         }
@@ -263,13 +265,15 @@ namespace Dapr.Actors.Runtime
         /// <param name="period">
         /// The time interval between invocations of the async callback.
         /// Specify negative one (-1) milliseconds to disable periodic signaling.</param>
+        /// <param name="ttl">The <see cref="TimeSpan"/> that dictates when this timer will expire.</param>
         /// <returns>Returns IActorTimer object.</returns>
         public async Task<ActorTimer> RegisterTimerAsync(
             string timerName,
             string callback,
             byte[] callbackParams,
             TimeSpan dueTime,
-            TimeSpan period)
+            TimeSpan period,
+            TimeSpan? ttl = null)
         {
             // Validate that the timer callback specified meets all the required criteria for a valid callback method
             this.ValidateTimerCallback(this.Host, callback);
@@ -280,7 +284,7 @@ namespace Dapr.Actors.Runtime
                 timerName = $"{this.Id}_Timer_{Guid.NewGuid()}";
             }
 
-            var actorTimer = new ActorTimer(this.actorTypeName, this.Id, timerName, callback, callbackParams, dueTime, period);
+            var actorTimer = new ActorTimer(this.actorTypeName, this.Id, timerName, callback, callbackParams, dueTime, period, ttl);
             await this.Host.TimerManager.RegisterTimerAsync(actorTimer);
             return actorTimer;
         }

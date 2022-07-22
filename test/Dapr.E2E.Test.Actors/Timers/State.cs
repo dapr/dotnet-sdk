@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+
 namespace Dapr.E2E.Test.Actors.Timers
 {
     public class State
@@ -18,5 +20,7 @@ namespace Dapr.E2E.Test.Actors.Timers
         public int Count { get; set; }
 
         public bool IsTimerRunning { get; set; }
+
+        public DateTime Timestamp { get; set; }
     }
 }
