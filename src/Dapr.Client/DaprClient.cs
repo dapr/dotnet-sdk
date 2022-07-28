@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -330,7 +330,25 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
         public abstract Task WaitForSidecarAsync(CancellationToken cancellationToken = default);
-        
+
+        /// <summary>
+        ///Perform service returns information about the sidecar allowing runtime discoverability. 
+        ///The metadata endpoint returns a list of the components loaded, 
+        ///the activated actors (if present) and attributes with information attached.
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<DaprMetadata> GetMetadataAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        ///Perform service Perform service adds a custom label to the Dapr sidecar information stored.
+        /// </summary>
+        /// <param name="attributeName">Custom attribute name</param>
+        /// <param name="attributeValue">Custom attribute value</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return the value when the operation has completed.</returns>
+        public abstract Task SetMetadataAsync(string attributeName, string attributeValue, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. The response will
         /// be returned without performing any validation on the status code.
