@@ -28,7 +28,8 @@ namespace Dapr
         /// <param name="name">The topic name.</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, string[] ownedMetadatas = null, string metadataSeparator = null)
+        /// <param name="deadLetterTopicName">The dead letter topic name.</param>
+        public TopicAttribute(string pubsubName, string name, string[] ownedMetadatas = null, string metadataSeparator = null, string deadLetterTopicName = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -37,6 +38,7 @@ namespace Dapr
             this.PubsubName = pubsubName;
             this.OwnedMetadatas = ownedMetadatas;
             this.MetadataSeparator = metadataSeparator;
+            this.DeadLetterTopicName = deadLetterTopicName;
         }
 
         /// <summary>
@@ -47,7 +49,8 @@ namespace Dapr
         /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null)
+        /// <param name="deadLetterTopicName">The dead letter topic name.</param>
+        public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null, string deadLetterTopicName = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -57,6 +60,7 @@ namespace Dapr
             this.EnableRawPayload = enableRawPayload;
             this.OwnedMetadatas = ownedMetadatas;
             this.MetadataSeparator = metadataSeparator;
+            this.DeadLetterTopicName = deadLetterTopicName;
         }
 
         /// <summary>
@@ -68,7 +72,8 @@ namespace Dapr
         /// <param name="priority">The priority of the rule (low-to-high values).</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null)
+        /// <param name="deadLetterTopicName">The dead letter topic name.</param>
+        public TopicAttribute(string pubsubName, string name, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null, string deadLetterTopicName = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -79,6 +84,7 @@ namespace Dapr
             this.Priority = priority;
             this.OwnedMetadatas = ownedMetadatas;
             this.MetadataSeparator = metadataSeparator;
+            this.DeadLetterTopicName = deadLetterTopicName;
         }
 
         /// <summary>
@@ -91,7 +97,8 @@ namespace Dapr
         /// <param name="priority">The priority of the rule (low-to-high values).</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null)
+        /// <param name="deadLetterTopicName">The dead letter topic name.</param>
+        public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null, string deadLetterTopicName = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -103,10 +110,14 @@ namespace Dapr
             this.Priority = priority;
             this.OwnedMetadatas = ownedMetadatas;
             this.MetadataSeparator = metadataSeparator;
+            this.DeadLetterTopicName = deadLetterTopicName;
         }
 
         /// <inheritdoc/>
         public string Name { get; }
+
+        /// <inheritdoc/>
+        public string DeadLetterTopicName { get; }
 
         /// <inheritdoc/>
         public string PubsubName { get; }

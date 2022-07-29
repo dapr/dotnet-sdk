@@ -25,6 +25,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
         public string Name { get; }
 
+        public string DeadLetterTopicName { get; }
+
         public string PubsubName { get; }
 
         public new string Match { get; }

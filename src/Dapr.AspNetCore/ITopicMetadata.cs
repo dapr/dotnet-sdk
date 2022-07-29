@@ -24,6 +24,11 @@ namespace Dapr
         string Name { get; }
 
         /// <summary>
+        /// Gets the dead letter topic name
+        /// </summary>
+        string DeadLetterTopicName { get; }
+
+        /// <summary>
         /// Gets the pubsub component name name.
         /// </summary>
         string PubsubName { get; }

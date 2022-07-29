@@ -26,6 +26,11 @@ namespace Dapr
         public string Topic { get; set; }
 
         /// <summary>
+        /// Gets or sets the dead letter topic name.
+        /// </summary>
+        public string DeadLetterTopic { get; set; }
+
+        /// <summary>
         /// Gets or sets the pubsub name
         /// </summary>
         public string PubsubName { get; set; }

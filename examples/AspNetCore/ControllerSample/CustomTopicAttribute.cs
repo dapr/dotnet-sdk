@@ -35,6 +35,9 @@ namespace ControllerSample
         public string Name { get; }
 
         /// <inheritdoc/>
+        public string DeadLetterTopicName { get; }
+
+        /// <inheritdoc/>
         public new string Match { get; }
 
         /// <inheritdoc/>
