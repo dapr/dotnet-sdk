@@ -26,6 +26,8 @@ namespace Dapr.Client
     using System.Net.Http.Json;
     using Google.Protobuf.WellKnownTypes;
     using Grpc.Net.Client;
+    using static Google.Rpc.Context.AttributeContext.Types;
+    using System.Reflection;
 
     /// <summary>
     /// A client for interacting with the Dapr endpoints.
@@ -138,7 +140,7 @@ namespace Dapr.Client
             {
                 envelope.Data = content;
                 envelope.DataContentType = dataContentType ?? Constants.ContentTypeApplicationJson;
-			}
+            }
 
             if (metadata != null)
             {
@@ -289,7 +291,7 @@ namespace Dapr.Client
             request.Content = JsonContent.Create<TRequest>(data, options: this.JsonSerializerOptions);
             return request;
         }
-        
+
         public override async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
         {
             var path = "/v1.0/healthz";
@@ -323,13 +325,52 @@ namespace Dapr.Client
         public override async Task WaitForSidecarAsync(CancellationToken cancellationToken = default)
         {
             while (true)
-            { 
+            {
                 var response = await CheckOutboundHealthAsync(cancellationToken);
                 if (response)
                 {
                     break;
                 }
                 await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            }
+        }
+
+        public override async Task<DaprMetadata> GetMetadataAsync(CancellationToken cancellationToken = default)
+        {
+            var path = "/v1.0/metadata";
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+
+            try
+            {
+                var response = await this.httpClient.SendAsync(request, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                return await response.Content.ReadFromJsonAsync<DaprMetadata>(this.jsonSerializerOptions, cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new DaprException("Get metadata operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+            }
+        }
+
+        public override async Task SetMetadataAsync(string attributeName, string attributeValue, CancellationToken cancellationToken = default)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(attributeName, nameof(attributeName));
+
+            var path = $"/v1.0/metadata/{attributeName}";
+            var request = new HttpRequestMessage(HttpMethod.Put, new Uri(this.httpEndpoint, path))
+            {
+                Content = new StringContent(attributeValue)
+            };
+
+            try
+            {
+                var response = await this.httpClient.SendAsync(request, cancellationToken);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new DaprException("Set metadata operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
 
