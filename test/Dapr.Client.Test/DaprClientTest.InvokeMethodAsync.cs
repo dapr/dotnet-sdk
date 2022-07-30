@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 namespace Dapr.Client.Test
 {
     using System;
+    using System.Collections.Generic;
     using System.Net;
     using System.Net.Http;
     using System.Net.Http.Json;
@@ -22,6 +23,7 @@ namespace Dapr.Client.Test
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
+    using FluentAssertions;
     using Xunit;
 
     // Most of the InvokeMethodAsync functionality on DaprClient is non-abstract methods that
@@ -670,6 +672,95 @@ namespace Dapr.Client.Test
             });
 
             Assert.Equal("The provided request URI is not a Dapr service invocation URI.", ex.Message);
+        }
+
+        [Fact]
+        public async Task GetMetadataAsync_WrapsHttpRequestException()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var request = await client.CaptureHttpRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetMetadataAsync(default);
+            });
+
+            var exception = new HttpRequestException();
+            var thrown = await Assert.ThrowsAsync<DaprException>(async () => await request.CompleteWithExceptionAsync(exception));
+
+            Assert.Same(exception, thrown.InnerException);
+        }
+
+        [Fact]
+        public async Task GetMetadataAsync_WithReturnTypeAndData()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var request = await client.CaptureHttpRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetMetadataAsync(default);
+            });
+
+
+            // Create Response & Respond
+            var response = new DaprMetadata(
+                "testId", new List<DaprActorMetadata> { new DaprActorMetadata("testType", 1) },
+                new Dictionary<string, string> { { "e1", "v1" } },
+                new List<DaprComponentsMetadata> { new DaprComponentsMetadata("testName", "testType", "V1", new string[0]) });
+
+            // Validate Response
+            var metadata = await request.CompleteWithJsonAsync(response, jsonSerializerOptions);
+            metadata.Id.Should().Be("testId");
+            metadata.Extended.Should().Contain(new KeyValuePair<string, string>("e1", "v1"));
+            metadata.Actors.Should().Contain(actors => actors.Count == 1 && actors.Type == "testType");
+            metadata.Components.Should().Contain(components => components.Name == "testName" && components.Type == "testType" && components.Version == "V1" && components.Capabilities.Length == 0);
+        }
+
+        [Fact]
+        public async Task SetMetadataAsync_WrapsHttpRequestException()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var request = await client.CaptureHttpRequestAsync( daprClient =>
+            {
+                return  daprClient.SetMetadataAsync("testk","testv",default);
+            });
+
+            var exception = new HttpRequestException();
+            var thrown = await Assert.ThrowsAsync<DaprException>(async () => await request.CompleteWithExceptionAsync(exception));
+
+            Assert.Same(exception, thrown.InnerException);
+        }
+
+        [Fact]
+        public async Task SetMetadataAsync_WithReturnTypeAndData()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var request = await client.CaptureHttpRequestAsync(daprClient =>
+            {
+                return daprClient.SetMetadataAsync("testk", "testv", default);
+            });
+
+            // Get Request and validate
+            Assert.Equal(request.Request.Method, HttpMethod.Put);
+            Assert.Equal("text/plain",request.Request.Content.Headers.ContentType.MediaType);
+            Assert.Equal("testv",await request.Request.Content.ReadAsStringAsync());
+            Assert.Equal(new Uri($"https://test-endpoint:3501/v1.0/metadata/testk").AbsoluteUri, request.Request.RequestUri.AbsoluteUri);
+
+           await request.CompleteAsync(new HttpResponseMessage());
+  
         }
 
         private class Widget
