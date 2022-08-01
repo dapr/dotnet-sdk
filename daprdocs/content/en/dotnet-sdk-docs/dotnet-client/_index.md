@@ -182,5 +182,22 @@ foreach (var item in configItems)
 }
 ```
 
+### Subscribe to Configuration Keys (Alpha)
+```csharp
+var client = new DaprClientBuilder().Build();
+
+// The Subscribe Configuration API returns a wrapper around an IAsyncEnumerable<IEnumerable<ConfigurationItem>>.
+// Iterate through it by accessing its Source in a foreach loop. The loop will end when the stream is severed
+// or if the cancellation token is cancelled.
+var subscribeConfigurationResponse = await daprClient.SubscribeConfiguration(store, keys, metadata, cts.Token);
+await foreach (var items in subscribeConfigurationResponse.Source.WithCancellation(cts.Token))
+{
+    foreach (var item in items)
+    {
+        Console.WriteLine($"{item.Key} -> {item.Value}")
+    }
+}
+```
+
 ## Related links
 - [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples)
