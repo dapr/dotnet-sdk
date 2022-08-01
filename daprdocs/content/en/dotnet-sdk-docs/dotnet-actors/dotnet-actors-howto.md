@@ -43,9 +43,9 @@ This project contains the implementation of the actor client which calls MyActor
 
 ## Prerequisites
 
-- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
-- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
+- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed.
+- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}}).
+- [.NET Core 3.1 or .NET 6+](https://dotnet.microsoft.com/download) installed. Dapr .NET SDK uses [ASP.NET Core](https://docs.microsoft.com/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-6.0).
 
 ## Step 0: Prepare
 
@@ -57,9 +57,9 @@ Actor interface defines the actor contract that is shared by the actor implement
 
 Actor interface is defined with the below requirements:
 
-* Actor interface must inherit `Dapr.Actors.IActor` interface
-* The return type of Actor method must be `Task` or `Task<object>`
-* Actor method can have one argument at a maximum
+- Actor interface must inherit `Dapr.Actors.IActor` interface
+- The return type of Actor method must be `Task` or `Task<object>`
+- Actor method can have one argument at a maximum
 
 ### Create interface project and add dependencies
 
