@@ -87,8 +87,8 @@ namespace ActorClient
             var res = await nonRemotingProxy.InvokeMethodAsync<MyData>("GetData");
 
             Console.WriteLine("Registering the timer and reminder");
-            await proxy.RegisterTimer(null);
-            await proxy.RegisterReminder(null);
+            await proxy.RegisterTimer();
+            await proxy.RegisterReminder();
             Console.WriteLine("Waiting so the timer and reminder can be triggered");
             await Task.Delay(6000);
 
@@ -102,8 +102,8 @@ namespace ActorClient
             await proxy.UnregisterReminder();
 
             Console.WriteLine("Registering reminder and Timer with TTL - The reminder will self delete after 10 seconds.");
-            await proxy.RegisterReminder(TimeSpan.FromSeconds(10));
-            await proxy.RegisterTimer(TimeSpan.FromSeconds(10));
+            await proxy.RegisterReminderWithTtl(TimeSpan.FromSeconds(10));
+            await proxy.RegisterTimerWithTtl(TimeSpan.FromSeconds(10));
 
             // Track the reminder.
             var timer = new Timer(async state => Console.WriteLine($"Received data: {await proxy.GetData()}"), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));

@@ -51,7 +51,7 @@ namespace Dapr.E2E.Test.Actors.Reminders
                 Total = 100,
             };
             var bytes = JsonSerializer.SerializeToUtf8Bytes(options, this.Host.JsonSerializerOptions);
-            await this.RegisterReminderAsync("test-reminder-ttl", bytes, TimeSpan.Zero, period: TimeSpan.FromSeconds(1), ttl);
+            await this.RegisterReminderAsync("test-reminder-ttl", bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromSeconds(1), ttl: ttl);
             await this.StateManager.SetStateAsync<State>("reminder-state", new State() { IsReminderRunning = true, });
         }
 

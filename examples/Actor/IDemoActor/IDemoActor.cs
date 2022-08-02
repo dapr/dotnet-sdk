@@ -50,9 +50,15 @@ namespace IDemoActorInterface
         /// <summary>
         /// Registers a reminder.
         /// </summary>
-        /// <param name="ttl">Optional TimeSpan that dictates when the reminder expires.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task RegisterReminder(TimeSpan? ttl);
+        Task RegisterReminder();
+
+        /// <summary>
+        /// Registers a reminder.
+        /// </summary>
+        /// <param name="ttl">TimeSpan that dictates when the reminder expires.</param>
+        /// <returns>A task that represents the asynchronous save operation.</returns>
+        Task RegisterReminderWithTtl(TimeSpan ttl);
 
         /// <summary>
         /// Unregisters the registered reminder.
@@ -63,9 +69,15 @@ namespace IDemoActorInterface
         /// <summary>
         /// Registers a timer.
         /// </summary>
+        /// <returns>A task that represents the asynchronous save operation.</returns>
+        Task RegisterTimer();
+
+        /// <summary>
+        /// Registers a timer.
+        /// </summary>
         /// <param name="ttl">Optional TimeSpan that dictates when the timer expires.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task RegisterTimer(TimeSpan? ttl);
+        Task RegisterTimerWithTtl(TimeSpan ttl);
 
         /// <summary>
         /// Unregisters the registered timer.

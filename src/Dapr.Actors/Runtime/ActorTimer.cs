@@ -35,7 +35,39 @@ namespace Dapr.Actors.Runtime
         /// <param name="data">The state associated with the timer.</param>
         /// <param name="dueTime">The timer due time.</param>
         /// <param name="period">The timer period.</param>
-        /// <param name="ttl">The time at which the timer will expire.</param>
+        public ActorTimer(
+            string actorType,
+            ActorId actorId,
+            string name,
+            string timerCallback,
+            byte[] data,
+            TimeSpan dueTime,
+            TimeSpan period)
+            : this(new ActorTimerOptions
+            {
+                ActorTypeName = actorType,
+                Id = actorId,
+                TimerName = name,
+                TimerCallback = timerCallback,
+                Data = data,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = null
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorTimer" />.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorId">The actor id.</param>
+        /// <param name="name">The timer name.</param>
+        /// <param name="timerCallback">The name of the callback associated with the timer.</param>
+        /// <param name="data">The state associated with the timer.</param>
+        /// <param name="dueTime">The timer due time.</param>
+        /// <param name="period">The timer period.</param>
+        /// <param name="ttl">The timer ttl.</param>
         public ActorTimer(
             string actorType,
             ActorId actorId,
@@ -44,41 +76,59 @@ namespace Dapr.Actors.Runtime
             byte[] data,
             TimeSpan dueTime,
             TimeSpan period,
-            TimeSpan? ttl = null)
-            : base(actorType, actorId, name)
-        {
-            if (dueTime < TimeSpan.Zero)
+            TimeSpan ttl)
+            : this(new ActorTimerOptions
             {
-                throw new ArgumentOutOfRangeException(nameof(dueTime), string.Format(
+                ActorTypeName = actorType,
+                Id = actorId,
+                TimerName = name,
+                TimerCallback = timerCallback,
+                Data = data,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = ttl
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorTimer"/>.
+        /// </summary>
+        /// <param name="options">An <see cref="ActorTimerOptions"/> containing the various settings for an <see cref="ActorTimer"/>.</param>
+        internal ActorTimer(ActorTimerOptions options) : base(options.ActorTypeName, options.Id, options.TimerName)
+        {
+            if (options.DueTime < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options.DueTime), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
                     TimeSpan.Zero.TotalMilliseconds,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            if (period < MiniumPeriod)
+            if (options.Period < MiniumPeriod)
             {
-                throw new ArgumentOutOfRangeException(nameof(period), string.Format(
+                throw new ArgumentOutOfRangeException(nameof(options.Period), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
                     MiniumPeriod.TotalMilliseconds,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            if (ttl != null && (ttl < dueTime || ttl < TimeSpan.Zero))
+            if (options.Ttl != null && (options.Ttl < options.DueTime || options.Ttl < TimeSpan.Zero))
             {
-                throw new ArgumentOutOfRangeException(nameof(ttl), string.Format(
+                throw new ArgumentOutOfRangeException(nameof(options.Ttl), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
-                    dueTime,
+                    options.DueTime,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            this.TimerCallback = timerCallback;
-            this.Data = data;
-            this.DueTime = dueTime;
-            this.Period = period;
-            this.Ttl = ttl;
+            this.TimerCallback = options.TimerCallback;
+            this.Data = options.Data;
+            this.DueTime = options.DueTime;
+            this.Period = options.Period;
+            this.Ttl = options.Ttl;
         }
 
         /// <summary>
