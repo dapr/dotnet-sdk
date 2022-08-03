@@ -44,13 +44,23 @@ namespace Dapr.E2E.Test.Actors.Reminders
             await this.StateManager.SetStateAsync<State>("reminder-state", new State(){ IsReminderRunning = true, });
         }
 
+        public async Task StartReminderWithTtl(TimeSpan ttl)
+        {
+            var options = new StartReminderOptions()
+            {
+                Total = 100,
+            };
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(options, this.Host.JsonSerializerOptions);
+            await this.RegisterReminderAsync("test-reminder-ttl", bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromSeconds(1), ttl: ttl);
+            await this.StateManager.SetStateAsync<State>("reminder-state", new State() { IsReminderRunning = true, });
+        }
+
         public async Task ReceiveReminderAsync(string reminderName, byte[] bytes, TimeSpan dueTime, TimeSpan period)
         {
-            if (reminderName != "test-reminder")
+            if (!reminderName.StartsWith("test-reminder"))
             {
                 return;
             }
-
             var options = JsonSerializer.Deserialize<StartReminderOptions>(bytes, this.Host.JsonSerializerOptions);
             var state = await this.StateManager.GetStateAsync<State>("reminder-state");
 
@@ -59,7 +69,7 @@ namespace Dapr.E2E.Test.Actors.Reminders
                 await this.UnregisterReminderAsync("test-reminder");
                 state.IsReminderRunning = false;
             }
-
+            state.Timestamp = DateTime.Now;
             await this.StateManager.SetStateAsync("reminder-state", state);
         }
     }
