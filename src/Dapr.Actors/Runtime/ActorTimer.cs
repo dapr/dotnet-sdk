@@ -43,30 +43,92 @@ namespace Dapr.Actors.Runtime
             byte[] data,
             TimeSpan dueTime,
             TimeSpan period)
-            : base(actorType, actorId, name)
-        {
-            if (dueTime < TimeSpan.Zero)
+            : this(new ActorTimerOptions
             {
-                throw new ArgumentOutOfRangeException(nameof(dueTime), string.Format(
+                ActorTypeName = actorType,
+                Id = actorId,
+                TimerName = name,
+                TimerCallback = timerCallback,
+                Data = data,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = null
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorTimer" />.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorId">The actor id.</param>
+        /// <param name="name">The timer name.</param>
+        /// <param name="timerCallback">The name of the callback associated with the timer.</param>
+        /// <param name="data">The state associated with the timer.</param>
+        /// <param name="dueTime">The timer due time.</param>
+        /// <param name="period">The timer period.</param>
+        /// <param name="ttl">The timer ttl.</param>
+        public ActorTimer(
+            string actorType,
+            ActorId actorId,
+            string name,
+            string timerCallback,
+            byte[] data,
+            TimeSpan dueTime,
+            TimeSpan period,
+            TimeSpan ttl)
+            : this(new ActorTimerOptions
+            {
+                ActorTypeName = actorType,
+                Id = actorId,
+                TimerName = name,
+                TimerCallback = timerCallback,
+                Data = data,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = ttl
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorTimer"/>.
+        /// </summary>
+        /// <param name="options">An <see cref="ActorTimerOptions"/> containing the various settings for an <see cref="ActorTimer"/>.</param>
+        internal ActorTimer(ActorTimerOptions options) : base(options.ActorTypeName, options.Id, options.TimerName)
+        {
+            if (options.DueTime < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options.DueTime), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
                     TimeSpan.Zero.TotalMilliseconds,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            if (period < MiniumPeriod)
+            if (options.Period < MiniumPeriod)
             {
-                throw new ArgumentOutOfRangeException(nameof(period), string.Format(
+                throw new ArgumentOutOfRangeException(nameof(options.Period), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
                     MiniumPeriod.TotalMilliseconds,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            this.TimerCallback = timerCallback;
-            this.Data = data;
-            this.DueTime = dueTime;
-            this.Period = period;
+            if (options.Ttl != null && (options.Ttl < options.DueTime || options.Ttl < TimeSpan.Zero))
+            {
+                throw new ArgumentOutOfRangeException(nameof(options.Ttl), string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.TimerArgumentOutOfRange,
+                    options.DueTime,
+                    TimeSpan.MaxValue.TotalMilliseconds));
+            }
+
+            this.TimerCallback = options.TimerCallback;
+            this.Data = options.Data;
+            this.DueTime = options.DueTime;
+            this.Period = options.Period;
+            this.Ttl = options.Ttl;
         }
 
         /// <summary>
@@ -108,5 +170,10 @@ namespace Dapr.Actors.Runtime
         /// Gets the time interval at which the timer is invoked periodically.
         /// </summary>
         public TimeSpan Period { get; }
+
+        /// <summary>
+        /// The optional <see cref="TimeSpan"/> that states when the reminder will expire.
+        /// </summary>
+        public TimeSpan? Ttl { get; }
     }
 }

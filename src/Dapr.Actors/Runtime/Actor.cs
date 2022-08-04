@@ -215,13 +215,77 @@ namespace Dapr.Actors.Runtime
             TimeSpan dueTime,
             TimeSpan period)
         {
-            var reminder = new ActorReminder(this.actorTypeName, this.Id, reminderName, state, dueTime, period);
+            return await RegisterReminderAsync(new ActorReminderOptions
+            {
+                ActorTypeName = this.actorTypeName,
+                Id = this.Id,
+                ReminderName = reminderName,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = null
+            });
+        }
+
+        /// <summary>
+        /// Registers a reminder with the actor.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder to register. The name must be unique per actor.</param>
+        /// <param name="state">User state passed to the reminder invocation.</param>
+        /// <param name="dueTime">The amount of time to delay before invoking the reminder for the first time. Specify negative one (-1) milliseconds to disable invocation. Specify zero (0) to invoke the reminder immediately after registration.
+        /// </param>
+        /// <param name="period">
+        /// The time interval between reminder invocations after the first invocation. Specify negative one (-1) milliseconds to disable periodic invocation.
+        /// </param>
+        /// <param name="ttl">The time interval after which the reminder will expire.</param>
+        /// <returns>
+        /// A task that represents the asynchronous registration operation. The result of the task provides information about the registered reminder and is used to unregister the reminder using UnregisterReminderAsync />.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The class deriving from <see cref="Dapr.Actors.Runtime.Actor" /> must implement <see cref="Dapr.Actors.Runtime.IRemindable" /> to consume reminder invocations. Multiple reminders can be registered at any time, uniquely identified by <paramref name="reminderName" />. Existing reminders can also be updated by calling this method again. Reminder invocations are synchronized both with other reminders and other actor method callbacks.
+        /// </para>
+        /// </remarks>
+        protected async Task<IActorReminder> RegisterReminderAsync(
+            string reminderName,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period,
+            TimeSpan ttl)
+        {
+            return await RegisterReminderAsync(new ActorReminderOptions
+            {
+                ActorTypeName = this.actorTypeName,
+                Id = this.Id,
+                ReminderName = reminderName,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = ttl
+            });
+        }
+
+        /// <summary>
+        /// Registers a reminder with the actor.
+        /// </summary>
+        /// <param name="options">A <see cref="ActorReminderOptions" /> containing the various settings for an <see cref="ActorReminder"/>.</param>
+        /// <returns>
+        /// A task that represents the asynchronous registration operation. The result of the task provides information about the registered reminder and is used to unregister the reminder using UnregisterReminderAsync />.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The class deriving from <see cref="Dapr.Actors.Runtime.Actor" /> must implement <see cref="Dapr.Actors.Runtime.IRemindable" /> to consume reminder invocations. Multiple reminders can be registered at any time, uniquely identified by <paramref name="options.ReminderName" />. Existing reminders can also be updated by calling this method again. Reminder invocations are synchronized both with other reminders and other actor method callbacks.
+        /// </para>
+        /// </remarks>
+        internal async Task<IActorReminder> RegisterReminderAsync(ActorReminderOptions options)
+        {
+            var reminder = new ActorReminder(options);
             await this.Host.TimerManager.RegisterReminderAsync(reminder);
             return reminder;
         }
 
         /// <summary>
-        /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync" />.
+        /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)" />.
         /// </summary>
         /// <param name="reminder">The actor reminder to unregister.</param>
         /// <returns>
@@ -234,7 +298,7 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
-        /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync" />.
+        /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)" />.
         /// </summary>
         /// <param name="reminderName">The actor reminder name to unregister.</param>
         /// <returns>
@@ -271,16 +335,71 @@ namespace Dapr.Actors.Runtime
             TimeSpan dueTime,
             TimeSpan period)
         {
+            return await RegisterTimerAsync(new ActorTimerOptions
+            {
+                ActorTypeName = this.actorTypeName,
+                Id = this.Id,
+                TimerName = timerName,
+                TimerCallback = callback,
+                Data = callbackParams,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = null
+            });
+        }
+
+        /// <summary>
+        /// Registers a Timer for the actor. A timer name is autogenerated by the runtime to keep track of it.
+        /// </summary>
+        /// <param name="timerName">Timer Name. If a timer name is not provided, a timer is autogenerated.</param>
+        /// <param name="callback">
+        /// The name of the method to be called when the timer fires.
+        /// It has one parameter: the state object passed to RegisterTimer.
+        /// It returns a <see cref="System.Threading.Tasks.Task"/> representing the asynchronous operation.
+        /// </param>
+        /// <param name="callbackParams">An object containing information to be used by the callback method, or null.</param>
+        /// <param name="dueTime">The amount of time to delay before the async callback is first invoked.
+        /// Specify negative one (-1) milliseconds to prevent the timer from starting.
+        /// Specify zero (0) to start the timer immediately.
+        /// </param>
+        /// <param name="period">
+        /// The time interval between invocations of the async callback.
+        /// Specify negative one (-1) milliseconds to disable periodic signaling.</param>
+        /// <param name="ttl">The time interval after which a Timer will expire.</param>
+        /// <returns>Returns IActorTimer object.</returns>
+        public async Task<ActorTimer> RegisterTimerAsync(
+            string timerName,
+            string callback,
+            byte[] callbackParams,
+            TimeSpan dueTime,
+            TimeSpan period,
+            TimeSpan ttl)
+        {
+            return await RegisterTimerAsync(new ActorTimerOptions
+            {
+                ActorTypeName = this.actorTypeName,
+                Id = this.Id,
+                TimerName = timerName,
+                TimerCallback = callback,
+                Data = callbackParams,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = ttl
+            });
+        }
+
+        internal async Task<ActorTimer> RegisterTimerAsync(ActorTimerOptions options)
+        {
             // Validate that the timer callback specified meets all the required criteria for a valid callback method
-            this.ValidateTimerCallback(this.Host, callback);
+            this.ValidateTimerCallback(this.Host, options.TimerCallback);
 
             // create a timer name to register with Dapr runtime.
-            if (string.IsNullOrEmpty(timerName))
+            if (string.IsNullOrEmpty(options.TimerName))
             {
-                timerName = $"{this.Id}_Timer_{Guid.NewGuid()}";
+                options.TimerName = $"{this.Id}_Timer_{Guid.NewGuid()}";
             }
 
-            var actorTimer = new ActorTimer(this.actorTypeName, this.Id, timerName, callback, callbackParams, dueTime, period);
+            var actorTimer = new ActorTimer(options);
             await this.Host.TimerManager.RegisterTimerAsync(actorTimer);
             return actorTimer;
         }

@@ -16,7 +16,7 @@ namespace Dapr.Actors.Runtime
     using System;
 
     /// <summary>
-    /// Represents a reminder registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync" />.
+    /// Represents a reminder registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)" />.
     /// </summary>
     public interface IActorReminder
     {

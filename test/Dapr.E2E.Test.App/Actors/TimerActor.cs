@@ -44,6 +44,17 @@ namespace Dapr.E2E.Test.Actors.Timers
             await this.StateManager.SetStateAsync<State>("timer-state", new State(){ IsTimerRunning = true, });
         }
 
+        public async Task StartTimerWithTtl(TimeSpan ttl)
+        {
+            var options = new StartTimerOptions()
+            {
+                Total = 100,
+            };
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(options, this.Host.JsonSerializerOptions);
+            await this.RegisterTimerAsync("test-timer-ttl", nameof(Tick), bytes, TimeSpan.Zero, TimeSpan.FromSeconds(1), ttl);
+            await this.StateManager.SetStateAsync<State>("timer-state", new State() { IsTimerRunning = true, });
+        }
+
         private async Task Tick(byte[] bytes)
         {
             var options = JsonSerializer.Deserialize<StartTimerOptions>(bytes, this.Host.JsonSerializerOptions);
@@ -54,7 +65,7 @@ namespace Dapr.E2E.Test.Actors.Timers
                 await this.UnregisterTimerAsync("test-timer");
                 state.IsTimerRunning = false;
             }
-
+            state.Timestamp = DateTime.Now;
             await this.StateManager.SetStateAsync("timer-state", state);
         }
     }
