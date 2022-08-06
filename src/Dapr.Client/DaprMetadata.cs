@@ -34,6 +34,7 @@ namespace Dapr.Client
             Extended = extended;
             Components = components;
         }
+
         /// <summary>
         /// Gets the application id.
         /// </summary>
@@ -53,7 +54,6 @@ namespace Dapr.Client
         ///  Gets the loaded  components metadata.
         /// </summary>
         public IReadOnlyList<DaprComponentsMetadata> Components { get; }
-
     }
 
     /// <summary>
@@ -102,7 +102,6 @@ namespace Dapr.Client
             Version = version;
             Capabilities = capabilities;
         }
-
 
         /// <summary>
         /// Gets the name of the component.

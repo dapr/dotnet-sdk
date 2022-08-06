@@ -332,16 +332,28 @@ namespace Dapr.Client
         public abstract Task WaitForSidecarAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
-        ///Perform service returns information about the sidecar allowing runtime discoverability. 
-        ///The metadata endpoint returns a list of the components loaded, 
-        ///the activated actors (if present) and attributes with information attached.
+        /// Calls the sidecar's metadata endpoint which returns information including:
+        /// <list type="bullet">
+        /// <item>
+        /// <description>The sidecar's ID.</description>
+        /// </item>
+        /// <item>
+        /// <description>The registered/active actors if any.</description>
+        /// </item>
+        /// <item>
+        /// <description>Registered components including name, type, version, and information on capabilities if present.</description>
+        /// </item>
+        /// <item>
+        /// <description>Any extended metadata that has been set via <see cref="SetMetadataAsync"/></description>
+        /// </item>
+        /// </list>
         /// </summary>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<DaprMetadata> GetMetadataAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
-        ///Perform service Perform service adds a custom label to the Dapr sidecar information stored.
+        /// Perform service add extended metadata to the Dapr sidecar.
         /// </summary>
         /// <param name="attributeName">Custom attribute name</param>
         /// <param name="attributeValue">Custom attribute value</param>
