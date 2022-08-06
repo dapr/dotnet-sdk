@@ -41,29 +41,88 @@ namespace Dapr.Actors.Runtime
             byte[] state,
             TimeSpan dueTime,
             TimeSpan period)
-            : base(actorType, actorId, name)
-        {
-            if (dueTime < TimeSpan.Zero)
+            : this(new ActorReminderOptions
             {
-                throw new ArgumentOutOfRangeException(nameof(dueTime), string.Format(
+                ActorTypeName = actorType,
+                Id = actorId,
+                ReminderName = name,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = null
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorReminder" />.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorId">The actor id.</param>
+        /// <param name="name">The reminder name.</param>
+        /// <param name="state">The state associated with the reminder.</param>
+        /// <param name="dueTime">The reminder due time.</param>
+        /// <param name="period">The reminder period.</param>
+        /// <param name="ttl">The reminder ttl.</param>
+        public ActorReminder(
+            string actorType,
+            ActorId actorId,
+            string name,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period,
+            TimeSpan ttl)
+            : this(new ActorReminderOptions
+            {
+                ActorTypeName = actorType,
+                Id = actorId,
+                ReminderName = name,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Ttl = ttl
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorReminder" />.
+        /// </summary>
+        /// <param name="options">A <see cref="ActorReminderOptions" /> containing the various settings for an <see cref="ActorReminder"/>.</param>
+        internal ActorReminder(ActorReminderOptions options)
+            : base(options.ActorTypeName, options.Id, options.ReminderName)
+        {
+            if (options.DueTime < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options.DueTime), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
                     TimeSpan.Zero.TotalMilliseconds,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            if (period < MiniumPeriod)
+            if (options.Period < MiniumPeriod)
             {
-                throw new ArgumentOutOfRangeException(nameof(period), string.Format(
+                throw new ArgumentOutOfRangeException(nameof(options.Period), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
                     MiniumPeriod.TotalMilliseconds,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            this.State = state;
-            this.DueTime = dueTime;
-            this.Period = period;
+            if (options.Ttl != null && (options.Ttl < options.DueTime || options.Ttl < TimeSpan.Zero))
+            {
+                throw new ArgumentOutOfRangeException(nameof(options.Ttl), string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.TimerArgumentOutOfRange,
+                    options.DueTime,
+                    TimeSpan.MaxValue.TotalMilliseconds));
+            }
+
+            this.State = options.State;
+            this.DueTime = options.DueTime;
+            this.Period = options.Period;
+            this.Ttl = options.Ttl;
         }
 
         /// <summary>
@@ -80,5 +139,10 @@ namespace Dapr.Actors.Runtime
         /// Gets the reminder period.
         /// </summary>
         public TimeSpan Period { get; }
+
+        /// <summary>
+        /// The optional <see cref="TimeSpan"/> that states when the reminder will expire.
+        /// </summary>
+        public TimeSpan? Ttl { get; }
     }
 }

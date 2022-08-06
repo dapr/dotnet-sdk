@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+
 namespace Dapr.E2E.Test.Actors.Reminders
 {
     public class State
@@ -18,5 +20,7 @@ namespace Dapr.E2E.Test.Actors.Reminders
         public int Count { get; set; }
 
         public bool IsReminderRunning { get; set; }
+
+        public DateTime Timestamp { get; set; }
     }
 }
