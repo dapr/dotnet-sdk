@@ -14,6 +14,7 @@
 namespace ActorClient
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Client;
@@ -100,6 +101,14 @@ namespace ActorClient
             Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
             await proxy.UnregisterReminder();
 
+            Console.WriteLine("Registering reminder and Timer with TTL - The reminder will self delete after 10 seconds.");
+            await proxy.RegisterReminderWithTtl(TimeSpan.FromSeconds(10));
+            await proxy.RegisterTimerWithTtl(TimeSpan.FromSeconds(10));
+
+            // Track the reminder.
+            var timer = new Timer(async state => Console.WriteLine($"Received data: {await proxy.GetData()}"), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            await Task.Delay(TimeSpan.FromSeconds(21));
+            await timer.DisposeAsync();
 
             Console.WriteLine("Creating a Bank Actor");
             var bank = ActorProxy.Create<IBankActor>(ActorId.CreateRandom(), "DemoActor");
