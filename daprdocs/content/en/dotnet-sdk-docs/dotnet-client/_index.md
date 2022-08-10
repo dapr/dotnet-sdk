@@ -199,5 +199,58 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 }
 ```
 
+## Sidecar APIs
+### Sidecar Health
+The .NET SDK provides a way to poll for the sidecar health, as well as a convenience method to wait for the sidecar to be ready.
+
+#### Poll for health
+This health endpoint returns true when both the sidecar and your application are up (fully initialized).
+```csharp
+var client = new DaprClientBuilder().Build();
+
+var isDaprReady = await client.CheckHealthAsync();
+
+if (isDaprReady) 
+{
+    // Execute Dapr dependent code.
+}
+```
+
+#### Poll for health (outbound)
+This health endpoint returns true when Dapr has initialized all its components, but may not have finished setting up a communication channel with your application.
+
+This is best used when you want to utilize a Dapr component in your startup path, for instance, loading secrets from a secretstore.
+
+```csharp
+var client = new DaprClientBuilder().Build();
+
+var isDaprComponentsReady = await client.CheckOutboundHealthAsync();
+
+if (isDaprComponentsReady) 
+{
+    // Execute Dapr component dependent code.
+}
+```
+
+#### Wait for sidecar
+The `DaprClient` also provides a helper method to wait for the sidecar to become healthy (components only). When using this method, it is recommended to include a `CancellationToken` to
+allow for the request to timeout. Below is an example of how this is used in the `DaprSecretStoreConfigurationProvider`.
+
+```csharp
+// Wait for the Dapr sidecar to report healthy before attempting use Dapr components.
+using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
+{
+    await client.WaitForSidecarAsync(tokenSource.Token);
+}
+
+// Perform Dapr component operations here i.e. fetching secrets.
+```
+
+### Shutdown the sidecar
+```csharp
+var client = new DaprClientBuilder().Build();
+await client.ShutdownSidecarAsync();
+```
+
 ## Related links
 - [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples)

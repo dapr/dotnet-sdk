@@ -289,49 +289,6 @@ namespace Dapr.Client
             request.Content = JsonContent.Create<TRequest>(data, options: this.JsonSerializerOptions);
             return request;
         }
-        
-        public override async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
-        {
-            var path = "/v1.0/healthz";
-            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
-            try
-            {
-                var response = await this.httpClient.SendAsync(request, cancellationToken);
-                return response.IsSuccessStatusCode;
-            }
-            catch (HttpRequestException)
-            {
-                return false;
-            }
-        }
-
-        public override async Task<bool> CheckOutboundHealthAsync(CancellationToken cancellationToken = default)
-        {
-            var path = "/v1.0/healthz/outbound";
-            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
-            try
-            {
-                var response = await this.httpClient.SendAsync(request, cancellationToken);
-                return response.IsSuccessStatusCode;
-            }
-            catch (HttpRequestException)
-            {
-                return false;
-            }
-        }
-
-        public override async Task WaitForSidecarAsync(CancellationToken cancellationToken = default)
-        {
-            while (true)
-            { 
-                var response = await CheckOutboundHealthAsync(cancellationToken);
-                if (response)
-                {
-                    break;
-                }
-                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
-            }
-        }
 
         public override async Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
         {
@@ -1356,7 +1313,63 @@ namespace Dapr.Client
             return new UnlockResponse(GetUnLockStatus(response.Status));
         }
 
-        #endregion 
+        #endregion
+
+        #region Dapr Sidecar Methods
+
+        /// <inheritdoc/>
+        public override async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
+        {
+            var path = "/v1.0/healthz";
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+            try
+            {
+                using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<bool> CheckOutboundHealthAsync(CancellationToken cancellationToken = default)
+        {
+            var path = "/v1.0/healthz/outbound";
+            var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+            try
+            {
+                using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task WaitForSidecarAsync(CancellationToken cancellationToken = default)
+        {
+            while (true)
+            {
+                var response = await CheckOutboundHealthAsync(cancellationToken);
+                if (response)
+                {
+                    break;
+                }
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            }
+        }
+
+        /// <inheritdoc/>
+        public async override Task ShutdownSidecarAsync(CancellationToken cancellationToken = default)
+        {
+            await client.ShutdownAsync(new Empty(), CreateCallOptions(null, cancellationToken));
+        }
+
+        #endregion
 
         protected override void Dispose(bool disposing)
         {
