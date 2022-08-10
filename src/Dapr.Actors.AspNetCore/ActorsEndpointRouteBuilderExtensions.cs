@@ -16,7 +16,7 @@ using System.Text;
 using Dapr.Actors;
 using Dapr.Actors.Communication;
 using Dapr.Actors.Runtime;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Builder
                 MapActorMethodEndpoint(endpoints),
                 MapReminderEndpoint(endpoints),
                 MapTimerEndpoint(endpoints),
-                MapActorHealthChecks(endpoints),
+                MapActorHealthChecks(endpoints)
             };
 
             return new CompositeEndpointConventionBuilder(builders);
@@ -171,7 +171,7 @@ namespace Microsoft.AspNetCore.Builder
 
         private static IEndpointConventionBuilder MapActorHealthChecks(this IEndpointRouteBuilder endpoints)
         {
-            var builder = endpoints.MapHealthChecks("/healthz");
+            var builder = endpoints.MapHealthChecks("/healthz").WithMetadata(new AllowAnonymousAttribute());
             builder.Add(b =>
             {
                 // Sets the route order so that this is matched with lower priority than an endpoint
