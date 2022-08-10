@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
     <ProjectReference Include="..\Dapr.Actors.AspNetCore.IntegrationTest.App\Dapr.Actors.AspNetCore.IntegrationTest.App.csproj" />
   </ItemGroup>
