@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -166,7 +166,7 @@ namespace Dapr
                 this.Capture.Response.SetException(ex);
                 await WithTimeout(this.Task, TimeSpan.FromSeconds(10), "Waiting for response to be completed timed out.");
             }
-            
+
             public async Task<T> CompleteWithExceptionAndResultAsync(Exception ex)
             {
                 this.Capture.Response.SetException(ex);
@@ -338,10 +338,14 @@ namespace Dapr
                 get
                 {
                     return
-                        IsDismissed ||
+                        IsDismissed
+                        #if NET48
+                        || Request.Task.IsFaulted
+                        #else
                         // We assume that whomever started the work observed exceptions making the request.
-                        !Request.Task.IsCompletedSuccessfully ||
-                        Response.Task.IsCompleted;
+                        || !Request.Task.IsCompletedSuccessfully
+                        #endif
+                        || Response.Task.IsCompleted;
                 }
             }
 

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,11 @@ namespace Dapr.Client
 {
     internal class Constants
     {
+        #if NETSTANDARD2_1_OR_GREATER
         public const string ContentTypeApplicationJson = MediaTypeNames.Application.Json;
+        #else
+        public const string ContentTypeApplicationJson = "application/json";
+        #endif
         public const string ContentTypeApplicationGrpc = "application/grpc";
         public const string ContentTypeCloudEvent = "application/cloudevents+json";
     }

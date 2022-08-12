@@ -3,7 +3,7 @@
     <TargetFrameworks>netcoreapp3.1;net5;net6</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.47.0" />
   </ItemGroup>
   <ItemGroup>
     <Protobuf Include="Proto/message.proto" />

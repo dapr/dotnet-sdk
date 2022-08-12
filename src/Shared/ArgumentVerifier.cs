@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ namespace Dapr
     using System.Diagnostics.CodeAnalysis;
 
     /// <summary>
-    /// A utility class to perform argument validations. 
+    /// A utility class to perform argument validations.
     /// </summary>
     internal static class ArgumentVerifier
     {
@@ -29,7 +29,11 @@ namespace Dapr
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
-        public static void ThrowIfNull([NotNull] object? value, string name)
+        public static void ThrowIfNull(
+            #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+            [NotNull]
+            #endif
+            object? value, string name)
         {
             if (value == null)
             {
@@ -44,7 +48,11 @@ namespace Dapr
         /// </summary>
         /// <param name="value">Argument value to check.</param>
         /// <param name="name">Name of Argument.</param>
-        public static void ThrowIfNullOrEmpty([NotNull] string? value, string name)
+        public static void ThrowIfNullOrEmpty(
+            #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+            [NotNull]
+            #endif
+            string? value, string name)
         {
             if (value == null)
             {

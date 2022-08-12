@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -209,6 +209,7 @@ namespace Dapr.Client.Test
             });
         }
 
+        #if NETCOREAPP3_1_OR_GREATER
         // All overloads call through a common path that does exception handling.
         [Fact]
         public async Task PublishEventAsync_WrapsRpcException()
@@ -223,12 +224,13 @@ namespace Dapr.Client.Test
                 .Setup(m => m.PublishEventAsync(It.IsAny<Autogen.Grpc.v1.PublishEventRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => 
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
             {
                 await client.DaprClient.PublishEventAsync("test", "test");
             });
             Assert.Same(rpcException, ex.InnerException);
         }
+        #endif
 
         private class PublishData
         {

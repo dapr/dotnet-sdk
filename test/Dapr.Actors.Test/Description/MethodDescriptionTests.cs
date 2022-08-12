@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,12 +68,13 @@ namespace Dapr.Actors.Description
 
             // Assert
             using var _ = new AssertionScope();
-            description.Arguments.Should().NotContainNulls();
-            description.Arguments.Should().AllBeOfType<MethodArgumentDescription>();
-            description.Arguments.Should().BeEquivalentTo(
-                new { Name = "number" },
-                new { Name = "choice" },
-                new { Name = "information" });
+            description.Arguments.Should().NotContainNulls()
+                .And.AllBeOfType<MethodArgumentDescription>()
+                .And.BeEquivalentTo(new [] {
+                    new { Name = "number" },
+                    new { Name = "choice" },
+                    new { Name = "information" }
+                }, o => o.Including(x => x.Name));
         }
 
         [Fact]

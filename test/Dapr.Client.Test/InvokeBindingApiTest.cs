@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,20 +11,24 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+
 namespace Dapr.Client.Test
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
+    using Xunit;
+
+    #if NETCOREAPP3_1_OR_GREATER
     using Google.Protobuf;
     using Grpc.Core;
     using Moq;
-    using Xunit;
+    using System.Linq;
+    #endif
 
     public class InvokeBindingApiTest
     {
@@ -102,6 +106,28 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task InvokeBindingAsync_WithCancelledToken()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var metadata = new Dictionary<string, string>
+            {
+                { "key1", "value1" },
+                { "key2", "value2" }
+            };
+            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                await client.InnerClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata, cts.Token);
+            });
+        }
+
+        #if NETCOREAPP3_1_OR_GREATER
+        [Trait("Category", "Gprc")]
+        [Fact]
         public async Task InvokeBindingAsync_WithRequest_ValidateRequest()
         {
             await using var client = TestClient.CreateForDaprClient();
@@ -110,7 +136,7 @@ namespace Dapr.Client.Test
             var bindingRequest = new BindingRequest("test", "create")
             {
                 Data = JsonSerializer.SerializeToUtf8Bytes(payload, client.InnerClient.JsonSerializerOptions),
-                Metadata = 
+                Metadata =
                 {
                     { "key1", "value1" },
                     { "key2", "value2" }
@@ -125,7 +151,7 @@ namespace Dapr.Client.Test
             var gRpcResponse = new Autogen.Grpc.v1.InvokeBindingResponse()
             {
                 Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, client.InnerClient.JsonSerializerOptions)),
-                Metadata = 
+                Metadata =
                 {
                     { "anotherkey", "anothervalue" },
                 }
@@ -147,35 +173,15 @@ namespace Dapr.Client.Test
             Assert.Same(bindingRequest, response.Request);
             Assert.Equal("red", JsonSerializer.Deserialize<Widget>(response.Data.Span, client.InnerClient.JsonSerializerOptions).Color);
             Assert.Collection(
-                response.Metadata, 
-                kvp => 
-                { 
-                    Assert.Equal("anotherkey", kvp.Key); 
-                    Assert.Equal("anothervalue", kvp.Value); 
+                response.Metadata,
+                kvp =>
+                {
+                    Assert.Equal("anotherkey", kvp.Key);
+                    Assert.Equal("anothervalue", kvp.Value);
                 });
         }
 
-
-        [Fact]
-        public async Task InvokeBindingAsync_WithCancelledToken()
-        {
-            await using var client = TestClient.CreateForDaprClient();
-
-            var cts = new CancellationTokenSource();
-            cts.Cancel();
-
-            var metadata = new Dictionary<string, string>
-            {
-                { "key1", "value1" },
-                { "key2", "value2" }
-            };
-            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
-            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            {
-                await client.InnerClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest, metadata, cts.Token);
-            });
-        }
-
+        [Trait("Category", "Gprc")]
         [Fact]
         public async Task InvokeBindingAsync_WrapsRpcException()
         {
@@ -188,13 +194,14 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeBindingAsync(It.IsAny<Autogen.Grpc.v1.InvokeBindingRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => 
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
             {
                 await client.DaprClient.InvokeBindingAsync("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
             });
             Assert.Same(rpcException, ex.InnerException);
         }
 
+        [Trait("Category", "Gprc")]
         [Fact]
         public async Task InvokeBindingAsync_WrapsJsonException()
         {
@@ -210,13 +217,14 @@ namespace Dapr.Client.Test
             });
 
             var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
-            var ex = await Assert.ThrowsAsync<DaprException>(async () => 
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
             {
                 await request.CompleteWithMessageAsync(response);
             });
             Assert.IsType<JsonException>(ex.InnerException);
         }
 
+        [Trait("Category", "Gprc")]
         [Fact]
         public async Task InvokeBindingRequest_WithCustomRequest_ValidateRequest()
         {
@@ -252,6 +260,7 @@ namespace Dapr.Client.Test
             Assert.Equal("red", response.Color);
         }
 
+        [Trait("Category", "Gprc")]
         [Fact]
         public async Task InvokeBindingRequest_WithNullData_ValidateRequest()
         {
@@ -275,6 +284,7 @@ namespace Dapr.Client.Test
             Assert.Equal("red", response.Color);
         }
 
+        [Trait("Category", "Gprc")]
         [Fact]
         public async Task InvokeBindingRequest_WithBindingNull_CheckException()
         {
@@ -287,6 +297,7 @@ namespace Dapr.Client.Test
             Assert.IsType<ArgumentNullException>(ex);
         }
 
+        [Trait("Category", "Gprc")]
         [Fact]
         public async Task InvokeBindingRequest_WithOperationNull_CheckException()
         {
@@ -298,6 +309,7 @@ namespace Dapr.Client.Test
             });
             Assert.IsType<ArgumentNullException>(ex);
         }
+        #endif
 
         private class InvokeRequest
         {

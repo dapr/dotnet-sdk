@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,10 +45,18 @@ namespace Dapr
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequest, CancellationToken cancellationToken)
             {
                 var metadata = new Metadata();
+
+                #if NET48
+                foreach (var item in httpRequest.Headers)
+                {
+                    metadata.Add(item.Key, string.Join(",", item.Value.ToArray()));
+                }
+                #else
                 foreach (var (key, value) in httpRequest.Headers)
                 {
                     metadata.Add(key, string.Join(",", value.ToArray()));
                 }
+                #endif
 
                 var context = TestServerCallContext.Create(
                     method: httpRequest.Method.Method,

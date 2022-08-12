@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -96,11 +96,9 @@ namespace Dapr.Actors.Description
 
             // Assert
             using var _ = new AssertionScope();
-            description.Methods.Should().NotContainNulls();
-            description.Methods.Should().AllBeOfType<MethodDescription>();
-            description.Methods.Should().BeEquivalentTo(
-                new { Name = "GetInt" }
-            );
+            description.Methods.Should().NotContainNulls()
+                .And.AllBeOfType<MethodDescription>()
+                .And.AllBeEquivalentTo(new { Name = "GetInt" }, o => o.Including(x => x.Name));
         }
 
         [Fact]
@@ -114,12 +112,17 @@ namespace Dapr.Actors.Description
 
             // Assert
             using var _ = new AssertionScope();
-            description.Methods.Should().NotContainNulls();
-            description.Methods.Should().AllBeOfType<MethodDescription>();
-            description.Methods.Should().BeEquivalentTo(
+            description.Methods.Should().NotContainNulls()
+                .And.AllBeOfType<MethodDescription>();
+
+            description.Methods.Should().BeEquivalentTo(new [] {
                 new { Name = "GetString" },
-                new { Name = "MethodWithArguments" });
+                new { Name = "MethodWithArguments" }
+            }, o => o.Including(x => x.Name));
         }
+
+        private class NamedObject {
+            public string Name { get; set; }}
 
         [Fact]
         public void InterfaceDescription_CreateThrowsArgumentException_WhenMethodsAreNotReturningTask()
@@ -249,8 +252,8 @@ namespace Dapr.Actors.Description
         {
             public TestDescription(
                 Type remotedInterfaceType,
-                string remotedInterfaceKindName = "actor", 
-                bool useCRCIdGeneration = false, 
+                string remotedInterfaceKindName = "actor",
+                bool useCRCIdGeneration = false,
                 MethodReturnCheck methodReturnCheck = MethodReturnCheck.EnsureReturnsTask)
                 : base(remotedInterfaceKindName, remotedInterfaceType, useCRCIdGeneration, methodReturnCheck)
             {

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
+using System.Linq;
 
 namespace Dapr
 {
@@ -35,7 +37,7 @@ namespace Dapr
         internal const int HeaderSize = MessageDelimiterSize + 1; // message length + compression flag
 
         /// <summary>
-        /// Gets the request from protobuf. 
+        /// Gets the request from protobuf.
         /// bytes in http request message content contains gRPC Headers and protobuf.
         /// https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
         /// </summary>
@@ -49,7 +51,11 @@ namespace Dapr
             // first 5 bytes in request are grpc headers
             // https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
             var parser = new MessageParser<T>(() => new T());
+            #if NET48
+            var envelope = parser.ParseFrom(bytes.Skip(5).ToArray());
+            #else
             var envelope = parser.ParseFrom(bytes[5..]);
+            #endif
             return envelope;
         }
 
@@ -78,7 +84,11 @@ namespace Dapr
 
             if (grpcStatusCode != null)
             {
+                #if NET48
+                message.Headers.Add(StatusTrailer, grpcStatusCode.Value.ToString("D"));
+                #else
                 message.TrailingHeaders.Add(StatusTrailer, grpcStatusCode.Value.ToString("D"));
+                #endif
             }
 
             return message;
@@ -107,8 +117,12 @@ namespace Dapr
         {
             var data = response.ToByteArray();
             await WriteHeaderAsync(ms, data.Length, false);
+            #if NET48
+            await ms.WriteAsync(data, 0, data.Length);
+            #else
             await ms.WriteAsync(data);
-        }        
+            #endif
+        }
 
         private static Task WriteHeaderAsync(Stream stream, int length, bool compress = false)
         {

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 
 namespace Dapr.Client.Test
 {
+    #if NETCOREAPP3_1_OR_GREATER
     using System;
     using System.Collections.Generic;
     using System.Net;
@@ -438,7 +439,7 @@ namespace Dapr.Client.Test
             req1.Request.Etag.Value.Should().Be("testEtag");
             req1.Request.Metadata.Count.Should().Be(1);
             req1.Request.Metadata["a"].Should().Be("b");
-            req1.Request.Options.Concurrency.Should().Be(2);
+            req1.Request.Options.Concurrency.Should().Be(StateConcurrency.ConcurrencyLastWrite);
 
             var req2 = envelope.Operations[1];
             req2.Request.Key.Should().Be("stateKey2");
@@ -1134,9 +1135,21 @@ namespace Dapr.Client.Test
 
             public override int GetHashCode()
             {
+                #if NET48
+                unchecked
+                {
+                    int hash = 17;
+
+                    hash = hash * 23 + Size.GetHashCode();
+                    hash = hash * 23 + Color.GetHashCode();
+                    return hash;
+                }
+                #else
                 return HashCode.Combine(Size, Color);
+                #endif
             }
         }
     }
+    #endif
 }
 

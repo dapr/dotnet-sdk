@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,12 +28,14 @@ using Response = Dapr.Client.Autogen.Test.Grpc.v1.Response;
 
 namespace Dapr.Client.Test
 {
+    #if NETCOREAPP3_1_OR_GREATER
+    [Trait("Category", "Gprc")]
     public partial class DaprClientTest
     {
         [Fact]
         public async Task InvokeMethodGrpcAsync_WithCancelledToken()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -50,7 +52,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -88,7 +90,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
@@ -105,7 +107,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () => 
+            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
             {
                 await client.DaprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
             });
@@ -115,7 +117,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -153,7 +155,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
@@ -170,7 +172,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () => 
+            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
             {
                 await client.DaprClient.InvokeMethodGrpcAsync<Response>("test", "test");
             });
@@ -188,16 +190,18 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
-                
+
             client.Mock
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Returns(response);
 
-            FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request)).Should().NotThrow();
+            Func<Task> act = () => client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request);
+
+            act.Should().NotThrowAsync();
         }
 
         [Fact]
@@ -210,7 +214,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
@@ -228,7 +232,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () => 
+            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
             {
                 await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " });
             });
@@ -238,7 +242,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_WithNoReturnTypeAndData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -256,7 +260,7 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
-            
+
             var actual = envelope.Message.Data.Unpack<Request>();
             Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
         }
@@ -264,7 +268,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_WithReturnTypeAndData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -391,4 +395,5 @@ namespace Dapr.Client.Test
             }
         }
     }
+    #endif
 }

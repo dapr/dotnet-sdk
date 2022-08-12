@@ -1,9 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFrameworks>netcoreapp3.1;net5;net6</TargetFrameworks>
+    <Description>This package contains the reference assemblies for developing Actor services using Dapr and AspNetCore.</Description>
+    <PackageTags>$(PackageTags);Actors</PackageTags>
   </PropertyGroup>
+
+  <!-- Additional Nuget package properties. -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
     <!--
       This is a workaround for https://github.com/dotnet/sdk/issues/14019
       The extra reference is harmless but is needed due to a bug in the 5.0 RC dotnet SDK.
@@ -12,13 +19,13 @@
     <PackageReference Include="System.IO.Pipelines" Version="4.7.2" />
   </ItemGroup>
 
-  <!-- Additional Nuget package properties. -->
-  <PropertyGroup>
-    <Description>This package contains the reference assemblies for developing Actor services using Dapr and AspNetCore.</Description>
-    <PackageTags>$(PackageTags);Actors</PackageTags>
-  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net5'">
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6'">
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Actors\Dapr.Actors.csproj" />
   </ItemGroup>
+
 </Project>

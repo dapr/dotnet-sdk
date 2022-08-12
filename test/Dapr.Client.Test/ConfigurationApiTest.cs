@@ -23,6 +23,7 @@ namespace Dapr.Client.Test
     [System.Obsolete]
     public class ConfigurationApiTest
     {
+        #if NETCOREAPP3_1_OR_GREATER
         [Fact]
         public async Task GetConfigurationAsync_WithAllValues_ValidateRequest()
         {
@@ -131,6 +132,7 @@ namespace Dapr.Client.Test
             domainResponse.Items[0].Value.Should().Be("testValue");
             domainResponse.Items[0].Version.Should().Be("v1");
         }
+        #endif
 
         [Fact]
         public async Task UnsubscribeConfiguration_ValidateRequest()
