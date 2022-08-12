@@ -21,6 +21,7 @@ namespace Dapr.Actors.Builder
     using Dapr.Actors.Communication;
     using Dapr.Actors.Description;
     using Dapr.Actors.Resources;
+    using System.Diagnostics;
 
     /// <summary>
     /// The class is used by actor remoting code generator to generate a type that dispatches requests to actor
@@ -59,12 +60,20 @@ namespace Dapr.Actors.Builder
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var dispatchTask = this.OnDispatchAsync(
+            Task<IActorResponseMessageBody> dispatchTask = null;
+
+            try {
+                dispatchTask = this.OnDispatchAsync(
                 methodId,
                 objectImplementation,
                 requestBody,
                 remotingMessageBodyFactory,
                 cancellationToken);
+            } catch (Exception ex){
+                Console.WriteLine($"ERROR: Got exception while making call to method: {GetExceptionInfo(ex)}");
+            }
+            
+            Console.WriteLine("testing***789" + requestBody);
 
             return dispatchTask;
         }
@@ -242,5 +251,27 @@ namespace Dapr.Actors.Builder
         protected abstract object CreateWrappedResponseBody(
             int methodId,
             object retVal);
+
+
+        /// <summary>
+        /// Generate exception info
+        /// </summary>
+        /// <param name="ex">Exception of the method.</param>
+        /// <returns>Exception info string</returns>
+        protected string GetExceptionInfo(Exception ex) {
+            var lineNumber = 0;
+            const string lineSearch = ":line ";
+            var index = ex.StackTrace.IndexOf(lineSearch);
+            var lineNumberText = "";
+            if (index != -1)
+            {
+                lineNumberText = ex.StackTrace.Substring(index + lineSearch.Length);
+                int.TryParse(lineNumberText, out lineNumber);
+            }
+            var stackTrace = new StackTrace(ex);
+            var stackFrame = stackTrace.GetFrame(0);
+            string methodName = stackFrame.GetMethod().Name;
+            return $"Method Name: {methodName} and Line Number: {lineNumberText}";
+        }
     }
 }
