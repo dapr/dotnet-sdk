@@ -72,12 +72,13 @@ namespace Microsoft.AspNetCore.Builder
                         var topicMetadata = e.Metadata.GetOrderedMetadata<ITopicMetadata>();
                         var originalTopicMetadata = e.Metadata.GetOrderedMetadata<IOriginalTopicMetadata>();
 
-                        var subs = new List<(string PubsubName, string Name, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string MetadataSeparator, RoutePattern RoutePattern)>();
+                        var subs = new List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string MetadataSeparator, RoutePattern RoutePattern)>();
 
                         for (int i = 0; i < topicMetadata.Count(); i++)
                         {
                             subs.Add((topicMetadata[i].PubsubName,
                                 topicMetadata[i].Name,
+                                (topicMetadata[i] as IDeadLetterTopicMetadata)?.DeadLetterTopic,
                                 (topicMetadata[i] as IRawTopicMetadata)?.EnableRawPayload,
                                 topicMetadata[i].Match,
                                 topicMetadata[i].Priority,
@@ -132,6 +133,11 @@ namespace Microsoft.AspNetCore.Builder
                             PubsubName = first.PubsubName,
                             Metadata = metadata.Count > 0 ? metadata : null,
                         };
+
+                        if (first.DeadLetterTopic != null)
+                        {
+                            subscription.DeadLetterTopic = first.DeadLetterTopic;
+                        }
 
                         // Use the V2 routing rules structure
                         if (rules.Count > 0)
