@@ -72,8 +72,6 @@ namespace Dapr.Actors.Builder
             } catch (Exception ex){
                 Console.WriteLine($"ERROR: Got exception while making call to method: {GetExceptionInfo(ex)}");
             }
-            
-            Console.WriteLine("testing***789" + requestBody);
 
             return dispatchTask;
         }
@@ -261,17 +259,22 @@ namespace Dapr.Actors.Builder
         protected string GetExceptionInfo(Exception ex) {
             var lineNumber = 0;
             const string lineSearch = ":line ";
+            const string exceptionSearch = ": ";
             var index = ex.StackTrace.IndexOf(lineSearch);
+            var exceptionIndex = ex.ToString().IndexOf(exceptionSearch);
             var lineNumberText = "";
+            var exceptionText = "";
             if (index != -1)
             {
                 lineNumberText = ex.StackTrace.Substring(index + lineSearch.Length);
                 int.TryParse(lineNumberText, out lineNumber);
             }
-            var stackTrace = new StackTrace(ex);
-            var stackFrame = stackTrace.GetFrame(0);
-            string methodName = stackFrame.GetMethod().Name;
-            return $"Method Name: {methodName} and Line Number: {lineNumberText}";
+            if (exceptionIndex != -1)
+            {
+                exceptionText = ex.ToString().Substring(0, exceptionIndex);
+            }
+            string methodName = new StackTrace(ex).GetFrame(0).GetMethod().Name;
+            return $"Exception: {exceptionText}, Method Name: {methodName} and Line Number: {lineNumberText}";
         }
     }
 }
