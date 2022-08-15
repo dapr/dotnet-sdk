@@ -10,10 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.30.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.15.0" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.32.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.38.1" PrivateAssets="All" />
+    <PackageReference Include="Google.Protobuf" Version="3.19.4" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.47.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.47.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.47.0" PrivateAssets="All" />
     <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
   </ItemGroup>
 
