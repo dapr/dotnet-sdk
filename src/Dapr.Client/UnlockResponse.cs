@@ -25,13 +25,13 @@ namespace Dapr.Client
         /// </summary>
         Success,
         /// <summary>
-        /// LockUnexist stating the lock does not exist.
+        /// LockDoesNotExist stating the lock does not exist.
         /// </summary>
-        LockUnexist,
+        LockDoesNotExist,
         /// <summary>
-        /// LockBelongToOthers stating the lock is acquired by a different process.
+        /// LockBelongsToOthers stating the lock is acquired by a different process.
         /// </summary>
-        LockBelongToOthers,
+        LockBelongsToOthers,
         /// <summary>
         /// InternalError statign an error in unlocking.
         /// </summary>
