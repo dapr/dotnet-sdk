@@ -19,6 +19,7 @@ using Dapr.Actors.Runtime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -189,6 +190,7 @@ namespace Microsoft.AspNetCore.Builder
     {
         var responseHeader = new ActorResponseMessageHeader();
         responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
+        responseHeader.AddHeader(GetExceptionInfo(ex), Array.Empty<byte>());
         var headerSerializer = new ActorMessageHeaderSerializer();
         var responseHeaderBytes = headerSerializer.SerializeResponseHeader(responseHeader);
         var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
@@ -196,6 +198,33 @@ namespace Microsoft.AspNetCore.Builder
         var responseMsgBody = ActorInvokeException.FromException(ex);
             
         return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
+    }
+
+    /// <summary>
+    /// Generate exception info
+    /// </summary>
+    /// <param name="ex">Exception of the method.</param>
+    /// <returns>Exception info string</returns>
+    private static string GetExceptionInfo(Exception ex) {
+        const string lineSearch = ":line ";
+        const string exceptionSearch = ": ";
+        const string newLineSearch = "\n";
+        var exceptionString = ex.ToString();
+        var index = exceptionString.IndexOf(lineSearch);
+        var exceptionIndex = exceptionString.IndexOf(exceptionSearch);
+        var newLineIndex = exceptionString.Substring(index + lineSearch.Length).IndexOf(newLineSearch);
+        var lineNumberText = "";
+        var exceptionText = "";
+        if (index != -1)
+        {
+            lineNumberText = exceptionString.Substring(index + lineSearch.Length, newLineIndex);
+        }
+        if (exceptionIndex != -1)
+        {
+            exceptionText = exceptionString.Substring(0, exceptionIndex);
+        }
+        string methodName = new StackTrace(ex).GetFrame(0).GetMethod().Name;
+        return $"%Exception: {exceptionText}, Method Name: {methodName}, Line Number: {lineNumberText}#";
     }
 
     private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder

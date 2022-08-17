@@ -133,14 +133,13 @@ namespace Dapr.Actors
             }
 
             var retval = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
-
+            var header = "";
             IActorResponseMessageHeader actorResponseMessageHeader = null;
             if (retval != null && retval.Headers != null)
             {
                 if (retval.Headers.TryGetValues(Constants.ErrorResponseHeaderName, out IEnumerable<string> headerValues))
                 {
-                    var header = headerValues.First();
-
+                    header = headerValues.First();
                     // DeSerialize Actor Response Message Header
                     actorResponseMessageHeader =
                         serializersManager.GetHeaderSerializer()
@@ -168,8 +167,9 @@ namespace Dapr.Actors
                                 out var remoteMethodException);
                     if (isDeserialzied)
                     {
+                        var exceptionDetails = GetExceptionDetails(header.ToString());
                         throw new ActorMethodInvocationException(
-                            "Remote Actor Method Exception",
+                            "Remote Actor Method Exception,  DETAILS: " + exceptionDetails,
                             remoteMethodException,
                             false /* non transient */);
                     }
@@ -186,6 +186,19 @@ namespace Dapr.Actors
             }
 
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
+        }
+
+        private string GetExceptionDetails(string header) {
+            const string firstSearch = "%";
+            const string secondSearch = "#";
+            var firstIndex = header.IndexOf(firstSearch);
+            var secondIndex = header.IndexOf(secondSearch);
+            var exceptionDetails= "";
+            if (firstIndex != -1 && secondIndex != -1)
+            {
+                exceptionDetails = header.Substring(firstIndex + 1, secondIndex - firstIndex - 1);
+            }
+            return exceptionDetails;
         }
 
         public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)
