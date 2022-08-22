@@ -67,6 +67,12 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         public void MultipleTopics()
         {
         }
+                
+        [Topic("pubsub", "G", "deadLetterTopicName", false)]
+        [HttpPost("/G")]
+        public void TopicG()
+        {
+        }
 
         [Topic("pubsub", "metadata", new string[1] { "id1" })]
         [Topic("pubsub", "metadata.1", true)]

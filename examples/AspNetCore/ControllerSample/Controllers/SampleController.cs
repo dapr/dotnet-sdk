@@ -64,16 +64,37 @@ namespace ControllerSample.Controllers
         /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
-        [Topic("pubsub", "deposit")]
+        [Topic("pubsub", "deposit", "amountDeadLetterTopic", false)]
         [HttpPost("deposit")]
         public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] DaprClient daprClient)
         {
             logger.LogDebug("Enter deposit");
             var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
             state.Value ??= new Account() { Id = transaction.Id, };
+            logger.LogDebug("Id is {0}, the amount to be deposited is {1}", transaction.Id, transaction.Amount);
+
+            if (transaction.Amount < 0m)
+            {
+                return BadRequest(new { statusCode = 400, message = "bad request" });
+            }
+
             state.Value.Balance += transaction.Amount;
+            logger.LogDebug("Balance is {0}", state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
+        }
+
+        /// <summary>
+        /// Method for viewing the error message when the deposit/withdrawal amounts
+        /// are negative.
+        /// </summary>
+        /// <param name="transaction">Transaction info.</param>
+        [Topic("pubsub", "amountDeadLetterTopic")]
+        [HttpPost("deadLetterTopicRoute")]
+        public ActionResult<Account> ViewErrorMessage(Transaction transaction)
+        {
+            logger.LogDebug("The amount cannot be negative: {0}", transaction.Amount);
+            return Ok();
         }
 
         /// <summary>
@@ -83,19 +104,25 @@ namespace ControllerSample.Controllers
         /// <param name="daprClient">State client to interact with Dapr runtime.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
-        [Topic("pubsub", "withdraw")]
+        [Topic("pubsub", "withdraw", "amountDeadLetterTopic", false)]
         [HttpPost("withdraw")]
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] DaprClient daprClient)
         {
-            logger.LogDebug("Enter withdraw");
+            logger.LogDebug("Enter withdraw method...");
             var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+            logger.LogDebug("Id is {0}, the amount to be withdrawn is {1}", transaction.Id, transaction.Amount);
 
             if (state.Value == null)
             {
                 return this.NotFound();
             }
+            if (transaction.Amount < 0m)
+            {
+                return BadRequest(new { statusCode = 400, message = "bad request" });
+            }
 
             state.Value.Balance -= transaction.Amount;
+            logger.LogDebug("Balance is {0}", state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
         }
@@ -134,7 +161,7 @@ namespace ControllerSample.Controllers
         [HttpPost("throwException")]
         public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
         {
-            Console.WriteLine("Enter ThrowException");
+            logger.LogDebug("Enter ThrowException");
             var task = Task.Delay(10);
             await task;
             return BadRequest(new { statusCode = 400, message = "bad request" });

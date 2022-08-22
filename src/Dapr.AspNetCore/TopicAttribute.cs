@@ -19,7 +19,7 @@ namespace Dapr
     /// TopicAttribute describes an endpoint as a subscriber to a topic.
     /// </summary>
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
-    public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwnedOriginalTopicMetadata
+    public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwnedOriginalTopicMetadata, IDeadLetterTopicMetadata
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="TopicAttribute" /> class.
@@ -105,25 +105,50 @@ namespace Dapr
             this.MetadataSeparator = metadataSeparator;
         }
 
-        /// <inheritdoc/>
-        public string Name { get; }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TopicAttribute" /> class.
+        /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="name">The topic name.</param>
+        /// <param name="deadLetterTopic">The dead letter topic name.</param>
+        /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
+        /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
+        /// <param name="metadataSeparator">Separator to use for metadata.</param>
+        public TopicAttribute(string pubsubName, string name, string deadLetterTopic, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
+
+            this.Name = name;
+            this.PubsubName = pubsubName;
+            this.DeadLetterTopic = deadLetterTopic;
+            this.EnableRawPayload = enableRawPayload;
+            this.OwnedMetadatas = ownedMetadatas;
+            this.MetadataSeparator = metadataSeparator;
+        }
 
         /// <inheritdoc/>
-        public string PubsubName { get; }
+        public string Name { get; set; }
 
         /// <inheritdoc/>
-        public bool? EnableRawPayload { get; }
+        public string PubsubName { get; set; }
 
         /// <inheritdoc/>
-        public new string Match { get; }
+        public bool? EnableRawPayload { get; set; }
 
         /// <inheritdoc/>
-        public int Priority { get; }
+        public new string Match { get; set; }
 
         /// <inheritdoc/>
-        public string[] OwnedMetadatas { get; }
+        public int Priority { get; set; }
 
         /// <inheritdoc/>
-        public string MetadataSeparator { get; }
+        public string[] OwnedMetadatas { get; set; }
+
+        /// <inheritdoc/>
+        public string MetadataSeparator { get; set; }
+
+        /// <inheritdoc/>
+        public string DeadLetterTopic { get; set; }
     }
 }
