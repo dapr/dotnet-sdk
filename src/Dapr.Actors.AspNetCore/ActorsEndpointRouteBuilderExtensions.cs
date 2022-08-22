@@ -224,7 +224,8 @@ namespace Microsoft.AspNetCore.Builder
             exceptionText = exceptionString.Substring(0, exceptionIndex);
         }
         string methodName = new StackTrace(ex).GetFrame(0).GetMethod().Name;
-        return $"%Exception: {exceptionText}, Method Name: {methodName}, Line Number: {lineNumberText}#";
+        string uuid = Guid.NewGuid().ToString();
+        return $"%Exception: {exceptionText}, Method Name: {methodName}, Line Number: {lineNumberText}, Exception uuid: {uuid}#";
     }
 
     private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
