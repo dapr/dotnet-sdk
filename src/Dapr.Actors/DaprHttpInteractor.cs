@@ -27,6 +27,7 @@ namespace Dapr.Actors
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
+    using System.Xml;
 
     /// <summary>
     /// Class to interact with Dapr runtime over http.
@@ -40,6 +41,8 @@ namespace Dapr.Actors
         private HttpClient httpClient;
         private bool disposed;
         private string daprApiToken;
+
+        private const string EXCEPTION_HEADER_TAG = "b:KeyValueOfstringbase64Binary";
 
         public DaprHttpInteractor(
             HttpMessageHandler clientHandler,
@@ -189,14 +192,13 @@ namespace Dapr.Actors
         }
 
         private string GetExceptionDetails(string header) {
-            const string firstSearch = "%";
-            const string secondSearch = "#";
-            var firstIndex = header.IndexOf(firstSearch);
-            var secondIndex = header.IndexOf(secondSearch);
-            var exceptionDetails= "";
-            if (firstIndex != -1 && secondIndex != -1)
+            XmlDocument xmlHeader = new XmlDocument();
+            xmlHeader.LoadXml(header);
+            XmlNodeList exceptionValueXML = xmlHeader.GetElementsByTagName(EXCEPTION_HEADER_TAG);
+            string exceptionDetails = "";
+            if (exceptionValueXML != null && exceptionValueXML[1] != null)
             {
-                exceptionDetails = header.Substring(firstIndex + 1, secondIndex - firstIndex - 1);
+                exceptionDetails = exceptionValueXML[1].InnerText;
             }
             return exceptionDetails;
         }

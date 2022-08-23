@@ -206,26 +206,12 @@ namespace Microsoft.AspNetCore.Builder
     /// <param name="ex">Exception of the method.</param>
     /// <returns>Exception info string</returns>
     private static string GetExceptionInfo(Exception ex) {
-        const string lineSearch = ":line ";
-        const string exceptionSearch = ": ";
-        const string newLineSearch = "\n";
-        var exceptionString = ex.ToString();
-        var index = exceptionString.IndexOf(lineSearch);
-        var exceptionIndex = exceptionString.IndexOf(exceptionSearch);
-        var newLineIndex = exceptionString.Substring(index + lineSearch.Length).IndexOf(newLineSearch);
-        var lineNumberText = "";
-        var exceptionText = "";
-        if (index != -1)
-        {
-            lineNumberText = exceptionString.Substring(index + lineSearch.Length, newLineIndex);
-        }
-        if (exceptionIndex != -1)
-        {
-            exceptionText = exceptionString.Substring(0, exceptionIndex);
-        }
-        string methodName = new StackTrace(ex).GetFrame(0).GetMethod().Name;
+        var frame = new StackTrace(ex, true).GetFrame(0);
+        string methodName = frame.GetMethod().Name;
+        int lineNumber = frame.GetFileLineNumber();
+        string exceptionName = ex.GetType().Name;
         string uuid = Guid.NewGuid().ToString();
-        return $"%Exception: {exceptionText}, Method Name: {methodName}, Line Number: {lineNumberText}, Exception uuid: {uuid}#";
+        return $"Exception: {exceptionName}, Method Name: {methodName}, Line Number: {lineNumber}, Exception uuid: {uuid}";
     }
 
     private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
