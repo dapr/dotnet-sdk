@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Dapr.Client
@@ -81,6 +82,19 @@ namespace Dapr.Client
         {
             var entry = DaprClient.GetDaprApiTokenHeader(null);
             Assert.Equal(default, entry);
+        }
+
+        [Fact]
+        public async Task TestShutdownApi()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.ShutdownSidecarAsync();
+            });
+
+            request.Dismiss();
         }
     }
 }
