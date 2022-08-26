@@ -196,11 +196,12 @@ namespace Dapr.Actors
             xmlHeader.LoadXml(header);
             XmlNodeList exceptionValueXML = xmlHeader.GetElementsByTagName(EXCEPTION_HEADER_TAG);
             string exceptionDetails = "";
-            if (exceptionValueXML != null && exceptionValueXML[1] != null)
+            if (exceptionValueXML != null && exceptionValueXML.Item(1) != null)
             {
-                exceptionDetails = exceptionValueXML[1].InnerText;
+                exceptionDetails = exceptionValueXML.Item(1).LastChild.InnerText;
             }
-            return exceptionDetails;
+            var base64EncodedBytes = System.Convert.FromBase64String(exceptionDetails);
+            return Encoding.ASCII.GetString(base64EncodedBytes);
         }
 
         public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)

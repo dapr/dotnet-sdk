@@ -190,7 +190,7 @@ namespace Microsoft.AspNetCore.Builder
     {
         var responseHeader = new ActorResponseMessageHeader();
         responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
-        responseHeader.AddHeader(GetExceptionInfo(ex), Array.Empty<byte>());
+        responseHeader.AddHeader("RemoteMethodException", Encoding.ASCII.GetBytes(GetExceptionInfo(ex)));
         var headerSerializer = new ActorMessageHeaderSerializer();
         var responseHeaderBytes = headerSerializer.SerializeResponseHeader(responseHeader);
         var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
