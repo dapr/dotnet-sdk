@@ -190,7 +190,7 @@ namespace Microsoft.AspNetCore.Builder
     {
         var responseHeader = new ActorResponseMessageHeader();
         responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
-        responseHeader.AddHeader("RemoteMethodException", Encoding.ASCII.GetBytes(GetExceptionInfo(ex)));
+        responseHeader.AddHeader("RemoteMethodException", System.Text.Encoding.UTF8.GetBytes(GetExceptionInfo(ex)));
         var headerSerializer = new ActorMessageHeaderSerializer();
         var responseHeaderBytes = headerSerializer.SerializeResponseHeader(responseHeader);
         var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
@@ -207,11 +207,7 @@ namespace Microsoft.AspNetCore.Builder
     /// <returns>Exception info string</returns>
     private static string GetExceptionInfo(Exception ex) {
         var frame = new StackTrace(ex, true).GetFrame(0);
-        string methodName = frame.GetMethod().Name;
-        int lineNumber = frame.GetFileLineNumber();
-        string exceptionName = ex.GetType().Name;
-        string uuid = Guid.NewGuid().ToString();
-        return $"Exception: {exceptionName}, Method Name: {methodName}, Line Number: {lineNumber}, Exception uuid: {uuid}";
+        return $"Exception: { frame.GetMethod().Name}, Method Name: {ex.GetType().Name}, Line Number: {frame.GetFileLineNumber()}, Exception uuid: {Guid.NewGuid().ToString()}";
     }
 
     private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
