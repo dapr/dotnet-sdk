@@ -25,11 +25,13 @@ namespace Dapr.Actors.Runtime
         public ReminderInfo(
             byte[] data,
             TimeSpan dueTime,
-            TimeSpan period)
+            TimeSpan period,
+            TimeSpan? ttl = null)
         {
             this.Data = data;
             this.DueTime = dueTime;
             this.Period = period;
+            this.Ttl = ttl;
         }
 
         public TimeSpan DueTime { get; private set; }
@@ -38,6 +40,8 @@ namespace Dapr.Actors.Runtime
 
         public byte[] Data { get; private set; }
 
+        public TimeSpan? Ttl { get; private set; }
+
         internal static async Task<ReminderInfo> DeserializeAsync(Stream stream)
         {
             var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
@@ -45,6 +49,7 @@ namespace Dapr.Actors.Runtime
             var dueTime = default(TimeSpan);
             var period = default(TimeSpan);
             var data = default(byte[]);
+            TimeSpan? ttl = null;
 
             if (json.TryGetProperty("dueTime", out var dueTimeProperty))
             {
@@ -63,7 +68,13 @@ namespace Dapr.Actors.Runtime
                 data = dataProperty.GetBytesFromBase64();
             }
 
-            return new ReminderInfo(data, dueTime, period);
+            if (json.TryGetProperty("ttl", out var ttlProperty))
+            {
+                var ttlString = ttlProperty.GetString();
+                ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
+            }
+
+            return new ReminderInfo(data, dueTime, period, ttl);
         }
 
         internal async ValueTask<string> SerializeAsync()
@@ -75,6 +86,12 @@ namespace Dapr.Actors.Runtime
             writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));
             writer.WriteString("period", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.Period));
             writer.WriteBase64String("data", this.Data);
+
+            if (Ttl != null)
+            {
+                writer.WriteString("ttl", ConverterUtils.ConvertTimeSpanValueInDaprFormat(Ttl));
+            }
+
             writer.WriteEndObject();
             await writer.FlushAsync();
             return Encoding.UTF8.GetString(stream.ToArray());

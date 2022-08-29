@@ -1,30 +1,43 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Dapr.Client;
+using Dapr.Extensions.Configuration;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace ConfigurationApi
 {
     public class Program
     {
-        private static readonly string ConfigStore = "redisconfig";
-        private static readonly string QueryKey = "greeting";
-
         [Obsolete]
-        public static async Task Main(string[] args)
+        public static void Main(string[] args)
         {
-            using var client = new DaprClientBuilder().Build();
+            Console.WriteLine("Starting application.");
+            CreateHostBuilder(args).Build().Run();
+            Console.WriteLine("Closing application.");
+        }
 
-            Console.WriteLine($"Querying Configuration with key: {QueryKey}");
-            var configItems = await client.GetConfiguration(ConfigStore, new List<string>() { QueryKey });
-
-            if (configItems.Items.Count == 0)
-            {
-                Console.WriteLine($"Could not find {QueryKey} in the configuration store.");
-                return;
-            }
-
-            Console.WriteLine($"Got configuration item:\nKey: {configItems.Items[0].Key}\nValue: {configItems.Items[0].Value}\nVersion: {configItems.Items[0].Version}");
+        /// <summary>
+        /// Creates WebHost Builder.
+        /// </summary>
+        /// <param name="args">Arguments.</param>
+        /// <returns>Returns IHostbuilder.</returns>
+        public static IHostBuilder CreateHostBuilder(string[] args)
+        {
+            var client = new DaprClientBuilder().Build();
+            return Host.CreateDefaultBuilder(args)
+                .ConfigureAppConfiguration(config =>
+                {
+                    // Get the initial value and continue to watch it for changes.
+                    config.AddDaprConfigurationStore("redisconfig", new List<string>() { "withdrawVersion" }, client, TimeSpan.FromSeconds(20));
+                    config.AddStreamingDaprConfigurationStore("redisconfig", new List<string>() { "withdrawVersion", "source" }, client, TimeSpan.FromSeconds(20));
+                    
+                })
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
         }
     }
 }

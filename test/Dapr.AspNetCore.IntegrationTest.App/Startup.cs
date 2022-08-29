@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 
 namespace Dapr.AspNetCore.IntegrationTest.App
 {
+    using System.Collections.Generic;
     using System.Threading.Tasks;
     using Dapr.Client;
     using Microsoft.AspNetCore.Authentication;
@@ -64,6 +65,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
                 endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("testpubsub", "A").WithTopic("testpubsub", "A.1");
 
                 endpoints.MapPost("/splitTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitTopicBuilder");
+
+                endpoints.MapPost("/splitMetadataTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitMetadataTopicBuilder", new Dictionary<string, string> { { "n1", "v1" }, { "n2", "v1" } });
 
                 endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
                 {

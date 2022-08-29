@@ -28,8 +28,7 @@ namespace ControllerSample
 
         /// <summary>
         /// Gets or sets amount for the transaction.
-        /// </summary>
-        [Range(0, double.MaxValue)]
+        /// </summary
         public decimal Amount { get; set; }
     }
 }

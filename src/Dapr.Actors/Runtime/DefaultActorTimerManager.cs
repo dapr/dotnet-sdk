@@ -55,7 +55,7 @@ namespace Dapr.Actors.Runtime
             }
 
             #pragma warning disable 0618
-            var timerInfo = new TimerInfo(timer.TimerCallback, timer.Data, timer.DueTime, timer.Period);
+            var timerInfo = new TimerInfo(timer.TimerCallback, timer.Data, timer.DueTime, timer.Period, timer.Ttl);
             #pragma warning restore 0618
             var data = JsonSerializer.Serialize(timerInfo);
             await this.interactor.RegisterTimerAsync(timer.ActorType, timer.ActorId.ToString(), timer.Name, data);
@@ -73,7 +73,7 @@ namespace Dapr.Actors.Runtime
 
         private async ValueTask<string> SerializeReminderAsync(ActorReminder reminder)
         {
-            var info = new ReminderInfo(reminder.State, reminder.DueTime, reminder.Period);
+            var info = new ReminderInfo(reminder.State, reminder.DueTime, reminder.Period, reminder.Ttl);
             return await info.SerializeAsync();
         }
     }

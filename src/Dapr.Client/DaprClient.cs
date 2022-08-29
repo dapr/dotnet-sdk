@@ -121,7 +121,7 @@ namespace Dapr.Client
         /// Optional gRPC endpoint for calling Dapr, defaults to <see cref="DaprDefaults.GetDefaultGrpcEndpoint"/>.
         /// </param>
         /// <param name="daprApiToken">
-        /// Optional token to be attached to all requests, defaults to <see cref="DaprDefaults.GetDefaultApiToken"/>.
+        /// Optional token to be attached to all requests, defaults to <see cref="DaprDefaults.GetDefaultDaprApiToken"/>.
         /// </param>
         /// <returns>An <see cref="CallInvoker"/> to be used for proxied gRPC calls through Dapr.</returns>
         /// <remarks>
@@ -133,7 +133,7 @@ namespace Dapr.Client
         public static CallInvoker CreateInvocationInvoker(string appId, string daprEndpoint = null, string daprApiToken = null)
         {
             var channel = GrpcChannel.ForAddress(daprEndpoint ?? DaprDefaults.GetDefaultGrpcEndpoint());
-            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultApiToken()));
+            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultDaprApiToken()));
         }
 
         internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
@@ -330,6 +330,13 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
         public abstract Task WaitForSidecarAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Send a command to the Dapr Sidecar telling it to shutdown.
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task ShutdownSidecarAsync(CancellationToken cancellationToken = default);
         
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. The response will
@@ -819,9 +826,9 @@ namespace Dapr.Client
         /// <summary>
         /// Get a list of configuration items based on keys from the given statestore. 
         /// </summary>
-        /// <param name="storeName">The name of the statestore to be queried.</param>
+        /// <param name="storeName">The name of the configuration store to be queried.</param>
         /// <param name="keys">An optional list of keys to query for. If provided, the result will only contain those keys. An empty list indicates all keys should be fetched.</param>
-        /// <param name="metadata">Optional metadata that will be sent to the statestore being queried.</param>
+        /// <param name="metadata">Optional metadata that will be sent to the configuration store being queried.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="GetConfigurationResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
@@ -829,6 +836,67 @@ namespace Dapr.Client
             string storeName,
             IReadOnlyList<string> keys,
             IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Subscribe to a configuration store for the specified keys and receive an updated value whenever the key is updated in the store.
+        /// </summary>
+        /// <param name="storeName">The name of the configuration store to be queried.</param>
+        /// <param name="keys">An optional list of keys to query for. If provided, the result will only contain those keys. An empty list indicates all keys should be fetched.</param>
+        /// <param name="metadata">Optional metadata that will be sent to the configuration store being queried.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="SubscribeConfigurationResponse"/> which contains a reference to the stream.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<SubscribeConfigurationResponse> SubscribeConfiguration(
+            string storeName,
+            IReadOnlyList<string> keys,
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Unsubscribe from a configuration store using the specified Id.
+        /// </summary>
+        /// <param name="storeName">The name of the configuration store.</param>
+        /// <param name="id">The Id of the subscription that should no longer be watched.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns></returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<UnsubscribeConfigurationResponse> UnsubscribeConfiguration(
+            string storeName,
+            string id,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Attempt to lock the given resourceId with response indicating success.
+        /// </summary>
+        /// <param name="storeName">The name of the lock store to be queried.</param>
+        /// <param name="resourceId">Lock key that stands for which resource to protect.</param>
+        /// <param name="lockOwner">Indicates the identifier of lock owner.</param>
+        /// <param name="expiryInSeconds">The time after which the lock gets expired.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task"/> containing a <see cref="TryLockResponse"/></returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<TryLockResponse> Lock(
+            string storeName,
+            string resourceId,
+            string lockOwner,
+            Int32 expiryInSeconds,
+            CancellationToken cancellationToken = default);
+
+
+        /// <summary>
+        /// Attempt to unlock the given resourceId with response indicating success. 
+        /// </summary>
+        /// <param name="storeName">The name of the lock store to be queried.</param>
+        /// <param name="resourceId">Lock key that stands for which resource to protect.</param>
+        /// <param name="lockOwner">Indicates the identifier of lock owner.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task"/> containing a <see cref="UnlockResponse"/></returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<UnlockResponse> Unlock(
+            string storeName,
+            string resourceId,
+            string lockOwner,
             CancellationToken cancellationToken = default);
 
         /// <inheritdoc />

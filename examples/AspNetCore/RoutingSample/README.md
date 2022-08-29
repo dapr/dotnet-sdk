@@ -131,7 +131,31 @@ On Windows:
  dapr publish --pubsub pubsub --publish-app-id routing -t deposit -d "{\"id\": \"17\", \"amount\": 15 }"
  ```
  ---
+**Dead Letter Topic example (pubsub)**
+Publish an event using the Dapr cli with an incorrect input, i.e. negative amount:
 
+Deposit:
+On Linux, MacOS:
+```sh
+dapr publish --pubsub pubsub --publish-app-id routing -t deposit -d '{"id": "17", "amount": -15 }'
+```
+On Windows:
+ ```sh
+ dapr publish --pubsub pubsub --publish-app-id routing -t deposit -d "{\"id\": \"17\", \"amount\": -15 }"
+```
+
+Withdraw:
+ On Linux, MacOS:
+```sh
+dapr publish --pubsub pubsub --publish-app-id routing -t withdraw -d '{"id": "17", "amount": -15 }'
+```
+On Windows:
+ ```sh
+ dapr publish --pubsub pubsub --publish-app-id routing -t withdraw -d "{\"id\": \"17\", \"amount\": -15 }"
+ ```
+First a message is sent from a publisher on a `deposit` or `withdraw` topic. Dapr receives the message on behalf of a subscriber application, however the `deposit` or `withdraw` topic message fails to be delivered to the `/deposit` or `/withdraw` endpoint on the application, even after retries. As a result of the failure to deliver, the message is forwarded to the `amountDeadLetterTopic` topic which delivers this to the `/deadLetterTopicRoute` endpoint.
+
+---
 ## Code Samples
 
 *All of the interesting code in this sample is in Startup.cs*
@@ -179,6 +203,18 @@ app.UseEndpoints(endpoints =>
 `MapGet(...)` and `MapPost(...)` are provided by ASP.NET Core routing - these are used to setup endpoints to handle HTTP requests.
 
 `WithTopic(...)` associates an endpoint with a pub/sub topic.
+```C#
+var depositTopicOptions = new TopicOptions();
+depositTopicOptions.PubsubName = PubsubName;
+depositTopicOptions.Name = "deposit";
+depositTopicOptions.DeadLetterTopic = "amountDeadLetterTopic";
+
+var withdrawTopicOptions = new TopicOptions();
+withdrawTopicOptions.PubsubName = PubsubName;
+withdrawTopicOptions.Name = "withdraw";
+withdrawTopicOptions.DeadLetterTopic = "amountDeadLetterTopic";
+```
+`WithTopic(...)` now takes the `TopicOptions(..)` instance that defines configurations for the subscribe endpoint.
 
 ---
 

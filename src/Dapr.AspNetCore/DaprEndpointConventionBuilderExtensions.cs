@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,11 @@
 namespace Microsoft.AspNetCore.Builder
 {
     using System;
+    using System.Collections.Generic;
+    using System.Reflection;
+    using System.Xml.Linq;
     using Dapr;
+    using Grpc.Core;
 
     /// <summary>
     /// Contains extension methods for <see cref="IEndpointConventionBuilder" />.
@@ -32,6 +36,58 @@ namespace Microsoft.AspNetCore.Builder
         public static T WithTopic<T>(this T builder, string pubsubName, string name)
             where T : IEndpointConventionBuilder
         {
+            return WithTopic(builder, pubsubName, name, false);
+        }
+
+        /// <summary>
+        /// Adds <see cref="ITopicMetadata" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
+        /// </summary>
+        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="name">The topic name.</param>
+        /// <param name="metadata">
+        /// A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values 
+        /// are determined by the type of pubsub component used.
+        /// </param>
+        /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
+        /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
+        public static T WithTopic<T>(this T builder, string pubsubName, string name, IDictionary<string, string> metadata)
+            where T : IEndpointConventionBuilder
+        {
+            return WithTopic(builder, pubsubName, name, false, metadata);
+        }
+
+        /// <summary>
+        /// Adds <see cref="ITopicMetadata" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
+        /// </summary>
+        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="name">The topic name.</param>
+        /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
+        /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
+        /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
+        public static T WithTopic<T>(this T builder, string pubsubName, string name, bool enableRawPayload)
+            where T : IEndpointConventionBuilder
+        {
+            return WithTopic(builder, pubsubName, name, enableRawPayload, null);
+        }
+
+        /// <summary>
+        /// Adds <see cref="ITopicMetadata" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
+        /// </summary>
+        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="name">The topic name.</param>
+        /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
+        /// <param name="metadata">
+        /// A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values 
+        /// are determined by the type of pubsub component used.
+        /// </param>
+        /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
+        /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
+        public static T WithTopic<T>(this T builder, string pubsubName, string name, bool enableRawPayload, IDictionary<string, string> metadata)
+            where T : IEndpointConventionBuilder
+        {
             if (builder is null)
             {
                 throw new ArgumentNullException(nameof(builder));
@@ -40,8 +96,53 @@ namespace Microsoft.AspNetCore.Builder
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
 
-            builder.WithMetadata(new TopicAttribute(pubsubName, name));
+            builder.WithMetadata(new TopicAttribute(pubsubName, name, enableRawPayload));
+            if (metadata is not null)
+            {
+                foreach (var md in metadata)
+                {
+                    builder.WithMetadata(new TopicMetadataAttribute(md.Key, md.Value));
+                }
+            }
             return builder;
+        }
+
+        /// <summary>
+        /// Adds <see cref="ITopicMetadata" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
+        /// </summary>
+        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
+        /// <param name="topicOptions">The object of TopicOptions class that provides all topic attributes.</param> 
+        /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
+        /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
+        public static T WithTopic<T>(this T builder, TopicOptions topicOptions)
+            where T : IEndpointConventionBuilder
+        {
+            if (builder is null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            ArgumentVerifier.ThrowIfNullOrEmpty(topicOptions.PubsubName, nameof(topicOptions.PubsubName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(topicOptions.Name, nameof(topicOptions.Name));
+
+            var topicObject = new TopicAttribute(topicOptions.PubsubName, topicOptions.Name, topicOptions.DeadLetterTopic, topicOptions.EnableRawPayload);
+
+            topicObject.Match = topicOptions.Match;
+            topicObject.Priority = topicOptions.Priority;
+            topicObject.OwnedMetadatas = topicOptions.OwnedMetadatas;
+            topicObject.MetadataSeparator = topicObject.MetadataSeparator;
+
+            if (topicOptions.Metadata is not null)
+            {
+                foreach (var md in topicOptions.Metadata)
+                {
+                    builder.WithMetadata(new TopicMetadataAttribute(md.Key, md.Value));
+                }
+            }
+
+            builder.WithMetadata(topicObject);
+
+            return builder;      
         }
     }
 }

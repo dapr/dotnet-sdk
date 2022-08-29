@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 namespace Dapr.E2E.Test
 {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
     using System.Threading;
@@ -31,6 +32,7 @@ namespace Dapr.E2E.Test
         private EventWaitHandle outputReceived = new EventWaitHandle(false, EventResetMode.ManualReset);
         public string DaprBinaryName { get; set; }
         public string Command { get; set; }
+        public Dictionary<string, string> EnvironmentVariables { get; set; } = new Dictionary<string, string>();
         public string[] OutputToMatch { get; set; }
         public TimeSpan Timeout { get; set; }
 
@@ -50,6 +52,10 @@ namespace Dapr.E2E.Test
                     CreateNoWindow = true,
                 }
             };
+            foreach (var (key, value) in EnvironmentVariables)
+            {
+                process.StartInfo.EnvironmentVariables.Add(key, value);
+            }
             process.OutputDataReceived += CheckOutput;
             process.ErrorDataReceived += CheckOutput;
 

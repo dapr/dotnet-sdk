@@ -11,18 +11,19 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Actors.Client;
+using Microsoft.Extensions.Logging;
+
 namespace Dapr.Actors.Runtime
 {
-    using System;
-    using System.Buffers;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Text.Json;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Dapr.Actors.Client;
-    using Microsoft.Extensions.Logging;
-
     /// <summary>
     /// Contains methods to register actor types. Registering the types allows the runtime to create instances of the actor.
     /// </summary>
@@ -80,44 +81,70 @@ namespace Dapr.Actors.Runtime
 
             writer.WriteEndArray();
 
-            if (this.options.ActorIdleTimeout != null)
-            {
-                writer.WriteString("actorIdleTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.options.ActorIdleTimeout));
-            }
+            writeActorOptions(writer, this.options);
 
-            if (this.options.ActorScanInterval != null)
-            {
-                writer.WriteString("actorScanInterval", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.options.ActorScanInterval));
-            }
+            var actorsWithConfigs = this.options.Actors.Where(actor => actor.TypeOptions != null).ToList();
 
-            if (this.options.DrainOngoingCallTimeout != null)
+            if (actorsWithConfigs.Count > 0)
             {
-                writer.WriteString("drainOngoingCallTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.options.DrainOngoingCallTimeout));
-            }
+                writer.WritePropertyName("entitiesConfig");
+                writer.WriteStartArray();
+                foreach (var actor in actorsWithConfigs)
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("entities");
+                    writer.WriteStartArray();
+                    writer.WriteStringValue(actor.Type.ActorTypeName);
+                    writer.WriteEndArray();
 
-            // default is false, don't write it if default
-            if (this.options.DrainRebalancedActors != false)
-            {
-                writer.WriteBoolean("drainRebalancedActors", (this.options.DrainRebalancedActors));
-            }
+                    writeActorOptions(writer, actor.TypeOptions);
 
-            // default is null, don't write it if default
-            if (this.options.RemindersStoragePartitions != null)
-            {
-                writer.WriteNumber("remindersStoragePartitions", this.options.RemindersStoragePartitions.Value);
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
             }
-
-            // Reentrancy has a default value so it is always included.
-            writer.WriteStartObject("reentrancy");            
-            writer.WriteBoolean("enabled", this.options.ReentrancyConfig.Enabled);
-            if (this.options.ReentrancyConfig.MaxStackDepth != null)
-            {
-                writer.WriteNumber("maxStackDepth", this.options.ReentrancyConfig.MaxStackDepth.Value);
-            }
-            writer.WriteEndObject();            
 
             writer.WriteEndObject();
             return writer.FlushAsync();
+        }
+
+        private void writeActorOptions(Utf8JsonWriter writer, ActorRuntimeOptions actorOptions)
+        {
+            if (actorOptions.ActorIdleTimeout != null)
+            {
+                writer.WriteString("actorIdleTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(actorOptions.ActorIdleTimeout));
+            }
+
+            if (actorOptions.ActorScanInterval != null)
+            {
+                writer.WriteString("actorScanInterval", ConverterUtils.ConvertTimeSpanValueInDaprFormat(actorOptions.ActorScanInterval));
+            }
+
+            if (actorOptions.DrainOngoingCallTimeout != null)
+            {
+                writer.WriteString("drainOngoingCallTimeout", ConverterUtils.ConvertTimeSpanValueInDaprFormat(actorOptions.DrainOngoingCallTimeout));
+            }
+
+            // default is false, don't write it if default
+            if (actorOptions.DrainRebalancedActors != false)
+            {
+                writer.WriteBoolean("drainRebalancedActors", (actorOptions.DrainRebalancedActors));
+            }
+
+            // default is null, don't write it if default
+            if (actorOptions.RemindersStoragePartitions != null)
+            {
+                writer.WriteNumber("remindersStoragePartitions", actorOptions.RemindersStoragePartitions.Value);
+            }
+
+            // Reentrancy has a default value so it is always included.
+            writer.WriteStartObject("reentrancy");
+            writer.WriteBoolean("enabled", actorOptions.ReentrancyConfig.Enabled);
+            if (actorOptions.ReentrancyConfig.MaxStackDepth != null)
+            {
+                writer.WriteNumber("maxStackDepth", actorOptions.ReentrancyConfig.MaxStackDepth.Value);
+            }
+            writer.WriteEndObject();
         }
 
         // Deactivates an actor for an actor type with given actor id.
