@@ -207,9 +207,8 @@ namespace Microsoft.AspNetCore.Builder
     /// <returns>Exception info string</returns>
     private static string GetExceptionInfo(Exception ex) {
         var frame = new StackTrace(ex, true).GetFrame(0);
-        return $"Exception: { frame.GetMethod().Name}, Method Name: {ex.GetType().Name}, Line Number: {frame.GetFileLineNumber()}, Exception uuid: {Guid.NewGuid().ToString()}";
+        return $"Exception: {ex.GetType().Name}, Method Name: {frame.GetMethod().Name}, Line Number: {frame.GetFileLineNumber()}, Exception uuid: {Guid.NewGuid().ToString()}";
     }
-
     private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
         {
             private readonly IEndpointConventionBuilder[] inner;
