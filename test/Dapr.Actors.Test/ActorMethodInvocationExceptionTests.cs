@@ -33,7 +33,7 @@ namespace Dapr.Actors.Test
         public void TestThrowActorMethodInvocationException()
         {
             // Create Remote Actor Method test Exception
-            var message = "Remote Actor encountered an exception";
+            var message = "Remote Actor Method Exception,  DETAILS: Exception: ExceptionExample, Method Name: NotImplementedException, Line Number: 14, Exception uuid: 047180a0-5203-4494-8533-6417ddc91f1c";
             var innerMessage = "Bad time zone";
             var exception = new InvalidOperationException(message, new InvalidTimeZoneException(innerMessage));
 
