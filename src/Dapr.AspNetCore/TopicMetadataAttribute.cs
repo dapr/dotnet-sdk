@@ -29,7 +29,7 @@ namespace Dapr
         public TopicMetadataAttribute(string name, string value)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
-            ArgumentVerifier.ThrowIfNullOrEmpty(value, nameof(value));
+            ArgumentVerifier.ThrowIfNull(value, nameof(value));
             Name = name;
             Value = value;
         }
@@ -44,7 +44,7 @@ namespace Dapr
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(id, nameof(name));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
-            ArgumentVerifier.ThrowIfNullOrEmpty(value, nameof(value));
+            ArgumentVerifier.ThrowIfNull(value, nameof(value));
             Id = id;
             Name = name;
             Value = value;

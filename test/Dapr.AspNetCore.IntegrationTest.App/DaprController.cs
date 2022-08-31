@@ -92,6 +92,14 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
+        [Topic("pubsub", "metadataseparatorbyemptytring")]
+        [HttpPost("/topicmetadataseparatorattrbyemptytring")]
+        [TopicMetadata("n1", "v1")]
+        [TopicMetadata("n1", "")]
+        public void TopicMetadataSeparatorByemptytring ()
+        {
+        }
+
         [Topic("pubsub", "splitTopicAttr", true)]
         [HttpPost("/splitTopics")]
         public void SplitTopic()
