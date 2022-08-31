@@ -35,6 +35,6 @@ namespace Dapr.Client
         /// <summary>
         /// Get the <see cref="ConfigurationSource"/> that is used to read the actual subscribed configuration data.
         /// </summary>
-        public IAsyncEnumerable<IEnumerable<ConfigurationItem>> Source => source;
+        public Dictionary<string, ConfigurationItem> Source => source;
     }
 }
