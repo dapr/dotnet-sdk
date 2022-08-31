@@ -19,6 +19,7 @@ using Dapr.Actors.Runtime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -189,6 +190,7 @@ namespace Microsoft.AspNetCore.Builder
     {
         var responseHeader = new ActorResponseMessageHeader();
         responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
+        responseHeader.AddHeader("RemoteMethodException", Encoding.UTF8.GetBytes(GetExceptionInfo(ex)));
         var headerSerializer = new ActorMessageHeaderSerializer();
         var responseHeaderBytes = headerSerializer.SerializeResponseHeader(responseHeader);
         var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
@@ -198,6 +200,15 @@ namespace Microsoft.AspNetCore.Builder
         return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
     }
 
+    /// <summary>
+    /// Generate exception info
+    /// </summary>
+    /// <param name="ex">Exception of the method.</param>
+    /// <returns>Exception info string</returns>
+    private static string GetExceptionInfo(Exception ex) {
+        var frame = new StackTrace(ex, true).GetFrame(0);
+        return $"Exception: {ex.GetType().Name}, Method Name: {frame.GetMethod().Name}, Line Number: {frame.GetFileLineNumber()}, Exception uuid: {Guid.NewGuid().ToString()}";
+    }
     private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
         {
             private readonly IEndpointConventionBuilder[] inner;
