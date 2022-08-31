@@ -201,9 +201,7 @@ namespace Dapr.Actors
                 exceptionDetails = exceptionValueXML.Item(1).LastChild.InnerText;
             }
             var base64EncodedBytes = System.Convert.FromBase64String(exceptionDetails);
-            var encodedDetails = Encoding.UTF8.GetString(base64EncodedBytes);
-            var decodedExceptionDetails = Encoding.UTF8.GetString(Convert.FromBase64String(encodedDetails));
-            return decodedExceptionDetails;
+            return Encoding.UTF8.GetString(base64EncodedBytes);
         }
 
         public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)

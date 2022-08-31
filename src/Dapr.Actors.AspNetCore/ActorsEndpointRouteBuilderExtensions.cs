@@ -189,9 +189,8 @@ namespace Microsoft.AspNetCore.Builder
     private static Tuple<string, byte[]> CreateExceptionResponseMessage(Exception ex)
     {
         var responseHeader = new ActorResponseMessageHeader();
-        var encodedExceptionDetails = System.Convert.ToBase64String(Encoding.UTF8.GetBytes(GetExceptionInfo(ex)));
         responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
-        responseHeader.AddHeader("RemoteMethodException", Encoding.Default.GetBytes(encodedExceptionDetails));
+        responseHeader.AddHeader("RemoteMethodException", Encoding.UTF8.GetBytes(GetExceptionInfo(ex)));
         var headerSerializer = new ActorMessageHeaderSerializer();
         var responseHeaderBytes = headerSerializer.SerializeResponseHeader(responseHeader);
         var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
