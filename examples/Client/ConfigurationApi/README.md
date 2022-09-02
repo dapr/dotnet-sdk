@@ -32,7 +32,7 @@ var configItems = await client.GetConfiguration(configStore, new List<string>() 
 
 foreach (var item in configItems.Items)
 {
-    logger.LogInformation($"Got configuration item:\nKey: {item.Key}\nValue: {item.Value}\nVersion: {item.Version}");
+    logger.LogInformation($"Got configuration item:\nKey: {item.Key}\nValue: {item.Value.Value}\nVersion: {item.Value.Version}");
 }
 ```
 
@@ -51,7 +51,7 @@ try
         foreach (var item in items)
         {
             id = subscribeConfigurationResponse.Id;
-            data[item.Key] = item.Value;
+            data[item.Key] = item.Value.Value;
         }
     }
 }
@@ -165,7 +165,7 @@ You should see the following output from the application:
 == APP == info: ConfigurationApi.Controllers.ConfigurationController[0]
 == APP ==       Got configuration item:
 == APP ==       Key: withdrawVersion
-== APP ==       Value: v2
+== APP ==       Value: v1
 == APP ==       Version: 1
 ```
 
