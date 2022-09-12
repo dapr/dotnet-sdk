@@ -68,10 +68,10 @@ namespace ControllerSample.Controllers
         [HttpPost("deposit")]
         public async Task<ActionResult<Account>> Deposit(Transaction transaction, [FromServices] DaprClient daprClient)
         {
-            logger.LogDebug("Enter deposit");
+            logger.LogInformation("Enter deposit");
             var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
             state.Value ??= new Account() { Id = transaction.Id, };
-            logger.LogDebug("Id is {0}, the amount to be deposited is {1}", transaction.Id, transaction.Amount);
+            logger.LogInformation("Id is {0}, the amount to be deposited is {1}", transaction.Id, transaction.Amount);
 
             if (transaction.Amount < 0m)
             {
@@ -79,7 +79,7 @@ namespace ControllerSample.Controllers
             }
 
             state.Value.Balance += transaction.Amount;
-            logger.LogDebug("Balance is {0}", state.Value.Balance);
+            logger.LogInformation("Balance is {0}", state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
         }
@@ -93,7 +93,7 @@ namespace ControllerSample.Controllers
         [HttpPost("deadLetterTopicRoute")]
         public ActionResult<Account> ViewErrorMessage(Transaction transaction)
         {
-            logger.LogDebug("The amount cannot be negative: {0}", transaction.Amount);
+            logger.LogInformation("The amount cannot be negative: {0}", transaction.Amount);
             return Ok();
         }
 
@@ -108,9 +108,9 @@ namespace ControllerSample.Controllers
         [HttpPost("withdraw")]
         public async Task<ActionResult<Account>> Withdraw(Transaction transaction, [FromServices] DaprClient daprClient)
         {
-            logger.LogDebug("Enter withdraw method...");
+            logger.LogInformation("Enter withdraw method...");
             var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
-            logger.LogDebug("Id is {0}, the amount to be withdrawn is {1}", transaction.Id, transaction.Amount);
+            logger.LogInformation("Id is {0}, the amount to be withdrawn is {1}", transaction.Id, transaction.Amount);
 
             if (state.Value == null)
             {
@@ -122,7 +122,7 @@ namespace ControllerSample.Controllers
             }
 
             state.Value.Balance -= transaction.Amount;
-            logger.LogDebug("Balance is {0}", state.Value.Balance);
+            logger.LogInformation("Balance is {0}", state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
         }
@@ -138,7 +138,7 @@ namespace ControllerSample.Controllers
         [HttpPost("withdraw.v2")]
         public async Task<ActionResult<Account>> WithdrawV2(TransactionV2 transaction, [FromServices] DaprClient daprClient)
         {
-            logger.LogDebug("Enter withdraw.v2");
+            logger.LogInformation("Enter withdraw.v2");
             if (transaction.Channel == "mobile" && transaction.Amount > 10000)
             {
                 return this.Unauthorized("mobile transactions for large amounts are not permitted.");
@@ -161,7 +161,7 @@ namespace ControllerSample.Controllers
         [HttpPost("throwException")]
         public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
         {
-            logger.LogDebug("Enter ThrowException");
+            logger.LogInformation("Enter ThrowException");
             var task = Task.Delay(10);
             await task;
             return BadRequest(new { statusCode = 400, message = "bad request" });
