@@ -10,22 +10,15 @@ namespace Dapr.Client
         /// <summary>
         /// Constructor for a ConfigurationItem.
         /// </summary>
-        /// <param name="key">The key of the configuration item.</param>
         /// <param name="value">The value of the configuration item.</param>
         /// <param name="version">The version of the fetched item.</param>
         /// <param name="metadata">The metadata associated with the request.</param>
-        public ConfigurationItem(string key, string value, string version, IReadOnlyDictionary<string, string> metadata)
+        public ConfigurationItem(string value, string version, IReadOnlyDictionary<string, string> metadata)
         {
-            Key = key;
             Value = value;
             Version = version;
             Metadata = metadata;
         }
-
-        /// <summary>
-        /// The name of the configuration item.
-        /// </summary>
-        public string Key { get; }
 
         /// <summary>
         /// The value of the configuration item.

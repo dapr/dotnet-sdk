@@ -40,7 +40,7 @@ namespace ConfigurationApi.Controllers
 
             foreach (var item in configItems.Items)
             {
-                logger.LogInformation($"Got configuration item:\nKey: {item.Key}\nValue: {item.Value}\nVersion: {item.Version}");
+                logger.LogInformation($"Got configuration item:\nKey: {item.Key}\nValue: {item.Value.Value}\nVersion: {item.Value.Version}");
             }
         }
 

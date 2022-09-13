@@ -94,7 +94,7 @@ namespace Dapr.Extensions.Configuration
                                 foreach (var item in items)
                                 {
                                     id = subscribeConfigurationResponse.Id;
-                                    data[item.Key] = item.Value;
+                                    data[item.Key] = item.Value.Value;
                                 }
                                 Data = data;
                                 // Whenever we get an update, make sure to update the reloadToken.
@@ -118,7 +118,7 @@ namespace Dapr.Extensions.Configuration
                 var getConfigurationResponse = await daprClient.GetConfiguration(store, keys, metadata, cts.Token);
                 foreach (var item in getConfigurationResponse.Items)
                 {
-                    Set(item.Key, item.Value);
+                    Set(item.Key, item.Value.Value);
                 }
             }
         }

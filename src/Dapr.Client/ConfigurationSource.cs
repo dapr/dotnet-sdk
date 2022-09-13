@@ -19,7 +19,7 @@ namespace Dapr.Client
     /// <summary>
     /// Abstraction around a configuration source.
     /// </summary>
-    public abstract class ConfigurationSource : IAsyncEnumerable<IEnumerable<ConfigurationItem>>
+    public abstract class ConfigurationSource : IAsyncEnumerable<IDictionary<string, ConfigurationItem>>
     {
         /// <summary>
         /// The Id associated with this configuration source.
@@ -27,6 +27,6 @@ namespace Dapr.Client
         public abstract string Id { get; }
 
         /// <inheritdoc/>
-        public abstract IAsyncEnumerator<IEnumerable<ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
+        public abstract IAsyncEnumerator<IDictionary<string, ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
     }
 }
