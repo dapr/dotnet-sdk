@@ -1,16 +1,21 @@
 ---
 type: docs
-title: "Dapr actor .NET usage guide"
+title: "Author & run actors"
 linkTitle: "Authoring actors"
 weight: 200000
 description: Learn all about authoring and running actors with the .NET SDK
 ---
 
-## Authoring actors
+## Author actors
 
 ### ActorHost
 
-The `ActorHost` is a required constructor parameter of all actors, and must be passed to the base class constructor.
+The `ActorHost`:
+
+- Is a required constructor parameter of all actors
+- Is provided by the runtime
+- Must be passed to the base class constructor
+- Contains all of the state that allows that actor instance to communicate with the runtime
 
 ```csharp
 internal class MyActor : Actor, IMyActor, IRemindable
@@ -22,11 +27,11 @@ internal class MyActor : Actor, IMyActor, IRemindable
 }
 ```
 
-The `ActorHost` is provided by the runtime and contains all of the state that the allows that actor instance to communicate with the runtime. Since the `ActorHost` contains state unique to the actor, you should not pass the instance into other parts of your code. You should not create your own instances of `ActorHost` except in tests.
+Since the `ActorHost` contains state unique to the actor, you don't need to pass the instance into other parts of your code. It's recommended only create your own instances of `ActorHost` in tests.
 
-### Using dependency injection
+### Dependency injection
 
-Actors support [depenendency injection](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection) of additional parameters into the constructor. Any other parameters your define will have their values satisfied from the dependency injection container.
+Actors support [dependency injection](https://docs.microsoft.com/aspnet/core/fundamentals/dependency-injection) of additional parameters into the constructor. Any other parameters you define will have their values satisfied from the dependency injection container.
 
 ```csharp
 internal class MyActor : Actor, IMyActor, IRemindable
@@ -39,9 +44,9 @@ internal class MyActor : Actor, IMyActor, IRemindable
 }
 ```
 
-An actor type should have a single `public` constructor. The actor infrastructure uses the [ActivatorUtilities](https://docs.microsoft.com/en-us/dotnet/core/extensions/dependency-injection#constructor-injection-behavior) pattern for constructing actor instances.
+An actor type should have a single `public` constructor. The actor infrastructure uses the [`ActivatorUtilities`](https://docs.microsoft.com/en-us/dotnet/core/extensions/dependency-injection#constructor-injection-behavior) pattern for constructing actor instances.
 
-You can register types with dependency injection in `Startup.cs` to make them available. You can read more about the different ways of registering your types [here](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?#service-registration-methods)
+You can register types with dependency injection in `Startup.cs` to make them available. Read more about [the different ways of registering your types](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?#service-registration-methods).
 
 ```csharp
 // In Startup.cs
@@ -54,7 +59,7 @@ public void ConfigureServices(IServiceCollection services)
 }
 ```
 
-Each actor instance has its own dependency injection scope. Each actor remains in memory for some time after performing an operation, and during that time the dependency injection scope associated with the actor is also considered live. The scope will be releases when the actor is deactivated.
+Each actor instance has its own dependency injection scope and remains in memory for some time after performing an operation. During that time, the dependency injection scope associated with the actor is also considered live. The scope will be released when the actor is deactivated.
 
 If an actor injects an `IServiceProvider` in the constructor, the actor will receive a reference to the `IServiceProvider` associated with its scope. The `IServiceProvider` can be used to resolve services dynamically in the future.
 
@@ -69,17 +74,17 @@ internal class MyActor : Actor, IMyActor, IRemindable
 }
 ```
 
-When using this pattern, take care to avoid creating many instances of **transient** services which implement `IDisposable`. Since the scope associated with an actor could be considered valid for a long time, it is possible to accumulate many services in memory. See the [dependency injection guidelines](https://docs.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines) for more information.
+When using this pattern, avoid creating many instances of **transient** services which implement `IDisposable`. Since the scope associated with an actor could be considered valid for a long time, you can accumulate many services in memory. See the [dependency injection guidelines](https://docs.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-guidelines) for more information.
 
 ### IDisposable and actors
 
-Actors can implement `IDisposable` or `IAsyncDisposable`. It is recommended that you rely on dependency injection for resource management rather than implementing dispose functionality in application code. Dispose support is provided for the rare case where it is truly necessary. 
+Actors can implement `IDisposable` or `IAsyncDisposable`. It's recommended that you rely on dependency injection for resource management rather than implementing dispose functionality in application code. Dispose support is provided in the rare case where it is truly necessary. 
 
 ### Logging
 
-Inside of an actor class you have access to an instance of `ILogger` through a property on the base `Actor` class. This instance is connected to the ASP.NET Core logging system, and should be used for all logging inside an actor. Read more about logging [here](https://docs.microsoft.com/en-us/dotnet/core/extensions/logging?tabs=command-line). You can configure a variety of different logging formats and output sinks.
+Inside an actor class, you have access to an `ILogger` instance through a property on the base `Actor` class. This instance is connected to the ASP.NET Core logging system and should be used for all logging inside an actor. Read more about [logging](https://docs.microsoft.com/en-us/dotnet/core/extensions/logging?tabs=command-line). You can configure a variety of different logging formats and output sinks.
 
-You should use *structured logging* with *named placeholders* like the example below:
+Use _structured logging_ with _named placeholders_ like the example below:
 
 ```csharp
 public Task<MyData> GetDataAsync()
@@ -91,11 +96,11 @@ public Task<MyData> GetDataAsync()
 
 When logging, avoid using format strings like: `$"Getting state at {DateTime.UtcNow}"`
 
-Logging should use the [named placeholder syntax](https://docs.microsoft.com/en-us/dotnet/core/extensions/logging?tabs=command-line#log-message-template) which is more performant and offers better integration with logging systems.
+Logging should use the [named placeholder syntax](https://docs.microsoft.com/dotnet/core/extensions/logging?tabs=command-line#log-message-template) which offers better performance and integration with logging systems.
 
 ### Using an explicit actor type name
 
-By default, the *type* of the actor as seen by clients is derived from the name of the actor implementation class. The default name will be the class name name (without namespace).
+By default, the _type_ of the actor, as seen by clients, is derived from the _name_ of the actor implementation class. The default name will be the class name (without namespace).
 
 If desired, you can specify an explicit type name by attaching an `ActorAttribute` attribute to the actor implementation class.
 
@@ -107,15 +112,15 @@ internal class MyActor : Actor, IMyActor
 }
 ```
 
-In the example above the name will be `MyCustomActorTypeName`.
+In the example above, the name will be `MyCustomActorTypeName`.
 
 No change is needed to the code that registers the actor type with the runtime, providing the value via the attribute is all that is required.
 
-## Hosting actors on the server
+## Host actors on the server
 
 ### Registering actors
 
-Actor registration is part `ConfigureServices` in `Startup.cs`. The `ConfigureServices` method is where services are registered with dependency injection, and registering the set of actor types is part of the registration of actor services.
+Actor registration is part of `ConfigureServices` in `Startup.cs`. You can register services with dependency injection via the `ConfigureServices` method. Registering the set of actor types is part of the registration of actor services.
 
 Inside `ConfigureServices` you can:
 
@@ -148,9 +153,12 @@ public void ConfigureServices(IServiceCollection services)
 
 ### Configuring JSON options
 
-The actor runtime uses [System.Text.Json](https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-overview) for serializing data to the state store, and for handling requests from the weakly-typed client.
+The actor runtime uses [System.Text.Json](https://docs.microsoft.com/dotnet/standard/serialization/system-text-json-overview) for:
 
-By default the actor runtime uses settings based on [JsonSerializerDefaults.Web](https://docs.microsoft.com/en-us/dotnet/api/system.text.json.jsonserializerdefaults?view=net-5.0)
+- Serializing data to the state store
+- Handling requests from the weakly-typed client
+
+By default, the actor runtime uses settings based on [JsonSerializerDefaults.Web](https://docs.microsoft.com/dotnet/api/system.text.json.jsonserializerdefaults?view=net-5.0).
 
 You can configure the `JsonSerializerOptions` as part of `ConfigureServices`:
 
@@ -193,7 +201,7 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 }
 ```
 
-The `UseRouting` and `UseEndpoints` calls are necessary to configure routing. Adding `MapActorsHandlers` inside the endpoint middleware is what configures actors as part of the pipeline.
+The `UseRouting` and `UseEndpoints` calls are necessary to configure routing. Configure actors as part of the pipeline by adding `MapActorsHandlers` inside the endpoint middleware.
 
 This is a minimal example, it's valid for Actors functionality to existing alongside:
 
@@ -206,7 +214,7 @@ This is a minimal example, it's valid for Actors functionality to existing along
 
 ### Problematic middleware
 
-Certain middleware may interfere with the routing of Dapr requests to the actors handlers. In particular the `UseHttpsRedirection` is problematic for the default configuration of Dapr. Dapr will send requests over unencrypted HTTP by default, which will then be blocked by the `UseHttpsRedirection` middleware. This middleware cannot be used with Dapr at this time.
+Certain middleware may interfere with the routing of Dapr requests to the actors handlers. In particular, the `UseHttpsRedirection` is problematic for Dapr's default configuration. Dapr sends requests over unencrypted HTTP by default, which the `UseHttpsRedirection` middleware will block. This middleware cannot be used with Dapr at this time.
 
 ```csharp
 // in Startup.cs
@@ -230,3 +238,7 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     });
 }
 ```
+
+## Next steps
+
+Try the [Running and using virtual actors example]({{< ref dotnet-actors-howto.md >}}). 
