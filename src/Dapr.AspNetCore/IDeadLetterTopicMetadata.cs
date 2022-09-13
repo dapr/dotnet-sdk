@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,24 +11,17 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace ControllerSample
+namespace Dapr
 {
-    using System.ComponentModel.DataAnnotations;
-
     /// <summary>
-    /// Represents a transaction used by sample code.
+    /// IDeadLetterTopicMetadata that describes the metadata of a dead letter topic.
     /// </summary>
-    public class Transaction
+    public interface IDeadLetterTopicMetadata
     {
         /// <summary>
-        /// Gets or sets account id for the transaction.
+        /// Gets the dead letter topic name
         /// </summary>
-        [Required]
-        public string Id { get; set; }
-
-        /// <summary>
-        /// Gets or sets amount for the transaction.
-        /// </summary
-        public decimal Amount { get; set; }
+        public string DeadLetterTopic { get; }
     }
 }
+

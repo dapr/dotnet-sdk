@@ -67,6 +67,12 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         public void MultipleTopics()
         {
         }
+                
+        [Topic("pubsub", "G", "deadLetterTopicName", false)]
+        [HttpPost("/G")]
+        public void TopicG()
+        {
+        }
 
         [Topic("pubsub", "metadata", new string[1] { "id1" })]
         [Topic("pubsub", "metadata.1", true)]
@@ -83,6 +89,14 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         [TopicMetadata("n1", "v1")]
         [TopicMetadata("n1", "v2")]
         public void TopicMetadataSeparator()
+        {
+        }
+
+        [Topic("pubsub", "metadataseparatorbyemptytring")]
+        [HttpPost("/topicmetadataseparatorattrbyemptytring")]
+        [TopicMetadata("n1", "v1")]
+        [TopicMetadata("n1", "")]
+        public void TopicMetadataSeparatorByemptytring ()
         {
         }
 
