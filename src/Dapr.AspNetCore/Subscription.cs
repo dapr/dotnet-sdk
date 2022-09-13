@@ -44,6 +44,11 @@ namespace Dapr
         /// Gets or sets the metadata.
         /// </summary>
         public Metadata Metadata { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the deadletter topic.
+        /// </summary>
+        public string DeadLetterTopic { get; set; }
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ namespace RoutingSample
     using System;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Dapr;
     using Dapr.Client;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
@@ -23,6 +24,7 @@ namespace RoutingSample
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Startup class.
@@ -74,7 +76,8 @@ namespace RoutingSample
         /// <param name="app">Application builder.</param>
         /// <param name="env">Webhost environment.</param>
         /// <param name="serializerOptions">Options for JSON serialization.</param>
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, JsonSerializerOptions serializerOptions)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, JsonSerializerOptions serializerOptions,
+            ILogger<Startup> logger)
         {
             if (env.IsDevelopment())
             {
@@ -89,27 +92,38 @@ namespace RoutingSample
             {
                 endpoints.MapSubscribeHandler();
 
+                var depositTopicOptions = new TopicOptions();
+                depositTopicOptions.PubsubName = PubsubName;
+                depositTopicOptions.Name = "deposit";
+                depositTopicOptions.DeadLetterTopic = "amountDeadLetterTopic";
+
+                var withdrawTopicOptions = new TopicOptions();
+                withdrawTopicOptions.PubsubName = PubsubName;
+                withdrawTopicOptions.Name = "withdraw";
+                withdrawTopicOptions.DeadLetterTopic = "amountDeadLetterTopic";
+
                 endpoints.MapGet("{id}", Balance);
-                endpoints.MapPost("deposit", Deposit).WithTopic(PubsubName, "deposit");
-                endpoints.MapPost("withdraw", Withdraw).WithTopic(PubsubName, "withdraw");
+                endpoints.MapPost("deposit", Deposit).WithTopic(depositTopicOptions);
+                endpoints.MapPost("deadLetterTopicRoute", ViewErrorMessage).WithTopic(PubsubName, "amountDeadLetterTopic");
+                endpoints.MapPost("withdraw", Withdraw).WithTopic(withdrawTopicOptions);
             });
 
             async Task Balance(HttpContext context)
             {
-                Console.WriteLine("Enter Balance");
+                logger.LogInformation("Enter Balance");
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var id = (string)context.Request.RouteValues["id"];
-                Console.WriteLine("id is {0}", id);
+                logger.LogInformation("id is {0}", id);
                 var account = await client.GetStateAsync<Account>(StoreName, id);
                 if (account == null)
                 {
-                    Console.WriteLine("Account not found");
+                    logger.LogInformation("Account not found");
                     context.Response.StatusCode = 404;
                     return;
                 }
 
-                Console.WriteLine("Account balance is {0}", account.Balance);
+                logger.LogInformation("Account balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
@@ -117,12 +131,13 @@ namespace RoutingSample
 
             async Task Deposit(HttpContext context)
             {
-                Console.WriteLine("Enter Deposit");
-                
-                var client = context.RequestServices.GetRequiredService<DaprClient>();
+                logger.LogInformation("Enter Deposit");
 
+                var client = context.RequestServices.GetRequiredService<DaprClient>();
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
-                Console.WriteLine("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
+
+                logger.LogInformation("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
+
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
@@ -131,43 +146,56 @@ namespace RoutingSample
 
                 if (transaction.Amount < 0m)
                 {
-                    Console.WriteLine("Invalid amount");
+                    logger.LogInformation("Invalid amount");
                     context.Response.StatusCode = 400;
                     return;
                 }
 
                 account.Balance += transaction.Amount;
                 await client.SaveStateAsync(StoreName, transaction.Id, account);
-                Console.WriteLine("Balance is {0}", account.Balance);
+                logger.LogInformation("Balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
             }
 
-            async Task Withdraw(HttpContext context)
+            async Task ViewErrorMessage(HttpContext context)
             {
-                Console.WriteLine("Enter Withdraw");
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
-                Console.WriteLine("Id is {0}", transaction.Id);
+
+                logger.LogInformation("The amount cannot be negative: {0}", transaction.Amount);
+
+                return;
+            }
+
+            async Task Withdraw(HttpContext context)
+            {
+                logger.LogInformation("Enter Withdraw");
+
+                var client = context.RequestServices.GetRequiredService<DaprClient>();
+                var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
+
+                logger.LogInformation("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
+
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
-                    Console.WriteLine("Account not found");
+                    logger.LogInformation("Account not found");
                     context.Response.StatusCode = 404;
                     return;
                 }
 
                 if (transaction.Amount < 0m)
                 {
-                    Console.WriteLine("Invalid amount");
+                    logger.LogInformation("Invalid amount");
                     context.Response.StatusCode = 400;
                     return;
                 }
 
                 account.Balance -= transaction.Amount;
                 await client.SaveStateAsync(StoreName, transaction.Id, account);
-                Console.WriteLine("Balance is {0}", account.Balance);
+                logger.LogInformation("Balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);

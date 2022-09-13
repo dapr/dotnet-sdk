@@ -5,6 +5,8 @@ The following examples will show you how to:
 - [Invoke services](./ServiceInvocation)
 - [Manage state](./StateManagement)
 - [Publish events](./PublishSubscribe)
+- [Configuration API](./ConfigurationApi)
+- [Distributed Lock](./DistributedLock)
 
 ## SDK docs
 

@@ -24,6 +24,8 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Xunit;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Xunit.Sdk;
 
 namespace Dapr.Actors.AspNetCore.IntegrationTest
@@ -55,6 +57,17 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
             using var factory = new AppWebApplicationFactory();
 
             var httpClient = factory.CreateClient();
+            var response = await httpClient.GetAsync("/healthz");
+            await Assert2XXStatusAsync(response);
+        }
+
+        [Fact]
+        public async Task ActorsHealthz_ShouldNotRequireAuthorization()
+        {
+            using var host = CreateHost<AuthorizedRoutesStartup>();
+            var server = host.GetTestServer();
+
+            var httpClient = server.CreateClient();
             var response = await httpClient.GetAsync("/healthz");
             await Assert2XXStatusAsync(response);
         }
@@ -131,6 +144,28 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
                 app.UseEndpoints(endpoints =>
                 {
                     endpoints.MapActorsHandlers();
+                });
+            }
+        }
+
+        private class AuthorizedRoutesStartup
+        {
+            public void ConfigureServices(IServiceCollection services)
+            {
+                services.AddActors(default);
+                services.AddAuthentication().AddDapr(options => options.Token = "abcdefg");
+
+                services.AddAuthorization(o => o.AddDapr());
+            }
+
+            public void Configure(IApplicationBuilder app)
+            {
+                app.UseRouting();
+                app.UseAuthentication();
+                app.UseAuthorization();
+                app.UseEndpoints(endpoints =>
+                {
+                    endpoints.MapActorsHandlers().RequireAuthorization("Dapr");
                 });
             }
         }

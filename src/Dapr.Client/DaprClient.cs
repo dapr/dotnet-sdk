@@ -332,6 +332,13 @@ namespace Dapr.Client
         public abstract Task WaitForSidecarAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Send a command to the Dapr Sidecar telling it to shutdown.
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task ShutdownSidecarAsync(CancellationToken cancellationToken = default);
+        
+        /// <summary>
         /// Calls the sidecar's metadata endpoint which returns information including:
         /// <list type="bullet">
         /// <item>

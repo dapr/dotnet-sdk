@@ -16,9 +16,10 @@ using System.Text;
 using Dapr.Actors;
 using Dapr.Actors.Communication;
 using Dapr.Actors.Runtime;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -50,7 +51,7 @@ namespace Microsoft.AspNetCore.Builder
                 MapActorMethodEndpoint(endpoints),
                 MapReminderEndpoint(endpoints),
                 MapTimerEndpoint(endpoints),
-                MapActorHealthChecks(endpoints),
+                MapActorHealthChecks(endpoints)
             };
 
             return new CompositeEndpointConventionBuilder(builders);
@@ -171,7 +172,7 @@ namespace Microsoft.AspNetCore.Builder
 
         private static IEndpointConventionBuilder MapActorHealthChecks(this IEndpointRouteBuilder endpoints)
         {
-            var builder = endpoints.MapHealthChecks("/healthz");
+            var builder = endpoints.MapHealthChecks("/healthz").WithMetadata(new AllowAnonymousAttribute());
             builder.Add(b =>
             {
                 // Sets the route order so that this is matched with lower priority than an endpoint
@@ -189,6 +190,7 @@ namespace Microsoft.AspNetCore.Builder
     {
         var responseHeader = new ActorResponseMessageHeader();
         responseHeader.AddHeader("HasRemoteException", Array.Empty<byte>());
+        responseHeader.AddHeader("RemoteMethodException", Encoding.UTF8.GetBytes(GetExceptionInfo(ex)));
         var headerSerializer = new ActorMessageHeaderSerializer();
         var responseHeaderBytes = headerSerializer.SerializeResponseHeader(responseHeader);
         var serializedHeader = Encoding.UTF8.GetString(responseHeaderBytes, 0, responseHeaderBytes.Length);
@@ -198,6 +200,15 @@ namespace Microsoft.AspNetCore.Builder
         return new Tuple<string, byte[]>(serializedHeader, responseMsgBody);
     }
 
+    /// <summary>
+    /// Generate exception info
+    /// </summary>
+    /// <param name="ex">Exception of the method.</param>
+    /// <returns>Exception info string</returns>
+    private static string GetExceptionInfo(Exception ex) {
+        var frame = new StackTrace(ex, true).GetFrame(0);
+        return $"Exception: {ex.GetType().Name}, Method Name: {frame.GetMethod().Name}, Line Number: {frame.GetFileLineNumber()}, Exception uuid: {Guid.NewGuid().ToString()}";
+    }
     private class CompositeEndpointConventionBuilder : IEndpointConventionBuilder
         {
             private readonly IEndpointConventionBuilder[] inner;

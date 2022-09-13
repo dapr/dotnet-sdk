@@ -56,7 +56,7 @@ When an operation is cancelled, it will throw an `OperationCancelledException`.
 
 ## Understanding DaprClient JSON serialization
 
-Many method on `DaprClient` perform JSON serialization using the `System.Text.Json` serializer. Methods that accept an application data type as an argument will JSON serialize it, unless the documentation clearly states otherwise.
+Many methods on `DaprClient` perform JSON serialization using the `System.Text.Json` serializer. Methods that accept an application data type as an argument will JSON serialize it, unless the documentation clearly states otherwise.
 
 It is worth reading the [System.Text.Json documentation](https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-overview) if you have advanced requirements. The Dapr .NET SDK provides no unique serialization behavior or customizations - it relies on the underlying serializer to convert data to and from the application's .NET types.
 

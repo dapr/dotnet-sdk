@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------
-// Copyright 2021 The Dapr Authors
+// Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -10,25 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+using Dapr.Actors;
+using System.Threading.Tasks;
 
-namespace ControllerSample
+namespace Dapr.E2E.Test.Actors.ExceptionTesting
 {
-    using System.ComponentModel.DataAnnotations;
-
-    /// <summary>
-    /// Represents a transaction used by sample code.
-    /// </summary>
-    public class Transaction
+    public interface IExceptionActor : IPingActor, IActor
     {
-        /// <summary>
-        /// Gets or sets account id for the transaction.
-        /// </summary>
-        [Required]
-        public string Id { get; set; }
-
-        /// <summary>
-        /// Gets or sets amount for the transaction.
-        /// </summary
-        public decimal Amount { get; set; }
+        Task ExceptionExample();
     }
 }

@@ -27,6 +27,7 @@ namespace Dapr.Actors
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
     using Dapr.Actors.Resources;
+    using System.Xml;
 
     /// <summary>
     /// Class to interact with Dapr runtime over http.
@@ -40,6 +41,8 @@ namespace Dapr.Actors
         private HttpClient httpClient;
         private bool disposed;
         private string daprApiToken;
+
+        private const string EXCEPTION_HEADER_TAG = "b:KeyValueOfstringbase64Binary";
 
         public DaprHttpInteractor(
             HttpMessageHandler clientHandler,
@@ -133,14 +136,13 @@ namespace Dapr.Actors
             }
 
             var retval = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
-
+            var header = "";
             IActorResponseMessageHeader actorResponseMessageHeader = null;
             if (retval != null && retval.Headers != null)
             {
                 if (retval.Headers.TryGetValues(Constants.ErrorResponseHeaderName, out IEnumerable<string> headerValues))
                 {
-                    var header = headerValues.First();
-
+                    header = headerValues.First();
                     // DeSerialize Actor Response Message Header
                     actorResponseMessageHeader =
                         serializersManager.GetHeaderSerializer()
@@ -168,8 +170,9 @@ namespace Dapr.Actors
                                 out var remoteMethodException);
                     if (isDeserialzied)
                     {
+                        var exceptionDetails = GetExceptionDetails(header.ToString());
                         throw new ActorMethodInvocationException(
-                            "Remote Actor Method Exception",
+                            "Remote Actor Method Exception,  DETAILS: " + exceptionDetails,
                             remoteMethodException,
                             false /* non transient */);
                     }
@@ -186,6 +189,19 @@ namespace Dapr.Actors
             }
 
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
+        }
+
+        private string GetExceptionDetails(string header) {
+            XmlDocument xmlHeader = new XmlDocument();
+            xmlHeader.LoadXml(header);
+            XmlNodeList exceptionValueXML = xmlHeader.GetElementsByTagName(EXCEPTION_HEADER_TAG);
+            string exceptionDetails = "";
+            if (exceptionValueXML != null && exceptionValueXML.Item(1) != null)
+            {
+                exceptionDetails = exceptionValueXML.Item(1).LastChild.InnerText;
+            }
+            var base64EncodedBytes = System.Convert.FromBase64String(exceptionDetails);
+            return Encoding.UTF8.GetString(base64EncodedBytes);
         }
 
         public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)
