@@ -1,0 +1,76 @@
+name: dapr-bot
+
+on:
+  issue_comment: {types: created}
+
+jobs:
+  daprbot:
+    name: bot-processor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment analyzer
+        uses: actions/github-script@v1
+        with:
+          github-token: ${{secrets.DAPR_BOT_TOKEN}}
+          script: |
+            // list of owner who can control dapr-bot workflow
+            const owners = [
+              "yaron2",
+              "berndverst",
+              "artursouza",
+              "mukundansundar",
+              "halspang",
+              "tanvigour",
+              "pkedy",
+              "amulyavarote",
+              "daixiang0",
+              "ItalyPaleAle",
+              "jjcollinge",
+              "pravinpushkar",
+              "shivamkm07",
+              "shubham1172",
+              "skyao",
+              "msfussell",
+              "Taction",
+              "RyanLettieri",
+              "DeepanshuA",
+              "yash-nisar",
+              "addjuarez",
+              "tmacam",
+            ];
+            const payload = context.payload;
+            const issue = context.issue;
+            const isFromPulls = !!payload.issue.pull_request;
+            const commentBody = payload.comment.body;
+            if (!isFromPulls && commentBody && commentBody.indexOf("/assign") == 0) {
+              if (!issue.assignees || issue.assignees.length === 0) {
+                await github.issues.addAssignees({
+                  owner: issue.owner,
+                  repo: issue.repo,
+                  issue_number: issue.number,
+                  assignees: [context.actor],
+                })
+              }
+              return;
+            }
+            
+            // actions above this check are enabled for everyone.
+            if (owners.indexOf(context.actor) < 0) {
+              return;
+            }
+            
+            if (commentBody && commentBody.indexOf("/make-me-laugh") == 0) {
+              const result = await github.request("https://official-joke-api.appspot.com/random_joke");
+              jokedata = result.data;
+              joke = "I have a bad feeling about this.";
+              if (jokedata && jokedata.setup && jokedata.punchline) {
+                joke = `${jokedata.setup} - ${jokedata.punchline}`;
+              }
+              await github.issues.createComment({
+                owner: issue.owner,
+                repo: issue.repo,
+                issue_number: issue.number,
+                body: joke,
+              });
+              return;
+            }
