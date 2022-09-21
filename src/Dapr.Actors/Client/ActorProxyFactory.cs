@@ -66,7 +66,19 @@ namespace Dapr.Actors.Client
             options ??= this.DefaultOptions;
 
             var actorProxy = new ActorProxy();
-            var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
+            IDaprInteractor daprInteractor;
+            if (options.useGrpc) {
+                daprInteractor = new DaprInteractorBuilder()
+                .UseGrpcEndpoint(options.GrpcEndpoint)
+                .UseHttpEndpoint(options.HttpEndpoint)
+                .UseDaprApiToken(options.DaprApiToken)
+                .UseGrpcChannelOptions(options.GrpcChannelOptions)
+                .UseHandler(this.handler)
+                .UseRequestTimeout(options.RequestTimeout)
+                .Build();          
+            } else {
+                daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
+            }
             var nonRemotingClient = new ActorNonRemotingClient(daprInteractor);
             actorProxy.Initialize(nonRemotingClient, actorId, actorType, options);
 
@@ -77,8 +89,19 @@ namespace Dapr.Actors.Client
         public object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null)
         {
             options ??= this.DefaultOptions;
-
-            var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
+            IDaprInteractor daprInteractor;
+            if (options.useGrpc) {
+                daprInteractor = new DaprInteractorBuilder()
+                .UseGrpcEndpoint(options.GrpcEndpoint)
+                .UseHttpEndpoint(options.HttpEndpoint)
+                .UseDaprApiToken(options.DaprApiToken)
+                .UseGrpcChannelOptions(options.GrpcChannelOptions)
+                .UseHandler(this.handler)
+                .UseRequestTimeout(options.RequestTimeout)
+                .Build();                  
+            } else {
+                daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
+            }
             var remotingClient = new ActorRemotingClient(daprInteractor);
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
             var actorProxy = proxyGenerator.CreateActorProxy();

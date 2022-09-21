@@ -24,7 +24,6 @@ namespace Dapr.Actors.Runtime
     /// <summary>
     /// Represents the details of the timer set on an Actor.
     /// </summary>
-    [Obsolete("This class is an implementation detail of the framework and will be made internal in a future release.")]
     [JsonConverter(typeof(TimerInfoConverter))]
     public class TimerInfo
     {

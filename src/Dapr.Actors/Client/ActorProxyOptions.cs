@@ -15,6 +15,7 @@ namespace Dapr.Actors.Client
 {
     using System;
     using System.Text.Json;
+    using Grpc.Net.Client;
 
     /// <summary>
     /// The class containing customizable options for how the Actor Proxy is initialized.
@@ -59,8 +60,28 @@ namespace Dapr.Actors.Client
         public string HttpEndpoint { get; set; } = DaprDefaults.GetDefaultHttpEndpoint();
 
         /// <summary>
+        /// Gets or sets the Grpc endpoint URI used to communicate with the Dapr sidecar.
+        /// </summary>
+        /// <remarks>
+        /// The URI endpoint to use for Grpc calls to the Dapr runtime. The default value will be 
+        /// <c>http://127.0.0.1:DAPR_GRPC_PORT</c> where <c>DAPR_GRPC_PORT</c> represents the value of the 
+        /// <c>DAPR_GRPC_PORT</c> environment variable.
+        /// </remarks>
+        /// <value></value>
+        public string GrpcEndpoint { get; set; } = DaprDefaults.GetDefaultGrpcEndpoint();
+
+        /// <summary>
         /// The timeout allowed for an actor request. Can be set to System.Threading.Timeout.InfiniteTimeSpan to disable any timeouts.
         /// </summary>
         public TimeSpan? RequestTimeout { get; set; } = null;
+        /// <summary>
+        /// Option to use GRPC or HTTP
+        /// </summary>
+        public bool useGrpc { get; set; } = true;
+
+        /// <summary>
+        /// Options for grpc channel
+        /// </summary>
+        public GrpcChannelOptions GrpcChannelOptions { get; set; } = new GrpcChannelOptions(){ThrowOperationCanceledOnCancellation = true,};
     }
 }
