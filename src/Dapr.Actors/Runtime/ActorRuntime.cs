@@ -54,7 +54,6 @@ namespace Dapr.Actors.Runtime
                 if (options.useGrpc) {
                 daprInteractor = new DaprInteractorBuilder()
                     .UseGrpcEndpoint(options.GrpcEndpoint)
-                    .UseHttpEndpoint(options.HttpEndpoint)
                     .UseDaprApiToken(options.DaprApiToken)
                     .UseGrpcChannelOptions(options.GrpcChannelOptions)
                     .Build();                           

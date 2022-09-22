@@ -70,11 +70,8 @@ namespace Dapr.Actors.Client
             if (options.useGrpc) {
                 daprInteractor = new DaprInteractorBuilder()
                 .UseGrpcEndpoint(options.GrpcEndpoint)
-                .UseHttpEndpoint(options.HttpEndpoint)
                 .UseDaprApiToken(options.DaprApiToken)
                 .UseGrpcChannelOptions(options.GrpcChannelOptions)
-                .UseHandler(this.handler)
-                .UseRequestTimeout(options.RequestTimeout)
                 .Build();          
             } else {
                 daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
@@ -93,11 +90,8 @@ namespace Dapr.Actors.Client
             if (options.useGrpc) {
                 daprInteractor = new DaprInteractorBuilder()
                 .UseGrpcEndpoint(options.GrpcEndpoint)
-                .UseHttpEndpoint(options.HttpEndpoint)
                 .UseDaprApiToken(options.DaprApiToken)
                 .UseGrpcChannelOptions(options.GrpcChannelOptions)
-                .UseHandler(this.handler)
-                .UseRequestTimeout(options.RequestTimeout)
                 .Build();                  
             } else {
                 daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
