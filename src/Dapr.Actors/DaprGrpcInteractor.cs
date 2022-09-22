@@ -84,7 +84,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("GetActorState operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("GetActorState operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
             return response.Data.ToStringUtf8();
         }
@@ -110,7 +110,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("SaveStateTransactionallyAsync operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("SaveStateTransactionallyAsync operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
 
@@ -159,7 +159,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("InvokeActorAsync operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("InvokeActorAsync operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
 
             IActorResponseMessageHeader actorResponseMessageHeader = null;
@@ -180,6 +180,7 @@ namespace Dapr.Actors
                             out var remoteMethodException);
                     if (isDeserialzied)
                     {
+                        
                         throw new ActorMethodInvocationException(
                             "Remote Actor Method Exception,  DETAILS: " + remoteMethodException.Message,
                             remoteMethodException,
@@ -241,7 +242,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("InvokeActor operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("InvokeActor operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
             return new MemoryStream(response.Data.ToArray());
         }
@@ -269,7 +270,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("RegisterReminde operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("RegisterReminde operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
 
@@ -290,7 +291,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("UnregisterReminder operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("UnregisterReminder operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
 
@@ -317,7 +318,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("RegisterActorTimer operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("RegisterActorTimer operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
 
@@ -337,7 +338,7 @@ namespace Dapr.Actors
             }
             catch (RpcException ex)
             {
-                throw new DaprException("UnregisterActorTimer operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprApiException("UnregisterActorTimer operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
 
