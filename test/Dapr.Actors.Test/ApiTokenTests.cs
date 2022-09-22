@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ namespace Dapr.Actors.Test
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
+                useGrpc = false,
             };
 
             var request = await client.CaptureHttpRequestAsync(async handler =>
@@ -77,6 +78,7 @@ namespace Dapr.Actors.Test
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
+                useGrpc = false,
             };
 
             var request = await client.CaptureHttpRequestAsync(async handler =>
@@ -99,9 +101,14 @@ namespace Dapr.Actors.Test
 
             var actorId = new ActorId("abc");
 
+            var options = new ActorProxyOptions
+            {
+                useGrpc = false,
+            };
+
             var request = await client.CaptureHttpRequestAsync(async handler =>
             {
-                var factory = new ActorProxyFactory(null, handler);
+                var factory = new ActorProxyFactory(options, handler);
                 var proxy = factory.Create(actorId, "TestActor");
                 await proxy.InvokeMethodAsync("SetCountAsync", 1, new CancellationToken());
             });
