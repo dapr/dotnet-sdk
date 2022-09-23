@@ -1175,11 +1175,9 @@ namespace Dapr.Client
                 throw new DaprException("GetConfiguration operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
 
-            var listResponse = response.Items
-                .Select(i => new ConfigurationItem(i.Key, i.Value, i.Version, i.Metadata))
-                .ToList();
+            var responseItems = response.Items.ToDictionary(item => item.Key, item => new ConfigurationItem(item.Value.Value, item.Value.Version, item.Value.Metadata));
 
-            return new GetConfigurationResponse(listResponse);
+            return new GetConfigurationResponse(responseItems);
         }
 
         /// <inheritdoc/>

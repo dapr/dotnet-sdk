@@ -20,25 +20,25 @@ namespace Dapr.Client
     /// </summary>
     public class GetConfigurationResponse
     {
-        private readonly IReadOnlyList<ConfigurationItem> items;
+        private readonly IReadOnlyDictionary<string, ConfigurationItem> configMap;
 
         /// <summary>
         /// Constructor for a GetConfigurationResponse.
         /// </summary>
-        /// <param name="items">The items that were returned in the GetConfiguration call.</param>
-        public GetConfigurationResponse(IReadOnlyList<ConfigurationItem> items)
+        /// <param name="configMap">The map of keys to items that was returned in the GetConfiguration call.</param>
+        public GetConfigurationResponse(IReadOnlyDictionary<string, ConfigurationItem> configMap)
         {
-            this.items = items;
+            this.configMap = configMap;
         }
 
         /// <summary>
-        /// The items returned in a GetConfiguration call. <see cref="ConfigurationItem"/>
+        /// The map of key to items returned in a GetConfiguration call. <see cref="ConfigurationItem"/>
         /// </summary>
-        public IReadOnlyList<ConfigurationItem> Items
+        public IReadOnlyDictionary<string, ConfigurationItem> Items
         {
             get
             {
-                return items;
+                return configMap;
             }
         }
     }
