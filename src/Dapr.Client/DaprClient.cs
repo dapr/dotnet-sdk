@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -338,6 +338,36 @@ namespace Dapr.Client
         /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
         public abstract Task ShutdownSidecarAsync(CancellationToken cancellationToken = default);
         
+        /// <summary>
+        /// Calls the sidecar's metadata endpoint which returns information including:
+        /// <list type="bullet">
+        /// <item>
+        /// <description>The sidecar's ID.</description>
+        /// </item>
+        /// <item>
+        /// <description>The registered/active actors if any.</description>
+        /// </item>
+        /// <item>
+        /// <description>Registered components including name, type, version, and information on capabilities if present.</description>
+        /// </item>
+        /// <item>
+        /// <description>Any extended metadata that has been set via <see cref="SetMetadataAsync"/></description>
+        /// </item>
+        /// </list>
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<DaprMetadata> GetMetadataAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Perform service add extended metadata to the Dapr sidecar.
+        /// </summary>
+        /// <param name="attributeName">Custom attribute name</param>
+        /// <param name="attributeValue">Custom attribute value</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return the value when the operation has completed.</returns>
+        public abstract Task SetMetadataAsync(string attributeName, string attributeValue, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. The response will
         /// be returned without performing any validation on the status code.
