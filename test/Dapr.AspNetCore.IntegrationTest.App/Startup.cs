@@ -59,7 +59,19 @@ namespace Dapr.AspNetCore.IntegrationTest.App
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapSubscribeHandler();
+                endpoints.MapSubscribeHandler(new SubscribeOptions()
+                {
+                    SubscriptionsCallback = subscriptions =>
+                    {
+                        subscriptions.Add(new Subscription()
+                        {
+                            PubsubName = "dynamic-pubsub",
+                            Topic = "dynamic-topic",
+                            Route = "/dynamic-route"
+                        });
+                        return Task.CompletedTask;
+                    }
+                });
                 endpoints.MapControllers();
 
                 endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("testpubsub", "A").WithTopic("testpubsub", "A.1");

@@ -160,8 +160,10 @@ namespace Microsoft.AspNetCore.Builder
 
                         return subscription;
                     })
-                    .OrderBy(e => (e.PubsubName, e.Topic));
+                    .OrderBy(e => (e.PubsubName, e.Topic))
+                    .ToList();
 
+                await options?.SubscriptionsCallback(subscriptions);
                 await context.Response.WriteAsync(JsonSerializer.Serialize(subscriptions,
                     new JsonSerializerOptions
                     {

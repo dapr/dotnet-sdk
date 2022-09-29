@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+
 namespace Dapr.AspNetCore.IntegrationTest
 {
     using System.Collections.Generic;
@@ -39,7 +41,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
                     json.ValueKind.Should().Be(JsonValueKind.Array);
-                    json.GetArrayLength().Should().Be(18);
+                    json.GetArrayLength().Should().Be(19);
 
                     var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, string match, string metadata, string DeadLetterTopic)>();
 
@@ -61,7 +63,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                             {
                                 rawPayload = rawPayloadJson.GetString();
                             }
-                           
+
                             foreach (var originalMetadataProperty in metadata.EnumerateObject().OrderBy(c=>c.Name))
                             {
                                 if (!originalMetadataProperty.Name.Equals("rawPayload"))
@@ -117,6 +119,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     subscriptions.Should().Contain(("pubsub", "metadata.1", "multiMetadataTopicAttr", "true", string.Empty, "n1=v1", string.Empty));
                     subscriptions.Should().Contain(("pubsub", "splitMetadataTopicBuilder", "splitMetadataTopics", string.Empty, string.Empty, "n1=v1;n2=v1", string.Empty));
                     subscriptions.Should().Contain(("pubsub", "metadataseparatorbyemptytring", "topicmetadataseparatorattrbyemptytring", string.Empty, string.Empty, "n1=v1,", string.Empty));
+                    subscriptions.Should().Contain(("dynamic-pubsub", "dynamic-topic", "/dynamic-route", string.Empty, string.Empty, String.Empty, string.Empty));
                     // Test priority route sorting
                     var eTopic = subscriptions.FindAll(e => e.Topic == "E");
                     eTopic.Count.Should().Be(3);
