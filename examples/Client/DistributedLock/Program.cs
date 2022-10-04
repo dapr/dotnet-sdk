@@ -21,7 +21,7 @@ namespace DistributedLock
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>()
-                        .UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("APP_PORT")}");
+                        .UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("APP_PORT") ?? "22222"}");
                 });
     }
 }
