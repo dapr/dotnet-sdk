@@ -31,7 +31,7 @@ namespace Dapr.Actors.Test
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
-                useGrpc = false,
+                UseGrpc = false,
             };
 
             var request = await client.CaptureHttpRequestAsync(async handler =>
@@ -78,7 +78,7 @@ namespace Dapr.Actors.Test
             var options = new ActorProxyOptions
             {
                 DaprApiToken = "test_token",
-                useGrpc = false,
+                UseGrpc = false,
             };
 
             var request = await client.CaptureHttpRequestAsync(async handler =>
@@ -103,7 +103,7 @@ namespace Dapr.Actors.Test
 
             var options = new ActorProxyOptions
             {
-                useGrpc = false,
+                UseGrpc = false,
             };
 
             var request = await client.CaptureHttpRequestAsync(async handler =>

@@ -241,7 +241,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Option to use GRPC or HTTP
         /// </summary>
-        public bool useGrpc { get; set; } = true;
+        public bool UseGrpc { get; set; } = true;
 
         /// <summary>
         /// Options for grpc channel
