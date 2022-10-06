@@ -281,6 +281,7 @@ namespace Dapr.Actors
             }
         }
 
+        #pragma warning disable 0618
         public async Task RegisterTimerAsync(string actorType, string actorId, string timerName, string data, CancellationToken cancellationToken = default)
         {
             var timerdata = JsonSerializer.Deserialize<TimerInfo>(data, jsonSerializerOptions);
@@ -307,6 +308,7 @@ namespace Dapr.Actors
                 throw new DaprApiException("RegisterActorTimer operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
+        #pragma warning restore 0618
 
         public async Task UnregisterTimerAsync(string actorType, string actorId, string timerName, CancellationToken cancellationToken = default)
         {
