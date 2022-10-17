@@ -70,7 +70,7 @@ dotnet new classlib -o MyActor.Interfaces
 cd MyActor.Interfaces
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 1.0.0
+dotnet add package Dapr.Actors
 
 cd ..
 ```
@@ -123,7 +123,7 @@ dotnet new web -o MyActorService
 cd MyActorService
 
 # Add Dapr.Actors.AspNetCore nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors.AspNetCore -v 1.0.0
+dotnet add package Dapr.Actors.AspNetCore
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -340,7 +340,7 @@ dotnet new console -o MyActorClient
 cd MyActorClient
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 1.0.0
+dotnet add package Dapr.Actors
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
