@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- NuGet configuration -->
+  <PropertyGroup>
+    <PackageId>Dapr.Workflows</PackageId>
+    <Title>Dapr Workflows Client SDK</Title>
+    <Description>Dapr Workflows client SDK for building workflows as code with Dapr</Description>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Microsoft.DurableTask.Client" Version="0.5.0-beta" />
+    <PackageReference Include="Dapr.AspNetCore" Version="1.8.0" />
+  </ItemGroup>
+
+</Project>
