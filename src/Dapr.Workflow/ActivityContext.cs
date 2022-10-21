@@ -1,17 +1,30 @@
-namespace Microsoft.DurableTask;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.DurableTask;
 
-/// <summary>
-/// Defines properties and methods for task activity context objects.
-/// </summary>
-public abstract class ActivityContext
+namespace Microsoft.Extensions.DependencyInjection
 {
     /// <summary>
-    /// Gets the name of the activity.
+    /// Defines properties and methods for task activity context objects.
     /// </summary>
-    public abstract string Name { get; }
+    public class ActivityContext
+    {
+        readonly TaskActivityContext innerContext;
 
-    /// <summary>
-    /// Gets the unique ID of the current workflow instance.
-    /// </summary>
-    public abstract string InstanceId { get; }
+        internal ActivityContext(TaskActivityContext innerContext)
+        {
+            this.innerContext = innerContext ?? throw new ArgumentNullException(nameof(innerContext));
+        }
+
+        /// <summary>
+        /// Gets the name of the activity.
+        /// </summary>
+        public TaskName Name => this.innerContext.Name;
+
+        /// <summary>
+        /// Gets the unique ID of the current workflow instance.
+        /// </summary>
+        public string InstanceId => this.innerContext.InstanceId;
+    }
 }

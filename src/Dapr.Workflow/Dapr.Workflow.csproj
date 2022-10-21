@@ -1,16 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
   <!-- NuGet configuration -->
   <PropertyGroup>
-    <PackageId>Dapr.Workflows</PackageId>
-    <Title>Dapr Workflows Client SDK</Title>
-    <Description>Dapr Workflows client SDK for building workflows as code with Dapr</Description>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <PackageId>Dapr.Workflow</PackageId>
+    <Title>Dapr Workflow Client SDK</Title>
+    <Description>Dapr Workflow client SDK for building workflows as code with Dapr</Description>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>alpha</VersionSuffix>
   </PropertyGroup>
   
   <ItemGroup>

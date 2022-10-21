@@ -1,55 +1,62 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 using Microsoft.DurableTask;
+using Dapr.Workflow;
 
-namespace Dapr.Workflows;
-
-public sealed class WorkflowsRuntimeOptions
+namespace Microsoft.Extensions.DependencyInjection
 {
-    readonly Dictionary<string, Action<IDurableTaskRegistry>> factories = new();
-
-    public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput?, Task<TOutput?>> implementation)
+    /// <summary>
+    /// Defines runtime options for workflows.
+    /// </summary>
+    public sealed class WorkflowRuntimeOptions
     {
-        // Dapr workflows are implemented as specialized Durable Task orchestrations
-        this.factories.Add(name, (IDurableTaskRegistry registry) =>
+        readonly Dictionary<string, Action<IDurableTaskRegistry>> factories = new();
+
+        /// <summary>
+        /// Method regitering the workflow.
+        /// </summary>
+        public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput?, Task<TOutput?>> implementation)
         {
-            registry.AddOrchestrator<TInput, TOutput>(name, (innerContext, input) =>
+            // Dapr workflows are implemented as specialized Durable Task orchestrations
+            this.factories.Add(name, (IDurableTaskRegistry registry) =>
             {
-                WorkflowContext workflowContext = new(innerContext);
-                return implementation(workflowContext, input);
+                registry.AddOrchestrator<TInput, TOutput>(name, (innerContext, input) =>
+                {
+                    WorkflowContext workflowContext = new(innerContext);
+                    return implementation(workflowContext, input);
+                });
             });
-        });
-    }
+        }
 
-    public void RegisterActivity<TInput, TOutput>(string name, Func<ActivityContext, TInput?, Task<TOutput?>> implementation)
-    {
-        // Dapr activities are implemented as specialized Durable Task activities
-        this.factories.Add(name, (IDurableTaskRegistry registry) =>
+        /// <summary>
+        /// Method regitering the activity..
+        /// </summary>
+        public void RegisterActivity<TInput, TOutput>(string name, Func<ActivityContext, TInput?, Task<TOutput?>> implementation)
         {
-            registry.AddActivity<TInput, TOutput>(name, (innerContext, input) =>
+            // Dapr activities are implemented as specialized Durable Task activities
+            this.factories.Add(name, (IDurableTaskRegistry registry) =>
             {
-                ActivityContext activityContext = new(innerContext);
-                return implementation(activityContext, input);
+                registry.AddActivity<TInput, TOutput>(name, (innerContext, input) =>
+                {
+                    ActivityContext activityContext = new(innerContext);
+                    return implementation(activityContext, input);
+                });
             });
-        });
-    }
+        }
 
-    public void RegisterActivity<TActivity>(string name, Func<ActivityContext, TInput?, Task<TOutput?>> implementation)
-    {
-        // Dapr activities are implemented as specialized Durable Task activities
-        this.factories.Add(name, (IDurableTaskRegistry registry) =>
+
+        /// <summary>
+        /// Method to add workflow to the registry.
+        /// </summary>
+        internal void AddWorkflowsToRegistry(IDurableTaskRegistry registry)
         {
-            registry.AddActivity<TActivity>(name, (innerContext, input) =>
+            foreach (Action<IDurableTaskRegistry> factory in this.factories.Values)
             {
-                ActivityContext activityContext = new(innerContext);
-                return implementation(activityContext, input);
-            });
-        });
-    }
-
-    internal void AddWorkflowsToRegistry(IDurableTaskRegistry registry)
-    {
-        foreach (Action<IDurableTaskRegistry> factory in this.factories.Values)
-        {
-            factory.Invoke(registry);
+                factory.Invoke(registry);
+            }
         }
     }
 }
+
