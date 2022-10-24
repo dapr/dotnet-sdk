@@ -21,7 +21,7 @@ Dapr offers a variety of packages to help with the development of .NET applicati
     <div class="card-body">
       <h5 class="card-title"><b>Server</b></h5>
       <p class="card-text">Write servers and services in .NET using the Dapr SDK. Includes support for ASP.NET.</p>
-      <a href="{{< ref dotnet-server >}}" class="stretched-link"></a>
+      <a href="https://github.com/dapr/dotnet-sdk/tree/master/examples/AspNetCore" class="stretched-link"></a>
     </div>
   </div>
   <div class="card">

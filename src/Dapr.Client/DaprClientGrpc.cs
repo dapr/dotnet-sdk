@@ -63,6 +63,8 @@ namespace Dapr.Client
             this.httpEndpoint = httpEndpoint;
             this.jsonSerializerOptions = jsonSerializerOptions;
             this.apiTokenHeader = apiTokenHeader;
+
+            this.httpClient.DefaultRequestHeaders.UserAgent.Add(UserAgent());
         }
 
         #region Publish Apis
@@ -1423,6 +1425,8 @@ namespace Dapr.Client
         private CallOptions CreateCallOptions(Metadata headers, CancellationToken cancellationToken)
         {
             var options = new CallOptions(headers: headers ?? new Metadata(), cancellationToken: cancellationToken);
+
+            options.Headers.Add("User-Agent", UserAgent().ToString());
 
             // add token for dapr api token based authentication
             if (this.apiTokenHeader is not null)

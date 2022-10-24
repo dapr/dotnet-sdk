@@ -15,6 +15,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,6 +89,7 @@ namespace Dapr.Client
             }
 
             var httpClient = new HttpClient(handler);
+            httpClient.DefaultRequestHeaders.UserAgent.Add(UserAgent());
 
             if (appId is string)
             {
@@ -945,6 +948,21 @@ namespace Dapr.Client
         /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
         protected virtual void Dispose(bool disposing)
         {
+        }
+
+        /// <summary>
+        /// Returns the value for the User-Agent.
+        /// </summary>
+        /// <returns>A <see cref="ProductInfoHeaderValue"/> containing the value to use for User-Agent.</returns>
+        protected static ProductInfoHeaderValue UserAgent()
+        {
+            var assembly = typeof(DaprClient).Assembly;
+            string assemblyVersion = assembly
+                .GetCustomAttributes<AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?
+                .InformationalVersion;
+
+            return new ProductInfoHeaderValue("dapr-sdk-dotnet", $"v{assemblyVersion}");
         }
     }
 }
