@@ -11,6 +11,7 @@ namespace DistributedLock
 {
     public class Program
     {
+        static string DEFAULT_APP_PORT = "22222";
         public static void Main(string[] args)
         {
             CreateHostBuilder(args).Build().Run();
@@ -21,7 +22,7 @@ namespace DistributedLock
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>()
-                        .UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("APP_PORT")}");
+                        .UseUrls($"http://localhost:{Environment.GetEnvironmentVariable("APP_PORT") ?? DEFAULT_APP_PORT}");
                 });
     }
 }
