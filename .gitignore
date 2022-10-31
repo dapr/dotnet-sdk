@@ -91,6 +91,9 @@ bld/
 # VS Code
 .vscode/
 
+# Jetbrains
+.idea/
+
 # coverlet code coverage results
 coverage.json
 .fake
