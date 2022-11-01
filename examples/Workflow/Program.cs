@@ -13,7 +13,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddWorkflow(options =>
 {
-    options.RegisterWorkflow<string, string>("helloWorld", implementation: async (context, input) => 
+    options.RegisterWorkflow<string, string>("HelloWorld", implementation: async (context, input) => 
     {
         string result  = "";
         result = await context.CallActivityAsync<string>("SayHello", "World");
@@ -24,6 +24,8 @@ builder.Services.AddWorkflow(options =>
 
 WebApplication app = builder.Build();
 
+app.UseRouting();
+
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapPost("/workflow", Schedule);
@@ -31,11 +33,12 @@ app.UseEndpoints(endpoints =>
     endpoints.MapGet("/workflow/{id}", GetWorkflow);
 });
 
-async Task Schedule(HttpContext context)
+async Task<IResult> Schedule(HttpContext context)
 {
     var client = context.RequestServices.GetRequiredService<WorkflowClient>();
     string id = Guid.NewGuid().ToString()[..8];
-    await client.ScheduleNewWorkflowAsync("HelloSequence", id);
+    await client.ScheduleNewWorkflowAsync("HelloWorld", id);
+    return Results.Ok(id);
 }
 
 async Task<IResult> GetWorkflow(HttpContext context)
@@ -46,6 +49,7 @@ async Task<IResult> GetWorkflow(HttpContext context)
     if (metadata.Exists)
     {
         Console.WriteLine($"Created workflow id: '{id}'");
+        Console.WriteLine($"Metadata:  {metadata.Details}");
         return Results.Ok(metadata);
     }
     else

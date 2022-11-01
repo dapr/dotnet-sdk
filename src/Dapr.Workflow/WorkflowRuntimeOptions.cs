@@ -12,7 +12,12 @@ namespace Microsoft.Extensions.DependencyInjection
     /// </summary>
     public sealed class WorkflowRuntimeOptions
     {
-        readonly Dictionary<string, Action<IDurableTaskRegistry>> factories = new();
+        // Dictionary<string, Action<IDurableTaskRegistry>> factories = new();
+
+        /// <summary>
+        /// Dictionary to and name and registery of a workflow.
+        /// </summary>
+        public Dictionary<string, Action<IDurableTaskRegistry>> factories => new();
 
         /// <summary>
         /// Method regitering the workflow.
