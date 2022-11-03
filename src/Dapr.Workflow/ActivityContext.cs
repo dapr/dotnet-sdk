@@ -11,13 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.DurableTask;
-
-namespace Microsoft.Extensions.DependencyInjection
+namespace Dapr.Workflow
 {
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Microsoft.DurableTask;
+
     /// <summary>
     /// Defines properties and methods for task activity context objects.
     /// </summary>

@@ -11,13 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.DurableTask;
-
 namespace Dapr.Workflow
 {
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Microsoft.DurableTask;
+
     /// <summary>
     /// Defines context methods to be called in the workflow definition.
     /// </summary>

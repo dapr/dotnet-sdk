@@ -11,15 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Microsoft.DurableTask;
-using Dapr.Workflow;
-
-namespace Microsoft.Extensions.DependencyInjection
+namespace Dapr.Workflow
 {
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using System.Collections.Generic;
+    using Microsoft.DurableTask;
+    using Dapr.Workflow;
+    
     /// <summary>
     /// Defines runtime options for workflows.
     /// </summary>
