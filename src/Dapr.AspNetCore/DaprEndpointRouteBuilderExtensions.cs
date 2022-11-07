@@ -163,7 +163,11 @@ namespace Microsoft.AspNetCore.Builder
                     .OrderBy(e => (e.PubsubName, e.Topic))
                     .ToList();
 
-                await options?.SubscriptionsCallback(subscriptions);
+                if (options != null && options.SubscriptionsCallback != null)
+                {
+                    await options.SubscriptionsCallback(subscriptions);
+                }
+
                 await context.Response.WriteAsync(JsonSerializer.Serialize(subscriptions,
                     new JsonSerializerOptions
                     {
