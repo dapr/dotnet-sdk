@@ -5,8 +5,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <PackageId>Dapr.Workflow</PackageId>
-    <Title>Dapr Workflow Client SDK</Title>
-    <Description>Dapr Workflow client SDK for building workflows as code with Dapr</Description>
+    <Title>Dapr Workflow Authoring SDK</Title>
+    <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
   </PropertyGroup>

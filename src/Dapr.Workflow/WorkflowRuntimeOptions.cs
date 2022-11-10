@@ -28,10 +28,10 @@ namespace Dapr.Workflow
         /// <summary>
         /// Dictionary to and name and registery of a workflow.
         /// </summary>
-        public Dictionary<string, Action<IDurableTaskRegistry>> factories => new();
+        readonly Dictionary<string, Action<IDurableTaskRegistry>> factories => new();
 
         /// <summary>
-        /// Method regitering the workflow.
+        /// Registers a workflow as a function that takes a specified input type and returns a specified output type.
         /// </summary>
         public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput?, Task<TOutput?>> implementation)
         {
@@ -47,7 +47,7 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// Method regitering the activity..
+        /// Registers a workflow activity as a function that takes a specified input type and returns a specified output type.
         /// </summary>
         public void RegisterActivity<TInput, TOutput>(string name, Func<ActivityContext, TInput?, Task<TOutput?>> implementation)
         {

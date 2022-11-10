@@ -20,7 +20,7 @@ using Microsoft.DurableTask.Grpc;
 namespace Dapr.Workflow
 {
     /// <summary>
-    /// Defines properties and methods for workflow client.
+    /// Defines client operations for managing Dapr Workflow instances.
     /// </summary>
     public sealed class WorkflowClient : IAsyncDisposable
     {
@@ -38,7 +38,7 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// Method to schedule a new workflow.
+        /// Schedules a new workflow instance for execution.
         /// </summary>
         public Task<string> ScheduleNewWorkflowAsync(
             string name,
@@ -50,17 +50,18 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// Method to get the workflow metadata.
+        /// Fetches runtime metadata for the specified workflow instance.
         /// </summary>
-        public async Task<WorkflowMetadata> GetWorkflowMetadata(string instanceId, bool getInputsAndOutputs = false)
+        public async Task<WorkflowMetadata> GetWorkflowMetadataAsync(string instanceId, bool getInputsAndOutputs = false)
         {
             OrchestrationMetadata? metadata = await this.innerClient.GetInstanceMetadataAsync(
                 instanceId,
                 getInputsAndOutputs);
             return new WorkflowMetadata(metadata);
         }
+
         /// <summary>
-        /// Method to implement interface member.
+        /// /// Disposes any unmanaged resources associated with this client.
         /// </summary>
         public ValueTask DisposeAsync()
         {

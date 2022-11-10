@@ -19,7 +19,8 @@ namespace Dapr.Workflow
     using Microsoft.DurableTask;
 
     /// <summary>
-    /// Defines context methods to be called in the workflow definition.
+    /// Context object used by workflow implementations to perform actions such as scheduling activities, durable timers, waiting for
+    /// external events, and for getting basic information about the current workflow instance.
     /// </summary>
     public class WorkflowContext
     {
@@ -31,26 +32,27 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// Method to get the workflow name.
+        /// Gets the name of the current workflow.
         /// </summary>
         public TaskName Name => this.innerContext.Name;
+
         /// <summary>
-        /// Method to get the workflow id.
+        /// Gets the instance ID of the current workflow.
         /// </summary>
         public string InstanceId => this.innerContext.InstanceId;
 
         /// <summary>
-        /// Method to get the current UTC Date time.
+        /// Gets the current workflow time in UTC.
         /// </summary>
         public DateTime CurrentUtcDateTime => this.innerContext.CurrentUtcDateTime;
 
         /// <summary>
-        /// Method to set the custom status to the workflow.
+        /// Assigns a custom status value to the current workflow.
         /// </summary>
         public void SetCustomStatus(object? customStatus) => this.innerContext.SetCustomStatus(customStatus);
 
         /// <summary>
-        /// Method to create a timer for the workflow.
+        /// Creates a durable timer that expires after the specified delay.
         /// </summary>
         public Task CreateTimer(TimeSpan delay, CancellationToken cancellationToken = default)
         {
@@ -58,7 +60,7 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// Method to wait for the external event.
+        /// Waits for an event to be raised with name <paramref name="eventName"/> and returns the event data.
         /// </summary>
         public Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
         {
@@ -66,7 +68,7 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// Method to call the activity.
+        /// Asynchronously invokes an activity by name and with the specified input value.
         /// </summary>
         public Task<T> CallActivityAsync<T>(TaskName name, object? input = null, TaskOptions? options = null)
         {

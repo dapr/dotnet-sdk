@@ -16,7 +16,7 @@ using Microsoft.DurableTask;
 namespace Dapr.Workflow
 {
     /// <summary>
-    /// Defines properties and methods for workflow metadata.
+    /// Represents a snapshot of a workflow instance's current state, including metadata.
     /// </summary>
     public class WorkflowMetadata
     {
@@ -24,16 +24,20 @@ namespace Dapr.Workflow
         {
             this.Details = metadata;
         }
+
         /// <summary>
-        /// Method to check if workflow exists.
+        /// Gets a value indicating whether the requested workflow instance exists.
         /// </summary>
         public bool Exists => this.Details != null;
+
         /// <summary>
-        /// Method to check if workflow is running.
+        /// Gets a value indicating whether the requested workflow is in a running state.
         /// </summary>
-        public bool IsWorkflowRunning => this.Details?.RuntimeStatus == OrchestrationRuntimeStatus.Running; 
+        public bool IsWorkflowRunning => this.Details?.RuntimeStatus == OrchestrationRuntimeStatus.Running;
+
         /// <summary>
-        /// Method to get the workflow details.
+        /// Gets the detailed metadata for the requested workflow instance. 
+        /// This value will be <c>null</c> when <see cref="Exists" /> is <c>false</c>.
         /// </summary>
         public OrchestrationMetadata? Details { get; }
     }
