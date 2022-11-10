@@ -28,7 +28,7 @@ namespace Dapr.Workflow
         /// <summary>
         /// Dictionary to and name and registery of a workflow.
         /// </summary>
-        readonly Dictionary<string, Action<IDurableTaskRegistry>> factories => new();
+        public Dictionary<string, Action<IDurableTaskRegistry>> factories = new();
 
         /// <summary>
         /// Registers a workflow as a function that takes a specified input type and returns a specified output type.

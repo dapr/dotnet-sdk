@@ -45,7 +45,7 @@ async Task<IResult> GetWorkflow(HttpContext context)
 {
     var id = (string)context.Request.RouteValues["id"];
     var client = context.RequestServices.GetRequiredService<WorkflowClient>();
-    WorkflowMetadata metadata = await client.GetWorkflowMetadata(id, getInputsAndOutputs: true);
+    WorkflowMetadata metadata = await client.GetWorkflowMetadataAsync(id, getInputsAndOutputs: true);
     if (metadata.Exists)
     {
         Console.WriteLine($"Created workflow id: '{id}'");
