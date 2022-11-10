@@ -3,4 +3,4 @@ POST http://localhost:8080/workflow
 Content-Type: application/json
 
 ### Query placeholder
-GET http://localhost:8080/workflow/40b1c35c
+GET http://localhost:8080/workflow/XXX
