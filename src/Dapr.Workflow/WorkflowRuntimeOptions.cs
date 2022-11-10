@@ -26,7 +26,7 @@ namespace Dapr.Workflow
     public sealed class WorkflowRuntimeOptions
     {
         /// <summary>
-        /// Dictionary to and name and registery of a workflow.
+        /// Dictionary to name and register a workflow.
         /// </summary>
         readonly Dictionary<string, Action<IDurableTaskRegistry>> factories = new();
 

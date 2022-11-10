@@ -61,7 +61,7 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// /// Disposes any unmanaged resources associated with this client.
+        /// Disposes any unmanaged resources associated with this client.
         /// </summary>
         public ValueTask DisposeAsync()
         {
