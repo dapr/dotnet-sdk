@@ -12,7 +12,7 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.DurableTask.Client" Version="0.5.0-beta" />
+    <PackageReference Include="Microsoft.DurableTask.Client" Version="0.4.1-beta" />
     <PackageReference Include="Dapr.AspNetCore" Version="1.8.0" />
   </ItemGroup>
 
