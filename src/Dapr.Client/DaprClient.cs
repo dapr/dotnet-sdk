@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,6 +89,7 @@ namespace Dapr.Client
             }
 
             var httpClient = new HttpClient(handler);
+            httpClient.DefaultRequestHeaders.UserAgent.Add(UserAgent());
 
             if (appId is string)
             {
@@ -330,7 +333,44 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
         public abstract Task WaitForSidecarAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Send a command to the Dapr Sidecar telling it to shutdown.
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+        public abstract Task ShutdownSidecarAsync(CancellationToken cancellationToken = default);
         
+        /// <summary>
+        /// Calls the sidecar's metadata endpoint which returns information including:
+        /// <list type="bullet">
+        /// <item>
+        /// <description>The sidecar's ID.</description>
+        /// </item>
+        /// <item>
+        /// <description>The registered/active actors if any.</description>
+        /// </item>
+        /// <item>
+        /// <description>Registered components including name, type, version, and information on capabilities if present.</description>
+        /// </item>
+        /// <item>
+        /// <description>Any extended metadata that has been set via <see cref="SetMetadataAsync"/></description>
+        /// </item>
+        /// </list>
+        /// </summary>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<DaprMetadata> GetMetadataAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Perform service add extended metadata to the Dapr sidecar.
+        /// </summary>
+        /// <param name="attributeName">Custom attribute name</param>
+        /// <param name="attributeValue">Custom attribute value</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will return the value when the operation has completed.</returns>
+        public abstract Task SetMetadataAsync(string attributeName, string attributeValue, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. The response will
         /// be returned without performing any validation on the status code.
@@ -639,6 +679,15 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
         public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// Saves a list of <paramref name="items" /> to the Dapr state store.
+        /// </summary>
+        /// <param name="storeName">The name of state store.</param>
+        /// <param name="items">The list of items to save.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task SaveBulkStateAsync<TValue>(string storeName, IReadOnlyList<SaveStateItem<TValue>> items, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Deletes a list of <paramref name="items" /> from the Dapr state store.
@@ -908,6 +957,21 @@ namespace Dapr.Client
         /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
         protected virtual void Dispose(bool disposing)
         {
+        }
+
+        /// <summary>
+        /// Returns the value for the User-Agent.
+        /// </summary>
+        /// <returns>A <see cref="ProductInfoHeaderValue"/> containing the value to use for User-Agent.</returns>
+        protected static ProductInfoHeaderValue UserAgent()
+        {
+            var assembly = typeof(DaprClient).Assembly;
+            string assemblyVersion = assembly
+                .GetCustomAttributes<AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?
+                .InformationalVersion;
+
+            return new ProductInfoHeaderValue("dapr-sdk-dotnet", $"v{assemblyVersion}");
         }
     }
 }

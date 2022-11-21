@@ -1,22 +1,15 @@
 ---
 type: docs
-title: "Example of running and using virtual actors in the .NET SDK"
-linkTitle: "Example"
+title: "How to: Run and use virtual actors in the .NET SDK"
+linkTitle: "How to: Run & use virtual actors"
 weight: 300000
 description: Try out .NET Dapr virtual actors with this example
 ---
 
-The Dapr actor package allows you to interact with Dapr virtual actors from a .NET application.
+The Dapr actor package allows you to interact with Dapr virtual actors from a .NET application. In this guide, you learn how to:
 
-## Prerequisites
-
-- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
-- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
-
-## Overview
-
-This document describes how to create an Actor (`MyActor`) and invoke its methods on the client application. 
+- Create an Actor (`MyActor`).
+- Invoke its methods on the client application.
 
 ```
 MyActor --- MyActor.Interfaces
@@ -26,11 +19,33 @@ MyActor --- MyActor.Interfaces
          +- MyActorClient
 ```
 
-* **The interface project(\MyActor\MyActor.Interfaces).** This project contains the interface definition for the actor. Actor interfaces can be defined in any project with any name. The interface defines the actor contract that is shared by the actor implementation and the clients calling the actor. Because client projects may depend on it, it typically makes sense to define it in an assembly that is separate from the actor implementation.
+**The interface project (\MyActor\MyActor.Interfaces)** 
 
-* **The actor service project(\MyActor\MyActorService).** This project implements ASP.Net Core web service that is going to host the actor. It contains the implementation of the actor, MyActor.cs. An actor implementation is a class that derives from the base type Actor and implements the interfaces defined in the MyActor.Interfaces project. An actor class must also implement a constructor that accepts an ActorService instance and an ActorId and passes them to the base Actor class.
+This project contains the interface definition for the actor. Actor interfaces can be defined in any project with any name. The interface defines the actor contract shared by:
 
-* **The actor client project(\MyActor\MyActorClient)** This project contains the implementation of the actor client which calls MyActor's method defined in Actor Interfaces.
+- The actor implementation
+- The clients calling the actor
+
+Because client projects may depend on it, it's better to define it in an assembly separate from the actor implementation.
+
+**The actor service project (\MyActor\MyActorService)** 
+
+This project implements the ASP.Net Core web service that hosts the actor. It contains the implementation of the actor, `MyActor.cs`. An actor implementation is a class that:
+
+- Derives from the base type Actor
+- Implements the interfaces defined in the `MyActor.Interfaces` project. 
+
+An actor class must also implement a constructor that accepts an `ActorService` instance and an `ActorId`, and passes them to the base Actor class.
+
+**The actor client project (\MyActor\MyActorClient)** 
+
+This project contains the implementation of the actor client which calls MyActor's method defined in Actor Interfaces.
+
+## Prerequisites
+
+- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed.
+- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}}).
+- [.NET Core 3.1 or .NET 6+](https://dotnet.microsoft.com/download) installed. Dapr .NET SDK uses [ASP.NET Core](https://docs.microsoft.com/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-6.0).
 
 ## Step 0: Prepare
 
@@ -42,9 +57,9 @@ Actor interface defines the actor contract that is shared by the actor implement
 
 Actor interface is defined with the below requirements:
 
-* Actor interface must inherit `Dapr.Actors.IActor` interface
-* The return type of Actor method must be `Task` or `Task<object>`
-* Actor method can have one argument at a maximum
+- Actor interface must inherit `Dapr.Actors.IActor` interface
+- The return type of Actor method must be `Task` or `Task<object>`
+- Actor method can have one argument at a maximum
 
 ### Create interface project and add dependencies
 
@@ -55,7 +70,7 @@ dotnet new classlib -o MyActor.Interfaces
 cd MyActor.Interfaces
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 1.0.0
+dotnet add package Dapr.Actors
 
 cd ..
 ```
@@ -108,7 +123,7 @@ dotnet new web -o MyActorService
 cd MyActorService
 
 # Add Dapr.Actors.AspNetCore nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors.AspNetCore -v 1.0.0
+dotnet add package Dapr.Actors.AspNetCore
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj
@@ -325,7 +340,7 @@ dotnet new console -o MyActorClient
 cd MyActorClient
 
 # Add Dapr.Actors nuget package. Please use the latest package version from nuget.org
-dotnet add package Dapr.Actors -v 1.0.0
+dotnet add package Dapr.Actors
 
 # Add Actor Interface reference
 dotnet add reference ../MyActor.Interfaces/MyActor.Interfaces.csproj

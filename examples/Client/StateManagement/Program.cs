@@ -24,6 +24,7 @@ namespace Samples.Client
             new StateStoreExample(),
             new StateStoreTransactionsExample(),
             new StateStoreETagsExample(),
+            new BulkStateExample()
         };
 
         static async Task<int> Main(string[] args)

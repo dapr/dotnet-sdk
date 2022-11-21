@@ -53,7 +53,7 @@ This repo builds the following packages:
 
 Each project is a normal C# project. At minimum, you need [.NET 5.0 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) to build, test, and generate NuGet packages.
 
-Also make sure to reference the [.NET SDK contribution guide](https://docs.dapr.io/contributing/dotnet-contributing/)
+Also make sure to reference the [.NET SDK contribution guide](https://docs.dapr.io/contributing/sdk-contrib/dotnet-contributing/)
 
 **macOS/Linux:**
 

@@ -110,20 +110,20 @@ namespace RoutingSample
 
             async Task Balance(HttpContext context)
             {
-                logger.LogDebug("Enter Balance");
+                logger.LogInformation("Enter Balance");
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
 
                 var id = (string)context.Request.RouteValues["id"];
-                logger.LogDebug("id is {0}", id);
+                logger.LogInformation("id is {0}", id);
                 var account = await client.GetStateAsync<Account>(StoreName, id);
                 if (account == null)
                 {
-                    logger.LogDebug("Account not found");
+                    logger.LogInformation("Account not found");
                     context.Response.StatusCode = 404;
                     return;
                 }
 
-                logger.LogDebug("Account balance is {0}", account.Balance);
+                logger.LogInformation("Account balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
@@ -131,12 +131,12 @@ namespace RoutingSample
 
             async Task Deposit(HttpContext context)
             {
-                logger.LogDebug("Enter Deposit");
+                logger.LogInformation("Enter Deposit");
 
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
 
-                logger.LogDebug("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
+                logger.LogInformation("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
 
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
@@ -146,14 +146,14 @@ namespace RoutingSample
 
                 if (transaction.Amount < 0m)
                 {
-                    logger.LogDebug("Invalid amount");
+                    logger.LogInformation("Invalid amount");
                     context.Response.StatusCode = 400;
                     return;
                 }
 
                 account.Balance += transaction.Amount;
                 await client.SaveStateAsync(StoreName, transaction.Id, account);
-                logger.LogDebug("Balance is {0}", account.Balance);
+                logger.LogInformation("Balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
@@ -164,38 +164,38 @@ namespace RoutingSample
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
 
-                logger.LogDebug("The amount cannot be negative: {0}", transaction.Amount);
+                logger.LogInformation("The amount cannot be negative: {0}", transaction.Amount);
 
                 return;
             }
 
             async Task Withdraw(HttpContext context)
             {
-                logger.LogDebug("Enter Withdraw");
+                logger.LogInformation("Enter Withdraw");
 
                 var client = context.RequestServices.GetRequiredService<DaprClient>();
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
 
-                logger.LogDebug("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
+                logger.LogInformation("Id is {0}, Amount is {1}", transaction.Id, transaction.Amount);
 
                 var account = await client.GetStateAsync<Account>(StoreName, transaction.Id);
                 if (account == null)
                 {
-                    logger.LogDebug("Account not found");
+                    logger.LogInformation("Account not found");
                     context.Response.StatusCode = 404;
                     return;
                 }
 
                 if (transaction.Amount < 0m)
                 {
-                    logger.LogDebug("Invalid amount");
+                    logger.LogInformation("Invalid amount");
                     context.Response.StatusCode = 400;
                     return;
                 }
 
                 account.Balance -= transaction.Amount;
                 await client.SaveStateAsync(StoreName, transaction.Id, account);
-                logger.LogDebug("Balance is {0}", account.Balance);
+                logger.LogInformation("Balance is {0}", account.Balance);
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
