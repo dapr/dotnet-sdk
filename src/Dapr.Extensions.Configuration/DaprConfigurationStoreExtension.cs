@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using Dapr.Client;
 using Microsoft.Extensions.Configuration;
@@ -55,7 +56,7 @@ namespace Dapr.Extensions.Configuration
                 Client = client,
                 SidecarWaitTimeout = sidecarWaitTimeout,
                 IsStreaming = false,
-                Metadata = metadata
+                Metadata = metadata ?? new Dictionary<string, string>()
             });
 
             return configurationBuilder;
@@ -92,7 +93,7 @@ namespace Dapr.Extensions.Configuration
                 Client = client,
                 SidecarWaitTimeout = sidecarWaitTimeout,
                 IsStreaming = true,
-                Metadata = metadata
+                Metadata = metadata ?? new Dictionary<string, string>()
             });
 
             return configurationBuilder;

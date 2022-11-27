@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 {
                     Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
                 };
-                request.Headers.Add("Dapr-Api-Token", "abcdefg");
+                request.Headers.TryAddWithoutValidation("Dapr-Api-Token", "abcdefg");
                 var response = await httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -61,9 +61,9 @@ namespace Dapr.AspNetCore.IntegrationTest
                 {
                     Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
                 };
-                request.Headers.Add("Dapr-Api-Token", "asdfgh");
+                request.Headers.TryAddWithoutValidation("Dapr-Api-Token", "asdfgh");
                 var response = await httpClient.SendAsync(request);
-                
+
                 response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
             }
         }

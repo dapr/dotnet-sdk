@@ -178,7 +178,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public void InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData()
+        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData()
         {
             var request = new Request() { RequestParameter = "Hello " };
             var client = new MockClient();
@@ -197,7 +197,8 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Returns(response);
 
-            FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request)).Should().NotThrow();
+            Func<Task> act = () => client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request);
+            await act.Should().NotThrowAsync();
         }
 
         [Fact]

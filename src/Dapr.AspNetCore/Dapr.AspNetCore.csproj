@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFrameworks>netcoreapp3.1;net5;net6;net7</TargetFrameworks>
   </PropertyGroup>
 
   <!-- Additional Nuget package properties. -->
@@ -16,6 +16,9 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1' ">
 
     <!--
       This is a workaround for https://github.com/dotnet/sdk/issues/14019
@@ -23,6 +26,16 @@
       It can be removed when the issue is fixed (likely 5.0 GA).
     -->
     <PackageReference Include="System.IO.Pipelines" Version="4.7.2" />
+
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net5' ">
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net6' ">
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net7' ">
   </ItemGroup>
 
   <ItemGroup>
