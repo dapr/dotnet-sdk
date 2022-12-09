@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,10 @@
 namespace Dapr.Workflow
 {
     using System;
-    using System.Threading;
-    using System.Threading.Tasks;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using Microsoft.DurableTask;
-    using Dapr.Workflow;
-    
+
     /// <summary>
     /// Defines runtime options for workflows.
     /// </summary>
@@ -28,17 +26,17 @@ namespace Dapr.Workflow
         /// <summary>
         /// Dictionary to name and register a workflow.
         /// </summary>
-        readonly Dictionary<string, Action<IDurableTaskRegistry>> factories = new();
+        readonly Dictionary<string, Action<DurableTaskRegistry>> factories = new();
 
         /// <summary>
         /// Registers a workflow as a function that takes a specified input type and returns a specified output type.
         /// </summary>
-        public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput?, Task<TOutput?>> implementation)
+        public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> implementation)
         {
             // Dapr workflows are implemented as specialized Durable Task orchestrations
-            this.factories.Add(name, (IDurableTaskRegistry registry) =>
+            this.factories.Add(name, (DurableTaskRegistry registry) =>
             {
-                registry.AddOrchestrator<TInput, TOutput>(name, (innerContext, input) =>
+                registry.AddOrchestratorFunc<TInput, TOutput>(name, (innerContext, input) =>
                 {
                     WorkflowContext workflowContext = new(innerContext);
                     return implementation(workflowContext, input);
@@ -49,12 +47,12 @@ namespace Dapr.Workflow
         /// <summary>
         /// Registers a workflow activity as a function that takes a specified input type and returns a specified output type.
         /// </summary>
-        public void RegisterActivity<TInput, TOutput>(string name, Func<ActivityContext, TInput?, Task<TOutput?>> implementation)
+        public void RegisterActivity<TInput, TOutput>(string name, Func<ActivityContext, TInput, Task<TOutput>> implementation)
         {
             // Dapr activities are implemented as specialized Durable Task activities
-            this.factories.Add(name, (IDurableTaskRegistry registry) =>
+            this.factories.Add(name, (DurableTaskRegistry registry) =>
             {
-                registry.AddActivity<TInput, TOutput>(name, (innerContext, input) =>
+                registry.AddActivityFunc<TInput, TOutput>(name, (innerContext, input) =>
                 {
                     ActivityContext activityContext = new(innerContext);
                     return implementation(activityContext, input);
@@ -62,13 +60,12 @@ namespace Dapr.Workflow
             });
         }
 
-
         /// <summary>
         /// Method to add workflow to the registry.
         /// </summary>
-        internal void AddWorkflowsToRegistry(IDurableTaskRegistry registry)
+        internal void AddWorkflowsToRegistry(DurableTaskRegistry registry)
         {
-            foreach (Action<IDurableTaskRegistry> factory in this.factories.Values)
+            foreach (Action<DurableTaskRegistry> factory in this.factories.Values)
             {
                 factory.Invoke(registry);
             }
