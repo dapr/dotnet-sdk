@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.DurableTask;
-using Microsoft.DurableTask.Grpc;
+using Microsoft.DurableTask.Client;
 
 namespace Dapr.Workflow
 {
+    // TODO: This will be replaced by the official Dapr Workflow management client.
     /// <summary>
     /// Defines client operations for managing Dapr Workflow instances.
     /// </summary>
@@ -26,15 +26,14 @@ namespace Dapr.Workflow
     {
         readonly DurableTaskClient innerClient;
 
-        internal WorkflowClient(IServiceProvider? services = null)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WorkflowClient"/> class.
+        /// </summary>
+        /// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
+        public WorkflowClient(DurableTaskClient innerClient)
         {
-            DurableTaskGrpcClient.Builder builder = new();
-            if (services != null)
-            {
-                builder.UseServices(services);
-            }
-
-            this.innerClient = builder.Build();
+            this.innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
         }
 
         /// <summary>
@@ -46,7 +45,8 @@ namespace Dapr.Workflow
             object? input = null,
             DateTime? startTime = null)
         {
-            return this.innerClient.ScheduleNewOrchestrationInstanceAsync(name, instanceId, input, startTime);
+            StartOrchestrationOptions options = new(instanceId, startTime);
+            return this.innerClient.ScheduleNewOrchestrationInstanceAsync(name, input, options);
         }
 
         /// <summary>
@@ -69,5 +69,3 @@ namespace Dapr.Workflow
         }
     }
 }
-
-

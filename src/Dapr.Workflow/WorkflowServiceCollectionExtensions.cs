@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,10 @@
 namespace Dapr.Workflow
 {
     using System;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.DurableTask.Grpc;
     using Microsoft.Extensions.DependencyInjection;
-    using Dapr.Workflow;
-    
+    using Microsoft.DurableTask.Client;
+    using Microsoft.DurableTask.Worker;
+
     /// <summary>
     /// Contains extension methods for using Dapr Workflow with dependency injection.
     /// </summary>
@@ -41,24 +39,21 @@ namespace Dapr.Workflow
 
             serviceCollection.AddSingleton<WorkflowRuntimeOptions>();
             serviceCollection.AddDaprClient();
-            serviceCollection.AddSingleton(services => new WorkflowClient(services));
+            serviceCollection.AddSingleton<WorkflowClient>();
 
-            serviceCollection.AddHostedService(services =>
+            serviceCollection.AddDurableTaskClient(builder =>
             {
-                DurableTaskGrpcWorker.Builder workerBuilder = DurableTaskGrpcWorker.CreateBuilder().UseServices(services);
+                builder.UseGrpc();
+                builder.RegisterDirectly();
+            });
 
-                WorkflowRuntimeOptions options = services.GetRequiredService<WorkflowRuntimeOptions>();
+            serviceCollection.AddDurableTaskWorker(builder =>
+            {
+                WorkflowRuntimeOptions options = new();
                 configure?.Invoke(options);
 
-                workerBuilder.UseServices(services);
-
-                workerBuilder.AddTasks(registry =>
-                {
-                    options.AddWorkflowsToRegistry(registry);
-                });
-
-                DurableTaskGrpcWorker worker = workerBuilder.Build();
-                return worker;
+                builder.UseGrpc();
+                builder.AddTasks(registry => options.AddWorkflowsToRegistry(registry));
             });
 
             return serviceCollection;
