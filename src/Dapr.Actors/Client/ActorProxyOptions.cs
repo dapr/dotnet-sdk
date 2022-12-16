@@ -77,7 +77,7 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// Option to use GRPC or HTTP
         /// </summary>
-        public bool UseGrpc { get; set; } = true;
+        public bool UseGrpc { get; set; } = false;
 
         /// <summary>
         /// Options for grpc channel

@@ -29,8 +29,7 @@ namespace Dapr.E2E.Test
             var actorIds = new ActorId(Guid.NewGuid().ToString());
             var options = new ActorProxyOptions
             {
-                UseGrpc = false,
-                HttpEndpoint = this.HttpEndpoint, 
+                UseGrpc = true,
                 GrpcEndpoint = this.GrpcEndpoint
             };
             var proxy = this.ProxyFactory.CreateActorProxy<IExceptionActor>(ActorId.CreateRandom(), "ExceptionActor", options);
