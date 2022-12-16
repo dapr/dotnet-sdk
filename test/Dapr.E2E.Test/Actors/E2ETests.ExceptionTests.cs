@@ -19,7 +19,6 @@ namespace Dapr.E2E.Test
     using Dapr.Actors;
     using Dapr.E2E.Test.Actors.ExceptionTesting;
     using Xunit;
-    using Dapr.Actors.Client;
     public partial class E2ETests : IAsyncLifetime
     {
         [Fact]
@@ -27,12 +26,8 @@ namespace Dapr.E2E.Test
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
             var actorIds = new ActorId(Guid.NewGuid().ToString());
-            var options = new ActorProxyOptions
-            {
-                UseGrpc = true,
-                GrpcEndpoint = this.GrpcEndpoint
-            };
-            var proxy = this.ProxyFactory.CreateActorProxy<IExceptionActor>(ActorId.CreateRandom(), "ExceptionActor", options);
+            
+            var proxy = this.ProxyFactory.CreateActorProxy<IExceptionActor>(ActorId.CreateRandom(), "ExceptionActor");
             await WaitForActorRuntimeAsync(proxy, cts.Token);
             ActorMethodInvocationException ex = await Assert.ThrowsAsync<ActorMethodInvocationException>(async () => await proxy.ExceptionExample());
             Assert.Contains("Remote Actor Method Exception", ex.Message);
