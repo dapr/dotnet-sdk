@@ -40,8 +40,7 @@ namespace Dapr.E2E.Test
             this.proxyFactory = new Lazy<IActorProxyFactory>(() =>
             {
                 Debug.Assert(this.HttpEndpoint != null);
-                Debug.Assert(this.GrpcEndpoint != null);
-                return new ActorProxyFactory(new ActorProxyOptions(){ HttpEndpoint = this.HttpEndpoint, GrpcEndpoint = this.GrpcEndpoint });
+                return new ActorProxyFactory(new ActorProxyOptions(){ HttpEndpoint = this.HttpEndpoint, });
             });
         }
 
