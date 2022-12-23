@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,9 +98,9 @@ namespace Dapr.Actors.Description
             using var _ = new AssertionScope();
             description.Methods.Should().NotContainNulls();
             description.Methods.Should().AllBeOfType<MethodDescription>();
-            description.Methods.Should().BeEquivalentTo(
+            description.Methods.Should().BeEquivalentTo(new [] {
                 new { Name = "GetInt" }
-            );
+            });
         }
 
         [Fact]
@@ -116,9 +116,10 @@ namespace Dapr.Actors.Description
             using var _ = new AssertionScope();
             description.Methods.Should().NotContainNulls();
             description.Methods.Should().AllBeOfType<MethodDescription>();
-            description.Methods.Should().BeEquivalentTo(
+            description.Methods.Should().BeEquivalentTo(new [] {
                 new { Name = "GetString" },
-                new { Name = "MethodWithArguments" });
+                new { Name = "MethodWithArguments" }
+            });
         }
 
         [Fact]
@@ -249,8 +250,8 @@ namespace Dapr.Actors.Description
         {
             public TestDescription(
                 Type remotedInterfaceType,
-                string remotedInterfaceKindName = "actor", 
-                bool useCRCIdGeneration = false, 
+                string remotedInterfaceKindName = "actor",
+                bool useCRCIdGeneration = false,
                 MethodReturnCheck methodReturnCheck = MethodReturnCheck.EnsureReturnsTask)
                 : base(remotedInterfaceKindName, remotedInterfaceType, useCRCIdGeneration, methodReturnCheck)
             {

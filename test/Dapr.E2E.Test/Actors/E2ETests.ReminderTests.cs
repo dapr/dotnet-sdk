@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,16 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
 namespace Dapr.E2E.Test
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
-    using Dapr.E2E.Test.Actors.Reminders;
     using Xunit;
 
-    public partial class E2ETests : IAsyncLifetime
+    using Actors.Reminders;
+
+    public partial class E2ETests
     {
         [Fact]
         public async Task ActorCanStartAndStopReminder()
@@ -32,7 +34,7 @@ namespace Dapr.E2E.Test
             // Start reminder, to count up to 10
             await proxy.StartReminder(new StartReminderOptions(){ Total = 10, });
 
-            State state; 
+            State state;
             while (true)
             {
                 cts.Token.ThrowIfCancellationRequested();

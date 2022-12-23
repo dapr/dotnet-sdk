@@ -1,7 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1;net5;net6;net7</TargetFrameworks>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

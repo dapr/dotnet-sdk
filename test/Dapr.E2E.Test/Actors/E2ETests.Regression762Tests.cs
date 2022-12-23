@@ -18,9 +18,10 @@ using Dapr.Actors;
 using Dapr.E2E.Test.Actors.ErrorTesting;
 using Xunit;
 
+
 namespace Dapr.E2E.Test
 {
-    public partial class E2ETests : IAsyncLifetime
+    public partial class E2ETests
     {
         [Fact]
         public async Task ActorSuccessfullyClearsStateAfterErrorWithRemoting()
@@ -101,7 +102,7 @@ namespace Dapr.E2E.Test
 
             // Initiate a call that will set the state, then throw.
             await Assert.ThrowsAsync<DaprApiException>(async () => await proxy.InvokeMethodAsync("SaveState", throwingCall));
-                
+
             // Save the state and assert that the old value was not persisted.
             await proxy.InvokeMethodAsync("SaveState", savingCall);
             var errorResp = await proxy.InvokeMethodAsync<string, string>("GetState", key);
