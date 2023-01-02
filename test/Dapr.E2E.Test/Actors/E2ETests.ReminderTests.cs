@@ -70,5 +70,56 @@ namespace Dapr.E2E.Test
             Assert.True(state.Timestamp.Subtract(start) > TimeSpan.Zero, "Reminder may not have triggered.");
             Assert.True(DateTime.Now.Subtract(state.Timestamp) > TimeSpan.FromSeconds(1), $"Reminder triggered too recently. {DateTime.Now} - {state.Timestamp}");
         }
+
+        [Fact]
+        public async Task ActorCanStartAndStopReminderGrpc()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactoryGrpc.CreateActorProxy<IReminderActor>(ActorId.CreateRandom(), "ReminderActor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            // Start reminder, to count up to 10
+            await proxy.StartReminder(new StartReminderOptions(){ Total = 10, });
+
+            State state; 
+            while (true)
+            {
+                cts.Token.ThrowIfCancellationRequested();
+
+                state = await proxy.GetState();
+                this.Output.WriteLine($"Got Count: {state.Count} IsReminderRunning: {state.IsReminderRunning}");
+                if (!state.IsReminderRunning)
+                {
+                    break;
+                }
+            }
+
+            // Should count up to exactly 10
+            Assert.Equal(10, state.Count);
+        }
+
+        [Fact]
+        public async Task ActorCanStartReminderWithTtlGrpc()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactoryGrpc.CreateActorProxy<IReminderActor>(ActorId.CreateRandom(), "ReminderActor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            // Reminder that should fire 3 times (at 0, 1, and 2 seconds)
+            await proxy.StartReminderWithTtl(TimeSpan.FromSeconds(2));
+
+            // Record the start time and wait for longer than the reminder should exist for.
+            var start = DateTime.Now;
+            await Task.Delay(TimeSpan.FromSeconds(5));
+
+            var state = await proxy.GetState();
+
+            // Make sure the reminder has fired and that it didn't fire within the past second since it should have expired.
+            Assert.True(state.Timestamp.Subtract(start) > TimeSpan.Zero, "Reminder may not have triggered.");
+            Assert.True(DateTime.Now.Subtract(state.Timestamp) > TimeSpan.FromSeconds(1), $"Reminder triggered too recently. {DateTime.Now} - {state.Timestamp}");
+        }
+
     }
 }

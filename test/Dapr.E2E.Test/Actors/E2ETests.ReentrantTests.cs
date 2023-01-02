@@ -27,7 +27,10 @@ namespace Dapr.E2E.Test
     {
         private static readonly int NumCalls = 10;
         private readonly Lazy<IActorProxyFactory> proxyFactory;
+        private readonly Lazy<IActorProxyFactory> proxyFactoryGrpc;
         private IActorProxyFactory ProxyFactory => this.HttpEndpoint == null ? null : this.proxyFactory.Value;
+        private IActorProxyFactory ProxyFactoryGrpc => this.GrpcEndpoint == null ? null : this.proxyFactoryGrpc.Value;
+
 
         public ReentrantTests(ITestOutputHelper output, DaprTestAppFixture fixture) : base(output, fixture)
         {
@@ -43,6 +46,13 @@ namespace Dapr.E2E.Test
                 Debug.Assert(this.HttpEndpoint != null);
                 return new ActorProxyFactory(new ActorProxyOptions() { HttpEndpoint = this.HttpEndpoint, GrpcEndpoint = this.GrpcEndpoint});
             });
+
+            this.proxyFactoryGrpc = new Lazy<IActorProxyFactory>(() =>
+            {
+                Debug.Assert(this.GrpcEndpoint != null);
+                return new ActorProxyFactory(new ActorProxyOptions() { HttpEndpoint = this.HttpEndpoint, GrpcEndpoint = this.GrpcEndpoint, UseGrpc = true,});
+            });
+
         }
 
         [Fact]
@@ -75,5 +85,37 @@ namespace Dapr.E2E.Test
                 }
             }
         }
+
+        [Fact]
+        public async Task ActorCanPerformReentrantCallsGrpc()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactoryGrpc.CreateActorProxy<IReentrantActor>(ActorId.CreateRandom(), "ReentrantActor");
+
+            await ActorRuntimeChecker.WaitForActorRuntimeAsync(this.AppId, this.Output, proxy, cts.Token);
+
+            await proxy.ReentrantCall(new ReentrantCallOptions(){ CallsRemaining = NumCalls, });
+            var records = new List<CallRecord>();
+            for (int i = 0; i < NumCalls; i++)
+            {
+                var state = await proxy.GetState(i);
+                records.AddRange(state.Records);
+            }
+
+            var enterRecords  = records.FindAll(record => record.IsEnter);
+            var exitRecords  = records.FindAll(record => !record.IsEnter);
+            
+            this.Output.WriteLine($"Got {records.Count} records.");
+            Assert.True(records.Count == NumCalls * 2);
+            for (int i = 0; i < NumCalls; i++)
+            {
+                for (int j = 0; j < NumCalls; j++)
+                {
+                    // Assert all the enters happen before the exits.
+                    Assert.True(enterRecords[i].Timestamp < exitRecords[j].Timestamp);
+                }
+            }
+        }
+
     }
 }

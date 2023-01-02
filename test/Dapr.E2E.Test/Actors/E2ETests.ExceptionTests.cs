@@ -34,5 +34,20 @@ namespace Dapr.E2E.Test
             Assert.Contains("ExceptionExample", ex.Message);
             Assert.Contains("32", ex.Message);
         }
+
+        [Fact]
+        public async Task ActorCanProvideExceptionDetailsGrpc()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var actorIds = new ActorId(Guid.NewGuid().ToString());
+            
+            var proxy = this.ProxyFactoryGrpc.CreateActorProxy<IExceptionActor>(ActorId.CreateRandom(), "ExceptionActor");
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+            ActorMethodInvocationException ex = await Assert.ThrowsAsync<ActorMethodInvocationException>(async () => await proxy.ExceptionExample());
+            Assert.Contains("Remote Actor Method Exception", ex.Message);
+            Assert.Contains("ExceptionExample", ex.Message);
+            Assert.Contains("32", ex.Message);
+        }
+
     }
 }

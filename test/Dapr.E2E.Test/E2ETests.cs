@@ -29,6 +29,7 @@ namespace Dapr.E2E.Test
     public partial class E2ETests : IClassFixture<DaprTestAppFixture>, IAsyncLifetime
     {
         private readonly Lazy<IActorProxyFactory> proxyFactory;
+        private readonly Lazy<IActorProxyFactory> proxyFactoryGrpc;
         private readonly DaprTestAppFixture fixture;
         private DaprTestAppFixture.State state;
 
@@ -42,6 +43,12 @@ namespace Dapr.E2E.Test
                 Debug.Assert(this.HttpEndpoint != null);
                 return new ActorProxyFactory(new ActorProxyOptions(){ HttpEndpoint = this.HttpEndpoint, });
             });
+
+            this.proxyFactoryGrpc = new Lazy<IActorProxyFactory>(() =>
+            {
+                Debug.Assert(this.GrpcEndpoint != null);
+                return new ActorProxyFactory(new ActorProxyOptions(){ GrpcEndpoint = this.GrpcEndpoint, UseGrpc = true, });
+            });            
         }
 
         protected ITestOutputHelper Output { get; }
@@ -60,6 +67,8 @@ namespace Dapr.E2E.Test
         public string GrpcEndpoint => this.state?.GrpcEndpoint;
 
         public IActorProxyFactory ProxyFactory => this.HttpEndpoint == null ? null : this.proxyFactory.Value;
+
+        public IActorProxyFactory ProxyFactoryGrpc => this.GrpcEndpoint == null ? null : this.proxyFactoryGrpc.Value;
 
         public async Task InitializeAsync()
         {

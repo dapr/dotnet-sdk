@@ -112,5 +112,97 @@ namespace Dapr.E2E.Test
             var resp = await proxy.InvokeMethodAsync<string, string>("GetState", key);
             Assert.Equal("Real value", resp);
         }
+
+        [Fact]
+        public async Task ActorSuccessfullyClearsStateAfterErrorWithRemotingGrpc()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactoryGrpc.CreateActorProxy<IRegression762Actor>(ActorId.CreateRandom(), "Regression762Actor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            var key = Guid.NewGuid().ToString();
+            var throwingCall = new StateCall
+            {
+                Key = key,
+                Value = "Throw value",
+                Operation = "ThrowException"
+            };
+
+            var setCall = new StateCall()
+            {
+                Key = key,
+                Value = "Real value",
+                Operation = "SetState"
+            };
+
+            var savingCall = new StateCall()
+            {
+                Operation = "SaveState"
+            };
+
+            // We attempt to delete it on the unlikely chance it's already there.
+            await proxy.RemoveState(throwingCall.Key);
+
+            // Initiate a call that will set the state, then throw.
+            await Assert.ThrowsAsync<ActorMethodInvocationException>(async () => await proxy.SaveState(throwingCall));
+
+            // Save the state and assert that the old value was not persisted.
+            await proxy.SaveState(savingCall);
+            var errorResp = await proxy.GetState(key);
+            Assert.Equal(string.Empty, errorResp);
+
+            // Persist normally and ensure it works.
+            await proxy.SaveState(setCall);
+            var resp = await proxy.GetState(key);
+            Assert.Equal("Real value", resp);
+        }
+
+        [Fact]
+        public async Task ActorSuccessfullyClearsStateAfterErrorWithoutRemotingGrpc()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var pingProxy = this.ProxyFactoryGrpc.CreateActorProxy<IRegression762Actor>(ActorId.CreateRandom(), "Regression762Actor");
+            var proxy = this.ProxyFactoryGrpc.Create(ActorId.CreateRandom(), "Regression762Actor");
+
+            await WaitForActorRuntimeAsync(pingProxy, cts.Token);
+
+            var key = Guid.NewGuid().ToString();
+            var throwingCall = new StateCall
+            {
+                Key = key,
+                Value = "Throw value",
+                Operation = "ThrowException"
+            };
+
+            var setCall = new StateCall()
+            {
+                Key = key,
+                Value = "Real value",
+                Operation = "SetState"
+            };
+
+            var savingCall = new StateCall()
+            {
+                Operation = "SaveState"
+            };
+
+            // We attempt to delete it on the unlikely chance it's already there.
+            await proxy.InvokeMethodAsync("RemoveState", throwingCall.Key);
+
+            // Initiate a call that will set the state, then throw.
+            await Assert.ThrowsAsync<DaprApiException>(async () => await proxy.InvokeMethodAsync("SaveState", throwingCall));
+                
+            // Save the state and assert that the old value was not persisted.
+            await proxy.InvokeMethodAsync("SaveState", savingCall);
+            var errorResp = await proxy.InvokeMethodAsync<string, string>("GetState", key);
+            Assert.Equal(string.Empty, errorResp);
+
+            // Persist normally and ensure it works.
+            await proxy.InvokeMethodAsync("SaveState", setCall);
+            var resp = await proxy.InvokeMethodAsync<string, string>("GetState", key);
+            Assert.Equal("Real value", resp);
+        }
+
     }
 }
