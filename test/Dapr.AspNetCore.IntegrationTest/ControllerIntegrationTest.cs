@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 
 namespace Dapr.AspNetCore.IntegrationTest
 {
-    using System;
     using System.Net.Http;
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
@@ -28,7 +27,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
@@ -47,7 +46,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 var widget = new Widget() { Size = "small", Count = 17, };
@@ -67,7 +66,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithoutstateentry/test");
@@ -84,7 +83,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
@@ -103,7 +102,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
@@ -122,7 +121,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 var widget = new Widget() { Size = "small", Count = 17, };
@@ -142,7 +141,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithstateentry/test");
@@ -159,7 +158,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/echo-user?name=jimmy");
