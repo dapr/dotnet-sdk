@@ -95,9 +95,72 @@ namespace Dapr.Actors
             return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
-        public Task DoStateChangesTransactionallyAsync(DaprStateProvider provider, string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
+        public async Task DoStateChangesTransactionallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, IActorStateSerializer actorStateSerializer, JsonSerializerOptions jsonSerializerOptions, CancellationToken cancellationToken = default)
         {
-            return provider.DoStateChangesTransactionallyAsyncHttp(actorType, actorId, stateChanges, cancellationToken);
+            // Transactional state update request body:
+            /*
+            [
+                {
+                    "operation": "upsert",
+                    "request": {
+                        "key": "key1",
+                        "value": "myData"
+                    }
+                },
+                {
+                    "operation": "delete",
+                    "request": {
+                        "key": "key2"
+                    }
+                }
+            ]
+            */
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream);
+            writer.WriteStartArray();
+            foreach (var stateChange in stateChanges)
+            {
+                writer.WriteStartObject();
+                var operation = GetDaprStateOperation(stateChange.ChangeKind);
+                writer.WriteString("operation", operation);
+
+                // write the requestProperty
+                writer.WritePropertyName("request");
+                writer.WriteStartObject();  // start object for request property
+                switch (stateChange.ChangeKind)
+                {
+                    case StateChangeKind.Remove:
+                        writer.WriteString("key", stateChange.StateName);
+                        break;
+                    case StateChangeKind.Add:
+                    case StateChangeKind.Update:
+                        writer.WriteString("key", stateChange.StateName);
+
+                        // perform default json serialization if custom serializer was not provided.
+                        if (actorStateSerializer != null)
+                        {
+                            var buffer = actorStateSerializer.Serialize(stateChange.Type, stateChange.Value);
+                            writer.WriteBase64String("value", buffer);
+                        }
+                        else
+                        {
+                            writer.WritePropertyName("value");
+                            JsonSerializer.Serialize(writer, stateChange.Value, stateChange.Type, jsonSerializerOptions);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                writer.WriteEndObject();  // end object for request property
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+
+            await writer.FlushAsync();
+            var content = Encoding.UTF8.GetString(stream.ToArray());
+            await this.SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
         }
 
         public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default)
@@ -478,6 +541,25 @@ namespace Dapr.Actors
         private HttpClient CreateHttpClient()
         {
             return new HttpClient(this.handler, false);
+        }
+        private string GetDaprStateOperation(StateChangeKind changeKind)
+        {
+            var operation = string.Empty;
+
+            switch (changeKind)
+            {
+                case StateChangeKind.Remove:
+                    operation = "delete";
+                    break;
+                case StateChangeKind.Add:
+                case StateChangeKind.Update:
+                    operation = "upsert";
+                    break;
+                default:
+                    break;
+            }
+
+            return operation;
         }
 
         private void AddDaprApiTokenHeader(HttpRequestMessage request)
