@@ -47,14 +47,14 @@ namespace Dapr.Workflow
         /// <summary>
         /// Registers a workflow activity as a function that takes a specified input type and returns a specified output type.
         /// </summary>
-        public void RegisterActivity<TInput, TOutput>(string name, Func<ActivityContext, TInput, Task<TOutput>> implementation)
+        public void RegisterActivity<TInput, TOutput>(string name, Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation)
         {
             // Dapr activities are implemented as specialized Durable Task activities
             this.factories.Add(name, (DurableTaskRegistry registry) =>
             {
                 registry.AddActivityFunc<TInput, TOutput>(name, (innerContext, input) =>
                 {
-                    ActivityContext activityContext = new(innerContext);
+                    WorkflowActivityContext activityContext = new(innerContext);
                     return implementation(activityContext, input);
                 });
             });

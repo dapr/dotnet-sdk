@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,11 +21,11 @@ namespace Dapr.Workflow
     /// <summary>
     /// Defines properties and methods for task activity context objects.
     /// </summary>
-    public class ActivityContext
+    public class WorkflowActivityContext
     {
         readonly TaskActivityContext innerContext;
 
-        internal ActivityContext(TaskActivityContext innerContext)
+        internal WorkflowActivityContext(TaskActivityContext innerContext)
         {
             this.innerContext = innerContext ?? throw new ArgumentNullException(nameof(innerContext));
         }

@@ -9,9 +9,7 @@ builder.Services.AddWorkflow(options =>
     // Example of registering a "Hello World" workflow function
     options.RegisterWorkflow<string, string>("HelloWorld", implementation: async (context, input) => 
     {
-        string result  = "";
-        result = await context.CallActivityAsync<string>("SayHello", "World");
-        return result;
+        return await context.CallActivityAsync<string>("SayHello", "World");
     });
 
     // Example of registering a "Say Hello" workflow activity function
@@ -47,5 +45,5 @@ app.MapGet("/workflow/{id}", async (string id, WorkflowClient client) =>
     }
 }).WithName("GetWorkflowEndpoint");
 
-app.Run("http://0.0.0.0:8080");
+app.Run("http://0.0.0.0:10080");
 

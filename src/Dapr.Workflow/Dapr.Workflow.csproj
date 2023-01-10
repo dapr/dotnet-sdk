@@ -14,7 +14,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.DurableTask.Client.Grpc" Version="1.0.0-rc.1" />
     <PackageReference Include="Microsoft.DurableTask.Worker.Grpc" Version="1.0.0-rc.1" />
-    <PackageReference Include="Dapr.AspNetCore" Version="1.8.0" />
+    <PackageReference Include="Dapr.AspNetCore" Version="1.9.0" />
   </ItemGroup>
 
 </Project>
