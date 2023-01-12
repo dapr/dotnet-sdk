@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ namespace Dapr.Workflow
         /// <summary>
         /// Creates a durable timer that expires after the specified delay.
         /// </summary>
+        /// <inheritdoc cref="TaskOrchestrationContext.CreateTimer(TimeSpan, CancellationToken)"/>
         public Task CreateTimer(TimeSpan delay, CancellationToken cancellationToken = default)
         {
             return this.innerContext.CreateTimer(delay, cancellationToken);
@@ -62,6 +63,7 @@ namespace Dapr.Workflow
         /// <summary>
         /// Waits for an event to be raised with name <paramref name="eventName"/> and returns the event data.
         /// </summary>
+        /// <inheritdoc cref="TaskOrchestrationContext.WaitForExternalEvent{T}(string, TimeSpan)"/>
         public Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
         {
             return this.innerContext.WaitForExternalEvent<T>(eventName, timeout);
@@ -70,6 +72,7 @@ namespace Dapr.Workflow
         /// <summary>
         /// Asynchronously invokes an activity by name and with the specified input value.
         /// </summary>
+        /// <inheritdoc cref="TaskOrchestrationContext.CallActivityAsync{T}(TaskName, object?, TaskOptions?)"/>
         public Task<T> CallActivityAsync<T>(TaskName name, object? input = null, TaskOptions? options = null)
         {
             return this.innerContext.CallActivityAsync<T>(name, input, options);
