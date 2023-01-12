@@ -56,7 +56,7 @@ namespace Dapr.Workflow
                 configure?.Invoke(options);
 
                 builder.UseGrpc();
-                builder.AddTasks(registry => options.AddActivitiesToRegistry(registry));
+                builder.AddTasks(registry => options.AddWorkflowsAndActivitiesToRegistry(registry));
             });
 
             return serviceCollection;

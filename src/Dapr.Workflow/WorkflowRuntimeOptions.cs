@@ -65,14 +65,14 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
-        /// Method to add activities to the registry.
+        /// Method to add workflows and activities to the registry.
         /// </summary>
-        /// <param name="registry">The registry we will add activities to</param>
-        internal void AddActivitiesToRegistry(DurableTaskRegistry registry)
+        /// <param name="registry">The registry we will add workflows and activities to</param>
+        internal void AddWorkflowsAndActivitiesToRegistry(DurableTaskRegistry registry)
         {
             foreach (Action<DurableTaskRegistry> factory in this.factories.Values)
             {
-                factory.Invoke(registry);
+                factory.Invoke(registry); // This adds workflows to the registry indirectly.
             }
         }
     }
