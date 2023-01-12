@@ -1382,8 +1382,8 @@ namespace Dapr.Client
             string instanceId,
             string workflowComponent,
             string workflowType,
-            Dictionary<string, string> workflowOptions,
-            ByteString input,
+            Object input,
+            IReadOnlyDictionary<string, string> workflowOptions = default,
             CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
@@ -1397,10 +1397,10 @@ namespace Dapr.Client
                 InstanceId = instanceId,
                 WorkflowComponent = workflowComponent,
                 WorkflowName = workflowType,
-                Input = input
+                Input = (ByteString)input
             };
 
-            if (workflowOptions.Count > 0)
+            if (workflowOptions?.Count > 0)
             {
                 foreach (var item in workflowOptions)
                 {
@@ -1442,9 +1442,9 @@ namespace Dapr.Client
 
             try
             {
-            var options = CreateCallOptions(headers: null, cancellationToken);
-            var response = await client.GetWorkflowAlpha1Async(request, options);
-            return new GetWorkflowResponse(response.InstanceId, response.StartTime, response.Metadata);
+                var options = CreateCallOptions(headers: null, cancellationToken);
+                var response = await client.GetWorkflowAlpha1Async(request, options);
+                return new GetWorkflowResponse(response.InstanceId, response.StartTime, response.Metadata);
             }
             catch (RpcException ex)
             {

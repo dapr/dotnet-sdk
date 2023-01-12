@@ -946,7 +946,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="instanceID">Identifier of the specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="workflowType">Name of the workflow to run (function name).</param>
+        /// <param name="workflowType">Name of the workflow to run.</param>
         /// <param name="workflowOptions">The list of options that are potentially needed to start a workflow.</param>
         /// <param name="input">The input input for the given workflow.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
@@ -956,8 +956,8 @@ namespace Dapr.Client
             string instanceID,
             string workflowComponent,
             string workflowType,
-            Dictionary<string, string> workflowOptions,
-            ByteString input,
+            Object input,
+            IReadOnlyDictionary<string, string> workflowOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -965,7 +965,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="instanceID">Identifier of the specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="workflowType">Name of the workflow to run (function name).</param>
+        /// <param name="workflowType">Name of the workflow to run.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="GetWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]

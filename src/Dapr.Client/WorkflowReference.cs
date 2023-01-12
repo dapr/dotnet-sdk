@@ -32,7 +32,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Gets the instance ID assocated with this response.
+        /// The instance ID assocated with this workflow.
         /// </summary>
         public string InstanceId { set; get; }
 

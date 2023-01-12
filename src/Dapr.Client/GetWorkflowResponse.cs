@@ -39,7 +39,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Gets the instance ID assocated with this response.
+        /// Gets the workflow instance ID assocated with this response.
         /// </summary>
         public string InstanceId { set; get; }
 
@@ -49,7 +49,7 @@ namespace Dapr.Client
         public Int64 StartTime { set; get; }
 
         /// <summary>
-        /// Gets the response metadata.
+        /// Gets the response metadata from the associated workflow. This includes information such as start time and status of workflow.
         /// </summary>
         public IReadOnlyDictionary<string, string> Metadata { set; get; }
     }
