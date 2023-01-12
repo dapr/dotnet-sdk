@@ -14,21 +14,36 @@
 namespace Dapr.Workflow
 {
     using System;
+    using System.Linq;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.DurableTask.Client;
     using Microsoft.DurableTask.Worker;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Contains extension methods for using Dapr Workflow with dependency injection.
     /// </summary>
     public static class WorkflowServiceCollectionExtensions
     {
+        static bool None<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate) => !source.Any(predicate);
+
+        static IServiceCollection AddSingletonIfNotPresent<TService>(this IServiceCollection services)
+        where TService : class
+        {
+            if (services.None(s => s.ImplementationType == typeof(TService)))
+            {
+                return services.AddSingleton(typeof(TService));
+            }
+
+            return services;
+        }
+
         /// <summary>
         /// Adds Dapr Workflow support to the service collection.
         /// </summary>
         /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
         /// <param name="configure">A delegate used to configure actor options and register workflow functions.</param>
-        public static IServiceCollection AddWorkflow(
+        public static IServiceCollection AddDaprWorkflow(
             this IServiceCollection serviceCollection,
             Action<WorkflowRuntimeOptions> configure)
         {
@@ -37,9 +52,9 @@ namespace Dapr.Workflow
                 throw new ArgumentNullException(nameof(serviceCollection));
             }
 
-            serviceCollection.AddSingleton<WorkflowRuntimeOptions>();
+            serviceCollection.AddSingletonIfNotPresent<WorkflowRuntimeOptions>();
+            serviceCollection.AddSingletonIfNotPresent<WorkflowClient>();
             serviceCollection.AddDaprClient();
-            serviceCollection.AddSingleton<WorkflowClient>();
 
             serviceCollection.AddDurableTaskClient(builder =>
             {

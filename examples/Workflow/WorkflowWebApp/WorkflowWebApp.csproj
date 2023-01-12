@@ -6,9 +6,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFrameworks>net6</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>10.0</LangVersion>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
 
