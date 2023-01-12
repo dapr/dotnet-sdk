@@ -70,6 +70,15 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
+        /// Waits for an event to be raised with name <paramref name="eventName"/> and returns the event data.
+        /// </summary>
+        /// <inheritdoc cref="TaskOrchestrationContext.WaitForExternalEvent{T}(string, CancellationToken)"/>
+        public Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default)
+        {
+            return this.innerContext.WaitForExternalEvent<T>(eventName, cancellationToken);
+        }
+
+        /// <summary>
         /// Asynchronously invokes an activity by name and with the specified input value.
         /// </summary>
         /// <inheritdoc cref="TaskOrchestrationContext.CallActivityAsync{T}(TaskName, object?, TaskOptions?)"/>
