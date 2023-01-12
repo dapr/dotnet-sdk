@@ -16,6 +16,7 @@ namespace Dapr.Workflow
     using System;
     using System.Linq;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
     using Microsoft.DurableTask.Client;
     using Microsoft.DurableTask.Worker;
     using System.Collections.Generic;
@@ -25,43 +26,6 @@ namespace Dapr.Workflow
     /// </summary>
     public static class WorkflowServiceCollectionExtensions
     {
-        /// <summary>
-        ///  Determines whether all element of a sequence fail to satisfy a condition -- or if none satisfies a condition.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">
-        /// An System.Collections.Generic.IEnumerable`1 whose elements to apply the predicate to.
-        /// </param>
-        /// <param name="predicate">A function to test each element for a condition.</param>
-        /// <returns>
-        /// true if all elements in the source sequence fail the test in the specified predicate; otherwise, true
-        /// </returns>
-        static bool None<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate) => !source.Any(predicate);
-
-        /// <summary>
-        /// Adds a singleton service of the type specified in <paramref name="TService"/> to the
-        /// specified <see cref="IServiceCollection"/> <b>if and only if</b> it isn't already present.
-        /// </summary>
-        /// <typeparam name="TService">The type of the service to register and the implementation to use.</typeparam>
-        /// <param name="services">The <see cref="IServiceCollection"/> to add the service to.</param>
-        /// <returns>A reference to this instance after the operation has completed.</returns>
-        /// <seealso cref="ServiceLifetime.Singleton"/>
-        static IServiceCollection AddSingletonIfNotPresent<TService>(this IServiceCollection services)
-        where TService : class
-        {
-            if (services is null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
-            if (services.None(s => s.ImplementationType == typeof(TService)))
-            {
-                return services.AddSingleton(typeof(TService));
-            }
-
-            return services;
-        }
-
         /// <summary>
         /// Adds Dapr Workflow support to the service collection.
         /// </summary>
@@ -76,8 +40,8 @@ namespace Dapr.Workflow
                 throw new ArgumentNullException(nameof(serviceCollection));
             }
 
-            serviceCollection.AddSingletonIfNotPresent<WorkflowRuntimeOptions>();
-            serviceCollection.AddSingletonIfNotPresent<WorkflowClient>();
+            serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
+            serviceCollection.TryAddSingleton<WorkflowClient>();
             serviceCollection.AddDaprClient();
 
             serviceCollection.AddDurableTaskClient(builder =>
