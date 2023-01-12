@@ -47,5 +47,5 @@ app.MapGet("/order/{id}", async (string id, WorkflowClient client) =>
     }
 }).WithName("GetOrderEndpoint");
 
-app.Run("http://0.0.0.0:10080");
+app.Run();
 
