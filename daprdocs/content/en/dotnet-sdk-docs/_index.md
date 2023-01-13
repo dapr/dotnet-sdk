@@ -9,21 +9,29 @@ no_list: true
 
 Dapr offers a variety of packages to help with the development of .NET applications. Using them you can create .NET clients, servers, and virtual actors with Dapr.
 
+## Prerequisites
+
+- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
+- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
+- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
+
 ## Installation
 
-To get started with the .NET SDK, install the Dapr .NET SDK package:
+To get started with the Client .NET SDK, install the Dapr .NET SDK package:
 
 ```sh
-dotnet install dapr
+dotnet add package Dapr.Client --version 1.9.0
 ```
 
 ## Try it out
 
-Clone the .NET SDK repo to try out some of the [examples](https://github.com/dapr/dotnet-sdk/tree/master/examples).
+Put the Dapr .NET SDK to the test. Walk through the .NET quickstarts and tutorials to see Dapr in action:
 
-```sh
-git clone https://github.com/dapr/dotnet-sdk.git
-```
+| SDK samples | Description |
+| ----------- | ----------- |
+| [Quickstarts]({{< ref quickstarts >}}) | Experience Dapr's API building blocks in just a few minutes using the .NET SDK. |
+| [SDK samples](https://github.com/dapr/dotnet-sdk/tree/master/examples) | Clone the SDK repo to try out some examples and get started. |
+| [Pub/sub tutorial](https://github.com/dapr/quickstarts/tree/master/tutorials/pub-sub) | See how Dapr .NET SDK works alongside other Dapr SDKs to enable pub/sub applications. |
 
 ## Available packages
 
