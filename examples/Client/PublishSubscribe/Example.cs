@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@ using System.Threading.Tasks;
 
 namespace Samples.Client
 {
-    public abstract class Example 
+    public abstract class Example
     {
+        protected static readonly string pubsubName = "pubsub";
+
         public abstract string DisplayName { get; }
 
         public abstract Task RunAsync(CancellationToken cancellationToken);

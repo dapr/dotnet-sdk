@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,6 @@ namespace Samples.Client
 {
     public class PublishEventExample : Example
     {
-        private static readonly string pubsubName = "pubsub";
-
         public override string DisplayName => "Publishing Events";
 
         public override async Task RunAsync(CancellationToken cancellationToken)
@@ -31,12 +29,6 @@ namespace Samples.Client
             var eventData = new { Id = "17", Amount = 10m, };
             await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
             Console.WriteLine("Published deposit event!");
-        }
-
-        private class Widget
-        {
-            public string? Size { get; set; }
-            public string? Color { get; set; }
         }
     }
 }
