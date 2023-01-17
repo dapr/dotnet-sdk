@@ -25,6 +25,8 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
+    using Dapr.Workflow;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Startup class.
@@ -54,6 +56,23 @@ namespace Dapr.E2E.Test
             services.AddAuthentication().AddDapr();
             services.AddAuthorization(o => o.AddDapr());
             services.AddControllers().AddDapr();
+            // Register a workflow and associated activity
+            services.AddDaprWorkflow(options =>
+            {
+                // Example of registering a "PlaceOrder" workflow function
+                options.RegisterWorkflow<string, string>("PlaceOrder", implementation: async (context, input) =>
+                {
+                    // In real life there are other steps related to placing an order, like reserving
+                    // inventory and charging the customer credit card etc. But let's keep it simple ;)
+                    return await context.CallActivityAsync<string>("ShipProduct", "Coffee Beans");
+                });
+
+                // Example of registering a "ShipProduct" workflow activity function
+                options.RegisterActivity<string, string>("ShipProduct", implementation: (context, input) =>
+                {
+                    return Task.FromResult($"We are shipping {input} to the customer using our hoard of drones!");
+                });
+            });
             services.AddActors(options =>
             {
                 options.Actors.RegisterActor<ReminderActor>();
