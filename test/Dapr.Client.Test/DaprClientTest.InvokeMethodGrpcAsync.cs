@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_WithCancelledToken()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -50,7 +50,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -88,7 +88,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
@@ -105,7 +105,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () => 
+            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
             {
                 await client.DaprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
             });
@@ -115,7 +115,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -153,7 +153,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
@@ -170,7 +170,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () => 
+            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
             {
                 await client.DaprClient.InvokeMethodGrpcAsync<Response>("test", "test");
             });
@@ -188,11 +188,11 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
-                
+
             client.Mock
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Returns(response);
@@ -210,7 +210,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response = 
+            var response =
                 client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
@@ -228,7 +228,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () => 
+            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
             {
                 await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " });
             });
@@ -238,7 +238,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_WithNoReturnTypeAndData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -256,7 +256,7 @@ namespace Dapr.Client.Test
             envelope.Id.Should().Be("test");
             envelope.Message.Method.Should().Be("test");
             envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
-            
+
             var actual = envelope.Message.Data.Unpack<Request>();
             Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
         }
@@ -264,7 +264,7 @@ namespace Dapr.Client.Test
         [Fact]
         public async Task InvokeMethodGrpcAsync_WithReturnTypeAndData()
         {
-            await using var client = TestClient.CreateForDaprClient(c => 
+            await using var client = TestClient.CreateForDaprClient(c =>
             {
                 c.UseJsonSerializationOptions(this.jsonSerializerOptions);
             });
@@ -303,7 +303,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new AppCallbackClient(new DaprAppCallbackService());
             var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions(){ HttpClient = httpClient, })
+                .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
                 .UseJsonSerializationOptions(this.jsonSerializerOptions)
                 .Build();
 
@@ -320,7 +320,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new AppCallbackClient(new DaprAppCallbackService());
             var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions(){ HttpClient = httpClient, })
+                .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
                 .UseJsonSerializationOptions(this.jsonSerializerOptions)
                 .Build();
 
@@ -343,7 +343,7 @@ namespace Dapr.Client.Test
             // Configure Client
             var httpClient = new AppCallbackClient(new DaprAppCallbackService());
             var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions(){ HttpClient = httpClient, })
+                .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
                 .UseJsonSerializationOptions(this.jsonSerializerOptions)
                 .Build();
 
@@ -352,6 +352,106 @@ namespace Dapr.Client.Test
             var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "not-existing", request);
 
             response.Name.Should().Be("unexpected");
+        }
+
+
+        [Fact]
+        public async Task GetMetadataAsync_WrapsRpcException()
+        {
+            var client = new MockClient();
+
+            const string rpcExceptionMessage = "RPC exception";
+            const StatusCode rpcStatusCode = StatusCode.Unavailable;
+            const string rpcStatusDetail = "Non success";
+
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+            client.Mock
+                .Setup(m => m.GetMetadataAsync(It.IsAny<Empty>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await client.DaprClient.GetMetadataAsync(default);
+            });
+            Assert.Same(rpcException, ex.InnerException);
+        }
+
+        [Fact]
+        public async Task GetMetadataAsync_WithReturnTypeAndData()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetMetadataAsync(default);
+            });
+
+
+            // Create Response & Respond
+            var response = new Autogen.Grpc.v1.GetMetadataResponse()
+            {
+                Id = "testId",
+            };
+            response.ActiveActorsCount.Add(new ActiveActorsCount { Type = "testType", Count = 1 });
+            response.RegisteredComponents.Add(new RegisteredComponents { Name = "testName", Type = "testType", Version = "V1" });
+            response.ExtendedMetadata.Add("e1", "v1");
+
+            // Validate Response
+            var metadata = await request.CompleteWithMessageAsync(response);
+            metadata.Id.Should().Be("testId");
+            metadata.Extended.Should().Contain(new System.Collections.Generic.KeyValuePair<string, string>("e1", "v1"));
+            metadata.Actors.Should().Contain(actors => actors.Count == 1 && actors.Type == "testType");
+            metadata.Components.Should().Contain(components => components.Name == "testName" && components.Type == "testType" && components.Version == "V1" && components.Capabilities.Length == 0);
+        }
+
+        [Fact]
+        public async Task SetMetadataAsync_WrapsRpcException()
+        {
+            var client = new MockClient();
+
+            const string rpcExceptionMessage = "RPC exception";
+            const StatusCode rpcStatusCode = StatusCode.Unavailable;
+            const string rpcStatusDetail = "Non success";
+
+            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+            client.Mock
+                .Setup(m => m.SetMetadataAsync(It.IsAny<SetMetadataRequest>(), It.IsAny<CallOptions>()))
+                .Throws(rpcException);
+
+            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
+            {
+                await client.DaprClient.SetMetadataAsync("testName", "", default);
+            });
+            Assert.Same(rpcException, ex.InnerException);
+        }
+
+        [Fact]
+        public async Task SetMetadataAsync_WithReturnTypeAndData()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var request = await client.CaptureGrpcRequestAsync(daprClient =>
+            {
+                return daprClient.SetMetadataAsync("test", "testv", default);
+            });
+
+            // Get Request and validate
+            var envelope = await request.GetRequestEnvelopeAsync<SetMetadataRequest>();
+            envelope.Key.Should().Be("test");
+            envelope.Value.Should().Be("testv");
+
+            await request.CompleteWithMessageAsync(new Empty());
+
         }
 
         // Test implementation of the AppCallback.AppCallbackBase service

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 namespace Dapr.Client.Test
 {
     using System;
+    using System.Collections.Generic;
     using System.Net;
     using System.Net.Http;
     using System.Net.Http.Json;
@@ -22,6 +23,7 @@ namespace Dapr.Client.Test
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
+    using FluentAssertions;
     using Xunit;
 
     // Most of the InvokeMethodAsync functionality on DaprClient is non-abstract methods that

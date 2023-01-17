@@ -96,6 +96,19 @@ var response = await proxy.InvokeMethodAsync<MyRequest, MyResponse>("DoSomething
 
 When using a weakly-typed proxy, you _must_ proactively define the correct actor method names and message types. When using a strongly-typed proxy, these names and types are defined for you as part of the interface definition.
 
+### Actor method invocation exception details
+
+The actor method invocation exception details are surfaced to the caller and the callee, providing an entry point to track down the issue. Exception details include:
+ - Method name
+ - Line number
+ - Exception type
+ - UUID 
+ 
+You use the UUID to match the exception on the caller and callee side. Below is an example of exception details:
+```
+Dapr.Actors.ActorMethodInvocationException: Remote Actor Method Exception, DETAILS: Exception: NotImplementedException, Method Name: ExceptionExample, Line Number: 14, Exception uuid: d291a006-84d5-42c4-b39e-d6300e9ac38b
+```
+
 ## Next steps
 
 [Learn how to author and run actors with `ActorHost`]({{< ref dotnet-actors-usage.md >}}).

@@ -33,10 +33,12 @@ dapr run --app-id DaprClient -- dotnet run 0
 
 See [StateStoreExample.cs](./StateStoreExample.cs) for an example of using `DaprClient` for basic state store operations like get, set, and delete.
 
-# State transactions
+## State transactions
 
 See: [StateStoreTransactionsExample.cs](./StateStoreTransactionsExample.cs) for an example of using `DaprClient` for transactional state store operations that affect multiple keys. 
 
 ## ETags
-
 See [StateStoreETagsExample.cs](./StateStoreETagsExample.cs) for an example of using `DaprClient` for optimistic concurrency control with the state store.
+
+## Bulk State
+See [BulkStateExample.cs](./BulkStateExample.cs) for an example of using `DaprClient` for Bulk State, i.e. sending multiple key value pairs to the state store.
