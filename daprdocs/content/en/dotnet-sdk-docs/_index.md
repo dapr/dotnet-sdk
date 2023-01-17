@@ -20,7 +20,7 @@ Dapr offers a variety of packages to help with the development of .NET applicati
 To get started with the Client .NET SDK, install the Dapr .NET SDK package:
 
 ```sh
-dotnet add package Dapr.Client --version 1.9.0
+dotnet add package Dapr.Client
 ```
 
 ## Try it out
