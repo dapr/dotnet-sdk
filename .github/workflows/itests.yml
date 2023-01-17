@@ -41,7 +41,7 @@ jobs:
           prefix: 'net6'
     env:
       NUPKG_OUTDIR: bin/Release/nugets
-      GOVER: 1.17
+      GOVER: 1.19
       GOOS: linux
       GOARCH: amd64
       GOPROXY: https://proxy.golang.org
