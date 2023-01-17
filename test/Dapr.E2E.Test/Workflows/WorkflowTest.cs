@@ -37,7 +37,7 @@ namespace Dapr.E2E.Test
             workflowOptions.Add("task_queue", "testQueue");
             CancellationToken cts = new CancellationToken();
 
-            using var daprClient = new DaprClientBuilder().Build();
+            using var daprClient = new DaprClientBuilder().UseGrpcEndpoint(this.GrpcEndpoint).Build();
 
             var health = daprClient.CheckHealthAsync();
             health.Should().Be(true, "DaprClient is not healthy");
