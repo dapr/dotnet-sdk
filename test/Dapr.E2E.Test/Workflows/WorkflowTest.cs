@@ -34,12 +34,13 @@ namespace Dapr.E2E.Test
             string workflowType = "PlaceOrder";
             object input = ByteString.CopyFrom(0x01);
             Dictionary<string, string> workflowOptions = new Dictionary<string, string>();
+            workflowOptions.Add("task_queue", "testQueue");
             CancellationToken cts = new CancellationToken();
 
             using var daprClient = new DaprClientBuilder().Build();
 
             // Start the workflow
-            var startResponse = await daprClient.StartWorkflow(instanceID, workflowComponent, workflowType, input, null, cts);
+            var startResponse = await daprClient.StartWorkflow(instanceID, workflowComponent, workflowType, input, workflowOptions, cts);
   
             // Get Request and validate
             startResponse.InstanceId.Should().Be("testInstance", "Instance ID was not correct");
