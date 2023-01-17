@@ -14,12 +14,10 @@
 namespace Dapr.Workflow
 {
     using System;
-    using System.Linq;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.DependencyInjection.Extensions;
     using Microsoft.DurableTask.Client;
     using Microsoft.DurableTask.Worker;
-    using System.Collections.Generic;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
 
     /// <summary>
     /// Contains extension methods for using Dapr Workflow with dependency injection.
@@ -41,8 +39,10 @@ namespace Dapr.Workflow
             }
 
             serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
-            serviceCollection.TryAddSingleton<WorkflowClient>();
+            serviceCollection.TryAddSingleton<WorkflowEngineClient>();
             serviceCollection.AddDaprClient();
+
+            serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
 
             serviceCollection.AddDurableTaskClient(builder =>
             {
