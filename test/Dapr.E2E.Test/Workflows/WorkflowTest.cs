@@ -39,6 +39,9 @@ namespace Dapr.E2E.Test
 
             using var daprClient = new DaprClientBuilder().Build();
 
+            var health = daprClient.CheckHealthAsync();
+            health.Should().Be(true, "DaprClient is not healthy");
+
             // Start the workflow
             var startResponse = await daprClient.StartWorkflow(instanceID, workflowComponent, workflowType, input, workflowOptions, cts);
   
