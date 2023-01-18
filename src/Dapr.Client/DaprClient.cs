@@ -981,7 +981,7 @@ namespace Dapr.Client
         /// <param name="instanceID">Identifier of the specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
+        /// <returns>A <see cref="Task" /> that will complete when the terminate operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task TerminateWorkflow(
             string instanceID,
