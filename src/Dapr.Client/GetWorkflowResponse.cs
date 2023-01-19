@@ -19,7 +19,7 @@ namespace Dapr.Client
     /// <summary>
     /// Represents the response from invoking a binding.
     /// </summary>
-    public sealed class GetWorkflowResponse
+    public sealed record GetWorkflowResponse
     {
         /// <summary>
         /// Initializes a new <see cref="GetWorkflowResponse" />.`
@@ -27,7 +27,7 @@ namespace Dapr.Client
         /// <param name="instanceId">The instance ID assocated with this response.</param>
         /// <param name="startTime">The time at which the workflow started executing.</param>
         /// <param name="metadata">The response metadata.</param>
-        public GetWorkflowResponse(string instanceId, Int64 startTime, IReadOnlyDictionary<string, string> metadata)
+        public GetWorkflowResponse(string instanceId, DateTime startTime, IReadOnlyDictionary<string, string> metadata)
         {
             ArgumentVerifier.ThrowIfNull(instanceId, nameof(instanceId));
             ArgumentVerifier.ThrowIfNull(startTime, nameof(startTime));
@@ -46,7 +46,7 @@ namespace Dapr.Client
         /// <summary>
         /// Gets the time that the workflow started.
         /// </summary>
-        public Int64 StartTime { set; get; }
+        public DateTime StartTime { set; get; }
 
         /// <summary>
         /// Gets the response metadata from the associated workflow. This includes information such as start time and status of workflow.
