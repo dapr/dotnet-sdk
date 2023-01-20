@@ -1446,7 +1446,7 @@ namespace Dapr.Client
             {
                 var options = CreateCallOptions(headers: null, cancellationToken);
                 var response = await client.GetWorkflowAlpha1Async(request, options);
-                var dateTimeValue = new DateTime(response.StartTime);
+                var dateTimeValue = new DateTime(response.StartTime, DateTimeKind.Utc);
                 return new GetWorkflowResponse(response.InstanceId, dateTimeValue, response.Metadata);
             }
             catch (RpcException ex)
