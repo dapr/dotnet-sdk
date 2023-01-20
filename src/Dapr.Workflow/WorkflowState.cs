@@ -106,12 +106,12 @@ namespace Dapr.Workflow
         /// <returns>Returns the output as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
         public T? ReadOutputAs<T>()
         {
-            if (this.Exists)
+            if (this.workflowState == null)
             {
                 return default;
             }
 
-            return this.workflowState!.ReadOutputAs<T>();
+            return this.workflowState.ReadOutputAs<T>();
         }
 
         /// <summary>

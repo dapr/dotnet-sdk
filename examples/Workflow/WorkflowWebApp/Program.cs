@@ -18,8 +18,11 @@ builder.Services.Configure<JsonOptions>(options =>
 // Dapr workflows are registered as part of the service configuration
 builder.Services.AddDaprWorkflow(options =>
 {
+    // Note that it's also possible to register a lambda function as the workflow
+    // or activity implementation instead of a class.
     options.RegisterWorkflow<OrderProcessingWorkflow>();
 
+    // These are the activities that get invoked by the workflow(s).
     options.RegisterActivity<NotifyActivity>();
     options.RegisterActivity<ReserveInventoryActivity>();
     options.RegisterActivity<ProcessPaymentActivity>();
@@ -60,6 +63,7 @@ app.MapGet("/orders/{orderId}", async (string orderId, WorkflowEngineClient clie
     {
         details = state.ReadInputAs<OrderPayload>(),
         status = state.RuntimeStatus.ToString(),
+        result = state.ReadOutputAs<OrderResult>(),
     };
 
     if (state.IsWorkflowRunning)
