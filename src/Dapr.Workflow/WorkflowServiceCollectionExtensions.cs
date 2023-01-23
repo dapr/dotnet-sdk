@@ -44,9 +44,30 @@ namespace Dapr.Workflow
 
             serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
 
+            static bool TryGetGrpcAddress(out string address)
+            {
+                string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+                if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
+                {
+                    address = $"localhost:{daprGrpcPort}";
+                    return true;
+                }
+
+                address = string.Empty;
+                return false;
+            }
+
             serviceCollection.AddDurableTaskClient(builder =>
             {
-                builder.UseGrpc();
+                if (TryGetGrpcAddress(out string address))
+                {
+                    builder.UseGrpc(address);
+                }
+                else
+                {
+                    builder.UseGrpc();
+                }
+
                 builder.RegisterDirectly();
             });
 
@@ -55,7 +76,15 @@ namespace Dapr.Workflow
                 WorkflowRuntimeOptions options = new();
                 configure?.Invoke(options);
 
-                builder.UseGrpc();
+                if (TryGetGrpcAddress(out string address))
+                {
+                    builder.UseGrpc(address);
+                }
+                else
+                {
+                    builder.UseGrpc();
+                }
+
                 builder.AddTasks(registry => options.AddWorkflowsAndActivitiesToRegistry(registry));
             });
 

@@ -96,6 +96,11 @@ namespace Dapr.Workflow
                 return default;
             }
 
+            if (string.IsNullOrEmpty(this.workflowState.SerializedInput))
+            {
+                return default;
+            }
+
             return this.workflowState.ReadInputAs<T>();
         }
 
@@ -111,6 +116,11 @@ namespace Dapr.Workflow
                 return default;
             }
 
+            if (string.IsNullOrEmpty(this.workflowState.SerializedOutput))
+            {
+                return default;
+            }
+
             return this.workflowState.ReadOutputAs<T>();
         }
 
@@ -122,6 +132,11 @@ namespace Dapr.Workflow
         public T? ReadCustomStatusAs<T>()
         {
             if (this.workflowState == null)
+            {
+                return default;
+            }
+
+            if (string.IsNullOrEmpty(this.workflowState.SerializedCustomStatus))
             {
                 return default;
             }
