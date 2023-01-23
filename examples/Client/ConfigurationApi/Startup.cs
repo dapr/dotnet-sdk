@@ -45,22 +45,12 @@ namespace ConfigurationApi
                 app.UseDeveloperExceptionPage();
             }
 
-            ChangeToken.OnChange(
-                () => Configuration.GetReloadToken(),
-                (state) => StateChange(state),
-                Configuration);
-
             app.UseRouting();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
-        }
-
-        private void StateChange(IConfiguration configuration)
-        {
-            Console.WriteLine($"A thing happened: {configuration}");
         }
     }
 }

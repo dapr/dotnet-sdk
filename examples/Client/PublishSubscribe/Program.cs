@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ namespace Samples.Client
         private static readonly Example[] Examples = new Example[]
         {
             new PublishEventExample(),
+            new PublishBytesExample(),
         };
 
         static async Task<int> Main(string[] args)

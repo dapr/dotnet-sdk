@@ -9,11 +9,11 @@ no_list: true
 
 The Dapr client package allows you to interact with other Dapr applications from a .NET application.
 
-## Prerequisites
+{{% alert title="Note" color="primary" %}}
+ If you haven't already, [try out one of the quickstarts]({{< ref quickstarts >}}) for a quick walk-through on how to use the Dapr .NET SDK with an API building block.
 
-- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
-- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
+{{% /alert %}}
+
 
 ## Building blocks
 
