@@ -15,7 +15,7 @@
             this.logger = loggerFactory.CreateLogger<ReserveInventoryActivity>();
         }
 
-        public override Task<InventoryResult> RunAsync(WorkflowActivityContext context, InventoryRequest req)
+        public override async Task<InventoryResult> RunAsync(WorkflowActivityContext context, InventoryRequest req)
         {
             this.logger.LogInformation(
                 "Reserving inventory: {requestId}, {name}, {quantity}",
@@ -23,7 +23,10 @@
                 req.Name,
                 req.Quantity);
 
-            return Task.FromResult(new InventoryResult(true));
+            // Simulate slow processing
+            await Task.Delay(TimeSpan.FromSeconds(2));
+
+            return new InventoryResult(true);
         }
     }
 }

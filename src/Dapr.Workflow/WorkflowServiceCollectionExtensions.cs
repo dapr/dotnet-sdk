@@ -46,6 +46,10 @@ namespace Dapr.Workflow
 
             static bool TryGetGrpcAddress(out string address)
             {
+                // TODO: Ideally we should be using DaprDefaults.cs for this. However, there are two blockers:
+                //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
+                //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
+                // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
                 string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
                 if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
                 {

@@ -14,7 +14,7 @@
             this.logger = loggerFactory.CreateLogger<ProcessPaymentActivity>();
         }
 
-        public override Task<object> RunAsync(WorkflowActivityContext context, PaymentRequest req)
+        public override async Task<object> RunAsync(WorkflowActivityContext context, PaymentRequest req)
         {
             this.logger.LogInformation(
                 "Processing payment: {requestId}, {amount}, {currency}",
@@ -22,7 +22,14 @@
                 req.Amount,
                 req.Currency);
 
-            return Task.FromResult<object>(null);
+            // Simulate slow processing
+            await Task.Delay(TimeSpan.FromSeconds(7));
+
+            this.logger.LogInformation(
+                "Payment for request ID '{requestId}' processed successfully",
+                req.RequestId);
+
+            return null;
         }
     }
 }
