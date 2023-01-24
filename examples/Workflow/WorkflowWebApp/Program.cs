@@ -1,51 +1,82 @@
-﻿using Dapr.Workflow;
+﻿using System.Text.Json.Serialization;
+using Dapr.Workflow;
+using Microsoft.AspNetCore.Mvc;
+using WorkflowWebApp.Activities;
+using WorkflowWebApp.Workflows;
+using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 // The workflow host is a background service that connects to the sidecar over gRPC
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Configure HTTP JSON options.
+builder.Services.Configure<JsonOptions>(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
+
 // Dapr workflows are registered as part of the service configuration
 builder.Services.AddDaprWorkflow(options =>
 {
-    // Example of registering a "PlaceOrder" workflow function
-    options.RegisterWorkflow<string, string>("PlaceOrder", implementation: async (context, input) =>
-    {
-        // In real life there are other steps related to placing an order, like reserving
-        // inventory and charging the customer credit card etc. But let's keep it simple ;)
-        return await context.CallActivityAsync<string>("ShipProduct", "Coffee Beans");
-    });
+    // Note that it's also possible to register a lambda function as the workflow
+    // or activity implementation instead of a class.
+    options.RegisterWorkflow<OrderProcessingWorkflow>();
 
-    // Example of registering a "ShipProduct" workflow activity function
-    options.RegisterActivity<string, string>("ShipProduct", implementation: (context, input) =>
-    {
-        return Task.FromResult($"We are shipping {input} to the customer using our hoard of drones!");
-    });
+    // These are the activities that get invoked by the workflow(s).
+    options.RegisterActivity<NotifyActivity>();
+    options.RegisterActivity<ReserveInventoryActivity>();
+    options.RegisterActivity<ProcessPaymentActivity>();
 });
 
 WebApplication app = builder.Build();
 
-// POST starts new workflow instances
-app.MapPost("/order", async (HttpContext context, WorkflowClient client) =>
+// POST starts new order workflow instance
+app.MapPost("/orders", async (WorkflowEngineClient client, [FromBody] OrderPayload orderInfo) =>
 {
-    string id = Guid.NewGuid().ToString()[..8];
-    await client.ScheduleNewWorkflowAsync("PlaceOrder", id);
+    if (orderInfo?.Name == null)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Order data was missing from the request",
+            example = new OrderPayload("Paperclips", 99.95),
+        });
+    }
+
+    // Randomly generated order ID that is 8 characters long.
+    string orderId = Guid.NewGuid().ToString()[..8];
+    await client.ScheduleNewWorkflowAsync(nameof(OrderProcessingWorkflow), orderId, orderInfo);
 
     // return an HTTP 202 and a Location header to be used for status query
-    return Results.AcceptedAtRoute("GetOrderEndpoint", new { id });
+    return Results.AcceptedAtRoute("GetOrderInfoEndpoint", new { orderId });
 });
 
-// GET fetches metadata for specific order workflow instances
-app.MapGet("/order/{id}", async (string id, WorkflowClient client) =>
+// GET fetches state for order workflow to report status
+app.MapGet("/orders/{orderId}", async (string orderId, WorkflowEngineClient client) =>
 {
-    WorkflowMetadata metadata = await client.GetWorkflowMetadataAsync(id, getInputsAndOutputs: true);
-    if (metadata.Exists)
+    WorkflowState state = await client.GetWorkflowStateAsync(orderId, true);
+    if (!state.Exists)
     {
-        return Results.Ok(metadata);
+        return Results.NotFound($"No order with ID = '{orderId}' was found.");
+    }
+
+    var httpResponsePayload = new
+    {
+        details = state.ReadInputAs<OrderPayload>(),
+        status = state.RuntimeStatus.ToString(),
+        result = state.ReadOutputAs<OrderResult>(),
+    };
+
+    if (state.IsWorkflowRunning)
+    {
+        // HTTP 202 Accepted - async polling clients should keep polling for status
+        return Results.AcceptedAtRoute("GetOrderInfoEndpoint", new { orderId }, httpResponsePayload);
     }
     else
     {
-        return Results.NotFound($"No workflow created for order with ID = '{id}' was found.");
+        // HTTP 200 OK
+        return Results.Ok(httpResponsePayload);
     }
-}).WithName("GetOrderEndpoint");
+}).WithName("GetOrderInfoEndpoint");
 
 app.Run();
 

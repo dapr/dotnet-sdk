@@ -14,12 +14,10 @@
 namespace Dapr.Workflow
 {
     using System;
-    using System.Linq;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.DependencyInjection.Extensions;
     using Microsoft.DurableTask.Client;
     using Microsoft.DurableTask.Worker;
-    using System.Collections.Generic;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
 
     /// <summary>
     /// Contains extension methods for using Dapr Workflow with dependency injection.
@@ -41,12 +39,39 @@ namespace Dapr.Workflow
             }
 
             serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
-            serviceCollection.TryAddSingleton<WorkflowClient>();
+            serviceCollection.TryAddSingleton<WorkflowEngineClient>();
             serviceCollection.AddDaprClient();
+
+            serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
+
+            static bool TryGetGrpcAddress(out string address)
+            {
+                // TODO: Ideally we should be using DaprDefaults.cs for this. However, there are two blockers:
+                //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
+                //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
+                // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
+                string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+                if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
+                {
+                    address = $"localhost:{daprGrpcPort}";
+                    return true;
+                }
+
+                address = string.Empty;
+                return false;
+            }
 
             serviceCollection.AddDurableTaskClient(builder =>
             {
-                builder.UseGrpc();
+                if (TryGetGrpcAddress(out string address))
+                {
+                    builder.UseGrpc(address);
+                }
+                else
+                {
+                    builder.UseGrpc();
+                }
+
                 builder.RegisterDirectly();
             });
 
@@ -55,7 +80,15 @@ namespace Dapr.Workflow
                 WorkflowRuntimeOptions options = new();
                 configure?.Invoke(options);
 
-                builder.UseGrpc();
+                if (TryGetGrpcAddress(out string address))
+                {
+                    builder.UseGrpc(address);
+                }
+                else
+                {
+                    builder.UseGrpc();
+                }
+
                 builder.AddTasks(registry => options.AddWorkflowsAndActivitiesToRegistry(registry));
             });
 
