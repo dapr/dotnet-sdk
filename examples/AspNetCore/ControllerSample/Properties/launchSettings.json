@@ -1,12 +1,4 @@
 {
-  "iisSettings": {
-    "windowsAuthentication": false,
-    "anonymousAuthentication": true,
-    "iisExpress": {
-      "applicationUrl": "http://127.0.0.1:5000/",
-      "sslPort": 0
-    }
-  },
   "profiles": {
     "IIS Express": {
       "commandName": "IISExpress",
@@ -19,13 +11,20 @@
     },
     "ControllerSample": {
       "commandName": "Project",
-      "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "CUSTOM_PUBSUB": "custom-pubsub",
         "CUSTOM_TOPIC": "custom-topic"
       },
       "applicationUrl": "http://localhost:5000/"
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:54197/",
+      "sslPort": 44385
     }
   }
 }

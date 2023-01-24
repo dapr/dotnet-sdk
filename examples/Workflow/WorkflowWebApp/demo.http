@@ -1,0 +1,6 @@
+### Create new order
+POST http://localhost:8080/workflow
+Content-Type: application/json
+
+### Query placeholder
+GET http://localhost:8080/workflow/XXX
