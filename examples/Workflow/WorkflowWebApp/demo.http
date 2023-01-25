@@ -1,6 +1,8 @@
 ### Create new order
-POST http://localhost:8080/workflow
+POST http://localhost:10080/orders
 Content-Type: application/json
 
+{"name": "Paperclips", "totalCost": 99.95, "quantity": 1}
+
 ### Query placeholder
-GET http://localhost:8080/workflow/XXX
+GET http://localhost:10080/orders/XXX
