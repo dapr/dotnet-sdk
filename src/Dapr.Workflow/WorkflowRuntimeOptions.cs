@@ -17,6 +17,8 @@ namespace Dapr.Workflow
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Microsoft.DurableTask;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Defines runtime options for workflows.
@@ -27,6 +29,16 @@ namespace Dapr.Workflow
         /// Dictionary to name and register a workflow.
         /// </summary>
         readonly Dictionary<string, Action<DurableTaskRegistry>> factories = new();
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WorkflowRuntimeOptions"/> class.
+        /// </summary>
+        /// <remarks>
+        /// Instances of this type are expected to be instanciated from a dependency injection container.
+        /// </remarks>
+        public WorkflowRuntimeOptions()
+        {
+        }
 
         /// <summary>
         /// Registers a workflow as a function that takes a specified input type and returns a specified output type.
@@ -42,6 +54,25 @@ namespace Dapr.Workflow
                 {
                     WorkflowContext workflowContext = new(innerContext);
                     return implementation(workflowContext, input);
+                });
+            });
+        }
+
+        /// <summary>
+        /// Registers a workflow class that derives from <see cref="Workflow{TInput, TOutput}"/>.
+        /// </summary>
+        /// <typeparam name="TWorkflow">The <see cref="Workflow{TInput, TOutput}"/> type to register.</typeparam>
+        public void RegisterWorkflow<TWorkflow>() where TWorkflow : class, IWorkflow, new()
+        {
+            string name = typeof(TWorkflow).Name;
+
+            // Dapr workflows are implemented as specialized Durable Task orchestrations
+            this.factories.Add(name, (DurableTaskRegistry registry) =>
+            {
+                registry.AddOrchestrator(name, () =>
+                {
+                    TWorkflow workflow = Activator.CreateInstance<TWorkflow>();
+                    return new OrchestratorWrapper(workflow);
                 });
             });
         }
@@ -65,6 +96,26 @@ namespace Dapr.Workflow
         }
 
         /// <summary>
+        /// Registers a workflow activity class that derives from <see cref="WorkflowActivity{TInput, TOutput}"/>.
+        /// </summary>
+        /// <typeparam name="TActivity">The <see cref="WorkflowActivity{TInput, TOutput}"/> type to register.</typeparam>
+        public void RegisterActivity<TActivity>() where TActivity : class, IWorkflowActivity
+        {
+            string name = typeof(TActivity).Name;
+
+            // Dapr workflows are implemented as specialized Durable Task orchestrations
+            this.factories.Add(name, (DurableTaskRegistry registry) =>
+            {
+                registry.AddActivity(name, serviceProvider =>
+                {
+                    // Workflow activity classes support dependency injection.
+                    TActivity activity = ActivatorUtilities.CreateInstance<TActivity>(serviceProvider);
+                    return new ActivityWrapper(activity);
+                });
+            });
+        }
+
+        /// <summary>
         /// Method to add workflows and activities to the registry.
         /// </summary>
         /// <param name="registry">The registry we will add workflows and activities to</param>
@@ -73,6 +124,47 @@ namespace Dapr.Workflow
             foreach (Action<DurableTaskRegistry> factory in this.factories.Values)
             {
                 factory.Invoke(registry); // This adds workflows to the registry indirectly.
+            }
+        }
+
+        /// <summary>
+        /// Helper class that provides a Durable Task orchestrator wrapper for a workflow.
+        /// </summary>
+        class OrchestratorWrapper : ITaskOrchestrator
+        {
+            readonly IWorkflow workflow;
+
+            public OrchestratorWrapper(IWorkflow workflow)
+            {
+                this.workflow = workflow;
+            }
+
+            public Type InputType => this.workflow.InputType;
+
+            public Type OutputType => this.workflow.OutputType;
+
+            public Task<object?> RunAsync(TaskOrchestrationContext context, object? input)
+            {
+                return this.workflow.RunAsync(new WorkflowContext(context), input);
+            }
+        }
+
+        class ActivityWrapper : ITaskActivity
+        {
+            readonly IWorkflowActivity activity;
+
+            public ActivityWrapper(IWorkflowActivity activity)
+            {
+                this.activity = activity;
+            }
+
+            public Type InputType => this.activity.InputType;
+
+            public Type OutputType => this.activity.OutputType;
+
+            public Task<object?> RunAsync(TaskActivityContext context, object? input)
+            {
+                return this.activity.RunAsync(new WorkflowActivityContext(context), input);
             }
         }
     }

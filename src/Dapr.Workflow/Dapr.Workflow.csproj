@@ -2,7 +2,7 @@
 
   <!-- NuGet configuration -->
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp3.1;net5;net6</TargetFrameworks>
+    <TargetFramework>net6</TargetFramework>
     <Nullable>enable</Nullable>
     <PackageId>Dapr.Workflow</PackageId>
     <Title>Dapr Workflow Authoring SDK</Title>

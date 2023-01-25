@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2022 The Dapr Authors
+// Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,34 +11,46 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Microsoft.DurableTask.Client;
-
 namespace Dapr.Workflow
 {
     /// <summary>
-    /// Represents a snapshot of a workflow instance's current state, including metadata.
+    /// Enum describing the runtime status of the workflow.
     /// </summary>
-    public class WorkflowMetadata
+    public enum WorkflowRuntimeStatus
     {
-        internal WorkflowMetadata(OrchestrationMetadata? metadata)
-        {
-            this.Details = metadata;
-        }
+        /// <summary>
+        /// The status of the workflow is unknown.
+        /// </summary>
+        Unknown = -1,
 
         /// <summary>
-        /// Gets a value indicating whether the requested workflow instance exists.
+        /// The workflow started running.
         /// </summary>
-        public bool Exists => this.Details != null;
+        Running,
 
         /// <summary>
-        /// Gets a value indicating whether the requested workflow is in a running state.
+        /// The workflow completed normally.
         /// </summary>
-        public bool IsWorkflowRunning => this.Details?.RuntimeStatus == OrchestrationRuntimeStatus.Running;
+        Completed,
 
         /// <summary>
-        /// Gets the detailed metadata for the requested workflow instance. 
-        /// This value will be <c>null</c> when <see cref="Exists" /> is <c>false</c>.
+        /// The workflow completed with an unhandled exception.
         /// </summary>
-        public OrchestrationMetadata? Details { get; }
+        Failed,
+
+        /// <summary>
+        /// The workflow was abruptly terminated via a management API call.
+        /// </summary>
+        Terminated,
+
+        /// <summary>
+        /// The workflow was scheduled but hasn't started running.
+        /// </summary>
+        Pending,
+
+        /// <summary>
+        /// The workflow was suspended.
+        /// </summary>
+        Suspended,
     }
 }
