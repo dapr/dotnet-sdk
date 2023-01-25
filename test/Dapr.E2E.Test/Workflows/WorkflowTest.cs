@@ -41,10 +41,8 @@ namespace Dapr.E2E.Test
             var health = await daprClient.CheckHealthAsync();
             health.Should().Be(true, "DaprClient is not healthy");
 
-            // Start the workflow
+            // START WORKFLOW TEST
             var startResponse = await daprClient.StartWorkflow(instanceID, workflowComponent, workflowType, input, workflowOptions, cts);
-  
-            // Get Request and validate
             startResponse.InstanceId.Should().Be("testInstance", "Instance ID was not correct");
 
             // GET INFO TEST
