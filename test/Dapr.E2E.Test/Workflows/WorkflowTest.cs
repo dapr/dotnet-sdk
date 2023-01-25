@@ -30,7 +30,7 @@ namespace Dapr.E2E.Test
         public async Task TestWorkflows()
         {
             string instanceID = "testInstance";
-            string workflowComponent = "testComponent";
+            string workflowComponent = "dapr";
             string workflowType = "PlaceOrder";
             object input = ByteString.CopyFrom(0x01);
             Dictionary<string, string> workflowOptions = new Dictionary<string, string>();
