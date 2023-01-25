@@ -279,12 +279,15 @@ namespace Dapr.Client
             var path = $"/v1.0/invoke/{appId}/method/{methodName.TrimStart('/')}";
             var request = new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path))
             {
-                Properties =
-                {
-                    { AppIdKey, appId },
-                    { MethodNameKey, methodName },
-                }
             };
+            #if NET5_0_OR_GREATER
+            request.Options.Set(new HttpRequestOptionsKey<object>(AppIdKey), appId);
+            request.Options.Set(new HttpRequestOptionsKey<object>(MethodNameKey), methodName);
+
+            #elif NETCOREAPP3_1_OR_GREATER
+            request.Properties.Add(new KeyValuePair<string, object>(AppIdKey, appId));
+            request.Properties.Add(new KeyValuePair<string, object>(MethodNameKey, methodName));
+            #endif
 
             if (this.apiTokenHeader is not null)
             {
@@ -324,8 +327,14 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
+                #if NET5_0_OR_GREATER
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
+                #else
                 request.Properties.TryGetValue(AppIdKey, out var appId);
                 request.Properties.TryGetValue(MethodNameKey, out var methodName);
+
+                #endif
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -348,8 +357,15 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
+                #if NET5_0_OR_GREATER
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
+                #else
                 request.Properties.TryGetValue(AppIdKey, out var appId);
                 request.Properties.TryGetValue(MethodNameKey, out var methodName);
+
+                #endif
+
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -372,8 +388,15 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
+                #if NET5_0_OR_GREATER
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
+                #else
                 request.Properties.TryGetValue(AppIdKey, out var appId);
                 request.Properties.TryGetValue(MethodNameKey, out var methodName);
+
+                #endif
+
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -390,8 +413,15 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
+                #if NET5_0_OR_GREATER
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
+                #else
                 request.Properties.TryGetValue(AppIdKey, out var appId);
                 request.Properties.TryGetValue(MethodNameKey, out var methodName);
+
+                #endif
+
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -401,8 +431,15 @@ namespace Dapr.Client
             }
             catch (JsonException ex)
             {
+                #if NET5_0_OR_GREATER
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
+                #else
                 request.Properties.TryGetValue(AppIdKey, out var appId);
                 request.Properties.TryGetValue(MethodNameKey, out var methodName);
+
+                #endif
+
 
                 throw new InvocationException(
                     appId: appId as string,

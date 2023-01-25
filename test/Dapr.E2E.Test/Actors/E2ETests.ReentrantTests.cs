@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
 namespace Dapr.E2E.Test
 {
     using System;
@@ -44,7 +45,6 @@ namespace Dapr.E2E.Test
                 return new ActorProxyFactory(new ActorProxyOptions() { HttpEndpoint = this.HttpEndpoint, });
             });
         }
-
         [Fact]
         public async Task ActorCanPerformReentrantCalls()
         {
@@ -63,7 +63,7 @@ namespace Dapr.E2E.Test
 
             var enterRecords  = records.FindAll(record => record.IsEnter);
             var exitRecords  = records.FindAll(record => !record.IsEnter);
-            
+
             this.Output.WriteLine($"Got {records.Count} records.");
             Assert.True(records.Count == NumCalls * 2);
             for (int i = 0; i < NumCalls; i++)

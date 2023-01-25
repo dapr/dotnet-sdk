@@ -9,6 +9,7 @@
     <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <ItemGroup>

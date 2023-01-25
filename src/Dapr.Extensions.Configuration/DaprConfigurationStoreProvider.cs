@@ -32,7 +32,7 @@ namespace Dapr.Extensions.Configuration
         private DaprClient daprClient;
         private TimeSpan sidecarWaitTimeout;
         private bool isStreaming;
-        private IReadOnlyDictionary<string, string>? metadata;
+        private IReadOnlyDictionary<string, string> metadata;
         private CancellationTokenSource cts;
         private Task subscribeTask = Task.CompletedTask;
 
@@ -90,7 +90,7 @@ namespace Dapr.Extensions.Configuration
                             var subscribeConfigurationResponse = await daprClient.SubscribeConfiguration(store, keys, metadata, cts.Token);
                             await foreach (var items in subscribeConfigurationResponse.Source.WithCancellation(cts.Token))
                             {
-                                var data = new Dictionary<string, string>(Data);
+                                var data = new Dictionary<string, string?>(Data);
                                 foreach (var item in items)
                                 {
                                     id = subscribeConfigurationResponse.Id;

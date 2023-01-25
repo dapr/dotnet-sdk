@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ namespace Dapr.Client
     /// to use the client as-if it were communciating with the destination application directly.
     /// </para>
     /// <para>
-    /// The handler will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
-    /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
+    /// The handler will read the <see cref="HttpRequestMessage.RequestUri" /> property, and
+    /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" />
     /// property will be replaced with a new URI with the authority section replaced by <see cref="DaprEndpoint" />
     /// and the path portion of the URI rewitten to follow the format of a Dapr service invocation request.
     /// </para>
@@ -93,7 +93,7 @@ namespace Dapr.Client
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var original = request.RequestUri;
-            if (!this.TryRewriteUri(request.RequestUri, out var rewritten))
+            if (!this.TryRewriteUri(request.RequestUri!, out var rewritten))
             {
                 throw new ArgumentException($"The request URI '{original}' is not a valid Dapr service invocation destination.", nameof(request));
             }

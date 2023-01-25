@@ -53,7 +53,7 @@ namespace Dapr.Extensions.Configuration
         /// <summary>
         /// The optional metadata to be sent to the configuration store.
         /// </summary>
-        public IReadOnlyDictionary<string, string>? Metadata { get; set; } = default;
+        public IReadOnlyDictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
 
         /// <inheritdoc/>
         public IConfigurationProvider Build(IConfigurationBuilder builder)

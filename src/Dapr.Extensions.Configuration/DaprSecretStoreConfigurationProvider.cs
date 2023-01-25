@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             bool normalizeKey,
             IEnumerable<DaprSecretDescriptor> secretDescriptors,
             DaprClient client) : this(store, normalizeKey, null, secretDescriptors, client, DefaultSidecarWaitTimeout)
-        {            
+        {
         }
 
         /// <summary>
@@ -185,7 +185,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
 
         private async Task LoadAsync()
         {
-            var data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+            var data = new Dictionary<string, string?>(StringComparer.InvariantCultureIgnoreCase);
 
             // Wait for the Dapr Sidecar to report healthy before attempting to fetch secrets.
             using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
