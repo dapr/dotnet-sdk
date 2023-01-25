@@ -41,6 +41,8 @@ namespace Dapr.E2E.Test
             var health = await daprClient.CheckHealthAsync();
             health.Should().Be(true, "DaprClient is not healthy");
 
+            Thread.Sleep(10000); // Sleep for 10s to wait for engine to start
+
             // START WORKFLOW TEST
             var startResponse = await daprClient.StartWorkflow(instanceID, workflowComponent, workflowType, input, workflowOptions, cts);
             startResponse.InstanceId.Should().Be("testInstance", "Instance ID was not correct");
@@ -49,7 +51,6 @@ namespace Dapr.E2E.Test
             var getResponse = await daprClient.GetWorkflow(instanceID, workflowComponent, workflowType);
             getResponse.instanceId.Should().Be("testInstance");
             getResponse.metadata["status"].Should().Be("Running", "The workflow is not running when it is expected to be running");
-
 
             // TERMINATE TEST:
             await daprClient.TerminateWorkflow(instanceID, workflowComponent);
