@@ -51,12 +51,12 @@ namespace Dapr.E2E.Test
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflow(instanceID, workflowComponent, workflowType);
             getResponse.instanceId.Should().Be("TestWorkflowInstanceID");
-            getResponse.metadata["status"].Should().Be("Running", "The workflow is not running when it is expected to be running");
+            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", "The workflow is not running when it is expected to be running");
 
             // TERMINATE TEST:
             await daprClient.TerminateWorkflow(instanceID, workflowComponent);
             getResponse = await daprClient.GetWorkflow(instanceID, workflowComponent, workflowType);
-            getResponse.metadata["status"].Should().Be("Terminated", "The workflow is still running when it is expected to be terminated");
+            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("TERMINATED", "The workflow is still running when it is expected to be terminated");
 
         }
 
