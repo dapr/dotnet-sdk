@@ -28,7 +28,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
 
                 var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/dapr/subscribe");
                 var response = await httpClient.SendAsync(request);
@@ -61,8 +61,8 @@ namespace Dapr.AspNetCore.IntegrationTest
                             {
                                 rawPayload = rawPayloadJson.GetString();
                             }
-                           
-                            foreach (var originalMetadataProperty in metadata.EnumerateObject().OrderBy(c=>c.Name))
+
+                            foreach (var originalMetadataProperty in metadata.EnumerateObject().OrderBy(c => c.Name))
                             {
                                 if (!originalMetadataProperty.Name.Equals("rawPayload"))
                                 {
@@ -70,7 +70,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                                 }
                             }
                         }
-                        var originalMetadataString= string.Empty;
+                        var originalMetadataString = string.Empty;
                         if (originalMetadata.Count > 0)
                         {
                             originalMetadataString = string.Join(";", originalMetadata.Select(c => $"{c.Key}={c.Value}"));

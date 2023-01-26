@@ -26,7 +26,7 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 6.0.x
+          dotnet-version: 7.0.x
       - name: Build
         run: dotnet build --configuration release
       - name: Generate Packages
@@ -42,44 +42,39 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['3.1', '5.0', '6.0']
+        dotnet-version: ['3.1', '6.0', '7.0']
         include:
         - dotnet-version: '3.1'
           install-3: true
-          install-5: false
           display-name: '.NET Core 3.1'
           framework: 'netcoreapp3.1'
           prefix: 'netcoreapp31'
-        - dotnet-version: '5.0'
-          install-3: false
-          install-5: true
-          display-name: '.NET 5.0'
-          framework: 'net5'
-          prefix: 'net5'
+          install-version: '3.1.x' # We always need a new .NET
         - dotnet-version: '6.0'
           install-3: false
-          install-5: false
           display-name: '.NET 6.0'
           framework: 'net6'
           prefix: 'net6'
+          install-version: '6.0.x'
+        - dotnet-version: '7.0'
+          install-3: false
+          display-name: '.NET 7.0'
+          framework: 'net7'
+          prefix: 'net7'
+          install-version: '7.0.x'
     steps:
     - uses: actions/checkout@v1
     - name: Parse release version
       run: python ./.github/scripts/get_release_version.py
-    - name: Setup .NET Core 3.1
-      uses: actions/setup-dotnet@v1
-      if: matrix.install-3
-      with:
-        dotnet-version: 3.1.x
-    - name: Setup .NET 5.0
-      uses: actions/setup-dotnet@v1
-      if: matrix.install-5
-      with:
-        dotnet-version: 5.0.x
-    - name: Setup .NET 6.0 # We always need 6.0 to build.
+    - name: Setup ${{ matrix.display-name }}
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: ${{ matrix.install-version }}
+    - name: Setup .NET 7.0 # net7 is always required.
+      uses: actions/setup-dotnet@v1
+      if: ${{ matrix.install-version != '7.0.x' }}
+      with:
+        dotnet-version: 7.0.x
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false

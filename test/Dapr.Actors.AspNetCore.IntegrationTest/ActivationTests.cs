@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
         public async Task CanActivateActorWithDependencyInjection()
         {
             using var factory = new AppWebApplicationFactory();
-            var httpClient = factory.CreateClient();
+            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
 
             // Doing this twice verifies that the Actor stays active and retains state using DI.
             var text = await IncrementCounterAsync(httpClient, "A");
