@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-﻿using System.Net;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -33,7 +33,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 {
                     Name = "jimmy"
                 };
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/requires-api-token")
                 {
                     Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
@@ -56,14 +56,14 @@ namespace Dapr.AspNetCore.IntegrationTest
                 {
                     Name = "jimmy"
                 };
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/requires-api-token")
                 {
                     Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
                 };
                 request.Headers.Add("Dapr-Api-Token", "asdfgh");
                 var response = await httpClient.SendAsync(request);
-                
+
                 response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
             }
         }
