@@ -12,21 +12,26 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Generic;
-using System.Threading;
 
 namespace Dapr.Client
 {
     /// <summary>
-    /// Abstraction around a configuration source.
+    /// Class representing the response returned on bulk publishing events.
     /// </summary>
-    public abstract class ConfigurationSource : IAsyncEnumerable<IDictionary<string, ConfigurationItem>>
+    public class BulkPublishResponse<TValue>
     {
         /// <summary>
-        /// The Id associated with this configuration source.
+        /// Initializes a new instance of the <see cref="BulkPublishResponse{TValue}"/> class.
         /// </summary>
-        public abstract string Id { get; }
+        /// <param name="failedEntries">The List of BulkPublishResponseEntries representing the list of events that failed to be published.</param>
+        public BulkPublishResponse(List<BulkPublishResponseFailedEntry<TValue>> failedEntries)
+        {
+            this.FailedEntries = failedEntries;
+        }
 
-        /// <inheritdoc/>
-        public abstract IAsyncEnumerator<IDictionary<string, ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
+        /// <summary>
+        /// The List of BulkPublishResponseFailedEntry objects that have failed to publish.
+        /// </summary>
+        public List<BulkPublishResponseFailedEntry<TValue>> FailedEntries { get; }
     }
 }

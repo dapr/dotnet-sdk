@@ -209,6 +209,22 @@ namespace Dapr.Client
             string topicName,
             Dictionary<string, string> metadata,
             CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// // Bulk Publishes multiple events to the specified topic.
+        /// </summary>
+        /// <param name="pubsubName">The name of the pubsub component to use.</param>
+        /// <param name="topicName">The name of the topic the request should be published to.</param>
+        /// <param name="events">The list of events to be published.</param>
+        /// <param name="metadata">The metadata to be set at the request level for the request.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task<BulkPublishResponse<TValue>> BulkPublishEventAsync<TValue>(
+            string pubsubName,
+            string topicName,
+            IReadOnlyList<TValue> events,
+            Dictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Publishes an event to the specified topic.
