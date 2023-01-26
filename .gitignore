@@ -101,3 +101,6 @@ coverage.json
 
 # Examples bloat
 examples/**/tmp
+
+# MacOS
+**/.DS_Store

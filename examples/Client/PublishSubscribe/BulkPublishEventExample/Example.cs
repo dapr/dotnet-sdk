@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,22 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
-namespace Dapr.Client
+namespace Samples.Client
 {
-    /// <summary>
-    /// Abstraction around a configuration source.
-    /// </summary>
-    public abstract class ConfigurationSource : IAsyncEnumerable<IDictionary<string, ConfigurationItem>>
+    public abstract class Example
     {
-        /// <summary>
-        /// The Id associated with this configuration source.
-        /// </summary>
-        public abstract string Id { get; }
+        public abstract string DisplayName { get; }
 
-        /// <inheritdoc/>
-        public abstract IAsyncEnumerator<IDictionary<string, ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
+        public abstract Task RunAsync(CancellationToken cancellationToken);
     }
 }
