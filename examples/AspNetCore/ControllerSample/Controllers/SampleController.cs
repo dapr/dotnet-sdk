@@ -81,7 +81,7 @@ namespace ControllerSample.Controllers
             }
 
             state.Value.Balance += transaction.Amount;
-            logger.LogInformation("Balance is {0}", state.Value.Balance);
+            logger.LogInformation("Balance for Id {0} is {1}",state.Value.Id, state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
         }
