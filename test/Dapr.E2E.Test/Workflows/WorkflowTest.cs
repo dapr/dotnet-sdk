@@ -29,10 +29,9 @@ namespace Dapr.E2E.Test
         [Fact]
         public async Task TestWorkflows()
         {
-            Thread.Sleep(10000); // Sleep for 10s to wait for engine to start
-            string instanceID = "TestWorkflowInstanceID";
+            string instanceId = "TestWorkflowInstanceID";
             string workflowComponent = "dapr";
-            string workflowType = "PlaceOrder";
+            string workflowName = "PlaceOrder";
             object input = ByteString.CopyFrom(0x01);
             Dictionary<string, string> workflowOptions = new Dictionary<string, string>();
             workflowOptions.Add("task_queue", "testQueue");
@@ -42,20 +41,18 @@ namespace Dapr.E2E.Test
             var health = await daprClient.CheckHealthAsync();
             health.Should().Be(true, "DaprClient is not healthy");
 
-            Thread.Sleep(10000); // Sleep for 10s to wait for engine to start
-
             // START WORKFLOW TEST
-            var startResponse = await daprClient.StartWorkflow(instanceID, workflowComponent, workflowType, input, workflowOptions, cts);
+            var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, workflowOptions, cts);
             startResponse.InstanceId.Should().Be("TestWorkflowInstanceID", "Instance ID was not correct");
 
             // GET INFO TEST
-            var getResponse = await daprClient.GetWorkflow(instanceID, workflowComponent, workflowType);
+            var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
             getResponse.instanceId.Should().Be("TestWorkflowInstanceID");
             getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", "The workflow is not running when it is expected to be running");
 
             // TERMINATE TEST:
-            await daprClient.TerminateWorkflow(instanceID, workflowComponent);
-            getResponse = await daprClient.GetWorkflow(instanceID, workflowComponent, workflowType);
+            await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
+            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
             getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("TERMINATED", "The workflow is still running when it is expected to be terminated");
 
         }

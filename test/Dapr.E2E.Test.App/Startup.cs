@@ -18,6 +18,7 @@ namespace Dapr.E2E.Test
     using Dapr.E2E.Test.Actors.Timers;
     using Dapr.E2E.Test.Actors.ExceptionTesting;
     using Dapr.E2E.Test.App.ErrorTesting;
+    using Dapr.Workflow;
     using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Builder;
@@ -25,7 +26,6 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
-    using Dapr.Workflow;
     using System.Threading.Tasks;
 
     /// <summary>

@@ -17,10 +17,10 @@ using System.Collections.Generic;
 namespace Dapr.Client
 {
         /// <summary>
-        /// Initializes a new <see cref="GetWorkflowResponse" />.`
+        /// Initializes a new <see cref="GetWorkflowResponse" />.
         /// </summary>
         /// <param name="instanceId">The instance ID assocated with this response.</param>
         /// <param name="startTime">The time at which the workflow started executing.</param>
         /// <param name="metadata">The response metadata.</param>
-    public record GetWorkflowResponse(string instanceId, DateTime startTime, IReadOnlyDictionary<string, string> metadata);
+        public record GetWorkflowResponse(string instanceId, DateTime startTime, IReadOnlyDictionary<string, string> metadata);
 }
