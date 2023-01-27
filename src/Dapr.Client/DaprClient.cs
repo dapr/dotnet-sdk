@@ -997,7 +997,7 @@ namespace Dapr.Client
         /// <summary>
         /// Attempt to get information about the given workflow.
         /// </summary>
-        /// <param name="instanceID">Identifier of the specific run.</param>
+        /// <param name="instanceID">Identifier of the workflow specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
         /// <param name="workflowType">Name of the workflow to run.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
