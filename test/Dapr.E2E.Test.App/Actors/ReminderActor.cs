@@ -54,6 +54,32 @@ namespace Dapr.E2E.Test.Actors.Reminders
             await this.RegisterReminderAsync("test-reminder-ttl", bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromSeconds(1), ttl: ttl);
             await this.StateManager.SetStateAsync<State>("reminder-state", new State() { IsReminderRunning = true, });
         }
+        
+        public async Task StartReminderWithRepetitions(int repetitions)
+        {
+            var options = new StartReminderOptions()
+            {
+                Total = 100,
+            };
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(options, this.Host.JsonSerializerOptions);
+            await this.RegisterReminderAsync("test-reminder-repetition", bytes, dueTime: TimeSpan.Zero, 
+                period: TimeSpan.FromSeconds(1), repetitions: repetitions);
+            await this.StateManager.SetStateAsync<State>("reminder-state", new State() 
+                { IsReminderRunning = true, });
+        }
+        
+        public async Task StartReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions)
+        {
+            var options = new StartReminderOptions()
+            {
+                Total = 100,
+            };
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(options, this.Host.JsonSerializerOptions);
+            await this.RegisterReminderAsync("test-reminder-ttl-repetition", bytes, dueTime: TimeSpan.Zero, 
+                period: TimeSpan.FromSeconds(1), repetitions: repetitions, ttl: ttl);
+            await this.StateManager.SetStateAsync<State>("reminder-state", new State() 
+                { IsReminderRunning = true, });
+        }
 
         public async Task ReceiveReminderAsync(string reminderName, byte[] bytes, TimeSpan dueTime, TimeSpan period)
         {

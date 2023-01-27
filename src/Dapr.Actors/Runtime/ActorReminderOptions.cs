@@ -40,5 +40,10 @@ namespace Dapr.Actors.Runtime
         /// An optional <see cref="TimeSpan"/> that determines when the reminder will expire.
         /// </summary>
         public TimeSpan? Ttl { get; set; }
+        
+        /// <summary>
+        /// The number of repetitions for which the reminder should be invoked.
+        /// </summary>
+        public int? Repetitions { get; set; }
     }
 }
