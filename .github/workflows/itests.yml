@@ -49,7 +49,7 @@ jobs:
       DAPR_RUNTIME_VER: 1.9.5
       DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/3dacfb672d55f1436c249057aaebbe597e1066f3/install/install.sh
       DAPR_CLI_REF: ''
-      DAPR_REF: 'cc396f36bd0d670a25aad1fe86e06e67a74397f7' #TODO, REMOVE ONCE TESTING IS DONE
+      DAPR_REF: ''
     steps:
       - name: Set up Dapr CLI
         run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
@@ -69,7 +69,7 @@ jobs:
         uses: actions/checkout@v2
         if: env.DAPR_REF != ''
         with:
-          repository: RyanLettieri/dapr #TODO, REMOVE ONCE TESTING IS DONE
+          repository: dapr/dapr
           ref: ${{ env.DAPR_REF }}
           path: dapr
       - name: Build and override dapr cli with referenced commit.
