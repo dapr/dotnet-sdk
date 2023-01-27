@@ -78,6 +78,21 @@ namespace IDemoActorInterface
         /// <param name="ttl">Optional TimeSpan that dictates when the timer expires.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
         Task RegisterTimerWithTtl(TimeSpan ttl);
+        
+        /// <summary>
+        /// Registers a reminder with repetitions.
+        /// </summary>
+        /// <param name="repetitions">The number of repetitions for which the reminder should be invoked.</param>
+        /// <returns>A task that represents the asynchronous save operation.</returns>
+        Task RegisterReminderWithRepetitions(int repetitions);
+        
+        /// <summary>
+        /// Registers a reminder with ttl and repetitions.
+        /// </summary>
+        /// <param name="ttl">TimeSpan that dictates when the timer expires.</param>
+        /// <param name="repetitions">The number of repetitions for which the reminder should be invoked.</param>
+        /// <returns>A task that represents the asynchronous save operation.</returns>
+        Task RegisterReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions);
 
         /// <summary>
         /// Unregisters the registered timer.

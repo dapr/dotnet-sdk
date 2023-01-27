@@ -11,7 +11,7 @@ namespace Dapr.Actors.Runtime
         [Fact]
         public async Task TestActorReminderInfo_SerializeExcludesNullTtl()
         {
-            var info = new ReminderInfo(new byte[] { }, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
+            var info = new ReminderInfo(new byte[] { }, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), 1);
             var serialized = await info.SerializeAsync();
 
             Assert.DoesNotContain("ttl", serialized);
@@ -22,7 +22,7 @@ namespace Dapr.Actors.Runtime
         [Fact]
         public async Task TestActorReminderInfo_SerializeIncludesTtlWhenSet()
         {
-            var info = new ReminderInfo(new byte[] { }, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(1));
+            var info = new ReminderInfo(new byte[] { }, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), 1, TimeSpan.FromSeconds(1));
             var serialized = await info.SerializeAsync();
 
             Assert.Contains("ttl", serialized);
