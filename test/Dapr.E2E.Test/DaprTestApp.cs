@@ -11,16 +11,16 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.Versioning;
 using Xunit.Abstractions;
 using static System.IO.Path;
-using System.Runtime.Versioning;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
 
 namespace Dapr.E2E.Test
 {
@@ -28,8 +28,8 @@ namespace Dapr.E2E.Test
     {
         static string daprBinaryName = "dapr";
         private string appId;
-        private readonly string[] outputToMatchOnStart = new string[]{ "dapr initialized. Status: Running.", };
-        private readonly string[] outputToMatchOnStop = new string[]{ "app stopped successfully", "failed to stop app id", };
+        private readonly string[] outputToMatchOnStart = new string[] { "dapr initialized. Status: Running.", };
+        private readonly string[] outputToMatchOnStop = new string[] { "app stopped successfully", "failed to stop app id", };
 
         private ITestOutputHelper testOutput;
 
@@ -63,12 +63,12 @@ namespace Dapr.E2E.Test
 
             if (configuration.UseAppPort)
             {
-                arguments.AddRange(new[]{ "--app-port", appPort.ToString(CultureInfo.InvariantCulture), });
+                arguments.AddRange(new[] { "--app-port", appPort.ToString(CultureInfo.InvariantCulture), });
             }
 
             if (!string.IsNullOrEmpty(configuration.AppProtocol))
             {
-                arguments.AddRange(new[]{ "--app-protocol", configuration.AppProtocol });
+                arguments.AddRange(new[] { "--app-protocol", configuration.AppProtocol });
             }
 
             arguments.AddRange(new[]
@@ -85,8 +85,8 @@ namespace Dapr.E2E.Test
             if (configuration.UseAppPort)
             {
                 // The first argument is the port, if the application needs it.
-                arguments.AddRange(new[]{ "--", $"{appPort.ToString(CultureInfo.InvariantCulture)}" });
-                arguments.AddRange(new[]{ "--urls", $"http://localhost:{appPort.ToString(CultureInfo.InvariantCulture)}", });
+                arguments.AddRange(new[] { "--", $"{appPort.ToString(CultureInfo.InvariantCulture)}" });
+                arguments.AddRange(new[] { "--urls", $"http://localhost:{appPort.ToString(CultureInfo.InvariantCulture)}", });
             }
 
             // TODO: we don't do any quoting right now because our paths are guaranteed not to contain spaces
@@ -136,9 +136,13 @@ namespace Dapr.E2E.Test
             {
                 frameworkMoniker = "net5";
             }
-            else
+            else if (targetFrameworkName == ".NETCoreApp,Version=v6.0")
             {
                 frameworkMoniker = "net6";
+            }
+            else
+            {
+                frameworkMoniker = "net7";
             }
             return frameworkMoniker;
         }

@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------
-// Copyright 2021 The Dapr Authors
+// Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -12,31 +12,28 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
+using System.Net.Mime;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
 
 namespace Samples.Client
 {
-    public class PublishEventExample : Example
+    public class PublishBytesExample : Example
     {
-        private static readonly string pubsubName = "pubsub";
+        public override string DisplayName => "Publish Bytes";
 
-        public override string DisplayName => "Publishing Events";
-
-        public override async Task RunAsync(CancellationToken cancellationToken)
+        public async override Task RunAsync(CancellationToken cancellationToken)
         {
             using var client = new DaprClientBuilder().Build();
 
-            var eventData = new { Id = "17", Amount = 10m, };
-            await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
-            Console.WriteLine("Published deposit event!");
-        }
+            var transaction = new { Id = "17", Amount = 30m };
+            var content = JsonSerializer.SerializeToUtf8Bytes(transaction);
 
-        private class Widget
-        {
-            public string? Size { get; set; }
-            public string? Color { get; set; }
+            await client.PublishByteEventAsync(pubsubName, "deposit", content.AsMemory(), MediaTypeNames.Application.Json, new Dictionary<string, string> { }, cancellationToken);
+            Console.WriteLine("Published deposit event!");
         }
     }
 }

@@ -14,6 +14,8 @@
 namespace ControllerSample.Controllers
 {
     using System;
+    using System.Text;
+    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr;
     using Dapr.Client;
@@ -79,7 +81,7 @@ namespace ControllerSample.Controllers
             }
 
             state.Value.Balance += transaction.Amount;
-            logger.LogInformation("Balance is {0}", state.Value.Balance);
+            logger.LogInformation("Balance for Id {0} is {1}",state.Value.Id, state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
         }
@@ -152,6 +154,36 @@ namespace ControllerSample.Controllers
             }
 
             state.Value.Balance -= transaction.Amount;
+            await state.SaveAsync();
+            return state.Value;
+        }
+
+        /// <summary>
+        /// Method for depositing to account as specified in transaction via a raw message.
+        /// </summary>
+        /// <param name="transaction">Transaction info.</param>
+        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
+        [Topic("pubsub", "rawDeposit", true)]
+        [HttpPost("rawDeposit")]
+        public async Task<ActionResult<Account>> RawDeposit([FromBody] JsonDocument rawTransaction, [FromServices] DaprClient daprClient)
+        {
+            var transactionString = rawTransaction.RootElement.GetProperty("data_base64").GetString();
+            logger.LogInformation($"Enter deposit: {transactionString} - {Encoding.UTF8.GetString(Convert.FromBase64String(transactionString))}");
+            var transactionJson = JsonSerializer.Deserialize<JsonDocument>(Convert.FromBase64String(transactionString));
+            var transaction = JsonSerializer.Deserialize<Transaction>(transactionJson.RootElement.GetProperty("data").GetRawText());
+            var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+            state.Value ??= new Account() { Id = transaction.Id, };
+            logger.LogInformation("Id is {0}, the amount to be deposited is {1}", transaction.Id, transaction.Amount);
+
+            if (transaction.Amount < 0m)
+            {
+                return BadRequest(new { statusCode = 400, message = "bad request" });
+            }
+
+            state.Value.Balance += transaction.Amount;
+            logger.LogInformation("Balance is {0}", state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
         }

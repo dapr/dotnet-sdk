@@ -1,5 +1,5 @@
-// ------------------------------------------------------------------------
-// Copyright 2021 The Dapr Authors
+﻿// ------------------------------------------------------------------------
+// Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,15 +11,24 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Client;
 
 namespace Samples.Client
 {
-    public abstract class Example 
+    public class PublishEventExample : Example
     {
-        public abstract string DisplayName { get; }
+        public override string DisplayName => "Publishing Events";
 
-        public abstract Task RunAsync(CancellationToken cancellationToken);
+        public override async Task RunAsync(CancellationToken cancellationToken)
+        {
+            using var client = new DaprClientBuilder().Build();
+
+            var eventData = new { Id = "17", Amount = 10m, };
+            await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
+            Console.WriteLine("Published deposit event!");
+        }
     }
 }

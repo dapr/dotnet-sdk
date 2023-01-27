@@ -1,0 +1,99 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2022 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+namespace Dapr.Workflow
+{
+    using System;
+    using Microsoft.DurableTask.Client;
+    using Microsoft.DurableTask.Worker;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
+
+    /// <summary>
+    /// Contains extension methods for using Dapr Workflow with dependency injection.
+    /// </summary>
+    public static class WorkflowServiceCollectionExtensions
+    {
+        /// <summary>
+        /// Adds Dapr Workflow support to the service collection.
+        /// </summary>
+        /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
+        /// <param name="configure">A delegate used to configure actor options and register workflow functions.</param>
+        public static IServiceCollection AddDaprWorkflow(
+            this IServiceCollection serviceCollection,
+            Action<WorkflowRuntimeOptions> configure)
+        {
+            if (serviceCollection == null)
+            {
+                throw new ArgumentNullException(nameof(serviceCollection));
+            }
+
+            serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
+            serviceCollection.TryAddSingleton<WorkflowEngineClient>();
+            serviceCollection.AddDaprClient();
+
+            serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
+
+            static bool TryGetGrpcAddress(out string address)
+            {
+                // TODO: Ideally we should be using DaprDefaults.cs for this. However, there are two blockers:
+                //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
+                //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
+                // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
+                string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+                if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
+                {
+                    address = $"localhost:{daprGrpcPort}";
+                    return true;
+                }
+
+                address = string.Empty;
+                return false;
+            }
+
+            serviceCollection.AddDurableTaskClient(builder =>
+            {
+                if (TryGetGrpcAddress(out string address))
+                {
+                    builder.UseGrpc(address);
+                }
+                else
+                {
+                    builder.UseGrpc();
+                }
+
+                builder.RegisterDirectly();
+            });
+
+            serviceCollection.AddDurableTaskWorker(builder =>
+            {
+                WorkflowRuntimeOptions options = new();
+                configure?.Invoke(options);
+
+                if (TryGetGrpcAddress(out string address))
+                {
+                    builder.UseGrpc(address);
+                }
+                else
+                {
+                    builder.UseGrpc();
+                }
+
+                builder.AddTasks(registry => options.AddWorkflowsAndActivitiesToRegistry(registry));
+            });
+
+            return serviceCollection;
+        }
+    }
+}
+

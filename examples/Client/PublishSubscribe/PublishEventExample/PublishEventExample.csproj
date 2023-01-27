@@ -8,11 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\..\AspNetCore\GrpcServiceSample\Protos\*.proto" ProtoRoot="..\..\AspNetCore\GrpcServiceSample\Protos\" GrpcServices="None" />
+    <Protobuf Include="..\..\..\AspNetCore\GrpcServiceSample\Protos\*.proto" ProtoRoot="..\..\..\AspNetCore\GrpcServiceSample\Protos\" GrpcServices="None" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
