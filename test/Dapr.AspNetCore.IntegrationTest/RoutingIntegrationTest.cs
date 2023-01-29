@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ namespace Dapr.AspNetCore.IntegrationTest
         {
             using (var factory = new AppWebApplicationFactory())
             {
-                var httpClient = factory.CreateClient();
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
                 var daprClient = factory.DaprClient;
 
                 await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });

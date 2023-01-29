@@ -11,22 +11,17 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
-namespace Dapr.Client
+namespace Samples.Client
 {
-    /// <summary>
-    /// Abstraction around a configuration source.
-    /// </summary>
-    public abstract class ConfigurationSource : IAsyncEnumerable<IDictionary<string, ConfigurationItem>>
+    public abstract class Example
     {
-        /// <summary>
-        /// The Id associated with this configuration source.
-        /// </summary>
-        public abstract string Id { get; }
+        protected static readonly string pubsubName = "pubsub";
 
-        /// <inheritdoc/>
-        public abstract IAsyncEnumerator<IDictionary<string, ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
+        public abstract string DisplayName { get; }
+
+        public abstract Task RunAsync(CancellationToken cancellationToken);
     }
 }
