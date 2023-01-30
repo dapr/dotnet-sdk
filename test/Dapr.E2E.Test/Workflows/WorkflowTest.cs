@@ -43,19 +43,17 @@ namespace Dapr.E2E.Test
 
             // START WORKFLOW TEST
             var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, workflowOptions, cts);
-            startResponse.InstanceId.Should().Be("TestWorkflowInstanceID", "Instance ID $(startResponse.InstanceId) was not correct");
+            startResponse.InstanceId.Should().Be("TestWorkflowInstanceID", $"Instance ID {startResponse.InstanceId} was not correct");
 
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
             getResponse.instanceId.Should().Be("TestWorkflowInstanceID");
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", "The workflow has a status of $(var) when it is expected to be running",
-                                                                             getResponse.metadata["dapr.workflow.runtime_status"]);
+            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", $"Instance ID {getResponse.metadata[\"dapr.workflow.runtime_status\"]} was not correct");
 
             // TERMINATE TEST:
             await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
             getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("TERMINATED", "The workflow has a status of $(var) when it is expected to be terminated",
-                                                                             getResponse.metadata["dapr.workflow.runtime_status"]);
+            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("TERMINATED", $"Instance ID {getResponse.metadata[\"dapr.workflow.runtime_status\"]} was not correct");
 
         }
 
