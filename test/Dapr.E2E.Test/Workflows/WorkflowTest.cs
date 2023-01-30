@@ -48,12 +48,12 @@ namespace Dapr.E2E.Test
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
             getResponse.instanceId.Should().Be("TestWorkflowInstanceID");
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", $"Instance ID {getResponse.metadata[\"dapr.workflow.runtime_status\"]} was not correct");
+            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", $"Instance ID {getResponse.metadata["dapr.workflow.runtime_status"]} was not correct");
 
             // TERMINATE TEST:
             await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
             getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("TERMINATED", $"Instance ID {getResponse.metadata[\"dapr.workflow.runtime_status\"]} was not correct");
+            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("TERMINATED", $"Instance ID {getResponse.metadata["dapr.workflow.runtime_status"]} was not correct");
 
         }
 
