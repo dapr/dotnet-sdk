@@ -199,6 +199,21 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 }
 ```
 
+### Call and run a workflow
+
+```csharp
+var daprClient = new DaprClientBuilder().Build();
+
+// Start workflow
+var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, workflowOptions, cts);
+
+// Terminate workflow
+await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
+
+// Get workflow metadata
+var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
+```
+
 ## Sidecar APIs
 ### Sidecar Health
 The .NET SDK provides a way to poll for the sidecar health, as well as a convenience method to wait for the sidecar to be ready.
