@@ -199,7 +199,7 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 }
 ```
 
-### Call and run a workflow
+### Manage workflow instances (Alpha)
 
 ```csharp
 var daprClient = new DaprClientBuilder().Build();
