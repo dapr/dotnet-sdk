@@ -1,8 +1,16 @@
+### Reset workflow
+POST http://localhost:10080/reset
+Content-Type: application/json
+
+
 ### Create new order
 POST http://localhost:10080/orders
 Content-Type: application/json
 
 {"name": "Paperclips", "totalCost": 99.95, "quantity": 1}
 
-### Query placeholder
-GET http://localhost:10080/orders/XXX
+### Query placeholder - replace xxx with id from location when order is creates
+GET http://localhost:10080/orders/xxx
+
+### Query dapr sidecar directly
+GET http://localhost:3500/v1.0-alpha1/workflows/dapr/wfwebapp/xxx
