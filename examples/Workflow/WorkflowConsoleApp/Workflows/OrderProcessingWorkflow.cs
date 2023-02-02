@@ -1,10 +1,10 @@
-﻿namespace WorkflowWebApp.Workflows
+﻿namespace WorkflowConsoleApp.Workflows
 {
     using System.Threading.Tasks;
     using Dapr.Workflow;
     using DurableTask.Core.Exceptions;
-    using WorkflowWebApp.Activities;
-    using WorkflowWebApp.Models;
+    using WorkflowConsoleApp.Activities;
+    using WorkflowConsoleApp.Models;
 
     class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
     {

@@ -91,7 +91,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Workflow", "src\Dapr.W
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflow", "Workflow", "{BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowWebApp", "examples\Workflow\WorkflowWebApp\WorkflowWebApp.csproj", "{5C61ABED-7623-4C28-A5C9-C5972A0F669C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowConsoleApp", "examples\Workflow\WorkflowConsoleApp\WorkflowConsoleApp.csproj", "{5C61ABED-7623-4C28-A5C9-C5972A0F669C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PublishSubscribe", "PublishSubscribe", "{0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}"
 EndProject

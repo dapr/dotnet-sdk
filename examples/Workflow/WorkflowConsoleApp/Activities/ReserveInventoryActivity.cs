@@ -1,10 +1,10 @@
-﻿namespace WorkflowWebApp.Activities
+﻿namespace WorkflowConsoleApp.Activities
 {
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Workflow;
     using Microsoft.Extensions.Logging;
-    using WorkflowWebApp.Models;
+    using WorkflowConsoleApp.Models;
 
     class ReserveInventoryActivity : WorkflowActivity<InventoryRequest, InventoryResult>
     {

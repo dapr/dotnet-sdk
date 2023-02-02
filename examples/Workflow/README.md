@@ -11,13 +11,13 @@ This Dapr workflow example shows how to create a Dapr workflow (`Workflow`) and 
 
 ## Projects in sample
 
-This sample contains a single [WorkflowWebApp](./WorkflowWebApp) ASP.NET Core project. It combines both the workflow implementations and the web APIs for starting and querying workflows instances.
+This sample contains a single [WorkflowConsoleApp](./WorkflowConsoleApp) ASP.NET Core project. It combines both the workflow implementations and the web APIs for starting and querying workflows instances.
 
 The main `Program.cs` file contains the main setup of the app, including the registration of the web APIs and the registration of the workflow and workflow activities. The workflow definition is found in `Workflows` directory and the workflow activity definitions are found in the `Activities` directory.
 
 ## Running the example
 
-To run the workflow web app locally, run this command in the `WorkflowWebApp` directory:
+To run the workflow web app locally, run this command in the `WorkflowConsoleApp` directory:
 
 ```sh
 dapr run --app-id wfwebapp --dapr-http-port 3500 -- dotnet run
@@ -118,12 +118,12 @@ Transfer-Encoding: chunked
 When the workflow has completed, the stdout of the web app should look like the following:
 
 ```log
-info: WorkflowWebApp.Activities.NotifyActivity[0]
+info: WorkflowConsoleApp.Activities.NotifyActivity[0]
       Received order cdcce425 for Paperclips at $99.95
-info: WorkflowWebApp.Activities.ReserveInventoryActivity[0]
+info: WorkflowConsoleApp.Activities.ReserveInventoryActivity[0]
       Reserving inventory: cdcce425, Paperclips, 1
-info: WorkflowWebApp.Activities.ProcessPaymentActivity[0]
+info: WorkflowConsoleApp.Activities.ProcessPaymentActivity[0]
       Processing payment: cdcce425, 99.95, USD
-info: WorkflowWebApp.Activities.NotifyActivity[0]
+info: WorkflowConsoleApp.Activities.NotifyActivity[0]
       Order cdcce425 processed successfully!
 ```

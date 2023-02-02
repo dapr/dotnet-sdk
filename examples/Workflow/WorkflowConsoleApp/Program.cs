@@ -1,8 +1,8 @@
 ﻿using Dapr.Client;
 using Dapr.Workflow;
-using WorkflowWebApp.Activities;
-using WorkflowWebApp.Models;
-using WorkflowWebApp.Workflows;
+using WorkflowConsoleApp.Activities;
+using WorkflowConsoleApp.Models;
+using WorkflowConsoleApp.Workflows;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 
@@ -86,7 +86,6 @@ while (true)
         while (state.metadata["dapr.workflow.runtime_status"].ToString() == "RUNNING")
         {
             await Task.Delay(TimeSpan.FromSeconds(5));
-            Console.WriteLine("Your workflow is in progress. Here is the status of the workflow: {0}", state);
             state = await daprClient.GetWorkflowAsync(orderId, workflowComponent, workflowName);
         }
         Console.WriteLine("Your workflow has completed: {0}", JsonSerializer.Serialize(state));

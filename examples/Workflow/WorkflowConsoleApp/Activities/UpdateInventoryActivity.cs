@@ -1,9 +1,9 @@
-﻿namespace WorkflowWebApp.Activities
+﻿namespace WorkflowConsoleApp.Activities
 {
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Workflow;
-    using WorkflowWebApp.Models;
+    using WorkflowConsoleApp.Models;
     using Microsoft.Extensions.Logging;
 
     class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, Object>
