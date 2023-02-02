@@ -1,16 +1,17 @@
-### Reset workflow
-POST http://localhost:10080/reset
+### Start order processing workflow - replace xxx with any id you like
+POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx/start
 Content-Type: application/json
 
+{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}
 
-### Create new order
-POST http://localhost:10080/orders
+### Start order processing workflow - replace xxx with any id you like
+POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx/start
 Content-Type: application/json
 
-{"name": "Paperclips", "totalCost": 99.95, "quantity": 1}
+{ "input" : {"Name": "Cars", "TotalCost": 10000, "Quantity": 30}}
 
-### Query placeholder - replace xxx with id from location when order is creates
-GET http://localhost:10080/orders/xxx
+### Query dapr sidecar - replace xxx with id from the workflow you've created above
+GET http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx
 
-### Query dapr sidecar directly
-GET http://localhost:3500/v1.0-alpha1/workflows/dapr/wfwebapp/xxx
+### Terminate the workflow - replace xxx with id from the workflow you've created above
+POST http://localhost:3500/v1.0-alpha1/workflows/dapr/xxx/terminate 
