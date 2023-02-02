@@ -25,19 +25,9 @@ dapr run --app-id wfwebapp dotnet run
 
 The application will listen for HTTP requests at `http://localhost:10080`.
 
-This workflow example utilizes a redis statestore. In order to retrieve items from this statestore, an HTTP command must first be sent down to restock the inventory:
+This workflow example utilizes a redis statestore. In order to populate items into the state store, an HTTP command must first be sent down to restock the inventory:
 
-On Linux/macOS (bash):
-
-```bash
 curl -i -X POST http://localhost:10080/reset
-```
-
-On Windows (PowerShell):
-
-```powershell
-curl -i -X POST http://localhost:10080/reset `
-```
 
 To start a workflow, use the following command to send an HTTP POST request, which triggers an HTTP API that starts the workflow using the Dapr Workflow client. Two identical `curl` commands are shown, one for Linux/macOS (bash) and the other for Windows (PowerShell). The body of the request is used as the input of the workflow.
 

@@ -1,11 +1,15 @@
-﻿using System.Text.Json.Serialization;
+﻿using Dapr.Client;
 using Dapr.Workflow;
-using Microsoft.AspNetCore.Mvc;
-using WorkflowWebApp.Activities;
-using WorkflowWebApp.Workflows;
-using WorkflowWebApp.Models;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
-using Dapr.Client;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
+using WorkflowWebApp.Activities;
+using WorkflowWebApp.Models;
+using WorkflowWebApp.Workflows;
+
+
+const string workflowComponent = "dapr";
+const string workflowName = nameof(OrderProcessingWorkflow);
 
 // The workflow host is a background service that connects to the sidecar over gRPC
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -35,16 +39,10 @@ WebApplication app = builder.Build();
 
 
 // POST starts new order workflow instance
-app.MapPost("/orders", [Obsolete] async (DaprClient client, [FromBody] OrderPayload orderInfo) =>
+app.MapPost("/orders", async (DaprClient client, [FromBody] OrderPayload orderInfo) =>
 {
     // Generate a unique ID for the workflow
     string orderId = Guid.NewGuid().ToString()[..8];
-    // All the necessary inputs (with workflow options being optional)
-    string workflowComponent = "dapr";
-    string workflowName = "OrderProcessingWorkflow";
-    object input = orderInfo;
-    Dictionary<string, string> workflowOptions = new Dictionary<string, string>();
-    CancellationToken cts = new CancellationToken();
 
     if (orderInfo?.Name == null)
     {
@@ -56,24 +54,18 @@ app.MapPost("/orders", [Obsolete] async (DaprClient client, [FromBody] OrderPayl
     }
 
     // Start the workflow
-    var response = await client.StartWorkflowAsync(orderId, workflowComponent, workflowName, input, workflowOptions, cts);
-    // Get information on the workflow
-    var state = await client.GetWorkflowAsync(orderId, workflowComponent, workflowName);
-    orderId = response.InstanceId;
+    var response = await client.StartWorkflowAsync(orderId, workflowComponent, workflowName, orderInfo, null, CancellationToken.None);
+
     // return an HTTP 202 and a Location header to be used for status query
     return Results.AcceptedAtRoute("GetOrderInfoEndpoint", new { orderId });
 });
 
 // GET fetches state for order workflow to report status
-app.MapGet("/orders/{orderId}", [Obsolete] async (string orderId, DaprClient client) =>
+app.MapGet("/orders/{orderId}", async (string orderId, DaprClient client) =>
 {
-    // WorkflowState state = await client.GetWorkflowStateAsync(orderId, true);
-    string workflowComponent = "dapr";
-    string workflowName = "OrderProcessingWorkflow";
-
     var state = await client.GetWorkflowAsync(orderId, workflowComponent, workflowName);
 
-    if (state.instanceId == "")
+    if (string.IsNullOrEmpty(state.instanceId))
     {
         return Results.NotFound($"No order with ID = '{orderId}' was found.");
     }
@@ -83,7 +75,7 @@ app.MapGet("/orders/{orderId}", [Obsolete] async (string orderId, DaprClient cli
         status = state.metadata["dapr.workflow.runtime_status"].ToString(),
     };
 
-    if (state.metadata["dapr.workflow.runtime_status"].ToString() == "RUNNING")
+    if (state.metadata["dapr.workflow.runtime_status"].ToString() == "RUNNING" || state.metadata["dapr.workflow.runtime_status"].ToString() == "PENDING")
     {
         // HTTP 202 Accepted - async polling clients should keep polling for status
         return Results.AcceptedAtRoute("GetOrderInfoEndpoint", new { orderId }, httpResponsePayload);
@@ -98,9 +90,8 @@ app.MapGet("/orders/{orderId}", [Obsolete] async (string orderId, DaprClient cli
 
 app.MapPost("/reset", [Obsolete] async (DaprClient client) =>
 {
-    // Make this into a webAPI rather than throwing this into this activity
     // Save a bunch of items in the state store
-    await client.SaveStateAsync<OrderPayload>("statestore", "Paperclips",  new OrderPayload(Name: "Paperclips", TotalCost: 99.95, Quantity: 100));
+    await client.SaveStateAsync<InventoryItem>("statestore", "Paperclips",  new InventoryItem(Name: "Paperclips", TotalCost: 99.95, Quantity: 100));
 
      return Results.Ok();
 });

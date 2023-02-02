@@ -8,9 +8,9 @@ namespace WorkflowWebApp.Activities
 
     class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, Object>
     {
+        static readonly string storeName = "statestore";
         readonly ILogger logger;
         readonly DaprClient client;
-        private static readonly string storeName = "statestore";
 
         public UpdateInventoryActivity(ILoggerFactory loggerFactory, DaprClient client)
         {
@@ -31,24 +31,19 @@ namespace WorkflowWebApp.Activities
 
             // Determine if there are enough Paperclips for purchase
             var (original, originalETag) = await client.GetStateAndETagAsync<OrderPayload>(storeName, req.ItemBeingPruchased);
-            var newQuantity = original.Quantity - req.Amount;
+            int newQuantity = original.Quantity - req.Amount;
             
             if (newQuantity < 0)
             {
                 this.logger.LogInformation(
                     "Payment for request ID '{requestId}' could not be processed. Insufficient inventory.",
                     req.RequestId);
-                throw new TaskFailedException();
+                throw new InvalidOperationException();
             }
 
             // Update the statestore with the new amount of paper clips
             await client.SaveStateAsync<OrderPayload>(storeName, req.ItemBeingPruchased,  new OrderPayload(Name: req.ItemBeingPruchased, TotalCost: req.Currency, Quantity: newQuantity));
-            (original, originalETag) = await client.GetStateAndETagAsync<OrderPayload>(storeName, req.ItemBeingPruchased);
-            this.logger.LogInformation($"There are now: {original.Quantity} {original.Name} left in stock");
-
-            this.logger.LogInformation(
-                "OrderID '{requestId}' processed successfully",
-                req.RequestId);
+            this.logger.LogInformation($"There are now: {newQuantity} {original.Name} left in stock");
 
             return null;
         }
