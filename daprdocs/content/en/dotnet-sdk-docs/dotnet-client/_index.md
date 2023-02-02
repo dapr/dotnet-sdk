@@ -204,6 +204,13 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 ```csharp
 var daprClient = new DaprClientBuilder().Build();
 
+string instanceId;
+string workflowComponentName;
+string workflowName;
+object input ;
+Dictionary<string, string> workflowOptions; // This is an optional parameter
+CancellationToken.None;
+
 // Start workflow
 var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, workflowOptions, cts);
 
@@ -220,6 +227,7 @@ The .NET SDK provides a way to poll for the sidecar health, as well as a conveni
 
 #### Poll for health
 This health endpoint returns true when both the sidecar and your application are up (fully initialized).
+
 ```csharp
 var client = new DaprClientBuilder().Build();
 
