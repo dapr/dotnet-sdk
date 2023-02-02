@@ -29,7 +29,7 @@ namespace WorkflowWebApp.Activities
             // Simulate slow processing
             await Task.Delay(TimeSpan.FromSeconds(5));
 
-            // Determine if there are enough Paperclips for purchase
+            // Determine if there are enough Items for purchase
             var (original, originalETag) = await client.GetStateAndETagAsync<OrderPayload>(storeName, req.ItemBeingPruchased);
             int newQuantity = original.Quantity - req.Amount;
             

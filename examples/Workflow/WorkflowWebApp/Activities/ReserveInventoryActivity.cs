@@ -34,7 +34,7 @@
             // Catch for the case where the statestore isn't setup
             if (orderResponse == null)
             {
-                // Not enough paperclips.
+                // Not enough items.
                 return new InventoryResult(false, orderResponse);
             }
 
@@ -43,7 +43,7 @@
                 orderResponse.Quantity,
                 orderResponse.Name);
 
-            // See if there're enough paperclips to purchase
+            // See if there're enough items to purchase
             if (orderResponse.Quantity >= req.Quantity)
             {
                 // Simulate slow processing
@@ -52,7 +52,7 @@
                 return new InventoryResult(true, orderResponse);
             }
 
-            // Not enough paperclips.
+            // Not enough items.
             return new InventoryResult(false, orderResponse);
 
         }

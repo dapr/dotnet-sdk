@@ -15,7 +15,7 @@
             // Notify the user that an order has come through
             await context.CallActivityAsync(
                 nameof(NotifyActivity),
-                new Notification($"Received order {orderId} for {order.Name} at ${order.TotalCost}"));
+                new Notification($"Received order {orderId} for {order.Quantity} {order.Name} at ${order.TotalCost}"));
 
             string requestId = context.InstanceId;
 
