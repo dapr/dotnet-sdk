@@ -18,10 +18,13 @@ namespace Dapr.Workflow
     using Microsoft.DurableTask;
     using Microsoft.DurableTask.Client;
 
-    // TODO: This will be replaced by the official Dapr Workflow management client.
     /// <summary>
     /// Defines client operations for managing Dapr Workflow instances.
     /// </summary>
+    /// <remarks>
+    /// This is an alternative to the general purpose Dapr client. It uses a gRPC connection to send
+    /// commands directly to the workflow engine, bypassing the Dapr API layer.
+    /// </remarks>
     public sealed class WorkflowEngineClient : IAsyncDisposable
     {
         readonly DurableTaskClient innerClient;
@@ -70,7 +73,7 @@ namespace Dapr.Workflow
         /// </param>
         public async Task<WorkflowState> GetWorkflowStateAsync(string instanceId, bool getInputsAndOutputs = false)
         {
-            OrchestrationMetadata? metadata = await this.innerClient.GetInstanceMetadataAsync(
+            OrchestrationMetadata? metadata = await this.innerClient.GetInstancesAsync(
                 instanceId,
                 getInputsAndOutputs);
             return new WorkflowState(metadata);
