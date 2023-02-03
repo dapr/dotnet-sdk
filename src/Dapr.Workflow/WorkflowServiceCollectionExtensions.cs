@@ -53,7 +53,13 @@ namespace Dapr.Workflow
                 string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
                 if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
                 {
+                    // There is a bug in the Durable Task SDK that requires us to change the format of the address
+                    // depending on the version of .NET that we're targeting. For now, we work around this manually.
+#if NET6_0_OR_GREATER
+                    address = $"http://localhost:{daprGrpcPort}";
+#else
                     address = $"localhost:{daprGrpcPort}";
+#endif
                     return true;
                 }
 
