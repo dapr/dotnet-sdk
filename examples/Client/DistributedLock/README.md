@@ -80,5 +80,5 @@ Note that both apps succeed and fail to lock files. This is due to the two apps 
 Any files that are leftover can be safely removed.
 
 ```bash
-rm -rf ./tmp
+rm -rf /tmp/localstorage
 ```

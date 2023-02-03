@@ -8,4 +8,4 @@ spec:
   version: v1
   metadata:
   - name: rootPath
-    value: ./tmp
+    value: /tmp/localstorage
