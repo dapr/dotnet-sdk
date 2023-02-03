@@ -9,6 +9,8 @@ This Dapr workflow example shows how to create a Dapr workflow (`Workflow`) and 
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
 
+> NOTE: The alpha version of the Dapr Workflow authoring SDK (`Dapr.Workflow`) is not compatible with ARM-based processors, such as the Apple M1 and M2 chips for macOS. ARM64 compatibility will be added in a future release.
+
 ## Projects in sample
 
 This sample contains a single [WorkflowWebApp](./WorkflowWebApp) ASP.NET Core project. It combines both the workflow implementations and the web APIs for starting and querying workflows instances.
