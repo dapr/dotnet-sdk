@@ -1,10 +1,10 @@
-namespace WorkflowWebApp.Activities
+﻿namespace WorkflowWebApp.Activities
 {
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Workflow;
     using WorkflowWebApp.Models;
-    using DurableTask.Core.Exceptions;
+    using Microsoft.Extensions.Logging;
 
     class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, Object>
     {

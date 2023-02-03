@@ -2,6 +2,7 @@
 {
     using System.Threading.Tasks;
     using Dapr.Workflow;
+    using Microsoft.Extensions.Logging;
 
     record Notification(string Message);
 

@@ -3,6 +3,7 @@
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Workflow;
+    using Microsoft.Extensions.Logging;
     using WorkflowWebApp.Models;
 
     class ReserveInventoryActivity : WorkflowActivity<InventoryRequest, InventoryResult>
