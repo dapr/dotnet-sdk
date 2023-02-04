@@ -17,8 +17,6 @@
                 nameof(NotifyActivity),
                 new Notification($"Received order {orderId} for {order.Quantity} {order.Name} at ${order.TotalCost}"));
 
-            string requestId = context.InstanceId;
-
             // Determine if there is enough of the item available for purchase by checking the inventory
             InventoryResult result = await context.CallActivityAsync<InventoryResult>(
                 nameof(ReserveInventoryActivity),

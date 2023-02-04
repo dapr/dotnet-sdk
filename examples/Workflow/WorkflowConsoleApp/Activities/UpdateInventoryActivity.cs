@@ -6,7 +6,7 @@
     using WorkflowConsoleApp.Models;
     using Microsoft.Extensions.Logging;
 
-    class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, Object>
+    class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, object>
     {
         static readonly string storeName = "statestore";
         readonly ILogger logger;
@@ -18,21 +18,22 @@
             this.client = client;
         }
 
-        public override async Task<Object> RunAsync(WorkflowActivityContext context, PaymentRequest req)
+        public override async Task<object> RunAsync(WorkflowActivityContext context, PaymentRequest req)
         {
             this.logger.LogInformation(
-                "Checking Inventory for: Order# {requestId} for {amount} {item}",
+                "Checking inventory for order '{requestId}' for {amount} {name}",
                 req.RequestId,
                 req.Amount,
-                req.ItemBeingPruchased);
+                req.ItemName);
 
             // Simulate slow processing
             await Task.Delay(TimeSpan.FromSeconds(5));
 
             // Determine if there are enough Items for purchase
-            var (original, originalETag) = await client.GetStateAndETagAsync<OrderPayload>(storeName, req.ItemBeingPruchased);
-            int newQuantity = original.Quantity - req.Amount;
-            
+            InventoryItem item = await client.GetStateAsync<InventoryItem>(
+                storeName,
+                req.ItemName);
+            int newQuantity = item.Quantity - req.Amount;
             if (newQuantity < 0)
             {
                 this.logger.LogInformation(
@@ -41,9 +42,16 @@
                 throw new InvalidOperationException();
             }
 
-            // Update the statestore with the new amount of paper clips
-            await client.SaveStateAsync<OrderPayload>(storeName, req.ItemBeingPruchased,  new OrderPayload(Name: req.ItemBeingPruchased, TotalCost: req.Currency, Quantity: newQuantity));
-            this.logger.LogInformation($"There are now: {newQuantity} {original.Name} left in stock");
+            // Update the statestore with the new amount of the item
+            await client.SaveStateAsync(
+                storeName,
+                req.ItemName,
+                new InventoryItem(Name: req.ItemName, PerItemCost: item.PerItemCost, Quantity: newQuantity));
+
+            this.logger.LogInformation(
+                "There are now {quantity} {name} left in stock",
+                newQuantity,
+                item.Name);
 
             return null;
         }

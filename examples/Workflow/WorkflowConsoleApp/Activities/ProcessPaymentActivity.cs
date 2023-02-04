@@ -23,7 +23,7 @@
                 "Processing payment: {requestId} for {amount} {item} at ${currency}",
                 req.RequestId,
                 req.Amount,
-                req.ItemBeingPruchased,
+                req.ItemName,
                 req.Currency);
 
             // Simulate slow processing

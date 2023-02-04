@@ -21,40 +21,39 @@
         public override async Task<InventoryResult> RunAsync(WorkflowActivityContext context, InventoryRequest req)
         {
             this.logger.LogInformation(
-                "Reserving inventory for order {requestId} of {quantity} {name}",
+                "Reserving inventory for order '{requestId}' of {quantity} {name}",
                 req.RequestId,
                 req.Quantity,
                 req.ItemName);
 
-            OrderPayload orderResponse;
-            string key;
-
             // Ensure that the store has items
-            (orderResponse, key) = await client.GetStateAndETagAsync<OrderPayload>(storeName, req.ItemName);
+            InventoryItem item = await client.GetStateAsync<InventoryItem>(
+                storeName,
+                req.ItemName);
 
             // Catch for the case where the statestore isn't setup
-            if (orderResponse == null)
+            if (item == null)
             {
                 // Not enough items.
-                return new InventoryResult(false, orderResponse);
+                return new InventoryResult(false, item);
             }
 
             this.logger.LogInformation(
-                "There are: {requestId}, {name} available for purchase",
-                orderResponse.Quantity,
-                orderResponse.Name);
+                "There are {quantity} {name} available for purchase",
+                item.Quantity,
+                item.Name);
 
             // See if there're enough items to purchase
-            if (orderResponse.Quantity >= req.Quantity)
+            if (item.Quantity >= req.Quantity)
             {
                 // Simulate slow processing
                 await Task.Delay(TimeSpan.FromSeconds(2));
 
-                return new InventoryResult(true, orderResponse);
+                return new InventoryResult(true, item);
             }
 
             // Not enough items.
-            return new InventoryResult(false, orderResponse);
+            return new InventoryResult(false, item);
 
         }
     }
