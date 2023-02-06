@@ -209,7 +209,7 @@ string workflowComponentName;
 string workflowName;
 object input ;
 Dictionary<string, string> workflowOptions; // This is an optional parameter
-CancellationToken.None;
+CancellationToken cts = CancellationToken.None;
 
 // Start workflow
 var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, workflowOptions, cts);
