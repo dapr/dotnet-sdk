@@ -29,7 +29,7 @@
             // Ensure that the store has items
             InventoryItem item = await client.GetStateAsync<InventoryItem>(
                 storeName,
-                req.ItemName);
+                req.ItemName.ToLowerInvariant());
 
             // Catch for the case where the statestore isn't setup
             if (item == null)

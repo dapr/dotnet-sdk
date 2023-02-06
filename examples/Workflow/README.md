@@ -41,10 +41,10 @@ Option B: Use the workflows API and send a request to Dapr directly. Examples ar
 
 Two identical `curl` commands are shown, one for Linux/macOS (bash) and the other for Windows (PowerShell). The body of the request is used as the input of the workflow. 
 
-Make note of the "xxx" in the commands below. This represents the unique identifier for the workflow run and can be replaced with any identifier of your choosing.
+Make note of the "1234" in the commands below. This represents the unique identifier for the workflow run and can be replaced with any identifier of your choosing.
 
 ```bash
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx/start \
+curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234/start \
   -H "Content-Type: application/json" \
   -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
 ```
@@ -52,7 +52,7 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 On Windows (PowerShell):
 
 ```powershell
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx/start `
+curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234/start `
   -H "Content-Type: application/json" `
   -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
 ```
@@ -63,14 +63,12 @@ If successful, you should see a response like the following, which contains a `L
 HTTP/1.1 202 Accepted
 Date: Thu, 02 Feb 2023 23:34:53 GMT
 Content-Type: application/json
-Content-Length: 21
-Traceparent: 00-37c66ddb4b7f7921b28820fa06489239-0046c6e7a3403139-01
 ```
 
-Next, send an HTTP request to the URL in the `Location` header in the previous HTTP response, like in the following example:
+Next, send an HTTP request to get the status of the workflow that was started:
 
 ```bash
-curl -i -X GET http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx
+curl -i -X GET http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234
 ```
 
 If the workflow has completed running, you should see the following output (formatted for readability):
@@ -79,13 +77,10 @@ If the workflow has completed running, you should see the following output (form
 HTTP/1.1 202 Accepted
 Date: Thu, 02 Feb 2023 23:43:27 GMT
 Content-Type: application/json
-Content-Length: 387
-Traceparent: 00-dee54b8d7cdd4232938a5c4d30504b77-02e409f4c9fd6a14-01
-Connection: close
 
 {
   "WFInfo": {
-    "instance_id": "xxx"
+    "instance_id": "1234"
   },
   "start_time": "2023-02-02T23:34:53Z",
   "metadata": {
@@ -105,13 +100,10 @@ If the workflow hasn't completed yet, you might instead see the following:
 HTTP/1.1 202 Accepted
 Date: Thu, 02 Feb 2023 23:43:27 GMT
 Content-Type: application/json
-Content-Length: 387
-Traceparent: 00-dee54b8d7cdd4232938a5c4d30504b77-02e409f4c9fd6a14-01
-Connection: close
 
 {
   "WFInfo": {
-    "instance_id": "xxx"
+    "instance_id": "1234"
   },
   "start_time": "2023-02-02T23:34:53Z",
   "metadata": {
@@ -129,11 +121,11 @@ When the workflow has completed, the stdout of the web app should look like the 
 
 ```log
 info: WorkflowConsoleApp.Activities.NotifyActivity[0]
-      Received order cdcce425 for Paperclips at $99.95
+      Received order 1234 for Paperclips at $99.95
 info: WorkflowConsoleApp.Activities.ReserveInventoryActivity[0]
-      Reserving inventory: cdcce425, Paperclips, 1
+      Reserving inventory: 1234, Paperclips, 1
 info: WorkflowConsoleApp.Activities.ProcessPaymentActivity[0]
-      Processing payment: cdcce425, 99.95, USD
+      Processing payment: 1234, 99.95, USD
 info: WorkflowConsoleApp.Activities.NotifyActivity[0]
-      Order cdcce425 processed successfully!
+      Order 1234 processed successfully!
 ```

@@ -32,7 +32,7 @@
             // Determine if there are enough Items for purchase
             InventoryItem item = await client.GetStateAsync<InventoryItem>(
                 storeName,
-                req.ItemName);
+                req.ItemName.ToLowerInvariant());
             int newQuantity = item.Quantity - req.Amount;
             if (newQuantity < 0)
             {
@@ -45,7 +45,7 @@
             // Update the statestore with the new amount of the item
             await client.SaveStateAsync(
                 storeName,
-                req.ItemName,
+                req.ItemName.ToLowerInvariant(),
                 new InventoryItem(Name: req.ItemName, PerItemCost: item.PerItemCost, Quantity: newQuantity));
 
             this.logger.LogInformation(
