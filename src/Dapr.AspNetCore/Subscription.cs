@@ -49,6 +49,11 @@ namespace Dapr
         /// Gets or sets the deadletter topic.
         /// </summary>
         public string DeadLetterTopic { get; set; }
+
+        /// <summary>
+        /// Gets or sets the bulk subscribe options.
+        /// </summary>
+        public DaprTopicBulkSubscribe BulkSubscribe { get; set; }
     }
 
     /// <summary>
@@ -90,5 +95,24 @@ namespace Dapr
         /// Gets or sets the path of the route.
         /// </summary>
         public string Path { get; set; }
+    }
+
+    internal class DaprTopicBulkSubscribe
+    {
+        /// <summary>
+        /// Gets or sets whether bulk subscribe option is enabled for a topic.
+        /// </summary>
+        public bool Enabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of messages in a bulk message from the message bus.
+        /// </summary>
+        public int MaxMessagesCount { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the Maximum duration to wait for maxBulkSubCount messages by the message bus
+        /// before sending the messages to Dapr.
+        /// </summary>
+        public int MaxAwaitDurationMs { get; set; }
     }
 }
