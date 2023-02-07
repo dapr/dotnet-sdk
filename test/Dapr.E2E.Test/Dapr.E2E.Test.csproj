@@ -4,7 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.15.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.21.12" />
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.47.0" />
     <PackageReference Include="Grpc.Tools" Version="2.47.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
     <ProjectReference Include="..\..\src\Dapr.Extensions.Configuration\Dapr.Extensions.Configuration.csproj" />
     <ProjectReference Include="..\Dapr.E2E.Test.Actors\Dapr.E2E.Test.Actors.csproj" />
     <!-- This is here to force a rebuild when we run the tests. The tests assume this project has already been built. -->

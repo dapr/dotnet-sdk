@@ -18,6 +18,7 @@ namespace Dapr.E2E.Test
     using Dapr.E2E.Test.Actors.Timers;
     using Dapr.E2E.Test.Actors.ExceptionTesting;
     using Dapr.E2E.Test.App.ErrorTesting;
+    using Dapr.Workflow;
     using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Builder;
@@ -25,6 +26,7 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Startup class.
@@ -54,6 +56,24 @@ namespace Dapr.E2E.Test
             services.AddAuthentication().AddDapr();
             services.AddAuthorization(o => o.AddDapr());
             services.AddControllers().AddDapr();
+            // Register a workflow and associated activity
+            services.AddDaprWorkflow(options =>
+            {
+                // Example of registering a "PlaceOrder" workflow function
+                options.RegisterWorkflow<string, string>("PlaceOrder", implementation: async (context, input) =>
+                {
+                    // In real life there are other steps related to placing an order, like reserving
+                    // inventory and charging the customer credit card etc. But let's keep it simple ;)
+                    return await context.CallActivityAsync<string>("ShipProduct", "Coffee Beans");
+                });
+
+                // Example of registering a "ShipProduct" workflow activity function
+                options.RegisterActivity<string, string>("ShipProduct", implementation: (context, input) =>
+                {
+                    System.Threading.Thread.Sleep(10000); // sleep for 10s to allow the terminate command to come through
+                    return Task.FromResult($"We are shipping {input} to the customer using our hoard of drones!");
+                });
+            });
             services.AddActors(options =>
             {
                 options.Actors.RegisterActor<ReminderActor>();
