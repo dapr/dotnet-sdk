@@ -33,9 +33,9 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT")))
 }
 
 Console.ForegroundColor = ConsoleColor.White;
-Console.WriteLine("*** Welcome to the Dapr Workflow Console App sample!");
-Console.WriteLine("*** Using this app, you will place orders that start workflows.");
-Console.WriteLine("*** Ensure that dapr is running in a separate teminal window using the following command:");
+Console.WriteLine("*** Welcome to the Dapr Workflow console app sample!");
+Console.WriteLine("*** Using this app, you can place orders that start workflows.");
+Console.WriteLine("*** Ensure that Dapr is running in a separate terminal window using the following command:");
 Console.ForegroundColor = ConsoleColor.Green;
 Console.WriteLine("        dapr run --dapr-grpc-port 4001 --app-id wfapp");
 Console.WriteLine();
@@ -77,7 +77,7 @@ while (true)
 {
     // Get the name of the item to order and make sure we have inventory
     string items = string.Join(", ", baseInventory.Select(i => i.Name));
-    Console.WriteLine($"Please enter the name of one of the following items to order [{items}].");
+    Console.WriteLine($"Enter the name of one of the following items to order [{items}].");
     Console.WriteLine("To restock items, type 'restock'.");
     string itemName = Console.ReadLine()?.Trim();
     if (string.IsNullOrEmpty(itemName))
@@ -139,7 +139,7 @@ while (true)
         if (result.Processed)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Order workflow is {state.RuntimeStatus} and the order was processed succesfully.");
+            Console.WriteLine($"Order workflow is {state.RuntimeStatus} and the order was processed successfully.");
             Console.ResetColor();
         }
         else
