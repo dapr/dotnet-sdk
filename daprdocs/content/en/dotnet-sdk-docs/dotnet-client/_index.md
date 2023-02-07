@@ -210,7 +210,7 @@ string workflowName;
 object input;
 
 // Start workflow
-var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, default);
+var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input);
 
 // Terminate workflow
 await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
