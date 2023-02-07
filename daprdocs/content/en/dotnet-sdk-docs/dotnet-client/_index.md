@@ -207,12 +207,10 @@ var daprClient = new DaprClientBuilder().Build();
 string instanceId;
 string workflowComponentName;
 string workflowName;
-object input ;
-Dictionary<string, string> workflowOptions; // This is an optional parameter
-CancellationToken cts = CancellationToken.None;
+object input;
 
 // Start workflow
-var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, workflowOptions, cts);
+var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, default);
 
 // Terminate workflow
 await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
