@@ -207,7 +207,7 @@ var daprClient = new DaprClientBuilder().Build();
 string instanceId = "MyWorkflowInstance1";
 string workflowComponentName = "dapr"; // alternatively, this could be the name of a workflow component defined in yaml
 string workflowName = "MyWorkflowDefinition";
-object input;
+var input = new { name = "Billy", age = 30 }; // Any JSON-serializable value is OK
 
 // Start workflow
 var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponentName, workflowName, input);
