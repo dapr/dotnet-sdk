@@ -204,19 +204,19 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 ```csharp
 var daprClient = new DaprClientBuilder().Build();
 
-string instanceId;
-string workflowComponentName;
-string workflowName;
+string instanceId = "MyWorkflowInstance1";
+string workflowComponentName = "dapr"; // alternatively, this could be the name of a workflow component defined in yaml
+string workflowName = "MyWorkflowDefinition";
 object input;
 
 // Start workflow
-var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input);
+var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponentName, workflowName, input);
 
 // Terminate workflow
-await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
+await daprClient.TerminateWorkflowAsync(instanceId, workflowComponentName);
 
 // Get workflow metadata
-var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
+var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponentName, workflowName);
 ```
 
 ## Sidecar APIs
