@@ -13,12 +13,10 @@
 
 namespace Microsoft.AspNetCore.Builder
 {
+    using Dapr;
+    using Dapr.AspNetCore;
     using System;
     using System.Collections.Generic;
-    using System.Reflection;
-    using System.Xml.Linq;
-    using Dapr;
-    using Grpc.Core;
 
     /// <summary>
     /// Contains extension methods for <see cref="IEndpointConventionBuilder" />.
@@ -141,6 +139,31 @@ namespace Microsoft.AspNetCore.Builder
             }
 
             builder.WithMetadata(topicObject);
+
+            return builder;      
+        }
+        
+        /// <summary>
+        /// Adds <see cref="IBulkSubscribeMetadata" /> metadata to the provided <see cref="IEndpointConventionBuilder" />.
+        /// </summary>
+        /// <param name="builder">The <see cref="IEndpointConventionBuilder" />.</param>\
+        /// <param name="bulkSubscribeTopicOptions">The object of BulkSubscribeTopicOptions class that provides
+        /// all bulk subscribe topic attributes.</param> 
+        /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
+        /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
+        public static T WithBulkSubscribe<T>(this T builder, BulkSubscribeTopicOptions bulkSubscribeTopicOptions)
+            where T : IEndpointConventionBuilder
+        {
+            if (builder is null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+            
+            ArgumentVerifier.ThrowIfNullOrEmpty(bulkSubscribeTopicOptions.TopicName, 
+                nameof(bulkSubscribeTopicOptions.TopicName));
+
+            builder.WithMetadata(new BulkSubscribeAttribute(bulkSubscribeTopicOptions.TopicName, 
+                bulkSubscribeTopicOptions.MaxMessagesCount, bulkSubscribeTopicOptions.MaxAwaitDurationMs));
 
             return builder;      
         }

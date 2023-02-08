@@ -14,9 +14,11 @@
 namespace RoutingSample
 {
     using System;
+    using System.Collections.Generic;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.AspNetCore;
     using Dapr.Client;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
@@ -101,9 +103,17 @@ namespace RoutingSample
                 withdrawTopicOptions.PubsubName = PubsubName;
                 withdrawTopicOptions.Name = "withdraw";
                 withdrawTopicOptions.DeadLetterTopic = "amountDeadLetterTopic";
+                
+                var multiDepositTopicOptions = new TopicOptions { PubsubName = PubsubName, Name = "multideposit" };
+
+                var bulkSubscribeTopicOptions = new BulkSubscribeTopicOptions
+                {
+                    TopicName = "multideposit", MaxMessagesCount = 250, MaxAwaitDurationMs = 1000
+                };
 
                 endpoints.MapGet("{id}", Balance);
                 endpoints.MapPost("deposit", Deposit).WithTopic(depositTopicOptions);
+                endpoints.MapPost("multideposit", MultiDeposit).WithTopic(multiDepositTopicOptions).WithBulkSubscribe(bulkSubscribeTopicOptions);
                 endpoints.MapPost("deadLetterTopicRoute", ViewErrorMessage).WithTopic(PubsubName, "amountDeadLetterTopic");
                 endpoints.MapPost("withdraw", Withdraw).WithTopic(withdrawTopicOptions);
             });
@@ -157,6 +167,56 @@ namespace RoutingSample
 
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.Body, account, serializerOptions);
+            }
+            
+            async Task MultiDeposit(HttpContext context)
+            {
+                logger.LogInformation("Enter bulk deposit");
+
+                var client = context.RequestServices.GetRequiredService<DaprClient>();
+                
+                var bulkMessage = await JsonSerializer.DeserializeAsync<BulkSubscribeMessage<BulkMessageModel<Transaction>>>(
+                    context.Request.Body, serializerOptions);
+                
+                List<BulkSubscribeAppResponseEntry> entries = new List<BulkSubscribeAppResponseEntry>();
+
+                if (bulkMessage != null)
+                {
+                    foreach (var entry in bulkMessage.Entries)
+                    {
+                        try
+                        {
+                            var transaction = entry.Event.Data;
+
+                            var state = await client.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+                            state.Value ??= new Account() { Id = transaction.Id, };
+                            logger.LogInformation("Id is {0}, the amount to be deposited is {1}",
+                                transaction.Id, transaction.Amount);
+
+                            if (transaction.Amount < 0m)
+                            {
+                                logger.LogInformation("Invalid amount");
+                                context.Response.StatusCode = 400;
+                                return;
+                            }
+
+                            state.Value.Balance += transaction.Amount;
+                            logger.LogInformation("Balance is {0}", state.Value.Balance);
+                            await state.SaveAsync();
+                            entries.Add(new BulkSubscribeAppResponseEntry(entry.EntryId,
+                                BulkSubscribeAppResponseStatus.SUCCESS));
+                        }
+                        catch (Exception e)
+                        {
+                            logger.LogError(e.Message);
+                            entries.Add(new BulkSubscribeAppResponseEntry(entry.EntryId,
+                                BulkSubscribeAppResponseStatus.RETRY));
+                        }
+                    }
+                }
+
+                await JsonSerializer.SerializeAsync(context.Response.Body, 
+                    new BulkSubscribeAppResponse(entries), serializerOptions);
             }
 
             async Task ViewErrorMessage(HttpContext context)
