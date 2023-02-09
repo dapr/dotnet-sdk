@@ -1,11 +1,11 @@
-﻿namespace WorkflowConsoleApp.Activities
-{
-    using System.Threading.Tasks;
-    using Dapr.Client;
-    using Dapr.Workflow;
-    using Microsoft.Extensions.Logging;
-    using WorkflowConsoleApp.Models;
+﻿using System.Threading.Tasks;
+using Dapr.Client;
+using Dapr.Workflow;
+using Microsoft.Extensions.Logging;
+using WorkflowConsoleApp.Models;
 
+namespace WorkflowConsoleApp.Activities
+{
     class ReserveInventoryActivity : WorkflowActivity<InventoryRequest, InventoryResult>
     {
         readonly ILogger logger;

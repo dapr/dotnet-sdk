@@ -1,11 +1,11 @@
-﻿namespace WorkflowConsoleApp.Activities
-{
-    using System.Threading.Tasks;
-    using Dapr.Client;
-    using Dapr.Workflow;
-    using Microsoft.Extensions.Logging;
-    using WorkflowConsoleApp.Models;
+﻿using System.Threading.Tasks;
+using Dapr.Client;
+using Dapr.Workflow;
+using Microsoft.Extensions.Logging;
+using WorkflowConsoleApp.Models;
 
+namespace WorkflowConsoleApp.Activities
+{
     class ProcessPaymentActivity : WorkflowActivity<PaymentRequest, object>
     {
         readonly ILogger logger;

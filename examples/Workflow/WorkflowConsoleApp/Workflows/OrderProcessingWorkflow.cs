@@ -1,11 +1,11 @@
-﻿namespace WorkflowConsoleApp.Workflows
-{
-    using System.Threading.Tasks;
-    using Dapr.Workflow;
-    using DurableTask.Core.Exceptions;
-    using WorkflowConsoleApp.Activities;
-    using WorkflowConsoleApp.Models;
+﻿using System.Threading.Tasks;
+using Dapr.Workflow;
+using DurableTask.Core.Exceptions;
+using WorkflowConsoleApp.Activities;
+using WorkflowConsoleApp.Models;
 
+namespace WorkflowConsoleApp.Workflows
+{
     class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
     {
         public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)

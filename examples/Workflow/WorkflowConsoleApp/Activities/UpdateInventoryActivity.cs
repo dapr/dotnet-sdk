@@ -1,11 +1,11 @@
-﻿namespace WorkflowConsoleApp.Activities
-{
-    using System.Threading.Tasks;
-    using Dapr.Client;
-    using Dapr.Workflow;
-    using WorkflowConsoleApp.Models;
-    using Microsoft.Extensions.Logging;
+﻿using System.Threading.Tasks;
+using Dapr.Client;
+using Dapr.Workflow;
+using WorkflowConsoleApp.Models;
+using Microsoft.Extensions.Logging;
 
+namespace WorkflowConsoleApp.Activities
+{
     class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, object>
     {
         static readonly string storeName = "statestore";
