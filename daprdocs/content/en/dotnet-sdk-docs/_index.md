@@ -57,6 +57,13 @@ Put the Dapr .NET SDK to the test. Walk through the .NET quickstarts and tutoria
       <a href="{{< ref dotnet-actors >}}" class="stretched-link"></a>
     </div>
   </div>
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title"><b>Workflow</b></h5>
+      <p class="card-text">Create and manage workflows with state, reminders/timers, and methods in .NET.</p>
+      <a href="{{< ref dotnet-workflow >}}" class="stretched-link"></a>
+    </div>
+  </div>
 </div>
 
 ## More information
