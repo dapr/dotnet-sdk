@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
@@ -9,6 +9,7 @@
     <TargetFramework>net6</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <NoWarn>612,618</NoWarn>
   </PropertyGroup>
 
 
