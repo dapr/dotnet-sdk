@@ -3,11 +3,12 @@
 This sample shows using Dapr with ASP.NET Core routing. This application is a simple and not-so-secure banking application. The application uses the Dapr state-store for its data storage.
 
 It exposes the following endpoints over HTTP:
- - GET `/{id}`: Get the balance for the account specified by `id`
- - POST `/deposit`: Accepts a JSON payload to deposit money to an account
- - POST `/withdraw`: Accepts a JSON payload to withdraw money from an account
+- GET `/{id}`: Get the balance for the account specified by `id`
+- POST `/deposit`: Accepts a JSON payload to deposit money to an account
+- POST `/multideposit`: Accepts a JSON payload to deposit money multiple times to a bulk subscribed topic
+- POST `/withdraw`: Accepts a JSON payload to withdraw money from an account
 
-The application also registers for pub/sub with the `deposit` and `withdraw` topics.
+The application also registers for pub/sub with the `deposit`, `multideposit`, and `withdraw` topics.
 
 ## Prerequisites
 
@@ -55,6 +56,76 @@ Output:
  {"id":"17","balance":12}
 ```
 
+ ---
+**Deposit Money multiple times to a bulk subscribed topic**
+
+On Linux, MacOS:
+```
+curl -X POST http://127.0.0.1:5000/multideposit \
+       -H 'Content-Type: application/json' \
+       -d '{
+   "entries":[
+      {
+         "entryId":"653dd9f5-f375-499b-8b2a-c4599bbd36b0",
+         "event":{
+            "data":{
+               "amount":10,
+               "id":"17"
+            },
+            "datacontenttype":"application/json",
+            "id":"DaprClient",
+            "pubsubname":"pubsub",
+            "source":"Dapr",
+            "specversion":"1.0",
+            "topic":"multideposit",
+            "type":"com.dapr.event.sent"
+         },
+         "metadata":null,
+         "contentType":"application/cloudevents+json"
+      },
+      {
+         "entryId":"7ea8191e-1e62-46d0-9ba8-ff6e571351cc",
+         "event":{
+            "data":{
+               "amount":20,
+               "id":"17"
+            },
+            "datacontenttype":"application/json",
+            "id":"DaprClient",
+            "pubsubname":"pubsub",
+            "source":"Dapr",
+            "specversion":"1.0",
+            "topic":"multideposit",
+            "type":"com.dapr.event.sent"
+         },
+         "metadata":null,
+         "contentType":"application/cloudevents+json"
+      }
+   ],
+   "id":"fa68c580-1b96-40d3-aa2c-04bab05e954e",
+   "metadata":{
+      "pubsubName":"pubsub"
+   },
+   "pubsubname":"pubsub",
+   "topic":"multideposit",
+   "type":"com.dapr.event.sent.bulk"
+}'
+```
+Output:
+```
+{
+   "statuses":[
+      {
+         "entryId":"653dd9f5-f375-499b-8b2a-c4599bbd36b0",
+         "status":"SUCCESS"
+      },
+      {
+         "entryId":"7ea8191e-1e62-46d0-9ba8-ff6e571351cc",
+         "status":"SUCCESS"
+      }
+   ]
+}
+```
  ---
 
 **Withdraw Money**
@@ -194,6 +265,7 @@ app.UseEndpoints(endpoints =>
 
     endpoints.MapGet("{id}", Balance);
     endpoints.MapPost("deposit", Deposit).WithTopic(PubsubName, "deposit");
+    endpoints.MapPost("multideposit", MultiDeposit).WithTopic(multiDepositTopicOptions).WithBulkSubscribe(bulkSubscribeTopicOptions);
     endpoints.MapPost("withdraw", Withdraw).WithTopic(PubsubName, "withdraw");
 });
 ```
@@ -213,8 +285,18 @@ var withdrawTopicOptions = new TopicOptions();
 withdrawTopicOptions.PubsubName = PubsubName;
 withdrawTopicOptions.Name = "withdraw";
 withdrawTopicOptions.DeadLetterTopic = "amountDeadLetterTopic";
+
+var multiDepositTopicOptions = new TopicOptions 
+{ PubsubName = PubsubName, Name = "multideposit" };
+
+var bulkSubscribeTopicOptions = new BulkSubscribeTopicOptions
+{
+    TopicName = "multideposit", MaxMessagesCount = 250, MaxAwaitDurationMs = 1000
+};
 ```
 `WithTopic(...)` now takes the `TopicOptions(..)` instance that defines configurations for the subscribe endpoint.
+
+`WithBulkSubscribe(...)` now takes the `BulkSubscribeTopicOptions(..)` instance that defines configurations for the bulk subscribe endpoint.
 
 ---
 

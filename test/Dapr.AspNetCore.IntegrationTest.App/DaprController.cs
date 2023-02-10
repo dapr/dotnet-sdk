@@ -13,7 +13,6 @@
 
 namespace Dapr.AspNetCore.IntegrationTest.App
 {
-    using System;
     using System.Text;
     using System.Threading.Tasks;
     using Dapr;
@@ -61,19 +60,22 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         {
         }
 
+        [BulkSubscribe("F")]
         [Topic("pubsub", "F")]
         [Topic("pubsub", "F.1", true)]
         [HttpPost("/multiTopicAttr")]
         public void MultipleTopics()
         {
         }
-                
+
+        [BulkSubscribe("G", 300)]
         [Topic("pubsub", "G", "deadLetterTopicName", false)]
         [HttpPost("/G")]
         public void TopicG()
         {
         }
 
+        [BulkSubscribe("metadata.1", 500, 2000)]
         [Topic("pubsub", "metadata", new string[1] { "id1" })]
         [Topic("pubsub", "metadata.1", true)]
         [HttpPost("/multiMetadataTopicAttr")]
