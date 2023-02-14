@@ -1,8 +1,9 @@
-﻿namespace WorkflowWebApp.Activities
-{
-    using System.Threading.Tasks;
-    using Dapr.Workflow;
+﻿using System.Threading.Tasks;
+using Dapr.Workflow;
+using Microsoft.Extensions.Logging;
 
+namespace WorkflowConsoleApp.Activities
+{
     record Notification(string Message);
 
     class NotifyActivity : WorkflowActivity<Notification, object>
