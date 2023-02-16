@@ -1,20 +1,17 @@
-﻿using System.Threading.Tasks;
-using Dapr.Client;
+﻿using Dapr.Client;
 using Dapr.Workflow;
 using Microsoft.Extensions.Logging;
 using WorkflowConsoleApp.Models;
 
 namespace WorkflowConsoleApp.Activities
 {
-    class ProcessPaymentActivity : WorkflowActivity<PaymentRequest, object>
+    public class ProcessPaymentActivity : WorkflowActivity<PaymentRequest, object>
     {
         readonly ILogger logger;
-        readonly DaprClient client;
 
-        public ProcessPaymentActivity(ILoggerFactory loggerFactory, DaprClient client)
+        public ProcessPaymentActivity(ILoggerFactory loggerFactory)
         {
             this.logger = loggerFactory.CreateLogger<ProcessPaymentActivity>();
-            this.client = client;
         }
 
         public override async Task<object> RunAsync(WorkflowActivityContext context, PaymentRequest req)
