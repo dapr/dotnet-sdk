@@ -121,7 +121,12 @@ namespace Dapr.Client
         /// The appId that is targetted by Dapr for gRPC invocations.
         /// </param>
         /// <param name="daprEndpoint">
-        /// Optional gRPC endpoint for calling Dapr, defaults to <see cref="DaprDefaults.GetDefaultGrpcEndpoint"/>.
+        /// Optional gRPC endpoint for calling Dapr runtime. 
+        /// The default value will be <c>DAPR_HOST:DAPR_GRPC_PORT</c> where <c>DAPR_HOST</c> 
+        /// represents the value of the <c>DAPR_HOST</c> environment variable and <c>DAPR_GRPC_PORT</c> 
+        /// represents the value of the <c>DAPR_GRPC_PORT</c> environment variable. If <c>DAPR_HOST</c> environment 
+        /// variable is undefined or empty <c>http://localhost</c> is used as default value. 
+        /// If <c>DAPR_GRPC_PORT</c> environment ariable is undefined or empty <c>50001</c> is used as default value. 
         /// </param>
         /// <param name="daprApiToken">
         /// Optional token to be attached to all requests, defaults to <see cref="DaprDefaults.GetDefaultDaprApiToken"/>.

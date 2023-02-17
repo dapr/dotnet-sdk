@@ -10,6 +10,9 @@
     <VersionPrefix>0.1.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\DaprDefaults.cs" Link="DaprDefaults.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.DurableTask.Client.Grpc" Version="1.0.0" />

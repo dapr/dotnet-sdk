@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -220,8 +220,11 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <remarks>
         /// The URI endpoint to use for HTTP calls to the Dapr runtime. The default value will be 
-        /// <c>http://127.0.0.1:DAPR_HTTP_PORT</c> where <c>DAPR_HTTP_PORT</c> represents the value of the 
-        /// <c>DAPR_HTTP_PORT</c> environment variable.
+        /// <c>DAPR_HOST:DAPR_HTTP_PORT</c> where <c>DAPR_HOST</c> represents the value of the 
+        /// <c>DAPR_HOST</c> environment variable and <c>DAPR_HTTP_PORT</c> represents the value of the 
+        /// <c>DAPR_HTTP_PORT</c> environment variable. If <c>DAPR_HOST</c> environment variable is 
+        /// undefined or empty <c>http://localhost</c> is used as default value. If <c>DAPR_HTTP_PORT</c> environment 
+        /// variable is undefined or empty <c>3500</c> is used as default value. 
         /// </remarks>
         /// <value></value>
         public string HttpEndpoint { get; set; } = DaprDefaults.GetDefaultHttpEndpoint();

@@ -15,12 +15,19 @@ using System;
 
 namespace Dapr
 {
+#nullable disable
+
     internal static class DaprDefaults
     {
+        public const string DaprDefaultHost = "http://localhost";
+        public const string DaprDefaultHttpPort = "3500";
+        public const string DaprDefaultGrpcPort = "50001";
+
         private static string httpEndpoint;
         private static string grpcEndpoint;
         private static string daprApiToken;
         private static string appApiToken;
+        private static string host;
 
         /// <summary>
         /// Get the value of environment variable DAPR_API_TOKEN
@@ -57,35 +64,65 @@ namespace Dapr
         }
 
         /// <summary>
-        /// Get the value of environment variable DAPR_HTTP_PORT
+        /// Get the default value of URI endpoint to use for HTTP calls to the Dapr runtime. 
+        /// The default value will be <c>DAPR_HOST:DAPR_HTTP_PORT</c> where <c>DAPR_HOST</c> 
+        /// represents the value of the <c>DAPR_HOST</c> environment variable and <c>DAPR_HTTP_PORT</c> 
+        /// represents the value of the <c>DAPR_HTTP_PORT</c> environment variable. If <c>DAPR_HOST</c> environment 
+        /// variable is undefined or empty <c>http://localhost</c> is used as default value. 
+        /// If <c>DAPR_HTTP_PORT</c> environment variable is undefined or empty <c>3500</c> is used as default value. 
         /// </summary>
-        /// <returns>The value of environment variable DAPR_HTTP_PORT</returns>
+        /// <returns>The default value of URI endpoint to use for HTTP calls to the Dapr runtime.</returns>
         public static string GetDefaultHttpEndpoint()
         {
             if (httpEndpoint == null)
             {
                 var port = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT");
-                port = string.IsNullOrEmpty(port) ? "3500" : port;
-                httpEndpoint = $"http://127.0.0.1:{port}";
+                port = string.IsNullOrEmpty(port) ? DaprDefaultHttpPort : port;
+                httpEndpoint = $"{GetHost()}:{port}";
             }
 
             return httpEndpoint;
         }
 
         /// <summary>
-        /// Get the value of environment variable DAPR_GRPC_PORT
+        /// Get the default value of URI endpoint to use for gRPC calls to the Dapr runtime. 
+        /// The default value will be <c>DAPR_HOST:DAPR_GRPC_PORT</c> where <c>DAPR_HOST</c> 
+        /// represents the value of the <c>DAPR_HOST</c> environment variable and <c>DAPR_GRPC_PORT</c> 
+        /// represents the value of the <c>DAPR_GRPC_PORT</c> environment variable. If <c>DAPR_HOST</c> environment 
+        /// variable is undefined or empty <c>http://localhost</c> is used as default value. 
+        /// If <c>DAPR_GRPC_PORT</c> environment variable is undefined or empty <c>50001</c> is used as default value. 
         /// </summary>
-        /// <returns>The value of environment variable DAPR_GRPC_PORT</returns>
+        /// <returns>The default value of URI endpoint to use for gRPC calls to the Dapr runtime.</returns>
         public static string GetDefaultGrpcEndpoint()
         {
             if (grpcEndpoint == null)
             {
                 var port = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-                port = string.IsNullOrEmpty(port) ? "50001" : port;
-                grpcEndpoint = $"http://127.0.0.1:{port}";
+                port = string.IsNullOrEmpty(port) ? DaprDefaultGrpcPort : port;
+
+                grpcEndpoint = $"{GetHost()}:{port}";
             }
 
             return grpcEndpoint;
         }
+
+        /// <summary>
+        /// Get the default value of DAPR host. Value is retrieved from DAPR_HOST 
+        /// environment variable, http://localhost is used when the environment variable 
+        /// is undefined or empty.
+        /// </summary>
+        /// <returns>The default value of DAPR host.</returns>
+        private static string GetHost() 
+        {
+            if (host == null)
+            {
+                var envHost = Environment.GetEnvironmentVariable("DAPR_HOST");
+                host = string.IsNullOrEmpty(envHost) ? DaprDefaultHost : envHost;
+            }
+
+            return host;
+        }
     }
+
+#nullable enable
 }

@@ -46,25 +46,26 @@ namespace Dapr.Workflow
 
             static bool TryGetGrpcAddress(out string address)
             {
-                // TODO: Ideally we should be using DaprDefaults.cs for this. However, there are two blockers:
-                //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
-                //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
-                // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
-                string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-                if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
-                {
+               var defaultGrpcAddress = DaprDefaults.GetDefaultGrpcEndpoint();
+
+               if(Uri.IsWellFormedUriString(defaultGrpcAddress, UriKind.Absolute)) 
+               {
                     // There is a bug in the Durable Task SDK that requires us to change the format of the address
                     // depending on the version of .NET that we're targeting. For now, we work around this manually.
 #if NET6_0_OR_GREATER
-                    address = $"http://localhost:{daprGrpcPort}";
+                    address = defaultGrpcAddress;
 #else
-                    address = $"localhost:{daprGrpcPort}";
+                    // Try to remove the schema 
+                    var position = defaultGrpcAddress.IndexOf("://");
+                    address = position == -1 ? defaultGrpcAddress : defaultGrpcAddress[(position + 3)..];
 #endif
-                    return true;
-                }
 
-                address = string.Empty;
-                return false;
+                    return true;
+
+               }
+
+               address = string.Empty;
+               return false;
             }
 
             serviceCollection.AddDurableTaskClient(builder =>
