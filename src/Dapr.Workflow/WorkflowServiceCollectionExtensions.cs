@@ -56,8 +56,9 @@ namespace Dapr.Workflow
                     address = defaultGrpcAddress;
 #else
                     // Try to remove the schema 
-                    var position = defaultGrpcAddress.AsSpan().IndexOf(stackalloc char[] { ':', '/', '/' });
-                    address = position == -1 ? defaultGrpcAddress : defaultGrpcAddress[(position + 3)..];
+                    var addressAsSpan = defaultGrpcAddress.AsSpan();
+                    var position = addressAsSpan.IndexOf(stackalloc char[] { ':', '/', '/' });
+                    address = position == -1 ? defaultGrpcAddress : new string(addressAsSpan[(position + 3)..]);
 #endif
 
                     return true;
