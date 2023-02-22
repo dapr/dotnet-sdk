@@ -90,14 +90,19 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Workflow", "src\Dapr.Workflow\Dapr.Workflow.csproj", "{07578B6C-9B96-4B3D-BA2E-7800EFCA7F99}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflow", "Workflow", "{BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}"
+	ProjectSection(SolutionItems) = preProject
+		examples\Workflow\README.md = examples\Workflow\README.md
+	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowWebApp", "examples\Workflow\WorkflowWebApp\WorkflowWebApp.csproj", "{5C61ABED-7623-4C28-A5C9-C5972A0F669C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowConsoleApp", "examples\Workflow\WorkflowConsoleApp\WorkflowConsoleApp.csproj", "{5C61ABED-7623-4C28-A5C9-C5972A0F669C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PublishSubscribe", "PublishSubscribe", "{0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PublishEventExample", "examples\Client\PublishSubscribe\PublishEventExample\PublishEventExample.csproj", "{4A175C27-EAFE-47E7-90F6-873B37863656}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PublishEventExample", "examples\Client\PublishSubscribe\PublishEventExample\PublishEventExample.csproj", "{4A175C27-EAFE-47E7-90F6-873B37863656}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BulkPublishEventExample", "examples\Client\PublishSubscribe\BulkPublishEventExample\BulkPublishEventExample.csproj", "{DDC41278-FB60-403A-B969-2AEBD7C2D83C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BulkPublishEventExample", "examples\Client\PublishSubscribe\BulkPublishEventExample\BulkPublishEventExample.csproj", "{DDC41278-FB60-403A-B969-2AEBD7C2D83C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowUnitTest", "examples\Workflow\WorkflowUnitTest\WorkflowUnitTest.csproj", "{8CA09061-2BEF-4506-A763-07062D2BD6AC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -241,6 +246,8 @@ Global
 		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CA09061-2BEF-4506-A763-07062D2BD6AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CA09061-2BEF-4506-A763-07062D2BD6AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -285,6 +292,7 @@ Global
 		{0EF6EA64-D7C3-420D-9890-EAE8D54A57E6} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
 		{4A175C27-EAFE-47E7-90F6-873B37863656} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
 		{DDC41278-FB60-403A-B969-2AEBD7C2D83C} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
+		{8CA09061-2BEF-4506-A763-07062D2BD6AC} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
