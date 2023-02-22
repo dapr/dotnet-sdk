@@ -41,15 +41,15 @@ jobs:
           install-version: '7.0.x'
     env:
       NUPKG_OUTDIR: bin/Release/nugets
-      GOVER: 1.19
+      GOVER: 1.20
       GOOS: linux
       GOARCH: amd64
       GOPROXY: https://proxy.golang.org
-      DAPR_CLI_VER: 1.9.1
-      DAPR_RUNTIME_VER: 1.9.5
-      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/3dacfb672d55f1436c249057aaebbe597e1066f3/install/install.sh
+      DAPR_CLI_VER: 1.10.0
+      DAPR_RUNTIME_VER: 1.10.5
+      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/master/install/install.sh
       DAPR_CLI_REF: ''
-      DAPR_REF: '82e097134cdc7494c5c3be71bf80f7904d6db9ea'
+      DAPR_REF: ''
     steps:
       - name: Set up Dapr CLI
         run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
