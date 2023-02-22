@@ -6,7 +6,7 @@ using WorkflowConsoleApp.Models;
 
 namespace WorkflowConsoleApp.Activities
 {
-    class ReserveInventoryActivity : WorkflowActivity<InventoryRequest, InventoryResult>
+    public class ReserveInventoryActivity : WorkflowActivity<InventoryRequest, InventoryResult>
     {
         readonly ILogger logger;
         readonly DaprClient client;
