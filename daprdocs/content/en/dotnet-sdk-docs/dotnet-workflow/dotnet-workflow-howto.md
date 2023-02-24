@@ -6,9 +6,9 @@ weight: 100000
 description: Learn how to author and manage Dapr Workflow using the .NET SDK
 ---
 
-Let's create a Dapr workflow (`Workflow`) and invoke it using the console. In the provided purchase order processing workflow example, the console prompts provide directions on how to both purchase and restock items. In this guide, you will:
+Let's create a Dapr workflow and invoke it using the console. In the [provided order processing workflow example](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow), the console prompts provide directions on how to both purchase and restock items. In this guide, you will:
 
-- Create an ASP.NET application ([WorkflowConsoleApp](./WorkflowConsoleApp)). 
+- Create a .NET console application ([WorkflowConsoleApp](./WorkflowConsoleApp)).  
 - Utilize the .NET workflow SDK and API calls to start and query workflow instances.
 
 In the .NET example project:
@@ -23,23 +23,42 @@ In the .NET example project:
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
 
-## Run the application
 
-You'll need two terminal windows to run the workflow web app locally.
+## Set up the environment
 
-In the first terminal window, from the `WorkflowConsoleApp` directory, run the following command to start the program itself:
+Clone the [.NET SDK repo](https://github.com/dapr/dotnet-sdk).
+
+```sh
+git clone https://github.com/dapr/dotnet-sdk.git
+```
+
+From the .NET SDK root directory, navigate to the Dapr Workflow example.
+
+```sh
+cd examples/Workflow
+```
+
+## Run the application locally
+
+To run the Dapr application, you need to start the .NET program and a Dapr sidecar. Navigate to the `WorkflowConsoleApp` directory.
+
+```sh
+cd WorkflowConsoleApp
+```
+
+Start the program.
 
 ```sh
 dotnet run
 ```
 
-Next, in a separate terminal window, start the Dapr sidecar:
+In a new terminal, navigate again to the `WorkflowConsoleApp` directory and run the Dapr sidecar alongside the program.
 
 ```sh
 dapr run --app-id wfapp --dapr-grpc-port 4001 --dapr-http-port 3500
 ```
 
-Dapr listens for HTTP requests at `http://localhost:3500`.
+> Dapr listens for HTTP requests at `http://localhost:3500` and internal workflow gRPC requests at `http://localhost:4001`.
 
 ## Start a workflow
 
@@ -48,7 +67,14 @@ To start a workflow, you have two options:
 1. Follow the directions from the console prompts.
 1. Use the workflow API and send a request to Dapr directly. 
 
-This guide focuses on the workflow API option. Examples are included both below and in the `WorkflowConsoleApp`>`demo.http` file.
+This guide focuses on the workflow API option. 
+
+{{% alert title="Note" color="primary" %}}
+  - You can find the commands below in the `WorkflowConsoleApp`/`demo.http` file.
+  - The body of the curl request is the purchase order information used as the input of the workflow. 
+  - The "1234" in the commands represents the unique identifier for the workflow and can be replaced with any identifier of your choosing.
+{{% /alert %}}
+
 
 Run the following command to start a workflow. 
 
@@ -75,12 +101,6 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 {{% /codetab %}}
 
 {{< /tabs >}}
-
-Things to note:
-
-- The body of the curl request is the purchase order information used as the input of the workflow. 
-- The "1234" in the commands represents the unique identifier for the workflow run and can be replaced with any identifier of your choosing.
-
 
 If successful, you should see a response like the following: 
 
