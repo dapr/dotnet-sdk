@@ -128,11 +128,7 @@ namespace Dapr.E2E.Test
         {
             var targetFrameworkName = ((TargetFrameworkAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(TargetFrameworkAttribute), false).FirstOrDefault()).FrameworkName;
             string frameworkMoniker;
-            if (targetFrameworkName == ".NETCoreApp,Version=v3.1")
-            {
-                frameworkMoniker = "netcoreapp3.1";
-            }
-            else if (targetFrameworkName == ".NETCoreApp,Version=v5.0")
+            if (targetFrameworkName == ".NETCoreApp,Version=v5.0")
             {
                 frameworkMoniker = "net5";
             }
