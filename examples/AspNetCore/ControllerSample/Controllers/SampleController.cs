@@ -14,10 +14,12 @@
 namespace ControllerSample.Controllers
 {
     using System;
+    using System.Collections.Generic;
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr;
+    using Dapr.AspNetCore;
     using Dapr.Client;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
@@ -84,6 +86,51 @@ namespace ControllerSample.Controllers
             logger.LogInformation("Balance for Id {0} is {1}",state.Value.Id, state.Value.Balance);
             await state.SaveAsync();
             return state.Value;
+        }
+
+        /// <summary>
+        /// Method for depositing multiple times to the account as specified in transaction.
+        /// </summary>
+        /// <param name="bulkMessage">List of entries of type BulkMessageModel received from dapr.</param>
+        /// <param name="daprClient">State client to interact with Dapr runtime.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        ///  "pubsub", the first parameter into the Topic attribute, is name of the default pub/sub configured by the Dapr CLI.
+        [Topic("pubsub", "multideposit", "amountDeadLetterTopic", false)]
+        [BulkSubscribe("multideposit", 500, 2000)]
+        [HttpPost("multideposit")]
+        public async Task<ActionResult<BulkSubscribeAppResponse>> MultiDeposit([FromBody] BulkSubscribeMessage<BulkMessageModel<Transaction>> 
+            bulkMessage, [FromServices] DaprClient daprClient)
+        {
+            logger.LogInformation("Enter bulk deposit");
+            
+            List<BulkSubscribeAppResponseEntry> entries = new List<BulkSubscribeAppResponseEntry>();
+
+            foreach (var entry in bulkMessage.Entries)
+            { 
+                try
+                {
+                    var transaction = entry.Event.Data;
+
+                    var state = await daprClient.GetStateEntryAsync<Account>(StoreName, transaction.Id);
+                    state.Value ??= new Account() { Id = transaction.Id, };
+                    logger.LogInformation("Id is {0}, the amount to be deposited is {1}", 
+                        transaction.Id, transaction.Amount);
+
+                    if (transaction.Amount < 0m)
+                    {
+                        return BadRequest(new { statusCode = 400, message = "bad request" });
+                    }
+
+                    state.Value.Balance += transaction.Amount;
+                    logger.LogInformation("Balance is {0}", state.Value.Balance);
+                    await state.SaveAsync();
+                    entries.Add(new BulkSubscribeAppResponseEntry(entry.EntryId, BulkSubscribeAppResponseStatus.SUCCESS));
+                } catch (Exception e) {
+                    logger.LogError(e.Message);
+                    entries.Add(new BulkSubscribeAppResponseEntry(entry.EntryId, BulkSubscribeAppResponseStatus.RETRY));
+                }
+            }
+            return new BulkSubscribeAppResponse(entries);
         }
 
         /// <summary>
@@ -190,6 +237,7 @@ namespace ControllerSample.Controllers
 
         /// <summary>
         /// Method for returning a BadRequest result which will cause Dapr sidecar to throw an RpcException
+        /// </summary>
         [HttpPost("throwException")]
         public async Task<ActionResult<Account>> ThrowException(Transaction transaction, [FromServices] DaprClient daprClient)
         {

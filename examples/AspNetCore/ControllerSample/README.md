@@ -5,9 +5,10 @@ This sample shows using Dapr with ASP.NET Core controllers. This application is 
 It exposes the following endpoints over HTTP:
  - GET `/{account}`: Get the balance for the account specified by `id`
  - POST `/deposit`: Accepts a JSON payload to deposit money to an account
+ - POST `/multideposit`: Accepts a JSON payload to deposit money multiple times to a bulk subscribed topic
  - POST `/withdraw`: Accepts a JSON payload to withdraw money from an account
 
-The application also registers for pub/sub with the `deposit` and `withdraw` topics.
+The application also registers for pub/sub with the `deposit`, `multideposit` and `withdraw` topics.
 
 ## Prerequisitess
 
@@ -57,7 +58,76 @@ Output:
 ```
 
  ---
+**Deposit Money multiple times to a bulk subscribed topic**
 
+On Linux, MacOS:
+```
+curl -X POST http://127.0.0.1:5000/multideposit \
+       -H 'Content-Type: application/json' \
+       -d '{
+   "entries":[
+      {
+         "entryId":"653dd9f5-f375-499b-8b2a-c4599bbd36b0",
+         "event":{
+            "data":{
+               "amount":10,
+               "id":"17"
+            },
+            "datacontenttype":"application/json",
+            "id":"DaprClient",
+            "pubsubname":"pubsub",
+            "source":"Dapr",
+            "specversion":"1.0",
+            "topic":"multideposit",
+            "type":"com.dapr.event.sent"
+         },
+         "metadata":null,
+         "contentType":"application/cloudevents+json"
+      },
+      {
+         "entryId":"7ea8191e-1e62-46d0-9ba8-ff6e571351cc",
+         "event":{
+            "data":{
+               "amount":20,
+               "id":"17"
+            },
+            "datacontenttype":"application/json",
+            "id":"DaprClient",
+            "pubsubname":"pubsub",
+            "source":"Dapr",
+            "specversion":"1.0",
+            "topic":"multideposit",
+            "type":"com.dapr.event.sent"
+         },
+         "metadata":null,
+         "contentType":"application/cloudevents+json"
+      }
+   ],
+   "id":"fa68c580-1b96-40d3-aa2c-04bab05e954e",
+   "metadata":{
+      "pubsubName":"pubsub"
+   },
+   "pubsubname":"pubsub",
+   "topic":"multideposit",
+   "type":"com.dapr.event.sent.bulk"
+}'
+```
+Output:
+```
+{
+   "statuses":[
+      {
+         "entryId":"653dd9f5-f375-499b-8b2a-c4599bbd36b0",
+         "status":"SUCCESS"
+      },
+      {
+         "entryId":"7ea8191e-1e62-46d0-9ba8-ff6e571351cc",
+         "status":"SUCCESS"
+      }
+   ]
+}
+```
+ ---
 **Withdraw Money**
 On Linux, MacOS:
  ```sh
@@ -212,6 +282,20 @@ public async Task<ActionResult<Account>> Deposit(...)
 ```
 
 `[Topic(...)]` associates a pub/sub named `pubsub` (this is the default configured by the Dapr CLI) pub/sub topic `deposit` with this endpoint.
+
+---
+```C#
+[Topic("pubsub", "multideposit", "amountDeadLetterTopic", false)]
+[BulkSubscribe("multideposit")]
+[HttpPost("multideposit")]
+public async Task<ActionResult<BulkSubscribeAppResponse>> MultiDeposit([FromBody] BulkSubscribeMessage<BulkMessageModel<Transaction>> 
+    bulkMessage, [FromServices] DaprClient daprClient)
+```
+
+`[BulkSubscribe(...)]` associates a topic with the name mentioned in the attribute with the ability to be bulk subscribed to. It can take additional parameters like `MaxMessagesCount` and `MaxAwaitDurationMs`.
+If those parameters are not supplied, the defaults of 100 and 1000ms are set.
+
+However, you need to use `BulkSubscribeMessage<BulkMessageModel<T>>` in the input and that you need to return the `BulkSubscribeAppResponse` as well.
 
 ---
 
