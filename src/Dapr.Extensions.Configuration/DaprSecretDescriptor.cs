@@ -29,9 +29,21 @@ namespace Dapr.Extensions.Configuration
         /// A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.
         /// </summary>
         public IReadOnlyDictionary<string, string> Metadata { get; }
+        
+        /// <summary>
+        /// This flag indicates if this field's existence should trigger an exception. Setting it to "false"
+        /// will suppress the exception whereas setting it to "true" will not suppress it.
+        /// </summary>
+        public bool IsRequired { get; }
 
         /// <summary>
-        /// Secret Descriptor Construcutor
+        /// SecretKey value is mapping value to Vault Name. If The application's Secret Name and Secret in the
+        /// Vault Name is different then you can use this flag to specify Vault Secret Name. 
+        /// </summary>
+        public string SecretKey { get; }
+
+        /// <summary>
+        /// Secret Descriptor Constructor
         /// </summary>
         public DaprSecretDescriptor(string secretName) : this(secretName, new Dictionary<string, string>())
         {
@@ -39,12 +51,24 @@ namespace Dapr.Extensions.Configuration
         }
 
         /// <summary>
-        /// Secret Descriptor Construcutor
+        /// Secret Descriptor Constructor
         /// </summary>
-        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata)
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata) : 
+            this(secretName, metadata, true, secretName)
+        {
+            
+        }
+        
+        /// <summary>
+        /// Secret Descriptor Constructor
+        /// </summary>
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, 
+            bool isRequired, string secretKey)
         {
             SecretName = secretName;
             Metadata = metadata;
+            IsRequired = isRequired;
+            SecretKey = secretKey;
         }
     }
 }
