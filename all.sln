@@ -104,6 +104,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BulkPublishEventExample", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowUnitTest", "examples\Workflow\WorkflowUnitTest\WorkflowUnitTest.csproj", "{8CA09061-2BEF-4506-A763-07062D2BD6AC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Shared.Test", "test\Dapr.Shared.Test\Dapr.Shared.Test.csproj", "{072AB8B8-8006-4CE1-90C6-EBC99050ADC6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -248,6 +250,10 @@ Global
 		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8CA09061-2BEF-4506-A763-07062D2BD6AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8CA09061-2BEF-4506-A763-07062D2BD6AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{072AB8B8-8006-4CE1-90C6-EBC99050ADC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{072AB8B8-8006-4CE1-90C6-EBC99050ADC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{072AB8B8-8006-4CE1-90C6-EBC99050ADC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{072AB8B8-8006-4CE1-90C6-EBC99050ADC6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -293,6 +299,7 @@ Global
 		{4A175C27-EAFE-47E7-90F6-873B37863656} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
 		{DDC41278-FB60-403A-B969-2AEBD7C2D83C} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
 		{8CA09061-2BEF-4506-A763-07062D2BD6AC} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
+		{072AB8B8-8006-4CE1-90C6-EBC99050ADC6} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}

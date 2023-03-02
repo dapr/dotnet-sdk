@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,8 +63,11 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="httpEndpoint">
         /// The URI endpoint to use for HTTP calls to the Dapr runtime. The default value will be 
-        /// <c>http://127.0.0.1:DAPR_HTTP_PORT</c> where <c>DAPR_HTTP_PORT</c> represents the value of the 
-        /// <c>DAPR_HTTP_PORT</c> environment variable.
+        /// <c>DAPR_HOST:DAPR_HTTP_PORT</c> where <c>DAPR_HOST</c> represents the value of the 
+        /// <c>DAPR_HOST</c> environment variable and <c>DAPR_HTTP_PORT</c> represents the value of the 
+        /// <c>DAPR_HTTP_PORT</c> environment variable. If <c>DAPR_HOST</c> environment variable is 
+        /// undefined or empty <c>http://localhost</c> is used as default value. If <c>DAPR_HTTP_PORT</c> environment 
+        /// variable is undefined or empty <c>3500</c> is used as default value. 
         /// </param>
         /// <returns>The <see cref="DaprClientBuilder" /> instance.</returns>
         public DaprClientBuilder UseHttpEndpoint(string httpEndpoint)
@@ -85,9 +88,12 @@ namespace Dapr.Client
         /// Overrides the gRPC endpoint used by <see cref="DaprClient" /> for communicating with the Dapr runtime.
         /// </summary>
         /// <param name="grpcEndpoint">
-        /// The URI endpoint to use for gRPC calls to the Dapr runtime. The default value will be 
-        /// <c>http://127.0.0.1:DAPR_GRPC_PORT</c> where <c>DAPR_GRPC_PORT</c> represents the value of the 
-        /// <c>DAPR_GRPC_PORT</c> environment variable.
+        /// The URI endpoint to use for gRPC calls to the Dapr runtime. 
+        /// The default value will be <c>DAPR_HOST:DAPR_GRPC_PORT</c> where <c>DAPR_HOST</c> 
+        /// represents the value of the <c>DAPR_HOST</c> environment variable and <c>DAPR_GRPC_PORT</c> 
+        /// represents the value of the <c>DAPR_GRPC_PORT</c> environment variable. If <c>DAPR_HOST</c> environment 
+        /// variable is undefined or empty <c>http://localhost</c> is used as default value. 
+        /// If <c>DAPR_GRPC_PORT</c> environment variable is undefined or empty <c>50001</c> is used as default value. 
         /// </param>
         /// <returns>The <see cref="DaprClientBuilder" /> instance.</returns>
         public DaprClientBuilder UseGrpcEndpoint(string grpcEndpoint)
