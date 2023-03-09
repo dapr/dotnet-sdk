@@ -1,11 +1,11 @@
-﻿namespace WorkflowWebApp.Activities
+﻿using Dapr.Client;
+using Dapr.Workflow;
+using Microsoft.Extensions.Logging;
+using WorkflowConsoleApp.Models;
+
+namespace WorkflowConsoleApp.Activities
 {
-    using System.Threading.Tasks;
-    using Dapr.Workflow;
-
-    record PaymentRequest(string RequestId, double Amount, string Currency);
-
-    class ProcessPaymentActivity : WorkflowActivity<PaymentRequest, object>
+    public class ProcessPaymentActivity : WorkflowActivity<PaymentRequest, object>
     {
         readonly ILogger logger;
 
@@ -17,9 +17,10 @@
         public override async Task<object> RunAsync(WorkflowActivityContext context, PaymentRequest req)
         {
             this.logger.LogInformation(
-                "Processing payment: {requestId}, {amount}, {currency}",
+                "Processing payment: {requestId} for {amount} {item} at ${currency}",
                 req.RequestId,
                 req.Amount,
+                req.ItemName,
                 req.Currency);
 
             // Simulate slow processing
