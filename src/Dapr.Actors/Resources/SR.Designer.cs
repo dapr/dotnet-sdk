@@ -392,5 +392,15 @@ namespace Dapr.Actors.Resources {
                 return ResourceManager.GetString("TimerArgumentOutOfRange", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string stating repetitions specified value must be a valid positive integer.
+        /// </summary>
+        internal static string RepetitionsArgumentOutOfRange
+        {
+            get {
+                return ResourceManager.GetString("RepetitionsArgumentOutOfRange", resourceCulture);
+            }
+        }
     }
 }

@@ -15,7 +15,6 @@ namespace Dapr.Actors.Runtime
 {
     using System;
     using System.Reflection;
-    using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.Actors.Client;
     using Microsoft.Extensions.Logging;
@@ -262,6 +261,83 @@ namespace Dapr.Actors.Runtime
                 DueTime = dueTime,
                 Period = period,
                 Ttl = ttl
+            });
+        }
+        
+        /// <summary>
+        /// Registers a reminder with the actor.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder to register. The name must be unique per actor.</param>
+        /// <param name="state">User state passed to the reminder invocation.</param>
+        /// <param name="dueTime">The amount of time to delay before invoking the reminder for the first time. Specify negative one (-1) milliseconds to disable invocation. Specify zero (0) to invoke the reminder immediately after registration.</param>
+        /// <param name="period">
+        /// The time interval between reminder invocations after the first invocation.
+        /// </param>
+        /// <param name="repetitions">The number of repetitions for which the reminder should be invoked.</param>
+        /// <param name="ttl">The time interval after which the reminder will expire.</param>
+        /// <returns>
+        /// A task that represents the asynchronous registration operation. The result of the task provides information about the registered reminder and is used to unregister the reminder using UnregisterReminderAsync.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The class deriving from <see cref="Dapr.Actors.Runtime.Actor" /> must implement <see cref="Dapr.Actors.Runtime.IRemindable" /> to consume reminder invocations. Multiple reminders can be registered at any time, uniquely identified by <paramref name="reminderName" />. Existing reminders can also be updated by calling this method again. Reminder invocations are synchronized both with other reminders and other actor method callbacks.
+        /// </para>
+        /// </remarks>
+        protected async Task<IActorReminder> RegisterReminderAsync(
+            string reminderName,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period,
+            int repetitions,
+            TimeSpan ttl)
+        {
+            return await RegisterReminderAsync(new ActorReminderOptions
+            {
+                ActorTypeName = this.actorTypeName,
+                Id = this.Id,
+                ReminderName = reminderName,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Repetitions = repetitions,
+                Ttl = ttl
+            });
+        }
+        
+        /// <summary>
+        /// Registers a reminder with the actor.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder to register. The name must be unique per actor.</param>
+        /// <param name="state">User state passed to the reminder invocation.</param>
+        /// <param name="dueTime">The amount of time to delay before invoking the reminder for the first time. Specify negative one (-1) milliseconds to disable invocation. Specify zero (0) to invoke the reminder immediately after registration.</param>
+        /// <param name="period">
+        /// The time interval between reminder invocations after the first invocation.
+        /// </param>
+        /// <param name="repetitions">The number of repetitions for which the reminder should be invoked.</param>
+        /// <returns>
+        /// A task that represents the asynchronous registration operation. The result of the task provides information about the registered reminder and is used to unregister the reminder using UnregisterReminderAsync.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The class deriving from <see cref="Dapr.Actors.Runtime.Actor" /> must implement <see cref="Dapr.Actors.Runtime.IRemindable" /> to consume reminder invocations. Multiple reminders can be registered at any time, uniquely identified by <paramref name="reminderName" />. Existing reminders can also be updated by calling this method again. Reminder invocations are synchronized both with other reminders and other actor method callbacks.
+        /// </para>
+        /// </remarks>
+        protected async Task<IActorReminder> RegisterReminderAsync(
+            string reminderName,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period,
+            int repetitions)
+        {
+            return await RegisterReminderAsync(new ActorReminderOptions
+            {
+                ActorTypeName = this.actorTypeName,
+                Id = this.Id,
+                ReminderName = reminderName,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Repetitions = repetitions
             });
         }
 

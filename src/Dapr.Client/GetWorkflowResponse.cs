@@ -11,15 +11,16 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Threading;
-using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
 
-namespace Samples.Client
+namespace Dapr.Client
 {
-    public abstract class Example 
-    {
-        public abstract string DisplayName { get; }
-
-        public abstract Task RunAsync(CancellationToken cancellationToken);
-    }
+        /// <summary>
+        /// Initializes a new <see cref="GetWorkflowResponse" />.
+        /// </summary>
+        /// <param name="instanceId">The instance ID assocated with this response.</param>
+        /// <param name="startTime">The time at which the workflow started executing.</param>
+        /// <param name="metadata">The response metadata.</param>
+        public record GetWorkflowResponse(string instanceId, DateTime startTime, IReadOnlyDictionary<string, string> metadata);
 }

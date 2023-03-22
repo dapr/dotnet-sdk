@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29318.209
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors", "src\Dapr.Actors\Dapr.Actors.csproj", "{C2DB4B64-B7C3-4FED-8753-C040F677C69A}"
 EndProject
@@ -35,57 +35,74 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.AspNetCore.Test", "test\Dapr.Actors.AspNetCore.Test\Dapr.Actors.AspNetCore.Test.csproj", "{9C1D6ABA-5EDE-4FA0-A8A9-0AB98CB74737}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.AspNetCore.Test", "test\Dapr.Actors.AspNetCore.Test\Dapr.Actors.AspNetCore.Test.csproj", "{9C1D6ABA-5EDE-4FA0-A8A9-0AB98CB74737}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.AspNetCore.IntegrationTest", "test\Dapr.Actors.AspNetCore.IntegrationTest\Dapr.Actors.AspNetCore.IntegrationTest.csproj", "{95BAF30B-8089-42CE-8530-6DFBCE1F6A07}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.AspNetCore.IntegrationTest", "test\Dapr.Actors.AspNetCore.IntegrationTest\Dapr.Actors.AspNetCore.IntegrationTest.csproj", "{95BAF30B-8089-42CE-8530-6DFBCE1F6A07}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.AspNetCore.IntegrationTest.App", "test\Dapr.Actors.AspNetCore.IntegrationTest.App\Dapr.Actors.AspNetCore.IntegrationTest.App.csproj", "{1BA7E772-8AA7-4D5A-800D-66B17F62421C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.AspNetCore.IntegrationTest.App", "test\Dapr.Actors.AspNetCore.IntegrationTest.App\Dapr.Actors.AspNetCore.IntegrationTest.App.csproj", "{1BA7E772-8AA7-4D5A-800D-66B17F62421C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Extensions.Configuration.Test", "test\Dapr.Extensions.Configuration.Test\Dapr.Extensions.Configuration.Test.csproj", "{78FC19B2-396C-4ED2-BFD9-6C5667C61666}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Extensions.Configuration.Test", "test\Dapr.Extensions.Configuration.Test\Dapr.Extensions.Configuration.Test.csproj", "{78FC19B2-396C-4ED2-BFD9-6C5667C61666}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Extensions.Configuration", "src\Dapr.Extensions.Configuration\Dapr.Extensions.Configuration.csproj", "{B615B353-476C-43B9-A776-B193B0DBD256}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Extensions.Configuration", "src\Dapr.Extensions.Configuration\Dapr.Extensions.Configuration.csproj", "{B615B353-476C-43B9-A776-B193B0DBD256}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AspNetCore", "AspNetCore", "{A11DC259-D1DB-4686-AD28-A427D0BABA83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrpcServiceSample", "examples\AspNetCore\GrpcServiceSample\GrpcServiceSample.csproj", "{2EC50C79-782D-4985-ABB1-AD07F35D1621}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrpcServiceSample", "examples\AspNetCore\GrpcServiceSample\GrpcServiceSample.csproj", "{2EC50C79-782D-4985-ABB1-AD07F35D1621}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoutingSample", "examples\AspNetCore\RoutingSample\RoutingSample.csproj", "{15A16323-2CCA-472E-BE79-07259DAD5F6F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RoutingSample", "examples\AspNetCore\RoutingSample\RoutingSample.csproj", "{15A16323-2CCA-472E-BE79-07259DAD5F6F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecretStoreConfigurationProviderSample", "examples\AspNetCore\SecretStoreConfigurationProviderSample\SecretStoreConfigurationProviderSample.csproj", "{5BACBA51-03FE-4CE1-B0F5-9E9C2A132FAB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SecretStoreConfigurationProviderSample", "examples\AspNetCore\SecretStoreConfigurationProviderSample\SecretStoreConfigurationProviderSample.csproj", "{5BACBA51-03FE-4CE1-B0F5-9E9C2A132FAB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ControllerSample", "examples\AspNetCore\ControllerSample\ControllerSample.csproj", "{3160CC92-1D6E-42CB-AE89-9401C8CEC5CB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ControllerSample", "examples\AspNetCore\ControllerSample\ControllerSample.csproj", "{3160CC92-1D6E-42CB-AE89-9401C8CEC5CB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Actor", "Actor", "{02374BD0-BF0B-40F8-A04A-C4C4D61D4992}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IDemoActor", "examples\Actor\IDemoActor\IDemoActor.csproj", "{7957E852-1291-4FAA-9034-FB66CE817FF1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IDemoActor", "examples\Actor\IDemoActor\IDemoActor.csproj", "{7957E852-1291-4FAA-9034-FB66CE817FF1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoActor", "examples\Actor\DemoActor\DemoActor.csproj", "{626D74DD-4F37-4F74-87A3-5A6888684F5E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DemoActor", "examples\Actor\DemoActor\DemoActor.csproj", "{626D74DD-4F37-4F74-87A3-5A6888684F5E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorClient", "examples\Actor\ActorClient\ActorClient.csproj", "{CC0A5C98-ACDE-4139-BA2F-2995A9B8E18C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ActorClient", "examples\Actor\ActorClient\ActorClient.csproj", "{CC0A5C98-ACDE-4139-BA2F-2995A9B8E18C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{A7F41094-8648-446B-AECD-DCC2CC871F73}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StateManagement", "examples\Client\StateManagement\StateManagement.csproj", "{F70AC78E-8925-4770-832A-2FC67A620EB2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StateManagement", "examples\Client\StateManagement\StateManagement.csproj", "{F70AC78E-8925-4770-832A-2FC67A620EB2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceInvocation", "examples\Client\ServiceInvocation\ServiceInvocation.csproj", "{8B570E70-0E73-4042-A4B6-1CC3CC782A65}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServiceInvocation", "examples\Client\ServiceInvocation\ServiceInvocation.csproj", "{8B570E70-0E73-4042-A4B6-1CC3CC782A65}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PublishSubscribe", "examples\Client\PublishSubscribe\PublishSubscribe.csproj", "{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PublishSubscribe", "examples\Client\PublishSubscribe\PublishSubscribe.csproj", "{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test", "test\Dapr.E2E.Test\Dapr.E2E.Test.csproj", "{4AA9E7B7-36BF-4AAE-BFA3-C9CE8740F4A0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test", "test\Dapr.E2E.Test\Dapr.E2E.Test.csproj", "{4AA9E7B7-36BF-4AAE-BFA3-C9CE8740F4A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.App", "test\Dapr.E2E.Test.App\Dapr.E2E.Test.App.csproj", "{345FC3FB-D1E9-4AE8-9052-17D20AB01FA2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.App", "test\Dapr.E2E.Test.App\Dapr.E2E.Test.App.csproj", "{345FC3FB-D1E9-4AE8-9052-17D20AB01FA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.Actors", "test\Dapr.E2E.Test.Actors\Dapr.E2E.Test.Actors.csproj", "{2AED1542-A8ED-488D-B6D0-E16AB5D6EF6C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.Actors", "test\Dapr.E2E.Test.Actors\Dapr.E2E.Test.Actors.csproj", "{2AED1542-A8ED-488D-B6D0-E16AB5D6EF6C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.App.Grpc", "test\Dapr.E2E.Test.App.Grpc\Dapr.E2E.Test.App.Grpc.csproj", "{E8212911-344B-4638-ADC3-B215BCDCAFD1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.App.Grpc", "test\Dapr.E2E.Test.App.Grpc\Dapr.E2E.Test.App.Grpc.csproj", "{E8212911-344B-4638-ADC3-B215BCDCAFD1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConfigurationApi", "examples\Client\ConfigurationApi\ConfigurationApi.csproj", "{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConfigurationApi", "examples\Client\ConfigurationApi\ConfigurationApi.csproj", "{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.App.ReentrantActors", "test\Dapr.E2E.Test.App.ReentrantActor\Dapr.E2E.Test.App.ReentrantActors.csproj", "{5BE7F505-7D77-4C3A-ABFD-54088774DAA7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.App.ReentrantActors", "test\Dapr.E2E.Test.App.ReentrantActor\Dapr.E2E.Test.App.ReentrantActors.csproj", "{5BE7F505-7D77-4C3A-ABFD-54088774DAA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedLock", "examples\Client\DistributedLock\DistributedLock.csproj", "{35031EDB-C0DE-453A-8335-D2EBEA2FC640}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DistributedLock", "examples\Client\DistributedLock\DistributedLock.csproj", "{35031EDB-C0DE-453A-8335-D2EBEA2FC640}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Workflow", "src\Dapr.Workflow\Dapr.Workflow.csproj", "{07578B6C-9B96-4B3D-BA2E-7800EFCA7F99}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflow", "Workflow", "{BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}"
+	ProjectSection(SolutionItems) = preProject
+		examples\Workflow\README.md = examples\Workflow\README.md
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowConsoleApp", "examples\Workflow\WorkflowConsoleApp\WorkflowConsoleApp.csproj", "{5C61ABED-7623-4C28-A5C9-C5972A0F669C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PublishSubscribe", "PublishSubscribe", "{0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PublishEventExample", "examples\Client\PublishSubscribe\PublishEventExample\PublishEventExample.csproj", "{4A175C27-EAFE-47E7-90F6-873B37863656}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BulkPublishEventExample", "examples\Client\PublishSubscribe\BulkPublishEventExample\BulkPublishEventExample.csproj", "{DDC41278-FB60-403A-B969-2AEBD7C2D83C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowUnitTest", "examples\Workflow\WorkflowUnitTest\WorkflowUnitTest.csproj", "{8CA09061-2BEF-4506-A763-07062D2BD6AC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -185,10 +202,6 @@ Global
 		{8B570E70-0E73-4042-A4B6-1CC3CC782A65}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8B570E70-0E73-4042-A4B6-1CC3CC782A65}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B570E70-0E73-4042-A4B6-1CC3CC782A65}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4AA9E7B7-36BF-4AAE-BFA3-C9CE8740F4A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4AA9E7B7-36BF-4AAE-BFA3-C9CE8740F4A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4AA9E7B7-36BF-4AAE-BFA3-C9CE8740F4A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -217,6 +230,24 @@ Global
 		{35031EDB-C0DE-453A-8335-D2EBEA2FC640}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{35031EDB-C0DE-453A-8335-D2EBEA2FC640}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{35031EDB-C0DE-453A-8335-D2EBEA2FC640}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07578B6C-9B96-4B3D-BA2E-7800EFCA7F99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07578B6C-9B96-4B3D-BA2E-7800EFCA7F99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07578B6C-9B96-4B3D-BA2E-7800EFCA7F99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07578B6C-9B96-4B3D-BA2E-7800EFCA7F99}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C61ABED-7623-4C28-A5C9-C5972A0F669C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C61ABED-7623-4C28-A5C9-C5972A0F669C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C61ABED-7623-4C28-A5C9-C5972A0F669C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C61ABED-7623-4C28-A5C9-C5972A0F669C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A175C27-EAFE-47E7-90F6-873B37863656}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A175C27-EAFE-47E7-90F6-873B37863656}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A175C27-EAFE-47E7-90F6-873B37863656}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A175C27-EAFE-47E7-90F6-873B37863656}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDC41278-FB60-403A-B969-2AEBD7C2D83C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CA09061-2BEF-4506-A763-07062D2BD6AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CA09061-2BEF-4506-A763-07062D2BD6AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -248,7 +279,6 @@ Global
 		{A7F41094-8648-446B-AECD-DCC2CC871F73} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
 		{F70AC78E-8925-4770-832A-2FC67A620EB2} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
 		{8B570E70-0E73-4042-A4B6-1CC3CC782A65} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
-		{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
 		{4AA9E7B7-36BF-4AAE-BFA3-C9CE8740F4A0} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{345FC3FB-D1E9-4AE8-9052-17D20AB01FA2} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{2AED1542-A8ED-488D-B6D0-E16AB5D6EF6C} = {DD020B34-460F-455F-8D17-CF4A949F100B}
@@ -256,6 +286,13 @@ Global
 		{F80F837E-D2FC-4FFC-B68F-3CF0EC015F66} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
 		{5BE7F505-7D77-4C3A-ABFD-54088774DAA7} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{35031EDB-C0DE-453A-8335-D2EBEA2FC640} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
+		{07578B6C-9B96-4B3D-BA2E-7800EFCA7F99} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
+		{5C61ABED-7623-4C28-A5C9-C5972A0F669C} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
+		{0EF6EA64-D7C3-420D-9890-EAE8D54A57E6} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
+		{4A175C27-EAFE-47E7-90F6-873B37863656} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
+		{DDC41278-FB60-403A-B969-2AEBD7C2D83C} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
+		{8CA09061-2BEF-4506-A763-07062D2BD6AC} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
