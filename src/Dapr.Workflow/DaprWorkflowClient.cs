@@ -88,7 +88,7 @@ namespace Dapr.Workflow
         /// <para>
         /// A "started" workflow instance is any instance not in the <see cref="WorkflowRuntimeStatus.Pending"/> state.
         /// </para><para>
-        /// If a workflow instance is already running (or completed) when this method is called, the method will return immediately.
+        /// This method will return a completed task if the workflow has already started running.
         /// </para>
         /// </remarks>
         /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
@@ -281,7 +281,8 @@ namespace Dapr.Workflow
         public async Task<bool> PurgeInstanceAsync(string instanceId, CancellationToken cancellation = default)
         {
             PurgeResult result = await this.innerClient.PurgeInstanceAsync(instanceId, cancellation);
-            return result.PurgedInstanceCount > 0;        }
+            return result.PurgedInstanceCount > 0;
+        }
 
         /// <summary>
         /// Disposes any unmanaged resources associated with this client.
@@ -289,22 +290,6 @@ namespace Dapr.Workflow
         public ValueTask DisposeAsync()
         {
             return ((IAsyncDisposable)this.innerClient).DisposeAsync();
-        }
-    }
-
-    /// <summary>
-    /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-    /// </summary>
-    [Obsolete($"Deprecated. Use {nameof(DaprWorkflowClient)} instead.")]
-    public sealed class WorkflowEngineClient : DaprWorkflowClient
-    {
-        /// <summary>
-        /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-        /// </summary>
-        /// <inheritdoc cref="DaprWorkflowClient(DurableTaskClient)"/>
-        public WorkflowEngineClient(DurableTaskClient innerClient)
-            : base(innerClient)
-        {
         }
     }
 }
