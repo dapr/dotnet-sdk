@@ -88,7 +88,7 @@ namespace Dapr.Workflow
         /// <para>
         /// A "started" workflow instance is any instance not in the <see cref="WorkflowRuntimeStatus.Pending"/> state.
         /// </para><para>
-        /// This method will return a completed task if the workflow has already started running.
+        /// This method will return a completed task if the workflow has already started running or has already completed.
         /// </para>
         /// </remarks>
         /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
