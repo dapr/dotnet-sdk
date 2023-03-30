@@ -62,9 +62,12 @@ DaprWorkflowClient workflowClient = host.Services.GetRequiredService<DaprWorkflo
 
 var baseInventory = new List<InventoryItem>
 {
-    new InventoryItem(Name: "Paperclips", PerItemCost: 5, Quantity: 100),
-    new InventoryItem(Name: "Cars", PerItemCost: 15000, Quantity: 100),
-    new InventoryItem(Name: "Computers", PerItemCost: 500, Quantity: 100),
+    new InventoryItem(Name: "Computer", PerItemCost: 1500, Quantity: 100),
+    new InventoryItem(Name: "Monitor", PerItemCost: 700, Quantity: 100),
+    new InventoryItem(Name: "Keyboard", PerItemCost: 450, Quantity: 100),
+    new InventoryItem(Name: "Mouse", PerItemCost: 150, Quantity: 100),
+    new InventoryItem(Name: "Headphones", PerItemCost: 300, Quantity: 100),
+    new InventoryItem(Name: "Adapters", PerItemCost: 60, Quantity: 100),
 };
 
 // Populate the store with items
