@@ -1,5 +1,6 @@
 ﻿namespace WorkflowConsoleApp.Models 
 {
+    public record AuthenticationResult(bool Success);
     public record OrderPayload(string Name, double TotalCost, int Quantity = 1);
     public record InventoryRequest(string RequestId, string ItemName, int Quantity);
     public record InventoryResult(bool Success, InventoryItem orderPayload);
