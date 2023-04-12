@@ -22,9 +22,9 @@ namespace WorkflowConsoleApp.Workflows
                 nameof(NotifyActivity),
                 new Notification($"Received order {orderId} for {order.Quantity} {order.Name} at ${order.TotalCost}"), retryPolicy);
 
-            InventoryResult authResult = await context.CallActivityAsync<InventoryResult>(
+            AuthenticationResult authResult = await context.CallActivityAsync<AuthenticationResult>(
                 nameof(AuthenticationActivity),
-                new InventoryRequest(RequestId: orderId, order.Name, order.Quantity), retryPolicy);
+                new AuthenticationRequest(RequestId: orderId, order.Name, order.Quantity), retryPolicy);
                 
             if (!authResult.Success) {
                 // End the workflow here since we couldn't get approval to go ahead with the purchase
