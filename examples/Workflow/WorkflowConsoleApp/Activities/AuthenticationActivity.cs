@@ -1,8 +1,6 @@
-using System.Text;
-using System.Text.Json;
-using Dapr.Client;
 using Dapr.Workflow;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using WorkflowConsoleApp.Models;
 
 namespace WorkflowConsoleApp.Activities
@@ -12,6 +10,11 @@ namespace WorkflowConsoleApp.Activities
     {
         readonly ILogger logger;
         private static readonly HttpClient client = new HttpClient();
+
+        private static HttpClient sharedClient = new()
+        {
+            BaseAddress = new Uri("http://localhost:5074/"),
+        };
         public AuthenticationActivity(ILoggerFactory loggerFactory)
         {
             this.logger = loggerFactory.CreateLogger<AuthenticationActivity>();
@@ -24,46 +27,37 @@ namespace WorkflowConsoleApp.Activities
             req.RequestId,
             req.Quantity,
             req.ItemName);
-
-
-            // Get attempt. Maybe we want to use a get rather than a post for reaching the server?
-            var getRequest = new HttpRequestMessage(HttpMethod.Get, "https://api.getpostman.com/collections");
-            getRequest.Headers.Add("x-api-key", "API KEY GOES HERE");
-            using var getResponse = client.SendAsync(getRequest);
-            this.logger.LogInformation(
-                        "Response from client get call '{getResponse}'",
-                        getResponse.Result.ToString()
-            );
-
-
-            // Post attempt.
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.getpostman.com/mocks");
-            //IMPORTANT!!! Hide this key in an environment variable instead of hardcoding it
-            request.Headers.Add("x-api-key", "API KEY GOES HERE");
-            string jsonText = JsonSerializer.Serialize(new
-            {
-                name = "testAPImock",
-                collection = "COLLECTION VALUE GOES HERE", 
-                environment = "ENVIRONMENT VALUE GOES HERE",
-            });
-            request.Content = new StringContent(jsonText, Encoding.UTF8, "application/json");
-            using var response = client.SendAsync(request);
-            // Do something with the response...
-
-            this.logger.LogInformation(
-                        "Response from client call '{response}'",
-                        response.Result.ToString()
-            );
-
-            // Probably want to change this up to have a different type of exception thrown and compare against something other than a hardcoded 400
-            if (Convert.ToInt32(response.Result.StatusCode) == 400)
-            {
-                throw new ArgumentNullException(paramName: nameof(response), message: "server is unable to be reached.");
+            
+            // Since company cars are expensive and exclusive, we want to authenticate before allowing the purchase
+            if (req.ItemName != "companycar") {
+                return Task.FromResult(new AuthenticationResult(true));
             }
 
-            var authenticationResult = new AuthenticationResult(true);
+            var response = GetAsync(sharedClient);
+            var responseJson = JsonConvert.DeserializeObject<AuthResult>(response.Result.ToString());
+            Console.WriteLine(responseJson.approved);
+            if(responseJson.approved == true) {
+                return Task.FromResult(new AuthenticationResult(true));
+            }
 
-            return Task.FromResult<AuthenticationResult>(authenticationResult);
+            return Task.FromResult<AuthenticationResult>(new AuthenticationResult(false));
         }
+
+        static async Task<string> GetAsync(HttpClient httpClient)
+        {
+            try {
+                using HttpResponseMessage response = await httpClient.GetAsync("RequestAuthentication");
+                            response.EnsureSuccessStatusCode()
+                .WriteRequestToConsole();
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"{jsonResponse}\n");
+                return jsonResponse;
+
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"Not found: {ex.Message}");
+            }
+            return null;
+        }
+
     }
 }

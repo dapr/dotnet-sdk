@@ -103,7 +103,7 @@ while (true)
     }
 
     Console.WriteLine($"How many {itemName} would you like to purchase?");
-    string amountStr = Console.ReadLine().Trim();
+    string amountStr = Console.ReadLine()?.Trim();
     if (!int.TryParse(amountStr, out int amount) || amount <= 0)
     {
         Console.ForegroundColor = ConsoleColor.Yellow;
