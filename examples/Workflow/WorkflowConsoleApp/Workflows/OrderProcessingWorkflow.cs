@@ -9,12 +9,34 @@ namespace WorkflowConsoleApp.Workflows
     {
         public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)
         {
+            var retryPolicy = Microsoft.DurableTask.TaskOptions.FromRetryPolicy(new Microsoft.DurableTask.RetryPolicy(
+                maxNumberOfAttempts: 10,
+                firstRetryInterval: TimeSpan.FromSeconds(5),
+                backoffCoefficient: 2.0,
+                maxRetryInterval: TimeSpan.FromHours(1)));
+            
             string orderId = context.InstanceId;
 
             // Notify the user that an order has come through
             await context.CallActivityAsync(
                 nameof(NotifyActivity),
-                new Notification($"Received order {orderId} for {order.Quantity} {order.Name} at ${order.TotalCost}"));
+                new Notification($"Received order {orderId} for {order.Quantity} {order.Name} at ${order.TotalCost}"), retryPolicy);
+
+            AuthenticationResult authResult = await context.CallActivityAsync<AuthenticationResult>(
+                nameof(AuthenticationActivity),
+                new AuthenticationRequest(RequestId: orderId, order.Name, order.Quantity), retryPolicy);
+                
+            if (!authResult.Success) {
+                // End the workflow here since we couldn't get approval to go ahead with the purchase
+                await context.CallActivityAsync(
+                    nameof(NotifyActivity),
+                    new Notification($"Authentication Failed for {order.Name}"));
+                return new OrderResult(Processed: false);
+            } else {
+                await context.CallActivityAsync(
+                    nameof(NotifyActivity),
+                    new Notification($"Authentication Succeeded for {order.Name}"));
+            }
 
             // Determine if there is enough of the item available for purchase by checking the inventory
             InventoryResult result = await context.CallActivityAsync<InventoryResult>(
