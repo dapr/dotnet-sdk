@@ -110,7 +110,10 @@ namespace Dapr
         public string Path { get; set; }
     }
 
-    internal class DaprTopicBulkSubscribe
+    /// <summary>
+    /// This class defines the bulk subscribe options for subscribe endpoint.
+    /// </summary>
+    public class DaprTopicBulkSubscribe
     {
         /// <summary>
         /// Gets or sets whether bulk subscribe option is enabled for a topic.

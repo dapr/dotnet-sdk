@@ -44,7 +44,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                     json.ValueKind.Should().Be(JsonValueKind.Array);
                     json.GetArrayLength().Should().Be(19);
 
-                    var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, 
+                    var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload,
                         string match, string metadata, string DeadLetterTopic, string bulkSubscribeMetadata)>();
 
                     foreach (var element in json.EnumerateArray())
@@ -88,7 +88,7 @@ namespace Dapr.AspNetCore.IntegrationTest
 
                         if (element.TryGetProperty("route", out JsonElement route))
                         {
-                            subscriptions.Add((pubsubName, topic, route.GetString(), rawPayload, string.Empty, 
+                            subscriptions.Add((pubsubName, topic, route.GetString(), rawPayload, string.Empty,
                                 originalMetadataString, deadLetterTopic, bulkSubscribeMetadata));
                         }
                         else if (element.TryGetProperty("routes", out JsonElement routes))
@@ -99,13 +99,13 @@ namespace Dapr.AspNetCore.IntegrationTest
                                 {
                                     var match = rule.GetProperty("match").GetString();
                                     var path = rule.GetProperty("path").GetString();
-                                    subscriptions.Add((pubsubName, topic, path, rawPayload, match, 
+                                    subscriptions.Add((pubsubName, topic, path, rawPayload, match,
                                         originalMetadataString, deadLetterTopic, bulkSubscribeMetadata));
                                 }
                             }
                             if (routes.TryGetProperty("default", out JsonElement defaultProperty))
                             {
-                                subscriptions.Add((pubsubName, topic, defaultProperty.GetString(), rawPayload, 
+                                subscriptions.Add((pubsubName, topic, defaultProperty.GetString(), rawPayload,
                                     string.Empty, originalMetadataString, deadLetterTopic, bulkSubscribeMetadata));
                             }
                         }
@@ -121,19 +121,19 @@ namespace Dapr.AspNetCore.IntegrationTest
                     subscriptions.Should().Contain(("pubsub", "E", "E", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
                     subscriptions.Should().Contain(("pubsub", "E", "E-Critical", string.Empty, "event.type == \"critical\"", string.Empty, string.Empty, String.Empty));
                     subscriptions.Should().Contain(("pubsub", "E", "E-Important", string.Empty, "event.type == \"important\"", string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "F", "multiTopicAttr", string.Empty, string.Empty, string.Empty, string.Empty, 
+                    subscriptions.Should().Contain(("pubsub", "F", "multiTopicAttr", string.Empty, string.Empty, string.Empty, string.Empty,
                         "{\"enabled\":true,\"maxMessagesCount\":100,\"maxAwaitDurationMs\":1000}"));
                     subscriptions.Should().Contain(("pubsub", "F.1", "multiTopicAttr", "true", string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "G", "G", string.Empty, string.Empty, string.Empty, "deadLetterTopicName", 
+                    subscriptions.Should().Contain(("pubsub", "G", "G", string.Empty, string.Empty, string.Empty, "deadLetterTopicName",
                         "{\"enabled\":true,\"maxMessagesCount\":300,\"maxAwaitDurationMs\":1000}"));
                     subscriptions.Should().Contain(("pubsub", "splitTopicBuilder", "splitTopics", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
                     subscriptions.Should().Contain(("pubsub", "splitTopicAttr", "splitTopics", "true", string.Empty, string.Empty, string.Empty, String.Empty));
                     subscriptions.Should().Contain(("pubsub", "metadata", "multiMetadataTopicAttr", string.Empty, string.Empty, "n1=v1;n2=v2,v3", string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "metadata.1", "multiMetadataTopicAttr", "true", string.Empty, "n1=v1", string.Empty, 
+                    subscriptions.Should().Contain(("pubsub", "metadata.1", "multiMetadataTopicAttr", "true", string.Empty, "n1=v1", string.Empty,
                         "{\"enabled\":true,\"maxMessagesCount\":500,\"maxAwaitDurationMs\":2000}"));
                     subscriptions.Should().Contain(("pubsub", "splitMetadataTopicBuilder", "splitMetadataTopics", string.Empty, string.Empty, "n1=v1;n2=v1", string.Empty, String.Empty));
                     subscriptions.Should().Contain(("pubsub", "metadataseparatorbyemptytring", "topicmetadataseparatorattrbyemptytring", string.Empty, string.Empty, "n1=v1,", string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("dynamic-pubsub", "dynamic-topic", "/dynamic-route", string.Empty, string.Empty, String.Empty, string.Empty));
+                    subscriptions.Should().Contain(("dynamic-pubsub", "dynamic-topic", "/dynamic-route", string.Empty, string.Empty, string.Empty, string.Empty, string.Empty));
                     // Test priority route sorting
                     var eTopic = subscriptions.FindAll(e => e.Topic == "E");
                     eTopic.Count.Should().Be(3);
