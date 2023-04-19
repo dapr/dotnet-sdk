@@ -74,6 +74,16 @@ namespace DaprDemoActor
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), ttl);
         }
+        
+        public async Task RegisterReminderWithRepetitions(int repetitions)
+        {
+            await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions);
+        }
+        
+        public async Task RegisterReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions)
+        {
+            await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions, ttl);
+        }
 
         public Task UnregisterReminder()
         {

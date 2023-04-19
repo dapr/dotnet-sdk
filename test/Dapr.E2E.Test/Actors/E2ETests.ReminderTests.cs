@@ -50,6 +50,58 @@ namespace Dapr.E2E.Test
         }
 
         [Fact]
+        public async Task ActorCanStartReminderWithRepetitions()
+        {
+            int repetitions = 5;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactory.CreateActorProxy<IReminderActor>(ActorId.CreateRandom(), "ReminderActor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            // Reminder that should fire 5 times (repetitions) at an interval of 1s
+            await proxy.StartReminderWithRepetitions(repetitions);
+            var start = DateTime.Now;
+            
+            await Task.Delay(TimeSpan.FromSeconds(7));
+
+            var state = await proxy.GetState();
+
+            // Make sure the reminder fired 5 times (repetitions)
+            Assert.Equal(repetitions, state.Count);
+            
+            // Make sure the reminder has fired and that it didn't fire within the past second since it should have expired.
+            Assert.True(state.Timestamp.Subtract(start) > TimeSpan.Zero, "Reminder may not have triggered.");
+            Assert.True(DateTime.Now.Subtract(state.Timestamp) > TimeSpan.FromSeconds(1), 
+                $"Reminder triggered too recently. {DateTime.Now} - {state.Timestamp}");
+        }
+        
+        [Fact]
+        public async Task ActorCanStartReminderWithTtlAndRepetitions()
+        {
+            int repetitions = 2;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactory.CreateActorProxy<IReminderActor>(ActorId.CreateRandom(), "ReminderActor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            // Reminder that should fire 2 times (repetitions) at an interval of 1s
+            await proxy.StartReminderWithTtlAndRepetitions(TimeSpan.FromSeconds(5), repetitions);
+            var start = DateTime.Now;
+            
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            
+            var state = await proxy.GetState();
+
+            // Make sure the reminder fired 2 times (repetitions) whereas the ttl was 5 seconds.
+            Assert.Equal(repetitions, state.Count);
+            
+            // Make sure the reminder has fired and that it didn't fire within the past second since it should have expired.
+            Assert.True(state.Timestamp.Subtract(start) > TimeSpan.Zero, "Reminder may not have triggered.");
+            Assert.True(DateTime.Now.Subtract(state.Timestamp) > TimeSpan.FromSeconds(1), 
+                $"Reminder triggered too recently. {DateTime.Now} - {state.Timestamp}");
+        }
+
+        [Fact]
         public async Task ActorCanStartReminderWithTtl()
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));

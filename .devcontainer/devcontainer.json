@@ -1,0 +1,51 @@
+{
+	"name": "Azure Developer CLI",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"args": {
+			"VARIANT": "bullseye"
+		}
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/azure-cli:1": {
+			"version": "2.38"
+		},
+		"ghcr.io/devcontainers/features/docker-from-docker:1": {
+			"version": "20.10"
+		},
+		"ghcr.io/devcontainers/features/dotnet:1": {
+			"version": "6.0"
+		},
+		"ghcr.io/devcontainers/features/github-cli:1": {
+			"version": "2"
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "16",
+			"nodeGypDependencies": false
+		}
+	},
+	"extensions": [
+		"ms-azuretools.azure-dev",
+		"ms-azuretools.vscode-bicep",
+		"ms-azuretools.vscode-docker",
+		"ms-vscode.vscode-node-azure-pack",
+		"ms-dotnettools.csharp",
+		"ms-dotnettools.vscode-dotnet-runtime",
+		"ms-azuretools.vscode-dapr",
+		"GitHub.copilot"
+	],
+	"forwardPorts": [
+		3000,
+		3100,
+		3500,
+		3501,
+		5000,
+		5007
+	],
+	"postCreateCommand": ".devcontainer/localinit.sh",
+	"remoteUser": "vscode",
+	"hostRequirements": {
+		"memory": "8gb"
+	}
+  }
+  

@@ -100,6 +100,15 @@ namespace ActorClient
             await proxy.UnregisterTimer();
             Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
             await proxy.UnregisterReminder();
+            
+            Console.WriteLine("Registering reminder with repetitions - The reminder will repeat 3 times.");
+            await proxy.RegisterReminderWithRepetitions(3);
+            Console.WriteLine("Waiting so the reminder can be triggered");
+            await Task.Delay(5000);
+            Console.WriteLine("Registering reminder with ttl and repetitions, i.e. reminder stops when either condition is met - The reminder will repeat 2 times.");
+            await proxy.RegisterReminderWithTtlAndRepetitions(TimeSpan.FromSeconds(5), 2);
+            Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
+            await proxy.UnregisterReminder();
 
             Console.WriteLine("Registering reminder and Timer with TTL - The reminder will self delete after 10 seconds.");
             await proxy.RegisterReminderWithTtl(TimeSpan.FromSeconds(10));

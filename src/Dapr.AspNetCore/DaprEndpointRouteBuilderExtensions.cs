@@ -18,6 +18,7 @@ namespace Microsoft.AspNetCore.Builder
     using System.Text.Json;
     using System.Text.Json.Serialization;
     using Dapr;
+    using Dapr.AspNetCore;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.AspNetCore.Routing.Patterns;
@@ -71,11 +72,32 @@ namespace Microsoft.AspNetCore.Builder
                     {
                         var topicMetadata = e.Metadata.GetOrderedMetadata<ITopicMetadata>();
                         var originalTopicMetadata = e.Metadata.GetOrderedMetadata<IOriginalTopicMetadata>();
+                        var bulkSubscribeMetadata = e.Metadata.GetOrderedMetadata<IBulkSubscribeMetadata>();
 
-                        var subs = new List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string MetadataSeparator, RoutePattern RoutePattern)>();
+                        var subs = new List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload, 
+                            string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, 
+                            string MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe)>();
 
                         for (int i = 0; i < topicMetadata.Count(); i++)
                         {
+                            DaprTopicBulkSubscribe bulkSubscribe = null;
+
+                            foreach (var bulkSubscribeAttr in bulkSubscribeMetadata)
+                            {
+                                if (bulkSubscribeAttr.TopicName != topicMetadata[i].Name)
+                                {
+                                    continue;
+                                }
+
+                                bulkSubscribe = new DaprTopicBulkSubscribe
+                                {
+                                    Enabled = true,
+                                    MaxMessagesCount = bulkSubscribeAttr.MaxMessagesCount,
+                                    MaxAwaitDurationMs = bulkSubscribeAttr.MaxAwaitDurationMs
+                                };
+                                break;
+                            }
+                            
                             subs.Add((topicMetadata[i].PubsubName,
                                 topicMetadata[i].Name,
                                 (topicMetadata[i] as IDeadLetterTopicMetadata)?.DeadLetterTopic,
@@ -86,7 +108,8 @@ namespace Microsoft.AspNetCore.Builder
                                                      .GroupBy(c => c.Name)
                                                      .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),
                                 (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.MetadataSeparator,
-                                e.RoutePattern));
+                                e.RoutePattern,
+                                bulkSubscribe));
                         }
 
                         return subs;
@@ -132,6 +155,7 @@ namespace Microsoft.AspNetCore.Builder
                             Topic = first.Name,
                             PubsubName = first.PubsubName,
                             Metadata = metadata.Count > 0 ? metadata : null,
+                            BulkSubscribe = first.bulkSubscribe
                         };
 
                         if (first.DeadLetterTopic != null)

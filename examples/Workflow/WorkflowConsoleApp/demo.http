@@ -1,0 +1,17 @@
+### Start order processing workflow - replace xxx with any id you like
+POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx/start
+Content-Type: application/json
+
+{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}
+
+### Start order processing workflow - replace xxx with any id you like
+POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx/start
+Content-Type: application/json
+
+{ "input" : {"Name": "Cars", "TotalCost": 10000, "Quantity": 30}}
+
+### Query dapr sidecar - replace xxx with id from the workflow you've created above
+GET http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/xxx
+
+### Terminate the workflow - replace xxx with id from the workflow you've created above
+POST http://localhost:3500/v1.0-alpha1/workflows/dapr/xxx/terminate 

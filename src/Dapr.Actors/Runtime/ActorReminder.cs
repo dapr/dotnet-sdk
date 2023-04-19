@@ -88,6 +88,71 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Initializes a new instance of <see cref="ActorReminder" />.
         /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorId">The actor id.</param>
+        /// <param name="name">The reminder name.</param>
+        /// <param name="state">The state associated with the reminder.</param>
+        /// <param name="dueTime">The reminder due time.</param>
+        /// <param name="period">The reminder period.</param>
+        /// <param name="repetitions">The number of times reminder should be invoked.</param>
+        /// <param name="ttl">The reminder ttl.</param>
+        public ActorReminder(
+            string actorType,
+            ActorId actorId,
+            string name,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period,
+            int? repetitions,
+            TimeSpan? ttl)
+            : this(new ActorReminderOptions
+            {
+                ActorTypeName = actorType,
+                Id = actorId,
+                ReminderName = name,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Repetitions = repetitions,
+                Ttl = ttl
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorReminder" />.
+        /// </summary>
+        /// <param name="actorType">The actor type.</param>
+        /// <param name="actorId">The actor id.</param>
+        /// <param name="name">The reminder name.</param>
+        /// <param name="state">The state associated with the reminder.</param>
+        /// <param name="dueTime">The reminder due time.</param>
+        /// <param name="period">The reminder period.</param>
+        /// <param name="repetitions">The number of times reminder should be invoked.</param>
+        public ActorReminder(
+            string actorType,
+            ActorId actorId,
+            string name,
+            byte[] state,
+            TimeSpan dueTime,
+            TimeSpan period,
+            int? repetitions)
+            : this(new ActorReminderOptions
+            {
+                ActorTypeName = actorType,
+                Id = actorId,
+                ReminderName = name,
+                State = state,
+                DueTime = dueTime,
+                Period = period,
+                Repetitions = repetitions
+            })
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ActorReminder" />.
+        /// </summary>
         /// <param name="options">A <see cref="ActorReminderOptions" /> containing the various settings for an <see cref="ActorReminder"/>.</param>
         internal ActorReminder(ActorReminderOptions options)
             : base(options.ActorTypeName, options.Id, options.ReminderName)
@@ -118,11 +183,20 @@ namespace Dapr.Actors.Runtime
                     options.DueTime,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
+            
+            if (options.Repetitions != null && options.Repetitions <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options.Repetitions), string.Format(
+                    CultureInfo.CurrentCulture,
+                    SR.RepetitionsArgumentOutOfRange,
+                    options.Repetitions));
+            }
 
             this.State = options.State;
             this.DueTime = options.DueTime;
             this.Period = options.Period;
             this.Ttl = options.Ttl;
+            this.Repetitions = options.Repetitions;
         }
 
         /// <summary>
@@ -144,5 +218,10 @@ namespace Dapr.Actors.Runtime
         /// The optional <see cref="TimeSpan"/> that states when the reminder will expire.
         /// </summary>
         public TimeSpan? Ttl { get; }
+        
+        /// <summary>
+        /// The optional property that gets the number of invocations of the reminder left.
+        /// </summary>
+        public int? Repetitions { get; }
     }
 }

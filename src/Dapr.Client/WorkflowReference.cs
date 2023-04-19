@@ -12,31 +12,29 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Dapr.Client;
+using System.Collections.Generic;
 
-namespace Samples.Client
+namespace Dapr.Client
 {
-    public class PublishEventExample : Example
+    /// <summary>
+    /// Represents the response from invoking a workflow.
+    /// </summary>
+    public sealed class WorkflowReference
     {
-        private static readonly string pubsubName = "pubsub";
-
-        public override string DisplayName => "Publishing Events";
-
-        public override async Task RunAsync(CancellationToken cancellationToken)
+        /// <summary>
+        /// Initializes a new <see cref="WorkflowReference" />.`
+        /// </summary>
+        /// <param name="instanceId">The instance ID assocated with this response.</param>
+        public WorkflowReference(string instanceId)
         {
-            using var client = new DaprClientBuilder().Build();
-
-            var eventData = new { Id = "17", Amount = 10m, };
-            await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
-            Console.WriteLine("Published deposit event!");
+            ArgumentVerifier.ThrowIfNull(instanceId, nameof(instanceId));
+            this.InstanceId = instanceId;
         }
 
-        private class Widget
-        {
-            public string? Size { get; set; }
-            public string? Color { get; set; }
-        }
+        /// <summary>
+        /// The instance ID assocated with this workflow.
+        /// </summary>
+        public string InstanceId { set; get; }
+
     }
 }

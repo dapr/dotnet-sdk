@@ -223,4 +223,7 @@
   <data name="TimerArgumentOutOfRange" xml:space="preserve">
     <value>TimeSpan TotalMilliseconds specified value must be between {0} and {1} </value>
   </data>
+  <data name="RepetitionsArgumentOutOfRange" xml:space="preserve">
+    <value>The repetitions {0} specified must be a valid positive integer.</value>
+  </data>
 </root>

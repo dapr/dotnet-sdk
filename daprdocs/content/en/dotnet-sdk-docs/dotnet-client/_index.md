@@ -9,11 +9,11 @@ no_list: true
 
 The Dapr client package allows you to interact with other Dapr applications from a .NET application.
 
-## Prerequisites
+{{% alert title="Note" color="primary" %}}
+ If you haven't already, [try out one of the quickstarts]({{< ref quickstarts >}}) for a quick walk-through on how to use the Dapr .NET SDK with an API building block.
 
-- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
-- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
+{{% /alert %}}
+
 
 ## Building blocks
 
@@ -199,12 +199,33 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 }
 ```
 
+### Manage workflow instances (Alpha)
+
+```csharp
+var daprClient = new DaprClientBuilder().Build();
+
+string instanceId = "MyWorkflowInstance1";
+string workflowComponentName = "dapr"; // alternatively, this could be the name of a workflow component defined in yaml
+string workflowName = "MyWorkflowDefinition";
+var input = new { name = "Billy", age = 30 }; // Any JSON-serializable value is OK
+
+// Start workflow
+var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponentName, workflowName, input);
+
+// Terminate workflow
+await daprClient.TerminateWorkflowAsync(instanceId, workflowComponentName);
+
+// Get workflow metadata
+var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponentName, workflowName);
+```
+
 ## Sidecar APIs
 ### Sidecar Health
 The .NET SDK provides a way to poll for the sidecar health, as well as a convenience method to wait for the sidecar to be ready.
 
 #### Poll for health
 This health endpoint returns true when both the sidecar and your application are up (fully initialized).
+
 ```csharp
 var client = new DaprClientBuilder().Build();
 
