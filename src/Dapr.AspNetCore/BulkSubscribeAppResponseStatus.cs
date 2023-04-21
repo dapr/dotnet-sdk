@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,24 +11,24 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+namespace Dapr.AspNetCore
 {
-    using System;
-    using Microsoft.DurableTask.Client;
-
-    /// <summary>
-    /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-    /// </summary>
-    [Obsolete($"Deprecated. Use {nameof(DaprWorkflowClient)} instead.")]
-    public sealed class WorkflowEngineClient : DaprWorkflowClient
-    {
         /// <summary>
-        /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
+        /// Status of the message handled in bulk subscribe handler.
         /// </summary>
-        /// <inheritdoc cref="DaprWorkflowClient(DurableTaskClient)"/>
-        public WorkflowEngineClient(DurableTaskClient innerClient)
-            : base(innerClient)
-        {
+        public enum BulkSubscribeAppResponseStatus {
+            /// <summary>
+            /// Success
+            /// </summary>
+            SUCCESS,
+            /// <summary>
+            /// Failure
+            /// </summary>
+            RETRY,
+            /// <summary>
+            /// Drop
+            /// </summary>
+            DROP
         }
-    }
+    
 }

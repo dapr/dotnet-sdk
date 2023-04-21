@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,24 +11,28 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
-{
-    using System;
-    using Microsoft.DurableTask.Client;
+using System.Collections.Generic;
 
+namespace Dapr.AspNetCore
+{
     /// <summary>
-    /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
+    /// Response from the application containing status for each entry in the bulk message.
+    /// It is posted to the bulk subscribe handler.
     /// </summary>
-    [Obsolete($"Deprecated. Use {nameof(DaprWorkflowClient)} instead.")]
-    public sealed class WorkflowEngineClient : DaprWorkflowClient
+    public class BulkSubscribeAppResponse
     {
         /// <summary>
-        /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
+        /// Initializes a new instance of the <see cref="BulkSubscribeAppResponse"/> class.
         /// </summary>
-        /// <inheritdoc cref="DaprWorkflowClient(DurableTaskClient)"/>
-        public WorkflowEngineClient(DurableTaskClient innerClient)
-            : base(innerClient)
+        /// <param name="statuses">List of statuses.</param>
+        public BulkSubscribeAppResponse(List<BulkSubscribeAppResponseEntry> statuses)
         {
+            this.Statuses = statuses;
         }
+        
+        /// <summary>
+        /// List of statuses.
+        /// </summary>
+        public List<BulkSubscribeAppResponseEntry> Statuses { get; }
     }
 }

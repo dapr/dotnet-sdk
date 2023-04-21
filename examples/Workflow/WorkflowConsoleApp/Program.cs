@@ -58,9 +58,7 @@ while (!await daprClient.CheckHealthAsync())
 // This is just to make the log output look a little nicer.
 Thread.Sleep(TimeSpan.FromSeconds(1));
 
-// NOTE: WorkflowEngineClient will be replaced with a richer version of DaprClient
-//       in a subsequent SDK release. This is a temporary workaround.
-WorkflowEngineClient workflowClient = host.Services.GetRequiredService<WorkflowEngineClient>();
+DaprWorkflowClient workflowClient = host.Services.GetRequiredService<DaprWorkflowClient>();
 
 var baseInventory = new List<InventoryItem>
 {
@@ -122,16 +120,9 @@ while (true)
         input: orderInfo);
 
     // Wait for the workflow to complete
-    WorkflowState state = await workflowClient.GetWorkflowStateAsync(
+    WorkflowState state = await workflowClient.WaitForWorkflowCompletionAsync(
         instanceId: orderId,
         getInputsAndOutputs: true);
-    while (!state.IsWorkflowCompleted)
-    {
-        Thread.Sleep(TimeSpan.FromSeconds(1));
-        state = await workflowClient.GetWorkflowStateAsync(
-            instanceId: orderId,
-            getInputsAndOutputs: true);
-    }
 
     if (state.RuntimeStatus == WorkflowRuntimeStatus.Completed)
     {
@@ -149,17 +140,8 @@ while (true)
     }
     else if (state.RuntimeStatus == WorkflowRuntimeStatus.Failed)
     {
-        // WorkflowEngineClient doesn't expose a way to get error information.
-        // For that, we resort to DaprClient. The experience will be improved in the next release.
-        GetWorkflowResponse response = await daprClient.GetWorkflowAsync(
-            instanceId: orderId,
-            workflowComponent: "dapr",
-            workflowName: nameof(OrderProcessingWorkflow),
-            CancellationToken.None);
-            
-        string failureDetails = await GetWorkflowFailureDetails(daprClient, orderId);
         Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"The workflow failed - {failureDetails}");
+        Console.WriteLine($"The workflow failed - {state.FailureDetails}");
         Console.ResetColor();
     }
 
@@ -173,26 +155,5 @@ static async Task RestockInventory(DaprClient daprClient, List<InventoryItem> in
     {
         Console.WriteLine($"*** \t{item.Name}: {item.Quantity}");
         await daprClient.SaveStateAsync(storeName, item.Name.ToLowerInvariant(), item);
-    }
-}
-
-static async Task<string> GetWorkflowFailureDetails(DaprClient daprClient, string orderId)
-{
-    // Use DaprClient to get the error details
-    GetWorkflowResponse response = await daprClient.GetWorkflowAsync(
-        instanceId: orderId,
-        workflowComponent: "dapr",
-        workflowName: nameof(OrderProcessingWorkflow),
-        CancellationToken.None);
-
-    // Available metadata fields: https://github.com/dapr/dapr/blob/ad4c38756fa08dda5def8f0a7a6d672feb37be91/pkg/runtime/wfengine/component.go#L146-L161
-    if (response.metadata.TryGetValue("dapr.workflow.failure.error_type", out string errorType) &&
-        response.metadata.TryGetValue("dapr.workflow.failure.error_message", out string errorMessage))
-    {
-        return $"{errorType}: {errorMessage}";
-    }
-    else
-    {
-        return ":(";
     }
 }
