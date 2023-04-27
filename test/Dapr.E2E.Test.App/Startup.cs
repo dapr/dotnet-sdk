@@ -27,6 +27,7 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
     using System.Threading.Tasks;
+    using System.Threading;
 
     /// <summary>
     /// Startup class.
@@ -62,9 +63,14 @@ namespace Dapr.E2E.Test
                 // Example of registering a "PlaceOrder" workflow function
                 options.RegisterWorkflow<string, string>("PlaceOrder", implementation: async (context, input) =>
                 {
+
+                    string itemToPurchase = "Coffee Beans";
+
+                    itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+
                     // In real life there are other steps related to placing an order, like reserving
                     // inventory and charging the customer credit card etc. But let's keep it simple ;)
-                    return await context.CallActivityAsync<string>("ShipProduct", "Coffee Beans");
+                    return await context.CallActivityAsync<string>("ShipProduct", itemToPurchase);
                 });
 
                 // Example of registering a "ShipProduct" workflow activity function

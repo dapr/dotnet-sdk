@@ -119,6 +119,9 @@ while (true)
         instanceId: orderId,
         input: orderInfo);
 
+    var newOrderInfo = new OrderPayload("paperclips", totalCost, 7);
+    await workflowClient.RaiseEventAsync(orderId, "ChangePurchaseItem", newOrderInfo);
+
     // Wait for the workflow to complete
     WorkflowState state = await workflowClient.WaitForWorkflowCompletionAsync(
         instanceId: orderId,

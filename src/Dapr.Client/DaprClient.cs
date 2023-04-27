@@ -1022,6 +1022,64 @@ namespace Dapr.Client
             string workflowComponent,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Attempt to raise an event the given workflow with response indicating success.
+        /// </summary>
+        /// <param name="instanceId">Identifier of the specific run.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="eventName">Name of the event to raise.</param>
+        /// <param name="input">The input input for the given workflow.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the raise event operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task RaiseEventWorkflowAsync(
+            string instanceId,
+            string workflowComponent,
+            string eventName,
+            Object input,
+            CancellationToken cancellationToken = default);
+
+
+        /// <summary>
+        /// Attempt to get pause the given workflow.
+        /// </summary>
+        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the pause operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task PauseWorkflowAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default);
+
+
+        /// <summary>
+        /// Attempt to get resume the given workflow.
+        /// </summary>
+        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the resume operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task ResumeWorkflowAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Attempt to get purge the given workflow.
+        /// </summary>
+        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the purge operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task PurgeWorkflowAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default);
+
         /// <inheritdoc />
         public void Dispose()
         {

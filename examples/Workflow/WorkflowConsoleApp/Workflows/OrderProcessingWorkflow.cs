@@ -11,6 +11,8 @@ namespace WorkflowConsoleApp.Workflows
         {
             string orderId = context.InstanceId;
 
+            order = await context.WaitForExternalEventAsync<OrderPayload>("ChangePurchaseItem");
+
             // Notify the user that an order has come through
             await context.CallActivityAsync(
                 nameof(NotifyActivity),
