@@ -46,7 +46,7 @@ jobs:
       GOARCH: amd64
       GOPROXY: https://proxy.golang.org
       DAPR_CLI_VER: 1.9.1
-      DAPR_RUNTIME_VER: 1.9.5
+      DAPR_RUNTIME_VER: 1.10.5
       DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/3dacfb672d55f1436c249057aaebbe597e1066f3/install/install.sh
       DAPR_CLI_REF: ''
       DAPR_REF: 'acb348d069d8d89dadc4ae5132a908854734baaf'
