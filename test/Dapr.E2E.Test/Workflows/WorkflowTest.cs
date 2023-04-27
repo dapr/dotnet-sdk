@@ -46,33 +46,33 @@ namespace Dapr.E2E.Test
             startResponse.InstanceId.Should().Be("TestWorkflowInstanceID", $"Instance ID {startResponse.InstanceId} was not correct");
 
             // GET INFO TEST
-            var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
+            var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
             getResponse.instanceId.Should().Be("TestWorkflowInstanceID");
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", $"Instance ID {getResponse.metadata["dapr.workflow.runtime_status"]} was not correct");
+            getResponse.runtimeStatus.Should().Be("RUNNING", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // PAUSE TEST:
             await daprClient.PauseWorkflowAsync(instanceId, workflowComponent);
-            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("SUSPENDED", $"Instance ID {getResponse.metadata["dapr.workflow.runtime_status"]} was not correct");
+            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
+            getResponse.runtimeStatus.Should().Be("SUSPENDED", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // RESUME TEST:
             await daprClient.ResumeWorkflowAsync(instanceId, workflowComponent);
-            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("RUNNING", $"Instance ID {getResponse.metadata["dapr.workflow.runtime_status"]} was not correct");
+            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
+            getResponse.runtimeStatus.Should().Be("RUNNING", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // RAISE EVENT TEST
             await daprClient.RaiseEventWorkflowAsync(instanceId, workflowComponent, "ChangePurchaseItem", "SomethingOtherThanCoffeeBeans");
-            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
+            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
             // RRL TODO: Figure out how to test that the event was raised
 
             // TERMINATE TEST:
             await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent);
-            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
-            getResponse.metadata["dapr.workflow.runtime_status"].Should().Be("TERMINATED", $"Instance ID {getResponse.metadata["dapr.workflow.runtime_status"]} was not correct");
+            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
+            getResponse.runtimeStatus.Should().Be("TERMINATED", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // PURGE TEST
             await daprClient.PurgeWorkflowAsync(instanceId, workflowComponent);
-            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, workflowName);
+            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
             // RRL TODO: Figure out how to test that the purge worked
 
         }

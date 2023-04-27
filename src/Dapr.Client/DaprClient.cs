@@ -999,14 +999,12 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="instanceId">The unique ID of the target workflow instance.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="workflowName">Name of the workflow to run.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="GetWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<GetWorkflowResponse> GetWorkflowAsync(
             string instanceId,
             string workflowComponent,
-            string workflowName,
             CancellationToken cancellationToken = default);
 
         /// <summary>

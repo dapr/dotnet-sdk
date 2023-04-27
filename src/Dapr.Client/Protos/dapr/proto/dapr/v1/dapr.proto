@@ -900,7 +900,7 @@ message EncryptRequest {
   // Request details. Must be present in the first message only.
   EncryptRequestOptions options = 1;
   // Chunk of data of arbitrary size.
-  common.v1.StreamPayload payload = 2;
+  // common.v1.StreamPayload payload = 2; // TODO: Commented out since it was causing an issue
 }
 
 // EncryptRequestOptions contains options for the first message in the EncryptAlpha1 request.
@@ -928,7 +928,7 @@ message EncryptRequestOptions {
 // EncryptResponse is the response for EncryptAlpha1.
 message EncryptResponse {
   // Chunk of data.
-  common.v1.StreamPayload payload = 1;
+  // common.v1.StreamPayload payload = 1; // TODO: Commented out since it was causing an issue
 }
 
 // DecryptRequest is the request for DecryptAlpha1.
@@ -936,7 +936,7 @@ message DecryptRequest {
   // Request details. Must be present in the first message only.
   DecryptRequestOptions options = 1;
   // Chunk of data of arbitrary size.
-  common.v1.StreamPayload payload = 2;
+  // common.v1.StreamPayload payload = 2; // TODO: Commented out since it was causing an issue
 }
 
 // DecryptRequestOptions contains options for the first message in the DecryptAlpha1 request.
@@ -952,7 +952,7 @@ message DecryptRequestOptions {
 // DecryptResponse is the response for DecryptAlpha1.
 message DecryptResponse {
   // Chunk of data.
-  common.v1.StreamPayload payload = 1;
+  // common.v1.StreamPayload payload = 1; // TODO: Commented out since it was causing an issue
 }
 
 // GetWorkflowRequest is the request for GetWorkflowAlpha1.
