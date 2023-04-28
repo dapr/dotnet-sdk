@@ -66,7 +66,7 @@ namespace Dapr.E2E.Test
 
                     string itemToPurchase = "Coffee Beans";
 
-                    itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    // itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
 
                     // In real life there are other steps related to placing an order, like reserving
                     // inventory and charging the customer credit card etc. But let's keep it simple ;)
