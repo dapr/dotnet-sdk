@@ -16,25 +16,9 @@ using System.Collections.Generic;
 
 namespace Dapr.Client
 {
-    /// <summary>
-    /// Represents the response from invoking a workflow.
-    /// </summary>
-    public sealed class WorkflowReference
-    {
         /// <summary>
-        /// Initializes a new <see cref="WorkflowReference" />.`
+        /// Initializes a new <see cref="StartWorkflowResponse" />.
         /// </summary>
-        /// <param name="instanceId">The instance ID assocated with this response.</param>
-        public WorkflowReference(string instanceId)
-        {
-            ArgumentVerifier.ThrowIfNull(instanceId, nameof(instanceId));
-            this.InstanceId = instanceId;
-        }
-
-        /// <summary>
-        /// The instance ID assocated with this workflow.
-        /// </summary>
-        public string InstanceId { set; get; }
-
-    }
+        /// <param name="instanceId">The instance ID associated with this response.</param>
+        public record StartWorkflowResponse(string instanceId);
 }

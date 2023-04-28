@@ -984,9 +984,9 @@ namespace Dapr.Client
         /// <param name="workflowOptions">The list of options that are potentially needed to start a workflow.</param>
         /// <param name="input">The input input for the given workflow.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task"/> containing a <see cref="WorkflowReference"/></returns>
+        /// <returns>A <see cref="Task"/> containing a <see cref="StartWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<WorkflowReference> StartWorkflowAsync(
+        public abstract Task<StartWorkflowResponse> StartWorkflowAsync(
             string instanceId,
             string workflowComponent,
             string workflowName,

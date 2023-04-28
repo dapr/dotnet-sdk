@@ -1466,7 +1466,7 @@ namespace Dapr.Client
         #region Workflow API
         /// <inheritdoc/>
         [Obsolete]
-        public async override Task<WorkflowReference> StartWorkflowAsync(
+        public async override Task<StartWorkflowResponse> StartWorkflowAsync(
             string instanceId,
             string workflowComponent,
             string workflowName,
@@ -1502,7 +1502,7 @@ namespace Dapr.Client
             {
                 var options = CreateCallOptions(headers: null, cancellationToken);
                 var response = await client.StartWorkflowAlpha1Async(request, options);
-                return new WorkflowReference(response.InstanceId);
+                return new StartWorkflowResponse(response.InstanceId);
  
             }
             catch (RpcException ex)
