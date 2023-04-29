@@ -64,20 +64,20 @@ namespace Dapr.E2E.Test
                 options.RegisterWorkflow<string, string>("PlaceOrder", implementation: async (context, input) =>
                 {
 
-                    string itemToPurchase = "Coffee Beans";
+                    // string itemToPurchase = "Coffee Beans";
 
-                    itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    // itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
 
                     // In real life there are other steps related to placing an order, like reserving
                     // inventory and charging the customer credit card etc. But let's keep it simple ;)
-                    return await context.CallActivityAsync<string>("ShipProduct", itemToPurchase);
+                    return await context.CallActivityAsync<string>("ShipProduct", "");
                 });
 
                 // Example of registering a "ShipProduct" workflow activity function
                 options.RegisterActivity<string, string>("ShipProduct", implementation: (context, input) =>
                 {
                     System.Threading.Thread.Sleep(10000); // sleep for 10s to allow the terminate command to come through
-                    return Task.FromResult($"We are shipping {input} to the customer using our hoard of drones!");
+                    return Task.FromResult($"We are shipping  to the customer using our hoard of drones!");
                 });
             });
             services.AddActors(options =>

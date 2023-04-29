@@ -29,10 +29,10 @@ namespace Dapr.E2E.Test
         [Fact]
         public async Task TestWorkflows()
         {
-            string instanceId = "TestWorkflowInstanceID";
+            string instanceId = "TestWorkflowInstanceID1";
             string workflowComponent = "dapr";
             string workflowName = "PlaceOrder";
-            object input = ByteString.CopyFrom(0x01);
+            // object input = ByteString.CopyFrom(0x01);
             Dictionary<string, string> workflowOptions = new Dictionary<string, string>();
             workflowOptions.Add("task_queue", "testQueue");
             CancellationToken cts = new CancellationToken();
@@ -44,12 +44,12 @@ namespace Dapr.E2E.Test
             Thread.Sleep(10000);
 
             // START WORKFLOW TEST
-            var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, input, workflowOptions, cts);
-            startResponse.instanceId.Should().Be("TestWorkflowInstanceID", $"Instance ID {startResponse.instanceId} was not correct");
+            var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponent, workflowName, "", workflowOptions, cts);
+            startResponse.instanceId.Should().Be("TestWorkflowInstanceID1", $"Instance ID {startResponse.instanceId} was not correct");
 
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
-            getResponse.instanceId.Should().Be("TestWorkflowInstanceID");
+            getResponse.instanceId.Should().Be("TestWorkflowInstanceID1");
             getResponse.runtimeStatus.Should().Be("RUNNING", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // PAUSE TEST:

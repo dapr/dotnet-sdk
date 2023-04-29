@@ -978,7 +978,7 @@ namespace Dapr.Client
         /// <summary>
         /// Attempt to start the given workflow with response indicating success.
         /// </summary>
-        /// <param name="instanceId">Identifier of the specific run.</param>
+        /// <param name="instanceID">Identifier of the specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
         /// <param name="workflowName">Name of the workflow to run.</param>
         /// <param name="workflowOptions">The list of options that are potentially needed to start a workflow.</param>
@@ -987,7 +987,7 @@ namespace Dapr.Client
         /// <returns>A <see cref="Task"/> containing a <see cref="StartWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<StartWorkflowResponse> StartWorkflowAsync(
-            string instanceId,
+            string instanceID,
             string workflowComponent,
             string workflowName,
             Object input,
