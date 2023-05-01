@@ -49,7 +49,7 @@ jobs:
       DAPR_RUNTIME_VER: 1.10.5
       DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/3dacfb672d55f1436c249057aaebbe597e1066f3/install/install.sh
       DAPR_CLI_REF: ''
-      DAPR_REF: 'acb348d069d8d89dadc4ae5132a908854734baaf'
+      DAPR_REF: '2aa338395a91e03eb43a217b57eecd4d39c3da20'
     steps:
       - name: Set up Dapr CLI
         run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
