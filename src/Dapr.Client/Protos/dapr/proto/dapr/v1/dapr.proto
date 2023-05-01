@@ -369,7 +369,7 @@ message BulkPublishRequestEntry {
   // The request scoped unique ID referring to this message. Used to map status in response
   string entry_id = 1;
 
-  // The event which will be pulished to the topic
+  // The event which will be published to the topic
   bytes event = 2;
 
   // The content type for the event

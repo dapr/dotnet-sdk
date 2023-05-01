@@ -27,7 +27,7 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
     using System.Threading.Tasks;
-    using System.Threading;
+    using System;
 
     /// <summary>
     /// Startup class.
@@ -64,7 +64,7 @@ namespace Dapr.E2E.Test
                 options.RegisterWorkflow<string, string>("PlaceOrder", implementation: async (context, input) =>
                 {
 
-                    System.Threading.Thread.Sleep(10000); // sleep for 10s to allow the terminate command to come through
+                    System.Threading.Thread.Sleep(10000); // sleep for 5s to allow the terminate command to come through
                     var itemToPurchase = input;
 
                     itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");

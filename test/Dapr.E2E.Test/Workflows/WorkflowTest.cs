@@ -30,7 +30,7 @@ namespace Dapr.E2E.Test
         public async Task TestWorkflows()
         {
             string instanceId = "WorkflowTestInstanceId";
-            string instanceId2 = "EventRaiseIdD";
+            string instanceId2 = "EventRaiseId";
             string workflowComponent = "dapr";
             string workflowName = "PlaceOrder";
             object input = "paperclips";
@@ -45,7 +45,7 @@ namespace Dapr.E2E.Test
             Thread.Sleep(10000);
 
             // START WORKFLOW TEST
-            var startResponse = await daprClient.StartWorkflowAsync(instanceID: instanceId, workflowComponent: workflowComponent,
+            var startResponse = await daprClient.StartWorkflowAsync(instanceId: instanceId, workflowComponent: workflowComponent,
                                                                     workflowName: workflowName, input: input,
                                                                     workflowOptions: workflowOptions, cancellationToken: cts);
 
@@ -67,7 +67,7 @@ namespace Dapr.E2E.Test
             getResponse.runtimeStatus.Should().Be("RUNNING", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // RAISE EVENT TEST
-            await daprClient.RaiseEventWorkflowAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers", cts);
+            await daprClient.RaiseWorkflowEventAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers", cts);
             getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
 
             // TERMINATE TEST:
@@ -89,13 +89,13 @@ namespace Dapr.E2E.Test
             }
 
             // Start another workflow for event raising purposes
-            startResponse = await daprClient.StartWorkflowAsync(instanceID: instanceId2, workflowComponent: workflowComponent,
+            startResponse = await daprClient.StartWorkflowAsync(instanceId: instanceId2, workflowComponent: workflowComponent,
                                                                                 workflowName: workflowName, input: input,
                                                                                 workflowOptions: workflowOptions, cancellationToken: cts);
 
             // RAISE EVENT TEST
-            await daprClient.RaiseEventWorkflowAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers", cts);
-            Thread.Sleep(30000); // Sleep allows the workflow to complete
+            await daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers", cts);
+            await Task.Delay(TimeSpan.FromSeconds(30));
             getResponse = await daprClient.GetWorkflowAsync(instanceId2, workflowComponent, cts);
             var outputString = getResponse.properties["dapr.workflow.output"];
             outputString.Should().Be("\"computers\"", $"Purchased item {outputString} was not correct");

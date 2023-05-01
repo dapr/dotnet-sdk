@@ -978,7 +978,7 @@ namespace Dapr.Client
         /// <summary>
         /// Attempt to start the given workflow with response indicating success.
         /// </summary>
-        /// <param name="instanceID">Identifier of the specific run.</param>
+        /// <param name="instanceId">Identifier of the specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
         /// <param name="workflowName">Name of the workflow to run.</param>
         /// <param name="workflowOptions">The list of options that are potentially needed to start a workflow.</param>
@@ -987,7 +987,7 @@ namespace Dapr.Client
         /// <returns>A <see cref="Task"/> containing a <see cref="StartWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<StartWorkflowResponse> StartWorkflowAsync(
-            string instanceID,
+            string instanceId,
             string workflowComponent,
             string workflowName,
             Object input,
@@ -1030,7 +1030,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the raise event operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task RaiseEventWorkflowAsync(
+        public abstract Task RaiseWorkflowEventAsync(
             string instanceId,
             string workflowComponent,
             string eventName,
