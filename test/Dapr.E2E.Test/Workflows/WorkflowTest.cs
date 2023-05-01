@@ -29,7 +29,7 @@ namespace Dapr.E2E.Test
         [Fact]
         public async Task TestWorkflows()
         {
-            string instanceId = "GGGGGGID";
+            string instanceId = "WorkflowTestInstanceId";
             string workflowComponent = "dapr";
             string workflowName = "PlaceOrder";
             object input = "paperclips";
@@ -48,11 +48,11 @@ namespace Dapr.E2E.Test
                                                                     workflowName: workflowName, input: input,
                                                                     workflowOptions: workflowOptions, cancellationToken: cts);
 
-            startResponse.instanceId.Should().Be("GGGGGGID", $"Instance ID {startResponse.instanceId} was not correct");
+            startResponse.instanceId.Should().Be("WorkflowTestInstanceId", $"Instance ID {startResponse.instanceId} was not correct");
 
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
-            getResponse.instanceId.Should().Be("GGGGGGID");
+            getResponse.instanceId.Should().Be("WorkflowTestInstanceId");
             getResponse.runtimeStatus.Should().Be("RUNNING", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // // PAUSE TEST:
@@ -78,7 +78,15 @@ namespace Dapr.E2E.Test
 
             // PURGE TEST
             await daprClient.PurgeWorkflowAsync(instanceId, workflowComponent, cts);
-            getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
+
+            try 
+            {
+                getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
+            }
+            catch (DaprException ex)
+            {
+                ex.Should().Be("No such instance exists", $"Instance {instanceId} was not correctly purged");
+            }
             // RRL TODO: Figure out how to test that the purge worked
 
         }
