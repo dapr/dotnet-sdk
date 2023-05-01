@@ -69,7 +69,6 @@ namespace Dapr.E2E.Test
             await daprClient.RaiseEventWorkflowAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers", cts);
             getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
             // RRL TODO: Figure out how to test that the event was raised 
-            // This also seems to be completing the entire workflow if there is no event of this name
 
             // TERMINATE TEST:
             await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent, cts);
@@ -85,7 +84,7 @@ namespace Dapr.E2E.Test
             }
             catch (DaprException ex)
             {
-                ex.Should().Be("No such instance exists", $"Instance {instanceId} was not correctly purged");
+                ex.InnerException.Should().Be("No such instance exists", $"Instance {instanceId} was not correctly purged");
             }
             // RRL TODO: Figure out how to test that the purge worked
 
