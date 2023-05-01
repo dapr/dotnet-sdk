@@ -30,6 +30,7 @@ namespace Dapr.E2E.Test
         public async Task TestWorkflows()
         {
             string instanceId = "WorkflowTestInstanceId";
+            string instanceId2 = "EventRaiseID";
             string workflowComponent = "dapr";
             string workflowName = "PlaceOrder";
             object input = "paperclips";
@@ -68,7 +69,6 @@ namespace Dapr.E2E.Test
             // RAISE EVENT TEST
             await daprClient.RaiseEventWorkflowAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers", cts);
             getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
-            // RRL TODO: Figure out how to test that the event was raised 
 
             // TERMINATE TEST:
             await daprClient.TerminateWorkflowAsync(instanceId, workflowComponent, cts);
@@ -76,7 +76,7 @@ namespace Dapr.E2E.Test
             getResponse.runtimeStatus.Should().Be("TERMINATED", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // PURGE TEST
-            await daprClient.PurgeWorkflowAsync(instanceId, workflowComponent, cts);
+            // await daprClient.PurgeWorkflowAsync(instanceId, workflowComponent, cts);
 
             try 
             {
@@ -87,6 +87,18 @@ namespace Dapr.E2E.Test
                 int exceptionCharacterLength = 25;
                 ex.InnerException.Message.Substring(ex.InnerException.Message.Length - exceptionCharacterLength).Should().Be("No such instance exists\")", $"Instance {instanceId} was not correctly purged");
             }
+
+            // Start another workflow for event raising purposes
+            startResponse = await daprClient.StartWorkflowAsync(instanceID: instanceId2, workflowComponent: workflowComponent,
+                                                                                workflowName: workflowName, input: input,
+                                                                                workflowOptions: workflowOptions, cancellationToken: cts);
+
+            // RAISE EVENT TEST
+            await daprClient.RaiseEventWorkflowAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers", cts);
+            Thread.Sleep(30000); // Sleep allows the workflow to complete
+            getResponse = await daprClient.GetWorkflowAsync(instanceId2, workflowComponent, cts);
+            var outputString = getResponse.properties["dapr.workflow.output"];
+            outputString.Should().Be("\"computers\"", $"Purchased item {outputString} was not correct");
 
         }
 
