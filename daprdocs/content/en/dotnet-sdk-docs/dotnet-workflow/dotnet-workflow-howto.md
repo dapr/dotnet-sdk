@@ -72,7 +72,7 @@ This guide focuses on the workflow API option.
 {{% alert title="Note" color="primary" %}}
   - You can find the commands below in the `WorkflowConsoleApp`/`demo.http` file.
   - The body of the curl request is the purchase order information used as the input of the workflow. 
-  - The "1234" in the commands represents the unique identifier for the workflow and can be replaced with any identifier of your choosing.
+  - The "12345678" in the commands represents the unique identifier for the workflow and can be replaced with any identifier of your choosing.
 {{% /alert %}}
 
 
@@ -83,7 +83,7 @@ Run the following command to start a workflow.
 {{% codetab %}}
 
 ```bash
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234/start \
+curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 \
   -H "Content-Type: application/json" \
   -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
 ```
@@ -93,7 +93,7 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 {{% codetab %}}
 
 ```powershell
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234/start `
+curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 `
   -H "Content-Type: application/json" `
   -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
 ```
@@ -105,13 +105,13 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 If successful, you should see a response like the following: 
 
 ```json
-{"instance_id":"1234"}
+{"instance_id":"12345678"}
 ```
 
 Send an HTTP request to get the status of the workflow that was started:
 
 ```bash
-curl -i -X GET http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234
+curl -i -X GET http://localhost:3500/v1.0-alpha1/workflows/dapr/12345678
 ```
 
 The workflow is designed to take several seconds to complete. If the workflow hasn't completed when you issue the HTTP request, you'll see the following JSON response (formatted for readability) with workflow status as `RUNNING`:
@@ -119,7 +119,7 @@ The workflow is designed to take several seconds to complete. If the workflow ha
 ```json
 {
   "WFInfo": {
-    "instance_id": "1234"
+    "instance_id": "12345678"
   },
   "start_time": "2023-02-02T23:34:53Z",
   "metadata": {
@@ -138,7 +138,7 @@ Once the workflow has completed running, you should see the following output, in
 ```json
 {
   "WFInfo": {
-    "instance_id": "1234"
+    "instance_id": "12345678"
   },
   "start_time": "2023-02-02T23:34:53Z",
   "metadata": {
@@ -156,13 +156,13 @@ When the workflow has completed, the stdout of the workflow app should look like
 
 ```log
 info: WorkflowConsoleApp.Activities.NotifyActivity[0]
-      Received order 1234 for Paperclips at $99.95
+      Received order 12345678 for Paperclips at $99.95
 info: WorkflowConsoleApp.Activities.ReserveInventoryActivity[0]
-      Reserving inventory: 1234, Paperclips, 1
+      Reserving inventory: 12345678, Paperclips, 1
 info: WorkflowConsoleApp.Activities.ProcessPaymentActivity[0]
-      Processing payment: 1234, 99.95, USD
+      Processing payment: 12345678, 99.95, USD
 info: WorkflowConsoleApp.Activities.NotifyActivity[0]
-      Order 1234 processed successfully!
+      Order 12345678 processed successfully!
 ```
 
 If you have Zipkin configured for Dapr locally on your machine, then you can view the workflow trace spans in the Zipkin web UI (typically at http://localhost:9411/zipkin/).

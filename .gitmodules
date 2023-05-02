@@ -1,0 +1,3 @@
+[submodule "daprdocs/themes/docsy"]
+	path = daprdocs/themes/docsy
+	url = https://github.com/google/docsy.git
