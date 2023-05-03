@@ -3,7 +3,7 @@ Right now, it approves all the requests coming to it.
 It provides back result in following form:
 
 GET http://localhost:5074/RequestAuthentication HTTP/1.1
-{"approved":true,"summary":"Chilly"}
+{"approved":true,"summary":"User authentication successful"}
 
 `summary` will be replaced by `couponCode`.
 
