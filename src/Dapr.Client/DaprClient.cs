@@ -1034,7 +1034,7 @@ namespace Dapr.Client
             string instanceId,
             string workflowComponent,
             string eventName,
-            Object eventData,
+            object eventData = null,
             CancellationToken cancellationToken = default);
 
 
