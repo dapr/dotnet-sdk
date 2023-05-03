@@ -105,7 +105,7 @@ namespace Dapr.Workflow
             //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
             // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
             string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-            if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
+            if (int.TryParse(daprPortStr, out int daprGrpcPort))
             {
                 // There is a bug in the Durable Task SDK that requires us to change the format of the address
                 // depending on the version of .NET that we're targeting. For now, we work around this manually.
