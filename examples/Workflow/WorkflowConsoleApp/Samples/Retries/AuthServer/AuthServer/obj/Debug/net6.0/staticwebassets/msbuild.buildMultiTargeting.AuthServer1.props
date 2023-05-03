@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/AuthServer1.props" />
-</Project>
