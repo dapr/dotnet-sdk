@@ -53,11 +53,6 @@ jobs:
     steps:
       - name: Set up Dapr CLI
         run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
-      - name: Set up Go ${{ env.GOVER }}
-        if: env.DAPR_REF != '' || env.DAPR_CLI_REF != ''
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ env.GOVER }}
       - name: Checkout Dapr CLI repo to override dapr command.
         uses: actions/checkout@v2
         if: env.DAPR_CLI_REF != ''
@@ -72,6 +67,16 @@ jobs:
           repository: dapr/dapr
           ref: ${{ env.DAPR_REF }}
           path: dapr
+      - name: Set up Go from dapr/go.mod
+        if: env.DAPR_REF != ''
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "dapr/go.mod"
+      - name: Set up Go from cli/go.mod
+        if: env.DAPR_REF == '' && env.DAPR_CLI_REF != ''
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "cli/go.mod"
       - name: Build and override dapr cli with referenced commit.
         if: env.DAPR_CLI_REF != ''
         run: |
