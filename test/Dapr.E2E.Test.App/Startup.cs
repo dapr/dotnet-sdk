@@ -64,7 +64,6 @@ namespace Dapr.E2E.Test
                 options.RegisterWorkflow<string, string>("PlaceOrder", implementation: async (context, input) =>
                 {
 
-                    System.Threading.Thread.Sleep(10000); // sleep for 5s to allow the terminate command to come through
                     var itemToPurchase = input;
 
                     itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
@@ -79,7 +78,6 @@ namespace Dapr.E2E.Test
                 // Example of registering a "ShipProduct" workflow activity function
                 options.RegisterActivity<string, string>("ShipProduct", implementation: (context, input) =>
                 {
-                    System.Threading.Thread.Sleep(10000); // sleep for 10s to allow the terminate command to come through
                     return Task.FromResult($"We are shipping {input} to the customer using our hoard of drones!");
                 });
             });
