@@ -25,6 +25,11 @@ namespace Dapr.Client
         /// <param name="lastUpdatedAt">The time at which the workflow started executing.</param>
         /// <param name="runtimeStatus">The current runtime status of the workflow.</param>
         /// <param name="properties">The response properties.</param>
-        public record GetWorkflowResponse(string instanceId, string workflowName, DateTime createdAt,
-                                         DateTime lastUpdatedAt, string runtimeStatus, IReadOnlyDictionary<string, string> properties);
+        public record GetWorkflowResponse(
+                string instanceId,
+                string workflowName,
+                DateTime createdAt,
+                DateTime lastUpdatedAt,
+                string runtimeStatus,
+                IReadOnlyDictionary<string, string> properties);
 }

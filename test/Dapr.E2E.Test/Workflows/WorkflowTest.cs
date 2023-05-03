@@ -45,9 +45,13 @@ namespace Dapr.E2E.Test
             Thread.Sleep(10000);
 
             // START WORKFLOW TEST
-            var startResponse = await daprClient.StartWorkflowAsync(instanceId: instanceId, workflowComponent: workflowComponent,
-                                                                    workflowName: workflowName, input: input,
-                                                                    workflowOptions: workflowOptions, cancellationToken: cts);
+            var startResponse = await daprClient.StartWorkflowAsync(
+                instanceId: instanceId, 
+                workflowComponent: workflowComponent,
+                workflowName: workflowName,
+                input: input,
+                workflowOptions: workflowOptions,
+                cancellationToken: cts);
 
             startResponse.InstanceId.Should().Be("WorkflowTestInstanceId", $"Instance ID {startResponse.InstanceId} was not correct");
 
@@ -89,9 +93,12 @@ namespace Dapr.E2E.Test
             }
 
             // Start another workflow for event raising purposes
-            startResponse = await daprClient.StartWorkflowAsync(instanceId: instanceId2, workflowComponent: workflowComponent,
-                                                                                workflowName: workflowName, input: input,
-                                                                                workflowOptions: workflowOptions, cancellationToken: cts);
+            startResponse = await daprClient.StartWorkflowAsync(instanceId: instanceId2,
+                workflowComponent: workflowComponent,
+                workflowName: workflowName,
+                input: input,
+                workflowOptions: workflowOptions,
+                cancellationToken: cts);
 
             // RAISE EVENT TEST
             await daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers", cts);
