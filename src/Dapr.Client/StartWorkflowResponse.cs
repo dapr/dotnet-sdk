@@ -19,6 +19,6 @@ namespace Dapr.Client
         /// <summary>
         /// Initializes a new <see cref="StartWorkflowResponse" />.
         /// </summary>
-        /// <param name="instanceId">The instance ID associated with this response.</param>
-        public record StartWorkflowResponse(string instanceId);
+        /// <param name="InstanceId">The instance ID associated with this response.</param>
+        public record StartWorkflowResponse(string InstanceId);
 }

@@ -49,7 +49,7 @@ namespace Dapr.E2E.Test
                                                                     workflowName: workflowName, input: input,
                                                                     workflowOptions: workflowOptions, cancellationToken: cts);
 
-            startResponse.instanceId.Should().Be("WorkflowTestInstanceId", $"Instance ID {startResponse.instanceId} was not correct");
+            startResponse.InstanceId.Should().Be("WorkflowTestInstanceId", $"Instance ID {startResponse.InstanceId} was not correct");
 
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);

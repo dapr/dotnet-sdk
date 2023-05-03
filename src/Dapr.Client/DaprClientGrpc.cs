@@ -1583,7 +1583,6 @@ namespace Dapr.Client
             ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
             ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
             ArgumentVerifier.ThrowIfNullOrEmpty(eventName, nameof(eventName));
-            ArgumentVerifier.ThrowIfNull(eventData, nameof(eventData));
 
             // Serialize json data. Converts eventData object to bytes and then bytestring inside the request.
             byte[] jsonUtf8Bytes = JsonSerializer.SerializeToUtf8Bytes(eventData);
@@ -1601,7 +1600,6 @@ namespace Dapr.Client
             try
             {
                 await client.RaiseEventWorkflowAlpha1Async(request, options);
- 
             }
             catch (RpcException ex)
             {
@@ -1636,9 +1634,7 @@ namespace Dapr.Client
             {
                 throw new DaprException("Pause workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
-
         }
-
 
         /// <inheritdoc/>
         [Obsolete]
