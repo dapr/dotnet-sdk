@@ -88,8 +88,7 @@ namespace Dapr.E2E.Test
             }
             catch (DaprException ex)
             {
-                int exceptionCharacterLength = 25;
-                ex.InnerException.Message.Substring(ex.InnerException.Message.Length - exceptionCharacterLength).Should().Be("No such instance exists\")", $"Instance {instanceId} was not correctly purged");
+                ex.InnerException.Message.Should().Contain("No such instance exists", $"Instance {instanceId} was not correctly purged");
             }
 
             // Start another workflow for event raising purposes
