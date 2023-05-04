@@ -42,7 +42,6 @@ namespace Dapr.E2E.Test
             var health = await daprClient.CheckHealthAsync();
             health.Should().Be(true, "DaprClient is not healthy");
 
-            Thread.Sleep(10000);
 
             // START WORKFLOW TEST
             var startResponse = await daprClient.StartWorkflowAsync(
@@ -55,8 +54,6 @@ namespace Dapr.E2E.Test
 
             startResponse.InstanceId.Should().Be("testInstanceId", $"Instance ID {startResponse.InstanceId} was not correct");
 
-            // Sleep for 5 seconds
-            Thread.Sleep(5000);
 
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
