@@ -1531,6 +1531,20 @@ namespace Dapr.Client
             {
                 var options = CreateCallOptions(headers: null, cancellationToken);
                 var response = await client.GetWorkflowAlpha1Async(request, options);
+                if (response == null)
+                {
+                    throw new DaprException("Get workflow operation failed: the object response is null");
+                }
+                if (response.CreatedAt == null)
+                {
+                    response.CreatedAt = new Timestamp();
+                    throw new DaprException("Get workflow operation failed: CreatedAt object response is null");
+                }
+                if (response.LastUpdatedAt == null)
+                {
+                    response.LastUpdatedAt = new Timestamp();
+                    throw new DaprException("Get workflow operation failed: LastUpdatedAt object response is null");
+                }
                 return new GetWorkflowResponse(response.InstanceId,
                     response.WorkflowName,
                     response.CreatedAt.ToDateTime(),
