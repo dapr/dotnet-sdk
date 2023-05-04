@@ -29,7 +29,7 @@ namespace Dapr.E2E.Test
         [Fact]
         public async Task TestWorkflows()
         {
-            string instanceId = "WorkflowTestInstanceId";
+            string instanceId = "testInstanceId";
             string instanceId2 = "EventRaiseId";
             string workflowComponent = "dapr";
             string workflowName = "PlaceOrder";
@@ -53,11 +53,14 @@ namespace Dapr.E2E.Test
                 workflowOptions: workflowOptions,
                 cancellationToken: cts);
 
-            startResponse.InstanceId.Should().Be("WorkflowTestInstanceId", $"Instance ID {startResponse.InstanceId} was not correct");
+            startResponse.InstanceId.Should().Be("testInstanceId", $"Instance ID {startResponse.InstanceId} was not correct");
 
+            // Sleep for 1 second
+            Thread.Sleep(1000);
+            
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
-            getResponse.instanceId.Should().Be("WorkflowTestInstanceId");
+            getResponse.instanceId.Should().Be("testInstanceId");
             getResponse.runtimeStatus.Should().Be("RUNNING", $"Instance ID {getResponse.runtimeStatus} was not correct");
 
             // PAUSE TEST:
