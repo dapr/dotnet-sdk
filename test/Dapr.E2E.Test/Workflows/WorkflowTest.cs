@@ -55,9 +55,9 @@ namespace Dapr.E2E.Test
 
             startResponse.InstanceId.Should().Be("testInstanceId", $"Instance ID {startResponse.InstanceId} was not correct");
 
-            // Sleep for 1 second
-            Thread.Sleep(1000);
-            
+            // Sleep for 5 seconds
+            Thread.Sleep(5000);
+
             // GET INFO TEST
             var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
             getResponse.instanceId.Should().Be("testInstanceId");
