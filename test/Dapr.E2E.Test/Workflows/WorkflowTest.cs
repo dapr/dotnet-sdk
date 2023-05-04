@@ -84,7 +84,7 @@ namespace Dapr.E2E.Test
             try 
             {
                 getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent, cts);
-                getResponse.InstanceId.Should().Be("", $"Instance ID {getResponse.InstanceId} was not correct");
+                Assert.True(false);
             }
             catch (DaprException ex)
             {
