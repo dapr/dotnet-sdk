@@ -1542,8 +1542,7 @@ namespace Dapr.Client
                 }
                 if (response.LastUpdatedAt == null)
                 {
-                    response.LastUpdatedAt = new Timestamp();
-                    throw new DaprException("Get workflow operation failed: LastUpdatedAt object response is null");
+                    response.LastUpdatedAt = response.CreatedAt;
                 }
                 return new GetWorkflowResponse(response.InstanceId,
                     response.WorkflowName,
