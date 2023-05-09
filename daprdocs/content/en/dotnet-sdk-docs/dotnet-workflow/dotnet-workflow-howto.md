@@ -8,13 +8,13 @@ description: Learn how to author and manage Dapr Workflow using the .NET SDK
 
 Let's create a Dapr workflow and invoke it using the console. In the [provided order processing workflow example](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow), the console prompts provide directions on how to both purchase and restock items. In this guide, you will:
 
-- Create a .NET console application ([WorkflowConsoleApp](./WorkflowConsoleApp)).  
+- Deploy a .NET console application ([WorkflowConsoleApp](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow/WorkflowConsoleApp)).  
 - Utilize the .NET workflow SDK and API calls to start and query workflow instances.
 
 In the .NET example project:
-- The main `Program.cs` file contains the setup of the app, including the registration of the workflow and workflow activities. 
-- The workflow definition is found in the `Workflows` directory. 
-- The workflow activity definitions are found in the `Activities` directory.
+- The main [`Program.cs`](https://github.com/dapr/dotnet-sdk/blob/master/examples/Workflow/WorkflowConsoleApp/Program.cs) file contains the setup of the app, including the registration of the workflow and workflow activities. 
+- The workflow definition is found in the [`Workflows` directory](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow/WorkflowConsoleApp/Workflows). 
+- The workflow activity definitions are found in the [`Activities` directory](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow/WorkflowConsoleApp/Activities).
 
 ## Prerequisites
 
