@@ -58,7 +58,7 @@ namespace Dapr.Client
         public IReadOnlyDictionary<string, string> Properties { get; init; }
 
         /// <summary>
-        /// Gets the defaults associated with the workflow failure, if any.
+        /// Gets the details associated with the workflow failure, if any.
         /// </summary>
         public WorkflowFailureDetails FailureDetails { get; init; }
 
