@@ -85,7 +85,7 @@ Run the following command to start a workflow.
 ```bash
 curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 \
   -H "Content-Type: application/json" \
-  -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
+  -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
 
 {{% /codetab %}}
@@ -95,7 +95,7 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 ```powershell
 curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 `
   -H "Content-Type: application/json" `
-  -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
+  -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
 
 {{% /codetab %}}
@@ -105,7 +105,7 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 If successful, you should see a response like the following: 
 
 ```json
-{"instance_id":"12345678"}
+{"instanceID":"12345678"}
 ```
 
 Send an HTTP request to get the status of the workflow that was started:
@@ -118,17 +118,14 @@ The workflow is designed to take several seconds to complete. If the workflow ha
 
 ```json
 {
-  "WFInfo": {
-    "instance_id": "12345678"
-  },
-  "start_time": "2023-02-02T23:34:53Z",
-  "metadata": {
+  "instanceID": "12345678",
+  "workflowName": "OrderProcessingWorkflow",
+  "createdAt": "2023-05-10T00:42:03.911444105Z",
+  "lastUpdatedAt": "2023-05-10T00:42:06.142214153Z",
+  "runtimeStatus": "RUNNING",
+  "properties": {
     "dapr.workflow.custom_status": "",
-    "dapr.workflow.input": "{\"Name\":\"Paperclips\",\"Quantity\":1,\"TotalCost\":99.95}",
-    "dapr.workflow.last_updated": "2023-02-02T23:35:07Z",
-    "dapr.workflow.name": "OrderProcessingWorkflow",
-    "dapr.workflow.output": "{\"Processed\":true}",
-    "dapr.workflow.runtime_status": "RUNNING"
+    "dapr.workflow.input": "{\"Name\": \"Paperclips\", \"TotalCost\": 99.95, \"Quantity\": 1}"
   }
 }
 ```
@@ -137,17 +134,15 @@ Once the workflow has completed running, you should see the following output, in
 
 ```json
 {
-  "WFInfo": {
-    "instance_id": "12345678"
-  },
-  "start_time": "2023-02-02T23:34:53Z",
-  "metadata": {
+  "instanceID": "12345678",
+  "workflowName": "OrderProcessingWorkflow",
+  "createdAt": "2023-05-10T00:42:03.911444105Z",
+  "lastUpdatedAt": "2023-05-10T00:42:18.527704176Z",
+  "runtimeStatus": "COMPLETED",
+  "properties": {
     "dapr.workflow.custom_status": "",
-    "dapr.workflow.input": "{\"Name\":\"Paperclips\",\"Quantity\":1,\"TotalCost\":99.95}",
-    "dapr.workflow.last_updated": "2023-02-02T23:35:07Z",
-    "dapr.workflow.name": "OrderProcessingWorkflow",
-    "dapr.workflow.output": "{\"Processed\":true}",
-    "dapr.workflow.runtime_status": "COMPLETED"
+    "dapr.workflow.input": "{\"Name\": \"Paperclips\", \"TotalCost\": 99.95, \"Quantity\": 1}",
+    "dapr.workflow.output": "{\"Processed\":true}"
   }
 }
 ```
