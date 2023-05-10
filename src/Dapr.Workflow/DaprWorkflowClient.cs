@@ -16,6 +16,7 @@ namespace Dapr.Workflow
     using System;
     using System.Threading;
     using System.Threading.Tasks;
+    using Dapr.Client;
     using Microsoft.DurableTask;
     using Microsoft.DurableTask.Client;
 

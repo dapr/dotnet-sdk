@@ -4,9 +4,9 @@ using WorkflowConsoleApp.Activities;
 using WorkflowConsoleApp.Models;
 using WorkflowConsoleApp.Workflows;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 
-const string storeName = "statestore";
+const string StoreName = "statestore";
+const string WorkflowComponent = "dapr";
 
 // The workflow host is a background service that connects to the sidecar over gRPC
 var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
@@ -57,8 +57,6 @@ while (!await daprClient.CheckHealthAsync())
 // Wait one more second for the workflow engine to finish initializing.
 // This is just to make the log output look a little nicer.
 Thread.Sleep(TimeSpan.FromSeconds(1));
-
-DaprWorkflowClient workflowClient = host.Services.GetRequiredService<DaprWorkflowClient>();
 
 var baseInventory = new List<InventoryItem>
 {
@@ -114,15 +112,23 @@ while (true)
 
     // Start the workflow using the order ID as the workflow ID
     Console.WriteLine($"Starting order workflow '{orderId}' purchasing {amount} {itemName}");
-    await workflowClient.ScheduleNewWorkflowAsync(
-        name: nameof(OrderProcessingWorkflow),
+    await daprClient.StartWorkflowAsync(
+        WorkflowComponent,
+        workflowName: nameof(OrderProcessingWorkflow),
+        input: orderInfo,
+        instanceId: orderId);
+
+    // Wait for the workflow to start and confirm the input
+    GetWorkflowResponse state = await daprClient.WaitForWorkflowStartAsync(
         instanceId: orderId,
-        input: orderInfo);
+        workflowComponent: WorkflowComponent);
+
+    Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) started successfully with {state.ReadInputAs<OrderPayload>()}");
 
     // Wait for the workflow to complete
-    WorkflowState state = await workflowClient.WaitForWorkflowCompletionAsync(
+    state = await daprClient.WaitForWorkflowCompletionAsync(
         instanceId: orderId,
-        getInputsAndOutputs: true);
+        workflowComponent: WorkflowComponent);
 
     if (state.RuntimeStatus == WorkflowRuntimeStatus.Completed)
     {
@@ -130,7 +136,7 @@ while (true)
         if (result.Processed)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Order workflow is {state.RuntimeStatus} and the order was processed successfully.");
+            Console.WriteLine($"Order workflow is {state.RuntimeStatus} and the order was processed successfully ({result}).");
             Console.ResetColor();
         }
         else
@@ -154,6 +160,6 @@ static async Task RestockInventory(DaprClient daprClient, List<InventoryItem> in
     foreach (var item in inventory)
     {
         Console.WriteLine($"*** \t{item.Name}: {item.Quantity}");
-        await daprClient.SaveStateAsync(storeName, item.Name.ToLowerInvariant(), item);
+        await daprClient.SaveStateAsync(StoreName, item.Name.ToLowerInvariant(), item);
     }
 }
