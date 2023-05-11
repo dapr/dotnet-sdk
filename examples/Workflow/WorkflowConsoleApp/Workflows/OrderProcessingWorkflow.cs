@@ -10,6 +10,7 @@ namespace WorkflowConsoleApp.Workflows
         {
             string orderId = context.InstanceId;
 
+
             // Notify the user that an order has come through
             await context.CallActivityAsync(
                 nameof(NotifyActivity),

@@ -19,8 +19,17 @@ namespace Dapr.Client
         /// <summary>
         /// Initializes a new <see cref="GetWorkflowResponse" />.
         /// </summary>
-        /// <param name="instanceId">The instance ID assocated with this response.</param>
-        /// <param name="startTime">The time at which the workflow started executing.</param>
-        /// <param name="metadata">The response metadata.</param>
-        public record GetWorkflowResponse(string instanceId, DateTime startTime, IReadOnlyDictionary<string, string> metadata);
+        /// <param name="InstanceId">The instance ID associated with this response.</param>
+        /// <param name="WorkflowName">The name of the workflow associated with this response.</param>
+        /// <param name="CreatedAt">The time at which the workflow started executing.</param>
+        /// <param name="LastUpdatedAt">The time at which the workflow started executing.</param>
+        /// <param name="RuntimeStatus">The current runtime status of the workflow.</param>
+        /// <param name="Properties">The response properties.</param>
+        public record GetWorkflowResponse(
+                string InstanceId,
+                string WorkflowName,
+                DateTime CreatedAt,
+                DateTime LastUpdatedAt,
+                string RuntimeStatus,
+                IReadOnlyDictionary<string, string> Properties);
 }
