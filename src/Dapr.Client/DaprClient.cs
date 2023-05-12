@@ -978,21 +978,94 @@ namespace Dapr.Client
         /// <summary>
         /// Attempt to start the given workflow with response indicating success.
         /// </summary>
-        /// <param name="instanceId">Identifier of the specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
         /// <param name="workflowName">Name of the workflow to run.</param>
+        /// <param name="instanceId">Identifier of the specific run.</param>
+        /// <param name="input">The JSON-serializeable input for the given workflow.</param>
         /// <param name="workflowOptions">The list of options that are potentially needed to start a workflow.</param>
-        /// <param name="input">The input input for the given workflow.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="StartWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<StartWorkflowResponse> StartWorkflowAsync(
-            string instanceId,
             string workflowComponent,
             string workflowName,
-            Object input,
+            string instanceId = null,
+            object input = null,
             IReadOnlyDictionary<string, string> workflowOptions = default,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Waits for a workflow to start running and returns a <see cref="GetWorkflowResponse"/> object that contains metadata
+        /// about the started workflow.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A "started" workflow instance is any instance not in the <see cref="WorkflowRuntimeStatus.Pending"/> state.
+        /// </para><para>
+        /// This method will return a completed task if the workflow has already started running or has already completed.
+        /// </para>
+        /// </remarks>
+        /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the wait operation.</param>
+        /// <returns>
+        /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
+        /// </returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public virtual async Task<GetWorkflowResponse> WaitForWorkflowStartAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default)
+        {
+            while (true)
+            {
+                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
+                if (response.RuntimeStatus != WorkflowRuntimeStatus.Pending)
+                {
+                    return response;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Waits for a workflow to complete and returns a <see cref="GetWorkflowResponse"/>
+        /// object that contains metadata about the started instance.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A "completed" workflow instance is any instance in one of the terminal states. For example, the
+        /// <see cref="WorkflowRuntimeStatus.Completed"/>, <see cref="WorkflowRuntimeStatus.Failed"/>, or
+        /// <see cref="WorkflowRuntimeStatus.Terminated"/> states.
+        /// </para><para>
+        /// Workflows are long-running and could take hours, days, or months before completing.
+        /// Workflows can also be eternal, in which case they'll never complete unless terminated.
+        /// In such cases, this call may block indefinitely, so care must be taken to ensure appropriate timeouts are
+        /// enforced using the <paramref name="cancellationToken"/> parameter.
+        /// </para><para>
+        /// If a workflow instance is already complete when this method is called, the method will return immediately.
+        /// </para>
+        /// </remarks>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public virtual async Task<GetWorkflowResponse> WaitForWorkflowCompletionAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default)
+        {
+            while (true)
+            {
+                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
+                if (response.RuntimeStatus == WorkflowRuntimeStatus.Completed ||
+                    response.RuntimeStatus == WorkflowRuntimeStatus.Failed ||
+                    response.RuntimeStatus == WorkflowRuntimeStatus.Terminated)
+                {
+                    return response;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            }
+        }
 
         /// <summary>
         /// Attempt to get information about the given workflow.

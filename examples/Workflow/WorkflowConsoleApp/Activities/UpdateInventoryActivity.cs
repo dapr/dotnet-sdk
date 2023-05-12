@@ -39,7 +39,7 @@ namespace WorkflowConsoleApp.Activities
                 this.logger.LogInformation(
                     "Payment for request ID '{requestId}' could not be processed. Insufficient inventory.",
                     req.RequestId);
-                throw new InvalidOperationException("Not enough inventory!");
+                throw new InvalidOperationException($"Not enough '{req.ItemName}' inventory! Requested {req.Amount} but only {item.Quantity} available.");
             }
 
             // Update the statestore with the new amount of the item
