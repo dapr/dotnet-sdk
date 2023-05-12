@@ -6,7 +6,7 @@ using WorkflowConsoleApp.Workflows;
 using Microsoft.Extensions.Hosting;
 
 const string StoreName = "statestore";
-const string WorkflowComponent = "dapr";
+const string DaprWorkflowComponent = "dapr";
 
 // The workflow host is a background service that connects to the sidecar over gRPC
 var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
@@ -113,7 +113,7 @@ while (true)
     // Start the workflow using the order ID as the workflow ID
     Console.WriteLine($"Starting order workflow '{orderId}' purchasing {amount} {itemName}");
     await daprClient.StartWorkflowAsync(
-        WorkflowComponent,
+        workflowComponent: DaprWorkflowComponent,
         workflowName: nameof(OrderProcessingWorkflow),
         input: orderInfo,
         instanceId: orderId);
@@ -121,14 +121,14 @@ while (true)
     // Wait for the workflow to start and confirm the input
     GetWorkflowResponse state = await daprClient.WaitForWorkflowStartAsync(
         instanceId: orderId,
-        workflowComponent: WorkflowComponent);
+        workflowComponent: DaprWorkflowComponent);
 
     Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) started successfully with {state.ReadInputAs<OrderPayload>()}");
 
     // Wait for the workflow to complete
     state = await daprClient.WaitForWorkflowCompletionAsync(
         instanceId: orderId,
-        workflowComponent: WorkflowComponent);
+        workflowComponent: DaprWorkflowComponent);
 
     if (state.RuntimeStatus == WorkflowRuntimeStatus.Completed)
     {

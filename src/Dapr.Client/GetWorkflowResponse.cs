@@ -10,13 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Dapr.Client
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Text.Json;
-
     /// <summary>
     /// The response type for the <see cref="DaprClient.GetWorkflowAsync"/> API.
     /// </summary>

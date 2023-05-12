@@ -1019,7 +1019,7 @@ namespace Dapr.Client
         {
             while (true)
             {
-                GetWorkflowResponse response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
+                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
                 if (response.RuntimeStatus != WorkflowRuntimeStatus.Pending)
                 {
                     return response;
@@ -1055,7 +1055,7 @@ namespace Dapr.Client
         {
             while (true)
             {
-                GetWorkflowResponse response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
+                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
                 if (response.RuntimeStatus == WorkflowRuntimeStatus.Completed ||
                     response.RuntimeStatus == WorkflowRuntimeStatus.Failed ||
                     response.RuntimeStatus == WorkflowRuntimeStatus.Terminated)
