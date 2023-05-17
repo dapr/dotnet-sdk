@@ -97,9 +97,9 @@ namespace Dapr.Workflow
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        /// <exception cref="TaskFailedException">
+        /// <exception cref="WorkflowTaskFailedException">
         /// The activity failed with an unhandled exception. The details of the failure can be found in the
-        /// <see cref="TaskFailedException.FailureDetails"/> property.
+        /// <see cref="WorkflowTaskFailedException.FailureDetails"/> property.
         /// </exception>
         public virtual Task CallActivityAsync(string name, object? input = null, TaskOptions? options = null)
         {
@@ -252,9 +252,9 @@ namespace Dapr.Workflow
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        /// <exception cref="TaskFailedException">
+        /// <exception cref="WorkflowTaskFailedException">
         /// The child workflow failed with an unhandled exception. The details of the failure can be found in the
-        /// <see cref="TaskFailedException.FailureDetails"/> property.
+        /// <see cref="WorkflowTaskFailedException.FailureDetails"/> property.
         /// </exception>
         public virtual Task CallChildWorkflowAsync(string workflowName, object? input = null, TaskOptions? options = null)
         {

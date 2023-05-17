@@ -13,44 +13,27 @@
 
 namespace Dapr.Workflow
 {
+    using System;
+
     /// <summary>
-    /// Enum describing the runtime status of the workflow.
+    /// Exception type for Dapr Workflow task failures.
     /// </summary>
-    public enum WorkflowRuntimeStatus
+    public class WorkflowTaskFailedException : Exception
     {
         /// <summary>
-        /// The status of the workflow is unknown.
+        /// Initializes a new instance of the <see cref="WorkflowTaskFailedException"/> class.
         /// </summary>
-        Unknown = -1,
+        /// <param name="message">The exception message.</param>
+        /// <param name="failureDetails">Details about the failure.</param>
+        public WorkflowTaskFailedException(string message, WorkflowTaskFailureDetails failureDetails)
+            : base(message)
+        {
+            this.FailureDetails = failureDetails ?? throw new ArgumentNullException(nameof(failureDetails));
+        }
 
         /// <summary>
-        /// The workflow started running.
+        /// Gets more information about the underlying workflow task failure.
         /// </summary>
-        Running,
-
-        /// <summary>
-        /// The workflow completed normally.
-        /// </summary>
-        Completed,
-
-        /// <summary>
-        /// The workflow completed with an unhandled exception.
-        /// </summary>
-        Failed,
-
-        /// <summary>
-        /// The workflow was abruptly terminated via a management API call.
-        /// </summary>
-        Terminated,
-
-        /// <summary>
-        /// The workflow was scheduled but hasn't started running.
-        /// </summary>
-        Pending,
-
-        /// <summary>
-        /// The workflow was suspended.
-        /// </summary>
-        Suspended,
+        public WorkflowTaskFailureDetails FailureDetails { get; }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using Dapr.Workflow;
-using DurableTask.Core.Exceptions;
 using WorkflowConsoleApp.Activities;
 using WorkflowConsoleApp.Models;
 
@@ -10,6 +9,7 @@ namespace WorkflowConsoleApp.Workflows
         public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)
         {
             string orderId = context.InstanceId;
+
 
             // Notify the user that an order has come through
             await context.CallActivityAsync(
@@ -43,12 +43,12 @@ namespace WorkflowConsoleApp.Workflows
                     nameof(UpdateInventoryActivity),
                     new PaymentRequest(RequestId: orderId, order.Name, order.Quantity, order.TotalCost));                
             }
-            catch (TaskFailedException)
+            catch (WorkflowTaskFailedException e)
             {
-                // Let them know their payment was processed
+                // Let them know their payment processing failed
                 await context.CallActivityAsync(
                     nameof(NotifyActivity),
-                    new Notification($"Order {orderId} Failed! You are now getting a refund"));
+                    new Notification($"Order {orderId} Failed! Details: {e.FailureDetails.ErrorMessage}"));
                 return new OrderResult(Processed: false);
             }
 
