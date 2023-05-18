@@ -42,6 +42,19 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
+        public void TestRegisterActorFromTypeInRuntime()
+        {
+            var actorType = typeof(TestActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor(actorType, null, null);
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+            Assert.Throws<ArgumentException>(() => options.Actors.RegisterActor(typeof(FakeActor), null, null));
+        }
+
+        [Fact]
         public void TestInferredActorType()
         {
             var actorType = typeof(TestActor);
@@ -314,6 +327,10 @@ namespace Dapr.Actors.Test
 
             element = root.GetProperty("reentrancy").GetProperty("maxStackDepth");
             Assert.Equal(32, element.GetInt32());
+        }
+
+        private sealed class FakeActor 
+        {
         }
 
         private sealed class TestActor : Actor, ITestActor
