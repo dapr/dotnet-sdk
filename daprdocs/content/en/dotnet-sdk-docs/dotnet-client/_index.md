@@ -214,8 +214,8 @@ namespace LockService
         [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
         static async Task Main(string[] args)
         {
-            string DAPR_LOCK_NAME = "lockstore";
-            string fileName = "my_file_name";
+            var DAPR_LOCK_NAME = "lockstore";
+            var fileName = "my_file_name";
             var client = new DaprClientBuilder().Build();
      
             // Locking with this approach will also unlock it automatically, as this is a disposable object
@@ -247,7 +247,7 @@ namespace LockService
     {
         static async Task Main(string[] args)
         {
-            string DAPR_LOCK_NAME = "lockstore";
+            var DAPR_LOCK_NAME = "lockstore";
             var client = new DaprClientBuilder().Build();
 
             var response = await client.Unlock(DAPR_LOCK_NAME, "my_file_name", "random_id_abc123"));
