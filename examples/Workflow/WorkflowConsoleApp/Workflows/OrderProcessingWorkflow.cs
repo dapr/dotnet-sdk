@@ -6,10 +6,17 @@ namespace WorkflowConsoleApp.Workflows
 {
     public class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
     {
+        readonly WorkflowTaskOptions defaultActivityRetryOptions = new WorkflowTaskOptions
+        {
+            // NOTE: Beware that changing the number of retries is a breaking change for existing workflows.
+            RetryPolicy = new WorkflowRetryPolicy(
+                maxNumberOfAttempts: 3,
+                firstRetryInterval: TimeSpan.FromSeconds(5)),
+        };
+
         public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)
         {
             string orderId = context.InstanceId;
-
 
             // Notify the user that an order has come through
             await context.CallActivityAsync(
@@ -19,7 +26,8 @@ namespace WorkflowConsoleApp.Workflows
             // Determine if there is enough of the item available for purchase by checking the inventory
             InventoryResult result = await context.CallActivityAsync<InventoryResult>(
                 nameof(ReserveInventoryActivity),
-                new InventoryRequest(RequestId: orderId, order.Name, order.Quantity));
+                new InventoryRequest(RequestId: orderId, order.Name, order.Quantity),
+                this.defaultActivityRetryOptions);
             
             // If there is insufficient inventory, fail and let the user know 
             if (!result.Success)
@@ -34,14 +42,16 @@ namespace WorkflowConsoleApp.Workflows
             // There is enough inventory available so the user can purchase the item(s). Process their payment
             await context.CallActivityAsync(
                 nameof(ProcessPaymentActivity),
-                new PaymentRequest(RequestId: orderId, order.Name, order.Quantity, order.TotalCost));
+                new PaymentRequest(RequestId: orderId, order.Name, order.Quantity, order.TotalCost),
+                this.defaultActivityRetryOptions);
 
             try
             {
                 // There is enough inventory available so the user can purchase the item(s). Process their payment
                 await context.CallActivityAsync(
                     nameof(UpdateInventoryActivity),
-                    new PaymentRequest(RequestId: orderId, order.Name, order.Quantity, order.TotalCost));                
+                    new PaymentRequest(RequestId: orderId, order.Name, order.Quantity, order.TotalCost),
+                    this.defaultActivityRetryOptions);                
             }
             catch (WorkflowTaskFailedException e)
             {
