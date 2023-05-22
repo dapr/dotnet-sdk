@@ -199,6 +199,64 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 }
 ```
 
+### Distributed lock (Alpha)
+
+#### Acquire a lock
+
+```csharp
+using System;
+using Dapr.Client;
+
+namespace LockService
+{
+    class Program
+    {
+        [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
+        static async Task Main(string[] args)
+        {
+            var daprLockName = "lockstore";
+            var fileName = "my_file_name";
+            var client = new DaprClientBuilder().Build();
+     
+            // Locking with this approach will also unlock it automatically, as this is a disposable object
+            await using (var fileLock = await client.Lock(DAPR_LOCK_NAME, fileName, "random_id_abc123", 60))
+            {
+                if (fileLock.Success)
+                {
+                    Console.WriteLine("Success");
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to lock {fileName}.");
+                }
+            }
+        }
+    }
+}
+```
+
+#### Unlock an existing lock
+
+```csharp
+using System;
+using Dapr.Client;
+
+namespace LockService
+{
+    class Program
+    {
+        static async Task Main(string[] args)
+        {
+            var daprLockName = "lockstore";
+            var client = new DaprClientBuilder().Build();
+
+            var response = await client.Unlock(DAPR_LOCK_NAME, "my_file_name", "random_id_abc123"));
+            Console.WriteLine(response.status);
+        }
+    }
+}
+```
+
 ### Manage workflow instances (Alpha)
 
 ```csharp
