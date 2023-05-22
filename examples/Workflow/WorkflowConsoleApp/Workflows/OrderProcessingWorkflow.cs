@@ -39,6 +39,36 @@ namespace WorkflowConsoleApp.Workflows
                 return new OrderResult(Processed: false);
             }
 
+            // Require orders over a certain threshold to be approved
+            if (order.TotalCost > 50000)
+            {
+                try
+                {
+                    // Pause and wait for a manager to approve the order
+                    context.SetCustomStatus("Waiting for approval");
+                    ApprovalResult approvalResult = await context.WaitForExternalEventAsync<ApprovalResult>(
+                        eventName: "ManagerApproval",
+                        timeout: TimeSpan.FromSeconds(30));
+                    context.SetCustomStatus($"Approval result: {approvalResult}");
+                    if (approvalResult == ApprovalResult.Rejected)
+                    {
+                        // The order was rejected, end the workflow here
+                        await context.CallActivityAsync(
+                            nameof(NotifyActivity),
+                            new Notification($"Order was rejected by approver"));
+                        return new OrderResult(Processed: false);
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    // An approval timeout results in automatic order cancellation
+                    await context.CallActivityAsync(
+                        nameof(NotifyActivity),
+                        new Notification($"Cancelling order because it didn't receive an approval"));
+                    return new OrderResult(Processed: false);
+                }
+            }
+
             // There is enough inventory available so the user can purchase the item(s). Process their payment
             await context.CallActivityAsync(
                 nameof(ProcessPaymentActivity),

@@ -159,6 +159,9 @@ namespace Dapr.Workflow
         /// <returns>
         /// A task that completes when the external event is received. The value of the task is the deserialized event payload.
         /// </returns>
+        /// <exception cref="TaskCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is cancelled before the external event is received.
+        /// </exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
@@ -172,6 +175,9 @@ namespace Dapr.Workflow
         /// number of times; they are not required to be unique.
         /// </param>
         /// <param name="timeout">The amount of time to wait before cancelling the external event task.</param>
+        /// <exception cref="TaskCanceledException">
+        /// Thrown if <paramref name="timeout"/> elapses before the external event is received.
+        /// </exception>
         /// <inheritdoc cref="WaitForExternalEventAsync{T}(string, CancellationToken)"/>
         public abstract Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout);
 
