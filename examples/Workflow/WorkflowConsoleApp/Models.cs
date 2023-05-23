@@ -9,7 +9,7 @@
     public enum ApprovalResult
     {
         Unspecified = 0,
-        Approved,
-        Rejected,
+        Approved = 1,
+        Rejected = 2,
     }
 }
