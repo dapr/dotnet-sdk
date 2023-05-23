@@ -20,6 +20,7 @@ var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
         // These are the activities that get invoked by the workflow(s).
         options.RegisterActivity<NotifyActivity>();
         options.RegisterActivity<ReserveInventoryActivity>();
+        options.RegisterActivity<RequestApprovalActivity>();
         options.RegisterActivity<ProcessPaymentActivity>();
         options.RegisterActivity<UpdateInventoryActivity>();
     });

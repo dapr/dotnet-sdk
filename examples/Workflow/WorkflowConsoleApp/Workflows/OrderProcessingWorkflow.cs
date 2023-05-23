@@ -42,6 +42,9 @@ namespace WorkflowConsoleApp.Workflows
             // Require orders over a certain threshold to be approved
             if (order.TotalCost > 50000)
             {
+                // Request manager approval for the order
+                await context.CallActivityAsync(nameof(RequestApprovalActivity), order);
+
                 try
                 {
                     // Pause and wait for a manager to approve the order
