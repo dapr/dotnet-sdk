@@ -20,6 +20,7 @@ var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
         // These are the activities that get invoked by the workflow(s).
         options.RegisterActivity<NotifyActivity>();
         options.RegisterActivity<ReserveInventoryActivity>();
+        options.RegisterActivity<RequestApprovalActivity>();
         options.RegisterActivity<ProcessPaymentActivity>();
         options.RegisterActivity<UpdateInventoryActivity>();
     });
@@ -126,9 +127,54 @@ while (true)
     Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) started successfully with {state.ReadInputAs<OrderPayload>()}");
 
     // Wait for the workflow to complete
-    state = await daprClient.WaitForWorkflowCompletionAsync(
-        instanceId: orderId,
-        workflowComponent: DaprWorkflowComponent);
+    while (true)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            state = await daprClient.WaitForWorkflowCompletionAsync(
+                instanceId: orderId,
+                workflowComponent: DaprWorkflowComponent,
+                cancellationToken: cts.Token);
+            break;
+        }
+        catch (OperationCanceledException)
+        {
+            // Check to see if the workflow is blocked waiting for an approval
+            state = await daprClient.GetWorkflowAsync(
+                instanceId: orderId,
+                workflowComponent: DaprWorkflowComponent);
+            if (state.Properties.TryGetValue("dapr.workflow.custom_status", out string customStatus) &&
+                customStatus.Contains("Waiting for approval"))
+            {
+                Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) requires approval. Approve? [Y/N]");
+                string approval = Console.ReadLine();
+                ApprovalResult approvalResult = ApprovalResult.Unspecified;
+                if (string.Equals(approval, "Y", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine("Approving order...");
+                    approvalResult = ApprovalResult.Approved;
+                }
+                else if (string.Equals(approval, "N", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine("Rejecting order...");
+                    approvalResult = ApprovalResult.Rejected;
+                }
+
+                if (approvalResult != ApprovalResult.Unspecified)
+                {
+                    // Raise the workflow event to the workflow
+                    await daprClient.RaiseWorkflowEventAsync(
+                        instanceId: orderId,
+                        workflowComponent: DaprWorkflowComponent,
+                        eventName: "ManagerApproval",
+                        eventData: approvalResult);
+                }
+
+                // otherwise, keep waiting
+            }
+        }
+    }
 
     if (state.RuntimeStatus == WorkflowRuntimeStatus.Completed)
     {
