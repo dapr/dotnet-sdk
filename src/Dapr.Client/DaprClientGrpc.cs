@@ -1286,7 +1286,6 @@ namespace Dapr.Client
 
         #region Configuration API
         /// <inheritdoc/>
-        [Obsolete]
         public async override Task<GetConfigurationResponse> GetConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -1330,7 +1329,6 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        [Obsolete]
         public override Task<SubscribeConfigurationResponse> SubscribeConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -1361,7 +1359,6 @@ namespace Dapr.Client
             return Task.FromResult(new SubscribeConfigurationResponse(new DaprSubscribeConfigurationSource(client.SubscribeConfiguration(request, options))));
         }
 
-        [Obsolete]
         public override async Task<UnsubscribeConfigurationResponse> UnsubscribeConfiguration(
             string storeName,
             string id,

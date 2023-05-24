@@ -6,7 +6,6 @@ namespace Dapr.Client
     /// <summary>
     /// Response for a Subscribe Configuration request.
     /// </summary>
-    [Obsolete("This response utilizes an alpha API which is subject to change. This attribute will be removed when the API is no longer Alpha.")]
     public class SubscribeConfigurationResponse
     {
         private ConfigurationSource source;
