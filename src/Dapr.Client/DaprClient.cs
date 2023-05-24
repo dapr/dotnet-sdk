@@ -1008,6 +1008,9 @@ namespace Dapr.Client
         /// <returns>
         /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
         /// </returns>
+        /// <exception cref="OperationCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow starts running.
+        /// </exception>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public virtual async Task<GetWorkflowResponse> WaitForWorkflowStartAsync(
             string instanceId,
@@ -1044,6 +1047,12 @@ namespace Dapr.Client
         /// If a workflow instance is already complete when this method is called, the method will return immediately.
         /// </para>
         /// </remarks>
+        /// <returns>
+        /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow completes.
+        /// </exception>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public virtual async Task<GetWorkflowResponse> WaitForWorkflowCompletionAsync(
             string instanceId,
