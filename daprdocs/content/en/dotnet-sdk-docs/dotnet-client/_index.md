@@ -165,7 +165,7 @@ Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secr
 
 - For a full guide on secrets visit [How-To: Retrieve secrets]({{< ref howto-secrets.md >}}).
 
-### Get Configuration Keys (Alpha)
+### Get Configuration Keys
 ```csharp
 var client = new DaprClientBuilder().Build();
 
@@ -182,7 +182,7 @@ foreach (var item in configItems)
 }
 ```
 
-### Subscribe to Configuration Keys (Alpha)
+### Subscribe to Configuration Keys
 ```csharp
 var client = new DaprClientBuilder().Build();
 
