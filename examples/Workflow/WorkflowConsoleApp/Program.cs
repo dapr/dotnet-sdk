@@ -4,9 +4,9 @@ using WorkflowConsoleApp.Activities;
 using WorkflowConsoleApp.Models;
 using WorkflowConsoleApp.Workflows;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 
-const string storeName = "statestore";
+const string StoreName = "statestore";
+const string DaprWorkflowComponent = "dapr";
 
 // The workflow host is a background service that connects to the sidecar over gRPC
 var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
@@ -20,6 +20,7 @@ var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
         // These are the activities that get invoked by the workflow(s).
         options.RegisterActivity<NotifyActivity>();
         options.RegisterActivity<ReserveInventoryActivity>();
+        options.RegisterActivity<RequestApprovalActivity>();
         options.RegisterActivity<ProcessPaymentActivity>();
         options.RegisterActivity<UpdateInventoryActivity>();
     });
@@ -57,8 +58,6 @@ while (!await daprClient.CheckHealthAsync())
 // Wait one more second for the workflow engine to finish initializing.
 // This is just to make the log output look a little nicer.
 Thread.Sleep(TimeSpan.FromSeconds(1));
-
-DaprWorkflowClient workflowClient = host.Services.GetRequiredService<DaprWorkflowClient>();
 
 var baseInventory = new List<InventoryItem>
 {
@@ -114,15 +113,68 @@ while (true)
 
     // Start the workflow using the order ID as the workflow ID
     Console.WriteLine($"Starting order workflow '{orderId}' purchasing {amount} {itemName}");
-    await workflowClient.ScheduleNewWorkflowAsync(
-        name: nameof(OrderProcessingWorkflow),
+    await daprClient.StartWorkflowAsync(
+        workflowComponent: DaprWorkflowComponent,
+        workflowName: nameof(OrderProcessingWorkflow),
+        input: orderInfo,
+        instanceId: orderId);
+
+    // Wait for the workflow to start and confirm the input
+    GetWorkflowResponse state = await daprClient.WaitForWorkflowStartAsync(
         instanceId: orderId,
-        input: orderInfo);
+        workflowComponent: DaprWorkflowComponent);
+
+    Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) started successfully with {state.ReadInputAs<OrderPayload>()}");
 
     // Wait for the workflow to complete
-    WorkflowState state = await workflowClient.WaitForWorkflowCompletionAsync(
-        instanceId: orderId,
-        getInputsAndOutputs: true);
+    while (true)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            state = await daprClient.WaitForWorkflowCompletionAsync(
+                instanceId: orderId,
+                workflowComponent: DaprWorkflowComponent,
+                cancellationToken: cts.Token);
+            break;
+        }
+        catch (OperationCanceledException)
+        {
+            // Check to see if the workflow is blocked waiting for an approval
+            state = await daprClient.GetWorkflowAsync(
+                instanceId: orderId,
+                workflowComponent: DaprWorkflowComponent);
+            if (state.Properties.TryGetValue("dapr.workflow.custom_status", out string customStatus) &&
+                customStatus.Contains("Waiting for approval"))
+            {
+                Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) requires approval. Approve? [Y/N]");
+                string approval = Console.ReadLine();
+                ApprovalResult approvalResult = ApprovalResult.Unspecified;
+                if (string.Equals(approval, "Y", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine("Approving order...");
+                    approvalResult = ApprovalResult.Approved;
+                }
+                else if (string.Equals(approval, "N", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine("Rejecting order...");
+                    approvalResult = ApprovalResult.Rejected;
+                }
+
+                if (approvalResult != ApprovalResult.Unspecified)
+                {
+                    // Raise the workflow event to the workflow
+                    await daprClient.RaiseWorkflowEventAsync(
+                        instanceId: orderId,
+                        workflowComponent: DaprWorkflowComponent,
+                        eventName: "ManagerApproval",
+                        eventData: approvalResult);
+                }
+
+                // otherwise, keep waiting
+            }
+        }
+    }
 
     if (state.RuntimeStatus == WorkflowRuntimeStatus.Completed)
     {
@@ -130,7 +182,7 @@ while (true)
         if (result.Processed)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Order workflow is {state.RuntimeStatus} and the order was processed successfully.");
+            Console.WriteLine($"Order workflow is {state.RuntimeStatus} and the order was processed successfully ({result}).");
             Console.ResetColor();
         }
         else
@@ -154,6 +206,6 @@ static async Task RestockInventory(DaprClient daprClient, List<InventoryItem> in
     foreach (var item in inventory)
     {
         Console.WriteLine($"*** \t{item.Name}: {item.Quantity}");
-        await daprClient.SaveStateAsync(storeName, item.Name.ToLowerInvariant(), item);
+        await daprClient.SaveStateAsync(StoreName, item.Name.ToLowerInvariant(), item);
     }
 }
