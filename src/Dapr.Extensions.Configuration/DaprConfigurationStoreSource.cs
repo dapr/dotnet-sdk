@@ -22,7 +22,6 @@ namespace Dapr.Extensions.Configuration
     /// <summary>
     /// Configuration source that provides a <see cref="DaprConfigurationStoreProvider"/>.
     /// </summary>
-    [Obsolete]
     public class DaprConfigurationStoreSource : IConfigurationSource
     {
         /// <summary>

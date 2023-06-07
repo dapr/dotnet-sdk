@@ -907,7 +907,6 @@ namespace Dapr.Client
         /// <param name="metadata">Optional metadata that will be sent to the configuration store being queried.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="GetConfigurationResponse"/></returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<GetConfigurationResponse> GetConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -922,7 +921,6 @@ namespace Dapr.Client
         /// <param name="metadata">Optional metadata that will be sent to the configuration store being queried.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="SubscribeConfigurationResponse"/> which contains a reference to the stream.</returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<SubscribeConfigurationResponse> SubscribeConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -936,7 +934,6 @@ namespace Dapr.Client
         /// <param name="id">The Id of the subscription that should no longer be watched.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns></returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<UnsubscribeConfigurationResponse> UnsubscribeConfiguration(
             string storeName,
             string id,
@@ -1011,6 +1008,9 @@ namespace Dapr.Client
         /// <returns>
         /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
         /// </returns>
+        /// <exception cref="OperationCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow starts running.
+        /// </exception>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public virtual async Task<GetWorkflowResponse> WaitForWorkflowStartAsync(
             string instanceId,
@@ -1047,6 +1047,12 @@ namespace Dapr.Client
         /// If a workflow instance is already complete when this method is called, the method will return immediately.
         /// </para>
         /// </remarks>
+        /// <returns>
+        /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow completes.
+        /// </exception>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public virtual async Task<GetWorkflowResponse> WaitForWorkflowCompletionAsync(
             string instanceId,

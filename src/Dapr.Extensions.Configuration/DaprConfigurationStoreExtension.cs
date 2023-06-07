@@ -22,7 +22,6 @@ namespace Dapr.Extensions.Configuration
     /// <summary>
     /// Extension used to call the Dapr Configuration API and store the values in a <see cref="IConfiguration"/>.
     /// </summary>
-    [Obsolete]
     public static class DaprConfigurationStoreExtension
     {
         /// <summary>

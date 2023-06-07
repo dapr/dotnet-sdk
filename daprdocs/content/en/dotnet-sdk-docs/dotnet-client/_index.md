@@ -165,7 +165,7 @@ Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secr
 
 - For a full guide on secrets visit [How-To: Retrieve secrets]({{< ref howto-secrets.md >}}).
 
-### Get Configuration Keys (Alpha)
+### Get Configuration Keys
 ```csharp
 var client = new DaprClientBuilder().Build();
 
@@ -182,7 +182,7 @@ foreach (var item in configItems)
 }
 ```
 
-### Subscribe to Configuration Keys (Alpha)
+### Subscribe to Configuration Keys
 ```csharp
 var client = new DaprClientBuilder().Build();
 
@@ -195,6 +195,64 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
     foreach (var item in items)
     {
         Console.WriteLine($"{item.Key} -> {item.Value}")
+    }
+}
+```
+
+### Distributed lock (Alpha)
+
+#### Acquire a lock
+
+```csharp
+using System;
+using Dapr.Client;
+
+namespace LockService
+{
+    class Program
+    {
+        [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
+        static async Task Main(string[] args)
+        {
+            var daprLockName = "lockstore";
+            var fileName = "my_file_name";
+            var client = new DaprClientBuilder().Build();
+     
+            // Locking with this approach will also unlock it automatically, as this is a disposable object
+            await using (var fileLock = await client.Lock(DAPR_LOCK_NAME, fileName, "random_id_abc123", 60))
+            {
+                if (fileLock.Success)
+                {
+                    Console.WriteLine("Success");
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to lock {fileName}.");
+                }
+            }
+        }
+    }
+}
+```
+
+#### Unlock an existing lock
+
+```csharp
+using System;
+using Dapr.Client;
+
+namespace LockService
+{
+    class Program
+    {
+        static async Task Main(string[] args)
+        {
+            var daprLockName = "lockstore";
+            var client = new DaprClientBuilder().Build();
+
+            var response = await client.Unlock(DAPR_LOCK_NAME, "my_file_name", "random_id_abc123"));
+            Console.WriteLine(response.status);
+        }
     }
 }
 ```
