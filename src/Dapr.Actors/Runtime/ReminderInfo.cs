@@ -55,28 +55,29 @@ namespace Dapr.Actors.Runtime
             var data = default(byte[]);
             int? repetition = null;
             TimeSpan? ttl = null;
+            if(json.ValueKind != JsonValueKind.Null){
+                if (json.TryGetProperty("dueTime", out var dueTimeProperty))
+                {
+                    var dueTimeString = dueTimeProperty.GetString();
+                    dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
+                }
 
-            if (json.TryGetProperty("dueTime", out var dueTimeProperty))
-            {
-                var dueTimeString = dueTimeProperty.GetString();
-                dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
-            }
+                if (json.TryGetProperty("period", out var periodProperty))
+                {
+                    var periodString = periodProperty.GetString();
+                    (period, repetition) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(periodString);
+                }
 
-            if (json.TryGetProperty("period", out var periodProperty))
-            {
-                var periodString = periodProperty.GetString();
-                (period, repetition) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(periodString);
-            }
+                if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
+                {
+                    data = dataProperty.GetBytesFromBase64();
+                }
 
-            if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
-            {
-                data = dataProperty.GetBytesFromBase64();
-            }
-
-            if (json.TryGetProperty("ttl", out var ttlProperty))
-            {
-                var ttlString = ttlProperty.GetString();
-                ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
+                if (json.TryGetProperty("ttl", out var ttlProperty))
+                {
+                    var ttlString = ttlProperty.GetString();
+                    ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
+                }
             }
 
             return new ReminderInfo(data, dueTime, period, repetition, ttl);
