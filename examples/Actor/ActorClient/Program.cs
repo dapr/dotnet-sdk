@@ -96,6 +96,10 @@ namespace ActorClient
             receivedData = await proxy.GetData();
             Console.WriteLine($"Received data is {receivedData}.");
 
+            Console.WriteLine("Getting details of the registered reminder");
+            var reminder = await proxy.GetReminder();
+            Console.WriteLine($"Received reminder is {reminder}.");
+
             Console.WriteLine("Deregistering timer. Timers would any way stop if the actor is deactivated as part of Dapr garbage collection.");
             await proxy.UnregisterTimer();
             Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
@@ -105,14 +109,23 @@ namespace ActorClient
             await proxy.RegisterReminderWithRepetitions(3);
             Console.WriteLine("Waiting so the reminder can be triggered");
             await Task.Delay(5000);
+            Console.WriteLine("Getting details of the registered reminder");
+            reminder = await proxy.GetReminder();
+            Console.WriteLine($"Received reminder is {reminder}.");
             Console.WriteLine("Registering reminder with ttl and repetitions, i.e. reminder stops when either condition is met - The reminder will repeat 2 times.");
             await proxy.RegisterReminderWithTtlAndRepetitions(TimeSpan.FromSeconds(5), 2);
+            Console.WriteLine("Getting details of the registered reminder");
+            reminder = await proxy.GetReminder();
+            Console.WriteLine($"Received reminder is {reminder}.");
             Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
             await proxy.UnregisterReminder();
 
             Console.WriteLine("Registering reminder and Timer with TTL - The reminder will self delete after 10 seconds.");
             await proxy.RegisterReminderWithTtl(TimeSpan.FromSeconds(10));
             await proxy.RegisterTimerWithTtl(TimeSpan.FromSeconds(10));
+            Console.WriteLine("Getting details of the registered reminder");
+            reminder = await proxy.GetReminder();
+            Console.WriteLine($"Received reminder is {reminder}.");
 
             // Track the reminder.
             var timer = new Timer(async state => Console.WriteLine($"Received data: {await proxy.GetData()}"), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));

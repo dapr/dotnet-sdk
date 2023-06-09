@@ -13,6 +13,7 @@
 namespace Dapr.E2E.Test
 {
     using System;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
@@ -48,6 +49,58 @@ namespace Dapr.E2E.Test
             // Should count up to exactly 10
             Assert.Equal(10, state.Count);
         }
+
+        [Fact]
+        public async Task ActorCanStartAndStopAndGetReminder()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactory.CreateActorProxy<IReminderActor>(ActorId.CreateRandom(), "ReminderActor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            // Get reminder before starting it, should return null.
+            var reminder = await proxy.GetReminder();
+            Assert.Equal("null", reminder);
+
+            // Start reminder, to count up to 10
+            await proxy.StartReminder(new StartReminderOptions(){ Total = 10, });
+
+            State state = new State(); 
+            var countGetReminder = 0;
+            while (true)
+            {
+                cts.Token.ThrowIfCancellationRequested();
+
+                reminder = await proxy.GetReminder();
+                Assert.NotNull(reminder);
+
+                // If reminder is null then it means the reminder has been stopped.
+                if (reminder != "null")
+                {   
+                    countGetReminder++;
+                    var reminderJson = JsonSerializer.Deserialize<JsonElement>(reminder);
+                    var name = reminderJson.GetProperty("name").ToString();
+                    var period = reminderJson.GetProperty("period").ToString();
+                    var dueTime = reminderJson.GetProperty("dueTime").ToString();
+
+                    Assert.Equal("test-reminder", name);
+                    Assert.Equal(TimeSpan.FromMilliseconds(50).ToString(), period);
+                    Assert.Equal(TimeSpan.Zero.ToString(), dueTime);
+                }
+
+                state = await proxy.GetState();
+                this.Output.WriteLine($"Got Count: {state.Count} IsReminderRunning: {state.IsReminderRunning}");
+                if (!state.IsReminderRunning)
+                {
+                    break;
+                }
+            }
+
+            // Should count up to exactly 10
+            Assert.Equal(10, state.Count);
+            // Should be able to Get Reminder at least once.
+            Assert.True(countGetReminder > 0);
+        }        
 
         [Fact]
         public async Task ActorCanStartReminderWithRepetitions()
