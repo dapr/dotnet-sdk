@@ -20,7 +20,7 @@ namespace Dapr.Actors.Runtime
     using System.Threading.Tasks;
 
     // represents the wire format used by Dapr to store reminder info with the runtime
-    internal struct ReminderInfo
+    internal class ReminderInfo
     {
         public ReminderInfo(
             byte[] data,
@@ -49,35 +49,37 @@ namespace Dapr.Actors.Runtime
         internal static async Task<ReminderInfo> DeserializeAsync(Stream stream)
         {
             var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
+            if(json.ValueKind == JsonValueKind.Null)
+            {
+                return null;
+            }
 
             var dueTime = default(TimeSpan);
             var period = default(TimeSpan);
             var data = default(byte[]);
             int? repetition = null;
             TimeSpan? ttl = null;
-            if(json.ValueKind != JsonValueKind.Null){
-                if (json.TryGetProperty("dueTime", out var dueTimeProperty))
-                {
-                    var dueTimeString = dueTimeProperty.GetString();
-                    dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
-                }
+            if (json.TryGetProperty("dueTime", out var dueTimeProperty))
+            {
+                var dueTimeString = dueTimeProperty.GetString();
+                dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
+            }
 
-                if (json.TryGetProperty("period", out var periodProperty))
-                {
-                    var periodString = periodProperty.GetString();
-                    (period, repetition) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(periodString);
-                }
+            if (json.TryGetProperty("period", out var periodProperty))
+            {
+                var periodString = periodProperty.GetString();
+                (period, repetition) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(periodString);
+            }
 
-                if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
-                {
-                    data = dataProperty.GetBytesFromBase64();
-                }
+            if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
+            {
+                data = dataProperty.GetBytesFromBase64();
+            }
 
-                if (json.TryGetProperty("ttl", out var ttlProperty))
-                {
-                    var ttlString = ttlProperty.GetString();
-                    ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
-                }
+            if (json.TryGetProperty("ttl", out var ttlProperty))
+            {
+                var ttlString = ttlProperty.GetString();
+                ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
             }
 
             return new ReminderInfo(data, dueTime, period, repetition, ttl);

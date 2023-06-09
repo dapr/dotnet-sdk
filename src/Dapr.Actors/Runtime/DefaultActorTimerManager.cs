@@ -98,14 +98,11 @@ namespace Dapr.Actors.Runtime
             {
                 throw new ArgumentNullException(nameof(stream));
             }
-            var streamContents = new byte[stream.Length];
-            stream.Read(streamContents);
-            if(Encoding.ASCII.GetString(streamContents) == "null")
+            var info = await ReminderInfo.DeserializeAsync(stream);
+            if(info == null)
             {
                 return null;
             }
-            stream.Seek(0, SeekOrigin.Begin);
-            var info = await ReminderInfo.DeserializeAsync(stream);
             var reminder = new ActorReminder(token.ActorType, token.ActorId, token.Name, info.Data, info.DueTime, 
                 info.Period);
             return reminder;
