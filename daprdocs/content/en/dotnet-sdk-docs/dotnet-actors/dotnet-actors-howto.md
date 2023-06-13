@@ -81,6 +81,7 @@ Define `IMyActor` interface and `MyData` data object. Paste the following code i
 
 ```csharp
 using Dapr.Actors;
+using Dapr.Actors.Runtime;
 using System.Threading.Tasks;
 
 namespace MyActor.Interfaces
@@ -91,6 +92,7 @@ namespace MyActor.Interfaces
         Task<MyData> GetDataAsync();
         Task RegisterReminder();
         Task UnregisterReminder();
+        Task<IActorReminder> GetReminder();
         Task RegisterTimer();
         Task UnregisterTimer();
     }
@@ -217,6 +219,14 @@ namespace MyActorService
                 null,                      // User state passed to IRemindable.ReceiveReminderAsync()
                 TimeSpan.FromSeconds(5),   // Time to delay before invoking the reminder for the first time
                 TimeSpan.FromSeconds(5));  // Time interval between reminder invocations after the first invocation
+        }
+
+        /// <summary>
+        /// Get MyReminder reminder details with the actor
+        /// </summary>
+        public async Task<IActorReminder> GetReminder()
+        {
+            await this.GetReminderAsync("MyReminder");
         }
 
         /// <summary>
