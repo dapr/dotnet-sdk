@@ -44,6 +44,12 @@ namespace Dapr.E2E.Test.Actors.Reminders
             await this.StateManager.SetStateAsync<State>("reminder-state", new State(){ IsReminderRunning = true, });
         }
 
+        public async Task<String> GetReminder(){
+            var reminder = await this.GetReminderAsync("test-reminder");
+            var reminderString = JsonSerializer.Serialize(reminder, this.Host.JsonSerializerOptions);
+            return reminderString;
+        }
+
         public async Task StartReminderWithTtl(TimeSpan ttl)
         {
             var options = new StartReminderOptions()
