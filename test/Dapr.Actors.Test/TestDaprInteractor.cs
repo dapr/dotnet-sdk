@@ -99,6 +99,20 @@ namespace Dapr.Actors
             throw new System.NotImplementedException();
         }
 
+       /// <summary>
+        /// Gets a reminder.
+        /// </summary>
+        /// <param name="actorType">Type of actor.</param>
+        /// <param name="actorId">ActorId.</param>
+        /// <param name="reminderName">Name of reminder to unregister.</param>
+        /// <param name="cancellationToken">Cancels the operation.</param>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        public Task<Stream> GetReminderAsync(string actorType, string actorId, string reminderName,
+            CancellationToken cancellationToken = default)
+        {
+            throw new System.NotImplementedException();
+        }
+
         /// <summary>
         /// Unregisters a reminder.
         /// </summary>
