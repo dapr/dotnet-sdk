@@ -14,6 +14,8 @@
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.IO;
+using System.Text;
 
 namespace Dapr.Actors.Runtime
 {
@@ -35,6 +37,18 @@ namespace Dapr.Actors.Runtime
 
             var serialized = await SerializeReminderAsync(reminder);
             await this.interactor.RegisterReminderAsync(reminder.ActorType, reminder.ActorId.ToString(), reminder.Name, serialized);
+        }
+
+        public override async Task<IActorReminder> GetReminderAsync(ActorReminderToken token)
+        {
+            if (token == null)
+            {
+                throw new ArgumentNullException(nameof(token));
+            }
+            
+            var responseStream = await this.interactor.GetReminderAsync(token.ActorType, token.ActorId.ToString(), token.Name);
+            var reminder = await DeserializeReminderAsync(responseStream, token);
+            return reminder;
         }
 
         public override async Task UnregisterReminderAsync(ActorReminderToken reminder)
@@ -76,6 +90,22 @@ namespace Dapr.Actors.Runtime
             var info = new ReminderInfo(reminder.State, reminder.DueTime, reminder.Period, reminder.Repetitions, 
                 reminder.Ttl);
             return await info.SerializeAsync();
+        }
+
+        private async ValueTask<ActorReminder> DeserializeReminderAsync(Stream stream, ActorReminderToken token)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+            var info = await ReminderInfo.DeserializeAsync(stream);
+            if(info == null)
+            {
+                return null;
+            }
+            var reminder = new ActorReminder(token.ActorType, token.ActorId, token.Name, info.Data, info.DueTime, 
+                info.Period);
+            return reminder;
         }
     }
 }

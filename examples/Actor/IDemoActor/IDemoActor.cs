@@ -16,6 +16,7 @@ namespace IDemoActorInterface
     using System;
     using System.Threading.Tasks;
     using Dapr.Actors;
+    using Dapr.Actors.Runtime;
 
     /// <summary>
     /// Interface for Actor method.
@@ -93,6 +94,13 @@ namespace IDemoActorInterface
         /// <param name="repetitions">The number of repetitions for which the reminder should be invoked.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
         Task RegisterReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions);
+
+        /// <summary>
+        /// Gets the registered reminder.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder.</param>
+        /// <returns>A task that returns the reminder after completion.</returns>
+        Task<IActorReminder> GetReminder();
 
         /// <summary>
         /// Unregisters the registered timer.
