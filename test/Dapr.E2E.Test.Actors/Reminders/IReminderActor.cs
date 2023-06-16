@@ -28,5 +28,7 @@ namespace Dapr.E2E.Test.Actors.Reminders
         Task StartReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions);
 
         Task<State> GetState();
+
+        Task<String> GetReminder();
     }
 }

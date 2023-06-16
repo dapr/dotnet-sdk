@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,24 +11,25 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+namespace Dapr.Client
 {
-    using System;
-    using Microsoft.DurableTask.Client;
-
     /// <summary>
-    /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
+    /// Represents workflow failure details.
     /// </summary>
-    [Obsolete($"Deprecated. Use {nameof(DaprWorkflowClient)} instead.")]
-    public sealed class WorkflowEngineClient : DaprWorkflowClient
+    /// <param name="ErrorMessage">A summary description of the failure, which is typically an exception message.</param>
+    /// <param name="ErrorType">The error type, which is defined by the workflow component implementation.</param>
+    /// <param name="StackTrace">The stack trace of the failure.</param>
+    public record WorkflowFailureDetails(
+        string ErrorMessage,
+        string ErrorType,
+        string StackTrace = null)
     {
         /// <summary>
-        /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
+        /// Creates a user-friendly string representation of the failure information.
         /// </summary>
-        /// <inheritdoc cref="DaprWorkflowClient(DurableTaskClient)"/>
-        public WorkflowEngineClient(DurableTaskClient innerClient)
-            : base(innerClient)
+        public override string ToString()
         {
+            return $"{this.ErrorType}: {this.ErrorMessage}";
         }
     }
 }
