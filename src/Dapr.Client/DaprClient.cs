@@ -783,6 +783,75 @@ namespace Dapr.Client
             StateOptions stateOptions = default,
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Define a SaveStateAsync task that gets a binary input   
+        /// </summary>
+        /// <param name="storeName">The  </param>
+        /// <param name="key"></param>
+        /// <param name="binaryValue"></param>
+        /// <param name="stateOptions"></param>
+        /// <param name="metadata"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public abstract Task SaveStateByteAsync(
+                       string storeName,
+                       string key,
+                       byte[] binaryValue,
+                       StateOptions stateOptions = default,
+                       IReadOnlyDictionary<string, string> metadata = default,
+                       CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Define a TrySaveStateAsync task that gets a binary input and gives a boolean output
+        /// </summary>
+        /// <param name="storeName"></param>
+        /// <param name="key"></param>
+        /// <param name="binaryValue"></param>
+        /// <param name="etag"></param>
+        /// <param name="stateOptions"></param>
+        /// <param name="metadata"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public abstract Task<bool> TrySaveStateByteAsync(
+                string storeName,
+                string key,
+                byte[] binaryValue,
+                string etag,
+                StateOptions stateOptions = default,
+                IReadOnlyDictionary<string, string> metadata = default,
+                CancellationToken cancellationToken = default);
+
+        // Define a method called GetStateAsync that gets a key and returns a byte array
+        /// <summary>
+        /// Define a GetStateAsync task that gets a key and returns a byte array
+        /// </summary>
+        /// <param name="storeName"></param>
+        /// <param name="key"></param>
+        /// <param name="consistencyMode"></param>
+        /// <param name="metadata"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public abstract Task<byte[]> GetStateByteAsync(
+                string storeName,
+                string key,
+                ConsistencyMode? consistencyMode = default,
+                IReadOnlyDictionary<string, string> metadata = default,
+                CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Define a GetStateAndETagAsync task that gets a key and returns a byte array and an etag
+        /// </summary>
+        /// <param name="storeName"></param>
+        /// <param name="key"></param>
+        /// <param name="consistencyMode"></param>
+        /// <param name="metadata"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public abstract Task<(byte[], string etag)> GetStateAndETagByteAsync(
+            string storeName, 
+            string key, 
+            ConsistencyMode? consistencyMode = default, 
+            IReadOnlyDictionary<string, string> metadata = default, 
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Tries to save the state <paramref name="value" /> associated with the provided <paramref name="key" /> using the 
