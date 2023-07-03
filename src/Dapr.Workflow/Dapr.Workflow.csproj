@@ -7,7 +7,7 @@
     <PackageId>Dapr.Workflow</PackageId>
     <Title>Dapr Workflow Authoring SDK</Title>
     <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
-    <VersionPrefix>0.2.0</VersionPrefix>
+    <VersionPrefix>0.3.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
     <LangVersion>10.0</LangVersion>
   </PropertyGroup>
