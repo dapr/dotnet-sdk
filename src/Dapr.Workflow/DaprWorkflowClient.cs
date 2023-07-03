@@ -135,7 +135,7 @@ namespace Dapr.Workflow
         /// <inheritdoc cref="WaitForWorkflowStartAsync(string, bool, CancellationToken)"/>
         public async Task<WorkflowState> WaitForWorkflowCompletionAsync(
             string instanceId,
-            bool getInputsAndOutputs = false,
+            bool getInputsAndOutputs = true,
             CancellationToken cancellation = default)
         {
             OrchestrationMetadata metadata = await this.innerClient.WaitForInstanceCompletionAsync(
@@ -218,7 +218,7 @@ namespace Dapr.Workflow
             object? eventPayload = null,
             CancellationToken cancellation = default)
         {
-            return this.innerClient.RaiseEventAsync(instanceId, eventName, cancellation);
+            return this.innerClient.RaiseEventAsync(instanceId, eventName, eventPayload, cancellation);
         }
 
         /// <summary>
