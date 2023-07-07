@@ -16,30 +16,22 @@ namespace Dapr.Workflow
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.DurableTask;
 
     /// <summary>
     /// Context object used by workflow implementations to perform actions such as scheduling activities, durable timers, waiting for
     /// external events, and for getting basic information about the current workflow instance.
     /// </summary>
-    public class WorkflowContext
+    public abstract class WorkflowContext
     {
-        readonly TaskOrchestrationContext innerContext;
-
-        internal WorkflowContext(TaskOrchestrationContext innerContext)
-        {
-            this.innerContext = innerContext ?? throw new ArgumentNullException(nameof(innerContext));
-        }
-
         /// <summary>
         /// Gets the name of the current workflow.
         /// </summary>
-        public string Name => this.innerContext.Name;
+        public abstract string Name { get; }
 
         /// <summary>
         /// Gets the instance ID of the current workflow.
         /// </summary>
-        public string InstanceId => this.innerContext.InstanceId;
+        public abstract string InstanceId { get; }
 
         /// <summary>
         /// Gets the current workflow time in UTC.
@@ -51,7 +43,7 @@ namespace Dapr.Workflow
         /// the current time, such as <see cref="DateTime.UtcNow"/> and <see cref="DateTimeOffset.UtcNow"/>
         /// (which should not be used).
         /// </remarks>
-        public DateTime CurrentUtcDateTime => this.innerContext.CurrentUtcDateTime;
+        public abstract DateTime CurrentUtcDateTime { get; }
 
         /// <summary>
         /// Gets a value indicating whether the workflow is currently replaying a previous execution.
@@ -72,7 +64,7 @@ namespace Dapr.Workflow
         /// <value>
         /// <c>true</c> if the workflow is currently replaying a previous execution; otherwise <c>false</c>.
         /// </value>
-        public bool IsReplaying => this.innerContext.IsReplaying;
+        public abstract bool IsReplaying { get; }
 
         /// <summary>
         /// Asynchronously invokes an activity by name and with the specified input value.
@@ -104,23 +96,20 @@ namespace Dapr.Workflow
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        /// <exception cref="TaskFailedException">
+        /// <exception cref="WorkflowTaskFailedException">
         /// The activity failed with an unhandled exception. The details of the failure can be found in the
-        /// <see cref="TaskFailedException.FailureDetails"/> property.
+        /// <see cref="WorkflowTaskFailedException.FailureDetails"/> property.
         /// </exception>
-        public Task CallActivityAsync(string name, object? input = null, TaskOptions? options = null)
+        public virtual Task CallActivityAsync(string name, object? input = null, WorkflowTaskOptions? options = null)
         {
-            return this.innerContext.CallActivityAsync(name, input, options);
+            return this.CallActivityAsync<object>(name, input, options);
         }
 
         /// <returns>
         /// A task that completes when the activity completes or fails. The result of the task is the activity's return value.
         /// </returns>
         /// <inheritdoc cref="CallActivityAsync"/>
-        public Task<T> CallActivityAsync<T>(string name, object? input = null, TaskOptions? options = null)
-        {
-            return this.innerContext.CallActivityAsync<T>(name, input, options);
-        }
+        public abstract Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null);
 
         /// <summary>
         /// Creates a durable timer that expires after the specified delay.
@@ -131,9 +120,9 @@ namespace Dapr.Workflow
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        public Task CreateTimer(TimeSpan delay, CancellationToken cancellationToken = default)
+        public virtual Task CreateTimer(TimeSpan delay, CancellationToken cancellationToken = default)
         {
-            return this.innerContext.CreateTimer(delay, cancellationToken);
+            return this.CreateTimer(this.CurrentUtcDateTime.Add(delay), cancellationToken);
         }
 
         /// <summary>
@@ -142,10 +131,7 @@ namespace Dapr.Workflow
         /// <param name="fireAt">The time at which the timer should expire.</param>
         /// <param name="cancellationToken">Used to cancel the durable timer.</param>
         /// <inheritdoc cref="CreateTimer(TimeSpan, CancellationToken)"/>
-        public Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken)
-        {
-            return this.innerContext.CreateTimer(fireAt, cancellationToken);
-        }
+        public abstract Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken);
 
         /// <summary>
         /// Waits for an event to be raised with name <paramref name="eventName"/> and returns the event data.
@@ -173,13 +159,13 @@ namespace Dapr.Workflow
         /// <returns>
         /// A task that completes when the external event is received. The value of the task is the deserialized event payload.
         /// </returns>
+        /// <exception cref="TaskCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is cancelled before the external event is received.
+        /// </exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        public Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default)
-        {
-            return this.innerContext.WaitForExternalEvent<T>(eventName, cancellationToken);
-        }
+        public abstract Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Waits for an event to be raised with name <paramref name="eventName"/> and returns the event data.
@@ -189,11 +175,11 @@ namespace Dapr.Workflow
         /// number of times; they are not required to be unique.
         /// </param>
         /// <param name="timeout">The amount of time to wait before cancelling the external event task.</param>
+        /// <exception cref="TaskCanceledException">
+        /// Thrown if <paramref name="timeout"/> elapses before the external event is received.
+        /// </exception>
         /// <inheritdoc cref="WaitForExternalEventAsync{T}(string, CancellationToken)"/>
-        public Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
-        {
-            return this.innerContext.WaitForExternalEvent<T>(eventName, timeout);
-        }
+        public abstract Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout);
 
         /// <summary>
         /// Raises an external event for the specified workflow instance.
@@ -208,10 +194,7 @@ namespace Dapr.Workflow
         /// <param name="instanceId">The ID of the workflow instance to send the event to.</param>
         /// <param name="eventName">The name of the event to wait for. Event names are case-insensitive.</param>
         /// <param name="payload">The serializable payload of the external event.</param>
-        public void SendEvent(string instanceId, string eventName, object payload)
-        {
-            this.SendEvent(instanceId, eventName, payload);
-        }
+        public abstract void SendEvent(string instanceId, string eventName, object payload);
 
         /// <summary>
         /// Assigns a custom status value to the current workflow.
@@ -226,10 +209,7 @@ namespace Dapr.Workflow
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        public void SetCustomStatus(object? customStatus)
-        {
-            this.innerContext.SetCustomStatus(customStatus);
-        }
+        public abstract void SetCustomStatus(object? customStatus);
 
         /// <summary>
         /// Executes the specified workflow as a child workflow and returns the result.
@@ -237,11 +217,11 @@ namespace Dapr.Workflow
         /// <typeparam name="TResult">
         /// The type into which to deserialize the child workflow's output.
         /// </typeparam>
-        /// <inheritdoc cref="CallChildWorkflowAsync(string, object?, TaskOptions?)"/>
-        public Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, TaskOptions? options = null)
-        {
-            return this.innerContext.CallSubOrchestratorAsync<TResult>(workflowName, input, options);
-        }
+        /// <inheritdoc cref="CallChildWorkflowAsync(string, object?, ChildWorkflowTaskOptions?)"/>
+        public abstract Task<TResult> CallChildWorkflowAsync<TResult>(
+            string workflowName,
+            object? input = null,
+            ChildWorkflowTaskOptions? options = null);
 
         /// <summary>
         /// Executes the specified workflow as a child workflow.
@@ -250,7 +230,8 @@ namespace Dapr.Workflow
         /// <para>
         /// In addition to activities, workflows can schedule other workflows as <i>child workflows</i>.
         /// A child workflow has its own instance ID, history, and status that is independent of the parent workflow
-        /// that started it.
+        /// that started it. You can use <see cref="ChildWorkflowTaskOptions.InstanceId" /> to specify an instance ID
+        /// for the child workflow. Otherwise, the instance ID will be randomly generated.
         /// </para><para>
         /// Child workflows have many benefits:
         /// <list type="bullet">
@@ -265,28 +246,30 @@ namespace Dapr.Workflow
         /// exception. Child workflows also support automatic retry policies.
         /// </para><para>
         /// Because child workflows are independent of their parents, terminating a parent workflow does not affect
-        /// any child workflows. You must terminate each child workflow independently using its instance ID, which is
-        /// specified by supplying <see cref="SubOrchestrationOptions" /> in place of <see cref="TaskOptions" />.
+        /// any child workflows. You must terminate each child workflow independently using its instance ID, which
+        /// is specified by <see cref="ChildWorkflowTaskOptions.InstanceId" />.
         /// </para>
         /// </remarks>
         /// <param name="workflowName">The name of the workflow to call.</param>
         /// <param name="input">The serializable input to pass to the child workflow.</param>
         /// <param name="options">
-        /// Additional options that control the execution and processing of the child workflow. Callers can choose to
-        /// supply the derived type <see cref="SubOrchestrationOptions" />.
+        /// Additional options that control the execution and processing of the child workflow.
         /// </param>
         /// <returns>A task that completes when the child workflow completes or fails.</returns>
         /// <exception cref="ArgumentException">The specified workflow does not exist.</exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        /// <exception cref="TaskFailedException">
+        /// <exception cref="WorkflowTaskFailedException">
         /// The child workflow failed with an unhandled exception. The details of the failure can be found in the
-        /// <see cref="TaskFailedException.FailureDetails"/> property.
+        /// <see cref="WorkflowTaskFailedException.FailureDetails"/> property.
         /// </exception>
-        public Task CallChildWorkflowAsync(string workflowName, object? input = null, TaskOptions? options = null)
+        public virtual Task CallChildWorkflowAsync(
+            string workflowName,
+            object? input = null,
+            ChildWorkflowTaskOptions? options = null)
         {
-            return this.innerContext.CallSubOrchestratorAsync(workflowName, input, options);
+            return this.CallChildWorkflowAsync<object>(workflowName, input, options);
         }
 
         /// <summary>
@@ -320,10 +303,7 @@ namespace Dapr.Workflow
         /// history when the workflow instance restarts. If <c>false</c>, any unprocessed
         /// external events will be discarded when the workflow instance restarts.
         /// </param>
-        public void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)
-        {
-            this.innerContext.ContinueAsNew(newInput!, preserveUnprocessedEvents);
-        }
+        public abstract void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true);
 
         /// <summary>
         /// Creates a new GUID that is safe for replay within a workflow.
@@ -334,9 +314,6 @@ namespace Dapr.Workflow
         /// and an internally managed sequence number.
         /// </remarks>
         /// <returns>The new <see cref="Guid"/> value.</returns>
-        public Guid NewGuid()
-        {
-            return this.innerContext.NewGuid();
-        }
+        public abstract Guid NewGuid();
     }
 }

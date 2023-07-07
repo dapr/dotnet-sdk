@@ -13,7 +13,6 @@ namespace ConfigurationApi.Controllers
 {
     [ApiController]
     [Route("configuration")]
-    [Obsolete]
     public class ConfigurationController : ControllerBase
     {
         private ILogger<ConfigurationController> logger;

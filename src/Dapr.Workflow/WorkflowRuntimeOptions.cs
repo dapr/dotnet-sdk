@@ -18,7 +18,6 @@ namespace Dapr.Workflow
     using System.Threading.Tasks;
     using Microsoft.DurableTask;
     using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Defines runtime options for workflows.
@@ -52,7 +51,7 @@ namespace Dapr.Workflow
             {
                 registry.AddOrchestratorFunc<TInput, TOutput>(name, (innerContext, input) =>
                 {
-                    WorkflowContext workflowContext = new(innerContext);
+                    WorkflowContext workflowContext = new DaprWorkflowContext(innerContext);
                     return implementation(workflowContext, input);
                 });
             });
@@ -145,7 +144,7 @@ namespace Dapr.Workflow
 
             public Task<object?> RunAsync(TaskOrchestrationContext context, object? input)
             {
-                return this.workflow.RunAsync(new WorkflowContext(context), input);
+                return this.workflow.RunAsync(new DaprWorkflowContext(context), input);
             }
         }
 

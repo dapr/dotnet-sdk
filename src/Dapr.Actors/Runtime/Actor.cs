@@ -386,6 +386,18 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
+        /// Gets a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)" />.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder to get.</param>
+        /// <returns>
+        /// Returns a task that represents the asynchronous get operation. The result of the task contains the reminder if it exists, otherwise null.
+        /// </returns>
+        protected async Task<IActorReminder> GetReminderAsync(string reminderName)
+        {
+            return await this.Host.TimerManager.GetReminderAsync(new ActorReminderToken(this.actorTypeName, this.Id, reminderName));
+        }
+
+        /// <summary>
         /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)" />.
         /// </summary>
         /// <param name="reminder">The actor reminder to unregister.</param>

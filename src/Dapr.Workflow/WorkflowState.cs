@@ -14,6 +14,7 @@
 namespace Dapr.Workflow
 {
     using System;
+    using Dapr.Client;
     using Microsoft.DurableTask.Client;
 
     /// <summary>
@@ -22,11 +23,16 @@ namespace Dapr.Workflow
     public class WorkflowState
     {
         readonly OrchestrationMetadata? workflowState;
+        readonly WorkflowTaskFailureDetails? failureDetails;
 
-        internal WorkflowState(OrchestrationMetadata? workflowState)
+        internal WorkflowState(OrchestrationMetadata? orchestrationMetadata)
         {
             // This value will be null if the workflow doesn't exist.
-            this.workflowState = workflowState;
+            this.workflowState = orchestrationMetadata;
+            if (orchestrationMetadata?.FailureDetails != null)
+            {
+                this.failureDetails = new WorkflowTaskFailureDetails(orchestrationMetadata.FailureDetails);
+            }
         }
 
         /// <summary>
@@ -83,6 +89,16 @@ namespace Dapr.Workflow
                 }
             }
         }
+
+        /// <summary>
+        /// Gets the failure details, if any, for the workflow instance.
+        /// </summary>
+        /// <remarks>
+        /// This property contains data only if the workflow is in the <see cref="WorkflowRuntimeStatus.Failed"/>
+        /// state, and only if this instance metadata was fetched with the option to include output data.
+        /// </remarks>
+        /// <value>The failure details if the workflow was in a failed state; <c>null</c> otherwise.</value>
+        public WorkflowTaskFailureDetails? FailureDetails => this.failureDetails;
 
         /// <summary>
         /// Deserializes the workflow input into <typeparamref name="T"/>.

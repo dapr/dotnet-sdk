@@ -1,12 +1,11 @@
-﻿using System.Threading.Tasks;
-using Dapr.Workflow;
+﻿using Dapr.Workflow;
 using Microsoft.Extensions.Logging;
 
 namespace WorkflowConsoleApp.Activities
 {
-    record Notification(string Message);
+    public record Notification(string Message);
 
-    class NotifyActivity : WorkflowActivity<Notification, object>
+    public class NotifyActivity : WorkflowActivity<Notification, object>
     {
         readonly ILogger logger;
 

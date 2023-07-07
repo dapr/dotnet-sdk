@@ -39,47 +39,16 @@ namespace Dapr.Workflow
             }
 
             serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
+
+#pragma warning disable CS0618 // Type or member is obsolete - keeping around temporarily - replaced by DaprWorkflowClient
             serviceCollection.TryAddSingleton<WorkflowEngineClient>();
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            serviceCollection.TryAddSingleton<DaprWorkflowClient>();
             serviceCollection.AddDaprClient();
+            serviceCollection.AddDaprWorkflowClient();
 
             serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
-
-            static bool TryGetGrpcAddress(out string address)
-            {
-                // TODO: Ideally we should be using DaprDefaults.cs for this. However, there are two blockers:
-                //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
-                //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
-                // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
-                string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-                if (int.TryParse(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT"), out int daprGrpcPort))
-                {
-                    // There is a bug in the Durable Task SDK that requires us to change the format of the address
-                    // depending on the version of .NET that we're targeting. For now, we work around this manually.
-#if NET6_0_OR_GREATER
-                    address = $"http://localhost:{daprGrpcPort}";
-#else
-                    address = $"localhost:{daprGrpcPort}";
-#endif
-                    return true;
-                }
-
-                address = string.Empty;
-                return false;
-            }
-
-            serviceCollection.AddDurableTaskClient(builder =>
-            {
-                if (TryGetGrpcAddress(out string address))
-                {
-                    builder.UseGrpc(address);
-                }
-                else
-                {
-                    builder.UseGrpc();
-                }
-
-                builder.RegisterDirectly();
-            });
 
             serviceCollection.AddDurableTaskWorker(builder =>
             {
@@ -99,6 +68,57 @@ namespace Dapr.Workflow
             });
 
             return serviceCollection;
+        }
+
+        /// <summary>
+        /// Adds Dapr Workflow client support to the service collection.
+        /// </summary>
+        /// <remarks>
+        /// Use this extension method if you want to use <see cref="DaprWorkflowClient"/> in your app
+        /// but don't wish to define any workflows or activities.
+        /// </remarks>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        public static IServiceCollection AddDaprWorkflowClient(this IServiceCollection services)
+        {
+            services.TryAddSingleton<DaprWorkflowClient>();
+            services.AddDurableTaskClient(builder =>
+            {
+                if (TryGetGrpcAddress(out string address))
+                {
+                    builder.UseGrpc(address);
+                }
+                else
+                {
+                    builder.UseGrpc();
+                }
+
+                builder.RegisterDirectly();
+            });
+
+            return services;
+        }
+
+        static bool TryGetGrpcAddress(out string address)
+        {
+            // TODO: Ideally we should be using DaprDefaults.cs for this. However, there are two blockers:
+            //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
+            //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
+            // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
+            string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+            if (int.TryParse(daprPortStr, out int daprGrpcPort))
+            {
+                // There is a bug in the Durable Task SDK that requires us to change the format of the address
+                // depending on the version of .NET that we're targeting. For now, we work around this manually.
+#if NET6_0_OR_GREATER
+                address = $"http://localhost:{daprGrpcPort}";
+#else
+                address = $"localhost:{daprGrpcPort}";
+#endif
+                return true;
+            }
+
+            address = string.Empty;
+            return false;
         }
     }
 }
