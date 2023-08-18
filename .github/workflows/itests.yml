@@ -22,13 +22,11 @@ jobs:
         dotnet-version: ['6.0', '7.0']
         include:
         - dotnet-version: '6.0'
-          install-3: false
           display-name: '.NET 6.0'
           framework: 'net6'
           prefix: 'net6'
           install-version: '6.0.x'
         - dotnet-version: '7.0'
-          install-3: false
           display-name: '.NET 7.0'
           framework: 'net7'
           prefix: 'net7'
