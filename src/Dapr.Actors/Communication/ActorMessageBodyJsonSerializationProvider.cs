@@ -123,12 +123,7 @@ namespace Dapr.Actors.Communication
                     return null;
                 }
 
-                using var stream = new MemoryStream();
-                using var writer = new Utf8JsonWriter(stream);
-                JsonSerializer.Serialize<object>(writer, actorRequestMessageBody, this.serializerOptions);
-                writer.Flush();
-
-                return stream.ToArray();
+                return JsonSerializer.SerializeToUtf8Bytes<object>(actorRequestMessageBody, this.serializerOptions);
             }
 
             async ValueTask<IActorRequestMessageBody> IActorRequestMessageBodySerializer.DeserializeAsync(Stream stream)
@@ -154,12 +149,7 @@ namespace Dapr.Actors.Communication
                     return null;
                 }
 
-                using var stream = new MemoryStream();
-                using var writer = new Utf8JsonWriter(stream);
-                JsonSerializer.Serialize<object>(writer, actorResponseMessageBody, this.serializerOptions);
-                writer.Flush();
-
-                return stream.ToArray();
+                return JsonSerializer.SerializeToUtf8Bytes<object>(actorResponseMessageBody, this.serializerOptions);
             }
 
             async ValueTask<IActorResponseMessageBody> IActorResponseMessageBodySerializer.DeserializeAsync(Stream messageBody)

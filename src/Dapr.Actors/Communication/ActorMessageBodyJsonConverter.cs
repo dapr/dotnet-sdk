@@ -36,11 +36,6 @@ namespace Dapr.Actors.Communication
             {
                 this.wrapperMessageType = this.wrappedRequestMessageTypes[0];
             }
-
-            // If T is of WrappedMessageBody, then get the 'Value' property.
-            if (typeof(T).IsAssignableFrom(typeof(WrappedMessageBody)))
-            {
-            }
         }
 
         public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -77,7 +72,7 @@ namespace Dapr.Actors.Communication
 
                 // Coerce the type to T; required because WrappedMessageBody inherits from two separate interfaces, which
                 // cannot both be used as generic constraints
-                return (T)((object)wrapper);
+                return (T)(object)wrapper;
             }
 
             return JsonSerializer.Deserialize<T>(ref reader, options);
