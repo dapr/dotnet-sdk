@@ -42,14 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['3.1', '6.0', '7.0']
+        dotnet-version: ['6.0', '7.0']
         include:
-        - dotnet-version: '3.1'
-          install-3: true
-          display-name: '.NET Core 3.1'
-          framework: 'netcoreapp3.1'
-          prefix: 'netcoreapp31'
-          install-version: '3.1.x' # We always need a new .NET
         - dotnet-version: '6.0'
           install-3: false
           display-name: '.NET 6.0'
