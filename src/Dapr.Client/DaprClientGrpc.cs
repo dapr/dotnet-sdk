@@ -352,14 +352,10 @@ namespace Dapr.Client
             //
             // This approach avoids some common pitfalls that could lead to undesired encoding.
             var path = $"/v1.0/invoke/{appId}/method/{methodName.TrimStart('/')}";
-            var request = new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path))
-            {
-                Properties =
-                {
-                    { AppIdKey, appId },
-                    { MethodNameKey, methodName },
-                }
-            };
+            var request = new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path));
+            
+            request.Options.Set(new HttpRequestOptionsKey<string>(AppIdKey), appId);
+            request.Options.Set(new HttpRequestOptionsKey<string>(MethodNameKey), methodName);
 
             if (this.apiTokenHeader is not null)
             {
@@ -399,8 +395,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -423,8 +419,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -447,8 +443,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -465,8 +461,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -476,8 +472,8 @@ namespace Dapr.Client
             }
             catch (JsonException ex)
             {
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
