@@ -796,7 +796,7 @@ namespace Dapr.Client
         public abstract Task SaveStateByteAsync(
                        string storeName,
                        string key,
-                       byte[] binaryValue,
+                       ReadOnlyMemory<byte> binaryValue,
                        StateOptions stateOptions = default,
                        IReadOnlyDictionary<string, string> metadata = default,
                        CancellationToken cancellationToken = default);
@@ -815,7 +815,7 @@ namespace Dapr.Client
         public abstract Task<bool> TrySaveStateByteAsync(
                 string storeName,
                 string key,
-                byte[] binaryValue,
+                ReadOnlyMemory<byte> binaryValue,
                 string etag,
                 StateOptions stateOptions = default,
                 IReadOnlyDictionary<string, string> metadata = default,
