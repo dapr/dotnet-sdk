@@ -14,10 +14,12 @@
 namespace Dapr.Workflow
 {
     using System;
+    using Grpc.Net.Client;
     using Microsoft.DurableTask.Client;
     using Microsoft.DurableTask.Worker;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
+    using System.Net.Http;
 
     /// <summary>
     /// Contains extension methods for using Dapr Workflow with dependency injection.
@@ -57,7 +59,19 @@ namespace Dapr.Workflow
 
                 if (TryGetGrpcAddress(out string address))
                 {
-                    builder.UseGrpc(address);
+                    string? apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                    if (!string.IsNullOrEmpty(apiToken))
+                    {
+                        serviceCollection.ConfigureDurableGrpcClient(apiToken);
+                        HttpClient client = new HttpClient();
+                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                        builder.UseGrpc(CreateChannel(client));
+                    }
+                    else
+                    {
+                        builder.UseGrpc(address);
+                    }
+
                 }
                 else
                 {
@@ -85,7 +99,19 @@ namespace Dapr.Workflow
             {
                 if (TryGetGrpcAddress(out string address))
                 {
-                    builder.UseGrpc(address);
+                    string? apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                    if (!string.IsNullOrEmpty(apiToken))
+                    {
+                        services.ConfigureDurableGrpcClient(apiToken);
+                        HttpClient client = new HttpClient();
+                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                        builder.UseGrpc(CreateChannel(client));
+                    }
+                    else
+                    {
+                        builder.UseGrpc(address);
+                    }
+
                 }
                 else
                 {
@@ -126,6 +152,40 @@ namespace Dapr.Workflow
             address = string.Empty;
             return false;
         }
+
+        static GrpcChannel CreateChannel(HttpClient client)
+        {
+        string address = "localhost";
+        string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+        if (int.TryParse(daprPortStr, out int daprGrpcPort))
+        {
+            // There is a bug in the Durable Task SDK that requires us to change the format of the address
+            // depending on the version of .NET that we're targeting. For now, we work around this manually.
+#if NET6_0_OR_GREATER
+            address = $"http://localhost:{daprGrpcPort}";
+#else
+            address = $"localhost:{daprGrpcPort}";
+#endif
+        }
+            GrpcChannelOptions options = new() { HttpClient = client};
+            return GrpcChannel.ForAddress(address, options);
+        }
+    }
+
+    static class DaprDurableGrpcExtensions
+    {
+        const string ClientName = "durabletask-grpc";
+
+        public static IServiceCollection ConfigureDurableGrpcClient(this IServiceCollection services, string apiToken)
+        {
+            services.AddHttpClient(ClientName)
+                .ConfigureHttpClient(client =>
+                {
+                    client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                });
+            return services;
+        }
+
     }
 }
 

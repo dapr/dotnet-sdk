@@ -47,7 +47,16 @@ Console.ResetColor();
 using var host = builder.Build();
 host.Start();
 
-using var daprClient = new DaprClientBuilder().Build();
+DaprClient daprClient;
+string apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+if (!string.IsNullOrEmpty(apiToken))
+{
+    daprClient = new DaprClientBuilder().UseDaprApiToken(apiToken).Build();
+}
+else
+{
+    daprClient = new DaprClientBuilder().Build();
+}
 
 // Wait for the sidecar to become available
 while (!await daprClient.CheckHealthAsync())
