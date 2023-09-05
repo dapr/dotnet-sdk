@@ -56,7 +56,8 @@ namespace Dapr.Actors.Runtime
         internal ActorManager(
             ActorRegistration registration,
             ActorActivator activator, 
-            JsonSerializerOptions jsonSerializerOptions, 
+            JsonSerializerOptions jsonSerializerOptions,
+            bool useJsonSerialization,
             ILoggerFactory loggerFactory,
             IActorProxyFactory proxyFactory,
             IDaprInteractor daprInteractor)
@@ -78,7 +79,15 @@ namespace Dapr.Actors.Runtime
             this.activeActors = new ConcurrentDictionary<ActorId, ActorActivatorState>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
             this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
-            this.serializersManager = IntializeSerializationManager(null);
+
+            // provide a serializer if 'useJsonSerialization' is true and no serialization provider is provided.
+            IActorMessageBodySerializationProvider serializationProvider = null;
+            if (useJsonSerialization)
+            {
+                serializationProvider = new ActorMessageBodyJsonSerializationProvider(jsonSerializerOptions);
+            }
+
+            this.serializersManager = IntializeSerializationManager(serializationProvider);
             this.messageBodyFactory = new WrappedRequestMessageFactory();
 
             this.logger = loggerFactory.CreateLogger(this.GetType());
@@ -103,7 +112,7 @@ namespace Dapr.Actors.Runtime
             using (var stream = new MemoryStream())
             {
                 await data.CopyToAsync(stream);
-                actorMessageBody = msgBodySerializer.Deserialize(stream);
+                actorMessageBody = await msgBodySerializer.DeserializeAsync(stream);
             }
 
             // Call the method on the method dispatcher using the Func below.
