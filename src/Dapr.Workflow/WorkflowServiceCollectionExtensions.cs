@@ -62,7 +62,7 @@ namespace Dapr.Workflow
                     var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
                     if (!string.IsNullOrEmpty(apiToken))
                     {
-                        serviceCollection.ConfigureDurableGrpcClient(apiToken);
+                        // serviceCollection.ConfigureDurableGrpcClient(apiToken);
                         HttpClient client = new HttpClient();
                         client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
                         builder.UseGrpc(CreateChannel(client));
@@ -99,12 +99,12 @@ namespace Dapr.Workflow
             {
                 if (TryGetGrpcAddress(out string address))
                 {
-                    string? apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                    var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
                     if (!string.IsNullOrEmpty(apiToken))
                     {
-                        services.ConfigureDurableGrpcClient(apiToken);
+                        // services.ConfigureDurableGrpcClient(apiToken);
                         HttpClient client = new HttpClient();
-                        // client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
                         builder.UseGrpc(CreateChannel(client));
                     }
                     else
@@ -130,13 +130,13 @@ namespace Dapr.Workflow
             //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
             //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
             // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
-            string? daprEndpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
+            var daprEndpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
             if (!String.IsNullOrEmpty(daprEndpoint)) {
                 address = daprEndpoint;
                 return true;
             }
 
-            string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+            var daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
             if (int.TryParse(daprPortStr, out int daprGrpcPort))
             {
                 // There is a bug in the Durable Task SDK that requires us to change the format of the address
@@ -155,8 +155,8 @@ namespace Dapr.Workflow
 
         static GrpcChannel CreateChannel(HttpClient client)
         {
-        string address = "localhost";
-        string? daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+        var address = "localhost";
+        var daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
         if (int.TryParse(daprPortStr, out int daprGrpcPort))
         {
             // There is a bug in the Durable Task SDK that requires us to change the format of the address
@@ -171,21 +171,4 @@ namespace Dapr.Workflow
             return GrpcChannel.ForAddress(address, options);
         }
     }
-
-    static class DaprDurableGrpcExtensions
-    {
-        const string ClientName = "durabletask-grpc";
-
-        public static IServiceCollection ConfigureDurableGrpcClient(this IServiceCollection services, string apiToken)
-        {
-            services.AddHttpClient(ClientName)
-                .ConfigureHttpClient(client =>
-                {
-                    client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
-                });
-            return services;
-        }
-
-    }
 }
-
