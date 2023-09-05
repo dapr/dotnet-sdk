@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ namespace Dapr.Actors.Runtime
         {
             var registration = new ActorRegistration(ActorTypeInformation.Get(type, actorTypeName: null));
             var interactor = new DaprHttpInteractor(clientHandler: null, "http://localhost:3500", apiToken: null, requestTimeout: null);
-            return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, interactor);
+            return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, false, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, interactor);
         }
 
         [Fact]

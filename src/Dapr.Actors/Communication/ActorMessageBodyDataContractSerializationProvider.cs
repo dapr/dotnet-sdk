@@ -17,6 +17,7 @@ namespace Dapr.Actors.Communication
     using System.Collections.Generic;
     using System.IO;
     using System.Runtime.Serialization;
+    using System.Threading.Tasks;
     using System.Xml;
 
     /// <summary>
@@ -185,21 +186,21 @@ namespace Dapr.Actors.Communication
                 return stream.ToArray();
             }
 
-            IActorRequestMessageBody IActorRequestMessageBodySerializer.Deserialize(Stream stream)
+            ValueTask<IActorRequestMessageBody> IActorRequestMessageBodySerializer.DeserializeAsync(Stream stream)
             {
                 if (stream == null)
                 {
-                    return null;
+                    return default;
                 }
 
                 if (stream.Length == 0)
                 {
-                    return null;
+                    return default;
                 }
 
                 stream.Position = 0;
                 using var reader = this.CreateXmlDictionaryReader(stream);
-                return (TRequest)this.serializer.ReadObject(reader);
+                return new ValueTask<IActorRequestMessageBody>((TRequest)this.serializer.ReadObject(reader));
             }
 
             byte[] IActorResponseMessageBodySerializer.Serialize(IActorResponseMessageBody actorResponseMessageBody)
@@ -217,11 +218,11 @@ namespace Dapr.Actors.Communication
                 return stream.ToArray();
             }
 
-            IActorResponseMessageBody IActorResponseMessageBodySerializer.Deserialize(Stream messageBody)
+            ValueTask<IActorResponseMessageBody> IActorResponseMessageBodySerializer.DeserializeAsync(Stream messageBody)
             {
                 if (messageBody == null)
                 {
-                    return null;
+                    return default;
                 }
 
                 // TODO check performance
@@ -231,11 +232,11 @@ namespace Dapr.Actors.Communication
 
                 if (stream.Capacity == 0)
                 {
-                    return null;
+                    return default;
                 }
 
                 using var reader = this.CreateXmlDictionaryReader(stream);
-                return (TResponse)this.serializer.ReadObject(reader);
+                return new ValueTask<IActorResponseMessageBody>((TResponse)this.serializer.ReadObject(reader));
             }
 
             /// <summary>

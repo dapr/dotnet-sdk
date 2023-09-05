@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ namespace Dapr.Actors.Runtime
         {
             Enabled = false,
         };
+        private bool useJsonSerialization = false;
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
         private string daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
         private int? remindersStoragePartitions = null;
@@ -151,7 +152,22 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        
+        /// <summary>
+        /// Enable JSON serialization for actor proxy message serialization in both remoting and non-remoting invocations.
+        /// </summary>
+        public bool UseJsonSerialization
+        {
+            get
+            {
+                return this.useJsonSerialization;
+            }
+
+            set
+            {
+                this.useJsonSerialization = value;
+            }
+        }
+
         /// <summary>
         /// The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization
         /// </summary>
