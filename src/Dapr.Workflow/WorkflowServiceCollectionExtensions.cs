@@ -59,7 +59,7 @@ namespace Dapr.Workflow
 
                 if (TryGetGrpcAddress(out string address))
                 {
-                    string? apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                    var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
                     if (!string.IsNullOrEmpty(apiToken))
                     {
                         serviceCollection.ConfigureDurableGrpcClient(apiToken);
@@ -104,7 +104,7 @@ namespace Dapr.Workflow
                     {
                         services.ConfigureDurableGrpcClient(apiToken);
                         HttpClient client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                        // client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
                         builder.UseGrpc(CreateChannel(client));
                     }
                     else
