@@ -89,6 +89,11 @@ namespace Dapr.E2E.Test
                 arguments.AddRange(new[] { "--urls", $"http://localhost:{appPort.ToString(CultureInfo.InvariantCulture)}", });
             }
 
+            if (configuration.AppJsonSerialization)
+            {
+                arguments.AddRange(new[] { "--json-serialization" });
+            }
+
             // TODO: we don't do any quoting right now because our paths are guaranteed not to contain spaces
             var daprStart = new DaprCommand(this.testOutput)
             {
