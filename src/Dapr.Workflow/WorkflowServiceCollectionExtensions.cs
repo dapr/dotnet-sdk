@@ -62,10 +62,9 @@ namespace Dapr.Workflow
                     var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
                     if (!string.IsNullOrEmpty(apiToken))
                     {
-                        // serviceCollection.ConfigureDurableGrpcClient(apiToken);
                         HttpClient client = new HttpClient();
                         client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
-                        builder.UseGrpc(CreateChannel(client));
+                        builder.UseGrpc(CreateChannel(address, client));
                     }
                     else
                     {
@@ -102,10 +101,9 @@ namespace Dapr.Workflow
                     var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
                     if (!string.IsNullOrEmpty(apiToken))
                     {
-                        // services.ConfigureDurableGrpcClient(apiToken);
                         HttpClient client = new HttpClient();
                         client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
-                        builder.UseGrpc(CreateChannel(client));
+                        builder.UseGrpc(CreateChannel(address, client));
                     }
                     else
                     {
@@ -153,19 +151,30 @@ namespace Dapr.Workflow
             return false;
         }
 
-        static GrpcChannel CreateChannel(HttpClient client)
+        static GrpcChannel CreateChannel(string address, HttpClient client)
         {
-        var address = "localhost";
+
+        var daprEndpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
+        if (!String.IsNullOrEmpty(daprEndpoint)) {
+            GrpcChannelOptions options1 = new() { HttpClient = client};
+            return GrpcChannel.ForAddress(address, options1);
+        }
+            
         var daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
         if (int.TryParse(daprPortStr, out int daprGrpcPort))
         {
-            // There is a bug in the Durable Task SDK that requires us to change the format of the address
-            // depending on the version of .NET that we're targeting. For now, we work around this manually.
-#if NET6_0_OR_GREATER
-            address = $"http://localhost:{daprGrpcPort}";
-#else
-            address = $"localhost:{daprGrpcPort}";
-#endif
+            // If there is no address passed in, we default to localhost
+            if (String.IsNullOrEmpty(address))
+            {
+                // There is a bug in the Durable Task SDK that requires us to change the format of the address
+                // depending on the version of .NET that we're targeting. For now, we work around this manually.
+        #if NET6_0_OR_GREATER
+                    address = $"http://localhost:{daprGrpcPort}";
+        #else
+                    address = $"localhost:{daprGrpcPort}";
+        #endif
+            }
+
         }
             GrpcChannelOptions options = new() { HttpClient = client};
             return GrpcChannel.ForAddress(address, options);
