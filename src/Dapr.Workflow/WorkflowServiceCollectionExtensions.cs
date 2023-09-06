@@ -154,9 +154,9 @@ namespace Dapr.Workflow
         static GrpcChannel CreateChannel(string address, HttpClient client)
         {
 
+        GrpcChannelOptions options = new() { HttpClient = client};
         var daprEndpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
         if (!String.IsNullOrEmpty(daprEndpoint)) {
-            GrpcChannelOptions options = new() { HttpClient = client};
             return GrpcChannel.ForAddress(daprEndpoint, options);
         }
             
@@ -176,8 +176,7 @@ namespace Dapr.Workflow
             }
 
         }
-            GrpcChannelOptions options1 = new() { HttpClient = client};
-            return GrpcChannel.ForAddress(address, options1);
+            return GrpcChannel.ForAddress(address, options);
         }
     }
 }
