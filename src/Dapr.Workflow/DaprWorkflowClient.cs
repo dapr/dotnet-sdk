@@ -70,9 +70,9 @@ namespace Dapr.Workflow
         /// <param name="instanceId">The unique ID of the workflow instance to fetch.</param>
         /// <param name="getInputsAndOutputs">
         /// Specify <c>true</c> to fetch the workflow instance's inputs, outputs, and custom status, or <c>false</c> to
-        /// omit them. Defaults to false.
+        /// omit them. Defaults to true.
         /// </param>
-        public async Task<WorkflowState> GetWorkflowStateAsync(string instanceId, bool getInputsAndOutputs = false)
+        public async Task<WorkflowState> GetWorkflowStateAsync(string instanceId, bool getInputsAndOutputs = true)
         {
             OrchestrationMetadata? metadata = await this.innerClient.GetInstancesAsync(
                 instanceId,
@@ -94,7 +94,7 @@ namespace Dapr.Workflow
         /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
         /// <param name="getInputsAndOutputs">
         /// Specify <c>true</c> to fetch the workflow instance's inputs, outputs, and custom status, or <c>false</c> to
-        /// omit them. The default value is <c>false</c> to minimize the network bandwidth, serialization, and memory costs
+        /// omit them. Setting this value to <c>false</c> can help minimize the network bandwidth, serialization, and memory costs
         /// associated with fetching the instance metadata.
         /// </param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> that can be used to cancel the wait operation.</param>
@@ -104,7 +104,7 @@ namespace Dapr.Workflow
         /// </returns>
         public async Task<WorkflowState> WaitForWorkflowStartAsync(
             string instanceId,
-            bool getInputsAndOutputs = false,
+            bool getInputsAndOutputs = true,
             CancellationToken cancellation = default)
         {
             OrchestrationMetadata metadata = await this.innerClient.WaitForInstanceStartAsync(
@@ -135,7 +135,7 @@ namespace Dapr.Workflow
         /// <inheritdoc cref="WaitForWorkflowStartAsync(string, bool, CancellationToken)"/>
         public async Task<WorkflowState> WaitForWorkflowCompletionAsync(
             string instanceId,
-            bool getInputsAndOutputs = false,
+            bool getInputsAndOutputs = true,
             CancellationToken cancellation = default)
         {
             OrchestrationMetadata metadata = await this.innerClient.WaitForInstanceCompletionAsync(
@@ -218,7 +218,7 @@ namespace Dapr.Workflow
             object? eventPayload = null,
             CancellationToken cancellation = default)
         {
-            return this.innerClient.RaiseEventAsync(instanceId, eventName, cancellation);
+            return this.innerClient.RaiseEventAsync(instanceId, eventName, eventPayload, cancellation);
         }
 
         /// <summary>

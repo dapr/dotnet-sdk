@@ -63,8 +63,9 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="httpEndpoint">
         /// The URI endpoint to use for HTTP calls to the Dapr runtime. The default value will be 
-        /// <c>http://127.0.0.1:DAPR_HTTP_PORT</c> where <c>DAPR_HTTP_PORT</c> represents the value of the 
-        /// <c>DAPR_HTTP_PORT</c> environment variable.
+        /// <c>DAPR_HTTP_ENDPOINT</c> first, or <c>http://127.0.0.1:DAPR_HTTP_PORT</c> as fallback
+        /// where <c>DAPR_HTTP_ENDPOINT</c> and <c>DAPR_HTTP_PORT</c> represents the value of the
+        /// corresponding environment variables. 
         /// </param>
         /// <returns>The <see cref="DaprClientBuilder" /> instance.</returns>
         public DaprClientBuilder UseHttpEndpoint(string httpEndpoint)

@@ -55,6 +55,7 @@ namespace Dapr.Actors.Runtime
                     actor,
                     actor.Activator ?? this.activatorFactory.CreateActivator(actor.Type),
                     this.options.JsonSerializerOptions,
+                    this.options.UseJsonSerialization,
                     loggerFactory, 
                     proxyFactory,
                     daprInteractor);

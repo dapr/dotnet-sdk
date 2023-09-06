@@ -93,7 +93,7 @@ namespace Dapr.Actors
             catch (Exception e)
             {
                 // swallowing the exception
-                logger?.LogWarning("RemoteException", "DeSerialization failed : Reason  {0}", e);
+                logger?.LogWarning("RemoteException: DeSerialization failed : Reason {0}", e);
             }
 
             result = null;

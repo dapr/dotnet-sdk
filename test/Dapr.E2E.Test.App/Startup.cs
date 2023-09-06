@@ -17,6 +17,7 @@ namespace Dapr.E2E.Test
     using Dapr.E2E.Test.Actors.Reminders;
     using Dapr.E2E.Test.Actors.Timers;
     using Dapr.E2E.Test.Actors.ExceptionTesting;
+    using Dapr.E2E.Test.Actors.Serialization;
     using Dapr.E2E.Test.App.ErrorTesting;
     using Dapr.Workflow;
     using Microsoft.AspNetCore.Authentication;
@@ -34,6 +35,9 @@ namespace Dapr.E2E.Test
     /// </summary>
     public class Startup
     {
+        bool JsonSerializationEnabled =>
+            System.Linq.Enumerable.Contains(System.Environment.GetCommandLineArgs(), "--json-serialization");
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Startup"/> class.
         /// </summary>
@@ -83,10 +87,12 @@ namespace Dapr.E2E.Test
             });
             services.AddActors(options =>
             {
+                options.UseJsonSerialization = JsonSerializationEnabled;
                 options.Actors.RegisterActor<ReminderActor>();
                 options.Actors.RegisterActor<TimerActor>();
                 options.Actors.RegisterActor<Regression762Actor>();
                 options.Actors.RegisterActor<ExceptionActor>();
+                options.Actors.RegisterActor<SerializationActor>();
             });
         }
 

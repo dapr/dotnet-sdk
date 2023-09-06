@@ -57,13 +57,19 @@ namespace Dapr
         }
 
         /// <summary>
-        /// Get the value of environment variable DAPR_HTTP_PORT
+        /// Get the value of HTTP endpoint based off environment variables
         /// </summary>
-        /// <returns>The value of environment variable DAPR_HTTP_PORT</returns>
+        /// <returns>The value of HTTP endpoint based off environment variables</returns>
         public static string GetDefaultHttpEndpoint()
         {
             if (httpEndpoint == null)
             {
+                var endpoint = Environment.GetEnvironmentVariable("DAPR_HTTP_ENDPOINT");
+                if (!string.IsNullOrEmpty(endpoint)) {
+                    httpEndpoint = endpoint;
+                    return httpEndpoint;
+                }
+
                 var port = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT");
                 port = string.IsNullOrEmpty(port) ? "3500" : port;
                 httpEndpoint = $"http://127.0.0.1:{port}";
@@ -73,13 +79,19 @@ namespace Dapr
         }
 
         /// <summary>
-        /// Get the value of environment variable DAPR_GRPC_PORT
+        /// Get the value of gRPC endpoint based off environment variables
         /// </summary>
-        /// <returns>The value of environment variable DAPR_GRPC_PORT</returns>
+        /// <returns>The value of gRPC endpoint based off environment variables</returns>
         public static string GetDefaultGrpcEndpoint()
         {
             if (grpcEndpoint == null)
             {
+                var endpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
+                if (!string.IsNullOrEmpty(endpoint)) {
+                    grpcEndpoint = endpoint;
+                    return grpcEndpoint;
+                }
+
                 var port = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
                 port = string.IsNullOrEmpty(port) ? "50001" : port;
                 grpcEndpoint = $"http://127.0.0.1:{port}";

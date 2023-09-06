@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ namespace Dapr.Actors
                 return request;
             }
 
-            var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
+            using var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
             var stringResponse = await response.Content.ReadAsStringAsync();
             return stringResponse;
         }
@@ -164,11 +164,11 @@ namespace Dapr.Actors
                 // actorResponseMessageHeader is not null, it means there is remote exception
                 if (actorResponseMessageHeader != null)
                 {
-                    var isDeserialzied =
+                    var isDeserialized =
                             ActorInvokeException.ToException(
                                 responseMessageBody,
                                 out var remoteMethodException);
-                    if (isDeserialzied)
+                    if (isDeserialized)
                     {
                         var exceptionDetails = GetExceptionDetails(header.ToString());
                         throw new ActorMethodInvocationException(
@@ -185,7 +185,7 @@ namespace Dapr.Actors
                     }
                 }
 
-                actorResponseMessageBody = responseBodySerializer.Deserialize(responseMessageBody);
+                actorResponseMessageBody = await responseBodySerializer.DeserializeAsync(responseMessageBody);
             }
 
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
@@ -231,8 +231,8 @@ namespace Dapr.Actors
             }
 
             var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
-            var byteArray = await response.Content.ReadAsStreamAsync();
-            return byteArray;
+            var stream = await response.Content.ReadAsStreamAsync();
+            return stream;
         }
 
         public Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default)
@@ -351,7 +351,7 @@ namespace Dapr.Actors
             string relativeUri,
             CancellationToken cancellationToken)
         {
-            var response = await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, cancellationToken);
+            using var response = await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, cancellationToken);
             var retValue = default(string);
 
             if (response != null && response.Content != null)
@@ -458,7 +458,7 @@ namespace Dapr.Actors
             HttpResponseMessage response;
 
             // Get the request using the Func as same request cannot be resent when retries are implemented.
-            var request = requestFunc.Invoke();
+            using var request = requestFunc.Invoke();
 
             // add token for dapr api token based authentication
             this.AddDaprApiTokenHeader(request);
