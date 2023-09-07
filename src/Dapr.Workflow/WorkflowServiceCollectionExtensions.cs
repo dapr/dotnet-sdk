@@ -27,7 +27,6 @@ namespace Dapr.Workflow
     /// </summary>
     public static class WorkflowServiceCollectionExtensions
     {
-        private static string daprApiToken = "";
         
         /// <summary>
         /// Adds Dapr Workflow support to the service collection.
@@ -62,10 +61,10 @@ namespace Dapr.Workflow
 
                 if (TryGetGrpcAddress(out string address))
                 {
-                    daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
+                    var daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
                     if (!string.IsNullOrEmpty(daprApiToken))
                     {
-                        HttpClient client = new HttpClient();
+                        var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
                         builder.UseGrpc(CreateChannel(address, client));
                     }
@@ -101,10 +100,10 @@ namespace Dapr.Workflow
             {
                 if (TryGetGrpcAddress(out string address))
                 {
-                    daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
+                    var daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
                     if (!string.IsNullOrEmpty(daprApiToken))
                     {
-                        HttpClient client = new HttpClient();
+                        var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
                         builder.UseGrpc(CreateChannel(address, client));
                     }
