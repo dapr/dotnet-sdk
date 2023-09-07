@@ -1936,6 +1936,12 @@ namespace Dapr.Client
         {
             var path = "/v1.0/healthz";
             var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+
+            if (this.apiTokenHeader is not null)
+            {
+                request.Headers.Add(this.apiTokenHeader.Value.Key, this.apiTokenHeader.Value.Value);
+            }
+
             try
             {
                 using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -1952,6 +1958,12 @@ namespace Dapr.Client
         {
             var path = "/v1.0/healthz/outbound";
             var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+
+            if (this.apiTokenHeader is not null)
+            {
+                request.Headers.Add(this.apiTokenHeader.Value.Key, this.apiTokenHeader.Value.Value);
+            }
+
             try
             {
                 using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
