@@ -20,12 +20,15 @@ namespace Dapr.Workflow
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using System.Net.Http;
+    using Dapr;
 
     /// <summary>
     /// Contains extension methods for using Dapr Workflow with dependency injection.
     /// </summary>
     public static class WorkflowServiceCollectionExtensions
     {
+        private static string daprApiToken = "";
+        
         /// <summary>
         /// Adds Dapr Workflow support to the service collection.
         /// </summary>
@@ -59,11 +62,11 @@ namespace Dapr.Workflow
 
                 if (TryGetGrpcAddress(out string address))
                 {
-                    var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-                    if (!string.IsNullOrEmpty(apiToken))
+                    daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
+                    if (!string.IsNullOrEmpty(daprApiToken))
                     {
                         HttpClient client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
                         builder.UseGrpc(CreateChannel(address, client));
                     }
                     else
@@ -98,11 +101,11 @@ namespace Dapr.Workflow
             {
                 if (TryGetGrpcAddress(out string address))
                 {
-                    var apiToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-                    if (!string.IsNullOrEmpty(apiToken))
+                    daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
+                    if (!string.IsNullOrEmpty(daprApiToken))
                     {
                         HttpClient client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
                         builder.UseGrpc(CreateChannel(address, client));
                     }
                     else
@@ -128,7 +131,7 @@ namespace Dapr.Workflow
             //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
             //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
             // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
-            var daprEndpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
+            var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
             if (!String.IsNullOrEmpty(daprEndpoint)) {
                 address = daprEndpoint;
                 return true;
@@ -155,7 +158,7 @@ namespace Dapr.Workflow
         {
 
         GrpcChannelOptions options = new() { HttpClient = client};
-        var daprEndpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
+        var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
         if (!String.IsNullOrEmpty(daprEndpoint)) {
             return GrpcChannel.ForAddress(daprEndpoint, options);
         }
