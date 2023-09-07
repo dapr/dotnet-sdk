@@ -9,6 +9,10 @@ This Dapr workflow example shows how to create a Dapr workflow (`Workflow`) and 
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
 
+
+## Optional Setup
+Dapr workflow, as well as this example program, now support authentication through the use of API tokens. For more information on this, view the following document: [API Token](https://github.com/dapr/dotnet-sdk/docs/api-token.md)
+
 ## Projects in sample
 
 This sample contains a single [WorkflowConsoleApp](./WorkflowConsoleApp) .NET project.
