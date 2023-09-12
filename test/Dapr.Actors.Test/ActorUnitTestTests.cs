@@ -74,6 +74,7 @@ namespace Dapr.Actors
         public async Task CanTestStartingAndStoppinReminder()
         {
             var reminders = new List<ActorReminder>();
+            IActorReminder getReminder = null;
 
             var timerManager = new Mock<ActorTimerManager>(MockBehavior.Strict);
             timerManager
@@ -84,6 +85,9 @@ namespace Dapr.Actors
                 .Setup(tm => tm.UnregisterReminderAsync(It.IsAny<ActorReminderToken>()))
                 .Callback<ActorReminderToken>(reminder => reminders.RemoveAll(t => t.Name == reminder.Name))
                 .Returns(Task.CompletedTask);
+            timerManager
+                .Setup(tm => tm.GetReminderAsync(It.IsAny<ActorReminderToken>()))
+                .Returns(() => Task.FromResult(getReminder));
 
             var host = ActorHost.CreateForTest<CoolTestActor>(new ActorTestOptions(){ TimerManager = timerManager.Object, });
             var actor = new CoolTestActor(host);
@@ -108,6 +112,10 @@ namespace Dapr.Actors
             {
                 await actor.ReceiveReminderAsync(reminder.Name, reminder.State, reminder.DueTime, reminder.Period);
             }
+
+            getReminder = reminder;
+            var reminderFromGet = await actor.GetReminderAsync();
+            Assert.Equal(reminder, reminderFromGet);
 
             // Stop the reminder
             await actor.StopReminderAsync();
@@ -146,6 +154,11 @@ namespace Dapr.Actors
             {
                 var bytes = JsonSerializer.SerializeToUtf8Bytes(message);
                 await this.RegisterReminderAsync("record", bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromSeconds(5));
+            }
+
+            public async Task<IActorReminder> GetReminderAsync()
+            {
+                return await this.GetReminderAsync("record");
             }
 
             public async Task StopReminderAsync()

@@ -5,6 +5,11 @@ linkTitle: ".NET"
 weight: 1000
 description: .NET SDK packages for developing Dapr applications
 no_list: true
+cascade:
+  github_repo: https://github.com/dapr/dotnet-sdk
+  github_subdir: daprdocs/content/en/dotnet-sdk-docs
+  path_base_for_github_subdir: content/en/developing-applications/sdks/dotnet/
+  github_branch: master
 ---
 
 Dapr offers a variety of packages to help with the development of .NET applications. Using them you can create .NET clients, servers, and virtual actors with Dapr.

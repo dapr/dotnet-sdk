@@ -89,6 +89,11 @@ namespace Dapr.E2E.Test
                 arguments.AddRange(new[] { "--urls", $"http://localhost:{appPort.ToString(CultureInfo.InvariantCulture)}", });
             }
 
+            if (configuration.AppJsonSerialization)
+            {
+                arguments.AddRange(new[] { "--json-serialization" });
+            }
+
             // TODO: we don't do any quoting right now because our paths are guaranteed not to contain spaces
             var daprStart = new DaprCommand(this.testOutput)
             {
@@ -128,15 +133,7 @@ namespace Dapr.E2E.Test
         {
             var targetFrameworkName = ((TargetFrameworkAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(TargetFrameworkAttribute), false).FirstOrDefault()).FrameworkName;
             string frameworkMoniker;
-            if (targetFrameworkName == ".NETCoreApp,Version=v3.1")
-            {
-                frameworkMoniker = "netcoreapp3.1";
-            }
-            else if (targetFrameworkName == ".NETCoreApp,Version=v5.0")
-            {
-                frameworkMoniker = "net5";
-            }
-            else if (targetFrameworkName == ".NETCoreApp,Version=v6.0")
+            if (targetFrameworkName == ".NETCoreApp,Version=v6.0")
             {
                 frameworkMoniker = "net6";
             }

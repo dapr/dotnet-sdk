@@ -117,7 +117,7 @@ namespace Dapr.Client
         }
 
         // Internal for testing
-        internal bool TryRewriteUri(Uri uri, [NotNullWhen(true)] out Uri? rewritten)
+        internal bool TryRewriteUri(Uri? uri, [NotNullWhen(true)] out Uri? rewritten)
         {
             // For now the only invalid cases are when the request URI is missing or just silly.
             // We may support additional cases for validation in the future (like an allow-list of App-Ids).

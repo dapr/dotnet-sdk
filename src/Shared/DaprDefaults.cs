@@ -17,10 +17,10 @@ namespace Dapr
 {
     internal static class DaprDefaults
     {
-        private static string httpEndpoint;
-        private static string grpcEndpoint;
-        private static string daprApiToken;
-        private static string appApiToken;
+        private static string httpEndpoint = string.Empty;
+        private static string grpcEndpoint = string.Empty;
+        private static string daprApiToken = string.Empty;
+        private static string appApiToken = string.Empty;
 
         /// <summary>
         /// Get the value of environment variable DAPR_API_TOKEN
@@ -31,11 +31,11 @@ namespace Dapr
             // Lazy-init is safe because this is just populating the default
             // We don't plan to support the case where the user changes environment variables
             // for a running process.
-            if (daprApiToken == null)
+            if (string.IsNullOrEmpty(daprApiToken))
             {
                 // Treat empty the same as null since it's an environment variable
                 var value = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
-                daprApiToken = (value == string.Empty) ? null : value;
+                daprApiToken = string.IsNullOrEmpty(value) ? string.Empty : value;
             }
 
             return daprApiToken;
@@ -47,23 +47,29 @@ namespace Dapr
         /// <returns>The value of environment variable APP_API_TOKEN</returns>
         public static string GetDefaultAppApiToken()
         {
-            if (appApiToken == null)
+            if (string.IsNullOrEmpty(appApiToken))
             {
                 var value = Environment.GetEnvironmentVariable("APP_API_TOKEN");
-                appApiToken = (value == string.Empty) ? null : value;
+                appApiToken = string.IsNullOrEmpty(value) ? string.Empty : value;
             }
 
             return appApiToken;
         }
 
         /// <summary>
-        /// Get the value of environment variable DAPR_HTTP_PORT
+        /// Get the value of HTTP endpoint based off environment variables
         /// </summary>
-        /// <returns>The value of environment variable DAPR_HTTP_PORT</returns>
+        /// <returns>The value of HTTP endpoint based off environment variables</returns>
         public static string GetDefaultHttpEndpoint()
         {
-            if (httpEndpoint == null)
+            if (string.IsNullOrEmpty(httpEndpoint))
             {
+                var endpoint = Environment.GetEnvironmentVariable("DAPR_HTTP_ENDPOINT");
+                if (!string.IsNullOrEmpty(endpoint)) {
+                    httpEndpoint = endpoint;
+                    return httpEndpoint;
+                }
+
                 var port = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT");
                 port = string.IsNullOrEmpty(port) ? "3500" : port;
                 httpEndpoint = $"http://127.0.0.1:{port}";
@@ -73,13 +79,19 @@ namespace Dapr
         }
 
         /// <summary>
-        /// Get the value of environment variable DAPR_GRPC_PORT
+        /// Get the value of gRPC endpoint based off environment variables
         /// </summary>
-        /// <returns>The value of environment variable DAPR_GRPC_PORT</returns>
+        /// <returns>The value of gRPC endpoint based off environment variables</returns>
         public static string GetDefaultGrpcEndpoint()
         {
-            if (grpcEndpoint == null)
+            if (string.IsNullOrEmpty(grpcEndpoint))
             {
+                var endpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
+                if (!string.IsNullOrEmpty(endpoint)) {
+                    grpcEndpoint = endpoint;
+                    return grpcEndpoint;
+                }
+
                 var port = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
                 port = string.IsNullOrEmpty(port) ? "50001" : port;
                 grpcEndpoint = $"http://127.0.0.1:{port}";
