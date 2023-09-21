@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,6 +118,42 @@ namespace Dapr.Actors.Client
             Action action = () => factory.DefaultOptions = null;
 
             action.Should().Throw<ArgumentNullException>();
+        }
+
+        public interface INonActor
+        {
+        }
+
+        [Fact]
+        public void CreateActorProxyForNonActorInterfaces()
+        {
+            var factory = new ActorProxyFactory();
+
+            var actorId = new ActorId("abc");
+
+            Assert.Throws<ArgumentException>(() => factory.CreateActorProxy(actorId, typeof(INonActor), "NonActor"));
+        }
+
+        internal interface IInternalActor : IActor
+        {
+        }
+
+        internal interface IInternalActor2 : IInternalActor
+        {
+        }
+
+        [Fact]
+        public void CreateActorProxyForNonPublicActorInterfaces()
+        {
+            var factory = new ActorProxyFactory();
+
+            var actorId = new ActorId("abc");
+
+            Assert.Throws<ArgumentException>(() => factory.CreateActorProxy<IInternalActor>(actorId, "InternalActor"));
+            Assert.Throws<ArgumentException>(() => factory.CreateActorProxy<IInternalActor2>(actorId, "InternalActor2"));
+
+            Assert.Throws<ArgumentException>(() => factory.CreateActorProxy(actorId, typeof(IInternalActor), "InternalActor"));
+            Assert.Throws<ArgumentException>(() => factory.CreateActorProxy(actorId, typeof(IInternalActor2), "InternalActor2"));
         }
     }
 }

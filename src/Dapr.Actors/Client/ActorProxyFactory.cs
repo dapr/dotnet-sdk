@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 namespace Dapr.Actors.Client
 {
     using System;
+    using System.Globalization;
     using System.Net.Http;
     using Dapr.Actors.Builder;
     using Dapr.Actors.Communication;
@@ -77,6 +78,16 @@ namespace Dapr.Actors.Client
         /// <inheritdoc/>
         public object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null)
         {
+            if (!actorInterfaceType.IsAssignableFrom(actorInterfaceType))
+            {
+                throw new ArgumentException(String.Format(CultureInfo.CurrentCulture, "The actor interface type '{0}' must implement IActor.", actorInterfaceType), nameof(actorInterfaceType));
+            }
+
+            if (!actorInterfaceType.IsVisible)
+            {
+                throw new ArgumentException(String.Format(CultureInfo.CurrentCulture, "The actor interface type '{0}' must be public.", actorInterfaceType), nameof(actorInterfaceType));
+            }
+
             options ??= this.DefaultOptions;
 
             var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
