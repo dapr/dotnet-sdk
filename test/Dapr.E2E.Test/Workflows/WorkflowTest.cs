@@ -15,9 +15,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
-using Dapr.Workflow;
 using FluentAssertions;
-using Google.Api;
 using Xunit;
 
 namespace Dapr.E2E.Test
