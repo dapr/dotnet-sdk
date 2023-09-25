@@ -29,9 +29,20 @@ namespace Dapr
         /// instead of the expected JSON-decoded value of <c>Hello, "world!"</c>.
         /// </para>
         /// <para>
-        /// Setting this property to <c>true</c> restores the previous invalid behavior for compatiblity.
+        /// Setting this property to <c>true</c> restores the previous invalid behavior for compatibility.
         /// </para>
         /// </remarks>
         public bool SuppressJsonDecodingOfTextPayloads { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value that will determine whether the CloudEvent properties will be forwarded as Request Headers.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Setting this property to <c>true</c> will forward the CloudEvent properties as Request Headers in the following format.
+        /// ie. A CloudEvent property <c>"type": "Example.Type"</c> will be added as <c>"Cloudevent.type": "Example.Type"</c> request header.
+        /// </para>
+        /// </remarks>
+        public bool ForwardCloudEventPropertiesAsHeaders { get; set; }
     }
 }
