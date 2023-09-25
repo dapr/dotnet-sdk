@@ -112,13 +112,13 @@ namespace Dapr
             var isBinaryDataSet = false;
             JsonElement data = default;
 
-            if (!string.IsNullOrWhiteSpace(dataPropName))
+            if (dataPropName != null)
             {
                 isDataSet = true;
                 data = json.TryGetProperty(dataPropName, out var dataJsonElement) ? dataJsonElement : data;
             }
 
-            if (!string.IsNullOrWhiteSpace(dataBase64PropName))
+            if (dataBase64PropName != null)
             {
                 isBinaryDataSet = true;
                 data = json.TryGetProperty(dataBase64PropName, out var dataJsonElement) ? dataJsonElement : data;
@@ -232,7 +232,7 @@ namespace Dapr
             
             string contentType;
 
-            if (!string.IsNullOrWhiteSpace(dataContentTypePropName) 
+            if (dataContentTypePropName != null 
                 && json.TryGetProperty(dataContentTypePropName, out var dataContentType) 
                 &&  dataContentType.ValueKind == JsonValueKind.String 
                 && MediaTypeHeaderValue.TryParse(dataContentType.GetString(), out var parsed))
