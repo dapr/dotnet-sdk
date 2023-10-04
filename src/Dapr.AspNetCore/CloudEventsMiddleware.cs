@@ -35,7 +35,8 @@ namespace Dapr
         // are included in the headers by other components of Dapr earlier in the pipeline 
         private static readonly string[] ExcludedPropertiesFromHeaders =
         {
-            "datacontenttype", "data", "data_base64", "pubsubname", "traceparent"
+            CloudEventPropertyNames.DataContentType, CloudEventPropertyNames.Data,
+            CloudEventPropertyNames.DataBase64, "pubsubname", "traceparent"
         };
 
         private readonly RequestDelegate next;
@@ -100,14 +101,28 @@ namespace Dapr
 
             var dataPropName = jsonPropNames
                 .Select(d => d.Name)
-                .FirstOrDefault(d => d.Equals("data", StringComparison.OrdinalIgnoreCase)) ?? "";
+                .FirstOrDefault(d => d.Equals(CloudEventPropertyNames.Data, StringComparison.OrdinalIgnoreCase));
 
             var dataBase64PropName = jsonPropNames
                 .Select(d => d.Name)
-                .FirstOrDefault(d => d.Equals("data_base64", StringComparison.OrdinalIgnoreCase)) ?? "";
+                .FirstOrDefault(d =>
+                    d.Equals(CloudEventPropertyNames.DataBase64, StringComparison.OrdinalIgnoreCase));
 
-            var isDataSet = json.TryGetProperty(dataPropName, out var data);
-            var isBinaryDataSet = json.TryGetProperty(dataBase64PropName, out var binaryData);
+            var isDataSet = false;
+            var isBinaryDataSet = false;
+            JsonElement data = default;
+
+            if (!string.IsNullOrWhiteSpace(dataPropName))
+            {
+                isDataSet = true;
+                data = json.TryGetProperty(dataPropName, out var dataJsonElement) ? dataJsonElement : data;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dataBase64PropName))
+            {
+                isBinaryDataSet = true;
+                data = json.TryGetProperty(dataBase64PropName, out var dataJsonElement) ? dataJsonElement : data;
+            }
 
             if (isDataSet && isBinaryDataSet)
             {
@@ -144,7 +159,7 @@ namespace Dapr
                 // As per the spec, if the implementation determines that the type of data is Binary,
                 // the value MUST be represented as a JSON string expression containing the Base64 encoded
                 // binary value, and use the member name data_base64 to store it inside the JSON object.
-                var decodedBody = binaryData.GetBytesFromBase64();
+                var decodedBody = data.GetBytesFromBase64();
                 body = new MemoryStream(decodedBody);
                 body.Seek(0L, SeekOrigin.Begin);
                 contentType = GetDataContentType(json, out _);
@@ -196,7 +211,8 @@ namespace Dapr
             var dataContentTypePropName = json.EnumerateObject()
                                               .Select(d => d.Name)
                                               .FirstOrDefault(d =>
-                                                  d.Equals("datacontenttype", StringComparison.OrdinalIgnoreCase))
+                                                  d.Equals(CloudEventPropertyNames.DataContentType,
+                                                      StringComparison.OrdinalIgnoreCase))
                                           ?? "";
             string contentType;
 

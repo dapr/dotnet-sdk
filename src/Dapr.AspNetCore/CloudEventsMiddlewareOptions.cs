@@ -40,6 +40,11 @@ namespace Dapr
         /// <remarks>
         /// <para>
         /// Setting this property to <c>true</c> will forward the CloudEvent properties as Request Headers in the following format.
+        /// </para>
+        /// <para>
+        /// Property names will always be prefixed with 'Cloudevent.' and lower case.
+        /// </para>
+        /// <para>
         /// ie. A CloudEvent property <c>"type": "Example.Type"</c> will be added as <c>"Cloudevent.type": "Example.Type"</c> request header.
         /// </para>
         /// </remarks>
