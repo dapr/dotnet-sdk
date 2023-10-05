@@ -11,11 +11,16 @@ namespace ActorGenerator;
 public sealed class ActorClientGenerator : ISourceGenerator
 {
     private const string AttributeText = @"
+        #nullable enable
+
         namespace Dapr.Actors.Generators
         {
             [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
             public sealed class GenerateActorClientAttribute : Attribute
             {
+                public string? Name { get; set; }
+
+                public string? Namespace { get; set; }
             }
         }";
 
@@ -59,10 +64,17 @@ public sealed class ActorClientGenerator : ISourceGenerator
             return;
         }
 
+        var attributeSymbol = context.Compilation.GetTypeByMetadataName("Dapr.Actors.Generators.GenerateActorClientAttribute");
+
         foreach (var interfaceSymbol in actorInterfaceSyntaxReceiver.Models)
         {
             var actorInterfaceTypeName = interfaceSymbol.Name;
             var fullyQualifiedActorInterfaceTypeName = interfaceSymbol.ToString();
+
+            var attributeData = interfaceSymbol.GetAttributes().Single(a => a.AttributeClass?.Equals(attributeSymbol, SymbolEqualityComparer.Default) == true);
+
+            var clientTypeName = GetClientName(interfaceSymbol, attributeData);
+            var namespaceName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Namespace").Value.Value?.ToString() ?? interfaceSymbol.ContainingNamespace.ToDisplayString();
 
             var members = interfaceSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => m.MethodKind == MethodKind.Ordinary).ToList();
 
@@ -72,13 +84,13 @@ public sealed class ActorClientGenerator : ISourceGenerator
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
-namespace {"bar"}
+namespace {namespaceName}
 {{
-    public sealed class {actorInterfaceTypeName}ManualProxy : {fullyQualifiedActorInterfaceTypeName}
+    public sealed class {clientTypeName} : {fullyQualifiedActorInterfaceTypeName}
     {{
         private readonly ActorProxy actorProxy;
 
-        public {actorInterfaceTypeName}ManualProxy(ActorProxy actorProxy)
+        public {clientTypeName}(ActorProxy actorProxy)
         {{
             this.actorProxy = actorProxy;
         }}
@@ -108,6 +120,15 @@ namespace {"bar"}
     }
 
     #endregion
+
+    private static string GetClientName(INamedTypeSymbol interfaceSymbol, AttributeData attributeData)
+    {
+        string? clientName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString();
+        
+        clientName ??= $"{(interfaceSymbol.Name.StartsWith("I") ? interfaceSymbol.Name.Substring(1) : interfaceSymbol.Name)}Client";
+
+        return clientName;
+    }
 
     private static string GenerateMethodImplementation(IMethodSymbol method)
     {
