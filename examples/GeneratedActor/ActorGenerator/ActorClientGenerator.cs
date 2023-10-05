@@ -105,12 +105,14 @@ namespace {"bar"}
             throw new InvalidOperationException("Return type is not a named type symbol.");
         }
 
+        var parameterType = method.Parameters.FirstOrDefault();
+
         var returnTypeArgument = returnType.TypeArguments.FirstOrDefault();
 
         if (returnTypeArgument is null)
         {
             return $@"
-            public {returnType.ToString()} {methodName}()
+            public {returnType.ToString()} {methodName}({(parameterType is not null ? $"{parameterType.Type.ToString()} {parameterType.Name}" : "")})
             {{
                 return this.actorProxy.InvokeMethodAsync(""{methodName}"");
             }}
@@ -119,7 +121,7 @@ namespace {"bar"}
         else
         {
             return $@"
-            public {returnType} {methodName}()
+            public {returnType} {methodName}({(parameterType is not null ? $"{parameterType.Type.ToString()} {parameterType.Name}" : "")})
             {{
                 return this.actorProxy.InvokeMethodAsync<{returnTypeArgument.ToString()}>(""{methodName}"");
             }}
