@@ -88,7 +88,7 @@ async Task TestGeneratedProxyAsync()
 
     var client = new MyPrivateActorClient(proxy);
 
-    var state = await client.GetStateAsync();
+    var state = await client.GetPrivateStateAsync();
 
     await client.SetStateAsync(new MyPrivateState("Hello, World!"));
 }

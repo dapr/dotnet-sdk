@@ -10,7 +10,8 @@ internal sealed record MyPrivateState(string Name);
 [GenerateActorClient]
 internal interface IMyPrivateActor
 {
-    Task<MyPrivateState> GetStateAsync();
+    [ActorMethod(Name = "GetStateAsync")]
+    Task<MyPrivateState> GetPrivateStateAsync();
 
     Task SetStateAsync(MyPrivateState state);
 }
