@@ -1,15 +1,14 @@
 using Dapr.Actors;
+using Dapr.Actors.Generators;
 
 namespace GeneratedActor;
 
 public sealed record MyState(string Name);
 
-/// <summary>
-/// 
-/// </summary>
 /// <remarks>
 /// Non-remoted invocations have a strict limit on a single argument; CancellationToken is not supported.
 /// </remarks>
+[GenerateActorClient]
 public interface IMyPublicActor : IActor
 {
     Task<MyState> GetStateAsync();

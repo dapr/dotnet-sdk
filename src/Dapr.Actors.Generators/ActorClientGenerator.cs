@@ -10,26 +10,40 @@ namespace ActorGenerator;
 [Generator]
 public sealed class ActorClientGenerator : ISourceGenerator
 {
+    private const string AttributeText = @"
+        namespace Dapr.Actors.Generators
+        {
+            [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
+            public sealed class GenerateActorClientAttribute : Attribute
+            {
+            }
+        }";
+
     private sealed class ActorInterfaceSyntaxReceiver : ISyntaxContextReceiver
     {
-        private readonly List<InterfaceDeclarationSyntax> models = new();
+        private readonly List<INamedTypeSymbol> models = new();
 
-        public IEnumerable<InterfaceDeclarationSyntax> Models => this.models;
+        public IEnumerable<INamedTypeSymbol> Models => this.models;
 
         #region ISyntaxContextReceiver Members
 
         public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
         {
-            if (context.Node is not InterfaceDeclarationSyntax interfaceDeclarationSyntax || interfaceDeclarationSyntax.BaseList is null)
+            if (context.Node is not InterfaceDeclarationSyntax interfaceDeclarationSyntax
+                || interfaceDeclarationSyntax.AttributeLists.Count == 0)
             {
                 return;
             }
 
-            // TODO: Better qualify the IActor check.
-            if (interfaceDeclarationSyntax.BaseList.Types.Any(t => t.Type.ToString() == "IActor"))
+            var interfaceSymbol = context.SemanticModel.GetDeclaredSymbol(interfaceDeclarationSyntax) as INamedTypeSymbol;
+
+            if (interfaceSymbol is null
+                || !interfaceSymbol.GetAttributes().Any(a => a.AttributeClass?.ToString() == "Dapr.Actors.Generators.GenerateActorClientAttribute"))
             {
-                this.models.Add(interfaceDeclarationSyntax);
+                return;
             }
+
+            this.models.Add(interfaceSymbol);
         }
 
         #endregion
@@ -45,20 +59,12 @@ public sealed class ActorClientGenerator : ISourceGenerator
             return;
         }
 
-        foreach (var model in actorInterfaceSyntaxReceiver.Models)
+        foreach (var interfaceSymbol in actorInterfaceSyntaxReceiver.Models)
         {
-            var semanticModel = context.Compilation.GetSemanticModel(model.SyntaxTree);
-            var symbol = semanticModel.GetDeclaredSymbol(model) as INamedTypeSymbol;
+            var actorInterfaceTypeName = interfaceSymbol.Name;
+            var fullyQualifiedActorInterfaceTypeName = interfaceSymbol.ToString();
 
-            if (symbol is null)
-            {
-                continue;
-            }
-
-            var actorInterfaceTypeName = symbol.Name;
-            var fullyQualifiedActorInterfaceTypeName = symbol.ToString();
-
-            var members = symbol.GetMembers().OfType<IMethodSymbol>().Where(m => m.MethodKind == MethodKind.Ordinary).ToList();
+            var members = interfaceSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => m.MethodKind == MethodKind.Ordinary).ToList();
 
             var methodImplementations = String.Join("\n", members.Select(GenerateMethodImplementation));
 
@@ -95,6 +101,8 @@ namespace {"bar"}
             System.Threading.Thread.Sleep(500);
         }
         */
+
+        context.RegisterForPostInitialization(i => i.AddSource("GenerateActorClientAttribute.g.cs", AttributeText));
 
         context.RegisterForSyntaxNotifications(() => new ActorInterfaceSyntaxReceiver());
     }
