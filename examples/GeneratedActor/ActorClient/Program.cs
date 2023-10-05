@@ -32,6 +32,15 @@ catch (Exception ex)
     Console.WriteLine(ex);
 }
 
+try
+{
+    await TestGeneratedProxyAsync();
+}
+catch (Exception ex)
+{
+    Console.WriteLine(ex);
+}
+
 Console.WriteLine("Hello, World!");
 
 /*
@@ -65,6 +74,19 @@ async Task TestNonRemotedManualProxyAsync()
     var proxy = ActorProxy.Create(actorId, actorType /*, new ActorProxyOptions { UseJsonSerialization = true } */);
 
     var client = new MyPublicActorManualProxy(proxy);
+
+    var state = await client.GetStateAsync();
+
+    await client.SetStateAsync(new MyState("Hello, World!"));
+}
+
+async Task TestGeneratedProxyAsync()
+{
+    Console.WriteLine("Testing generated manual proxy...");
+
+    var proxy = ActorProxy.Create(actorId, actorType /*, new ActorProxyOptions { UseJsonSerialization = true } */);
+
+    var client = new bar.IMyPublicActorManualProxy(proxy);
 
     var state = await client.GetStateAsync();
 

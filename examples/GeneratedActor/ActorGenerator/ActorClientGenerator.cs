@@ -84,10 +84,12 @@ namespace {"bar"}
 
     public void Initialize(GeneratorInitializationContext context)
     {
+        /*
         while (!Debugger.IsAttached)
         {
             System.Threading.Thread.Sleep(500);
         }
+        */
 
         context.RegisterForSyntaxNotifications(() => new ActorInterfaceSyntaxReceiver());
     }
@@ -96,7 +98,6 @@ namespace {"bar"}
 
     private static string GenerateMethodImplementation(IMethodSymbol method)
     {
-        string methodName = method.Name;
         var returnType = method.ReturnType as INamedTypeSymbol;
 
         if (returnType is null)
@@ -105,27 +106,56 @@ namespace {"bar"}
             throw new InvalidOperationException("Return type is not a named type symbol.");
         }
 
+        if (method.Parameters.Length > 1)
+        {
+            throw new InvalidOperationException("Too many parameters.");
+        }
+
+        string methodName = method.Name;
+
         var parameterType = method.Parameters.FirstOrDefault();
 
         var returnTypeArgument = returnType.TypeArguments.FirstOrDefault();
 
-        if (returnTypeArgument is null)
+        if (returnTypeArgument is not null && parameterType is not null)
         {
             return $@"
-            public {returnType.ToString()} {methodName}({(parameterType is not null ? $"{parameterType.Type.ToString()} {parameterType.Name}" : "")})
+            public {returnType} {methodName}({parameterType.Type} {parameterType.Name})
+            {{
+                return this.actorProxy.InvokeMethodAsync<{parameterType.Type}, {returnTypeArgument}>(""{methodName}"", {parameterType.Name});
+            }}
+            ";
+        }
+        else if (returnTypeArgument is null && parameterType is null)
+        {
+            return $@"
+            public {returnType} {methodName}()
             {{
                 return this.actorProxy.InvokeMethodAsync(""{methodName}"");
             }}
             ";
         }
-        else
+        else if (returnTypeArgument is null && parameterType is not null)
         {
             return $@"
-            public {returnType} {methodName}({(parameterType is not null ? $"{parameterType.Type.ToString()} {parameterType.Name}" : "")})
+            public {returnType} {methodName}({parameterType.Type} {parameterType.Name})
             {{
-                return this.actorProxy.InvokeMethodAsync<{returnTypeArgument.ToString()}>(""{methodName}"");
+                return this.actorProxy.InvokeMethodAsync(""{methodName}"", {parameterType.Name});
             }}
             ";
+        }
+        else if (returnTypeArgument is not null && parameterType is null)
+        {
+            return $@"
+            public {returnType} {methodName}()
+            {{
+                return this.actorProxy.InvokeMethodAsync<{returnTypeArgument}>(""{methodName}"");
+            }}
+            ";
+        }
+        else
+        {
+            throw new InvalidOperationException("Unexpected case.");
         }
     }
 }
