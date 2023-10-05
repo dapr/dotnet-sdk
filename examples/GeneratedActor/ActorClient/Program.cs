@@ -82,13 +82,13 @@ async Task TestNonRemotedManualProxyAsync()
 
 async Task TestGeneratedProxyAsync()
 {
-    Console.WriteLine("Testing generated manual proxy...");
+    Console.WriteLine("Testing generated proxy...");
 
     var proxy = ActorProxy.Create(actorId, actorType /*, new ActorProxyOptions { UseJsonSerialization = true } */);
 
-    var client = new bar.IMyPublicActorManualProxy(proxy);
+    var client = new MyPrivateActorClient(proxy);
 
     var state = await client.GetStateAsync();
 
-    await client.SetStateAsync(new MyState("Hello, World!"));
+    await client.SetStateAsync(new MyPrivateState("Hello, World!"));
 }

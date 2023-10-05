@@ -16,7 +16,7 @@ public sealed class ActorClientGenerator : ISourceGenerator
         namespace Dapr.Actors.Generators
         {
             [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
-            public sealed class GenerateActorClientAttribute : Attribute
+            internal sealed class GenerateActorClientAttribute : Attribute
             {
                 public string? Name { get; set; }
 
@@ -73,6 +73,7 @@ public sealed class ActorClientGenerator : ISourceGenerator
 
             var attributeData = interfaceSymbol.GetAttributes().Single(a => a.AttributeClass?.Equals(attributeSymbol, SymbolEqualityComparer.Default) == true);
 
+            var accessibility = GetClientAccessibility(interfaceSymbol);
             var clientTypeName = GetClientName(interfaceSymbol, attributeData);
             var namespaceName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Namespace").Value.Value?.ToString() ?? interfaceSymbol.ContainingNamespace.ToDisplayString();
 
@@ -86,7 +87,7 @@ using Dapr.Actors.Client;
 
 namespace {namespaceName}
 {{
-    public sealed class {clientTypeName} : {fullyQualifiedActorInterfaceTypeName}
+    {accessibility} sealed class {clientTypeName} : {fullyQualifiedActorInterfaceTypeName}
     {{
         private readonly ActorProxy actorProxy;
 
@@ -120,6 +121,19 @@ namespace {namespaceName}
     }
 
     #endregion
+
+    private static string GetClientAccessibility(INamedTypeSymbol interfaceSymbol)
+    {
+        return interfaceSymbol.DeclaredAccessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.ProtectedAndInternal => "protected internal",
+            _ => throw new InvalidOperationException("Unexpected accessibility.")
+        };
+    }
 
     private static string GetClientName(INamedTypeSymbol interfaceSymbol, AttributeData attributeData)
     {
