@@ -4,6 +4,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ActorGenerator;
 
+/// <summary>
+/// Generates strongly-typed actor clients that use the non-remoting actor proxy.
+/// </summary>
 [Generator]
 public sealed class ActorClientGenerator : ISourceGenerator
 {
@@ -34,6 +37,7 @@ public sealed class ActorClientGenerator : ISourceGenerator
 
     #region ISourceGenerator Members
 
+    /// <inheritdoc />
     public void Execute(GeneratorExecutionContext context)
     {
         if (context.SyntaxContextReceiver is not ActorInterfaceSyntaxReceiver actorInterfaceSyntaxReceiver)
@@ -82,6 +86,7 @@ namespace {"bar"}
         }
     }
 
+    /// <inheritdoc />
     public void Initialize(GeneratorInitializationContext context)
     {
         /*

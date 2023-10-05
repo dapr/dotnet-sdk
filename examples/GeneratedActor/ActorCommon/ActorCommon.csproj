@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ActorGenerator\ActorGenerator.csproj"
+    <ProjectReference Include="..\..\..\src\Dapr.Actors.Generators\Dapr.Actors.Generators.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
