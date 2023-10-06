@@ -129,7 +129,7 @@ namespace {namespaceName}
 }}
 ";
             // Add the source code to the compilation
-            context.AddSource($"{actorInterfaceTypeName}.g.cs", source);
+            context.AddSource($"{namespaceName}.{clientTypeName}.g.cs", source);
         }
     }
 

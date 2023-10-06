@@ -14,6 +14,8 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
     {
         public Test()
         {
+            // NOTE: There's no Net70 yet, so we're using Net60 for now. Hopefully it "just works".
+            this.ReferenceAssemblies = Microsoft.CodeAnalysis.Testing.ReferenceAssemblies.Net.Net60;
         }
 
         protected override CompilationOptions CreateCompilationOptions()
