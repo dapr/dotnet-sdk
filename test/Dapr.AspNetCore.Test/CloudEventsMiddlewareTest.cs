@@ -138,6 +138,7 @@ namespace Dapr.AspNetCore.Test
                 ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
 
                 httpContext.Request.Headers.Should().ContainKey("Cloudevent.type").WhichValue.Should().BeEquivalentTo("Test.Type");
+                httpContext.Request.Headers.Should().ContainKey("Cloudevent.subject").WhichValue.Should().BeEquivalentTo("Test.Subject");
                 return Task.CompletedTask;
             });
 
@@ -146,8 +147,84 @@ namespace Dapr.AspNetCore.Test
             var context = new DefaultHttpContext();
             context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
             context.Request.Body = dataContentType == null ?
-                MakeBody("{ \"type\": \"Test.Type\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
-                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+                MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+
+            await pipeline.Invoke(context);
+        }
+        
+        [Theory]
+        [InlineData(null, null)] // assumes application/json + utf8
+        [InlineData("application/json", null)] // assumes utf8
+        [InlineData("application/json", "utf-8")]
+        [InlineData("application/json", "UTF-8")]
+        [InlineData("application/person+json", "UTF-16")] // arbitrary content type and charset
+        public async Task InvokeAsync_ForwardsIncludedJsonPropertiesAsHeaders(string dataContentType, string charSet)
+        {
+            var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents(new CloudEventsMiddlewareOptions
+            {
+                ForwardCloudEventPropertiesAsHeaders = true,
+                IncludedCloudEventPropertiesAsHeaders = new []{"type"}
+            });
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be(dataContentType ?? "application/json");
+                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+
+                httpContext.Request.Headers.Should().ContainKey("Cloudevent.type").WhichValue.Should().BeEquivalentTo("Test.Type");
+                httpContext.Request.Headers.Should().NotContainKey("Cloudevent.subject");
+                return Task.CompletedTask;
+            });
+
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
+            context.Request.Body = dataContentType == null ?
+                MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+
+            await pipeline.Invoke(context);
+        }
+        
+        [Theory]
+        [InlineData(null, null)] // assumes application/json + utf8
+        [InlineData("application/json", null)] // assumes utf8
+        [InlineData("application/json", "utf-8")]
+        [InlineData("application/json", "UTF-8")]
+        [InlineData("application/person+json", "UTF-16")] // arbitrary content type and charset
+        public async Task InvokeAsync_DoesNotForwardExcludedJsonPropertiesAsHeaders(string dataContentType, string charSet)
+        {
+            var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
+            var app = new ApplicationBuilder(null);
+            app.UseCloudEvents(new CloudEventsMiddlewareOptions
+            {
+                ForwardCloudEventPropertiesAsHeaders = true,
+                ExcludedCloudEventPropertiesFromHeaders = new []{"type"}
+            });
+
+            // Do verification in the scope of the middleware
+            app.Run(httpContext =>
+            {
+                httpContext.Request.ContentType.Should().Be(dataContentType ?? "application/json");
+                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+
+                httpContext.Request.Headers.Should().NotContainKey("Cloudevent.type");
+                httpContext.Request.Headers.Should().ContainKey("Cloudevent.subject").WhichValue.Should().BeEquivalentTo("Test.Subject");
+                return Task.CompletedTask;
+            });
+
+            var pipeline = app.Build();
+
+            var context = new DefaultHttpContext();
+            context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
+            context.Request.Body = dataContentType == null ?
+                MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
+                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
 
             await pipeline.Invoke(context);
         }
