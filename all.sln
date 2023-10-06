@@ -114,6 +114,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorGenerator", "examples\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorService", "examples\GeneratedActor\ActorService\ActorService.csproj", "{7C06FE2D-6C62-48F5-A505-F0D715C554DE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Generators.Test", "test\Dapr.Actors.Generators.Test\Dapr.Actors.Generators.Test.csproj", "{AF89083D-4715-42E6-93E9-38497D12A8A6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -274,6 +276,10 @@ Global
 		{7C06FE2D-6C62-48F5-A505-F0D715C554DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7C06FE2D-6C62-48F5-A505-F0D715C554DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7C06FE2D-6C62-48F5-A505-F0D715C554DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF89083D-4715-42E6-93E9-38497D12A8A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF89083D-4715-42E6-93E9-38497D12A8A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF89083D-4715-42E6-93E9-38497D12A8A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF89083D-4715-42E6-93E9-38497D12A8A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -324,6 +330,7 @@ Global
 		{CB903D21-4869-42EF-BDD6-5B1CFF674337} = {7592AFA4-426B-42F3-AE82-957C86814482}
 		{980B5FD8-0107-41F7-8FAD-E4E8BAE8A625} = {7592AFA4-426B-42F3-AE82-957C86814482}
 		{7C06FE2D-6C62-48F5-A505-F0D715C554DE} = {7592AFA4-426B-42F3-AE82-957C86814482}
+		{AF89083D-4715-42E6-93E9-38497D12A8A6} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
