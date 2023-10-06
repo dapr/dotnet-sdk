@@ -223,17 +223,19 @@ namespace Dapr
 
         private static string GetDataContentType(JsonElement json, out bool isJson)
         {
-            var dataContentTypePropName = json.EnumerateObject()
-                                              .Select(d => d.Name)
-                                              .FirstOrDefault(d =>
-                                                  d.Equals(CloudEventPropertyNames.DataContentType,
-                                                      StringComparison.OrdinalIgnoreCase))
-                                          ?? "";
+            var dataContentTypePropName = json
+                .EnumerateObject()
+                .Select(d => d.Name)
+                .FirstOrDefault(d =>
+                    d.Equals(CloudEventPropertyNames.DataContentType,
+                        StringComparison.OrdinalIgnoreCase));
+            
             string contentType;
 
-            if (json.TryGetProperty(dataContentTypePropName, out var dataContentType) &&
-                dataContentType.ValueKind == JsonValueKind.String &&
-                MediaTypeHeaderValue.TryParse(dataContentType.GetString(), out var parsed))
+            if (!string.IsNullOrWhiteSpace(dataContentTypePropName) 
+                && json.TryGetProperty(dataContentTypePropName, out var dataContentType) 
+                &&  dataContentType.ValueKind == JsonValueKind.String 
+                && MediaTypeHeaderValue.TryParse(dataContentType.GetString(), out var parsed))
             {
                 contentType = dataContentType.GetString();
                 isJson =
