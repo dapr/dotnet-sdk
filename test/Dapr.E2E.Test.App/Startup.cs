@@ -70,6 +70,11 @@ namespace Dapr.E2E.Test
 
                     var itemToPurchase = input;
 
+                    // There are 5 of the same event to test that multiple similarly-named events can be raised in parallel
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
                     itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
 
                     // In real life there are other steps related to placing an order, like reserving
