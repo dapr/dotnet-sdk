@@ -198,8 +198,23 @@ namespace Dapr
                 return;
             }
 
-            foreach (var jsonProperty in jsonPropNames
-                         .Where(d => !ExcludedPropertiesFromHeaders.Contains(d.Name.ToLowerInvariant())))
+            var filteredPropertyNames = jsonPropNames
+                .Where(d => !ExcludedPropertiesFromHeaders.Contains(d.Name, StringComparer.OrdinalIgnoreCase));
+
+            if (options.IncludedCloudEventPropertiesAsHeaders != null)
+            {
+                filteredPropertyNames = filteredPropertyNames
+                    .Where(d => options.IncludedCloudEventPropertiesAsHeaders
+                        .Contains(d.Name, StringComparer.OrdinalIgnoreCase));
+            }
+            else if (options.ExcludedCloudEventPropertiesFromHeaders != null)
+            {
+                filteredPropertyNames = filteredPropertyNames
+                    .Where(d => !options.ExcludedCloudEventPropertiesFromHeaders
+                        .Contains(d.Name, StringComparer.OrdinalIgnoreCase));
+            }
+
+            foreach (var jsonProperty in filteredPropertyNames)
             {
                 httpContext.Request.Headers.TryAdd($"Cloudevent.{jsonProperty.Name.ToLowerInvariant()}",
                     jsonProperty.Value.GetRawText().Trim('\"'));

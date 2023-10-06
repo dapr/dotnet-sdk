@@ -39,15 +39,39 @@ namespace Dapr
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Setting this property to <c>true</c> will forward the CloudEvent properties as Request Headers in the following format.
+        /// Setting this property to <c>true</c> will forward all the CloudEvent properties as Request Headers.
+        /// For more fine grained control of which properties are forwarded you can use either <see cref="IncludedCloudEventPropertiesAsHeaders"/> or <see cref="ExcludedCloudEventPropertiesFromHeaders"/>.
         /// </para>
         /// <para>
-        /// Property names will always be prefixed with 'Cloudevent.' and lower case.
+        /// Property names will always be prefixed with 'Cloudevent.' and be lower case in the following format:<c>"Cloudevent.type"</c>
         /// </para>
         /// <para>
         /// ie. A CloudEvent property <c>"type": "Example.Type"</c> will be added as <c>"Cloudevent.type": "Example.Type"</c> request header.
         /// </para>
         /// </remarks>
         public bool ForwardCloudEventPropertiesAsHeaders { get; set; }
+
+        /// <summary>
+        /// Gets or sets an array of CloudEvent property names that will be forwarded as Request Headers if <see cref="ForwardCloudEventPropertiesAsHeaders"/> is set to <c>true</c>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Note: Setting this will only forwarded the listed property names.
+        /// </para>
+        /// <para>
+        /// ie: <c>["type", "subject"]</c>
+        /// </para>
+        /// </remarks>
+        public string[] IncludedCloudEventPropertiesAsHeaders { get; set; }
+        
+        /// <summary>
+        /// Gets or sets an array of CloudEvent property names that will not be forwarded as Request Headers if <see cref="ForwardCloudEventPropertiesAsHeaders"/> is set to <c>true</c>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// ie: <c>["type", "subject"]</c>
+        /// </para>
+        /// </remarks>
+        public string[] ExcludedCloudEventPropertiesFromHeaders { get; set; }
     }
 }
