@@ -1,6 +1,8 @@
 namespace Dapr.Actors.Generators;
 
 using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Text;
 using VerifyCS = CSharpSourceGeneratorVerifier<ActorClientGenerator>;
 
@@ -44,11 +46,10 @@ public sealed class ActorClientGeneratorTests
 
     private static readonly (string, SourceText) GenerateActorClientAttributeSource = ("Dapr.Actors.Generators/Dapr.Actors.Generators.ActorClientGenerator/Dapr.Actors.Generators.GenerateActorClientAttribute.g.cs", SourceText.From(GenerateActorClientAttributeText, Encoding.UTF8));
 
-    private static VerifyCS.Test CreateTest(string originalSource, string generatedName, string generatedSource)
+    private static VerifyCS.Test CreateTest(string originalSource, string? generatedName = null, string? generatedSource = null)
     {
-        return new VerifyCS.Test
+        var test = new VerifyCS.Test
         {
-
             TestState =
             {
                 AdditionalReferences = { AdditionalMetadataReferences.Actors },
@@ -56,11 +57,17 @@ public sealed class ActorClientGeneratorTests
                 GeneratedSources =
                 {
                     ActorMethodAttributeSource,
-                    GenerateActorClientAttributeSource,
-                    ($"Dapr.Actors.Generators/Dapr.Actors.Generators.ActorClientGenerator/{generatedName}", SourceText.From(generatedSource, Encoding.UTF8))
+                    GenerateActorClientAttributeSource
                 },
             }
         };
+
+        if (generatedName is not null && generatedSource is not null)
+        {
+            test.TestState.GeneratedSources.Add(($"Dapr.Actors.Generators/Dapr.Actors.Generators.ActorClientGenerator/{generatedName}", SourceText.From(generatedSource, Encoding.UTF8)));
+        }
+
+        return test;
     }
 
     [Fact]
@@ -325,5 +332,65 @@ namespace Test
 ";
 
         await CreateTest(originalSource, "Test.TestActorClient.g.cs", generatedSource).RunAsync();
+    }
+
+    [Fact]
+    public async Task TestMethodWithTooManyArguments()
+    {
+        var originalSource = @"
+using Dapr.Actors.Generators;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Test
+{
+    public record TestValue(int Value);
+
+    [GenerateActorClient]
+    public interface ITestActor
+    {
+        Task TestMethodAsync(int value1, int value2);
+    }
+}
+";
+
+        var test = CreateTest(originalSource);
+
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult("DAPR0001", DiagnosticSeverity.Error)
+                .WithSpan(13, 14, 13, 29)
+                .WithMessage("Only methods with a single argument or a single argument followed by a cancellation token are supported."));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task TestMethodWithFarTooManyArguments()
+    {
+        var originalSource = @"
+using Dapr.Actors.Generators;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Test
+{
+    public record TestValue(int Value);
+
+    [GenerateActorClient]
+    public interface ITestActor
+    {
+        Task TestMethodAsync(int value1, int value2, CancellationToken cancellationToken);
+    }
+}
+";
+
+        var test = CreateTest(originalSource);
+
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult("DAPR0001", DiagnosticSeverity.Error)
+                .WithSpan(13, 14, 13, 29)
+                .WithMessage("Only methods with a single argument or a single argument followed by a cancellation token are supported."));
+
+        await test.RunAsync();
     }
 }
