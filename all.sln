@@ -110,7 +110,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorClient", "examples\Gen
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorCommon", "examples\GeneratedActor\ActorCommon\ActorCommon.csproj", "{CB903D21-4869-42EF-BDD6-5B1CFF674337}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorGenerator", "examples\GeneratedActor\ActorGenerator\ActorGenerator.csproj", "{980B5FD8-0107-41F7-8FAD-E4E8BAE8A625}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Generators", "src/Dapr.Actors.Generators/Dapr.Actors.Generators.csproj", "{980B5FD8-0107-41F7-8FAD-E4E8BAE8A625}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorService", "examples\GeneratedActor\ActorService\ActorService.csproj", "{7C06FE2D-6C62-48F5-A505-F0D715C554DE}"
 EndProject
