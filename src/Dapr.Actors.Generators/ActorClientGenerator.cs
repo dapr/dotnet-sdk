@@ -180,14 +180,6 @@ namespace {namespaceName}
 
     private static string GenerateMethodImplementation(IMethodSymbol method, INamedTypeSymbol generateActorClientAttributeSymbol, INamedTypeSymbol cancellationTokenSymbol)
     {
-        var returnType = method.ReturnType as INamedTypeSymbol;
-
-        if (returnType is null)
-        {
-            // TODO: Return a diagnostic instead.
-            throw new InvalidOperationException("Return type is not a named type symbol.");
-        }
-
         int cancellationTokenIndex = method.Parameters.IndexOf(p => p.Type.Equals(cancellationTokenSymbol, SymbolEqualityComparer.Default));
 
         if (cancellationTokenIndex != -1 && cancellationTokenIndex != method.Parameters.Length - 1)
@@ -207,65 +199,25 @@ namespace {namespaceName}
 
         var attributeData = method.GetAttributes().SingleOrDefault(a => a.AttributeClass?.Equals(generateActorClientAttributeSymbol, SymbolEqualityComparer.Default) == true);
 
-        string methodName = method.Name;
+        string? actualMethodName = attributeData?.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString() ?? method.Name;
 
-        string? actualMethodName = attributeData?.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString();
-        
-        actualMethodName ??= methodName;
+        var requestParameter = method.Parameters.Length > 0 && cancellationTokenIndex != 0 ? method.Parameters[0] : null;
 
-        var cancellationTokenParameter = cancellationTokenIndex != -1 ? method.Parameters[cancellationTokenIndex] : null;
+        var returnTypeArgument = (method.ReturnType as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
 
-        var firstParameter = method.Parameters.FirstOrDefault();
+        string argumentDefinitions = String.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}"));
+        string argumentList = String.Join(", ", new[] { $@"""{actualMethodName}""" }.Concat(method.Parameters.Select(p => p.Name)));
 
-        var parameterType = firstParameter is not null && !SymbolEqualityComparer.Default.Equals(firstParameter, cancellationTokenParameter) ? firstParameter : null;
+        string templateArgs =
+            returnTypeArgument is not null
+                ? $"<{(requestParameter is not null ? $"{requestParameter.Type}, " : "")}{returnTypeArgument}>"
+                : "";
 
-        var returnTypeArgument = returnType.TypeArguments.FirstOrDefault();
-
-        if (returnTypeArgument is not null && parameterType is not null)
-        {
-            return
-        $@"public {returnType} {methodName}({CreateArgumentDefinitions(method.Parameters)})
+        return
+        $@"public {method.ReturnType} {method.Name}({argumentDefinitions})
         {{
-            return this.actorProxy.InvokeMethodAsync<{parameterType.Type}, {returnTypeArgument}>({CreateArgumentList(actualMethodName, method.Parameters)});
+            return this.actorProxy.InvokeMethodAsync{templateArgs}({argumentList});
         }}";
-        }
-        else if (returnTypeArgument is null && parameterType is null)
-        {
-            return
-        $@"public {returnType} {methodName}({CreateArgumentDefinitions(method.Parameters)})
-        {{
-            return this.actorProxy.InvokeMethodAsync({CreateArgumentList(actualMethodName, method.Parameters)});
-        }}";}
-        else if (returnTypeArgument is null && parameterType is not null)
-        {
-            return
-        $@"public {returnType} {methodName}({CreateArgumentDefinitions(method.Parameters)})
-        {{
-            return this.actorProxy.InvokeMethodAsync({CreateArgumentList(actualMethodName, method.Parameters)});
-        }}";
-        }
-        else if (returnTypeArgument is not null && parameterType is null)
-        {
-            return
-        $@"public {returnType} {methodName}({CreateArgumentDefinitions(method.Parameters)})
-        {{
-            return this.actorProxy.InvokeMethodAsync<{returnTypeArgument}>({CreateArgumentList(actualMethodName, method.Parameters)});
-        }}";
-        }
-        else
-        {
-            throw new InvalidOperationException("Unexpected case.");
-        }
-    }
-
-    private static string CreateArgumentDefinitions(IEnumerable<IParameterSymbol> parameters)
-    {
-        return String.Join(", ", parameters.Select(p => $"{p.Type} {p.Name}"));
-    }
-
-    private static string CreateArgumentList(string methodName, IEnumerable<IParameterSymbol> parameters)
-    {
-        return String.Join(", ", new[] { $@"""{methodName}""" }.Concat(parameters.Select(p => p.Name)));
     }
 }
 
