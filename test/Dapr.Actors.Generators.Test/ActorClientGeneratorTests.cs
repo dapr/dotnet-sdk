@@ -335,6 +335,36 @@ namespace Test
     }
 
     [Fact]
+    public async Task TestMethodWithReversedArguments()
+    {
+        var originalSource = @"
+using Dapr.Actors.Generators;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Test
+{
+    public record TestValue(int Value);
+
+    [GenerateActorClient]
+    public interface ITestActor
+    {
+        Task TestMethodAsync(CancellationToken cancellationToken, int value);
+    }
+}
+";
+
+        var test = CreateTest(originalSource);
+
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult("DAPR0001", DiagnosticSeverity.Error)
+                .WithSpan(13, 48, 13, 65)
+                .WithMessage("Cancellation tokens must be the last argument."));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task TestMethodWithTooManyArguments()
     {
         var originalSource = @"
@@ -357,7 +387,7 @@ namespace Test
         var test = CreateTest(originalSource);
 
         test.TestState.ExpectedDiagnostics.Add(
-            new DiagnosticResult("DAPR0001", DiagnosticSeverity.Error)
+            new DiagnosticResult("DAPR0002", DiagnosticSeverity.Error)
                 .WithSpan(13, 14, 13, 29)
                 .WithMessage("Only methods with a single argument or a single argument followed by a cancellation token are supported."));
 
@@ -387,7 +417,7 @@ namespace Test
         var test = CreateTest(originalSource);
 
         test.TestState.ExpectedDiagnostics.Add(
-            new DiagnosticResult("DAPR0001", DiagnosticSeverity.Error)
+            new DiagnosticResult("DAPR0002", DiagnosticSeverity.Error)
                 .WithSpan(13, 14, 13, 29)
                 .WithMessage("Only methods with a single argument or a single argument followed by a cancellation token are supported."));
 

@@ -194,7 +194,18 @@ namespace {namespaceName}
 
         if (cancellationTokenIndex != -1 && cancellationTokenIndex != method.Parameters.Length - 1)
         {
-            throw new InvalidOperationException("Cancellation tokens must be the last argument.");
+            throw new DiagnosticsException(new[]
+            {
+                Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DAPR0001",
+                        "Invalid method signature.",
+                        "Cancellation tokens must be the last argument.",
+                        "Dapr.Actors.Generators",
+                        DiagnosticSeverity.Error,
+                        true),
+                    method.Parameters[cancellationTokenIndex].Locations.First())
+            });
         }
 
         if ((method.Parameters.Length > 1 && cancellationTokenIndex == -1)
@@ -204,7 +215,7 @@ namespace {namespaceName}
             {
                 Diagnostic.Create(
                     new DiagnosticDescriptor(
-                        "DAPR0001",
+                        "DAPR0002",
                         "Invalid method signature.",
                         "Only methods with a single argument or a single argument followed by a cancellation token are supported.",
                         "Dapr.Actors.Generators",
