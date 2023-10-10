@@ -57,7 +57,7 @@ namespace Dapr.Actors
             this.httpClient.Timeout = requestTimeout ?? this.httpClient.Timeout;
         }
 
-        public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
+        public async Task<ActorStateResponse<string>> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
 
@@ -72,7 +72,18 @@ namespace Dapr.Actors
 
             using var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
             var stringResponse = await response.Content.ReadAsStringAsync();
-            return stringResponse;
+
+            var ttlExpireTime = new DateTime();
+            if (response.Headers.TryGetValues(Constants.TTLResponseHeaderName, out IEnumerable<string> headerValues))
+            {
+                var ttlExpireTimeString = headerValues.First();
+                if (!string.IsNullOrEmpty(ttlExpireTimeString))
+                {
+                    ttlExpireTime = DateTime.Parse(ttlExpireTimeString, CultureInfo.InvariantCulture);
+                }
+            }
+
+            return new ActorStateResponse<string>(stringResponse, ttlExpireTime);
         }
 
         public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default)

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
+    using Dapr.Actors.Communication;
 
     /// <summary>
     /// State Provider to interact with Dapr runtime.
@@ -43,27 +44,27 @@ namespace Dapr.Actors.Runtime
             this.daprInteractor = daprInteractor;
         }
 
-        public async Task<ConditionalValue<T>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+        public async Task<ConditionalValue<ActorStateResponse<T>>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
-            var result = new ConditionalValue<T>(false, default);
-            var stringResult = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
+            var result = new ConditionalValue<ActorStateResponse<T>>(false, default);
+            var response = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
 
-            if (stringResult.Length != 0)
+            if (response.Value.Length != 0 && response.TTLExpireTime > DateTime.UtcNow)
             {
                 T typedResult;
 
                 // perform default json de-serialization if custom serializer was not provided.
                 if (this.actorStateSerializer != null)
                 {
-                    var byteResult = Convert.FromBase64String(stringResult.Trim('"'));
+                    var byteResult = Convert.FromBase64String(response.Value.Trim('"'));
                     typedResult = this.actorStateSerializer.Deserialize<T>(byteResult);
                 }
                 else
                 {
-                    typedResult = JsonSerializer.Deserialize<T>(stringResult, jsonSerializerOptions);
+                    typedResult = JsonSerializer.Deserialize<T>(response.Value, jsonSerializerOptions);
                 }
 
-                result = new ConditionalValue<T>(true, typedResult);
+                result = new ConditionalValue<ActorStateResponse<T>>(true, new ActorStateResponse<T>(typedResult, response.TTLExpireTime));
             }
 
             return result;
@@ -71,8 +72,8 @@ namespace Dapr.Actors.Runtime
 
         public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
-            var byteResult = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
-            return byteResult.Length != 0;
+            var result = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
+            return result.Value.Length != 0;
         }
 
         public async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
@@ -131,6 +132,11 @@ namespace Dapr.Actors.Runtime
                         {
                             writer.WritePropertyName("value");
                             JsonSerializer.Serialize(writer, stateChange.Value, stateChange.Type, jsonSerializerOptions);
+                        }
+
+                        var ttlInSeconds = stateChange.TTLInSeconds;
+                        if (ttlInSeconds.HasValue) {
+                            writer.WriteString("ttlInSeconds", ttlInSeconds.Value.ToString());
                         }
                         break;
                     default:

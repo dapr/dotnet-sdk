@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,8 @@ namespace Dapr.Actors.Runtime
         /// <param name="type">The type of value associated with given actor state name.</param>
         /// <param name="value">The value associated with given actor state name.</param>
         /// <param name="changeKind">The kind of state change for given actor state name.</param>
-        public ActorStateChange(string stateName, Type type, object value, StateChangeKind changeKind)
+        /// <param name="ttlExpireTime">The time to live for the state.</param>
+        public ActorStateChange(string stateName, Type type, object value, StateChangeKind changeKind, DateTime? ttlExpireTime)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
@@ -35,6 +36,7 @@ namespace Dapr.Actors.Runtime
             this.Type = type;
             this.Value = value;
             this.ChangeKind = changeKind;
+            this.TTLExpireTime = ttlExpireTime;
         }
 
         /// <summary>
@@ -68,5 +70,39 @@ namespace Dapr.Actors.Runtime
         /// The kind of state change for given actor state name.
         /// </value>
         public StateChangeKind ChangeKind { get; }
+
+        /// <summary>
+        /// Gets the time to live for the state.
+        /// </summary>
+        /// <value>
+        /// The time to live for the state.
+        /// </value>
+        /// <remarks>
+        /// If null, the state will not expire.
+        /// </remarks>
+        public DateTime? TTLExpireTime { get; }
+
+        /// <summary>
+        /// Gets the time to live in seconds for the state.
+        /// </summary>
+        /// <value>
+        /// The time to live for the state.
+        /// </value>
+        /// <remarks>
+        /// If null, the state will not expire.
+        /// </remarks>
+        public int? TTLInSeconds {
+            get
+            {
+                if (this.TTLExpireTime.HasValue)
+                {
+                    return (int)Math.Ceiling((this.TTLExpireTime.Value - DateTime.UtcNow).TotalSeconds);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
     }
 }
