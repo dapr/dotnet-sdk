@@ -191,8 +191,9 @@ namespace {namespaceName}
     private static string GenerateMethodImplementation(IMethodSymbol method, INamedTypeSymbol generateActorClientAttributeSymbol, INamedTypeSymbol cancellationTokenSymbol)
     {
         int cancellationTokenIndex = method.Parameters.IndexOf(p => p.Type.Equals(cancellationTokenSymbol, SymbolEqualityComparer.Default));
+        var cancellationTokenParameter = cancellationTokenIndex != -1 ? method.Parameters[cancellationTokenIndex] : null;
 
-        if (cancellationTokenIndex != -1 && cancellationTokenIndex != method.Parameters.Length - 1)
+        if (cancellationTokenParameter is not null && cancellationTokenIndex != method.Parameters.Length - 1)
         {
             throw new DiagnosticsException(new[]
             {
@@ -204,7 +205,7 @@ namespace {namespaceName}
                         "Dapr.Actors.Generators",
                         DiagnosticSeverity.Error,
                         true),
-                    method.Parameters[cancellationTokenIndex].Locations.First())
+                    cancellationTokenParameter.Locations.First())
             });
         }
 
@@ -234,6 +235,15 @@ namespace {namespaceName}
         var returnTypeArgument = (method.ReturnType as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
 
         string argumentDefinitions = String.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}"));
+
+        if (cancellationTokenParameter is not null
+            && cancellationTokenParameter.IsOptional
+            && cancellationTokenParameter.HasExplicitDefaultValue
+            && cancellationTokenParameter.ExplicitDefaultValue is null)
+        {
+            argumentDefinitions = argumentDefinitions + " = default";
+        }
+
         string argumentList = String.Join(", ", new[] { $@"""{actualMethodName}""" }.Concat(method.Parameters.Select(p => p.Name)));
 
         string templateArgs =
