@@ -1,6 +1,6 @@
 using Dapr.Actors.Runtime;
 
-namespace Dapr.E2E.Test.Actors.Generators;
+namespace Dapr.E2E.Test.Actors.Generators.Clients;
 
 internal sealed class RemoteActor : Actor, IRemoteActor
 {

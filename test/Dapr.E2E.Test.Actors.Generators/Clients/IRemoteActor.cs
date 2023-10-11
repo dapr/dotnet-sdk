@@ -1,10 +1,8 @@
-using Dapr.Actors;
-
-namespace Dapr.E2E.Test.Actors.Generators;
+namespace Dapr.E2E.Test.Actors.Generators.Clients;
 
 public record RemoteState(string Value);
 
-public interface IRemoteActor : IRemotePingActor
+public interface IRemoteActor : IPingActor
 {
     Task<RemoteState> GetState();
 

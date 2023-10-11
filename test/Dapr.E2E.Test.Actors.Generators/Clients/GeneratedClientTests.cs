@@ -2,15 +2,15 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Xunit.Abstractions;
 
-namespace Dapr.E2E.Test.Actors.Generators;
+namespace Dapr.E2E.Test.Actors.Generators.Clients;
 
 public class GeneratedClientTests
 {
-    private readonly ITestOutputHelper testOutputHelper;
+    private readonly ILoggerProvider testLoggerProvider;
 
     public GeneratedClientTests(ITestOutputHelper testOutputHelper)
     {
-        this.testOutputHelper = testOutputHelper;
+        this.testLoggerProvider = new XUnitLoggingProvider(testOutputHelper);
     }
 
     [Fact]
@@ -18,27 +18,24 @@ public class GeneratedClientTests
     {
         var portManager = new PortManager();
 
-        var reservedPorts = portManager.ReservePorts(2).ToArray();
+        (int appPort, int clientAppHttpPort) = portManager.ReservePorts();
 
-        var appPort = reservedPorts[0];
-        var clientAppHttpPort = reservedPorts[1];
-
-        var loggerProvider = new XUnitLoggingProvider(this.testOutputHelper);
-        var loggerFactory = new LoggerFactory();
-
-        loggerFactory.AddProvider(loggerProvider);
-
-        var serviceAppSidecarOptions = new DaprSidecarOptions("service-app")
+        var templateSidecarOptions = new DaprSidecarOptions("template-app")
         {
-            AppPort = appPort,
-            LoggerFactory = loggerFactory,
+            LoggerFactory = new LoggerFactory(new[] { this.testLoggerProvider }),
             LogLevel = "debug"
         };
 
-        var clientAppSidecarOptions = new DaprSidecarOptions("client-app")
+        var serviceAppSidecarOptions = templateSidecarOptions with
         {
-            DaprHttpPort = clientAppHttpPort,
-            LoggerFactory = loggerFactory
+            AppId = "service-app",
+            AppPort = appPort
+        };
+
+        var clientAppSidecarOptions = templateSidecarOptions with
+        {
+            AppId = "client-app",
+            DaprHttpPort = clientAppHttpPort
         };
 
         await using var app = ActorWebApplicationFactory.Create(
@@ -48,18 +45,21 @@ public class GeneratedClientTests
                 options.Actors.RegisterActor<RemoteActor>();
             })
             {
-                ConfigureBuilder = builder =>
-                {
-                    builder.Logging.ClearProviders();
-                    builder.Logging.AddProvider(loggerProvider);
-                }
+                LoggerProvider = this.testLoggerProvider,
+                Url = $"http://localhost:{appPort}"
             });
 
-        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(1));
 
-        app.Urls.Add($"http://localhost:{appPort}");
+        //
+        // Start application...
+        //
 
         await app.StartAsync(cancellationTokenSource.Token);
+
+        //
+        // Start sidecars...
+        //
 
         await using var serviceAppSidecar = DaprSidecarFactory.Create(serviceAppSidecarOptions);
 
@@ -69,25 +69,19 @@ public class GeneratedClientTests
 
         await clientAppSidecar.StartAsync(cancellationTokenSource.Token);
 
+        //
+        // Ensure actor is ready...
+        //
+
         var actorId = ActorId.CreateRandom();
         var actorType = "RemoteActor";
         var actorOptions = new ActorProxyOptions { HttpEndpoint = $"http://localhost:{clientAppHttpPort}" };
 
-        var pingProxy = ActorProxy.Create<IRemoteActor>(actorId, actorType, actorOptions);
+        await ActorState.EnsureReadyAsync<IRemoteActor>(actorId, actorType, actorOptions, cancellationTokenSource.Token);
 
-        while (true)
-        {
-            try
-            {
-                await pingProxy.Ping();
-
-                break;
-            }
-            catch (DaprApiException)
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationTokenSource.Token);
-            }
-        }
+        //
+        // Start test...
+        //
 
         var actorProxy = ActorProxy.Create(actorId, actorType, actorOptions);
 

@@ -4,7 +4,9 @@ namespace Dapr.E2E.Test.Actors.Generators;
 
 internal sealed record ActorWebApplicationOptions(Action<ActorRuntimeOptions> ConfigureActors)
 {
-    public Action<WebApplicationBuilder>? ConfigureBuilder { get; init; }
+    public ILoggerProvider? LoggerProvider { get; init; }
+
+    public string? Url { get; init; }
 }
 
 internal sealed class ActorWebApplicationFactory
@@ -13,11 +15,20 @@ internal sealed class ActorWebApplicationFactory
     {
         var builder = WebApplication.CreateBuilder();
 
-        options.ConfigureBuilder?.Invoke(builder);
+        if (options.LoggerProvider is not null)
+        {
+            builder.Logging.ClearProviders();
+            builder.Logging.AddProvider(options.LoggerProvider);
+        }
 
         builder.Services.AddActors(options.ConfigureActors);
 
         var app = builder.Build();
+
+        if (options.Url is not null)
+        {
+            app.Urls.Add(options.Url);
+        }
 
         app.UseRouting();
 
