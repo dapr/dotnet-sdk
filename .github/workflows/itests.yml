@@ -109,7 +109,7 @@ jobs:
       - name: Build
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
         run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
-      - name: Run Test
+      - name: Run General Test
         id: tests
         continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
         run: |
@@ -124,7 +124,7 @@ jobs:
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=opencover \
             /p:GITHUB_ACTIONS=false
-      - name: Run Test
+      - name: Run Generator Test
         id: generator-tests
         continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
         run: |
@@ -134,7 +134,7 @@ jobs:
             --no-build \
             --no-restore \
             --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-            --logger "GitHubActions;report-warnings=false" \
+            --logger "GitHubActions;report-warnings=false;verbosity=detailed" \
             --results-directory "${{ github.workspace }}/TestResults" \
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=opencover \
