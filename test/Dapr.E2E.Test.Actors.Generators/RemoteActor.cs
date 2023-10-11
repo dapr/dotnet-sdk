@@ -29,4 +29,9 @@ internal sealed class RemoteActor : Actor, IRemoteActor
 
         return Task.CompletedTask;
     }
+
+    public Task Ping()
+    {
+        return Task.CompletedTask;
+    }
 }

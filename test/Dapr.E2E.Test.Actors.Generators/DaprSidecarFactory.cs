@@ -19,6 +19,7 @@ internal sealed class DaprSidecar : IAsyncDisposable
 {
     private const string StartupOutputString = "You're up and running! Dapr logs will appear here.";
 
+    private readonly string appId;
     private readonly Process process;
     private readonly ILogger? logger;
     private readonly TaskCompletionSource<bool> tcs = new();
@@ -87,6 +88,8 @@ internal sealed class DaprSidecar : IAsyncDisposable
                 this.logger?.LogError(args.Data);
             }
         };
+
+        this.appId = options.AppId;
     }
 
     public Task StartAsync(CancellationToken cancellationToken = default)
@@ -99,12 +102,25 @@ internal sealed class DaprSidecar : IAsyncDisposable
         return this.tcs.Task;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken = default)
+    public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        // TODO: Shutdown more cleanly (e.g. `dapr stop`).
-        process.Kill(entireProcessTree: true);
+        var stopProcess = new Process
+        {
+            StartInfo =
+            {
+                Arguments = $"stop --app-id {this.appId}",
+                CreateNoWindow = true,
+                FileName = "dapr",
+                UseShellExecute = false,
+                WindowStyle = ProcessWindowStyle.Hidden
+            }
+        };
 
-        return process.WaitForExitAsync(cancellationToken);
+        stopProcess.Start();
+
+        await stopProcess.WaitForExitAsync(cancellationToken);
+
+        await process.WaitForExitAsync(cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
