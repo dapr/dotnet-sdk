@@ -1,3 +1,5 @@
+using Dapr.Actors;
+using Dapr.Actors.Client;
 using Microsoft.VisualStudio.TestPlatform.TestHost;
 using Xunit.Abstractions;
 
@@ -37,7 +39,8 @@ public class GeneratedClientTests
             AppPort = appPort,
             DaprGrpcPort = serviceAppGrpcPort,
             DaprHttpPort = serviceAppHttpPort,
-            LoggerFactory = loggerFactory
+            LoggerFactory = loggerFactory,
+            LogLevel = "debug"
         };
 
         var clientAppSidecarOptions = new DaprSidecarOptions("client-app")
@@ -80,8 +83,19 @@ public class GeneratedClientTests
 
         await clientAppSidecar.StartAsync(cancellationTokenSource.Token);
 
-        await Task.Delay(TimeSpan.FromSeconds(15), cancellationTokenSource.Token);
-
         // TODO: Start the client
+        var actorId = new ActorId("test-actor");
+
+        var actorProxy = ActorProxy.Create(actorId, "RemoteActor",
+            new ActorProxyOptions
+            {
+                HttpEndpoint = $"http://localhost:{clientAppHttpPort}",
+            });
+
+        var client = new ClientActorClient(actorProxy);
+
+        var result = await client.GetStateAsync(cancellationTokenSource.Token);
+
+        await client.SetStateAsync(new ClientState("updated state"), cancellationTokenSource.Token);
     }
 }

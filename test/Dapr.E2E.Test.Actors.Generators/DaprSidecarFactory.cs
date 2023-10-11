@@ -11,11 +11,13 @@ internal sealed record DaprSidecarOptions(string AppId)
     public int? DaprHttpPort { get; init; }
 
     public ILoggerFactory? LoggerFactory { get; init; }
+
+    public string? LogLevel { get; init; }
 }
 
 internal sealed class DaprSidecar : IAsyncDisposable
 {
-    private const string StartupOutputString = "dapr initialized. Status: Running.";
+    private const string StartupOutputString = "You're up and running! Dapr logs will appear here.";
 
     private readonly Process process;
     private readonly ILogger? logger;
@@ -25,6 +27,11 @@ internal sealed class DaprSidecar : IAsyncDisposable
     {
         string arguments = $"run --app-id {options.AppId}";
 
+        if (options.AppPort is not null)
+        {
+            arguments += $" --app-port {options.AppPort}";
+        }
+
         if (options.DaprGrpcPort is not null)
         {
             arguments += $" --dapr-grpc-port {options.DaprGrpcPort}";
@@ -33,6 +40,11 @@ internal sealed class DaprSidecar : IAsyncDisposable
         if (options.DaprHttpPort is not null)
         {
             arguments += $" --dapr-http-port {options.DaprHttpPort}";
+        }
+
+        if (options.LogLevel is not null)
+        {
+            arguments += $" --log-level {options.LogLevel}";
         }
 
         this.process = new Process
