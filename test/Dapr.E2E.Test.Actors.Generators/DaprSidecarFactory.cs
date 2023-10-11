@@ -15,8 +15,11 @@ internal sealed record DaprSidecarOptions(string AppId)
 
 internal sealed class DaprSidecar : IAsyncDisposable
 {
+    private const string StartupOutputString = "dapr initialized. Status: Running.";
+
     private readonly Process process;
     private readonly ILogger? logger;
+    private readonly TaskCompletionSource<bool> tcs = new();
 
     public DaprSidecar(DaprSidecarOptions options)
     {
@@ -40,6 +43,8 @@ internal sealed class DaprSidecar : IAsyncDisposable
                 Arguments = arguments,
                 CreateNoWindow = true,
                 FileName = "dapr",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
                 UseShellExecute = false,
                 WindowStyle = ProcessWindowStyle.Hidden
             }
@@ -48,26 +53,28 @@ internal sealed class DaprSidecar : IAsyncDisposable
         if (options.LoggerFactory is not null)
         {
             this.logger = options.LoggerFactory.CreateLogger(options.AppId);
-
-            this.process.StartInfo.RedirectStandardError = true;
-            this.process.StartInfo.RedirectStandardOutput = true;
-
-            this.process.OutputDataReceived += (_, args) =>
-            {
-                if (args.Data is not null)
-                {
-                    this.logger.LogInformation(args.Data);
-                }
-            };
-
-            this.process.ErrorDataReceived += (_, args) =>
-            {
-                if (args.Data is not null)
-                {
-                    this.logger.LogError(args.Data);
-                }
-            };
         }
+
+        this.process.OutputDataReceived += (_, args) =>
+        {
+            if (args.Data is not null)
+            {
+                if (args.Data.Contains(StartupOutputString))
+                {
+                    this.tcs.SetResult(true);
+                }
+
+                this.logger?.LogInformation(args.Data);
+            }
+        };
+
+        this.process.ErrorDataReceived += (_, args) =>
+        {
+            if (args.Data is not null)
+            {
+                this.logger?.LogError(args.Data);
+            }
+        };
     }
 
     public Task StartAsync(CancellationToken cancellationToken = default)
@@ -77,11 +84,12 @@ internal sealed class DaprSidecar : IAsyncDisposable
         process.BeginErrorReadLine();
         process.BeginOutputReadLine();
 
-        return Task.CompletedTask;
+        return this.tcs.Task;
     }
 
     public Task StopAsync(CancellationToken cancellationToken = default)
     {
+        // TODO: Shutdown more cleanly (e.g. `dapr stop`).
         process.Kill(entireProcessTree: true);
 
         return process.WaitForExitAsync(cancellationToken);

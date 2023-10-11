@@ -27,9 +27,10 @@ public class GeneratedClientTests
         var clientAppGrpcPort = reservedPorts[3];
         var clientAppHttpPort = reservedPorts[4];
 
+        var loggerProvider = new XUnitLoggingProvider(this.testOutputHelper);
         var loggerFactory = new LoggerFactory();
 
-        loggerFactory.AddProvider(new XUnitLoggingProvider(this.testOutputHelper));
+        loggerFactory.AddProvider(loggerProvider);
 
         var serviceAppSidecarOptions = new DaprSidecarOptions("service-app")
         {
@@ -47,12 +48,17 @@ public class GeneratedClientTests
         };
 
         await using var app = ActorWebApplicationFactory.Create(
-            options =>
+            new ActorWebApplicationOptions(options =>
             {
                 options.UseJsonSerialization = true;
-
-                // TODO: Register actors dynamically.
                 options.Actors.RegisterActor<RemoteActor>();
+            })
+            {
+                ConfigureBuilder = builder =>
+                {
+                    builder.Logging.ClearProviders();
+                    builder.Logging.AddProvider(loggerProvider);
+                }
             });
 
         using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
