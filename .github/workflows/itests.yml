@@ -124,8 +124,23 @@ jobs:
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=opencover \
             /p:GITHUB_ACTIONS=false
+      - name: Run Test
+        id: generator-tests
+        continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
+        run: |
+          dotnet test ${{ github.workspace }}/test/Dapr.E2E.Test.Actors.Generators/Dapr.E2E.Test.Actors.Generators.csproj \
+            --configuration Release \
+            --framework ${{ matrix.framework }} \
+            --no-build \
+            --no-restore \
+            --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+            --logger "GitHubActions;report-warnings=false" \
+            --results-directory "${{ github.workspace }}/TestResults" \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=opencover \
+            /p:GITHUB_ACTIONS=false
       - name: Check test failure in PR
-        if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
+        if: github.event_name == 'pull_request' && (steps.tests.outcome != 'success' || steps.generator-tests.outcome != 'success')
         run: exit 1
       - name: Upload test coverage
         uses: codecov/codecov-action@v1
