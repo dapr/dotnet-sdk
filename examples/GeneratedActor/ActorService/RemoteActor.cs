@@ -2,28 +2,26 @@ using Dapr.Actors.Runtime;
 
 namespace GeneratedActor;
 
-internal sealed class MyPublicActor : Actor, IMyPublicActor
+internal sealed class RemoteActor : Actor, IRemoteActor
 {
-    private readonly ILogger<MyPublicActor> logger;
+    private readonly ILogger<RemoteActor> logger;
 
-    private MyState currentState = new("default");
+    private RemoteState currentState = new("default");
 
-    public MyPublicActor(ActorHost host, ILogger<MyPublicActor> logger)
+    public RemoteActor(ActorHost host, ILogger<RemoteActor> logger)
         : base(host)
     {
         this.logger = logger;
     }
 
-    #region  IMyPublicActor Members
-
-    public Task<MyState> GetStateAsync()
+    public Task<RemoteState> GetState()
     {
         this.logger.LogInformation("GetStateAsync called.");
 
         return Task.FromResult(this.currentState);
     }
 
-    public Task SetStateAsync(MyState state)
+    public Task SetState(RemoteState state)
     {
         this.logger.LogInformation("SetStateAsync called.");
 
@@ -31,6 +29,4 @@ internal sealed class MyPublicActor : Actor, IMyPublicActor
 
         return Task.CompletedTask;
     }
-
-    #endregion
 }

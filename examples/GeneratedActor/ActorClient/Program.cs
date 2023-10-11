@@ -2,93 +2,16 @@
 using Dapr.Actors.Client;
 using GeneratedActor;
 
-var actorId = new ActorId("1");
-var actorType = "MyPublicActor";
+Console.WriteLine("Testing generated client...");
 
-try
-{
-    //await TestRemotedActorAsync();
-}
-catch (Exception ex)
-{
-    Console.WriteLine(ex);
-}
+var proxy = ActorProxy.Create(ActorId.CreateRandom(), "RemoteActor");
 
-try
-{
-    await TestNonRemotedActorAsync();
-}
-catch (Exception ex)
-{
-    Console.WriteLine(ex);
-}
+using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
-try
-{
-    await TestNonRemotedManualProxyAsync();
-}
-catch (Exception ex)
-{
-    Console.WriteLine(ex);
-}
+var client = new ClientActorClient(proxy);
 
-try
-{
-    await TestGeneratedProxyAsync();
-}
-catch (Exception ex)
-{
-    Console.WriteLine(ex);
-}
+var state = await client.GetStateAsync(cancellationTokenSource.Token);
 
-Console.WriteLine("Hello, World!");
+await client.SetStateAsync(new ClientState("Hello, World!"), cancellationTokenSource.Token);
 
-/*
-async Task TestRemotedActorAsync()
-{
-    Console.WriteLine("Testing remoted actor client...");
-
-    var client = ActorProxy.Create<IMyPublicActor>(actorId, actorType);
-
-    var state = await client.GetStateAsync();
-
-    await client.SetStateAsync(new MyState("Hello, World!"));
-}
-*/
-
-async Task TestNonRemotedActorAsync()
-{
-    Console.WriteLine("Testing non-remoted actor client...");
-
-    var client = ActorProxy.Create(actorId, actorType /*, new ActorProxyOptions { UseJsonSerialization = true } */);
-
-    var state = await client.InvokeMethodAsync<MyState>("GetStateAsync");
-
-    await client.InvokeMethodAsync("SetStateAsync", new MyState("Hello, World!"));
-}
-
-async Task TestNonRemotedManualProxyAsync()
-{
-    Console.WriteLine("Testing non-remoted manual proxy...");
-
-    var proxy = ActorProxy.Create(actorId, actorType /*, new ActorProxyOptions { UseJsonSerialization = true } */);
-
-    var client = new MyPublicActorManualProxy(proxy);
-
-    var state = await client.GetStateAsync();
-
-    await client.SetStateAsync(new MyState("Hello, World!"));
-}
-
-async Task TestGeneratedProxyAsync()
-{
-    Console.WriteLine("Testing generated proxy...");
-
-    var proxy = ActorProxy.Create(actorId, actorType /*, new ActorProxyOptions { UseJsonSerialization = true } */);
-
-    var client = new MyPrivateActorClient(proxy);
-
-    var state = await client.GetPrivateStateAsync();
-
-    await client.SetStateAsync(new MyPrivateState("Hello, World!"));
-}
+Console.WriteLine("Done!");
