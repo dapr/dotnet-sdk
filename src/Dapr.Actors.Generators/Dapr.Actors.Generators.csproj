@@ -25,6 +25,16 @@
 
     <!-- Do not include the generator as a lib dependency -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
+
+    <!-- Suppress false-positive error NU5128 when packing analyzers with no lib/ref files. -->
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+
+    <!-- Suppress generation of symbol package (.snupkg). -->
+    <IncludeSymbols>false</IncludeSymbols>
+
+    <!-- Additional NuGet package properties. -->
+    <Description>This package contains source generators for interacting with Actor services using Dapr.</Description>
+    <PackageTags>$(PackageTags);Actors</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
