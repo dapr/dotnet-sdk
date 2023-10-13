@@ -229,7 +229,7 @@ namespace Dapr
                 .FirstOrDefault(d =>
                     d.Equals(CloudEventPropertyNames.DataContentType,
                         StringComparison.OrdinalIgnoreCase));
-            
+
             string contentType;
 
             if (dataContentTypePropName != null 
