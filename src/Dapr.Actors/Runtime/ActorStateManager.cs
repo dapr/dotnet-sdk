@@ -36,17 +36,58 @@ namespace Dapr.Actors.Runtime
             this.defaultTracker = new Dictionary<string, StateMetadata>();
         }
 
-        public async Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken, int? ttlInSeconds)
+        public async Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken)
         {
             EnsureStateProviderInitialized();
 
-            if (!(await this.TryAddStateAsync(stateName, value, cancellationToken, ttlInSeconds)))
+            if (!(await this.TryAddStateAsync(stateName, value, cancellationToken)))
             {
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, SR.ActorStateAlreadyExists, stateName));
             }
         }
 
-        public async Task<bool> TryAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default, int? ttlInSeconds = null)
+        public async Task AddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken)
+        {
+            EnsureStateProviderInitialized();
+
+            if (!(await this.TryAddStateAsync(stateName, value, ttlInSeconds, cancellationToken)))
+            {
+                throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, SR.ActorStateAlreadyExists, stateName));
+            }
+        }
+
+        public async Task<bool> TryAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default)
+        {
+            ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
+
+            EnsureStateProviderInitialized();
+
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
+            {
+                var stateMetadata = stateChangeTracker[stateName];
+
+                // Check if the property was marked as remove in the cache
+                if (stateMetadata.ChangeKind == StateChangeKind.Remove)
+                {
+                    stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update);
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
+            {
+                return false;
+            }
+
+            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
+            return true;
+        }
+
+        public async Task<bool> TryAddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
@@ -121,7 +162,36 @@ namespace Dapr.Actors.Runtime
             return new ConditionalValue<T>(false, default);
         }
 
-        public async Task SetStateAsync<T>(string stateName, T value, CancellationToken cancellationToken, int? ttlInSeconds)
+        public async Task SetStateAsync<T>(string stateName, T value, CancellationToken cancellationToken)
+        {
+            ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
+
+            EnsureStateProviderInitialized();
+
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
+            {
+                var stateMetadata = stateChangeTracker[stateName];
+                stateMetadata.Value = value;
+
+                if (stateMetadata.ChangeKind == StateChangeKind.None ||
+                    stateMetadata.ChangeKind == StateChangeKind.Remove)
+                {
+                    stateMetadata.ChangeKind = StateChangeKind.Update;
+                }
+            }
+            else if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
+            {
+                stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update));
+            }
+            else
+            {
+                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
+            }
+        }
+
+        public async Task SetStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
@@ -218,7 +288,25 @@ namespace Dapr.Actors.Runtime
             return false;
         }
 
-        public async Task<T> GetOrAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken, int? ttlInSeconds)
+        public async Task<T> GetOrAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken)
+        {
+            EnsureStateProviderInitialized();
+
+            var condRes = await this.TryGetStateAsync<T>(stateName, cancellationToken);
+
+            if (condRes.HasValue)
+            {
+                return condRes.Value;
+            }
+
+            var changeKind = this.IsStateMarkedForRemove(stateName) ? StateChangeKind.Update : StateChangeKind.Add;
+
+            var stateChangeTracker = GetContextualStateTracker();
+            stateChangeTracker[stateName] = StateMetadata.Create(value, changeKind);
+            return value;
+        }
+
+        public async Task<T> GetOrAddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken)
         {
             EnsureStateProviderInitialized();
 
@@ -240,8 +328,55 @@ namespace Dapr.Actors.Runtime
             string stateName,
             T addValue,
             Func<string, T, T> updateValueFactory,
-            CancellationToken cancellationToken = default,
-            int? ttlInSeconds = null)
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
+
+            EnsureStateProviderInitialized();
+
+            var stateChangeTracker = GetContextualStateTracker();
+
+            if (stateChangeTracker.ContainsKey(stateName))
+            {
+                var stateMetadata = stateChangeTracker[stateName];
+
+                // Check if the property was marked as remove in the cache
+                if (stateMetadata.ChangeKind == StateChangeKind.Remove)
+                {
+                    stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Update);
+                    return addValue;
+                }
+
+                var newValue = updateValueFactory.Invoke(stateName, (T)stateMetadata.Value);
+                stateMetadata.Value = newValue;
+
+                if (stateMetadata.ChangeKind == StateChangeKind.None)
+                {
+                    stateMetadata.ChangeKind = StateChangeKind.Update;
+                }
+
+                return newValue;
+            }
+
+            var conditionalResult = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
+            if (conditionalResult.HasValue)
+            {
+                var newValue = updateValueFactory.Invoke(stateName, conditionalResult.Value.Value);
+                stateChangeTracker.Add(stateName, StateMetadata.Create(newValue, StateChangeKind.Update));
+
+                return newValue;
+            }
+
+            stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Add);
+            return addValue;
+        }
+
+        public async Task<T> AddOrUpdateStateAsync<T>(
+            string stateName,
+            T addValue,
+            Func<string, T, T> updateValueFactory,
+            int ttlInSeconds,
+            CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
