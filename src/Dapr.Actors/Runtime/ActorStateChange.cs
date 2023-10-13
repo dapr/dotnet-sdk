@@ -28,7 +28,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="value">The value associated with given actor state name.</param>
         /// <param name="changeKind">The kind of state change for given actor state name.</param>
         /// <param name="ttlExpireTime">The time to live for the state.</param>
-        public ActorStateChange(string stateName, Type type, object value, StateChangeKind changeKind, DateTime? ttlExpireTime)
+        public ActorStateChange(string stateName, Type type, object value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
@@ -80,7 +80,7 @@ namespace Dapr.Actors.Runtime
         /// <remarks>
         /// If null, the state will not expire.
         /// </remarks>
-        public DateTime? TTLExpireTime { get; }
+        public DateTimeOffset? TTLExpireTime { get; }
 
         /// <summary>
         /// Gets the time to live in seconds for the state.

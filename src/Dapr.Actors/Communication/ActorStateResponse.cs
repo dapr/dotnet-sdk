@@ -25,7 +25,7 @@ namespace Dapr.Actors.Communication
         /// </summary>
         /// <param name="value">The response value.</param>
         /// <param name="ttlExpireTime">The time to live expiration time.</param>
-        public ActorStateResponse(T value, DateTime? ttlExpireTime)
+        public ActorStateResponse(T value, DateTimeOffset? ttlExpireTime)
         {
             this.Value = value;
             this.TTLExpireTime = ttlExpireTime;
@@ -45,6 +45,6 @@ namespace Dapr.Actors.Communication
         /// <value>
         /// The time to live expiration time.
         /// </value>
-        public DateTime? TTLExpireTime { get; }
+        public DateTimeOffset? TTLExpireTime { get; }
     }
 }

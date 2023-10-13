@@ -529,7 +529,7 @@ namespace Dapr.Actors.Runtime
 
         private sealed class StateMetadata
         {
-            private StateMetadata(object value, Type type, StateChangeKind changeKind, DateTime? ttlExpireTime = null, int? ttlInSeconds = null)
+            private StateMetadata(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, int? ttlInSeconds = null)
             {
                 this.Value = value;
                 this.Type = type;
@@ -551,9 +551,9 @@ namespace Dapr.Actors.Runtime
 
             public Type Type { get; }
 
-            public DateTime? TTLExpireTime { get; set; }
+            public DateTimeOffset? TTLExpireTime { get; set; }
 
-            public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTime? ttlExpireTime = null, int? ttlInSeconds = null)
+            public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, int? ttlInSeconds = null)
             {
                 return new StateMetadata(value, typeof(T), changeKind, ttlExpireTime, ttlInSeconds);
             }
