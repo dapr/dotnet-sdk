@@ -81,28 +81,5 @@ namespace Dapr.Actors.Runtime
         /// If null, the state will not expire.
         /// </remarks>
         public DateTimeOffset? TTLExpireTime { get; }
-
-        /// <summary>
-        /// Gets the time to live in seconds for the state.
-        /// </summary>
-        /// <value>
-        /// The time to live for the state.
-        /// </value>
-        /// <remarks>
-        /// If null, the state will not expire.
-        /// </remarks>
-        public int? TTLInSeconds {
-            get
-            {
-                if (this.TTLExpireTime.HasValue)
-                {
-                    return (int)Math.Ceiling((this.TTLExpireTime.Value - DateTime.UtcNow).TotalSeconds);
-                }
-                else
-                {
-                    return null;
-                }
-            }
-        }
     }
 }

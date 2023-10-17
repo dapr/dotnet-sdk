@@ -30,9 +30,9 @@ namespace Dapr.E2E.Test.Actors.State
             return this.StateManager.GetStateAsync<string>(key);
         }
 
-        public Task<string> SetState(string key, string value, int? ttlInSeconds)
+        public Task<string> SetState(string key, string value, TimeSpan? ttl)
         {
-            return this.StateManager.SetStateAsync<string>(key, value, ttlInSeconds = ttlInSeconds);
+            return this.StateManager.SetStateAsync<string>(key, value, ttl: ttl);
         }
     }
 }

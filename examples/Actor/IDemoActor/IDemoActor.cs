@@ -27,9 +27,9 @@ namespace IDemoActorInterface
         /// Method to save data.
         /// </summary>
         /// <param name="data">DAta to save.</param>
-        /// <param name="ttlInSeconds">Optional TTL in seconds.</param>
+        /// <param name="ttl">TTL of state key.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task SaveData(MyData data, int? ttlInSeconds = null);
+        Task SaveData(MyData data, TimeSpan ttl);
 
         /// <summary>
         /// Method to get data.

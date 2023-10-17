@@ -134,10 +134,11 @@ namespace Dapr.Actors.Runtime
                             JsonSerializer.Serialize(writer, stateChange.Value, stateChange.Type, jsonSerializerOptions);
                         }
 
-                        var ttlInSeconds = stateChange.TTLInSeconds;
-                        if (ttlInSeconds.HasValue) {
-                            writer.WriteString("ttlInSeconds", ttlInSeconds.Value.ToString());
+                        if (stateChange.TTLExpireTime.HasValue) {
+                            var ttl = (int)Math.Ceiling((stateChange.TTLExpireTime.Value - DateTime.UtcNow).TotalSeconds);
+                            writer.WriteString("ttlInSeconds", ttl.ToString());
                         }
+
                         break;
                     default:
                         break;

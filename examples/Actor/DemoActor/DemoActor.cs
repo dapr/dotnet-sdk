@@ -41,12 +41,12 @@ namespace DaprDemoActor
             this.bank = bank;
         }
 
-        public async Task SaveData(MyData data, int? ttlInSeconds = null)
+        public async Task SaveData(MyData data, TimeSpan ttl)
         {
             Console.WriteLine($"This is Actor id {this.Id} with data {data}.");
 
             // Set State using StateManager, state is saved after the method execution.
-            await this.StateManager.SetStateAsync<MyData>(StateName, data, ttlInSeconds: ttlInSeconds);
+            await this.StateManager.SetStateAsync<MyData>(StateName, data, ttl);
         }
 
         public Task<MyData> GetData()
@@ -100,7 +100,7 @@ namespace DaprDemoActor
             // This method is invoked when an actor reminder is fired.
             var actorState = await this.StateManager.GetStateAsync<MyData>(StateName);
             actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}'";
-            await this.StateManager.SetStateAsync<MyData>(StateName, actorState, ttlInSeconds: 360);
+            await this.StateManager.SetStateAsync<MyData>(StateName, actorState, ttl: TimeSpan.FromMinutes(5));
         }
 
         class TimerParams
@@ -164,7 +164,7 @@ namespace DaprDemoActor
         {
             var state = await this.StateManager.GetStateAsync<MyData>(StateName);
             state.PropertyA = $"Timer triggered at '{DateTime.Now:yyyyy-MM-ddTHH:mm:s}'";
-            await this.StateManager.SetStateAsync<MyData>(StateName, state, ttlInSeconds: 360);
+            await this.StateManager.SetStateAsync<MyData>(StateName, state, ttl: TimeSpan.FromMinutes(5));
             var timerParams = JsonSerializer.Deserialize<TimerParams>(data);
             Console.WriteLine("Timer parameter1: " + timerParams.IntParam);
             Console.WriteLine("Timer parameter2: " + timerParams.StringParam);

@@ -46,11 +46,11 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        public async Task AddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken)
+        public async Task AddStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken)
         {
             EnsureStateProviderInitialized();
 
-            if (!(await this.TryAddStateAsync(stateName, value, ttlInSeconds, cancellationToken)))
+            if (!(await this.TryAddStateAsync(stateName, value, ttl, cancellationToken)))
             {
                 throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, SR.ActorStateAlreadyExists, stateName));
             }
@@ -87,7 +87,7 @@ namespace Dapr.Actors.Runtime
             return true;
         }
 
-        public async Task<bool> TryAddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken = default)
+        public async Task<bool> TryAddStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
@@ -102,7 +102,7 @@ namespace Dapr.Actors.Runtime
                 // Check if the property was marked as remove in the cache
                 if (stateMetadata.ChangeKind == StateChangeKind.Remove)
                 {
-                    stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update, ttlInSeconds: ttlInSeconds);
+                    stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update, ttl: ttl);
                     return true;
                 }
 
@@ -114,7 +114,7 @@ namespace Dapr.Actors.Runtime
                 return false;
             }
 
-            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add, ttlInSeconds: ttlInSeconds);
+            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add, ttl: ttl);
             return true;
         }
 
@@ -156,7 +156,7 @@ namespace Dapr.Actors.Runtime
             var conditionalResult = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
             if (conditionalResult.HasValue)
             {
-                stateChangeTracker.Add(stateName, StateMetadata.Create(conditionalResult.Value.Value, StateChangeKind.None, conditionalResult.Value.TTLExpireTime));
+                stateChangeTracker.Add(stateName, StateMetadata.Create(conditionalResult.Value.Value, StateChangeKind.None, ttlExpireTime: conditionalResult.Value.TTLExpireTime));
             }
 
             return new ConditionalValue<T>(false, default);
@@ -191,7 +191,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        public async Task SetStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken)
+        public async Task SetStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
 
@@ -212,11 +212,11 @@ namespace Dapr.Actors.Runtime
             }
             else if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
             {
-                stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update, ttlInSeconds: ttlInSeconds));
+                stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update, ttl: ttl));
             }
             else
             {
-                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add, ttlInSeconds: ttlInSeconds);
+                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add, ttl: ttl);
             }
         }
 
@@ -306,7 +306,7 @@ namespace Dapr.Actors.Runtime
             return value;
         }
 
-        public async Task<T> GetOrAddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken)
+        public async Task<T> GetOrAddStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken)
         {
             EnsureStateProviderInitialized();
 
@@ -320,7 +320,7 @@ namespace Dapr.Actors.Runtime
             var changeKind = this.IsStateMarkedForRemove(stateName) ? StateChangeKind.Update : StateChangeKind.Add;
 
             var stateChangeTracker = GetContextualStateTracker();
-            stateChangeTracker[stateName] = StateMetadata.Create(value, changeKind, ttlInSeconds: ttlInSeconds);
+            stateChangeTracker[stateName] = StateMetadata.Create(value, changeKind, ttl: ttl);
             return value;
         }
 
@@ -375,7 +375,7 @@ namespace Dapr.Actors.Runtime
             string stateName,
             T addValue,
             Func<string, T, T> updateValueFactory,
-            int ttlInSeconds,
+            TimeSpan ttl,
             CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
@@ -391,7 +391,7 @@ namespace Dapr.Actors.Runtime
                 // Check if the property was marked as remove in the cache
                 if (stateMetadata.ChangeKind == StateChangeKind.Remove)
                 {
-                    stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Update, ttlInSeconds: ttlInSeconds);
+                    stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Update, ttl: ttl);
                     return addValue;
                 }
 
@@ -410,12 +410,12 @@ namespace Dapr.Actors.Runtime
             if (conditionalResult.HasValue)
             {
                 var newValue = updateValueFactory.Invoke(stateName, conditionalResult.Value.Value);
-                stateChangeTracker.Add(stateName, StateMetadata.Create(newValue, StateChangeKind.Update, ttlInSeconds: ttlInSeconds));
+                stateChangeTracker.Add(stateName, StateMetadata.Create(newValue, StateChangeKind.Update, ttl: ttl));
 
                 return newValue;
             }
 
-            stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Add, ttlInSeconds: ttlInSeconds);
+            stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Add, ttl: ttl);
             return addValue;
         }
 
@@ -529,17 +529,17 @@ namespace Dapr.Actors.Runtime
 
         private sealed class StateMetadata
         {
-            private StateMetadata(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, int? ttlInSeconds = null)
+            private StateMetadata(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, TimeSpan? ttl = null)
             {
                 this.Value = value;
                 this.Type = type;
                 this.ChangeKind = changeKind;
 
-                if (ttlExpireTime.HasValue && ttlInSeconds.HasValue) {
-                    throw new ArgumentException("Cannot specify both TTLExpireTime and TTLInSeconds");
+                if (ttlExpireTime.HasValue && ttl.HasValue) {
+                    throw new ArgumentException("Cannot specify both TTLExpireTime and TTL");
                 }
-                if (ttlInSeconds.HasValue) {
-                    this.TTLExpireTime = DateTime.UtcNow.AddSeconds(ttlInSeconds.Value);
+                if (ttl.HasValue) {
+                    this.TTLExpireTime = DateTime.UtcNow.Add(ttl.Value);
                 } else {
                     this.TTLExpireTime = ttlExpireTime;
                 }
@@ -553,9 +553,9 @@ namespace Dapr.Actors.Runtime
 
             public DateTimeOffset? TTLExpireTime { get; set; }
 
-            public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, int? ttlInSeconds = null)
+            public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, TimeSpan? ttl = null)
             {
-                return new StateMetadata(value, typeof(T), changeKind, ttlExpireTime, ttlInSeconds);
+                return new StateMetadata(value, typeof(T), changeKind, ttlExpireTime, ttl);
             }
 
             public static StateMetadata CreateForRemove()

@@ -53,7 +53,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="stateName">Name of the actor state to add.</param>
         /// <param name="value">Value of the actor state to add.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <param name="ttlInSeconds">The time to live for the state. If null, the state will not expire.</param>
+        /// <param name="ttl">The time to live for the state.</param>
         /// <returns>
         /// A task that represents the asynchronous add operation.
         /// </returns>
@@ -66,7 +66,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task AddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken = default);
+        Task AddStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets an actor state with specified state name.
@@ -115,7 +115,7 @@ namespace Dapr.Actors.Runtime
         /// <typeparam name="T">Type of value associated with given state name.</typeparam>
         /// <param name="stateName">Name of the actor state to set.</param>
         /// <param name="value">Value of the actor state.</param>
-        /// <param name="ttlInSeconds">The time to live for the state. If null, the state will not expire.</param>
+        /// <param name="ttl">The time to live for the state.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>
         /// A task that represents the asynchronous set operation.
@@ -126,7 +126,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task SetStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken = default);
+        Task SetStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes an actor state with specified state name.
@@ -171,7 +171,7 @@ namespace Dapr.Actors.Runtime
         /// <typeparam name="T">Type of value associated with given state name.</typeparam>
         /// <param name="stateName">Name of the actor state to add.</param>
         /// <param name="value">Value of the actor state to add.</param>
-        /// <param name="ttlInSeconds">The time to live for the state. If null, the state will not expire.</param>
+        /// <param name="ttl">The time to live for the state.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// This is optional and defaults to <see cref="System.Threading.CancellationToken.None" />.</param>
         /// <returns>
@@ -186,7 +186,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<bool> TryAddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken = default);
+        Task<bool> TryAddStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Attempts to get an actor state with specified state name.
@@ -262,7 +262,7 @@ namespace Dapr.Actors.Runtime
         /// <typeparam name="T">Type of value associated with given state name.</typeparam>
         /// <param name="stateName">Name of the actor state to get or add.</param>
         /// <param name="value">Value of the actor state to add if it does not exist.</param>
-        /// <param name="ttlInSeconds">The time to live for the state. If null, the state will not expire.</param>
+        /// <param name="ttl">The time to live for the state.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>
         /// A task that represents the asynchronous get or add operation. The value of TResult
@@ -276,7 +276,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> GetOrAddStateAsync<T>(string stateName, T value, int ttlInSeconds, CancellationToken cancellationToken = default);
+        Task<T> GetOrAddStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Adds an actor state with given state name, if it does not already exist or updates
@@ -307,7 +307,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="stateName">Name of the actor state to add or update.</param>
         /// <param name="addValue">Value of the actor state to add if it does not exist.</param>
         /// <param name="updateValueFactory">Factory function to generate value of actor state to update if it exists.</param>
-        /// <param name="ttlInSeconds">The time to live for the state. If null, the state will not expire.</param>
+        /// <param name="ttl">The time to live for the state.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>
         /// A task that represents the asynchronous add/update operation. The value of TResult
@@ -319,7 +319,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> AddOrUpdateStateAsync<T>(string stateName, T addValue, Func<string, T, T> updateValueFactory, int ttlInSeconds, CancellationToken cancellationToken = default);
+        Task<T> AddOrUpdateStateAsync<T>(string stateName, T addValue, Func<string, T, T> updateValueFactory, TimeSpan ttl, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Clears all the cached actor states and any operation(s) performed on <see cref="IActorStateManager"/>
