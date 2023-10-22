@@ -93,8 +93,16 @@ namespace Dapr.E2E.Test
                 input: input,
                 workflowOptions: workflowOptions);
 
-            // RAISE EVENT TEST
-            await daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
+            // PARALLEL RAISE EVENT TEST
+            var event1 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
+            var event2 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
+            var event3 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
+            var event4 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
+            var event5 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
+
+            var externalEvents = Task.WhenAll(event1, event2, event3, event4, event5);
+            var winner = await Task.WhenAny(externalEvents, Task.Delay(TimeSpan.FromSeconds(30)));
+            externalEvents.IsCompletedSuccessfully.Should().BeTrue($"Unsuccessful at raising events. Status of events: {externalEvents.IsCompletedSuccessfully}");
             
             // Wait up to 30 seconds for the workflow to complete and check the output
             using var cts = new CancellationTokenSource(delay: TimeSpan.FromSeconds(30));
