@@ -78,7 +78,7 @@ namespace Dapr.Client
         public string Key { get; }
 
         /// <summary>
-        /// Gets the deserialized value of  the indicated type.
+        /// Gets the deserialized value of the indicated type.
         /// </summary>
         public TValue Value { get; }
 
