@@ -51,7 +51,8 @@ namespace Dapr.Client
     }
 
     /// <summary>
-    /// Represents a state object returned from a bulk get state operation.
+    /// Represents a state object returned from a bulk get state operation where the value has
+    /// been deserialized to the specified type.
     /// </summary>
     public readonly struct BulkStateItem<TValue>
     {
@@ -59,7 +60,7 @@ namespace Dapr.Client
         /// Initializes a new instance of the <see cref="BulkStateItem"/> class.
         /// </summary>
         /// <param name="key">The state key.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The typed value.</param>
         /// <param name="etag">The ETag.</param>
         /// <remarks>
         /// Application code should not need to create instances of <see cref="BulkStateItem" />.
@@ -77,7 +78,7 @@ namespace Dapr.Client
         public string Key { get; }
 
         /// <summary>
-        /// Gets the value.
+        /// Gets the deserialized value of  the indicated type.
         /// </summary>
         public TValue Value { get; }
 
