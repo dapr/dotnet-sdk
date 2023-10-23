@@ -715,7 +715,10 @@ namespace Dapr.Client
         public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets a list of deserialized values associated with the <paramref name="keys" /> from the Dapr state store.
+        /// Gets a list of deserialized values associated with the <paramref name="keys" /> from the Dapr state store. This overload should be used
+        /// if you expect the values of all the retrieved items to match the shape of the indicated <typeparam name="TValue"/>. If you expect that
+        /// the values may differ in type from one another, do not specify the type parameter and instead use the original <see cref="GetBulkStateAsync"/> method
+        /// so the serialized string values will be returned instead.
         /// </summary>
         /// <param name="storeName">The name of state store to read from.</param>
         /// <param name="keys">The list of keys to get values for.</param>
