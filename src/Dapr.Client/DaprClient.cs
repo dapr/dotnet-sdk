@@ -715,6 +715,17 @@ namespace Dapr.Client
         public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Gets a list of deserialized values associated with the <paramref name="keys" /> from the Dapr state store.
+        /// </summary>
+        /// <param name="storeName">The name of state store to read from.</param>
+        /// <param name="keys">The list of keys to get values for.</param>
+        /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store. a value equal to or smaller than 0 means max parallelism.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of deserialized values when the operation has completed.</returns>
+        public abstract Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        
+        /// <summary>
         /// Saves a list of <paramref name="items" /> to the Dapr state store.
         /// </summary>
         /// <param name="storeName">The name of state store.</param>
