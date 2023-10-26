@@ -18,7 +18,6 @@ namespace ActorClient
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Client;
-    using Dapr.Actors.Communication;
     using IDemoActorInterface;
 
     /// <summary>
@@ -69,7 +68,7 @@ namespace ActorClient
             }
             catch (ActorMethodInvocationException ex)
             {
-                if (ex.InnerException is NotImplementedException)
+                if (ex.InnerException is ActorInvokeException invokeEx && invokeEx.ActualExceptionType is "System.NotImplementedException")
                 {
                     Console.WriteLine($"Got Correct Exception from actor method invocation.");
                 }
@@ -111,7 +110,7 @@ namespace ActorClient
             await Task.Delay(5000);
             Console.WriteLine("Getting details of the registered reminder");
             reminder = await proxy.GetReminder();
-            Console.WriteLine($"Received reminder is {reminder}.");
+            Console.WriteLine($"Received reminder is {reminder?.ToString() ?? "None"} (expecting None).");
             Console.WriteLine("Registering reminder with ttl and repetitions, i.e. reminder stops when either condition is met - The reminder will repeat 2 times.");
             await proxy.RegisterReminderWithTtlAndRepetitions(TimeSpan.FromSeconds(5), 2);
             Console.WriteLine("Getting details of the registered reminder");
