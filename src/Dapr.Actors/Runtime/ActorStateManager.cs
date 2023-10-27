@@ -145,7 +145,7 @@ namespace Dapr.Actors.Runtime
                 var stateMetadata = stateChangeTracker[stateName];
 
                 // Check if the property was marked as remove in the cache or is expired
-                if (stateMetadata.ChangeKind == StateChangeKind.Remove || stateMetadata.TTLExpireTime <= DateTime.UtcNow)
+                if (stateMetadata.ChangeKind == StateChangeKind.Remove || stateMetadata.TTLExpireTime <= DateTimeOffset.UtcNow)
                 {
                     return new ConditionalValue<T>(false, default);
                 }
@@ -539,7 +539,7 @@ namespace Dapr.Actors.Runtime
                     throw new ArgumentException("Cannot specify both TTLExpireTime and TTL");
                 }
                 if (ttl.HasValue) {
-                    this.TTLExpireTime = DateTime.UtcNow.Add(ttl.Value);
+                    this.TTLExpireTime = DateTimeOffset.UtcNow.Add(ttl.Value);
                 } else {
                     this.TTLExpireTime = ttlExpireTime;
                 }
@@ -553,9 +553,19 @@ namespace Dapr.Actors.Runtime
 
             public DateTimeOffset? TTLExpireTime { get; set; }
 
-            public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, TimeSpan? ttl = null)
+            public static StateMetadata Create<T>(T value, StateChangeKind changeKind)
             {
-                return new StateMetadata(value, typeof(T), changeKind, ttlExpireTime, ttl);
+                return new StateMetadata(value, typeof(T), changeKind);
+            }
+
+            public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime)
+            {
+                return new StateMetadata(value, typeof(T), changeKind, ttlExpireTime: ttlExpireTime);
+            }
+
+            public static StateMetadata Create<T>(T value, StateChangeKind changeKind, TimeSpan? ttl)
+            {
+                return new StateMetadata(value, typeof(T), changeKind, ttl: ttl);
             }
 
             public static StateMetadata CreateForRemove()
