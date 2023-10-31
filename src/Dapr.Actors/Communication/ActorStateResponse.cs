@@ -18,7 +18,7 @@ namespace Dapr.Actors.Communication
     /// <summary>
     /// Represents a response from fetching an actor state key.
     /// </summary>
-    class ActorStateResponse<T>
+    public class ActorStateResponse<T>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorStateResponse{T}"/> class.

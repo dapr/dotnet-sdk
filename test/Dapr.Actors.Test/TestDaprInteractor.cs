@@ -81,7 +81,7 @@ namespace Dapr.Actors
         /// <param name="keyName">Name of key to get value for.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
+        public Task<ActorStateResponse<string>> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
             throw new System.NotImplementedException();
         }

@@ -18,11 +18,16 @@ using Dapr.Actors.Runtime;
 
 namespace Dapr.E2E.Test.Actors.State
 {
-    public class StateActor : Actor
+    public class StateActor : Actor, IStateActor
     {
         public StateActor(ActorHost host)
             : base(host)
         {
+        }
+
+        public Task Ping()
+        {
+            return Task.CompletedTask;
         }
 
         public Task<string> GetState(string key)
@@ -30,9 +35,13 @@ namespace Dapr.E2E.Test.Actors.State
             return this.StateManager.GetStateAsync<string>(key);
         }
 
-        public Task<string> SetState(string key, string value, TimeSpan? ttl)
+        public Task SetState(string key, string value, TimeSpan? ttl)
         {
-            return this.StateManager.SetStateAsync<string>(key, value, ttl: ttl);
+            if (ttl.HasValue)
+            {
+                return this.StateManager.SetStateAsync<String>(key, value, ttl: ttl.Value);
+            }
+            return this.StateManager.SetStateAsync<String>(key, value);
         }
     }
 }

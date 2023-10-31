@@ -30,15 +30,19 @@ namespace Dapr.E2E.Test
 
             await WaitForActorRuntimeAsync(proxy, cts.Token);
 
-            await proxy.SaveState("key", "value", 2, cts.Token);
+            await proxy.SetState("key", "value", TimeSpan.FromSeconds(2));
 
-            state = await.proxy.GetState("key", cts.Token);
-            Assert.Equal("value", state.Value);
+            var resp = await proxy.GetState("key");
+            Assert.Equal("value", resp);
 
-            await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+            await Task.Delay(TimeSpan.FromSeconds(2));
 
-            state = await.proxy.GetState("key", cts.Token);
-            Assert.Null(state.Value);
+            resp = await proxy.GetState("key");
+            Assert.Null(resp);
+
+            await proxy.SetState("key", "new-value", null);
+            resp = await proxy.GetState("key");
+            Assert.Equal("new-value", resp);
         }
     }
 }
