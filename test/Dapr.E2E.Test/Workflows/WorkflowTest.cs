@@ -11,12 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
 using FluentAssertions;
 using Xunit;
+using System.Linq;
+using System.Diagnostics;
 
 namespace Dapr.E2E.Test
 {
@@ -24,12 +27,60 @@ namespace Dapr.E2E.Test
     public partial class E2ETests
     {
         [Fact]
+        public async Task TestWorkflowLogging()
+        {
+            // This test starts the daprclient and searches through the logfile to ensure the
+            // workflow logger is correctly logging the registered workflow(s) and activity(s)
+
+            Dictionary<string, bool> logStrings = new Dictionary<string, bool>();
+            logStrings["PlaceOrder"] = false;
+            logStrings["ShipProduct"] = false;
+               var logFilePath = "../../../../../test/Dapr.E2E.Test.App/log.txt";
+            var allLogsFound = false;
+            var timeout = 30; // 30s
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
+            using var daprClient = new DaprClientBuilder().UseGrpcEndpoint(this.GrpcEndpoint).UseHttpEndpoint(this.HttpEndpoint).Build();
+            var health = await daprClient.CheckHealthAsync();
+            health.Should().Be(true, "DaprClient is not healthy");
+
+            var searchTask = Task.Run(() =>
+            {
+                using (StreamReader reader = new StreamReader(logFilePath))
+                {
+                    string line;
+
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        foreach (var entry in logStrings)
+                        {
+                            if (line.Contains(entry.Key))
+                            {
+                                logStrings[entry.Key] = true;
+                            }
+                        }
+                        allLogsFound = logStrings.All(k => k.Value);
+                        if (allLogsFound)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }, cts.Token);
+
+            if (!Task.WaitAll(new Task[] {searchTask}, timeout))
+            {
+                File.Delete(logFilePath);
+                Assert.True(false, "Expected logs weren't found within timeout period");
+            }
+            File.Delete(logFilePath);
+        }
+        [Fact]
         public async Task TestWorkflows()
         {
-            string instanceId = "testInstanceId";
-            string instanceId2 = "EventRaiseId";
-            string workflowComponent = "dapr";
-            string workflowName = "PlaceOrder";
+            var instanceId = "testInstanceId";
+            var instanceId2 = "EventRaiseId";
+            var workflowComponent = "dapr";
+            var workflowName = "PlaceOrder";
             object input = "paperclips";
             Dictionary<string, string> workflowOptions = new Dictionary<string, string>();
             workflowOptions.Add("task_queue", "testQueue");
