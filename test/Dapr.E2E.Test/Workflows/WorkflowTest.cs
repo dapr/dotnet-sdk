@@ -35,7 +35,7 @@ namespace Dapr.E2E.Test
             Dictionary<string, bool> logStrings = new Dictionary<string, bool>();
             logStrings["PlaceOrder"] = false;
             logStrings["ShipProduct"] = false;
-               var logFilePath = "../../../../../test/Dapr.E2E.Test.App/log.txt";
+            var logFilePath = "../../../../../test/Dapr.E2E.Test.App/log.txt";
             var allLogsFound = false;
             var timeout = 30; // 30s
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
