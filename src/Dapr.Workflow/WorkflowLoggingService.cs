@@ -19,6 +19,7 @@ namespace Dapr.Workflow
     using System.Threading.Tasks;
     using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Configuration;
 
     /// <summary>
     /// Defines runtime options for workflows.
@@ -26,63 +27,60 @@ namespace Dapr.Workflow
     internal sealed class WorkflowLoggingService : IHostedService
     {
         private readonly ILogger<WorkflowLoggingService> logger;
-        private static HashSet<string>? registeredWorkflows;
-        private static HashSet<string>? registeredActivities;
-        private LogLevel logLevel = LogLevel.Debug;
+        private static readonly HashSet<string> registeredWorkflows = new();
+        private static readonly HashSet<string> registeredActivities = new();
+        private LogLevel logLevel = LogLevel.Information;
 
-        public WorkflowLoggingService(ILogger<WorkflowLoggingService> logger)
+        public WorkflowLoggingService(ILogger<WorkflowLoggingService> logger, IConfiguration configuration)
         {
-            var value = Environment.GetEnvironmentVariable("DAPR_LOG_LEVEL");
-            logLevel = string.IsNullOrEmpty(value) ? LogLevel.Debug : (LogLevel)Enum.Parse(typeof(LogLevel), value);
+            logLevel = string.IsNullOrEmpty(configuration["DAPR_LOG_LEVEL"]) ? LogLevel.Information : ConvertLogLevel(configuration["DAPR_LOG_LEVEL"]);
             this.logger = logger;
-            registeredActivities = new HashSet<string>();
-            registeredWorkflows = new HashSet<string>();
+            
         }
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            this.logger.Log(logLevel, "WorkflowLoggingService started");
-    
-            if (registeredWorkflows != null)
-            {
-                this.logger.Log(logLevel, "List of registered workflows");
+            this.logger.Log(LogLevel.Information, "WorkflowLoggingService started");
+
+                this.logger.Log(LogLevel.Information, "List of registered workflows");
                 foreach (string item in registeredWorkflows)
                 {
-                    this.logger.Log(logLevel, item);
+                    this.logger.Log(LogLevel.Information, item);
                 }
-            }
 
-            if (registeredActivities != null)
-            {
-                this.logger.Log(logLevel, "List of registered activities:");
+                this.logger.Log(LogLevel.Information, "List of registered activities:");
                 foreach (string item in registeredActivities)
                 {
-                    this.logger.Log(logLevel, item);
+                    this.logger.Log(LogLevel.Information, item);
                 }
-            }
+
             return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            this.logger.Log(logLevel, "WorkflowLoggingService stopped");
+            this.logger.Log(LogLevel.Information, "WorkflowLoggingService stopped");
     
             return Task.CompletedTask;
         }
 
         public static void LogWorkflowName(string workflowName)
         {
-            if (registeredWorkflows != null)
-            {
-                registeredWorkflows.Add(workflowName);
-            }
+            registeredWorkflows.Add(workflowName);
         }
 
         public static void LogActivityName(string activityName)
         {
-            if (registeredActivities != null)
+            registeredActivities.Add(activityName);
+        }
+
+        private LogLevel ConvertLogLevel(string ?daprLogLevel)
+        {
+            LogLevel logLevel = LogLevel.Information; 
+            if (!string.IsNullOrEmpty(daprLogLevel))
             {
-                registeredActivities.Add(activityName);
+                Enum.TryParse(daprLogLevel, out logLevel);
             }
+            return logLevel;
         }
     }
 }
