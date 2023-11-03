@@ -29,11 +29,9 @@ namespace Dapr.Workflow
         private readonly ILogger<WorkflowLoggingService> logger;
         private static readonly HashSet<string> registeredWorkflows = new();
         private static readonly HashSet<string> registeredActivities = new();
-        private LogLevel logLevel = LogLevel.Information;
 
         public WorkflowLoggingService(ILogger<WorkflowLoggingService> logger, IConfiguration configuration)
         {
-            logLevel = string.IsNullOrEmpty(configuration["DAPR_LOG_LEVEL"]) ? LogLevel.Information : ConvertLogLevel(configuration["DAPR_LOG_LEVEL"]);
             this.logger = logger;
             
         }
@@ -73,14 +71,5 @@ namespace Dapr.Workflow
             registeredActivities.Add(activityName);
         }
 
-        private LogLevel ConvertLogLevel(string ?daprLogLevel)
-        {
-            LogLevel logLevel = LogLevel.Information; 
-            if (!string.IsNullOrEmpty(daprLogLevel))
-            {
-                Enum.TryParse(daprLogLevel, out logLevel);
-            }
-            return logLevel;
-        }
     }
 }
