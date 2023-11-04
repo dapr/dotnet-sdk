@@ -19,6 +19,7 @@ namespace Dapr.E2E.Test
     {
         public static void Main(string[] args)
         {
+            Log.Logger = new LoggerConfiguration().WriteTo.File("log.txt").CreateLogger();
             CreateHostBuilder(args).Build().Run();
         }
 

@@ -39,17 +39,17 @@ namespace Dapr.Workflow
         {
             this.logger.Log(LogLevel.Information, "WorkflowLoggingService started");
 
-                this.logger.Log(LogLevel.Information, "List of registered workflows");
-                foreach (string item in registeredWorkflows)
-                {
-                    this.logger.Log(LogLevel.Information, item);
-                }
+            this.logger.Log(LogLevel.Information, "List of registered workflows");
+            foreach (string item in registeredWorkflows)
+            {
+                this.logger.Log(LogLevel.Information, item);
+            }
 
-                this.logger.Log(LogLevel.Information, "List of registered activities:");
-                foreach (string item in registeredActivities)
-                {
-                    this.logger.Log(LogLevel.Information, item);
-                }
+            this.logger.Log(LogLevel.Information, "List of registered activities:");
+            foreach (string item in registeredActivities)
+            {
+                this.logger.Log(LogLevel.Information, item);
+            }
 
             return Task.CompletedTask;
         }

@@ -43,13 +43,12 @@ namespace Dapr.E2E.Test
             var health = await daprClient.CheckHealthAsync();
             health.Should().Be(true, "DaprClient is not healthy");
 
-            var searchTask = Task.Run(() =>
+            var searchTask = Task.Run(async() =>
             {
                 using (StreamReader reader = new StreamReader(logFilePath))
                 {
                     string line;
-
-                    while ((line = reader.ReadLine()) != null)
+                    while ((line = await reader.ReadLineAsync()) != null)
                     {
                         foreach (var entry in logStrings)
                         {
@@ -67,12 +66,18 @@ namespace Dapr.E2E.Test
                 }
             }, cts.Token);
 
-            if (!Task.WaitAll(new Task[] {searchTask}, timeout))
+            try
+            {
+                await searchTask;
+            }
+            finally
             {
                 File.Delete(logFilePath);
-                Assert.True(false, "Expected logs weren't found within timeout period");
+                if (!allLogsFound)
+                {
+                    Assert.True(false, "The logs were not able to found within the timeout");
+                }
             }
-            File.Delete(logFilePath);
         }
         [Fact]
         public async Task TestWorkflows()
