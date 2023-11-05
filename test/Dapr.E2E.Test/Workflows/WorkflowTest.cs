@@ -48,7 +48,7 @@ namespace Dapr.E2E.Test
                 using (StreamReader reader = new StreamReader(logFilePath))
                 {
                     string line;
-                    while ((line = await reader.ReadLineAsync()) != null)
+                    while ((line = await reader.ReadLineAsync().WaitAsync(cts.Token)) != null)
                     {
                         foreach (var entry in logStrings)
                         {
@@ -73,10 +73,10 @@ namespace Dapr.E2E.Test
             finally
             {
                 File.Delete(logFilePath);
-                if (!allLogsFound)
-                {
-                    Assert.True(false, "The logs were not able to found within the timeout");
-                }
+            }
+            if (!allLogsFound)
+            {
+                Assert.True(false, "The logs were not able to found within the timeout");
             }
         }
         [Fact]
