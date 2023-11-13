@@ -98,6 +98,7 @@ namespace Dapr.E2E.Test
                 options.Actors.RegisterActor<Regression762Actor>();
                 options.Actors.RegisterActor<ExceptionActor>();
                 options.Actors.RegisterActor<SerializationActor>();
+                options.Actors.RegisterActor<StateActor>();
             });
         }
 
