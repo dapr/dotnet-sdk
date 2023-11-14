@@ -37,8 +37,11 @@ namespace Dapr.E2E.Test
 
             await Task.Delay(TimeSpan.FromSeconds(2));
 
-            resp = await proxy.GetState("key");
-            Assert.Null(resp);
+            // Assert key no longer exists.
+            try {
+                await proxy.GetState("key");
+                Assert.True(false, "Expected exception");
+            } catch (Exception) { }
 
             await proxy.SetState("key", "new-value", null);
             resp = await proxy.GetState("key");
