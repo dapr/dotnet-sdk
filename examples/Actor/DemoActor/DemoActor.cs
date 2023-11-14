@@ -85,9 +85,18 @@ namespace DaprDemoActor
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions, ttl);
         }
 
-        public async Task<IActorReminder> GetReminder()
+        public async Task<ActorReminderData> GetReminder()
         {
-            return await this.GetReminderAsync("TestReminder");
+            var reminder = await this.GetReminderAsync("TestReminder");
+
+            return reminder is not null
+                ? new ActorReminderData
+                {
+                    Name = reminder.Name,
+                    Period = reminder.Period,
+                    DueTime = reminder.DueTime
+                }
+                : null;
         }
         
         public Task UnregisterReminder()
