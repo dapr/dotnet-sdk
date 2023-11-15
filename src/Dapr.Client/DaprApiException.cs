@@ -92,6 +92,9 @@ namespace Dapr
         /// </summary>
         /// <param name="info">The <see cref="System.Runtime.Serialization.SerializationInfo" /> object that contains serialized object data of the exception being thrown.</param>
         /// <param name="context">The <see cref="System.Runtime.Serialization.StreamingContext" /> object that contains contextual information about the source or destination. The context parameter is reserved for future use and can be null.</param>
+#if NET8_0_OR_GREATER
+    [Obsolete(DiagnosticId = "SYSLIB0051")] // add this attribute to the serialization ctor
+#endif
         protected DaprApiException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
@@ -115,6 +118,9 @@ namespace Dapr
         public bool IsTransient { get; } = false;
 
         /// <inheritdoc />
+#if NET8_0_OR_GREATER
+    [Obsolete(DiagnosticId = "SYSLIB0051")] // add this attribute to GetObjectData
+#endif
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);

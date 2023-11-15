@@ -14,10 +14,12 @@ namespace Dapr.E2E.Test
 {
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Hosting;
+    using Serilog;
     public class Program
     {
         public static void Main(string[] args)
         {
+            Log.Logger = new LoggerConfiguration().WriteTo.File("log.txt").CreateLogger();
             CreateHostBuilder(args).Build().Run();
         }
 
@@ -26,6 +28,6 @@ namespace Dapr.E2E.Test
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                });
+                }).UseSerilog();
     }
 }

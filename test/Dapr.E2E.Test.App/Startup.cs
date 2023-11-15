@@ -29,6 +29,8 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.Hosting;
     using System.Threading.Tasks;
     using System;
+    using Microsoft.Extensions.Logging;
+    using Serilog;
 
     /// <summary>
     /// Startup class.
@@ -61,6 +63,10 @@ namespace Dapr.E2E.Test
             services.AddAuthentication().AddDapr();
             services.AddAuthorization(o => o.AddDapr());
             services.AddControllers().AddDapr();
+            services.AddLogging(builder => 
+            {
+                builder.AddConsole();
+            });
             // Register a workflow and associated activity
             services.AddDaprWorkflow(options =>
             {
@@ -108,10 +114,18 @@ namespace Dapr.E2E.Test
         /// <param name="env">Webhost environment.</param>
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            var logger = new LoggerConfiguration().WriteTo.File("log.txt").CreateLogger();
+
+            var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddSerilog(logger);
+            });
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseSerilogRequestLogging();
 
             app.UseRouting();
 
