@@ -1,9 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6</TargetFramework>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="..\Shared\ArgumentVerifier.cs" />
     <Compile Include="..\Shared\DaprDefaults.cs" />
