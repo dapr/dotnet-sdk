@@ -132,16 +132,14 @@ namespace Dapr.E2E.Test
         private static string GetTargetFrameworkName()
         {
             var targetFrameworkName = ((TargetFrameworkAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(TargetFrameworkAttribute), false).FirstOrDefault()).FrameworkName;
-            string frameworkMoniker;
-            if (targetFrameworkName == ".NETCoreApp,Version=v6.0")
+
+            return targetFrameworkName switch
             {
-                frameworkMoniker = "net6";
-            }
-            else
-            {
-                frameworkMoniker = "net7";
-            }
-            return frameworkMoniker;
+                ".NETCoreApp,Version=v6.0" => "net6",
+                ".NETCoreApp,Version=v7.0" => "net7",
+                ".NETCoreApp,Version=v8.0" => "net8",
+                _ => throw new InvalidOperationException($"Unsupported target framework: {targetFrameworkName}")
+            };
         }
 
         private static (int, int, int, int) GetFreePorts()
