@@ -47,7 +47,7 @@ namespace Dapr.Workflow
 #pragma warning disable CS0618 // Type or member is obsolete - keeping around temporarily - replaced by DaprWorkflowClient
             serviceCollection.TryAddSingleton<WorkflowEngineClient>();
 #pragma warning restore CS0618 // Type or member is obsolete
-
+            serviceCollection.AddHostedService<WorkflowLoggingService>();
             serviceCollection.TryAddSingleton<DaprWorkflowClient>();
             serviceCollection.AddDaprClient();
             serviceCollection.AddDaprWorkflowClient();
