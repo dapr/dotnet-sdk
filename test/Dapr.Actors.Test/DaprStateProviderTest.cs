@@ -81,6 +81,18 @@ namespace Dapr.Actors.Test
               .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", null)));
             Assert.True(await provider.ContainsStateAsync("actorType", "actorId", "key", token));
+
+            var ttl = DateTime.UtcNow.AddSeconds(1);
+            interactor
+              .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", ttl)));
+            Assert.True(await provider.ContainsStateAsync("actorType", "actorId", "key", token));
+
+            ttl = DateTime.UtcNow.AddSeconds(-1);
+            interactor
+              .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", ttl)));
+            Assert.False(await provider.ContainsStateAsync("actorType", "actorId", "key", token));
         }
 
         [Fact]

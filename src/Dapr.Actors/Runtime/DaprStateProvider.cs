@@ -73,7 +73,7 @@ namespace Dapr.Actors.Runtime
         public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
             var result = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
-            return result.Value.Length != 0;
+            return (result.Value.Length != 0 && (!result.TTLExpireTime.HasValue || result.TTLExpireTime.Value > DateTimeOffset.UtcNow));
         }
 
         public async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
