@@ -35,7 +35,7 @@ namespace Dapr.E2E.Test
             var resp = await proxy.GetState("key");
             Assert.Equal("value", resp);
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Task.Delay(TimeSpan.FromSeconds(2.5));
 
             // Assert key no longer exists.
             await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
@@ -95,7 +95,7 @@ namespace Dapr.E2E.Test
             var resp = await proxy.GetState("key");
             Assert.Equal("value", resp);
             await proxy.SetState("key", "value", TimeSpan.FromSeconds(2));
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Task.Delay(TimeSpan.FromSeconds(2.5));
             await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
         }
 
@@ -115,7 +115,7 @@ namespace Dapr.E2E.Test
             resp = await proxy2.GetState("key");
             Assert.Equal("value", resp);
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Task.Delay(TimeSpan.FromSeconds(2.5));
             await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy1.GetState("key"));
             await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy2.GetState("key"));
         }
