@@ -49,7 +49,7 @@ namespace Dapr.Actors.Runtime
             var result = new ConditionalValue<ActorStateResponse<T>>(false, default);
             var response = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
 
-            if (response.Value.Length != 0 && response.TTLExpireTime > DateTimeOffset.UtcNow)
+            if (response.Value.Length != 0 && (!response.TTLExpireTime.HasValue || response.TTLExpireTime.Value > DateTimeOffset.UtcNow))
             {
                 T typedResult;
 
@@ -136,7 +136,10 @@ namespace Dapr.Actors.Runtime
 
                         if (stateChange.TTLExpireTime.HasValue) {
                             var ttl = (int)Math.Ceiling((stateChange.TTLExpireTime.Value - DateTimeOffset.UtcNow).TotalSeconds);
+                            writer.WritePropertyName("metadata");
+                            writer.WriteStartObject();
                             writer.WriteString("ttlInSeconds", ttl.ToString());
+                            writer.WriteEndObject();
                         }
 
                         break;

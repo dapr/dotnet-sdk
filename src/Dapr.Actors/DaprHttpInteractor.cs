@@ -73,7 +73,7 @@ namespace Dapr.Actors
             using var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
             var stringResponse = await response.Content.ReadAsStringAsync();
 
-            var ttlExpireTime = new DateTime();
+            DateTimeOffset? ttlExpireTime = null;
             if (response.Headers.TryGetValues(Constants.TTLResponseHeaderName, out IEnumerable<string> headerValues))
             {
                 var ttlExpireTimeString = headerValues.First();

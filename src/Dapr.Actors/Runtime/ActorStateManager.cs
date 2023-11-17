@@ -68,8 +68,8 @@ namespace Dapr.Actors.Runtime
             {
                 var stateMetadata = stateChangeTracker[stateName];
 
-                // Check if the property was marked as remove in the cache
-                if (stateMetadata.ChangeKind == StateChangeKind.Remove)
+                // Check if the property was marked as remove or is expired in the cache
+                if (stateMetadata.ChangeKind == StateChangeKind.Remove || (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow))
                 {
                     stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update);
                     return true;
@@ -99,8 +99,8 @@ namespace Dapr.Actors.Runtime
             {
                 var stateMetadata = stateChangeTracker[stateName];
 
-                // Check if the property was marked as remove in the cache
-                if (stateMetadata.ChangeKind == StateChangeKind.Remove)
+                // Check if the property was marked as remove in the cache or has been expired.
+                if (stateMetadata.ChangeKind == StateChangeKind.Remove || (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow))
                 {
                     stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update, ttl: ttl);
                     return true;
@@ -145,7 +145,7 @@ namespace Dapr.Actors.Runtime
                 var stateMetadata = stateChangeTracker[stateName];
 
                 // Check if the property was marked as remove in the cache or is expired
-                if (stateMetadata.ChangeKind == StateChangeKind.Remove || stateMetadata.TTLExpireTime <= DateTimeOffset.UtcNow)
+                if (stateMetadata.ChangeKind == StateChangeKind.Remove || (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow))
                 {
                     return new ConditionalValue<T>(false, default);
                 }
@@ -157,6 +157,7 @@ namespace Dapr.Actors.Runtime
             if (conditionalResult.HasValue)
             {
                 stateChangeTracker.Add(stateName, StateMetadata.Create(conditionalResult.Value.Value, StateChangeKind.None, ttlExpireTime: conditionalResult.Value.TTLExpireTime));
+                return new ConditionalValue<T>(true, conditionalResult.Value.Value);
             }
 
             return new ConditionalValue<T>(false, default);
@@ -174,6 +175,7 @@ namespace Dapr.Actors.Runtime
             {
                 var stateMetadata = stateChangeTracker[stateName];
                 stateMetadata.Value = value;
+                stateMetadata.TTLExpireTime = null;
 
                 if (stateMetadata.ChangeKind == StateChangeKind.None ||
                     stateMetadata.ChangeKind == StateChangeKind.Remove)
@@ -203,6 +205,7 @@ namespace Dapr.Actors.Runtime
             {
                 var stateMetadata = stateChangeTracker[stateName];
                 stateMetadata.Value = value;
+                stateMetadata.TTLExpireTime = DateTimeOffset.UtcNow.Add(ttl);
 
                 if (stateMetadata.ChangeKind == StateChangeKind.None ||
                     stateMetadata.ChangeKind == StateChangeKind.Remove)
@@ -241,6 +244,12 @@ namespace Dapr.Actors.Runtime
             if (stateChangeTracker.ContainsKey(stateName))
             {
                 var stateMetadata = stateChangeTracker[stateName];
+
+                if (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow)
+                {
+                    stateChangeTracker.Remove(stateName);
+                    return false;
+                }
 
                 switch (stateMetadata.ChangeKind)
                 {

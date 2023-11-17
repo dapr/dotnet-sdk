@@ -38,14 +38,86 @@ namespace Dapr.E2E.Test
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Assert key no longer exists.
-            try {
-                await proxy.GetState("key");
-                Assert.True(false, "Expected exception");
-            } catch (Exception) { }
+            await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
 
+            // Can create key again
             await proxy.SetState("key", "new-value", null);
             resp = await proxy.GetState("key");
             Assert.Equal("new-value", resp);
+        }
+
+        [Fact]
+        public async Task ActorStateTTLOverridesExisting()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactory.CreateActorProxy<IStateActor>(ActorId.CreateRandom(), "StateActor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            // TLL 4 seconds
+            await proxy.SetState("key", "value", TimeSpan.FromSeconds(4));
+
+            var resp = await proxy.GetState("key");
+            Assert.Equal("value", resp);
+
+            // TLL 2 seconds
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            resp = await proxy.GetState("key");
+            Assert.Equal("value", resp);
+
+            // TLL 4 seconds
+            await proxy.SetState("key", "value", TimeSpan.FromSeconds(4));
+
+            // TLL 2 seconds
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            resp = await proxy.GetState("key");
+            Assert.Equal("value", resp);
+
+            // TLL 0 seconds
+            await Task.Delay(TimeSpan.FromSeconds(2.5));
+
+            // Assert key no longer exists.
+            await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
+        }
+
+        [Fact]
+        public async Task ActorStateTTLRemoveTTL()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactory.CreateActorProxy<IStateActor>(ActorId.CreateRandom(), "StateActor");
+
+            await WaitForActorRuntimeAsync(proxy, cts.Token);
+
+            // Can remove TTL and then add again
+            await proxy.SetState("key", "value", TimeSpan.FromSeconds(2));
+            await proxy.SetState("key", "value", null);
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            var resp = await proxy.GetState("key");
+            Assert.Equal("value", resp);
+            await proxy.SetState("key", "value", TimeSpan.FromSeconds(2));
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
+        }
+
+        [Fact]
+        public async Task ActorStateBetweenProxies()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var actorId = ActorId.CreateRandom();
+            var proxy1 = this.ProxyFactory.CreateActorProxy<IStateActor>(actorId, "StateActor");
+            var proxy2 = this.ProxyFactory.CreateActorProxy<IStateActor>(actorId, "StateActor");
+
+            await WaitForActorRuntimeAsync(proxy1, cts.Token);
+
+            await proxy1.SetState("key", "value", TimeSpan.FromSeconds(2));
+            var resp = await proxy1.GetState("key");
+            Assert.Equal("value", resp);
+            resp = await proxy2.GetState("key");
+            Assert.Equal("value", resp);
+
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy1.GetState("key"));
+            await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy2.GetState("key"));
         }
     }
 }
