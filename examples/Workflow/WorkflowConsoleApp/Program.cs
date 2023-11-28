@@ -81,7 +81,14 @@ await RestockInventory(daprClient, baseInventory);
 // Start the input loop
 using (daprClient)
 {
-    while (true)
+    bool quit = false;
+    Console.CancelKeyPress += delegate
+    {
+        quit = true;
+        Console.WriteLine("Shutting down the example.");
+    };
+
+    while (!quit)
     {
         // Get the name of the item to order and make sure we have inventory
         string items = string.Join(", ", baseInventory.Select(i => i.Name));
@@ -138,7 +145,7 @@ using (daprClient)
         Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) started successfully with {state.ReadInputAs<OrderPayload>()}");
 
         // Wait for the workflow to complete
-        while (true)
+        while (!quit)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             try
