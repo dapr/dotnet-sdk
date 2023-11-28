@@ -1,9 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6</TargetFramework>
-  </PropertyGroup>
-
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
     <Description>This package contains the reference assemblies for developing services using Dapr and AspNetCore.</Description>
