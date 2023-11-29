@@ -61,7 +61,7 @@ For the workflow API option, two identical `curl` commands are shown, one for Li
 Make note of the "1234" in the commands below. This represents the unique identifier for the workflow run and can be replaced with any identifier of your choosing.
 
 ```bash
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=1234 \
+curl -i -X POST http://localhost:3500/v1.0-beta1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=1234 \
   -H "Content-Type: application/json" \
   -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
@@ -69,7 +69,7 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 On Windows (PowerShell):
 
 ```powershell
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=1234 `
+curl -i -X POST http://localhost:3500/v1.0-beta1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=1234 `
   -H "Content-Type: application/json" `
   -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
@@ -83,7 +83,7 @@ If successful, you should see a response like the following:
 Next, send an HTTP request to get the status of the workflow that was started:
 
 ```bash
-curl -i -X GET http://localhost:3500/v1.0-alpha1/workflows/dapr/1234
+curl -i -X GET http://localhost:3500/v1.0-beta1/workflows/dapr/1234
 ```
 
 The workflow is designed to take several seconds to complete. If the workflow hasn't completed yet when you issue the previous command, you should see the following JSON response (formatted for readability):
