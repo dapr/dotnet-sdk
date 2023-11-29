@@ -109,7 +109,7 @@ namespace Microsoft.AspNetCore.Builder
                         if (header != string.Empty)
                         {
                             // exception case
-                            context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
+                            context.Response.Headers[Constants.ErrorResponseHeaderName] = header; // add error header
                         }
 
                         await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
@@ -118,7 +118,7 @@ namespace Microsoft.AspNetCore.Builder
                     {
                         var (header, body) = CreateExceptionResponseMessage(ex);
 
-                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header);
+                        context.Response.Headers[Constants.ErrorResponseHeaderName] = header;
                         await context.Response.Body.WriteAsync(body, 0, body.Length);
                     }
                     finally
