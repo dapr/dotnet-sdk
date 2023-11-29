@@ -81,7 +81,14 @@ await RestockInventory(daprClient, baseInventory);
 // Start the input loop
 using (daprClient)
 {
-    while (true)
+    bool quit = false;
+    Console.CancelKeyPress += delegate
+    {
+        quit = true;
+        Console.WriteLine("Shutting down the example.");
+    };
+
+    while (!quit)
     {
         // Get the name of the item to order and make sure we have inventory
         string items = string.Join(", ", baseInventory.Select(i => i.Name));
