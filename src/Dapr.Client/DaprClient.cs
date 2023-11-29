@@ -292,7 +292,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the <c>POST</c> HTTP method.
         /// </summary>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
@@ -305,7 +305,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the HTTP method specified by <paramref name="httpMethod" />.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
@@ -316,7 +316,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the <c>POST</c> HTTP method and a JSON serialized request body specified by <paramref name="data" />.
         /// </summary>
         /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
@@ -331,7 +331,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
         /// <paramref name="data" />.
         /// </summary>
@@ -444,7 +444,7 @@ namespace Dapr.Client
         public abstract Task<TResponse> InvokeMethodAsync<TResponse>(HttpRequestMessage request, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method and an empty request body. 
         /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -462,7 +462,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="methodName" />
         /// and an empty request body. If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -482,7 +482,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
         /// status code an exception will be thrown.
@@ -504,7 +504,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
         /// status code an exception will be thrown.
@@ -528,7 +528,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
         /// and an empty request body. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -549,7 +549,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
         /// and an empty request body. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -572,7 +572,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -596,7 +596,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -622,7 +622,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with an empty request body. 
         /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -636,7 +636,7 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />.
         /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -654,7 +654,7 @@ namespace Dapr.Client
         where TRequest : IMessage;
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with an empty request body. If the response has a success
         /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
         /// otherwise an exception will be thrown.
@@ -671,7 +671,7 @@ namespace Dapr.Client
         where TResponse : IMessage, new();
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />. If the response has a success
         /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
         /// otherwise an exception will be thrown.
