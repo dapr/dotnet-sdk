@@ -11,14 +11,22 @@ This Dapr workflow example shows how to create a Dapr workflow (`Workflow`) and 
 
 
 ## Optional Setup
-Dapr workflow, as well as this example program, now support authentication through the use of API tokens. For more information on this, view the following document: [API Token](https://github.com/dapr/dotnet-sdk/docs/api-token.md)
+Dapr workflow, as well as this example program, now support authentication through the use of API tokens. For more information on this, view the following document: [API Token](https://github.com/dapr/dotnet-sdk/blob/master/docs/api-tokens.md)
 
 ## Projects in sample
 
 This sample contains a single [WorkflowConsoleApp](./WorkflowConsoleApp) .NET project.
-It utilizes the workflow SDK as well as the workflow management API for starting and querying workflows instances.
-The main `Program.cs` file contains the main setup of the app, including  the registration of the workflow and workflow activities.
-The workflow definition is found in the `Workflows` directory and the workflow activity definitions are found in the `Activities` directory.
+It utilizes the workflow SDK as well as the workflow management API for simulating inventory management and sale of goods in a store.
+The main `Program.cs` file contains the main setup of the app, the registration of the workflow and its activities, and interaction with the user. The workflow definition is found in the `Workflows` directory and the workflow activity definitions are found in the `Activities` directory.
+
+There are five activities in the directory that could be called by the workflows:
+- `NotifyActivity`:  printing logs as notifications
+- `ProcessPaymentActivity`: printing logs and delaying for simulating payment processing
+- `RequestApprovalActivity`: printing logs to indicate that the order has been approved
+- `ReserveInventoryActivity`: checking if there are enough items for purchase
+- `UpdateInventoryActivity`: updating the statestore according to purchasing
+
+The `OrderProcessingWorkflow.cs` in `Workflows` directory implements the running logic of the workflow. Based on the purchase stage and outcome, it calls different activities and waits for the corresponding events to trigger interaction with the user.
 
 This sample also contains a [WorkflowUnitTest](./WorkflowUnitTest) .NET project that utilizes [xUnit](https://xunit.net/) and [Moq](https://github.com/moq/moq) to test the workflow logic.
 It works by creating an instance of the `OrderProcessingWorkflow` (defined in the `WorkflowConsoleApp` project), mocking activity calls, and testing the inputs and outputs.

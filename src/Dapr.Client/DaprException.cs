@@ -47,6 +47,9 @@ namespace Dapr
         /// </summary>
         /// <param name="info">The <see cref="SerializationInfo" /> object that contains serialized object data of the exception being thrown.</param>
         /// <param name="context">The <see cref="StreamingContext" /> object that contains contextual information about the source or destination. The context parameter is reserved for future use and can be null.</param>
+#if NET8_0_OR_GREATER
+    [Obsolete(DiagnosticId = "SYSLIB0051")] // add this attribute to GetObjectData
+#endif
         protected DaprException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
