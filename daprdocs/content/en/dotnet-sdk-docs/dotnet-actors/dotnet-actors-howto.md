@@ -81,6 +81,7 @@ Define `IMyActor` interface and `MyData` data object. Paste the following code i
 
 ```csharp
 using Dapr.Actors;
+using Dapr.Actors.Runtime;
 using System.Threading.Tasks;
 
 namespace MyActor.Interfaces
@@ -91,6 +92,7 @@ namespace MyActor.Interfaces
         Task<MyData> GetDataAsync();
         Task RegisterReminder();
         Task UnregisterReminder();
+        Task<IActorReminder> GetReminder();
         Task RegisterTimer();
         Task UnregisterTimer();
     }
@@ -220,6 +222,14 @@ namespace MyActorService
         }
 
         /// <summary>
+        /// Get MyReminder reminder details with the actor
+        /// </summary>
+        public async Task<IActorReminder> GetReminder()
+        {
+            await this.GetReminderAsync("MyReminder");
+        }
+
+        /// <summary>
         /// Unregister MyReminder reminder with the actor
         /// </summary>
         public Task UnregisterReminder()
@@ -305,14 +315,6 @@ namespace MyActorService
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-            }
-            else
-            {
-                // By default, ASP.Net Core uses port 5000 for HTTP. The HTTP
-                // redirection will interfere with the Dapr runtime. You can
-                // move this out of the else block if you use port 5001 in this
-                // example, and developer tooling (such as the VSCode extension).
-                app.UseHttpsRedirection();
             }
 
             app.UseRouting();

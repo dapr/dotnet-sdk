@@ -16,6 +16,7 @@ namespace Dapr.Actors.Client
     using System;
     using System.Net.Http;
     using Dapr.Actors.Builder;
+    using Dapr.Actors.Communication;
     using Dapr.Actors.Communication.Client;
 
     /// <summary>
@@ -79,7 +80,15 @@ namespace Dapr.Actors.Client
             options ??= this.DefaultOptions;
 
             var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
-            var remotingClient = new ActorRemotingClient(daprInteractor);
+            
+            // provide a serializer if 'useJsonSerialization' is true and no serialization provider is provided.
+            IActorMessageBodySerializationProvider serializationProvider = null;
+            if (options.UseJsonSerialization)
+            {
+                serializationProvider = new ActorMessageBodyJsonSerializationProvider(options.JsonSerializerOptions);
+            }
+
+            var remotingClient = new ActorRemotingClient(daprInteractor, serializationProvider);
             var proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(actorInterfaceType);
             var actorProxy = proxyGenerator.CreateActorProxy();
             actorProxy.Initialize(remotingClient, actorId, actorType, options);

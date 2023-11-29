@@ -54,6 +54,7 @@ namespace Dapr.Workflow
                     WorkflowContext workflowContext = new DaprWorkflowContext(innerContext);
                     return implementation(workflowContext, input);
                 });
+                WorkflowLoggingService.LogWorkflowName(name);
             });
         }
 
@@ -73,6 +74,7 @@ namespace Dapr.Workflow
                     TWorkflow workflow = Activator.CreateInstance<TWorkflow>();
                     return new OrchestratorWrapper(workflow);
                 });
+                WorkflowLoggingService.LogWorkflowName(name);
             });
         }
 
@@ -91,6 +93,7 @@ namespace Dapr.Workflow
                     WorkflowActivityContext activityContext = new(innerContext);
                     return implementation(activityContext, input);
                 });
+                WorkflowLoggingService.LogActivityName(name);
             });
         }
 
@@ -111,6 +114,7 @@ namespace Dapr.Workflow
                     TActivity activity = ActivatorUtilities.CreateInstance<TActivity>(serviceProvider);
                     return new ActivityWrapper(activity);
                 });
+                WorkflowLoggingService.LogActivityName(name);
             });
         }
 

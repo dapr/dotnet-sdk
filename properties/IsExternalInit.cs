@@ -13,6 +13,5 @@ namespace System.Runtime.CompilerServices
     internal static class IsExternalInit
     {
     }
-
-    // This is a polyfill for init only properties in netcoreapp3.1
+    
 }

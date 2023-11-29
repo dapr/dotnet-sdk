@@ -26,7 +26,7 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 7.0.x
+          dotnet-version: 8.0.x
       - name: Build
         run: dotnet build --configuration release
       - name: Generate Packages
@@ -42,14 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['3.1', '6.0', '7.0']
+        dotnet-version: ['6.0', '7.0', '8.0']
         include:
-        - dotnet-version: '3.1'
-          install-3: true
-          display-name: '.NET Core 3.1'
-          framework: 'netcoreapp3.1'
-          prefix: 'netcoreapp31'
-          install-version: '3.1.x' # We always need a new .NET
         - dotnet-version: '6.0'
           install-3: false
           display-name: '.NET 6.0'
@@ -62,6 +56,12 @@ jobs:
           framework: 'net7'
           prefix: 'net7'
           install-version: '7.0.x'
+        - dotnet-version: '8.0'
+          install-3: false
+          display-name: '.NET 8.0'
+          framework: 'net8'
+          prefix: 'net8'
+          install-version: '8.0.x'
     steps:
     - uses: actions/checkout@v1
     - name: Parse release version
@@ -70,11 +70,11 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: ${{ matrix.install-version }}
-    - name: Setup .NET 7.0 # net7 is always required.
+    - name: Setup .NET 8.0 # net8 is always required.
       uses: actions/setup-dotnet@v1
-      if: ${{ matrix.install-version != '7.0.x' }}
+      if: ${{ matrix.install-version != '8.0.x' }}
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.0.x
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false

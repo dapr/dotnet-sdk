@@ -16,6 +16,7 @@ namespace IDemoActorInterface
     using System;
     using System.Threading.Tasks;
     using Dapr.Actors;
+    using Dapr.Actors.Runtime;
 
     /// <summary>
     /// Interface for Actor method.
@@ -95,6 +96,13 @@ namespace IDemoActorInterface
         Task RegisterReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions);
 
         /// <summary>
+        /// Gets the registered reminder.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder.</param>
+        /// <returns>A task that returns the reminder after completion.</returns>
+        Task<ActorReminderData> GetReminder();
+
+        /// <summary>
         /// Unregisters the registered timer.
         /// </summary>
         /// <returns>A task that represents the asynchronous save operation.</returns>
@@ -122,6 +130,20 @@ namespace IDemoActorInterface
             var propAValue = this.PropertyA ?? "null";
             var propBValue = this.PropertyB ?? "null";
             return $"PropertyA: {propAValue}, PropertyB: {propBValue}";
+        }
+    }
+
+    public class ActorReminderData
+    {
+        public string Name { get; set; }
+
+        public TimeSpan DueTime { get; set; }
+
+        public TimeSpan Period { get; set; }
+
+        public override string ToString()
+        {
+            return $"Name: {this.Name}, DueTime: {this.DueTime}, Period: {this.Period}";
         }
     }
 }
