@@ -11,14 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Text.Json;
+using Dapr.Actors.Test;
+using FluentAssertions;
+using Xunit;
+
 namespace Dapr.Actors.Client
 {
-    using System;
-    using System.Text.Json;
-    using Dapr.Actors.Test;
-    using FluentAssertions;
-    using Xunit;
-
     /// <summary>
     /// Test class for Actor Code builder.
     /// </summary>

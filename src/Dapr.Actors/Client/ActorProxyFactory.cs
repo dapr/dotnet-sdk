@@ -11,15 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Globalization;
+using System.Net.Http;
+using Dapr.Actors.Builder;
+using Dapr.Actors.Communication;
+using Dapr.Actors.Communication.Client;
+
 namespace Dapr.Actors.Client
 {
-    using System;
-    using System.Globalization;
-    using System.Net.Http;
-    using Dapr.Actors.Builder;
-    using Dapr.Actors.Communication;
-    using Dapr.Actors.Communication.Client;
-
     /// <summary>
     /// Represents a factory class to create a proxy to the remote actor objects.
     /// </summary>
