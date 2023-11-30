@@ -100,7 +100,7 @@ namespace IDemoActorInterface
         /// </summary>
         /// <param name="reminderName">The name of the reminder.</param>
         /// <returns>A task that returns the reminder after completion.</returns>
-        Task<IActorReminder> GetReminder();
+        Task<ActorReminderData> GetReminder();
 
         /// <summary>
         /// Unregisters the registered timer.
@@ -130,6 +130,20 @@ namespace IDemoActorInterface
             var propAValue = this.PropertyA ?? "null";
             var propBValue = this.PropertyB ?? "null";
             return $"PropertyA: {propAValue}, PropertyB: {propBValue}";
+        }
+    }
+
+    public class ActorReminderData
+    {
+        public string Name { get; set; }
+
+        public TimeSpan DueTime { get; set; }
+
+        public TimeSpan Period { get; set; }
+
+        public override string ToString()
+        {
+            return $"Name: {this.Name}, DueTime: {this.DueTime}, Period: {this.Period}";
         }
     }
 }

@@ -25,6 +25,14 @@ namespace Dapr.AspNetCore
     {
         const string DaprApiToken = "Dapr-Api-Token";
 
+#if NET8_0_OR_GREATER
+        public DaprAuthenticationHandler(
+            IOptionsMonitor<DaprAuthenticationOptions> options,
+            ILoggerFactory logger,
+            UrlEncoder encoder) : base(options, logger, encoder)
+        {
+        }
+#else
         public DaprAuthenticationHandler(
             IOptionsMonitor<DaprAuthenticationOptions> options,
             ILoggerFactory logger,
@@ -32,6 +40,7 @@ namespace Dapr.AspNetCore
             ISystemClock clock) : base(options, logger, encoder, clock)
         {
         }
+#endif
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
