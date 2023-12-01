@@ -21,7 +21,7 @@
 
   <PropertyGroup>
     <!-- Generators must target netstandard2.0. -->
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
 
     <!-- Do not include the generator as a lib dependency -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
