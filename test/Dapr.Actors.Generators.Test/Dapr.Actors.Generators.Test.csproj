@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFrameworks>net6;net7</TargetFrameworks>
-    <LangVersion>10.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
