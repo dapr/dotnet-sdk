@@ -15,6 +15,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
+using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Testing.Verifiers;
 
 /// <remarks>
@@ -27,8 +28,30 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
     {
         public Test()
         {
-            // NOTE: There's no Net70 yet, so we're using Net60 for now. Hopefully it "just works".
-            this.ReferenceAssemblies = Microsoft.CodeAnalysis.Testing.ReferenceAssemblies.Net.Net60;
+            int frameworkVersion =
+            #if NET6_0
+                6;
+            #elif NET7_0
+                7;
+            #elif NET8_0
+                8;
+            #endif
+
+            //
+            // NOTE: Ordinarily we'd use the following:
+            //
+            //           this.ReferenceAssemblies = Microsoft.CodeAnalysis.Testing.ReferenceAssemblies.Net.Net60;
+            //
+            //       However, Net70 and Net80 are not yet available in the current version of the Roslyn SDK.
+            //
+
+            this.ReferenceAssemblies =
+                new ReferenceAssemblies(
+                    $"net{frameworkVersion}.0",
+                    new PackageIdentity(
+                        "Microsoft.NETCore.App.Ref",
+                        $"{frameworkVersion}.0.0"),
+                    Path.Combine("ref", $"net{frameworkVersion}.0"));
         }
 
         protected override CompilationOptions CreateCompilationOptions()
