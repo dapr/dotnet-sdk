@@ -11,6 +11,8 @@ The Dapr actor package enables you to use Dapr virtual actors within a .NET appl
 # Data Contract Serialization
 When Dapr's virtual actors are invoked via the remoting proxy, your data is serialized using a serialization engine called the [Data Contract Serializer](https://learn.microsoft.com/en-us/dotnet/framework/wcf/feature-details/serializable-types) implemented by the [DataContractSerializer](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.serialization.datacontractserializer) class, which converts your C# types to and from XML documents. When sending or receiving primitives (like strings or ints), this serialization happens transparently and there's no requisite preparation needed on your part. However, when working with complex types such as those you create, there are some important rules to take into consideration so this process works smoothly.
 
+This serialization framework is not specific to Dapr and is separately maintained by the .NET team within the [.NET Github repository](https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.DataContractSerialization/src/System/Runtime/Serialization/DataContractSerializer.cs).
+
 ## Serializable Types
 There are several important considerations to keep in mind when using the Data Contract Serializer:
 
