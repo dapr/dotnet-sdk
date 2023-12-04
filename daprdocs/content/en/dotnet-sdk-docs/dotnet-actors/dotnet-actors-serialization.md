@@ -116,7 +116,7 @@ public class Doodad
 
 In the above example, we don't need to also use the [DataMemberAttribute](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.serialization.datamemberattribute) attributes because again, we're using [built-in primitives](###supported-primitive-types) that the serializer supports. But, we do get more flexibility if we use the attributes. From the DataContractAttribute attribute, we can specify our own XML namespace with the Namespace argument and, via the Name argument, change the name of the type as used when serialized into the XML document. 
 
-It's a recommended practive to append the DataContractAttribute attribute to the type and the DataMemberAttribute attributes to all the members you want to serialize anyway - if they're not necessary and you're not changing the default values, they'll just be ignored, but they give you a mechanism to opt into serializing members that wouldn't otherwise have been included such as those marked as private or that are themselves complex types or collections.
+It's a recommended practice to append the DataContractAttribute attribute to the type and the DataMemberAttribute attributes to all the members you want to serialize anyway - if they're not necessary and you're not changing the default values, they'll just be ignored, but they give you a mechanism to opt into serializing members that wouldn't otherwise have been included such as those marked as private or that are themselves complex types or collections.
 
 Note that if you do opt into serializing your private members, their values will be serialized into plain text - they can very well be viewed, intercepted and potentially manipulated based on how you're handing the data once serialized, so it's an important consideration whether you want to mark these members or not in your use case.
 
@@ -151,10 +151,10 @@ When this is serialized, because we're changing the names of the serialized memb
 </Doodad>
 ```
 
-#### Classes in C# 12 - Primary Constrcutors
+#### Classes in C# 12 - Primary Constructors
 C# 12 brought us primary constructors on classes. Use of a primary constructor means the compiler will be prevented from creating the default implicit parameterless constructor. While a primary constructor on a class doesn't generate any public properties, it does mean that if you pass this primary constructor any arguments or have non-primitive types in your class, you'll either need to specify your own parameterless constructor or use the serialization attributes.
 
-Here's an example where we're using the primary constrcutor to inject an ILogger to a field and add our own parameterless constructor without the need for any attributes.
+Here's an example where we're using the primary constructor to inject an ILogger to a field and add our own parameterless constructor without the need for any attributes.
 
 ```csharp
 public class Doodad(ILogger<Doodad> _logger)
@@ -174,7 +174,7 @@ public class Doodad(ILogger<Doodad> _logger)
 }
 ```
 
-And using our serialization attributes (again, opting for init-only setters since we're using the serailization attributes):
+And using our serialization attributes (again, opting for init-only setters since we're using the serialization attributes):
 
 ```csharp
 [DataContract]
