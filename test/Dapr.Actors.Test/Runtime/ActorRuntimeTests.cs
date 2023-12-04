@@ -115,6 +115,10 @@ namespace Dapr.Actors.Test
             Task NoArgumentsAsync();
 
             Task NoArgumentsWithCancellationAsync(CancellationToken cancellationToken = default);
+
+            Task SingleArgumentAsync(bool arg);
+
+            Task SingleArgumentWithCancellationAsync(bool arg, CancellationToken cancellationToken = default);
         }
 
         public sealed class NotRemotedActor : Actor, INotRemotedActor
@@ -130,6 +134,16 @@ namespace Dapr.Actors.Test
             }
 
             public Task NoArgumentsWithCancellationAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task SingleArgumentAsync(bool arg)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task SingleArgumentWithCancellationAsync(bool arg, CancellationToken cancellationToken = default)
             {
                 return Task.CompletedTask;
             }
@@ -160,6 +174,44 @@ namespace Dapr.Actors.Test
 
             using var output = new MemoryStream();
             await runtime.DispatchWithoutRemotingAsync(actorType.Name, ActorId.CreateRandom().ToString(), nameof(INotRemotedActor.NoArgumentsWithCancellationAsync), new MemoryStream(), output);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithSingleArgument()
+        {
+            var actorType = typeof(NotRemotedActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<NotRemotedActor>();
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            using var input = new MemoryStream();
+
+            JsonSerializer.Serialize(input, true);
+
+            input.Seek(0, SeekOrigin.Begin);
+
+            using var output = new MemoryStream();
+            await runtime.DispatchWithoutRemotingAsync(actorType.Name, ActorId.CreateRandom().ToString(), nameof(INotRemotedActor.SingleArgumentAsync), input, output);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithSingleArgumentWithCancellation()
+        {
+            var actorType = typeof(NotRemotedActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<NotRemotedActor>();
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            using var input = new MemoryStream();
+
+            JsonSerializer.Serialize(input, true);
+
+            input.Seek(0, SeekOrigin.Begin);
+
+            using var output = new MemoryStream();
+            await runtime.DispatchWithoutRemotingAsync(actorType.Name, ActorId.CreateRandom().ToString(), nameof(INotRemotedActor.SingleArgumentWithCancellationAsync), input, output);
         }
 
         [Fact]
