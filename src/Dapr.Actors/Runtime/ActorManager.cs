@@ -152,6 +152,10 @@ namespace Dapr.Actors.Runtime
                 {
                     awaitable = methodInfo.Invoke(actor, null);
                 }
+                else if (parameters.Length == 1 && parameters[0].ParameterType == typeof(CancellationToken))
+                {
+                    awaitable = methodInfo.Invoke(actor, new object[] { ct });
+                }
                 else if (parameters.Length == 1)
                 {
                     // deserialize using stream.

@@ -27,6 +27,7 @@ namespace Dapr.Actors.Test
     using Xunit;
     using Dapr.Actors.Client;
     using System.Reflection;
+    using System.Threading;
 
     public sealed class ActorRuntimeTests
     {
@@ -107,6 +108,58 @@ namespace Dapr.Actors.Test
 
             Assert.Equal("\"hi\"", text);
             Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+        }
+
+        public interface INotRemotedActor : IActor
+        {
+            Task NoArgumentsAsync();
+
+            Task NoArgumentsWithCancellationAsync(CancellationToken cancellationToken = default);
+        }
+
+        public sealed class NotRemotedActor : Actor, INotRemotedActor
+        {
+            public NotRemotedActor(ActorHost host)
+                : base(host)
+            {
+            }
+
+            public Task NoArgumentsAsync()
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task NoArgumentsWithCancellationAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.CompletedTask;
+            }
+        }
+
+
+        [Fact]
+        public async Task NoRemotingMethodWithNoArguments()
+        {
+            var actorType = typeof(NotRemotedActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<NotRemotedActor>();
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            using var output = new MemoryStream();
+            await runtime.DispatchWithoutRemotingAsync(actorType.Name, ActorId.CreateRandom().ToString(), nameof(INotRemotedActor.NoArgumentsAsync), new MemoryStream(), output);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithNoArgumentsWithCancellation()
+        {
+            var actorType = typeof(NotRemotedActor);
+
+            var options = new ActorRuntimeOptions();
+            options.Actors.RegisterActor<NotRemotedActor>();
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            using var output = new MemoryStream();
+            await runtime.DispatchWithoutRemotingAsync(actorType.Name, ActorId.CreateRandom().ToString(), nameof(INotRemotedActor.NoArgumentsWithCancellationAsync), new MemoryStream(), output);
         }
 
         [Fact]
