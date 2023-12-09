@@ -38,6 +38,7 @@ while (!await daprClient.CheckHealthAsync())
 
 using (daprClient)
 {
+    Console.WriteLine($"Workflow Started.");
     await daprClient.WaitForSidecarAsync();
 
     string instanceId = $"demo-workflow-{Guid.NewGuid().ToString()[..8]}";
@@ -51,4 +52,9 @@ using (daprClient)
     await daprClient.WaitForWorkflowCompletionAsync(
         workflowComponent: DaprWorkflowComponent,
         instanceId: instanceId);
+
+    GetWorkflowResponse state = await daprClient.GetWorkflowAsync(
+    instanceId: instanceId,
+    workflowComponent: DaprWorkflowComponent);
+    Console.WriteLine($"Workflow state: {state.RuntimeStatus}");
 }
