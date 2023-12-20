@@ -3,7 +3,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -939,6 +939,26 @@ namespace Dapr.Client
             string id,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Encrypts an array of bytes using the Dapr Cryptography functionality.
+        /// </summary>
+        /// <param name="plainTextBytes">The bytes of the plaintext value to encrypt.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>The array of encrypted bytes.</returns>
+        public abstract IAsyncEnumerable<byte[]> EncryptAsync(
+            byte[] plainTextBytes,
+            CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// Decrypts an array of bytes using the Dapr Cryptography functionality.
+        /// </summary>
+        /// <param name="cipherTextBytes">The array of bytes to decrypt.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>The array of plaintext bytes.</returns>
+        public abstract IAsyncEnumerable<byte[]> DecryptAsync(
+            byte[] cipherTextBytes,
+            CancellationToken cancellationToken = default);
+        
         /// <summary>
         /// Attempt to lock the given resourceId with response indicating success.
         /// </summary>
