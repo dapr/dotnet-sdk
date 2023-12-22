@@ -3,7 +3,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,25 +26,21 @@ namespace Cryptography.Examples
 
             const string componentName = "azurekeyvault"; //Change this to match the name of the component containing your vault
             const string keyName = "myKey"; //Change this to match the name of the key in your Vault
-            const string algorithm = "RSA"; //The algorithm used should match the type of key used.
-
-            var nonceBytes = "This in our nonce value"u8.ToArray();
-
+            
+            
             const string plaintextStr = "This is the value we're going to encrypt today";
             Console.WriteLine($"Original string value: '{plaintextStr}'");
 
             //Encrypt the string
             var plaintextBytes = Encoding.UTF8.GetBytes(plaintextStr);
 #pragma warning disable CS0618 // Type or member is obsolete
-            var encryptedBytesResult = await client.EncryptAsync(componentName, plaintextBytes, algorithm, keyName,
-                nonceBytes, cancellationToken);
+            var encryptedBytesResult = await client.EncryptAsync(componentName, plaintextBytes, KeyWrapAlgorithm.Rsa, keyName, DataEncryptionCipher.AesGcm,
+                cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
 
             //Decrypt the string
 #pragma warning disable CS0618 // Type or member is obsolete
-            var decryptedBytes = await client.DecryptAsync(componentName, encryptedBytesResult.CipherTextBytes,
-                algorithm, keyName,
-                nonceBytes, Array.Empty<byte>(), cancellationToken);
+            var decryptedBytes = await client.DecryptAsync(componentName, encryptedBytesResult, keyName, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
             Console.WriteLine($"Decrypted string: '{Encoding.UTF8.GetString(decryptedBytes)}'");
         }
