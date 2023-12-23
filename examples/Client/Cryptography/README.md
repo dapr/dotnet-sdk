@@ -38,8 +38,8 @@ This example is implemented using the Azure Key Vault and will not work without 
 you have the `Key Vault Crypto Officer` role assigned to yourself as you'll need to in order to generate a new key in the instance. After selecting Keys
 under the Objects header, click the `Generate/Import` button at the top of the instance panel.
 
-Under options, select `Generate` and name your key. This example is pre-configured to assume a key name of 'mykey', but feel free to change this. The other default
-options are fine for our purposes, so click Create at the bottom and if you've got the appropriate roles, it will show up in the list of Keys.
+Under options, select `Generate` and name your key. This example is pre-configured to assume a key name of 'myKey', but feel free to change this (but also update the name in the example
+you wish to run). The other default options are fine for our purposes, so click Create at the bottom and if you've got the appropriate roles, it will show up in the list of Keys.
 
 Update your `./Components/azurekeyvault.yaml` file with the name of your Key Vault under `vaultName` where it currently reads "changeMe". This sample assumes authentication
 via a service principal, so you might also need to set this up.

@@ -20,7 +20,8 @@ namespace Samples.Client
     {
         private static readonly Example[] Examples = new Example[]
         {
-            new EncryptDecryptExample()
+            new EncryptDecryptStringExample(),
+            new EncryptDecryptFileStreamExample()
         };
 
         static async Task<int> Main(string[] args)

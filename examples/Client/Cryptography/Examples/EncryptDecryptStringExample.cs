@@ -16,7 +16,7 @@ using Dapr.Client;
 
 namespace Cryptography.Examples
 {
-    internal class EncryptDecryptExample : Example
+    internal class EncryptDecryptStringExample : Example
     {
         public override string DisplayName => "Using Cryptography to encrypt and decrypt a string";
 

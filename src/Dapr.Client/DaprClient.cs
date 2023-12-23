@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -20,7 +21,6 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.Client.Autogen.Grpc.v1;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
@@ -974,17 +974,60 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Encrypts an array of bytes using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="plainTextStream">The stream containing the bytes of the plaintext value to encrypt.</param>
+        /// <param name="algorithm">The name of the algorithm used to wrap the encryption key.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the encryption operation.</param>
+        /// <param name="dataEncryptionCipher">The name of the cipher to use for the encryption operation.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of encrypted bytes.</returns>
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<byte[]> EncryptAsync(string vaultResourceName, Stream plainTextStream,
+            KeyWrapAlgorithm algorithm, string keyName, DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Encrypts an array of bytes using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="plainTextStream">The stream containing the bytes of the plaintext value to encrypt.</param>
+        /// <param name="algorithm">The name of the algorithm used to wrap the encryption key.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the encryption operation.</param>
+        /// <param name="decryptionKeyName">The name (and optionally version) of the decryption key to specify should be used.</param>
+        /// <param name="dataEncryptionCipher">The name of the cipher to use for the encryption operation.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of encrypted bytes.</returns>
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<byte[]> EncryptAsync(string vaultResourceName, Stream plainTextStream,
+            KeyWrapAlgorithm algorithm, string keyName, string decryptionKeyName, DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Decrypts the specified cipher text bytes using the Dapr Cryptography encryption functionality.
         /// </summary>
         /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
-        /// <param name="cipherTextBytes">The byte of the cipher text value to decrypt.</param>
+        /// <param name="cipherTextBytes">The bytes of the cipher text value to decrypt.</param>
         /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of decrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<byte[]> DecryptAsync(string vaultResourceName, byte[] cipherTextBytes, string keyName,
             CancellationToken cancellationToken = default);
-        
+
+        /// <summary>
+        /// Decrypts the specified cipher text bytes using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="cipherTextStream">The stream containing the bytes of the cipher text value to decrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of decrypted bytes.</returns>
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<byte[]> DecryptAsync(string vaultResourceName, Stream cipherTextStream, string keyName,
+            CancellationToken cancellationToken = default);
+
         #endregion
 
         #region Cryptography - Subtle API
