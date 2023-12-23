@@ -38,6 +38,8 @@ namespace Cryptography.Examples
                 cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
 
+            Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult)}'");
+
             //Decrypt the string
 #pragma warning disable CS0618 // Type or member is obsolete
             var decryptedBytes = await client.DecryptAsync(componentName, encryptedBytesResult, keyName, cancellationToken);
