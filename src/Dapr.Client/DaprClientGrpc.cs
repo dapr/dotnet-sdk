@@ -1529,18 +1529,18 @@ namespace Dapr.Client
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public override Task<byte[]> EncryptAsync(
-            string vaultResourceName, byte[] plainTextBytes, KeyWrapAlgorithm algorithm,
+            string vaultResourceName, byte[] plaintextBytes, KeyWrapAlgorithm algorithm,
             string keyName, DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
-            CancellationToken cancellationToken = default) => EncryptByteArrayAsync(vaultResourceName, plainTextBytes,
+            CancellationToken cancellationToken = default) => EncryptByteArrayAsync(vaultResourceName, plaintextBytes,
             algorithm, keyName, dataEncryptionCipher, string.Empty, true, cancellationToken);
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public override Task<byte[]> EncryptAsync(
-            string vaultResourceName, byte[] plainTextBytes, KeyWrapAlgorithm algorithm,
+            string vaultResourceName, byte[] plaintextBytes, KeyWrapAlgorithm algorithm,
             string keyName, string decryptionKeyName,
             DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
-            CancellationToken cancellationToken = default) => EncryptByteArrayAsync(vaultResourceName, plainTextBytes,
+            CancellationToken cancellationToken = default) => EncryptByteArrayAsync(vaultResourceName, plaintextBytes,
             algorithm, keyName, dataEncryptionCipher,
             decryptionKeyName, false, cancellationToken);
 
