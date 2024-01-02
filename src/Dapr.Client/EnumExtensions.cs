@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Reflection;
 using System.Runtime.Serialization;
 
 namespace Dapr.Client
@@ -26,7 +27,7 @@ namespace Dapr.Client
         /// <returns></returns>
         public static string GetValueFromEnumMember<T>(this T value) where T : Enum
         {
-            var memberInfo = typeof(T).GetMember(value.ToString());
+            var memberInfo = typeof(T).GetMember(value.ToString(), BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly);
             if (memberInfo.Length <= 0)
                 return value.ToString();
 
