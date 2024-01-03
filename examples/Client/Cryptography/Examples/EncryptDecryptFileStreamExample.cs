@@ -38,20 +38,22 @@ namespace Cryptography.Examples
             //Encrypt the file
             await using var encryptFs = new FileStream(fileName, FileMode.Open);
 #pragma warning disable CS0618 // Type or member is obsolete
-            var encryptedBytesResult = await client.EncryptAsync(componentName, encryptFs, KeyWrapAlgorithm.Rsa, keyName,
-                DataEncryptionCipher.AesGcm, cancellationToken);
+            var encryptedBytesResult = await client.EncryptAsync(componentName, encryptFs, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa)
+            {
+                EncryptionCipher = DataEncryptionCipher.AesGcm
+            }, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
-            Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult)}'");
+            Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult.Span)}'");
             Console.WriteLine();
 
             //Decrypt the temp file from a memory stream this time instead of a file
-            await using var ms = new MemoryStream(encryptedBytesResult);
+            await using var ms = new MemoryStream(encryptedBytesResult.ToArray());
 #pragma warning disable CS0618 // Type or member is obsolete
-            var decryptedBytes = await client.DecryptAsync(componentName, ms, keyName, cancellationToken);
+            var decryptedBytes = await client.DecryptAsync(componentName, ms, keyName, new DecryptionOptions(), cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
 
             Console.WriteLine("Decrypted value:");
-            await using var decryptedMs = new MemoryStream(decryptedBytes);
+            await using var decryptedMs = new MemoryStream(decryptedBytes.ToArray());
             using var sr = new StreamReader(decryptedMs);
             Console.WriteLine(await sr.ReadToEndAsync(cancellationToken));
         }
