@@ -983,6 +983,19 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Decrypts the specified ciphertext bytes using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="ciphertextBytes">The bytes of the ciphertext value to decrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of decrypted bytes.</returns>
+        [Obsolete(
+            "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
+            ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Decrypts the specified stream of ciphertext using the Dapr Cryptography encryption functionality.
         /// </summary>
         /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
@@ -991,8 +1004,23 @@ namespace Dapr.Client
         /// <param name="options">Options informing how the decryption operation should be configured.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
+        [Obsolete(
+            "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract IAsyncEnumerable<byte[]> DecryptStreamAsync(string vaultResourceName, Stream ciphertextStream,
             string keyName, DecryptionOptions options, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Decrypts the specified stream of ciphertext using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="ciphertextStream">The stream containing the bytes of the ciphertext value to decrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
+        [Obsolete(
+            "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract IAsyncEnumerable<byte[]> DecryptStreamAsync(string vaultResourceName, Stream ciphertextStream,
+            string keyName, CancellationToken cancellationToken = default);
 
         #endregion
 
