@@ -1,4 +1,6 @@
 ﻿#nullable enable
+using System;
+
 namespace Dapr.Client
 {
     /// <summary>
@@ -20,14 +22,23 @@ namespace Dapr.Client
         /// </summary>
         public KeyWrapAlgorithm KeyWrapAlgorithm { get; set; }
 
+        private int streamingBlockSizeInBytes = 4 * 1024; // 4 KB
         /// <summary>
         /// The size of the block in bytes used to send data to the sidecar for cryptography operations.
         /// </summary>
         /// <remarks>
         /// This defaults to 4KB and generally should not exceed 64KB.
         /// </remarks>
-        public uint StreamingBlockSizeInBytes { get; set; } = 4 * 1024;
-
+        public int StreamingBlockSizeInBytes
+        {
+            get => streamingBlockSizeInBytes;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0, nameof(value));
+                streamingBlockSizeInBytes = value;
+            }
+        }
+        
         /// <summary>
         /// The optional name (and optionally a version) of the key specified to use during decryption.
         /// </summary>
@@ -44,9 +55,19 @@ namespace Dapr.Client
     /// </summary>
     public class DecryptionOptions
     {
+        private int streamingBlockSizeInBytes = 4 * 1024; // 4KB
         /// <summary>
         /// The size of the block in bytes used to send data to the sidecar for cryptography operations.
         /// </summary>
-        public uint StreamingBlockSizeInBytes { get; set; } = 4 * 1024;
+        public int StreamingBlockSizeInBytes
+        {
+            get => streamingBlockSizeInBytes;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0, nameof(value));
+                
+                streamingBlockSizeInBytes = value;
+            }
+        }
     }
 }

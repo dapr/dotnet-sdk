@@ -1413,7 +1413,7 @@ namespace Dapr.Client
             {
                 //Stream the plaintext data to the sidecar in chunks
                 Task.FromResult(SendPlaintextStreamAsync(plaintextStream,
-                    (int)encryptionOptions.StreamingBlockSizeInBytes, duplexStream, encryptRequestOptions,
+                    encryptionOptions.StreamingBlockSizeInBytes, duplexStream, encryptRequestOptions,
                     cancellationToken)),
                 //At the same time, retrieve the encrypted response from the sidecar
                 Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken))
@@ -1469,7 +1469,7 @@ namespace Dapr.Client
             var tasks = new Task<IAsyncEnumerable<byte[]>>[]
             {
                 //Stream the plaintext data to the sidecar in chunks
-                Task.FromResult(SendPlaintextStreamAsync(plaintextStream, (int)encryptionOptions.StreamingBlockSizeInBytes, duplexStream, encryptRequestOptions, cancellationToken)),
+                Task.FromResult(SendPlaintextStreamAsync(plaintextStream, encryptionOptions.StreamingBlockSizeInBytes, duplexStream, encryptRequestOptions, cancellationToken)),
                 //At the same time, retrieve the encrypted response from the sidecar
                 Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken))
             };
@@ -1562,7 +1562,7 @@ namespace Dapr.Client
             var tasks = new Task<IAsyncEnumerable<byte[]>>[]
             {
                 //Stream the plaintext data to the sidecar in chunks
-                Task.FromResult(SendCiphertextStreamAsync(ciphertextStream, (int)decryptionOptions.StreamingBlockSizeInBytes, duplexStream, decryptRequestOptions, cancellationToken)),
+                Task.FromResult(SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes, duplexStream, decryptRequestOptions, cancellationToken)),
                 //At the same time, retrieve the encrypted response from the sidecar
                 Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken))
             };
@@ -1674,7 +1674,7 @@ namespace Dapr.Client
             var tasks = new Task<IAsyncEnumerable<byte[]>>[]
             {
                 Task.FromResult(SendCiphertextStreamAsync(ciphertextStream,
-                    (int)decryptionOptions.StreamingBlockSizeInBytes, duplexStream, decryptRequestOptions,
+                    decryptionOptions.StreamingBlockSizeInBytes, duplexStream, decryptRequestOptions,
                     cancellationToken)),
                 Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken))
             };
