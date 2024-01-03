@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Buffers;
 using Dapr.Client;
 #pragma warning disable CS0618 // Type or member is obsolete
 
@@ -36,30 +37,28 @@ namespace Cryptography.Examples
             }
             Console.WriteLine();
 
-            //Encrypt from a file stream and buffer the resulting bytes to an in-memory List<byte>
+            //Encrypt from a file stream and buffer the resulting bytes to an in-memory buffer
             await using var encryptFs = new FileStream(fileName, FileMode.Open);
-            var bufferedEncBytes = new List<byte>();
+
+            var bufferedEncryptedBytes = new ArrayBufferWriter<byte>();
             await foreach (var bytes in client.EncryptAsync(componentName, encryptFs, keyName,
                                new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken))
             {
-                bufferedEncBytes.AddRange(bytes);
+                bufferedEncryptedBytes.Write(bytes.Span);
             }
             
-            var encryptedBytesArr = bufferedEncBytes.ToArray();
-            Console.WriteLine($"Encrypted bytes: {Convert.ToBase64String(encryptedBytesArr)}");
+            Console.WriteLine($"Encrypted bytes: {Convert.ToBase64String(bufferedEncryptedBytes.GetSpan())}");
             Console.WriteLine();
-            
-            //Decrypt the bytes from a memory stream back into a file (via stream)
             
             //We'll write to a temporary file via a FileStream
             var tempDecryptedFile = Path.GetTempFileName();
             await using var decryptFs = new FileStream(tempDecryptedFile, FileMode.Create);
             
-            //We'll decrypt the bytes from a MemoryStream
-            await using var encryptedMs = new MemoryStream(encryptedBytesArr);
+            //We'll stream the decrypted bytes from a MemoryStream into the above temporary file
+            await using var encryptedMs = new MemoryStream(bufferedEncryptedBytes.WrittenMemory.ToArray());
             await foreach (var result in client.DecryptAsync(componentName, encryptedMs, keyName, cancellationToken))
             {
-                decryptFs.Write(result);
+                decryptFs.Write(result.Span);
             }
             decryptFs.Close();
             
