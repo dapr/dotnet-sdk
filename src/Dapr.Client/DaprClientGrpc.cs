@@ -1409,19 +1409,18 @@ namespace Dapr.Client
             var duplexStream = client.EncryptAlpha1(options);
             
             //Run both operations at the same time, but return the output of the streaming values coming from the operation
-            var tasks = new Task<IAsyncEnumerable<byte[]>>[]
-            {
+            var receiveResult = Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken));
+            await Task.WhenAll(
                 //Stream the plaintext data to the sidecar in chunks
                 Task.FromResult(SendPlaintextStreamAsync(plaintextStream,
                     encryptionOptions.StreamingBlockSizeInBytes, duplexStream, encryptRequestOptions,
                     cancellationToken)),
                 //At the same time, retrieve the encrypted response from the sidecar
-                Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken))
-            };
-
+                receiveResult);
+            
             //Return only the buffered result of the `RetrieveEncryptedStreamAsync` method
             var bufferedResult = new List<byte>();
-            await foreach (var item in tasks[1].Result.WithCancellation(cancellationToken))
+            await foreach (var item in receiveResult.Result.WithCancellation(cancellationToken))
             {
                 bufferedResult.AddRange(item);
             }
@@ -1466,16 +1465,16 @@ namespace Dapr.Client
             var duplexStream = client.EncryptAlpha1(options);
 
             //Run both operations at the same time, but return the output of the streaming values coming from the operation
-            var tasks = new Task<IAsyncEnumerable<byte[]>>[]
-            {
+            var receiveResult = Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken)); 
+            await Task.WhenAll(
                 //Stream the plaintext data to the sidecar in chunks
-                Task.FromResult(SendPlaintextStreamAsync(plaintextStream, encryptionOptions.StreamingBlockSizeInBytes, duplexStream, encryptRequestOptions, cancellationToken)),
+                Task.FromResult(SendPlaintextStreamAsync(plaintextStream, encryptionOptions.StreamingBlockSizeInBytes,
+                    duplexStream, encryptRequestOptions, cancellationToken)),
                 //At the same time, retrieve the encrypted response from the sidecar
-                Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken))
-            };
+                receiveResult);
             
             //Return only the result of the `RetrieveEncryptedStreamAsync` method
-            await foreach (var item in tasks[1].Result.WithCancellation(cancellationToken))
+            await foreach (var item in receiveResult.Result.WithCancellation(cancellationToken))
             {
                 yield return item;
             }
@@ -1559,16 +1558,17 @@ namespace Dapr.Client
             var duplexStream = client.DecryptAlpha1(options);
 
             //Run both operations at the same time, but return the output of the streaming values coming from the operation
-            var tasks = new Task<IAsyncEnumerable<byte[]>>[]
-            {
-                //Stream the plaintext data to the sidecar in chunks
-                Task.FromResult(SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes, duplexStream, decryptRequestOptions, cancellationToken)),
-                //At the same time, retrieve the encrypted response from the sidecar
-                Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken))
-            };
+            var receiveResult = Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken));
+            await Task.WhenAll(
+                //Stream the ciphertext data to the sidecar in chunks
+                Task.FromResult(SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes,
+                    duplexStream, decryptRequestOptions, cancellationToken)),
+                //At the same time, retrieve the decrypted response from the sidecar
+                receiveResult
+            );
             
             //Return only the result of the `RetrieveEncryptedStreamAsync` method
-            await foreach (var item in tasks[1].Result.WithCancellation(cancellationToken))
+            await foreach (var item in receiveResult.Result.WithCancellation(cancellationToken))
             {
                 yield return item;
             }
@@ -1671,17 +1671,17 @@ namespace Dapr.Client
             var duplexStream = client.DecryptAlpha1(options);
 
             //Run both operation at the same time, but return the output of the streaming values coming from the operation
-            var tasks = new Task<IAsyncEnumerable<byte[]>>[]
-            {
-                Task.FromResult(SendCiphertextStreamAsync(ciphertextStream,
-                    decryptionOptions.StreamingBlockSizeInBytes, duplexStream, decryptRequestOptions,
-                    cancellationToken)),
-                Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken))
-            };
+            var receiveResult = Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken));
+            await Task.WhenAll(
+                //Stream the ciphertext data to the sidecar in chunks
+                Task.FromResult(SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes,
+                    duplexStream, decryptRequestOptions, cancellationToken)),
+                //At the same time, retrieve the encrypted response from the sidecar
+                receiveResult);
             
             //Return only the buffered result of the `RetrieveDecryptStreamAsync` method
             var bufferedResult = new List<byte>();
-            await foreach(var item in tasks[1].Result.WithCancellation(cancellationToken))
+            await foreach(var item in receiveResult.Result.WithCancellation(cancellationToken))
             {
                 bufferedResult.AddRange(item);
             }
