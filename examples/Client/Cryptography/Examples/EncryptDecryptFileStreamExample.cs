@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Client;
+#pragma warning disable CS0618 // Type or member is obsolete
 
 namespace Cryptography.Examples
 {
@@ -35,27 +36,40 @@ namespace Cryptography.Examples
             }
             Console.WriteLine();
 
-            //Encrypt from a file stream
+            //Encrypt from a file stream and buffer the resulting bytes to an in-memory List<byte>
             await using var encryptFs = new FileStream(fileName, FileMode.Open);
-#pragma warning disable CS0618 // Type or member is obsolete
-            var encryptedBytesResult = await client.EncryptAsync(componentName, encryptFs, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa)
+            var bufferedEncBytes = new List<byte>();
+            await foreach (var bytes in client.EncryptAsync(componentName, encryptFs, keyName,
+                               new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken))
             {
-                EncryptionCipher = DataEncryptionCipher.AesGcm
-            }, cancellationToken);
-#pragma warning restore CS0618 // Type or member is obsolete
-            Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult.Span)}'");
+                bufferedEncBytes.AddRange(bytes);
+            }
+            
+            var encryptedBytesArr = bufferedEncBytes.ToArray();
+            Console.WriteLine($"Encrypted bytes: {Convert.ToBase64String(encryptedBytesArr)}");
             Console.WriteLine();
-
-            //Decrypt the temp file from a memory stream this time instead of a file
-            await using var ms = new MemoryStream(encryptedBytesResult.ToArray());
-#pragma warning disable CS0618 // Type or member is obsolete
-            var decryptedBytes = await client.DecryptAsync(componentName, ms, keyName, new DecryptionOptions(), cancellationToken);
-#pragma warning restore CS0618 // Type or member is obsolete
-
-            Console.WriteLine("Decrypted value:");
-            await using var decryptedMs = new MemoryStream(decryptedBytes.ToArray());
-            using var sr = new StreamReader(decryptedMs);
-            Console.WriteLine(await sr.ReadToEndAsync());
+            
+            //Decrypt the bytes from a memory stream back into a file (via stream)
+            
+            //We'll write to a temporary file via a FileStream
+            var tempDecryptedFile = Path.GetTempFileName();
+            await using var decryptFs = new FileStream(tempDecryptedFile, FileMode.Create);
+            
+            //We'll decrypt the bytes from a MemoryStream
+            await using var encryptedMs = new MemoryStream(encryptedBytesArr);
+            await foreach (var result in client.DecryptAsync(componentName, encryptedMs, keyName, cancellationToken))
+            {
+                decryptFs.Write(result);
+            }
+            decryptFs.Close();
+            
+            //Let's confirm the value as written to the file
+            var decryptedValue = await File.ReadAllTextAsync(tempDecryptedFile, cancellationToken);
+            Console.WriteLine($"Decrypted value: ");
+            Console.WriteLine(decryptedValue);
+            
+            //And some cleanup to delete our temp file
+            File.Delete(tempDecryptedFile);
         }
     }
 }

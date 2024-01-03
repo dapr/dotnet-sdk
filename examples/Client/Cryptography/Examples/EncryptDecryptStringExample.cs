@@ -13,6 +13,7 @@
 
 using System.Text;
 using Dapr.Client;
+#pragma warning disable CS0618 // Type or member is obsolete
 
 namespace Cryptography.Examples
 {
@@ -33,17 +34,13 @@ namespace Cryptography.Examples
 
             //Encrypt the string
             var plaintextBytes = Encoding.UTF8.GetBytes(plaintextStr);
-#pragma warning disable CS0618 // Type or member is obsolete
             var encryptedBytesResult = await client.EncryptAsync(componentName, plaintextBytes, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa),
                 cancellationToken);
-#pragma warning restore CS0618 // Type or member is obsolete
 
             Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult.Span)}'");
 
             //Decrypt the string
-#pragma warning disable CS0618 // Type or member is obsolete
             var decryptedBytes = await client.DecryptAsync(componentName, encryptedBytesResult, keyName, new DecryptionOptions(), cancellationToken);
-#pragma warning restore CS0618 // Type or member is obsolete
             Console.WriteLine($"Decrypted string: '{Encoding.UTF8.GetString(decryptedBytes.ToArray())}'");
         }
     }
