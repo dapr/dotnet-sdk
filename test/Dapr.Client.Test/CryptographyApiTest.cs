@@ -17,7 +17,7 @@ namespace Dapr.Client.Test
             const string vaultResourceName = "";
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync(vaultResourceName,
-                Array.Empty<byte>(), KeyWrapAlgorithm.Rsa, "MyKey", DataEncryptionCipher.AesGcm,
+                (ReadOnlyMemory<byte>)Array.Empty<byte>(), "MyKey", new EncryptionOptions(KeyWrapAlgorithm.Rsa),
                 CancellationToken.None));
         }
 
@@ -27,9 +27,8 @@ namespace Dapr.Client.Test
             var client = new DaprClientBuilder().Build();
             const string keyName = "";
             //Get response and validate
-            await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync("myVault",
-                Array.Empty<byte>(), KeyWrapAlgorithm.Rsa, keyName, DataEncryptionCipher.AesGcm,
-                CancellationToken.None));
+            await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync( "myVault",
+                (ReadOnlyMemory<byte>) Array.Empty<byte>(), keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa), CancellationToken.None));
         }
 
         [Fact]
@@ -39,7 +38,7 @@ namespace Dapr.Client.Test
             const string vaultResourceName = "";
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync(vaultResourceName,
-                new MemoryStream(), KeyWrapAlgorithm.Rsa, "MyKey", DataEncryptionCipher.AesGcm,
+                new MemoryStream(), "MyKey", new EncryptionOptions(KeyWrapAlgorithm.Rsa),
                 CancellationToken.None));
         }
 
@@ -50,7 +49,7 @@ namespace Dapr.Client.Test
             const string keyName = "";
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync("myVault",
-                new MemoryStream(), KeyWrapAlgorithm.Rsa, keyName, DataEncryptionCipher.AesGcm,
+                (Stream) new MemoryStream(), keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa),
                 CancellationToken.None));
         }
 
@@ -61,7 +60,7 @@ namespace Dapr.Client.Test
             const string vaultResourceName = "";
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.DecryptAsync(vaultResourceName,
-                Array.Empty<byte>(), "myKey", CancellationToken.None));
+                Array.Empty<byte>(), "myKey", new DecryptionOptions(), CancellationToken.None));
         }
 
         [Fact]
@@ -71,7 +70,7 @@ namespace Dapr.Client.Test
             const string keyName = "";
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.DecryptAsync("myVault",
-                Array.Empty<byte>(), keyName, CancellationToken.None));
+                Array.Empty<byte>(), keyName, new DecryptionOptions(), CancellationToken.None));
         }
 
         [Fact]
@@ -81,7 +80,7 @@ namespace Dapr.Client.Test
             const string vaultResourceName = "";
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.DecryptAsync(vaultResourceName,
-                new MemoryStream(), "MyKey", CancellationToken.None));
+                new MemoryStream(), "MyKey", new DecryptionOptions(), CancellationToken.None));
         }
 
         [Fact]
@@ -91,7 +90,7 @@ namespace Dapr.Client.Test
             const string keyName = "";
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.DecryptAsync("myVault",
-                new MemoryStream(), keyName, CancellationToken.None));
+                new MemoryStream(), keyName, new DecryptionOptions(), CancellationToken.None));
         }
     }
 }
