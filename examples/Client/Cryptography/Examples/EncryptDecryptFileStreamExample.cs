@@ -35,7 +35,7 @@ namespace Cryptography.Examples
             }
             Console.WriteLine();
 
-            //Encrypt the file
+            //Encrypt from a file stream
             await using var encryptFs = new FileStream(fileName, FileMode.Open);
 #pragma warning disable CS0618 // Type or member is obsolete
             var encryptedBytesResult = await client.EncryptAsync(componentName, encryptFs, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa)
@@ -55,7 +55,7 @@ namespace Cryptography.Examples
             Console.WriteLine("Decrypted value:");
             await using var decryptedMs = new MemoryStream(decryptedBytes.ToArray());
             using var sr = new StreamReader(decryptedMs);
-            Console.WriteLine(await sr.ReadToEndAsync(cancellationToken));
+            Console.WriteLine(await sr.ReadToEndAsync());
         }
     }
 }
