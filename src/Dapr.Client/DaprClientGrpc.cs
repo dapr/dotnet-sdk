@@ -1380,7 +1380,7 @@ namespace Dapr.Client
 
         #region Cryptography
 
-        private async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
+        private async Task<ReadOnlyMemory<byte>> EncryptDataAsync(string vaultResourceName, Stream plaintextStream, string keyName,
             EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
@@ -1433,11 +1433,11 @@ namespace Dapr.Client
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public override Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
             CancellationToken cancellationToken = default) => 
-            EncryptAsync(vaultResourceName, new MemoryStream(plaintextBytes.ToArray()), keyName, encryptionOptions, cancellationToken);
+            EncryptDataAsync(vaultResourceName, new MemoryStream(plaintextBytes.ToArray()), keyName, encryptionOptions, cancellationToken);
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override async IAsyncEnumerable<byte[]> EncryptStreamAsync(string vaultResourceName, Stream plaintextStream,
+        public override async IAsyncEnumerable<byte[]> EncryptAsync(string vaultResourceName, Stream plaintextStream,
             string keyName, EncryptionOptions encryptionOptions, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
@@ -1542,7 +1542,7 @@ namespace Dapr.Client
         /// <inheritdoc />
         [Obsolete(
             "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override async IAsyncEnumerable<byte[]> DecryptStreamAsync(string vaultResourceName, Stream ciphertextStream, string keyName,
+        public override async IAsyncEnumerable<byte[]> DecryptAsync(string vaultResourceName, Stream ciphertextStream, string keyName,
             DecryptionOptions decryptionOptions, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
@@ -1576,9 +1576,9 @@ namespace Dapr.Client
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override IAsyncEnumerable<byte[]> DecryptStreamAsync(string vaultResourceName,
+        public override IAsyncEnumerable<byte[]> DecryptAsync(string vaultResourceName,
             Stream ciphertextStream, string keyName, CancellationToken cancellationToken = default) =>
-            DecryptStreamAsync(vaultResourceName, ciphertextStream, keyName, new DecryptionOptions(),
+            DecryptAsync(vaultResourceName, ciphertextStream, keyName, new DecryptionOptions(),
                 cancellationToken);
         
         /// <summary>
@@ -1644,17 +1644,17 @@ namespace Dapr.Client
         public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
             ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions decryptionOptions,
             CancellationToken cancellationToken = default) =>
-            await DecryptAsync(vaultResourceName, new MemoryStream(ciphertextBytes.ToArray()), keyName,
+            await DecryptDataAsync(vaultResourceName, new MemoryStream(ciphertextBytes.ToArray()), keyName,
                 decryptionOptions, cancellationToken);
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
             ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default) =>
-            await DecryptAsync(vaultResourceName, new MemoryStream(ciphertextBytes.ToArray()), keyName,
+            await DecryptDataAsync(vaultResourceName, new MemoryStream(ciphertextBytes.ToArray()), keyName,
                 new DecryptionOptions(), cancellationToken);
 
-        private async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream, string keyName, DecryptionOptions decryptionOptions, CancellationToken cancellationToken = default)
+        private async Task<ReadOnlyMemory<byte>> DecryptDataAsync(string vaultResourceName, Stream ciphertextStream, string keyName, DecryptionOptions decryptionOptions, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
             ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
