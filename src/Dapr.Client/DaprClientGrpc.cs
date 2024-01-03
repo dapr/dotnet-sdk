@@ -20,6 +20,7 @@ namespace Dapr.Client
     using System.Net.Http;
     using System.Net.Http.Json;
     using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
@@ -1430,9 +1431,17 @@ namespace Dapr.Client
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
-            CancellationToken cancellationToken = default) => 
-            EncryptDataAsync(vaultResourceName, new MemoryStream(plaintextBytes.ToArray()), keyName, encryptionOptions, cancellationToken);
+        public override async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
+            CancellationToken cancellationToken = default)
+        {
+            if (MemoryMarshal.TryGetArray(plaintextBytes, out var plaintextSegment) && plaintextSegment.Array != null)
+            {
+                return await EncryptDataAsync(vaultResourceName, new MemoryStream(plaintextSegment.Array), keyName,
+                    encryptionOptions, cancellationToken);
+            }
+
+            throw new ArgumentException("Unable to read bytes", nameof(plaintextBytes));
+        }
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
@@ -1643,15 +1652,22 @@ namespace Dapr.Client
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
             ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions decryptionOptions,
-            CancellationToken cancellationToken = default) =>
-            await DecryptDataAsync(vaultResourceName, new MemoryStream(ciphertextBytes.ToArray()), keyName,
-                decryptionOptions, cancellationToken);
+            CancellationToken cancellationToken = default)
+        {
+            if (MemoryMarshal.TryGetArray(ciphertextBytes, out var ciphertextSegment) && ciphertextSegment.Array != null)
+            {
+                return await DecryptDataAsync(vaultResourceName, new MemoryStream(ciphertextSegment.Array), keyName,
+                    decryptionOptions, cancellationToken);
+            }
+
+            throw new ArgumentException("Unable to read bytes", nameof(ciphertextBytes));
+        }
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
             ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default) =>
-            await DecryptDataAsync(vaultResourceName, new MemoryStream(ciphertextBytes.ToArray()), keyName,
+            await DecryptAsync(vaultResourceName, ciphertextBytes, keyName,
                 new DecryptionOptions(), cancellationToken);
 
         private async Task<ReadOnlyMemory<byte>> DecryptDataAsync(string vaultResourceName, Stream ciphertextStream, string keyName, DecryptionOptions decryptionOptions, CancellationToken cancellationToken = default)
