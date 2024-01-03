@@ -40,12 +40,12 @@ namespace Dapr.Client
         /// <summary>
         /// Represents the AES key wrap algorithm.
         /// </summary>
-        [EnumMember(Value="AES")]
+        [EnumMember(Value="A256KW")]
         Aes,
         /// <summary>
         /// An alias for the AES key wrap algorithm.
         /// </summary>
-        [EnumMember(Value="AES")]
+        [EnumMember(Value="A256KW")]
         A256kw,
         /// <summary>
         /// Represents the AES 128 CBC key wrap algorithm.
@@ -65,12 +65,12 @@ namespace Dapr.Client
         /// <summary>
         /// Represents the RSA key wrap algorithm.
         /// </summary>
-        [EnumMember(Value="RSA")]
+        [EnumMember(Value= "RSA-OAEP-256")]
         Rsa,
         /// <summary>
         /// An alias for the RSA key wrap algorithm.
         /// </summary>
-        [EnumMember(Value="RSA")]
+        [EnumMember(Value= "RSA-OAEP-256")]
         RsaOaep256 //Alias for RSA
     }
 }
