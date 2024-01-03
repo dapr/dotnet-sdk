@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Moq;
 using Xunit;
 #pragma warning disable CS0618 // Type or member is obsolete
 
