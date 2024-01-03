@@ -953,7 +953,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of encrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<byte[]> EncryptAsync(string vaultResourceName, byte[] plaintextBytes,
+        public abstract Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, ReadOnlyMemory<byte> plaintextBytes,
             KeyWrapAlgorithm algorithm, string keyName, DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
             CancellationToken cancellationToken = default);
 
@@ -969,7 +969,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of encrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<byte[]> EncryptAsync(string vaultResourceName, byte[] plaintextBytes,
+        public abstract Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, ReadOnlyMemory<byte> plaintextBytes,
             KeyWrapAlgorithm algorithm, string keyName, string decryptionKeyName, DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
             CancellationToken cancellationToken = default);
 
@@ -984,7 +984,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of encrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<byte[]> EncryptAsync(string vaultResourceName, Stream plainTextStream,
+        public abstract Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plainTextStream,
             KeyWrapAlgorithm algorithm, string keyName, DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
             CancellationToken cancellationToken = default);
 
@@ -1000,7 +1000,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of encrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<byte[]> EncryptAsync(string vaultResourceName, Stream plainTextStream,
+        public abstract Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plainTextStream,
             KeyWrapAlgorithm algorithm, string keyName, string decryptionKeyName, DataEncryptionCipher dataEncryptionCipher = DataEncryptionCipher.AesGcm,
             CancellationToken cancellationToken = default);
 
@@ -1013,7 +1013,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of decrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<byte[]> DecryptAsync(string vaultResourceName, byte[] cipherTextBytes, string keyName,
+        public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, ReadOnlyMemory<byte> cipherTextBytes, string keyName,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -1025,7 +1025,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of decrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<byte[]> DecryptAsync(string vaultResourceName, Stream cipherTextStream, string keyName,
+        public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream cipherTextStream, string keyName,
             CancellationToken cancellationToken = default);
 
         #endregion
