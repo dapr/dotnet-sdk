@@ -1380,9 +1380,7 @@ namespace Dapr.Client
 
         #region Cryptography
 
-        /// <inheritdoc />
-        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
+        private async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
             EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
@@ -1648,9 +1646,7 @@ namespace Dapr.Client
             await DecryptAsync(vaultResourceName, new MemoryStream(ciphertextBytes.ToArray()), keyName,
                 decryptionOptions, cancellationToken);
 
-        /// <inheritdoc />
-        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream, string keyName, DecryptionOptions decryptionOptions, CancellationToken cancellationToken = default)
+        private async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream, string keyName, DecryptionOptions decryptionOptions, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
             ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
