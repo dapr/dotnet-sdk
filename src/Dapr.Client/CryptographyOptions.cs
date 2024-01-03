@@ -34,7 +34,11 @@ namespace Dapr.Client
             get => streamingBlockSizeInBytes;
             set
             {
-                ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0, nameof(value));
+                if (value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value));
+                }
+                
                 streamingBlockSizeInBytes = value;
             }
         }
@@ -64,7 +68,10 @@ namespace Dapr.Client
             get => streamingBlockSizeInBytes;
             set
             {
-                ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0, nameof(value));
+                if (value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value));
+                }
                 
                 streamingBlockSizeInBytes = value;
             }
