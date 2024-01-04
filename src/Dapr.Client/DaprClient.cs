@@ -990,8 +990,7 @@ namespace Dapr.Client
         /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of decrypted bytes.</returns>
-        [Obsolete(
-            "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
             ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default);
 
