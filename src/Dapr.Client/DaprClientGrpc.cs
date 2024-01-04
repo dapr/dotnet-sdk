@@ -1390,13 +1390,16 @@ namespace Dapr.Client
         {
             if (MemoryMarshal.TryGetArray(plaintextBytes, out var plaintextSegment) && plaintextSegment.Array != null)
             {
+                var encryptionResult = await EncryptAsync(vaultResourceName, new MemoryStream(plaintextSegment.Array), keyName, encryptionOptions,
+                    cancellationToken);
+                
                 var bufferedResult = new ArrayBufferWriter<byte>();
-                await foreach (var item in EncryptAsync(vaultResourceName, new MemoryStream(plaintextSegment.Array),
-                                   keyName, encryptionOptions, cancellationToken))
+
+                await foreach (var item in encryptionResult.WithCancellation(cancellationToken))
                 {
                     bufferedResult.Write(item.Span);
                 }
-
+                
                 return bufferedResult.WrittenMemory;                
             }
 
@@ -1405,8 +1408,8 @@ namespace Dapr.Client
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override async IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream,
-            string keyName, EncryptionOptions encryptionOptions, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName, Stream plaintextStream,
+            string keyName, EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
             ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
@@ -1434,19 +1437,13 @@ namespace Dapr.Client
             var duplexStream = client.EncryptAlpha1(options);
 
             //Run both operations at the same time, but return the output of the streaming values coming from the operation
-            var receiveResult = Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken)); 
-            await Task.WhenAll(
+            var receiveResult = Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken));
+            return await Task.WhenAll(
                 //Stream the plaintext data to the sidecar in chunks
                 SendPlaintextStreamAsync(plaintextStream, encryptionOptions.StreamingBlockSizeInBytes,
                     duplexStream, encryptRequestOptions, cancellationToken),
                 //At the same time, retrieve the encrypted response from the sidecar
-                receiveResult);
-            
-            //Return only the result of the `RetrieveEncryptedStreamAsync` method
-            await foreach (var item in receiveResult.Result.WithCancellation(cancellationToken))
-            {
-                yield return item;
-            }
+                receiveResult).ContinueWith(_ => receiveResult.Result, cancellationToken);
         }
 
         /// <summary>
@@ -1505,8 +1502,8 @@ namespace Dapr.Client
         
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override async IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream, string keyName,
-            DecryptionOptions decryptionOptions, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream, string keyName,
+            DecryptionOptions decryptionOptions, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
             ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
@@ -1524,24 +1521,19 @@ namespace Dapr.Client
 
             //Run both operations at the same time, but return the output of the streaming values coming from the operation
             var receiveResult = Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken));
-            await Task.WhenAll(
+            return await Task.WhenAll(
                 //Stream the ciphertext data to the sidecar in chunks
                 SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes,
                     duplexStream, decryptRequestOptions, cancellationToken),
                 //At the same time, retrieve the decrypted response from the sidecar
-                receiveResult
-            );
-            
-            //Return only the result of the `RetrieveEncryptedStreamAsync` method
-            await foreach (var item in receiveResult.Result.WithCancellation(cancellationToken))
-            {
-                yield return item;
-            }
+                receiveResult)
+                //Return only the result of the `RetrieveEncryptedStreamAsync` method
+            .ContinueWith(t => receiveResult.Result, cancellationToken);
         }
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
+        public override Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName,
             Stream ciphertextStream, string keyName, CancellationToken cancellationToken = default) =>
             DecryptAsync(vaultResourceName, ciphertextStream, keyName, new DecryptionOptions(),
                 cancellationToken);
@@ -1608,11 +1600,13 @@ namespace Dapr.Client
         {
             if (MemoryMarshal.TryGetArray(ciphertextBytes, out var ciphertextSegment) && ciphertextSegment.Array != null)
             {
+                var decryptionResult = await DecryptAsync(vaultResourceName, new MemoryStream(ciphertextSegment.Array),
+                    keyName, decryptionOptions, cancellationToken); 
+                
                 var bufferedResult = new ArrayBufferWriter<byte>();
-                await foreach (var item in DecryptAsync(vaultResourceName, new MemoryStream(ciphertextSegment.Array),
-                                   keyName, decryptionOptions, cancellationToken))
+                await foreach (var item in decryptionResult.WithCancellation(cancellationToken))
                 {
-                    bufferedResult.Write(item.Span);   
+                    bufferedResult.Write(item.Span);
                 }
 
                 return bufferedResult.WrittenMemory;
