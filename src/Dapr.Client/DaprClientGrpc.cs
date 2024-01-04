@@ -1432,7 +1432,8 @@ namespace Dapr.Client
 
         /// <inheritdoc />
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public override async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
+        public override async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, 
+            ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
             CancellationToken cancellationToken = default)
         {
             if (MemoryMarshal.TryGetArray(plaintextBytes, out var plaintextSegment) && plaintextSegment.Array != null)
@@ -1441,7 +1442,7 @@ namespace Dapr.Client
                     encryptionOptions, cancellationToken);
             }
 
-            throw new ArgumentException("Unable to read bytes", nameof(plaintextBytes));
+            throw new ArgumentException("The input instance doesn't have a valid underlying data store.", nameof(plaintextBytes));
         }
 
         /// <inheritdoc />
@@ -1653,7 +1654,7 @@ namespace Dapr.Client
                     decryptionOptions, cancellationToken);
             }
 
-            throw new ArgumentException("Unable to read bytes", nameof(ciphertextBytes));
+            throw new ArgumentException("The input instance doesn't have a valid underlying data store", nameof(ciphertextBytes));
         }
 
         /// <inheritdoc />
