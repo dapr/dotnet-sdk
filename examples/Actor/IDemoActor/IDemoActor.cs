@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,8 +27,9 @@ namespace IDemoActorInterface
         /// Method to save data.
         /// </summary>
         /// <param name="data">DAta to save.</param>
+        /// <param name="ttl">TTL of state key.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task SaveData(MyData data);
+        Task SaveData(MyData data, TimeSpan ttl);
 
         /// <summary>
         /// Method to get data.

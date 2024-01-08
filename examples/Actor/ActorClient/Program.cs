@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ namespace ActorClient
             var proxy = ActorProxy.Create<IDemoActor>(actorId, "DemoActor");
 
             Console.WriteLine("Making call using actor proxy to save data.");
-            await proxy.SaveData(data);
+            await proxy.SaveData(data, TimeSpan.FromMinutes(10));
             Console.WriteLine("Making call using actor proxy to get data.");
             var receivedData = await proxy.GetData();
             Console.WriteLine($"Received data is {receivedData}.");
