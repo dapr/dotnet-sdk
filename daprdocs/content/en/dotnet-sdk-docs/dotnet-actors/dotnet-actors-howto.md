@@ -394,7 +394,7 @@ namespace MyActorClient
 
             Console.WriteLine($"Calling GetDataAsync on {actorType}:{actorId}...");
             var savedData = await proxy.GetDataAsync();
-            Console.WriteLine($"Got response: {response}");
+            Console.WriteLine($"Got response: {savedData}");
         }
     }
 }
@@ -458,7 +458,7 @@ The projects that you've created can now to test the sample.
     Calling SetDataAsync on MyActor:1...
     Got response: Success
     Calling GetDataAsync on MyActor:1...
-    Got response: Success
+    Got response: PropertyA: ValueA, PropertyB: ValueB
     ```
 
 > 💡 This sample relies on a few assumptions. The default listening port for an ASP.NET Core web project is 5000, which is being passed to `dapr run` as `--app-port 5000`. The default HTTP port for the Dapr sidecar is 3500. We're telling the sidecar for `MyActorService` to use 3500 so that `MyActorClient` can rely on the default value.

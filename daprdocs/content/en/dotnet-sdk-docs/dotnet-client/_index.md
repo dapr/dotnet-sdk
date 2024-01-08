@@ -105,7 +105,7 @@ Console.WriteLine("Published deposit event!");
 ```
 
 - For a full list of state operations visit [How-To: Publish & subscribe]({{< ref howto-publish-subscribe.md >}}).
-- Visit [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples/client/PublishSubscribe) for code samples and instructions to try out pub/sub
+- Visit [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples/Client/PublishSubscribe) for code samples and instructions to try out pub/sub
 
 ### Interact with output bindings
 

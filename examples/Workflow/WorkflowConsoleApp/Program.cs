@@ -4,9 +4,9 @@ using WorkflowConsoleApp.Activities;
 using WorkflowConsoleApp.Models;
 using WorkflowConsoleApp.Workflows;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 const string StoreName = "statestore";
-const string DaprWorkflowComponent = "dapr";
 
 // The workflow host is a background service that connects to the sidecar over gRPC
 var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
@@ -124,6 +124,8 @@ using (daprClient)
             amount = 1;
         }
 
+        var daprWorkflowClient = host.Services.GetRequiredService<DaprWorkflowClient>();
+
         // Construct the order with a unique order ID
         string orderId = $"{itemName.ToLowerInvariant()}-{Guid.NewGuid().ToString()[..8]}";
         double totalCost = amount * item.PerItemCost;
@@ -131,18 +133,16 @@ using (daprClient)
 
         // Start the workflow using the order ID as the workflow ID
         Console.WriteLine($"Starting order workflow '{orderId}' purchasing {amount} {itemName}");
-        await daprClient.StartWorkflowAsync(
-            workflowComponent: DaprWorkflowComponent,
-            workflowName: nameof(OrderProcessingWorkflow),
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(
+            name: nameof(OrderProcessingWorkflow),
             input: orderInfo,
             instanceId: orderId);
 
         // Wait for the workflow to start and confirm the input
-        GetWorkflowResponse state = await daprClient.WaitForWorkflowStartAsync(
-            instanceId: orderId,
-            workflowComponent: DaprWorkflowComponent);
+        WorkflowState state = await daprWorkflowClient.WaitForWorkflowStartAsync(
+            instanceId: orderId);
 
-        Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) started successfully with {state.ReadInputAs<OrderPayload>()}");
+        Console.WriteLine($"{nameof(OrderProcessingWorkflow)} (ID = {orderId}) started successfully with {state.ReadInputAs<OrderPayload>()}");
 
         // Wait for the workflow to complete
         while (true)
@@ -150,22 +150,20 @@ using (daprClient)
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             try
             {
-                state = await daprClient.WaitForWorkflowCompletionAsync(
+                state = await daprWorkflowClient.WaitForWorkflowCompletionAsync(
                     instanceId: orderId,
-                    workflowComponent: DaprWorkflowComponent,
-                    cancellationToken: cts.Token);
+                    cancellation: cts.Token);
                 break;
             }
             catch (OperationCanceledException)
             {
                 // Check to see if the workflow is blocked waiting for an approval
-                state = await daprClient.GetWorkflowAsync(
-                    instanceId: orderId,
-                    workflowComponent: DaprWorkflowComponent);
-                if (state.Properties.TryGetValue("dapr.workflow.custom_status", out string customStatus) &&
-                    customStatus.Contains("Waiting for approval"))
+                state = await daprWorkflowClient.GetWorkflowStateAsync(
+                    instanceId: orderId);
+
+                if(state.ReadCustomStatusAs<string>()?.Contains("Waiting for approval") == true)
                 {
-                    Console.WriteLine($"{state.WorkflowName} (ID = {orderId}) requires approval. Approve? [Y/N]");
+                    Console.WriteLine($"{nameof(OrderProcessingWorkflow)} (ID = {orderId}) requires approval. Approve? [Y/N]");
                     string approval = Console.ReadLine();
                     ApprovalResult approvalResult = ApprovalResult.Unspecified;
                     if (string.Equals(approval, "Y", StringComparison.OrdinalIgnoreCase))
@@ -182,11 +180,10 @@ using (daprClient)
                     if (approvalResult != ApprovalResult.Unspecified)
                     {
                         // Raise the workflow event to the workflow
-                        await daprClient.RaiseWorkflowEventAsync(
+                        await daprWorkflowClient.RaiseEventAsync(
                             instanceId: orderId,
-                            workflowComponent: DaprWorkflowComponent,
                             eventName: "ManagerApproval",
-                            eventData: approvalResult);
+                            eventPayload: approvalResult);
                     }
 
                     // otherwise, keep waiting
