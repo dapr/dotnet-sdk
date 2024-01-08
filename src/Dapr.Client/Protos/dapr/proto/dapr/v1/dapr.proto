@@ -169,6 +169,26 @@ service Dapr {
   // Raise an event to a running workflow instance
   rpc RaiseEventWorkflowAlpha1 (RaiseEventWorkflowRequest) returns (google.protobuf.Empty) {}
 
+  // Starts a new instance of a workflow
+  rpc StartWorkflowBeta1 (StartWorkflowRequest) returns (StartWorkflowResponse) {}
+
+  // Gets details about a started workflow instance
+  rpc GetWorkflowBeta1 (GetWorkflowRequest) returns (GetWorkflowResponse) {}
+
+  // Purge Workflow
+  rpc PurgeWorkflowBeta1 (PurgeWorkflowRequest) returns (google.protobuf.Empty) {}
+
+  // Terminates a running workflow instance
+  rpc TerminateWorkflowBeta1 (TerminateWorkflowRequest) returns (google.protobuf.Empty) {}
+
+  // Pauses a running workflow instance
+  rpc PauseWorkflowBeta1 (PauseWorkflowRequest) returns (google.protobuf.Empty) {}
+
+  // Resumes a paused workflow instance
+  rpc ResumeWorkflowBeta1 (ResumeWorkflowRequest) returns (google.protobuf.Empty) {}
+
+  // Raise an event to a running workflow instance
+  rpc RaiseEventWorkflowBeta1 (RaiseEventWorkflowRequest) returns (google.protobuf.Empty) {}
   // Shutdown the sidecar
   rpc Shutdown (google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
@@ -542,6 +562,9 @@ message GetActorStateRequest {
 // GetActorStateResponse is the response conveying the actor's state value.
 message GetActorStateResponse {
   bytes data = 1;
+
+  // The metadata which will be sent to app.
+  map<string, string> metadata = 2;
 }
 
 // ExecuteActorStateTransactionRequest is the message to execute multiple operations on a specified actor.
@@ -580,10 +603,14 @@ message InvokeActorResponse {
 // GetMetadataResponse is a message that is returned on GetMetadata rpc call
 message GetMetadataResponse {
   string id = 1;
-  repeated ActiveActorsCount active_actors_count = 2;
-  repeated RegisteredComponents registered_components = 3;
-  map<string, string> extended_metadata = 4;
-  repeated PubsubSubscription subscriptions = 5;
+  repeated ActiveActorsCount active_actors_count = 2 [json_name = "actors"];
+  repeated RegisteredComponents registered_components = 3 [json_name = "components"];
+  map<string, string> extended_metadata = 4 [json_name = "extended"];
+  repeated PubsubSubscription subscriptions = 5 [json_name = "subscriptions"];
+  repeated MetadataHTTPEndpoint http_endpoints = 6 [json_name = "httpEndpoints"];
+  AppConnectionProperties app_connection_properties = 7 [json_name = "appConnectionProperties"];
+  string runtime_version = 8 [json_name = "runtimeVersion"];
+  repeated string enabled_features = 9 [json_name = "enabledFeatures"];
 }
 
 message ActiveActorsCount {
@@ -598,12 +625,31 @@ message RegisteredComponents {
   repeated string capabilities = 4;
 }
 
+message MetadataHTTPEndpoint {
+  string name = 1 [json_name = "name"];
+}
+
+message AppConnectionProperties {
+  int32 port = 1;
+  string protocol = 2;
+  string channel_address = 3 [json_name = "channelAddress"];
+  int32 max_concurrency = 4 [json_name = "maxConcurrency"];
+  AppConnectionHealthProperties health = 5;
+}
+
+message AppConnectionHealthProperties {
+  string health_check_path = 1 [json_name = "healthCheckPath"];
+  string health_probe_interval = 2 [json_name = "healthProbeInterval"];
+  string health_probe_timeout = 3 [json_name = "healthProbeTimeout"];
+  int32 health_threshold = 4 [json_name = "healthThreshold"];
+}
+
 message PubsubSubscription {
-  string pubsub_name = 1;
-  string topic = 2;
-  map<string,string> metadata = 3;
-  PubsubSubscriptionRules rules = 4;
-  string dead_letter_topic = 5;
+  string pubsub_name = 1 [json_name = "pubsubname"];
+  string topic = 2 [json_name = "topic"];
+  map<string,string> metadata = 3 [json_name = "metadata"];
+  PubsubSubscriptionRules rules = 4 [json_name = "rules"];
+  string dead_letter_topic = 5 [json_name = "deadLetterTopic"];
 }
 
 message PubsubSubscriptionRules {
@@ -900,7 +946,7 @@ message EncryptRequest {
   // Request details. Must be present in the first message only.
   EncryptRequestOptions options = 1;
   // Chunk of data of arbitrary size.
-  // common.v1.StreamPayload payload = 2; // TODO: Commented out since it was causing an issue
+  common.v1.StreamPayload payload = 2;
 }
 
 // EncryptRequestOptions contains options for the first message in the EncryptAlpha1 request.
@@ -928,7 +974,7 @@ message EncryptRequestOptions {
 // EncryptResponse is the response for EncryptAlpha1.
 message EncryptResponse {
   // Chunk of data.
-  // common.v1.StreamPayload payload = 1; // TODO: Commented out since it was causing an issue
+  common.v1.StreamPayload payload = 1;
 }
 
 // DecryptRequest is the request for DecryptAlpha1.
@@ -936,7 +982,7 @@ message DecryptRequest {
   // Request details. Must be present in the first message only.
   DecryptRequestOptions options = 1;
   // Chunk of data of arbitrary size.
-  // common.v1.StreamPayload payload = 2; // TODO: Commented out since it was causing an issue
+  common.v1.StreamPayload payload = 2;
 }
 
 // DecryptRequestOptions contains options for the first message in the DecryptAlpha1 request.
@@ -952,10 +998,10 @@ message DecryptRequestOptions {
 // DecryptResponse is the response for DecryptAlpha1.
 message DecryptResponse {
   // Chunk of data.
-  // common.v1.StreamPayload payload = 1; // TODO: Commented out since it was causing an issue
+  common.v1.StreamPayload payload = 1;
 }
 
-// GetWorkflowRequest is the request for GetWorkflowAlpha1.
+// GetWorkflowRequest is the request for GetWorkflowBeta1.
 message GetWorkflowRequest {
   // ID of the workflow instance to query.
   string instance_id  = 1 [json_name = "instanceID"];
@@ -963,7 +1009,7 @@ message GetWorkflowRequest {
   string workflow_component = 2 [json_name = "workflowComponent"];
 }
 
-// GetWorkflowResponse is the response for GetWorkflowAlpha1.
+// GetWorkflowResponse is the response for GetWorkflowBeta1.
 message GetWorkflowResponse {
   // ID of the workflow instance.
   string instance_id = 1 [json_name = "instanceID"];
@@ -979,7 +1025,7 @@ message GetWorkflowResponse {
   map<string, string> properties = 6;
 }
 
-// StartWorkflowRequest is the request for StartWorkflowAlpha1.
+// StartWorkflowRequest is the request for StartWorkflowBeta1.
 message StartWorkflowRequest {
   // The ID to assign to the started workflow instance. If empty, a random ID is generated.
   string instance_id = 1 [json_name = "instanceID"];
@@ -993,13 +1039,13 @@ message StartWorkflowRequest {
   bytes input = 5;
 }
 
-// StartWorkflowResponse is the response for StartWorkflowAlpha1.
+// StartWorkflowResponse is the response for StartWorkflowBeta1.
 message StartWorkflowResponse {
   // ID of the started workflow instance.
   string instance_id = 1 [json_name = "instanceID"];
 }
 
-// TerminateWorkflowRequest is the request for TerminateWorkflowAlpha1.
+// TerminateWorkflowRequest is the request for TerminateWorkflowBeta1.
 message TerminateWorkflowRequest {
   // ID of the workflow instance to terminate.
   string instance_id = 1 [json_name = "instanceID"];
@@ -1007,7 +1053,7 @@ message TerminateWorkflowRequest {
   string workflow_component = 2 [json_name = "workflowComponent"];
 }
 
-// PauseWorkflowRequest is the request for PauseWorkflowAlpha1.
+// PauseWorkflowRequest is the request for PauseWorkflowBeta1.
 message PauseWorkflowRequest {
   // ID of the workflow instance to pause.
   string instance_id = 1 [json_name = "instanceID"];
@@ -1015,7 +1061,7 @@ message PauseWorkflowRequest {
   string workflow_component = 2 [json_name = "workflowComponent"];
 }
 
-// ResumeWorkflowRequest is the request for ResumeWorkflowAlpha1.
+// ResumeWorkflowRequest is the request for ResumeWorkflowBeta1.
 message ResumeWorkflowRequest {
   // ID of the workflow instance to resume.
   string instance_id = 1 [json_name = "instanceID"];
@@ -1023,7 +1069,7 @@ message ResumeWorkflowRequest {
   string workflow_component = 2 [json_name = "workflowComponent"];
 }
 
-// RaiseEventWorkflowRequest is the request for RaiseEventWorkflowAlpha1.
+// RaiseEventWorkflowRequest is the request for RaiseEventWorkflowBeta1.
 message RaiseEventWorkflowRequest {
   // ID of the workflow instance to raise an event for.
   string instance_id = 1 [json_name = "instanceID"];
@@ -1035,7 +1081,7 @@ message RaiseEventWorkflowRequest {
   bytes event_data = 4;
 }
 
-// PurgeWorkflowRequest is the request for PurgeWorkflowAlpha1.
+// PurgeWorkflowRequest is the request for PurgeWorkflowBeta1.
 message PurgeWorkflowRequest {
   // ID of the workflow instance to purge.
   string instance_id = 1 [json_name = "instanceID"];
