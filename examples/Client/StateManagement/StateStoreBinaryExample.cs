@@ -4,6 +4,7 @@ using System.Text;
 using Dapr.Client;
 using System.Threading.Tasks;
 using System.Threading;
+using Google.Protobuf;
 
 namespace Samples.Client
 {
@@ -22,18 +23,19 @@ namespace Samples.Client
             var state = "Test Binary Data";
             // convert variable in to byte array
             var stateBytes = Encoding.UTF8.GetBytes(state);
-            await client.SaveStateByteAsync(storeName, stateKeyName, stateBytes, cancellationToken: cancellationToken);
+            await client.SaveStateByteAsync(storeName, stateKeyName, stateBytes.AsMemory(), cancellationToken: cancellationToken);
             Console.WriteLine("Saved State!");
 
-            stateBytes = await client.GetStateByteAsync(storeName, stateKeyName, cancellationToken: cancellationToken);
-            state = Encoding.UTF8.GetString(stateBytes);
-            if (state == null)
+            var responseBytes = await client.GetStateByteAsync(storeName, stateKeyName, cancellationToken: cancellationToken);
+            var savedState = Encoding.UTF8.GetString(ByteString.CopyFrom(responseBytes.Span).ToByteArray());
+          
+            if (savedState == null)
             {
                 Console.WriteLine("State not found in store");
             }
             else
             {
-                Console.WriteLine($"Got State: {state}");
+                Console.WriteLine($"Got State: {savedState}");
             }
 
             await client.DeleteStateAsync(storeName, stateKeyName, cancellationToken: cancellationToken);

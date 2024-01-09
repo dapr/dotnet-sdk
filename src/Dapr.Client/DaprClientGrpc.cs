@@ -1062,7 +1062,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async Task<byte[]> GetStateByteAsync(
+        public override async Task<ReadOnlyMemory<byte>> GetStateByteAsync(
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
@@ -1092,7 +1092,7 @@ namespace Dapr.Client
             try
             {
                 var response = await client.GetStateAsync(envelope, options);
-                return response.Data.ToByteArray();
+                return response.Data.ToByteArray().AsMemory();
             }
             catch (RpcException ex)
             {
@@ -1101,7 +1101,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async Task<(byte[], string etag)> GetStateAndETagByteAsync(
+        public override async Task<(ReadOnlyMemory<byte>, string etag)> GetStateAndETagByteAsync(
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
@@ -1144,7 +1144,7 @@ namespace Dapr.Client
 
             try
             {
-                return (response.Data.ToByteArray(), response.Etag);
+                return (response.Data.ToByteArray().AsMemory(), response.Etag);
             }
             catch (JsonException ex)
             {
