@@ -831,12 +831,13 @@ namespace Dapr.Client
         /// <param name="metadata"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task<byte[]> GetStateByteAsync(
+        public abstract Task<ReadOnlyMemory<byte>> GetStateByteAsync(
                 string storeName,
                 string key,
                 ConsistencyMode? consistencyMode = default,
                 IReadOnlyDictionary<string, string> metadata = default,
                 CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Define a GetStateAndETagAsync task that gets a key and returns a byte array and an etag
         /// </summary>
@@ -846,7 +847,7 @@ namespace Dapr.Client
         /// <param name="metadata"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task<(byte[], string etag)> GetStateAndETagByteAsync(
+        public abstract Task<(ReadOnlyMemory<byte>, string etag)> GetStateAndETagByteAsync(
             string storeName, 
             string key, 
             ConsistencyMode? consistencyMode = default, 

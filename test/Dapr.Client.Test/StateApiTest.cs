@@ -30,6 +30,7 @@ namespace Dapr.Client.Test
     using System.Threading;
     using System.Net.Http;
     using System.Text;
+    using System.Linq;
 
     public class StateApiTest
     {
@@ -1190,7 +1191,7 @@ namespace Dapr.Client.Test
 
             var request = await client.CaptureGrpcRequestAsync(async daprClient =>
             {
-                await daprClient.SaveStateByteAsync("testStore", "test", stateBytes, stateOptions, metadata);
+                await daprClient.SaveStateByteAsync("testStore", "test", stateBytes.AsMemory(), stateOptions, metadata);
             });
 
             request.Dismiss();
@@ -1222,7 +1223,7 @@ namespace Dapr.Client.Test
             var stateBytes = Encoding.UTF8.GetBytes(data);
             var request = await client.CaptureGrpcRequestAsync(async daprClient =>
             {
-                await daprClient.SaveStateByteAsync("testStore", "test", stateBytes);
+                await daprClient.SaveStateByteAsync("testStore", "test", stateBytes.AsMemory());
             });
 
             request.Dismiss();
@@ -1301,7 +1302,7 @@ namespace Dapr.Client.Test
             };
             var request = await client.CaptureGrpcRequestAsync(async daprClient =>
             {
-                return await daprClient.TrySaveStateByteAsync("testStore", "test", stateBytes, "Test_Etag", stateOptions, metadata);
+                return await daprClient.TrySaveStateByteAsync("testStore", "test", stateBytes.AsMemory(), "Test_Etag", stateOptions, metadata);
             });
 
             request.Dismiss();
@@ -1342,7 +1343,7 @@ namespace Dapr.Client.Test
 
             var ex = await Assert.ThrowsAsync<DaprException>(async () =>
             {
-                await client.DaprClient.TrySaveStateByteAsync("test", "test", stateBytes, "someETag");
+                await client.DaprClient.TrySaveStateByteAsync("test", "test", stateBytes.AsMemory(), "someETag");
             });
             Assert.Same(rpcException, ex.InnerException);
         }
@@ -1362,7 +1363,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
-            var operationResult = await client.DaprClient.TrySaveStateByteAsync("testStore", "test", stateBytes, "invalidETag");
+            var operationResult = await client.DaprClient.TrySaveStateByteAsync("testStore", "test", stateBytes.AsMemory(), "invalidETag");
             Assert.False(operationResult);
         }
 
@@ -1375,7 +1376,7 @@ namespace Dapr.Client.Test
             var response = client.CallStateApi<string>()
             .Build();
 
-            await FluentActions.Awaiting(async () => await client.DaprClient.TrySaveStateByteAsync("test", "test", stateBytes, null))
+            await FluentActions.Awaiting(async () => await client.DaprClient.TrySaveStateByteAsync("test", "test", stateBytes.AsMemory(), null))
                 .Should().ThrowAsync<ArgumentException>();
         }
 
@@ -1393,7 +1394,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
                 .Returns(response);
 
-            var result = await client.DaprClient.TrySaveStateByteAsync("test", "test", stateBytes, "");
+            var result = await client.DaprClient.TrySaveStateByteAsync("test", "test", stateBytes.AsMemory(), "");
             Assert.True(result);
         }
         [Fact]
@@ -1411,7 +1412,7 @@ namespace Dapr.Client.Test
             var state = await request.CompleteWithMessageAsync(envelope);
 
             // Get response and validate
-            state.Should().BeNullOrEmpty();
+            state.ToArray().Should().BeNullOrEmpty();
         }
 
         [Theory]
@@ -1433,10 +1434,10 @@ namespace Dapr.Client.Test
             envelope.Consistency.Should().Be(expectedConsistencyMode);
             var binaryData = Encoding.ASCII.GetBytes("test data");
             // Create Response & Respond
-            var state = await request.CompleteWithMessageAsync(MakeGetStateByteResponse(binaryData));
-
+            var state = await request.CompleteWithMessageAsync(MakeGetStateByteResponse(binaryData.AsMemory()));
+            var stateStr = ByteString.CopyFrom(state.Span).ToByteArray();
             // Get response and validate
-            state.Should().BeEquivalentTo(binaryData);
+            stateStr.Should().BeEquivalentTo(binaryData);
         }
 
         [Fact]
@@ -1460,10 +1461,10 @@ namespace Dapr.Client.Test
             envelope.Metadata.Should().BeEquivalentTo(metadata);
             var binaryData = Encoding.ASCII.GetBytes("test data");
             // Create Response & Respond
-            var (state, etag) = await request.CompleteWithMessageAsync((MakeGetStateByteResponse(binaryData)));
-
+            var (state, etag) = await request.CompleteWithMessageAsync((MakeGetStateByteResponse(binaryData.AsMemory())));
+            var stateStr = ByteString.CopyFrom(state.Span).ToByteArray();
             // Get response and validate
-            state.Should().BeEquivalentTo(binaryData);
+            stateStr.Should().BeEquivalentTo(binaryData);
         }
 
         [Fact]
@@ -1496,11 +1497,11 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var binaryData = Encoding.ASCII.GetBytes("test data");
-            var envelope = MakeGetStateByteResponse(binaryData, "Test_Etag");
+            var envelope = MakeGetStateByteResponse(binaryData.AsMemory(), "Test_Etag");
             var (state, etag) = await request.CompleteWithMessageAsync(envelope);
-
+            var stateStr = ByteString.CopyFrom(state.Span).ToByteArray();
             // Get response and validate
-            state.Should().BeEquivalentTo(binaryData);
+            stateStr.Should().BeEquivalentTo(binaryData);
             etag.Should().Be("Test_Etag");
         }
 
@@ -1522,15 +1523,15 @@ namespace Dapr.Client.Test
             Assert.IsType<RpcException>(ex.InnerException);
         }
 
-        private Autogenerated.GetStateResponse MakeGetStateByteResponse(byte[] state, string etag = null)
+        private Autogenerated.GetStateResponse MakeGetStateByteResponse(ReadOnlyMemory<byte>  state, string etag = null)
         {
 
             var response = new Autogenerated.GetStateResponse();
 
             // convert to byte string if state is not null
-            if (state != null)
+            if (state.Span != null)
             {
-                response.Data = ByteString.CopyFrom(state);
+                response.Data = ByteString.CopyFrom(state.Span);
             }
 
             if (etag != null)
