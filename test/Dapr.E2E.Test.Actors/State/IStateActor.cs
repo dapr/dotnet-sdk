@@ -15,20 +15,12 @@ using System;
 using System.Threading.Tasks;
 using Dapr.Actors;
 
-namespace Dapr.E2E.Test.Actors.Reminders
+namespace Dapr.E2E.Test.Actors.State
 {
-    public interface IReminderActor : IPingActor, IActor
+    public interface IStateActor : IPingActor, IActor
     {
-        Task StartReminder(StartReminderOptions options);
+        Task<string> GetState(string key);
 
-        Task StartReminderWithTtl(TimeSpan ttl);
-
-        Task StartReminderWithRepetitions(int repetitions);
-        
-        Task StartReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions);
-
-        Task<State> GetState();
-
-        Task<String> GetReminder();
+        Task SetState(string key, string value, TimeSpan? ttl);
     }
 }

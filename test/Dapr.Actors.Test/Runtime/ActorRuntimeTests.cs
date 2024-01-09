@@ -27,6 +27,7 @@ namespace Dapr.Actors.Test
     using Xunit;
     using Dapr.Actors.Client;
     using System.Reflection;
+    using System.Threading;
 
     public sealed class ActorRuntimeTests
     {
@@ -107,6 +108,111 @@ namespace Dapr.Actors.Test
 
             Assert.Equal("\"hi\"", text);
             Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
+        }
+
+        public interface INotRemotedActor : IActor
+        {
+            Task<string> NoArgumentsAsync();
+
+            Task<string> NoArgumentsWithCancellationAsync(CancellationToken cancellationToken = default);
+
+            Task<string> SingleArgumentAsync(bool arg);
+
+            Task<string> SingleArgumentWithCancellationAsync(bool arg, CancellationToken cancellationToken = default);
+        }
+
+        public sealed class NotRemotedActor : Actor, INotRemotedActor
+        {
+            public NotRemotedActor(ActorHost host)
+                : base(host)
+            {
+            }
+
+            public Task<string> NoArgumentsAsync()
+            {
+                return Task.FromResult(nameof(NoArgumentsAsync));
+            }
+
+            public Task<string> NoArgumentsWithCancellationAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(nameof(NoArgumentsWithCancellationAsync));
+            }
+
+            public Task<string> SingleArgumentAsync(bool arg)
+            {
+                return Task.FromResult(nameof(SingleArgumentAsync));
+            }
+
+            public Task<string> SingleArgumentWithCancellationAsync(bool arg, CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(nameof(SingleArgumentWithCancellationAsync));
+            }
+        }
+
+        public async Task<string> InvokeMethod<T>(string methodName, object arg = null) where T : Actor
+        {
+            var options = new ActorRuntimeOptions();
+
+            options.Actors.RegisterActor<T>();
+
+            var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+            using var input = new MemoryStream();
+
+            if (arg is not null)
+            {
+                JsonSerializer.Serialize(input, arg);
+
+                input.Seek(0, SeekOrigin.Begin);
+            }
+
+            using var output = new MemoryStream();
+            
+            await runtime.DispatchWithoutRemotingAsync(typeof(T).Name, ActorId.CreateRandom().ToString(), methodName, input, output);
+
+            output.Seek(0, SeekOrigin.Begin);
+
+            return JsonSerializer.Deserialize<string>(output);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithNoArguments()
+        {
+            string methodName = nameof(INotRemotedActor.NoArgumentsAsync);
+            
+            string result = await InvokeMethod<NotRemotedActor>(methodName);
+
+           Assert.Equal(methodName, result);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithNoArgumentsWithCancellation()
+        {
+            string methodName = nameof(INotRemotedActor.NoArgumentsWithCancellationAsync);
+            
+            string result = await InvokeMethod<NotRemotedActor>(methodName);
+
+            Assert.Equal(methodName, result);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithSingleArgument()
+        {
+            string methodName = nameof(INotRemotedActor.SingleArgumentAsync);
+            
+            string result = await InvokeMethod<NotRemotedActor>(methodName, true);
+
+            Assert.Equal(methodName, result);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithSingleArgumentWithCancellation()
+        {
+            string methodName = nameof(INotRemotedActor.SingleArgumentWithCancellationAsync);
+            
+            string result = await InvokeMethod<NotRemotedActor>(methodName, true);
+
+            Assert.Equal(methodName, result);
         }
 
         [Fact]
