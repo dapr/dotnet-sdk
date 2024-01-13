@@ -957,7 +957,7 @@ namespace Dapr.Client
         }
         //mycode
         /// <inheritdoc/>
-        public override async Task SaveStateByteAsync(
+        public override async Task SaveByteStateAsync(
            string storeName,
            string key,
            ReadOnlyMemory<byte> value,
@@ -968,7 +968,7 @@ namespace Dapr.Client
             //throw new NotImplementedException();
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
-            _ = await this.MakeSaveStateCallByteAsync(
+            _ = await this.MakeSaveByteStateCallAsync(
                 storeName,
                 key,
                 ByteString.CopyFrom(value.Span),
@@ -978,7 +978,7 @@ namespace Dapr.Client
                 cancellationToken);
         }
         /// <inheritdoc/>
-        public override async Task<bool> TrySaveStateByteAsync(
+        public override async Task<bool> TrySaveByteStateAsync(
            string storeName,
            string key,
            ReadOnlyMemory<byte> value,
@@ -991,11 +991,11 @@ namespace Dapr.Client
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
             ArgumentVerifier.ThrowIfNull(etag, nameof(etag));
-            return await this.MakeSaveStateCallByteAsync(storeName, key, ByteString.CopyFrom(value.Span), etag, stateOptions, metadata, cancellationToken);
+            return await this.MakeSaveByteStateCallAsync(storeName, key, ByteString.CopyFrom(value.Span), etag, stateOptions, metadata, cancellationToken);
         }
 
         // Method MakeSaveStateCallAsync to save binary value
-        private async Task<bool> MakeSaveStateCallByteAsync(
+        private async Task<bool> MakeSaveByteStateCallAsync(
              string storeName,
              string key,
              ByteString value,
@@ -1062,7 +1062,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async Task<ReadOnlyMemory<byte>> GetStateByteAsync(
+        public override async Task<ReadOnlyMemory<byte>> GetByteStateAsync(
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
@@ -1101,7 +1101,7 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public override async Task<(ReadOnlyMemory<byte>, string etag)> GetStateAndETagByteAsync(
+        public override async Task<(ReadOnlyMemory<byte>, string etag)> GetByteStateAndETagAsync(
             string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,

@@ -793,7 +793,7 @@ namespace Dapr.Client
         /// <param name="metadata"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task SaveStateByteAsync(
+        public abstract Task SaveByteStateAsync(
                        string storeName,
                        string key,
                        ReadOnlyMemory<byte> binaryValue,
@@ -812,7 +812,7 @@ namespace Dapr.Client
         /// <param name="metadata"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task<bool> TrySaveStateByteAsync(
+        public abstract Task<bool> TrySaveByteStateAsync(
                 string storeName,
                 string key,
                 ReadOnlyMemory<byte> binaryValue,
@@ -831,7 +831,7 @@ namespace Dapr.Client
         /// <param name="metadata"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task<ReadOnlyMemory<byte>> GetStateByteAsync(
+        public abstract Task<ReadOnlyMemory<byte>> GetByteStateAsync(
                 string storeName,
                 string key,
                 ConsistencyMode? consistencyMode = default,
@@ -847,7 +847,7 @@ namespace Dapr.Client
         /// <param name="metadata"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task<(ReadOnlyMemory<byte>, string etag)> GetStateAndETagByteAsync(
+        public abstract Task<(ReadOnlyMemory<byte>, string etag)> GetByteStateAndETagAsync(
             string storeName, 
             string key, 
             ConsistencyMode? consistencyMode = default, 

@@ -23,10 +23,10 @@ namespace Samples.Client
             var state = "Test Binary Data";
             // convert variable in to byte array
             var stateBytes = Encoding.UTF8.GetBytes(state);
-            await client.SaveStateByteAsync(storeName, stateKeyName, stateBytes.AsMemory(), cancellationToken: cancellationToken);
+            await client.SaveByteStateAsync(storeName, stateKeyName, stateBytes.AsMemory(), cancellationToken: cancellationToken);
             Console.WriteLine("Saved State!");
 
-            var responseBytes = await client.GetStateByteAsync(storeName, stateKeyName, cancellationToken: cancellationToken);
+            var responseBytes = await client.GetByteStateAsync(storeName, stateKeyName, cancellationToken: cancellationToken);
             var savedState = Encoding.UTF8.GetString(ByteString.CopyFrom(responseBytes.Span).ToByteArray());
           
             if (savedState == null)
