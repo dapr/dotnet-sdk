@@ -73,4 +73,20 @@ dapr run --resources-path ./Components --app-id DaprClient -- dotnet run 0
 ```
 
 ## Encryption/Decryption with strings
-See [EncryptDecryptExample.cs](./EncryptDecryptExample.cs) for an example of using `DaprClient` for basic string-based encryption and decryption operations as performed against UTF-8 encoded byte arrays.
+See [EncryptDecryptStringExample.cs](./EncryptDecryptStringExample.cs) for an example of using `DaprClient` for basic 
+string-based encryption and decryption operations as performed against UTF-8 encoded byte arrays.
+
+## Encryption/Decryption with streams 
+See [EncryptDecryptFileStreamExample.cs](./EncryptDecryptFileStreamExample.cs) for an example of using `DaprClient` 
+to perform an encrypt and decrypt operation against a stream of data. In the example, we stream a local file to the 
+sidecar to encrypt and write the result (as it's streamed back) to an in-memory buffer. Once the operation fully 
+completes, we perform the decrypt operation against this in-memory buffer and write the decrypted result back out to a
+temporary file. 
+
+In either operation, rather than load the entire stream into memory and send all at once to the 
+sidecar as we do in the other string-based example (as this might cause you to run out of memory either on the 
+node the app is running on or do the same to the sidecar itself), this example instead breaks the input stream into 
+more manageable 4KB chunks (a value you can override via the `EncryptionOptions` or `DecryptionOptions` parameters 
+respectively up to 64KB. Further, rather than waiting for the entire stream to send to the sidecar before the 
+encryption operation proceeds, it immediately works to process the sidecar response, continuing to minimize resource 
+usage. 
