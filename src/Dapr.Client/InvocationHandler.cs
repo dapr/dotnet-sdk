@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,9 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -128,17 +130,44 @@ namespace Dapr.Client
                 return false;
             }
 
-
             var builder = new UriBuilder(uri)
             {
                 Scheme = this.parsedEndpoint.Scheme,
                 Host = this.parsedEndpoint.Host,
                 Port = this.parsedEndpoint.Port,
-                Path = $"/v1.0/invoke/{uri.Host}/method" + uri.AbsolutePath,
+                Path = $"/v1.0/invoke/{GetOriginalHostFromUri(uri)}/method" + uri.AbsolutePath,
             };
 
             rewritten = builder.Uri;
             return true;
+        }
+        
+        /// <summary>
+        /// Get the original host (case sensitive) from the URI (thanks to uri.OriginalString)
+        /// Mandatory to get the original host if the app id has at least one uppercase
+        /// </summary>
+        /// <param name="uri">The uri</param>
+        /// <returns>The original hostname from the uri</returns>
+        /// <exception cref="ArgumentException">The original string from the uri is invalid</exception>
+        private string GetOriginalHostFromUri(Uri uri)
+        {
+            ArgumentNullException.ThrowIfNull(uri);
+
+            // If there is no upper character inside the original string, we can directly return the uri host
+            if(!uri.OriginalString.Any(char.IsUpper))
+            {
+                return uri.Host;
+            }
+
+            Regex regex = new Regex("^.+?://(?<host>[^:/]+)", RegexOptions.Singleline | RegexOptions.Compiled);
+            Match match = regex.Match(uri.OriginalString);
+
+            if (!match.Success || !match.Groups.TryGetValue("host", out Group? host))
+            {
+                throw new ArgumentException("The original string for the uri is invalid.", nameof(uri));
+            }
+
+            return host.Value;
         }
     }
 }

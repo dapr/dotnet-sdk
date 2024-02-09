@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,11 +80,16 @@ namespace Dapr.Client
 
         [Theory]
         [InlineData("http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
         [InlineData("http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
+        [InlineData("http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
         [InlineData("http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData("http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
         public void TryRewriteUri_RewritesUriToDaprInvoke(string uri, string expected)
         {
             var handler = new InvocationHandler()
