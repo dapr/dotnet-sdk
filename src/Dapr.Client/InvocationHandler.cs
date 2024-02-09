@@ -84,6 +84,12 @@ namespace Dapr.Client
             }
         }
 
+        /// <summary>
+        /// Gets or sets the AppId used for service invocation
+        /// </summary>
+        /// <returns>The AppId used for service invocation</returns>
+        public string? AppId { get; set; }
+
         // Internal for testing
         internal string? DaprApiToken
         {
@@ -130,12 +136,20 @@ namespace Dapr.Client
                 return false;
             }
 
+            // If the URI has a host which does not correspond to the AppId, it does not make sense.
+            // We do this check for optimization, to not add some overhead time for the "normal" use case 
+            if (this.AppId is not null && !this.AppId.Equals(uri.Host, StringComparison.CurrentCultureIgnoreCase))
+            {
+                rewritten = null;
+                return false;
+            }
+
             var builder = new UriBuilder(uri)
             {
                 Scheme = this.parsedEndpoint.Scheme,
                 Host = this.parsedEndpoint.Host,
                 Port = this.parsedEndpoint.Port,
-                Path = $"/v1.0/invoke/{this.GetOriginalHostFromUri(uri)}/method" + uri.AbsolutePath,
+                Path = $"/v1.0/invoke/{this.AppId ?? this.GetOriginalHostFromUri(uri)}/method" + uri.AbsolutePath,
             };
 
             rewritten = builder.Uri;
@@ -144,7 +158,7 @@ namespace Dapr.Client
         
         /// <summary>
         /// Get the original host (case sensitive) from the URI (thanks to uri.OriginalString)
-        /// Mandatory to get the original host if the app id has at least one uppercase
+        /// Mandatory to get the original host if the app id has at least one uppercase and the app id has not been sent to the handler
         /// </summary>
         /// <param name="uri">The uri</param>
         /// <returns>The original hostname from the uri</returns>

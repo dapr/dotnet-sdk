@@ -63,6 +63,7 @@ namespace Dapr.Client
         /// <param name="appId">
         /// An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
         /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used.
+        /// If specified, the client could not call different services.
         /// </param>
         /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
         /// <param name="daprApiToken">The token to be added to all request headers to Dapr runtime.</param>
@@ -79,7 +80,8 @@ namespace Dapr.Client
             var handler = new InvocationHandler()
             {
                 InnerHandler = new HttpClientHandler(),
-                DaprApiToken = daprApiToken
+                DaprApiToken = daprApiToken,
+                AppId = appId,
             };
 
             if (daprEndpoint is string)

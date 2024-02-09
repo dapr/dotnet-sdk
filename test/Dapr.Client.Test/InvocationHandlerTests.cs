@@ -79,23 +79,36 @@ namespace Dapr.Client
         }
 
         [Theory]
-        [InlineData("http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
-        [InlineData("http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
-        [InlineData("http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
-        [InlineData("http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
-        [InlineData("http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
-        [InlineData("http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
-        [InlineData("http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
-        [InlineData("http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
-        [InlineData("http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
-        [InlineData("http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
-        [InlineData("http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
-        [InlineData("http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
-        public void TryRewriteUri_RewritesUriToDaprInvoke(string uri, string expected)
+        [InlineData(null, "http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("bank", "http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData(null, "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("Bank", "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData(null, "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("bank", "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData(null, "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("Bank", "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData(null, "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
+        [InlineData("app-id.with.dots", "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
+        [InlineData(null, "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
+        [InlineData("App-id.with.dots", "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
+        [InlineData(null, "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("bank", "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData(null, "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("Bank", "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData(null, "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
+        [InlineData("bank", "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
+        [InlineData(null, "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
+        [InlineData("Bank", "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
+        [InlineData(null, "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData("bank", "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData(null, "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData("Bank", "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
+        public void TryRewriteUri_WithNoAppId_RewritesUriToDaprInvoke(string? appId, string uri, string expected)
         {
             var handler = new InvocationHandler()
             {
                 DaprEndpoint = "https://some.host:3499",
+                AppId = appId,
             };
 
             Assert.True(handler.TryRewriteUri(new Uri(uri), out var rewritten));
@@ -103,7 +116,7 @@ namespace Dapr.Client
         }
 
         [Fact]
-        public async Task SendAsync_InvalidUri_ThrowsException()
+        public async Task SendAsync_InvalidNotSetUri_ThrowsException()
         {
             var handler = new InvocationHandler();
             var ex = await Assert.ThrowsAsync<ArgumentException>(async () =>
@@ -112,6 +125,19 @@ namespace Dapr.Client
             });
 
             Assert.Contains("The request URI '' is not a valid Dapr service invocation destination.", ex.Message);
+        }
+
+        [Fact]
+        public async Task SendAsync_InvalidUriWithAppId_ThrowsException()
+        {
+            var handler = new InvocationHandler() { AppId = "bank" };
+            string fakeUrl = "http://invalid/test";
+            var ex = await Assert.ThrowsAsync<ArgumentException>(async () =>
+            {
+                await CallSendAsync(handler, new HttpRequestMessage() { RequestUri = new Uri(fakeUrl) }); // No URI set
+            });
+
+            Assert.Contains($"The request URI '{fakeUrl}' is not a valid Dapr service invocation destination.", ex.Message);
         }
 
         [Fact]
@@ -126,6 +152,31 @@ namespace Dapr.Client
 
                 DaprEndpoint = "https://localhost:5000",
                 DaprApiToken = null,
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            var response = await CallSendAsync(handler, request);
+
+            Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
+            Assert.Null(capture.DaprApiToken);
+
+            Assert.Equal(uri, request.RequestUri?.OriginalString);
+            Assert.False(request.Headers.TryGetValues("dapr-api-token", out _));
+        }
+
+        [Fact]
+        public async Task SendAsync_RewritesUri_AndAppId()
+        {
+            var uri = "http://bank/accounts/17?";
+
+            var capture = new CaptureHandler();
+            var handler = new InvocationHandler()
+            {
+                InnerHandler = capture,
+
+                DaprEndpoint = "https://localhost:5000",
+                DaprApiToken = null,
+                AppId = "bank"
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
