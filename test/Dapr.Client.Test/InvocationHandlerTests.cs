@@ -134,7 +134,7 @@ namespace Dapr.Client
             string fakeUrl = "http://invalid/test";
             var ex = await Assert.ThrowsAsync<ArgumentException>(async () =>
             {
-                await CallSendAsync(handler, new HttpRequestMessage() { RequestUri = new Uri(fakeUrl) }); // No URI set
+                await CallSendAsync(handler, new HttpRequestMessage() { RequestUri = new Uri(fakeUrl) }); // URI does not correspond to the appid
             });
 
             Assert.Contains($"The request URI '{fakeUrl}' is not a valid Dapr service invocation destination.", ex.Message);
