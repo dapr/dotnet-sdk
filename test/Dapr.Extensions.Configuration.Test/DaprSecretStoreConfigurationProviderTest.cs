@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -146,15 +146,15 @@ namespace Dapr.Extensions.Configuration.Test
             var storeName = "store";
             var secretKey = "secretName";
             var secretValue = "secret";
-            
+
             var secretDescriptors = new[]
             {
                 new DaprSecretDescriptor(secretKey),
             };
-            
+
             var daprClient = new Mock<DaprClient>();
-        
-            daprClient.Setup(c => c.GetSecretAsync(storeName, secretKey, 
+
+            daprClient.Setup(c => c.GetSecretAsync(storeName, secretKey,
                     It.IsAny<Dictionary<string, string>>(), default))
                 .ReturnsAsync(new Dictionary<string, string> { { secretKey, secretValue } });
 
@@ -173,20 +173,20 @@ namespace Dapr.Extensions.Configuration.Test
             var secondSecretKey = "second_secret";
             var firstSecretValue = "secret1";
             var secondSecretValue = "secret2";
-            
+
             var secretDescriptors = new[]
             {
                 new DaprSecretDescriptor(firstSecretKey),
                 new DaprSecretDescriptor(secondSecretKey),
             };
-            
+
             var daprClient = new Mock<DaprClient>();
-        
-            daprClient.Setup(c => c.GetSecretAsync(storeName, firstSecretKey, 
+
+            daprClient.Setup(c => c.GetSecretAsync(storeName, firstSecretKey,
                     It.IsAny<Dictionary<string, string>>(), default))
                 .ReturnsAsync(new Dictionary<string, string> { { firstSecretKey, firstSecretValue } });
 
-            daprClient.Setup(c => c.GetSecretAsync(storeName, secondSecretKey, 
+            daprClient.Setup(c => c.GetSecretAsync(storeName, secondSecretKey,
                     It.IsAny<Dictionary<string, string>>(), default))
                 .ReturnsAsync(new Dictionary<string, string> { { secondSecretKey, secondSecretValue } });
 
@@ -197,7 +197,7 @@ namespace Dapr.Extensions.Configuration.Test
             config[firstSecretKey].Should().Be(firstSecretValue);
             config[secondSecretKey].Should().Be(secondSecretValue);
         }
-        
+
         [Fact]
         public void LoadSecrets_FromSecretStoreWithADifferentSecretKeyAndName()
         {
@@ -208,13 +208,13 @@ namespace Dapr.Extensions.Configuration.Test
 
             var secretDescriptors = new[]
             {
-                new DaprSecretDescriptor(secretName, new Dictionary<string, string>(), true, 
+                new DaprSecretDescriptor(secretName, new Dictionary<string, string>(), true,
                     secretKey)
             };
-            
+
             var daprClient = new Mock<DaprClient>();
-        
-            daprClient.Setup(c => c.GetSecretAsync(storeName, secretKey, 
+
+            daprClient.Setup(c => c.GetSecretAsync(storeName, secretKey,
                     It.IsAny<Dictionary<string, string>>(), default))
                 .ReturnsAsync(new Dictionary<string, string> { { secretKey, secretValue } });
 
@@ -225,7 +225,70 @@ namespace Dapr.Extensions.Configuration.Test
             config[secretName].Should().Be(secretValue);
         }
 
-        //Here
+        [Fact]
+        public void LoadSecrets_FromSecretStoreNotRequiredAndDoesNotExist_ShouldNotThrowException()
+        {
+            var storeName = "store";
+            var secretName = "ConnectionStrings:DatabaseConnStr";
+
+            var secretDescriptors = new[]
+            {
+                new DaprSecretDescriptor(secretName, new Dictionary<string, string>(), false)
+            };
+
+            var httpClient = new TestHttpClient
+            {
+                Handler = async entry =>
+                {
+                    await SendEmptyResponse(entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
+                .Build();
+
+            var config = CreateBuilder()
+                .AddDaprSecretStore(storeName, secretDescriptors, daprClient)
+                .Build();
+
+            config[secretName].Should().BeNull();
+        }
+
+        [Fact]
+        public void LoadSecrets_FromSecretStoreRequiredAndDoesNotExist_ShouldThrowException()
+        {
+            var storeName = "store";
+            var secretName = "ConnectionStrings:DatabaseConnStr";
+
+            var secretDescriptors = new[]
+            {
+                new DaprSecretDescriptor(secretName, new Dictionary<string, string>(), true)
+            };
+
+            var httpClient = new TestHttpClient
+            {
+                Handler = async entry =>
+                {
+                    await SendEmptyResponse(entry);
+                }
+            };
+
+            var daprClient = new DaprClientBuilder()
+                .UseHttpClientFactory(() => httpClient)
+                .Build();
+
+            var ex = Assert.Throws<DaprException>(() =>
+            {
+                var config = CreateBuilder()
+                    .AddDaprSecretStore(storeName, secretDescriptors, daprClient)
+                    .Build();
+            });
+
+            Assert.Contains("Secret", ex.Message);
+        }
+
+
         [Fact]
         public void AddDaprSecretStore_WithoutStore_ReportsError()
         {
@@ -598,7 +661,7 @@ namespace Dapr.Extensions.Configuration.Test
                                 ["otherSecretName≡value"] = "secret",
                             }, entry);
                         }
-                    }                    
+                    }
                 }
             };
 
