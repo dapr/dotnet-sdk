@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace Dapr.Extensions.Configuration
         /// A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.
         /// </summary>
         public IReadOnlyDictionary<string, string> Metadata { get; }
-        
+
         /// <summary>
         /// This flag indicates if this field's existence should trigger an exception. Setting it to "false"
         /// will suppress the exception whereas setting it to "true" will not suppress it.
@@ -53,17 +53,24 @@ namespace Dapr.Extensions.Configuration
         /// <summary>
         /// Secret Descriptor Constructor
         /// </summary>
-        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata) : 
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata) :
             this(secretName, metadata, true, secretName)
         {
-            
+
         }
-        
+
         /// <summary>
         /// Secret Descriptor Constructor
         /// </summary>
-        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, 
-            bool isRequired, string secretKey)
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, bool isRequired) :
+            this(secretName, metadata, isRequired, secretName)
+        {
+        }
+
+        /// <summary>
+        /// Secret Descriptor Constructor
+        /// </summary>
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, bool isRequired, string secretKey)
         {
             SecretName = secretName;
             Metadata = metadata;
