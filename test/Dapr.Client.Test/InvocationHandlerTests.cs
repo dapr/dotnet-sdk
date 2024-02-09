@@ -84,6 +84,7 @@ namespace Dapr.Client
         [InlineData("http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
+        [InlineData("http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
         [InlineData("http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]

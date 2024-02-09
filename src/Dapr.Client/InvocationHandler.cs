@@ -135,7 +135,7 @@ namespace Dapr.Client
                 Scheme = this.parsedEndpoint.Scheme,
                 Host = this.parsedEndpoint.Host,
                 Port = this.parsedEndpoint.Port,
-                Path = $"/v1.0/invoke/{GetOriginalHostFromUri(uri)}/method" + uri.AbsolutePath,
+                Path = $"/v1.0/invoke/{this.GetOriginalHostFromUri(uri)}/method" + uri.AbsolutePath,
             };
 
             rewritten = builder.Uri;
