@@ -210,11 +210,11 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                             .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata)
                             .ConfigureAwait(false);
                     }
-                    catch (DaprException e)
+                    catch (DaprException)
                     {
                         if (secretDescriptor.IsRequired)
                         {
-                            throw e;
+                            throw;
                         }
                             
                         Console.WriteLine($"'{secretDescriptor.SecretName}' doesn't exists in Key Vault but because " +
