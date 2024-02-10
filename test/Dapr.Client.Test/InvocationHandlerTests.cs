@@ -30,8 +30,8 @@ namespace Dapr.Client
         public void DaprEndpoint_InvalidScheme()
         {
             var handler = new InvocationHandler();
-            var ex = Assert.Throws<ArgumentException>(() => 
-            { 
+            var ex = Assert.Throws<ArgumentException>(() =>
+            {
                 handler.DaprEndpoint = "ftp://localhost:3500";
             });
 
@@ -43,7 +43,7 @@ namespace Dapr.Client
         {
             var handler = new InvocationHandler();
             Assert.Throws<UriFormatException>(() =>
-            { 
+            {
                 handler.DaprEndpoint = "";
             });
 
@@ -81,34 +81,48 @@ namespace Dapr.Client
         [Theory]
         [InlineData(null, "http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("bank", "http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("Bank", "http://bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("invalid", "http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData(null, "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("Bank", "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("bank", "http://Bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("invalid", "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData(null, "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("bank", "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("invalid", "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData(null, "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("Bank", "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("invalid", "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData(null, "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
         [InlineData("app-id.with.dots", "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
+        [InlineData("invalid", "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
         [InlineData(null, "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
         [InlineData("App-id.with.dots", "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
+        [InlineData("invalid", "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
         [InlineData(null, "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("bank", "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
+        [InlineData("invalid", "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData(null, "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("Bank", "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("invalid", "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData(null, "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
         [InlineData("bank", "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
+        [InlineData("invalid", "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
         [InlineData(null, "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
         [InlineData("Bank", "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
+        [InlineData("invalid", "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
         [InlineData(null, "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
         [InlineData("bank", "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData("invalid", "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
         [InlineData(null, "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
         [InlineData("Bank", "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData("invalid", "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
         public void TryRewriteUri_WithNoAppId_RewritesUriToDaprInvoke(string? appId, string uri, string expected)
         {
             var handler = new InvocationHandler()
             {
                 DaprEndpoint = "https://some.host:3499",
-                AppId = appId,
+                DefaultAppId = appId,
             };
 
             Assert.True(handler.TryRewriteUri(new Uri(uri), out var rewritten));
@@ -121,23 +135,10 @@ namespace Dapr.Client
             var handler = new InvocationHandler();
             var ex = await Assert.ThrowsAsync<ArgumentException>(async () =>
             {
-                await CallSendAsync(handler, new HttpRequestMessage(){ }); // No URI set
+                await CallSendAsync(handler, new HttpRequestMessage() { }); // No URI set
             });
 
             Assert.Contains("The request URI '' is not a valid Dapr service invocation destination.", ex.Message);
-        }
-
-        [Fact]
-        public async Task SendAsync_InvalidUriWithAppId_ThrowsException()
-        {
-            var handler = new InvocationHandler() { AppId = "bank" };
-            string fakeUrl = "http://invalid/test";
-            var ex = await Assert.ThrowsAsync<ArgumentException>(async () =>
-            {
-                await CallSendAsync(handler, new HttpRequestMessage() { RequestUri = new Uri(fakeUrl) }); // URI does not correspond to the appid
-            });
-
-            Assert.Contains($"The request URI '{fakeUrl}' is not a valid Dapr service invocation destination.", ex.Message);
         }
 
         [Fact]
@@ -176,7 +177,7 @@ namespace Dapr.Client
 
                 DaprEndpoint = "https://localhost:5000",
                 DaprApiToken = null,
-                AppId = "bank"
+                DefaultAppId = "bank"
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
@@ -221,7 +222,7 @@ namespace Dapr.Client
 
             try
             {
-                return await (Task<HttpResponseMessage>)method!.Invoke(handler, new object[]{ message, cancellationToken, })!;
+                return await (Task<HttpResponseMessage>)method!.Invoke(handler, new object[] { message, cancellationToken, })!;
             }
             catch (TargetInvocationException tie) // reflection always adds an extra layer of exceptions.
             {

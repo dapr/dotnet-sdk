@@ -63,7 +63,6 @@ namespace Dapr.Client
         /// <param name="appId">
         /// An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
         /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used.
-        /// If specified, the client could not call different services.
         /// </param>
         /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
         /// <param name="daprApiToken">The token to be added to all request headers to Dapr runtime.</param>
@@ -81,7 +80,7 @@ namespace Dapr.Client
             {
                 InnerHandler = new HttpClientHandler(),
                 DaprApiToken = daprApiToken,
-                AppId = appId,
+                DefaultAppId = appId,
             };
 
             if (daprEndpoint is string)
@@ -211,7 +210,7 @@ namespace Dapr.Client
             string topicName,
             Dictionary<string, string> metadata,
             CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// // Bulk Publishes multiple events to the specified topic.
         /// </summary>
