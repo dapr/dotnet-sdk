@@ -395,6 +395,7 @@ namespace Dapr.Client.Test
             // Create Response & Respond
             var response = new Autogen.Grpc.v1.GetMetadataResponse()
             {
+                ActorRuntime = new(),
                 Id = "testId",
             };
             response.ActorRuntime.ActiveActors.Add(new ActiveActorsCount { Type = "testType", Count = 1 });
