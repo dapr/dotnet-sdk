@@ -148,16 +148,16 @@ namespace Dapr.Actors.Runtime
                 var parameters = methodInfo.GetParameters();
                 dynamic awaitable;
 
-                if (parameters.Length == 0)
+                if (parameters.Length == 0 || (parameters.Length == 1 && parameters[0].ParameterType == typeof(CancellationToken)))
                 {
-                    awaitable = methodInfo.Invoke(actor, null);
+                    awaitable = methodInfo.Invoke(actor, parameters.Length == 0 ? null : new object[] { ct });
                 }
-                else if (parameters.Length == 1)
+                else if (parameters.Length == 1 || (parameters.Length == 2 && parameters[1].ParameterType == typeof(CancellationToken)))
                 {
                     // deserialize using stream.
                     var type = parameters[0].ParameterType;
                     var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
-                    awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
+                    awaitable = methodInfo.Invoke(actor, parameters.Length == 1 ? new object[] { deserializedType } : new object[] { deserializedType, ct });
                 }
                 else
                 {
@@ -186,7 +186,13 @@ namespace Dapr.Actors.Runtime
             // Serialize result if it has result (return type was not just Task.)
             if (methodInfo.ReturnType.Name != typeof(Task).Name)
             {
-                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType(), jsonSerializerOptions);
+#if NET7_0_OR_GREATER
+                var resultType = methodInfo.ReturnType.GenericTypeArguments[0];
+                await JsonSerializer.SerializeAsync(responseBodyStream, result, resultType, jsonSerializerOptions);
+#else
+                await JsonSerializer.SerializeAsync<object>(responseBodyStream, result, jsonSerializerOptions); 
+#endif
+
             }
         }
 
