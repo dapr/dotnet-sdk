@@ -186,7 +186,13 @@ namespace Dapr.Actors.Runtime
             // Serialize result if it has result (return type was not just Task.)
             if (methodInfo.ReturnType.Name != typeof(Task).Name)
             {
-                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType(), jsonSerializerOptions);
+#if NET7_0_OR_GREATER
+                var resultType = methodInfo.ReturnType.GenericTypeArguments[0];
+                await JsonSerializer.SerializeAsync(responseBodyStream, result, resultType, jsonSerializerOptions);
+#else
+                await JsonSerializer.SerializeAsync<object>(responseBodyStream, result, jsonSerializerOptions); 
+#endif
+
             }
         }
 
