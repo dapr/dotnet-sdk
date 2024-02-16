@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             bool normalizeKey,
             IEnumerable<DaprSecretDescriptor> secretDescriptors,
             DaprClient client) : this(store, normalizeKey, null, secretDescriptors, client, DefaultSidecarWaitTimeout)
-        {            
+        {
         }
 
         /// <summary>
@@ -201,7 +201,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             {
                 foreach (var secretDescriptor in secretDescriptors)
                 {
-                    
+
                     Dictionary<string, string> result;
 
                     try
@@ -216,10 +216,6 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                         {
                             throw;
                         }
-                            
-                        Console.WriteLine($"'{secretDescriptor.SecretName}' doesn't exists in Key Vault but because " +
-                                          $"it doesn't require existence so all errors suppressed!");
-
                         result = new Dictionary<string, string>();
                     }
 
@@ -227,12 +223,11 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                     {
                         if (data.ContainsKey(key))
                         {
-                            throw new InvalidOperationException($"A duplicate key '{key}' was found in the " +
-                                                                $"secret store '{store}'. Please remove any " +
-                                                                $"duplicates from your secret store.");
+                            throw new InvalidOperationException(
+                                $"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(normalizeKey ? NormalizeKey(secretDescriptor.SecretName) : secretDescriptor.SecretName, 
+                        data.Add(normalizeKey ? NormalizeKey(secretDescriptor.SecretName) : secretDescriptor.SecretName,
                             result[key]);
                     }
                 }
