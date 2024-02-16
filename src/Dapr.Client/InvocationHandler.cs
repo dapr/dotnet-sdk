@@ -13,9 +13,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -138,14 +136,13 @@ namespace Dapr.Client
 
             string host;
 
-            // It is just for optimization, to not add some overhead time
             if (this.DefaultAppId is not null && uri.Host.Equals(this.DefaultAppId, StringComparison.InvariantCultureIgnoreCase))
             {
                 host = this.DefaultAppId;
             }
             else
             {
-                host = this.GetOriginalHostFromUri(uri);
+                host = uri.Host;
             }
 
             var builder = new UriBuilder(uri)
@@ -158,34 +155,6 @@ namespace Dapr.Client
 
             rewritten = builder.Uri;
             return true;
-        }
-
-        /// <summary>
-        /// Get the original host (case sensitive) from the URI (thanks to uri.OriginalString)
-        /// Mandatory to get the original host if the app id has at least one uppercase and the app id has not been sent to the handler
-        /// </summary>
-        /// <param name="uri">The uri</param>
-        /// <returns>The original hostname from the uri</returns>
-        /// <exception cref="ArgumentException">The original string from the uri is invalid</exception>
-        private string GetOriginalHostFromUri(Uri uri)
-        {
-            ArgumentNullException.ThrowIfNull(uri);
-
-            // If there is no upper character inside the original string, we can directly return the uri host
-            if (!uri.OriginalString.Any(char.IsUpper))
-            {
-                return uri.Host;
-            }
-
-            Regex regex = new Regex("^.+?://(?<host>[^:/]+)", RegexOptions.Singleline | RegexOptions.Compiled);
-            Match match = regex.Match(uri.OriginalString);
-
-            if (!match.Success || !match.Groups.TryGetValue("host", out Group? host))
-            {
-                throw new ArgumentException("The original string for the uri is invalid.", nameof(uri));
-            }
-
-            return host.Value;
         }
     }
 }

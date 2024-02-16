@@ -83,40 +83,40 @@ namespace Dapr.Client
         [InlineData("bank", "http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("Bank", "http://bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("invalid", "http://bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
-        [InlineData(null, "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData(null, "http://Bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("Bank", "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
         [InlineData("bank", "http://Bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
-        [InlineData("invalid", "http://Bank", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("invalid", "http://Bank", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData(null, "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("bank", "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("invalid", "http://bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
-        [InlineData(null, "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData(null, "http://Bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("Bank", "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
-        [InlineData("invalid", "http://Bank:3939", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("invalid", "http://Bank:3939", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData(null, "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
         [InlineData("app-id.with.dots", "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
         [InlineData("invalid", "http://app-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
-        [InlineData(null, "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
+        [InlineData(null, "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
         [InlineData("App-id.with.dots", "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
-        [InlineData("invalid", "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/App-id.with.dots/method/")]
+        [InlineData("invalid", "http://App-id.with.dots", "https://some.host:3499/v1.0/invoke/app-id.with.dots/method/")]
         [InlineData(null, "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("bank", "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("invalid", "http://bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
-        [InlineData(null, "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData(null, "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData("Bank", "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
-        [InlineData("invalid", "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/Bank/method/")]
+        [InlineData("invalid", "http://Bank:3939/", "https://some.host:3499/v1.0/invoke/bank/method/")]
         [InlineData(null, "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
         [InlineData("bank", "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
         [InlineData("invalid", "http://bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
-        [InlineData(null, "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
+        [InlineData(null, "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
         [InlineData("Bank", "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
-        [InlineData("invalid", "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/Bank/method/some/path")]
+        [InlineData("invalid", "http://Bank:3939/some/path", "https://some.host:3499/v1.0/invoke/bank/method/some/path")]
         [InlineData(null, "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
         [InlineData("bank", "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
         [InlineData("invalid", "http://bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
-        [InlineData(null, "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData(null, "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
         [InlineData("Bank", "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
-        [InlineData("invalid", "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/Bank/method/some/path?q=test&p=another#fragment")]
+        [InlineData("invalid", "http://Bank:3939/some/path?q=test&p=another#fragment", "https://some.host:3499/v1.0/invoke/bank/method/some/path?q=test&p=another#fragment")]
         public void TryRewriteUri_WithNoAppId_RewritesUriToDaprInvoke(string? appId, string uri, string expected)
         {
             var handler = new InvocationHandler()
@@ -177,13 +177,13 @@ namespace Dapr.Client
 
                 DaprEndpoint = "https://localhost:5000",
                 DaprApiToken = null,
-                DefaultAppId = "bank"
+                DefaultAppId = "Bank"
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
             var response = await CallSendAsync(handler, request);
 
-            Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
+            Assert.Equal("https://localhost:5000/v1.0/invoke/Bank/method/accounts/17?", capture.RequestUri?.OriginalString);
             Assert.Null(capture.DaprApiToken);
 
             Assert.Equal(uri, request.RequestUri?.OriginalString);
