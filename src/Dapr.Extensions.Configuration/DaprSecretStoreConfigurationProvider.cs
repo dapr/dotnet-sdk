@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             bool normalizeKey,
             IEnumerable<DaprSecretDescriptor> secretDescriptors,
             DaprClient client) : this(store, normalizeKey, null, secretDescriptors, client, DefaultSidecarWaitTimeout)
-        {            
+        {
         }
 
         /// <summary>
@@ -181,6 +181,10 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             return key;
         }
 
+        /// <summary>
+        /// Loads the configuration by calling the asynchronous LoadAsync method and blocking the calling
+        /// thread until the operation is completed.
+        /// </summary>
         public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
         private async Task LoadAsync()
@@ -197,16 +201,34 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             {
                 foreach (var secretDescriptor in secretDescriptors)
                 {
-                    var result = await client.GetSecretAsync(store, secretDescriptor.SecretName, secretDescriptor.Metadata).ConfigureAwait(false);
+
+                    Dictionary<string, string> result;
+
+                    try
+                    {
+                        result = await client
+                            .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata)
+                            .ConfigureAwait(false);
+                    }
+                    catch (DaprException)
+                    {
+                        if (secretDescriptor.IsRequired)
+                        {
+                            throw;
+                        }
+                        result = new Dictionary<string, string>();
+                    }
 
                     foreach (var key in result.Keys)
                     {
                         if (data.ContainsKey(key))
                         {
-                            throw new InvalidOperationException($"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
+                            throw new InvalidOperationException(
+                                $"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(normalizeKey ? NormalizeKey(key) : key, result[key]);
+                        data.Add(normalizeKey ? NormalizeKey(secretDescriptor.SecretName) : secretDescriptor.SecretName,
+                            result[key]);
                     }
                 }
 
