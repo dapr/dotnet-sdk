@@ -63,7 +63,8 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="appId">
         /// An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
-        /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used.
+        /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
+        /// If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
         /// </param>
         /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
         /// <param name="daprApiToken">The token to be added to all request headers to Dapr runtime.</param>
@@ -80,7 +81,8 @@ namespace Dapr.Client
             var handler = new InvocationHandler()
             {
                 InnerHandler = new HttpClientHandler(),
-                DaprApiToken = daprApiToken
+                DaprApiToken = daprApiToken,
+                DefaultAppId = appId,
             };
 
             if (daprEndpoint is string)
@@ -210,7 +212,7 @@ namespace Dapr.Client
             string topicName,
             Dictionary<string, string> metadata,
             CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// // Bulk Publishes multiple events to the specified topic.
         /// </summary>
