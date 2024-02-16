@@ -197,17 +197,38 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
             {
                 foreach (var secretDescriptor in secretDescriptors)
                 {
-                    var result = await client.GetSecretAsync(store, secretDescriptor.SecretName, secretDescriptor.Metadata).ConfigureAwait(false);
-
-                    foreach (var key in result.Keys)
-                    {
-                        if (data.ContainsKey(key))
+                        
+                        Dictionary<string, string> result =  new Dictionary<string, string>();
+                        
+                        try
                         {
-                            throw new InvalidOperationException($"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
+                            result = await client
+                                .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata)
+                                .ConfigureAwait(false);
+                        }
+                        catch (DaprException e)
+                        {
+                            
+                            if (secretDescriptor.IsRequired)
+                            {
+                                throw e;
+                            }
+                            
+                            Console.WriteLine($"'{secretDescriptor.SecretName}' doesn't exists in Key Vault but because it doesn't require existence so all errors suppressed!");
+
+                            result = new Dictionary<string, string>();
                         }
 
-                        data.Add(normalizeKey ? NormalizeKey(key) : key, result[key]);
-                    }
+                        foreach (var key in result.Keys)
+                        {
+                            if (data.ContainsKey(key))
+                            {
+                                throw new InvalidOperationException(
+                                    $"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
+                            }
+                            
+                            data.Add(normalizeKey ? NormalizeKey(secretDescriptor.SecretName) : secretDescriptor.SecretName, result[key]);
+                        }
                 }
 
                 Data = data;
