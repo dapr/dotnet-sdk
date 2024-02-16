@@ -76,6 +76,30 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task GetBulkStateAsync_CanReadDeserializedState()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var key = "test";
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetBulkStateAsync<Widget>("testStore", new List<string>() {key}, null);
+            });
+
+            // Create Response & Respond
+            const string size = "small";
+            const string color = "yellow";
+            var data = new Widget() {Size = size, Color = color};
+            var envelope = MakeGetBulkStateResponse<Widget>(key, data);
+            var state = await request.CompleteWithMessageAsync(envelope);
+
+            // Get response and validate
+            state.Should().HaveCount(1);
+            state[0].Value.Size.Should().Match(size);
+            state[0].Value.Color.Should().Match(color);
+        }
+        
+        [Fact]
         public async Task GetBulkStateAsync_WrapsRpcException()
         {
             await using var client = TestClient.CreateForDaprClient();
