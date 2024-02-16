@@ -21,8 +21,11 @@ namespace Dapr.Extensions.Configuration
     public class DaprSecretDescriptor
     {
         /// <summary>
-        /// Gets or sets the secret name.
+        /// The name of the secret to retrieve from the Dapr secret store.
         /// </summary>
+        /// <remarks>
+        /// If the <see cref="SecretKey"/> is not specified, this value will also be used as the key to retrieve the secret from the associated source secret store.
+        /// </remarks>
         public string SecretName { get; }
 
         /// <summary>
@@ -31,21 +34,26 @@ namespace Dapr.Extensions.Configuration
         public IReadOnlyDictionary<string, string> Metadata { get; }
 
         /// <summary>
-        /// This flag indicates if this field's existence should trigger an exception. Setting it to "false"
-        /// will suppress the exception whereas setting it to "true" will not suppress it.
+        /// A value indicating whether to throw an exception if the secret is not found in the source secret store.
         /// </summary>
+        /// <remarks>
+        /// Setting this value to <see langword="false"/> will suppress the exception; otherwise, <see langword="true"/> will not.
+        /// </remarks>
         public bool IsRequired { get; }
 
         /// <summary>
-        /// SecretKey value is mapping value to Vault Name. If The application's Secret Name and Secret in the
-        /// Vault Name is different then you can use this flag to specify Vault Secret Name. 
+        /// The secret key that maps to the <see cref="SecretName"/> to retrieve from the source secret store.
         /// </summary>
+        /// <remarks>
+        /// Use this property when the <see cref="SecretName"/> does not match the key used to retrieve the secret from the source secret store.
+        /// </remarks>
         public string SecretKey { get; }
 
         /// <summary>
         /// Secret Descriptor Constructor
         /// </summary>
-        public DaprSecretDescriptor(string secretName) : this(secretName, new Dictionary<string, string>())
+        public DaprSecretDescriptor(string secretName, bool isRequired = true, string secretKey = "") 
+            : this(secretName, new Dictionary<string, string>(), isRequired, secretKey)
         {
 
         }
@@ -53,29 +61,12 @@ namespace Dapr.Extensions.Configuration
         /// <summary>
         /// Secret Descriptor Constructor
         /// </summary>
-        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata) :
-            this(secretName, metadata, true, secretName)
-        {
-
-        }
-
-        /// <summary>
-        /// Secret Descriptor Constructor
-        /// </summary>
-        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, bool isRequired) :
-            this(secretName, metadata, isRequired, secretName)
-        {
-        }
-
-        /// <summary>
-        /// Secret Descriptor Constructor
-        /// </summary>
-        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, bool isRequired, string secretKey)
+        public DaprSecretDescriptor(string secretName, IReadOnlyDictionary<string, string> metadata, bool isRequired = true, string secretKey = "")
         {
             SecretName = secretName;
             Metadata = metadata;
             IsRequired = isRequired;
-            SecretKey = secretKey;
+            SecretKey = string.IsNullOrEmpty(secretKey) ? secretName : secretKey;
         }
     }
 }
