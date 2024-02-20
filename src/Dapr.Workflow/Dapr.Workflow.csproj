@@ -13,8 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.DurableTask.Client.Grpc" Version="1.0.*" />
-    <PackageReference Include="Microsoft.DurableTask.Worker.Grpc" Version="1.0.*" />
+    <PackageReference Include="Microsoft.DurableTask.Client.Grpc" Version="1.2.*" />
+    <PackageReference Include="Microsoft.DurableTask.Worker.Grpc" Version="1.2.*" />
   </ItemGroup>
 
   <ItemGroup>
