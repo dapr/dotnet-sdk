@@ -27,7 +27,6 @@ namespace Dapr.Workflow
     /// </summary>
     public static class WorkflowServiceCollectionExtensions
     {
-        
         /// <summary>
         /// Adds Dapr Workflow support to the service collection.
         /// </summary>
@@ -61,18 +60,15 @@ namespace Dapr.Workflow
 
                 if (TryGetGrpcAddress(out string address))
                 {
+                    var client = new HttpClient();
                     var daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
+
                     if (!string.IsNullOrEmpty(daprApiToken))
                     {
-                        var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
-                        builder.UseGrpc(CreateChannel(address, client));
-                    }
-                    else
-                    {
-                        builder.UseGrpc(address);
                     }
 
+                    builder.UseGrpc(CreateChannel(address, client, options.GrpcChannelOptions));
                 }
                 else
                 {
@@ -111,7 +107,6 @@ namespace Dapr.Workflow
                     {
                         builder.UseGrpc(address);
                     }
-
                 }
                 else
                 {
@@ -131,7 +126,8 @@ namespace Dapr.Workflow
             //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
             // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
             var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
-            if (!String.IsNullOrEmpty(daprEndpoint)) {
+            if (!String.IsNullOrEmpty(daprEndpoint))
+            {
                 address = daprEndpoint;
                 return true;
             }
@@ -153,31 +149,33 @@ namespace Dapr.Workflow
             return false;
         }
 
-        static GrpcChannel CreateChannel(string address, HttpClient client)
+        static GrpcChannel CreateChannel(string address, HttpClient client, GrpcChannelOptions? grpcChannelOptions = null)
         {
-
-        GrpcChannelOptions options = new() { HttpClient = client};
-        var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
-        if (!String.IsNullOrEmpty(daprEndpoint)) {
-            return GrpcChannel.ForAddress(daprEndpoint, options);
-        }
+            GrpcChannelOptions options = grpcChannelOptions ?? new();
+            options.HttpClient ??= client;
             
-        var daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-        if (int.TryParse(daprPortStr, out int daprGrpcPort))
-        {
-            // If there is no address passed in, we default to localhost
-            if (String.IsNullOrEmpty(address))
+            var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
+            if (!String.IsNullOrEmpty(daprEndpoint))
             {
-                // There is a bug in the Durable Task SDK that requires us to change the format of the address
-                // depending on the version of .NET that we're targeting. For now, we work around this manually.
-        #if NET6_0_OR_GREATER
-                    address = $"http://localhost:{daprGrpcPort}";
-        #else
-                    address = $"localhost:{daprGrpcPort}";
-        #endif
+                return GrpcChannel.ForAddress(daprEndpoint, options);
             }
 
-        }
+            var daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+            if (int.TryParse(daprPortStr, out int daprGrpcPort))
+            {
+                // If there is no address passed in, we default to localhost
+                if (String.IsNullOrEmpty(address))
+                {
+                    // There is a bug in the Durable Task SDK that requires us to change the format of the address
+                    // depending on the version of .NET that we're targeting. For now, we work around this manually.
+#if NET6_0_OR_GREATER
+                    address = $"http://localhost:{daprGrpcPort}";
+#else
+                    address = $"localhost:{daprGrpcPort}";
+#endif
+                }
+            }
+
             return GrpcChannel.ForAddress(address, options);
         }
     }
