@@ -79,9 +79,6 @@ service Dapr {
   // Unregister an actor reminder.
   rpc UnregisterActorReminder(UnregisterActorReminderRequest) returns (google.protobuf.Empty) {}
 
-  // Rename an actor reminder.
-  rpc RenameActorReminder(RenameActorReminderRequest) returns (google.protobuf.Empty) {}
-
   // Gets the state for a specific actor.
   rpc GetActorState(GetActorStateRequest) returns (GetActorStateResponse) {}
 
@@ -122,7 +119,7 @@ service Dapr {
   rpc DecryptAlpha1(stream DecryptRequest) returns (stream DecryptResponse);
 
   // Gets metadata of the sidecar
-  rpc GetMetadata (google.protobuf.Empty) returns (GetMetadataResponse) {}
+  rpc GetMetadata (GetMetadataRequest) returns (GetMetadataResponse) {}
 
   // Sets value in extended metadata of the sidecar
   rpc SetMetadata (SetMetadataRequest) returns (google.protobuf.Empty) {}
@@ -190,7 +187,7 @@ service Dapr {
   // Raise an event to a running workflow instance
   rpc RaiseEventWorkflowBeta1 (RaiseEventWorkflowRequest) returns (google.protobuf.Empty) {}
   // Shutdown the sidecar
-  rpc Shutdown (google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc Shutdown (ShutdownRequest) returns (google.protobuf.Empty) {}
 }
 
 // InvokeServiceRequest represents the request message for Service invocation.
@@ -407,14 +404,12 @@ message BulkPublishResponse {
 
 // BulkPublishResponseFailedEntry is the message containing the entryID and error of a failed event in BulkPublishEvent call
 message BulkPublishResponseFailedEntry {
-
   // The response scoped unique ID referring to this message
   string entry_id = 1;
 
   // The error message if any on failure
   string error = 2;
 }
-
 
 // InvokeBindingRequest is the message to send data to output bindings
 message InvokeBindingRequest {
@@ -544,14 +539,6 @@ message UnregisterActorReminderRequest {
   string name = 3;
 }
 
-// RenameActorReminderRequest is the message to rename an actor reminder.
-message RenameActorReminderRequest {
-  string actor_type = 1;
-  string actor_id = 2;
-  string old_name = 3;
-  string new_name = 4;
-}
-
 // GetActorStateRequest is the message to get key-value states from specific actor.
 message GetActorStateRequest {
   string actor_type = 1;
@@ -600,10 +587,16 @@ message InvokeActorResponse {
   bytes data = 1;
 }
 
-// GetMetadataResponse is a message that is returned on GetMetadata rpc call
+// GetMetadataRequest is the message for the GetMetadata request.
+message GetMetadataRequest {
+  // Empty
+}
+
+// GetMetadataResponse is a message that is returned on GetMetadata rpc call.
 message GetMetadataResponse {
   string id = 1;
-  repeated ActiveActorsCount active_actors_count = 2 [json_name = "actors"];
+  // Deprecated alias for actor_runtime.active_actors.
+  repeated ActiveActorsCount active_actors_count = 2 [json_name = "actors", deprecated = true];
   repeated RegisteredComponents registered_components = 3 [json_name = "components"];
   map<string, string> extended_metadata = 4 [json_name = "extended"];
   repeated PubsubSubscription subscriptions = 5 [json_name = "subscriptions"];
@@ -611,6 +604,28 @@ message GetMetadataResponse {
   AppConnectionProperties app_connection_properties = 7 [json_name = "appConnectionProperties"];
   string runtime_version = 8 [json_name = "runtimeVersion"];
   repeated string enabled_features = 9 [json_name = "enabledFeatures"];
+  ActorRuntime actor_runtime = 10 [json_name = "actorRuntime"];
+}
+
+message ActorRuntime {
+  enum ActorRuntimeStatus {
+    // Indicates that the actor runtime is still being initialized.
+    INITIALIZING = 0;
+    // Indicates that the actor runtime is disabled.
+    // This normally happens when Dapr is started without "placement-host-address"
+    DISABLED = 1;
+    // Indicates the actor runtime is running, either as an actor host or client.
+    RUNNING = 2;
+  }
+
+  // Contains an enum indicating whether the actor runtime has been initialized.
+  ActorRuntimeStatus runtime_status = 1 [json_name = "runtimeStatus"];
+  // Count of active actors per type.
+  repeated ActiveActorsCount active_actors = 2 [json_name = "activeActors"];
+  // Indicates whether the actor runtime is ready to host actors.
+  bool host_ready = 3 [json_name = "hostReady"];
+  // Custom message from the placement provider.
+  string placement = 4 [json_name = "placement"];
 }
 
 message ActiveActorsCount {
@@ -1087,4 +1102,9 @@ message PurgeWorkflowRequest {
   string instance_id = 1 [json_name = "instanceID"];
   // Name of the workflow component.
   string workflow_component = 2 [json_name = "workflowComponent"];
+}
+
+// ShutdownRequest is the request for Shutdown.
+message ShutdownRequest {
+  // Empty
 }
