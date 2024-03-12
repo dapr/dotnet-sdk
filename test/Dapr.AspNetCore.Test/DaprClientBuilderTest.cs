@@ -110,5 +110,14 @@ namespace Dapr.AspNetCore.Test
             var entry = DaprClient.GetDaprApiTokenHeader(builder.DaprApiToken);
             Assert.Equal(default, entry);
         }
+
+        [Fact]
+        public void DaprClientBuilder_SetsTimeout()
+        {
+            var builder = new DaprClientBuilder();
+            builder.UseTimeout(1500);
+            builder.Build();
+            Assert.Equal(1500, builder.Timeout);
+        }
     }
 }

@@ -57,6 +57,7 @@ namespace Dapr.Client
         // property exposed for testing purposes
         internal GrpcChannelOptions GrpcChannelOptions { get; private set; }
         internal string DaprApiToken { get; private set; }
+        internal int Timeout { get; private set; } // in milliseconds
 
         /// <summary>
         /// Overrides the HTTP endpoint used by <see cref="DaprClient" /> for communicating with the Dapr runtime.
@@ -137,6 +138,17 @@ namespace Dapr.Client
         }
 
         /// <summary>
+        ///  Sets the timeout for the HTTP client used by the <see cref="DaprClient" />.
+        /// </summary>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public DaprClientBuilder UseTimeout(int timeout)
+        {
+            this.Timeout = timeout;
+            return this;
+        }
+
+        /// <summary>
         /// Builds a <see cref="DaprClient" /> instance from the properties of the builder.
         /// </summary>
         /// <returns>The <see cref="DaprClient" />.</returns>
@@ -165,6 +177,11 @@ namespace Dapr.Client
             
             var apiTokenHeader = DaprClient.GetDaprApiTokenHeader(this.DaprApiToken);
             var httpClient = HttpClientFactory is object ? HttpClientFactory() : new HttpClient();
+            
+            if (this.Timeout > 0)
+            {
+                httpClient.Timeout = TimeSpan.FromMilliseconds(this.Timeout);
+            }
             return new DaprClientGrpc(channel, client, httpClient, httpEndpoint, this.JsonSerializerOptions, apiTokenHeader);
         }
     }
