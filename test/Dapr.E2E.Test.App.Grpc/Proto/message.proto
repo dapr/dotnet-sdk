@@ -25,6 +25,7 @@ service Messager {
   rpc GetMessage(GetMessageRequest) returns (MessageResponse);
   // Send a series of broadcast messages.
   rpc StreamBroadcast(stream Broadcast) returns (stream MessageResponse);
+  rpc DelayedResponse(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 message SendMessageRequest {

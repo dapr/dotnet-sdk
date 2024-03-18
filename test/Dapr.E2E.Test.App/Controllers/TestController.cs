@@ -65,5 +65,14 @@ namespace Dapr.E2E.Test
             };
             return account;
         }
+
+        [Authorize("Dapr")]
+        [HttpGet("DelayedResponse")]
+        public async Task<IActionResult> DelayedResponse()
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            return Ok();
+        }
+
     }
 }
