@@ -13,8 +13,10 @@
 namespace Dapr.E2E.Test
 {
     using System;
+    using System.Net;
     using System.Net.Http;
     using System.Net.Http.Json;
+    using System.Net.Sockets;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
@@ -63,7 +65,7 @@ namespace Dapr.E2E.Test
         }
 
         [Fact]
-        public async Task TestServiceInvocationDelayedResponseWithTimeout()
+        public async Task TestHttpServiceInvocationWithTimeout()
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             using var client = new DaprClientBuilder()
@@ -73,7 +75,7 @@ namespace Dapr.E2E.Test
 
             await Assert.ThrowsAsync<TaskCanceledException>(async () =>
             {
-                var response = await client.InvokeMethodAsync<HttpResponseMessage>(
+                await client.InvokeMethodAsync<HttpResponseMessage>(
                     appId: this.AppId,
                     methodName: "DelayedResponse",
                     httpMethod: new HttpMethod("GET"),

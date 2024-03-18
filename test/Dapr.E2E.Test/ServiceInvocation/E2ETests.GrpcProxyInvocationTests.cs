@@ -15,6 +15,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Xunit;
 using Xunit.Abstractions;
@@ -76,6 +77,27 @@ namespace Dapr.E2E.Test
 
                 await responseTask;
             }
+        }
+
+        [Fact]
+        public async Task TestGrpcServiceInvocationWithTimeout()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            using var client = new DaprClientBuilder()
+                            .UseGrpcEndpoint(this.GrpcEndpoint)
+                            .UseTimeout(TimeSpan.FromSeconds(1))
+                            .Build();
+
+            var ex = await Assert.ThrowsAsync<RpcException>(async () =>
+            {
+                await client.InvokeMethodGrpcAsync<Empty, Empty>(
+                    this.AppId,
+                    "DelayedResponse",
+                    new Empty(),
+                    cts.Token);
+            });
+
+            Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
         }
     }
 }
