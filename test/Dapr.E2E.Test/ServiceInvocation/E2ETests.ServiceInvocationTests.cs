@@ -13,10 +13,13 @@
 namespace Dapr.E2E.Test
 {
     using System;
+    using System.Net.Http;
     using System.Net.Http.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
+    using Google.Protobuf.WellKnownTypes;
+    using Grpc.Core;
     using Xunit;
 
     public partial class E2ETests
@@ -57,6 +60,25 @@ namespace Dapr.E2E.Test
 
             Assert.Equal("1", account.Id);
             Assert.Equal(150, account.Balance);
+        }
+
+        [Fact]
+        public async Task TestServiceInvocationDelayedResponseWithTimeout()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            using var client = new DaprClientBuilder()
+                        .UseHttpEndpoint(this.HttpEndpoint)
+                        .UseTimeout(TimeSpan.FromSeconds(1))
+                        .Build();
+
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            {
+                var response = await client.InvokeMethodAsync<HttpResponseMessage>(
+                    appId: this.AppId,
+                    methodName: "DelayedResponse",
+                    httpMethod: new HttpMethod("GET"),
+                    cancellationToken: cts.Token);
+            });
         }
     }
 
