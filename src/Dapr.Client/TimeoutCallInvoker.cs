@@ -38,8 +38,12 @@ namespace Dapr.Client
             CallOptions options,
             TRequest request)
         {
-            var callOptionsWithDeadline = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
-            return _invoker.BlockingUnaryCall(method, host, callOptionsWithDeadline, request);
+            var callOptions = options;
+            if (options.Deadline == null)
+            {
+                callOptions = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
+            }
+            return _invoker.BlockingUnaryCall(method, host, callOptions, request);
         }
 
         /// <summary>
@@ -58,8 +62,12 @@ namespace Dapr.Client
             CallOptions options,
             TRequest request)
         {
-            var callOptionsWithDeadline = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
-            return _invoker.AsyncUnaryCall(method, host, callOptionsWithDeadline, request);
+            var callOptions = options;
+            if (options.Deadline == null)
+            {
+                callOptions = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
+            }
+            return _invoker.AsyncUnaryCall(method, host, callOptions, request);
         }
 
         /// <summary>
@@ -76,8 +84,12 @@ namespace Dapr.Client
             string host,
             CallOptions options)
         {
-            var callOptionsWithDeadline = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
-            return _invoker.AsyncClientStreamingCall(method, host, callOptionsWithDeadline);
+            var callOptions = options;
+            if (options.Deadline == null)
+            {
+                callOptions = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
+            }
+            return _invoker.AsyncClientStreamingCall(method, host, callOptions);
         }
 
         /// <summary>
@@ -96,8 +108,12 @@ namespace Dapr.Client
             CallOptions options,
             TRequest request)
         {
-            var callOptionsWithDeadline = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
-            return _invoker.AsyncServerStreamingCall(method, host, callOptionsWithDeadline, request);
+            var callOptions = options;
+            if (options.Deadline == null)
+            {
+                callOptions = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
+            }
+            return _invoker.AsyncServerStreamingCall(method, host, callOptions, request);
         }
 
         /// <summary>
@@ -114,8 +130,12 @@ namespace Dapr.Client
             string host,
             CallOptions options)
         {
-            var callOptionsWithDeadline = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
-            return _invoker.AsyncDuplexStreamingCall(method, host, callOptionsWithDeadline);
+            var callOptions = options;
+            if (options.Deadline == null)
+            {
+                callOptions = options.WithDeadline(DateTime.UtcNow.Add(_timeout));
+            }
+            return _invoker.AsyncDuplexStreamingCall(method, host, callOptions);
         }
 
         
