@@ -36,6 +36,16 @@ Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance)
 ```
 {{% /codetab %}}
 
+To specify a timout for the request, you can use the `UseTimeout` method on the `DaprClientBuilder`:
+
+{{% codetab %}}
+```csharp
+using var client = new DaprClientBuilder().
+                UseTimeout(TimeSpan.FromSeconds(2)).
+                Build();  
+```
+{{% /codetab %}}
+
 {{% codetab %}}
 ```csharp
 var client = DaprClient.CreateInvokeHttpClient(appId: "routing");
