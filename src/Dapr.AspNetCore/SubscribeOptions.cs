@@ -11,6 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace Dapr
 {
     /// <summary>
@@ -22,5 +26,10 @@ namespace Dapr
         /// Gets or Sets a value which indicates whether to enable or disable processing raw messages.
         /// </summary>
         public bool EnableRawPayload { get; set; }
+
+        /// <summary>
+        /// An optional delegate used to configure the subscriptions.
+        /// </summary>
+        public Func<List<Subscription>, Task> SubscriptionsCallback { get; set; }
     }
 }
