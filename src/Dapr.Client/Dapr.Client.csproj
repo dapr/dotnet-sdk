@@ -20,7 +20,6 @@
     <PackageReference Include="Grpc.Net.Client" Version="2.52.0" />
     <PackageReference Include="Grpc.Tools" Version="2.47.0" PrivateAssets="All" />
     <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
-    <PackageReference Include="System.Net.Http.Json" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
