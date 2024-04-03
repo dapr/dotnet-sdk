@@ -83,19 +83,14 @@ namespace Dapr.E2E.Test
         public async Task TestGrpcServiceInvocationWithTimeout()
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-            using var client = new DaprClientBuilder()
-                            .UseGrpcEndpoint(this.GrpcEndpoint)
-                            .UseTimeout(TimeSpan.FromSeconds(1))
-                            .Build();
+            var invoker = DaprClient.CreateInvocationInvoker(appId: this.AppId, daprEndpoint: this.GrpcEndpoint);
+            var client = new Messager.MessagerClient(invoker);
 
+            var options = new CallOptions(cancellationToken: cts.Token, deadline: DateTime.UtcNow.AddSeconds(1));
             var ex = await Assert.ThrowsAsync<RpcException>(async () =>
-            {
-                await client.InvokeMethodGrpcAsync<Empty, Empty>(
-                    this.AppId,
-                    "DelayedResponse",
-                    new Empty(),
-                    cts.Token);
-            });
+                {
+                    await client.DelayedResponseAsync(new Empty(), options);
+                });
 
             Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
         }

@@ -21,13 +21,16 @@ The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< 
 
 ### Invoke a service
 
+#### HTTP
 You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke your services.
 
 {{< tabs SDK HTTP>}}
 
 {{% codetab %}}
 ```csharp
-using var client = new DaprClientBuilder().Build();
+using var client = new DaprClientBuilder().
+                UseTimeout(TimeSpan.FromSeconds(2)). // Optionally, set a timeout
+                Build(); 
 
 // Invokes a POST method named "deposit" that takes input of type "Transaction"
 var data = new { id = "17", amount = 99m };
@@ -36,19 +39,12 @@ Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance)
 ```
 {{% /codetab %}}
 
-To specify a timout for the request, you can use the `UseTimeout` method on the `DaprClientBuilder`:
-
-{{% codetab %}}
-```csharp
-using var client = new DaprClientBuilder().
-                UseTimeout(TimeSpan.FromSeconds(2)).
-                Build();  
-```
-{{% /codetab %}}
-
 {{% codetab %}}
 ```csharp
 var client = DaprClient.CreateInvokeHttpClient(appId: "routing");
+
+// To set a timeout on the HTTP client:
+client.Timeout = TimeSpan.FromSeconds(2);
 
 var deposit = new Transaction  { Id = "17", Amount = 99m };
 var response = await client.PostAsJsonAsync("/deposit", deposit, cancellationToken);
@@ -56,8 +52,23 @@ var account = await response.Content.ReadFromJsonAsync<Account>(cancellationToke
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
 {{% /codetab %}}
-
 {{< /tabs >}}
+
+#### gRPC
+You can use the `DaprClient` to invoke your services over gRPC.
+{{% codetab %}}
+```csharp
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+var invoker = DaprClient.CreateInvocationInvoker(appId: myAppId, daprEndpoint: serviceEndpoint);
+var client = new MyService.MyServiceClient(invoker);
+
+var options = new CallOptions(cancellationToken: cts.Token, deadline: DateTime.UtcNow.AddSeconds(1));
+await client.MyMethodAsync(new Empty(), options);
+
+Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
+```
+{{% /codetab %}}
+
 
 - For a full guide on service invocation visit [How-To: Invoke a service]({{< ref howto-invoke-discover-services.md >}}).
 
