@@ -21,6 +21,7 @@ namespace Microsoft.Extensions.DependencyInjection
     using Dapr.Client;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.ApplicationModels;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
 
     /// <summary>
     /// Provides extension methods for <see cref="IMvcBuilder" />.
@@ -40,27 +41,19 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(builder));
             }
 
-            // This pattern prevents registering services multiple times in the case AddDapr is called
-            // by non-user-code.
-            if (builder.Services.Any(s => s.ImplementationType == typeof(DaprMvcMarkerService)))
-            {
-                return builder;
-            }
-
             builder.Services.AddDaprClient(configureClient);
 
-            builder.Services.AddSingleton<DaprMvcMarkerService>();
-            builder.Services.AddSingleton<IApplicationModelProvider, StateEntryApplicationModelProvider>();
+            builder.Services.TryAddSingleton<IApplicationModelProvider, StateEntryApplicationModelProvider>();
+
             builder.Services.Configure<MvcOptions>(options =>
             {
-                options.ModelBinderProviders.Insert(0, new StateEntryModelBinderProvider());
+                if (!options.ModelBinderProviders.Any(p => p is StateEntryModelBinderProvider))
+                {
+                    options.ModelBinderProviders.Insert(0, new StateEntryModelBinderProvider());
+                }
             });
 
             return builder;
-        }
-
-        private class DaprMvcMarkerService
-        {
         }
     }
 }

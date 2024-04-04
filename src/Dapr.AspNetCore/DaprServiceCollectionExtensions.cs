@@ -36,15 +36,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
             }
 
-            // This pattern prevents registering services multiple times in the case AddDaprClient is called
-            // by non-user-code.
-            if (services.Any(s => s.ImplementationType == typeof(DaprClientMarkerService)))
-            {
-                return;
-            }
-
-            services.AddSingleton<DaprClientMarkerService>();
-
             services.TryAddSingleton(_ =>
             {
                 var builder = new DaprClientBuilder();
@@ -55,10 +46,6 @@ namespace Microsoft.Extensions.DependencyInjection
 
                 return builder.Build();
             });
-        }
-
-        private class DaprClientMarkerService
-        {
         }
     }
 }

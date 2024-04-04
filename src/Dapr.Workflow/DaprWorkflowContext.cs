@@ -35,14 +35,14 @@ namespace Dapr.Workflow
 
         public override bool IsReplaying => this.innerContext.IsReplaying;
 
-        public override Task CallActivityAsync(string name, object? input = null, TaskOptions? options = null)
+        public override Task CallActivityAsync(string name, object? input = null, WorkflowTaskOptions? options = null)
         {
-            return this.innerContext.CallActivityAsync(name, input, options);
+            return WrapExceptions(this.innerContext.CallActivityAsync(name, input, options?.ToDurableTaskOptions()));
         }
 
-        public override Task<T> CallActivityAsync<T>(string name, object? input = null, TaskOptions? options = null)
+        public override Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null)
         {
-            return this.innerContext.CallActivityAsync<T>(name, input, options);
+            return WrapExceptions(this.innerContext.CallActivityAsync<T>(name, input, options?.ToDurableTaskOptions()));
         }
 
         public override Task CreateTimer(TimeSpan delay, CancellationToken cancellationToken = default)
@@ -75,14 +75,14 @@ namespace Dapr.Workflow
             this.innerContext.SetCustomStatus(customStatus);
         }
 
-        public override Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, TaskOptions? options = null)
+        public override Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, ChildWorkflowTaskOptions? options = null)
         {
-            return this.innerContext.CallSubOrchestratorAsync<TResult>(workflowName, input, options);
+            return WrapExceptions(this.innerContext.CallSubOrchestratorAsync<TResult>(workflowName, input, options?.ToDurableTaskOptions()));
         }
 
-        public override Task CallChildWorkflowAsync(string workflowName, object? input = null, TaskOptions? options = null)
+        public override Task CallChildWorkflowAsync(string workflowName, object? input = null, ChildWorkflowTaskOptions? options = null)
         {
-            return this.innerContext.CallSubOrchestratorAsync(workflowName, input, options);
+            return WrapExceptions(this.innerContext.CallSubOrchestratorAsync(workflowName, input, options?.ToDurableTaskOptions()));
         }
 
         public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)
@@ -93,6 +93,32 @@ namespace Dapr.Workflow
         public override Guid NewGuid()
         {
             return this.innerContext.NewGuid();
+        }
+
+        static async Task WrapExceptions(Task task)
+        {
+            try
+            {
+                await task;
+            }
+            catch (TaskFailedException ex)
+            {
+                var details = new WorkflowTaskFailureDetails(ex.FailureDetails);
+                throw new WorkflowTaskFailedException(ex.Message, details);
+            }
+        }
+
+        static async Task<TResult> WrapExceptions<TResult>(Task<TResult> task)
+        {
+            try
+            {
+                return await task;
+            }
+            catch (TaskFailedException ex)
+            {
+                var details = new WorkflowTaskFailureDetails(ex.FailureDetails);
+                throw new WorkflowTaskFailedException(ex.Message, details);
+            }
         }
     }
 }

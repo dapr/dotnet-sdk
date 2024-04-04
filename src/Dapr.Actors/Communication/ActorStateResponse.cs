@@ -11,46 +11,40 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+namespace Dapr.Actors.Communication
 {
+    using System;
+
     /// <summary>
-    /// Enum describing the runtime status of the workflow.
+    /// Represents a response from fetching an actor state key.
     /// </summary>
-    public enum WorkflowRuntimeStatus
+    public class ActorStateResponse<T>
     {
         /// <summary>
-        /// The status of the workflow is unknown.
+        /// Initializes a new instance of the <see cref="ActorStateResponse{T}"/> class.
         /// </summary>
-        Unknown = -1,
+        /// <param name="value">The response value.</param>
+        /// <param name="ttlExpireTime">The time to live expiration time.</param>
+        public ActorStateResponse(T value, DateTimeOffset? ttlExpireTime)
+        {
+            this.Value = value;
+            this.TTLExpireTime = ttlExpireTime;
+        }
 
         /// <summary>
-        /// The workflow started running.
+        /// Gets the response value as a string.
         /// </summary>
-        Running,
+        /// <value>
+        /// The response value as a string.
+        /// </value>
+        public T Value { get; }
 
         /// <summary>
-        /// The workflow completed normally.
+        /// Gets the time to live expiration time.
         /// </summary>
-        Completed,
-
-        /// <summary>
-        /// The workflow completed with an unhandled exception.
-        /// </summary>
-        Failed,
-
-        /// <summary>
-        /// The workflow was abruptly terminated via a management API call.
-        /// </summary>
-        Terminated,
-
-        /// <summary>
-        /// The workflow was scheduled but hasn't started running.
-        /// </summary>
-        Pending,
-
-        /// <summary>
-        /// The workflow was suspended.
-        /// </summary>
-        Suspended,
+        /// <value>
+        /// The time to live expiration time.
+        /// </value>
+        public DateTimeOffset? TTLExpireTime { get; }
     }
 }

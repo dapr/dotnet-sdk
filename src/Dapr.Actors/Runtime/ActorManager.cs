@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,8 @@ namespace Dapr.Actors.Runtime
         internal ActorManager(
             ActorRegistration registration,
             ActorActivator activator, 
-            JsonSerializerOptions jsonSerializerOptions, 
+            JsonSerializerOptions jsonSerializerOptions,
+            bool useJsonSerialization,
             ILoggerFactory loggerFactory,
             IActorProxyFactory proxyFactory,
             IDaprInteractor daprInteractor)
@@ -78,7 +79,15 @@ namespace Dapr.Actors.Runtime
             this.activeActors = new ConcurrentDictionary<ActorId, ActorActivatorState>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
             this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
-            this.serializersManager = IntializeSerializationManager(null);
+
+            // provide a serializer if 'useJsonSerialization' is true and no serialization provider is provided.
+            IActorMessageBodySerializationProvider serializationProvider = null;
+            if (useJsonSerialization)
+            {
+                serializationProvider = new ActorMessageBodyJsonSerializationProvider(jsonSerializerOptions);
+            }
+
+            this.serializersManager = IntializeSerializationManager(serializationProvider);
             this.messageBodyFactory = new WrappedRequestMessageFactory();
 
             this.logger = loggerFactory.CreateLogger(this.GetType());
@@ -103,7 +112,7 @@ namespace Dapr.Actors.Runtime
             using (var stream = new MemoryStream())
             {
                 await data.CopyToAsync(stream);
-                actorMessageBody = msgBodySerializer.Deserialize(stream);
+                actorMessageBody = await msgBodySerializer.DeserializeAsync(stream);
             }
 
             // Call the method on the method dispatcher using the Func below.
@@ -139,16 +148,16 @@ namespace Dapr.Actors.Runtime
                 var parameters = methodInfo.GetParameters();
                 dynamic awaitable;
 
-                if (parameters.Length == 0)
+                if (parameters.Length == 0 || (parameters.Length == 1 && parameters[0].ParameterType == typeof(CancellationToken)))
                 {
-                    awaitable = methodInfo.Invoke(actor, null);
+                    awaitable = methodInfo.Invoke(actor, parameters.Length == 0 ? null : new object[] { ct });
                 }
-                else if (parameters.Length == 1)
+                else if (parameters.Length == 1 || (parameters.Length == 2 && parameters[1].ParameterType == typeof(CancellationToken)))
                 {
                     // deserialize using stream.
                     var type = parameters[0].ParameterType;
                     var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
-                    awaitable = methodInfo.Invoke(actor, new object[] { deserializedType });
+                    awaitable = methodInfo.Invoke(actor, parameters.Length == 1 ? new object[] { deserializedType } : new object[] { deserializedType, ct });
                 }
                 else
                 {
@@ -177,7 +186,13 @@ namespace Dapr.Actors.Runtime
             // Serialize result if it has result (return type was not just Task.)
             if (methodInfo.ReturnType.Name != typeof(Task).Name)
             {
-                await JsonSerializer.SerializeAsync(responseBodyStream, result, result.GetType(), jsonSerializerOptions);
+#if NET7_0_OR_GREATER
+                var resultType = methodInfo.ReturnType.GenericTypeArguments[0];
+                await JsonSerializer.SerializeAsync(responseBodyStream, result, resultType, jsonSerializerOptions);
+#else
+                await JsonSerializer.SerializeAsync<object>(responseBodyStream, result, jsonSerializerOptions); 
+#endif
+
             }
         }
 
@@ -355,9 +370,9 @@ namespace Dapr.Actors.Runtime
                 // PostActivate will save the state, its not invoked when actorFunc invocation throws.
                 await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                await actor.OnInvokeFailedAsync();
+                await actor.OnActorMethodFailedInternalAsync(actorMethodContext, e);
                 throw;
             }
             finally

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,10 +101,11 @@ namespace Dapr.Actors.Runtime
             await this.SaveStateAsync();
         }
 
-        internal Task OnInvokeFailedAsync()
+        internal async Task OnActorMethodFailedInternalAsync(ActorMethodContext actorMethodContext, Exception e)
         {
+            await this.OnActorMethodFailedAsync(actorMethodContext, e);
             // Exception has been thrown by user code, reset the state in state manager.
-            return this.ResetStateAsync();
+            await this.ResetStateAsync();
         }
 
         internal Task ResetStateAsync()
@@ -186,6 +187,30 @@ namespace Dapr.Actors.Runtime
         /// </list>
         /// </remarks>
         protected virtual Task OnPostActorMethodAsync(ActorMethodContext actorMethodContext)
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Override this method for performing any action when invoking actor method has thrown an exception.
+        /// This method is invoked by actor runtime when invoking actor method has thrown an exception.
+        /// </summary>
+        /// <param name="actorMethodContext">
+        /// An <see cref="ActorMethodContext"/> describing the method that was invoked by actor runtime prior to this method.
+        /// </param>
+        /// <param name="e">Exception thrown by either actor method or by OnPreActorMethodAsync/OnPostActorMethodAsync overriden methods.</param>
+        /// <returns>
+        /// Returns a <see cref="Task">Task</see> representing post-actor-method operation.
+        /// </returns>
+        /// /// <remarks>
+        /// This method is invoked by actor runtime prior to:
+        /// <list type="bullet">
+        /// <item><description>Invoking an actor interface method when a client request comes.</description></item>
+        /// <item><description>Invoking a method when a reminder fires.</description></item>
+        /// <item><description>Invoking a timer callback when timer fires.</description></item>
+        /// </list>
+        /// </remarks>
+        protected virtual Task OnActorMethodFailedAsync(ActorMethodContext actorMethodContext, Exception e)
         {
             return Task.CompletedTask;
         }
@@ -358,6 +383,18 @@ namespace Dapr.Actors.Runtime
             var reminder = new ActorReminder(options);
             await this.Host.TimerManager.RegisterReminderAsync(reminder);
             return reminder;
+        }
+
+        /// <summary>
+        /// Gets a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)" />.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder to get.</param>
+        /// <returns>
+        /// Returns a task that represents the asynchronous get operation. The result of the task contains the reminder if it exists, otherwise null.
+        /// </returns>
+        protected async Task<IActorReminder> GetReminderAsync(string reminderName)
+        {
+            return await this.Host.TimerManager.GetReminderAsync(new ActorReminderToken(this.actorTypeName, this.Id, reminderName));
         }
 
         /// <summary>

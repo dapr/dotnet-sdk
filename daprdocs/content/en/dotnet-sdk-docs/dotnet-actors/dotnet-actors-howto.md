@@ -81,6 +81,7 @@ Define `IMyActor` interface and `MyData` data object. Paste the following code i
 
 ```csharp
 using Dapr.Actors;
+using Dapr.Actors.Runtime;
 using System.Threading.Tasks;
 
 namespace MyActor.Interfaces
@@ -91,6 +92,7 @@ namespace MyActor.Interfaces
         Task<MyData> GetDataAsync();
         Task RegisterReminder();
         Task UnregisterReminder();
+        Task<IActorReminder> GetReminder();
         Task RegisterTimer();
         Task UnregisterTimer();
     }
@@ -220,6 +222,14 @@ namespace MyActorService
         }
 
         /// <summary>
+        /// Get MyReminder reminder details with the actor
+        /// </summary>
+        public async Task<IActorReminder> GetReminder()
+        {
+            await this.GetReminderAsync("MyReminder");
+        }
+
+        /// <summary>
         /// Unregister MyReminder reminder with the actor
         /// </summary>
         public Task UnregisterReminder()
@@ -306,14 +316,6 @@ namespace MyActorService
             {
                 app.UseDeveloperExceptionPage();
             }
-            else
-            {
-                // By default, ASP.Net Core uses port 5000 for HTTP. The HTTP
-                // redirection will interfere with the Dapr runtime. You can
-                // move this out of the else block if you use port 5001 in this
-                // example, and developer tooling (such as the VSCode extension).
-                app.UseHttpsRedirection();
-            }
 
             app.UseRouting();
 
@@ -392,7 +394,7 @@ namespace MyActorClient
 
             Console.WriteLine($"Calling GetDataAsync on {actorType}:{actorId}...");
             var savedData = await proxy.GetDataAsync();
-            Console.WriteLine($"Got response: {response}");
+            Console.WriteLine($"Got response: {savedData}");
         }
     }
 }
@@ -456,7 +458,7 @@ The projects that you've created can now to test the sample.
     Calling SetDataAsync on MyActor:1...
     Got response: Success
     Calling GetDataAsync on MyActor:1...
-    Got response: Success
+    Got response: PropertyA: ValueA, PropertyB: ValueB
     ```
 
 > 💡 This sample relies on a few assumptions. The default listening port for an ASP.NET Core web project is 5000, which is being passed to `dapr run` as `--app-port 5000`. The default HTTP port for the Dapr sidecar is 3500. We're telling the sidecar for `MyActorService` to use 3500 so that `MyActorClient` can rely on the default value.

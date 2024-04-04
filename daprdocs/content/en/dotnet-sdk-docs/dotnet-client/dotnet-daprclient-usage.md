@@ -34,8 +34,10 @@ The `DaprClientBuilder` contains settings for:
 
 The SDK will read the following environment variables to configure the default values:
 
-- `DAPR_HTTP_PORT`: used to find the HTTP endpoint of the Dapr sidecar
-- `DAPR_GRPC_PORT`: used to find the gRPC endpoint of the Dapr sidecar
+- `DAPR_HTTP_ENDPOINT`: used to find the HTTP endpoint of the Dapr sidecar, example: `https://dapr-api.mycompany.com`
+- `DAPR_GRPC_ENDPOINT`: used to find the gRPC endpoint of the Dapr sidecar, example: `https://dapr-grpc-api.mycompany.com`
+- `DAPR_HTTP_PORT`: if `DAPR_HTTP_ENDPOINT` is not set, this is used to find the HTTP local endpoint of the Dapr sidecar
+- `DAPR_GRPC_PORT`: if `DAPR_GRPC_ENDPOINT` is not set, this is used to find the gRPC local endpoint of the Dapr sidecar
 - `DAPR_API_TOKEN`: used to set the API Token
 
 ### Configuring gRPC channel options

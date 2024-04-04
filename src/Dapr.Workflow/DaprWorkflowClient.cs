@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Client;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 
 namespace Dapr.Workflow
 {
-    using System;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.DurableTask;
-    using Microsoft.DurableTask.Client;
-
     /// <summary>
     /// Defines client operations for managing Dapr Workflow instances.
     /// </summary>
@@ -70,9 +70,9 @@ namespace Dapr.Workflow
         /// <param name="instanceId">The unique ID of the workflow instance to fetch.</param>
         /// <param name="getInputsAndOutputs">
         /// Specify <c>true</c> to fetch the workflow instance's inputs, outputs, and custom status, or <c>false</c> to
-        /// omit them. Defaults to false.
+        /// omit them. Defaults to true.
         /// </param>
-        public async Task<WorkflowState> GetWorkflowStateAsync(string instanceId, bool getInputsAndOutputs = false)
+        public async Task<WorkflowState> GetWorkflowStateAsync(string instanceId, bool getInputsAndOutputs = true)
         {
             OrchestrationMetadata? metadata = await this.innerClient.GetInstancesAsync(
                 instanceId,
@@ -94,7 +94,7 @@ namespace Dapr.Workflow
         /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
         /// <param name="getInputsAndOutputs">
         /// Specify <c>true</c> to fetch the workflow instance's inputs, outputs, and custom status, or <c>false</c> to
-        /// omit them. The default value is <c>false</c> to minimize the network bandwidth, serialization, and memory costs
+        /// omit them. Setting this value to <c>false</c> can help minimize the network bandwidth, serialization, and memory costs
         /// associated with fetching the instance metadata.
         /// </param>
         /// <param name="cancellation">A <see cref="CancellationToken"/> that can be used to cancel the wait operation.</param>
@@ -104,7 +104,7 @@ namespace Dapr.Workflow
         /// </returns>
         public async Task<WorkflowState> WaitForWorkflowStartAsync(
             string instanceId,
-            bool getInputsAndOutputs = false,
+            bool getInputsAndOutputs = true,
             CancellationToken cancellation = default)
         {
             OrchestrationMetadata metadata = await this.innerClient.WaitForInstanceStartAsync(
@@ -135,7 +135,7 @@ namespace Dapr.Workflow
         /// <inheritdoc cref="WaitForWorkflowStartAsync(string, bool, CancellationToken)"/>
         public async Task<WorkflowState> WaitForWorkflowCompletionAsync(
             string instanceId,
-            bool getInputsAndOutputs = false,
+            bool getInputsAndOutputs = true,
             CancellationToken cancellation = default)
         {
             OrchestrationMetadata metadata = await this.innerClient.WaitForInstanceCompletionAsync(
@@ -158,10 +158,10 @@ namespace Dapr.Workflow
         /// the terminated state.
         /// </para>
         /// <para>
-        /// Terminating a workflow instance has no effect on any in-flight activity function executions
-        /// or child workflows that were started by the terminated instance. Those actions will continue to run
-        /// without interruption. However, their results will be discarded. If you want to terminate child-workflows,
-        /// you must issue separate terminate commands for each child workflow instance individually.
+        /// Terminating a workflow terminates all of the child workflow instances that were created by the target. But it
+        /// has no effect on any in-flight activity function executions
+        /// that were started by the terminated instance. Those actions will continue to run
+        /// without interruption. However, their results will be discarded.
         /// </para><para>
         /// At the time of writing, there is no way to terminate an in-flight activity execution.
         /// </para>
@@ -178,7 +178,11 @@ namespace Dapr.Workflow
             string? output = null,
             CancellationToken cancellation = default)
         {
-            return this.innerClient.TerminateInstanceAsync(instanceId, output, cancellation);
+            TerminateInstanceOptions options = new TerminateInstanceOptions {
+                Output = output,
+                Recursive = true,
+            };
+            return this.innerClient.TerminateInstanceAsync(instanceId, options, cancellation);
         }
 
         /// <summary>
@@ -218,7 +222,7 @@ namespace Dapr.Workflow
             object? eventPayload = null,
             CancellationToken cancellation = default)
         {
-            return this.innerClient.RaiseEventAsync(instanceId, eventName, cancellation);
+            return this.innerClient.RaiseEventAsync(instanceId, eventName, eventPayload, cancellation);
         }
 
         /// <summary>
@@ -269,6 +273,9 @@ namespace Dapr.Workflow
         /// <see cref="WorkflowRuntimeStatus.Completed"/>, <see cref="WorkflowRuntimeStatus.Failed"/>, or
         /// <see cref="WorkflowRuntimeStatus.Terminated"/> state can be purged.
         /// </para>
+        /// <para>
+        /// Purging a workflow purges all of the child workflows that were created by the target.
+        /// </para>
         /// </remarks>
         /// <param name="instanceId">The unique ID of the workflow instance to purge.</param>
         /// <param name="cancellation">
@@ -280,7 +287,8 @@ namespace Dapr.Workflow
         /// </returns>
         public async Task<bool> PurgeInstanceAsync(string instanceId, CancellationToken cancellation = default)
         {
-            PurgeResult result = await this.innerClient.PurgeInstanceAsync(instanceId, cancellation);
+            PurgeInstanceOptions options = new PurgeInstanceOptions {Recursive = true};
+            PurgeResult result = await this.innerClient.PurgeInstanceAsync(instanceId, options, cancellation);
             return result.PurgedInstanceCount > 0;
         }
 

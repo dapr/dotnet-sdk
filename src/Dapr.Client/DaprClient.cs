@@ -3,7 +3,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -62,7 +63,8 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="appId">
         /// An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
-        /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used.
+        /// <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
+        /// If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
         /// </param>
         /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
         /// <param name="daprApiToken">The token to be added to all request headers to Dapr runtime.</param>
@@ -79,7 +81,8 @@ namespace Dapr.Client
             var handler = new InvocationHandler()
             {
                 InnerHandler = new HttpClientHandler(),
-                DaprApiToken = daprApiToken
+                DaprApiToken = daprApiToken,
+                DefaultAppId = appId,
             };
 
             if (daprEndpoint is string)
@@ -209,7 +212,7 @@ namespace Dapr.Client
             string topicName,
             Dictionary<string, string> metadata,
             CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// // Bulk Publishes multiple events to the specified topic.
         /// </summary>
@@ -292,7 +295,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the <c>POST</c> HTTP method.
         /// </summary>
         /// <param name="appId">The Dapr application id to invoke the method on.</param>
@@ -305,7 +308,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the HTTP method specified by <paramref name="httpMethod" />.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
@@ -316,7 +319,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the <c>POST</c> HTTP method and a JSON serialized request body specified by <paramref name="data" />.
         /// </summary>
         /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
@@ -331,7 +334,7 @@ namespace Dapr.Client
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application idenfied by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
         /// <paramref name="data" />.
         /// </summary>
@@ -444,7 +447,7 @@ namespace Dapr.Client
         public abstract Task<TResponse> InvokeMethodAsync<TResponse>(HttpRequestMessage request, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method and an empty request body. 
         /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -462,7 +465,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="methodName" />
         /// and an empty request body. If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -482,7 +485,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
         /// status code an exception will be thrown.
@@ -504,7 +507,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a non-success
         /// status code an exception will be thrown.
@@ -528,7 +531,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
         /// and an empty request body. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -549,7 +552,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
         /// and an empty request body. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -572,7 +575,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the <c>POST</c> HTTP method
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -596,7 +599,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with the HTTP method specified by <paramref name="httpMethod" /> 
         /// and a JSON serialized request body specified by <paramref name="data" />. If the response has a success
         /// status code the body will be deserialized using JSON to a value of type <typeparamref name="TResponse" />;
@@ -622,7 +625,7 @@ namespace Dapr.Client
         }
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with an empty request body. 
         /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -636,7 +639,7 @@ namespace Dapr.Client
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />.
         /// If the response has a non-success status code an exception will be thrown.
         /// </summary>
@@ -654,7 +657,7 @@ namespace Dapr.Client
         where TRequest : IMessage;
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with an empty request body. If the response has a success
         /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
         /// otherwise an exception will be thrown.
@@ -671,7 +674,7 @@ namespace Dapr.Client
         where TResponse : IMessage, new();
 
         /// <summary>
-        /// Perform service invocation using gRPC semantics for the application idenfied by <paramref name="appId" /> and invokes the method 
+        /// Perform service invocation using gRPC semantics for the application identified by <paramref name="appId" /> and invokes the method 
         /// specified by <paramref name="methodName" /> with a Protobuf serialized request body specified by <paramref name="data" />. If the response has a success
         /// status code the body will be deserialized using Protobuf to a value of type <typeparamref name="TResponse" />;
         /// otherwise an exception will be thrown.
@@ -714,6 +717,20 @@ namespace Dapr.Client
         /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
         public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Gets a list of deserialized values associated with the <paramref name="keys" /> from the Dapr state store. This overload should be used
+        /// if you expect the values of all the retrieved items to match the shape of the indicated <typeparam name="TValue"/>. If you expect that
+        /// the values may differ in type from one another, do not specify the type parameter and instead use the original <see cref="GetBulkStateAsync"/> method
+        /// so the serialized string values will be returned instead.
+        /// </summary>
+        /// <param name="storeName">The name of state store to read from.</param>
+        /// <param name="keys">The list of keys to get values for.</param>
+        /// <param name="parallelism">The number of concurrent get operations the Dapr runtime will issue to the state store. a value equal to or smaller than 0 means max parallelism.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of deserialized values when the operation has completed.</returns>
+        public abstract Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        
         /// <summary>
         /// Saves a list of <paramref name="items" /> to the Dapr state store.
         /// </summary>
@@ -907,7 +924,6 @@ namespace Dapr.Client
         /// <param name="metadata">Optional metadata that will be sent to the configuration store being queried.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="GetConfigurationResponse"/></returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<GetConfigurationResponse> GetConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -922,7 +938,6 @@ namespace Dapr.Client
         /// <param name="metadata">Optional metadata that will be sent to the configuration store being queried.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="SubscribeConfigurationResponse"/> which contains a reference to the stream.</returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<SubscribeConfigurationResponse> SubscribeConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -936,11 +951,290 @@ namespace Dapr.Client
         /// <param name="id">The Id of the subscription that should no longer be watched.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns></returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<UnsubscribeConfigurationResponse> UnsubscribeConfiguration(
             string storeName,
             string id,
             CancellationToken cancellationToken = default);
+
+        #region Cryptography
+
+        /// <summary>
+        /// Encrypts an array of bytes using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="plaintextBytes">The bytes of the plaintext value to encrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the encryption operation.</param>
+        /// <param name="encryptionOptions">Options informing how the encryption operation should be configured.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of encrypted bytes.</returns>
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName,
+            ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Encrypts a stream using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="plaintextStream">The stream containing the bytes of the plaintext value to encrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the encryption operation.</param>
+        /// <param name="encryptionOptions">Options informing how the encryption operation should be configured.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of encrypted bytes.</returns>
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
+            EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Decrypts the specified ciphertext bytes using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="ciphertextBytes">The bytes of the ciphertext value to decrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
+        /// <param name="options">Options informing how the decryption operation should be configured.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of decrypted bytes.</returns>
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions options,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Decrypts the specified ciphertext bytes using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="ciphertextBytes">The bytes of the ciphertext value to decrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An array of decrypted bytes.</returns>
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
+            ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Decrypts the specified stream of ciphertext using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="ciphertextStream">The stream containing the bytes of the ciphertext value to decrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
+        /// <param name="options">Options informing how the decryption operation should be configured.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
+        [Obsolete(
+            "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
+            string keyName, DecryptionOptions options, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Decrypts the specified stream of ciphertext using the Dapr Cryptography encryption functionality.
+        /// </summary>
+        /// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        /// <param name="ciphertextStream">The stream containing the bytes of the ciphertext value to decrypt.</param>
+        /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
+        [Obsolete(
+            "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
+            string keyName, CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region Cryptography - Subtle API
+
+        ///// <summary>
+        ///// Retrieves the value of the specified key from the vault.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        ///// <param name="keyName">The name of the key to retrieve the value of.</param>
+        ///// <param name="keyFormat">The format to use for the key result.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The name (and possibly version as name/version) of the key and its public key.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public abstract Task<(string Name, string PublicKey)> GetKeyAsync(string vaultResourceName, string keyName, SubtleGetKeyRequest.Types.KeyFormat keyFormat,
+        //    CancellationToken cancellationToken = default);
+
+        ///// <summary>
+        ///// Encrypts an array of bytes using the Dapr Cryptography functionality.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        ///// <param name="plainTextBytes">The bytes of the plaintext value to encrypt.</param>
+        ///// <param name="algorithm">The name of the algorithm that should be used to perform the encryption.</param>
+        ///// <param name="keyName">The name of the key used to perform the encryption operation.</param>
+        ///// <param name="nonce">The bytes comprising the nonce.</param>
+        ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The array of encrypted bytes.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public abstract Task<(byte[] CipherTextBytes, byte[] AuthenticationTag)> EncryptAsync(
+        //    string vaultResourceName,
+        //    byte[] plainTextBytes,
+        //    string algorithm,
+        //    string keyName,
+        //    byte[] nonce,
+        //    byte[] associatedData,
+        //    CancellationToken cancellationToken = default);
+
+        ///// <summary>
+        ///// Encrypts an array of bytes using the Dapr Cryptography functionality.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault resource used by the operation.</param>
+        ///// <param name="plainTextBytes">The bytes of the plaintext value to encrypt.</param>
+        ///// <param name="algorithm">The name of the algorithm that should be used to perform the encryption.</param>
+        ///// <param name="keyName">The name of the key used to perform the encryption operation.</param>
+        ///// <param name="nonce">The bytes comprising the nonce.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The array of encrypted bytes.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public async Task<(byte[] CipherTextBytes, byte[] AuthenticationTag)> EncryptAsync(
+        //    string vaultResourceName,
+        //    byte[] plainTextBytes,
+        //    string algorithm,
+        //    string keyName,
+        //    byte[] nonce,
+        //    CancellationToken cancellationToken = default) =>
+        //    await EncryptAsync(vaultResourceName, plainTextBytes, algorithm, keyName, nonce, Array.Empty<byte>(),
+        //        cancellationToken);
+
+        ///// <summary>
+        ///// Decrypts an array of bytes using the Dapr Cryptography functionality.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault the key is retrieved from for the decryption operation.</param>
+        ///// <param name="cipherTextBytes">The array of bytes to decrypt.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <param name="algorithm">The algorithm to use to perform the decryption operation.</param>
+        ///// <param name="keyName">The name of the key used for the decryption.</param>
+        ///// <param name="nonce">The nonce value used.</param>
+        ///// <param name="tag"></param>
+        ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
+        ///// <returns>The array of plaintext bytes.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public abstract Task<byte[]> DecryptAsync(string vaultResourceName, byte[] cipherTextBytes,
+        //    string algorithm, string keyName, byte[] nonce, byte[] tag, byte[] associatedData,
+        //    CancellationToken cancellationToken = default);
+
+        ///// <summary>
+        ///// Decrypts an array of bytes using the Dapr Cryptography functionality.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault the key is retrieved from for the decryption operation.</param>
+        ///// <param name="cipherTextBytes">The array of bytes to decrypt.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <param name="algorithm">The algorithm to use to perform the decryption operation.</param>
+        ///// <param name="keyName">The name of the key used for the decryption.</param>
+        ///// <param name="nonce">The nonce value used.</param>
+        ///// <param name="tag"></param>
+        ///// <returns>The array of plaintext bytes.</returns>
+        //[Obsolete(
+        //    "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public async Task<byte[]> DecryptAsync(string vaultResourceName, byte[] cipherTextBytes,
+        //    string algorithm, string keyName, byte[] nonce, byte[] tag, CancellationToken cancellationToken = default) =>
+        //    await DecryptAsync(vaultResourceName, cipherTextBytes, algorithm, keyName, nonce, tag, Array.Empty<byte>(), cancellationToken);
+
+        ///// <summary>
+        ///// Wraps the plaintext key using another.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault to retrieve the key from.</param>
+        ///// <param name="plainTextKey">The plaintext bytes comprising the key to wrap.</param>
+        ///// <param name="keyName">The name of the key used to wrap the <paramref name="plainTextKey"/> value.</param>
+        ///// <param name="algorithm">The algorithm to use to perform the wrap operation.</param>
+        ///// <param name="nonce">The none used.</param>
+        ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The bytes comprising the wrapped plain-text key and the authentication tag, if applicable.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public abstract Task<(byte[] WrappedKey, byte[] AuthenticationTag)> WrapKeyAsync(string vaultResourceName, byte[] plainTextKey, string keyName, string algorithm, byte[] nonce, byte[] associatedData,
+        //    CancellationToken cancellationToken = default);
+
+        ///// <summary>
+        ///// Wraps the plaintext key using another.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault to retrieve the key from.</param>
+        ///// <param name="plainTextKey">The plaintext bytes comprising the key to wrap.</param>
+        ///// <param name="keyName">The name of the key used to wrap the <paramref name="plainTextKey"/> value.</param>
+        ///// <param name="algorithm">The algorithm to use to perform the wrap operation.</param>
+        ///// <param name="nonce">The none used.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The bytes comprising the unwrapped key and the authentication tag, if applicable.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public async Task<(byte[] WrappedKey, byte[] AuthenticationTag)> WrapKeyAsync(string vaultResourceName, byte[] plainTextKey, string keyName, string algorithm,
+        //    byte[] nonce, CancellationToken cancellationToken = default) => await WrapKeyAsync(vaultResourceName, plainTextKey,
+        //    keyName, algorithm, nonce, Array.Empty<byte>(), cancellationToken);
+
+        ///// <summary>
+        ///// Used to unwrap the specified key.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault to retrieve the key from.</param>
+        ///// <param name="wrappedKey">The byte comprising the wrapped key.</param>
+        ///// <param name="algorithm">The algorithm to use in unwrapping the key.</param>
+        ///// <param name="keyName">The name of the key used to unwrap the wrapped key bytes.</param>
+        ///// <param name="nonce">The nonce value.</param>
+        ///// <param name="tag">The bytes comprising the authentication tag.</param>
+        ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The bytes comprising the unwrapped key.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public abstract Task<byte[]> UnwrapKeyAsync(string vaultResourceName, byte[] wrappedKey, string algorithm, string keyName, byte[] nonce, byte[] tag, byte[] associatedData,
+        //    CancellationToken cancellationToken = default);
+
+        ///// <summary>
+        ///// Used to unwrap the specified key.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault to retrieve the key from.</param>
+        ///// <param name="wrappedKey">The byte comprising the wrapped key.</param>
+        ///// <param name="algorithm">The algorithm to use in unwrapping the key.</param>
+        ///// <param name="keyName">The name of the key used to unwrap the wrapped key bytes.</param>
+        ///// <param name="nonce">The nonce value.</param>
+        ///// <param name="tag">The bytes comprising the authentication tag.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The bytes comprising the unwrapped key.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public async Task<byte[]> UnwrapKeyAsync(string vaultResourceName, byte[] wrappedKey, string algorithm, string keyName,
+        //    byte[] nonce, byte[] tag,
+        //    CancellationToken cancellationToken = default) => await UnwrapKeyAsync(vaultResourceName,
+        //    wrappedKey, algorithm, keyName, nonce, Array.Empty<byte>(), Array.Empty<byte>(), cancellationToken);
+
+        ///// <summary>
+        ///// Used to unwrap the specified key.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault to retrieve the key from.</param>
+        ///// <param name="wrappedKey">The byte comprising the wrapped key.</param>
+        ///// <param name="algorithm">The algorithm to use in unwrapping the key.</param>
+        ///// <param name="keyName">The name of the key used to unwrap the wrapped key bytes.</param>
+        ///// <param name="nonce">The nonce value.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The bytes comprising the unwrapped key.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public async Task<byte[]> UnwrapKeyAsync(string vaultResourceName, byte[] wrappedKey, string algorithm, string keyName,
+        //    byte[] nonce, CancellationToken cancellationToken = default) => await UnwrapKeyAsync(vaultResourceName,
+        //    wrappedKey, algorithm, keyName, nonce, Array.Empty<byte>(), Array.Empty<byte>(), cancellationToken);
+
+        ///// <summary>
+        ///// Creates a signature of a digest value.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault to retrieve the key from.</param>
+        ///// <param name="digest">The digest value to create the signature for.</param>
+        ///// <param name="algorithm">The algorithm used to create the signature.</param>
+        ///// <param name="keyName">The name of the key used.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns>The bytes comprising the signature.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public abstract Task<byte[]> SignAsync(string vaultResourceName, byte[] digest, string algorithm, string keyName,
+        //    CancellationToken cancellationToken = default);
+
+        ///// <summary>
+        ///// Validates a signature.
+        ///// </summary>
+        ///// <param name="vaultResourceName">The name of the vault to retrieve the key from.</param>
+        ///// <param name="digest">The digest to validate the signature with.</param>
+        ///// <param name="signature">The signature to validate.</param>
+        ///// <param name="algorithm">The algorithm to validate the signature with.</param>
+        ///// <param name="keyName">The name of the key used.</param>
+        ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        ///// <returns><c>True</c> if the signature verification is successful; otherwise <c>false</c>.</returns>
+        //[Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public abstract Task<bool> VerifyAsync(string vaultResourceName, byte[] digest, byte[] signature, string algorithm, string keyName,
+        //    CancellationToken cancellationToken = default);
+
+        #endregion
 
         /// <summary>
         /// Attempt to lock the given resourceId with response indicating success.
@@ -978,35 +1272,115 @@ namespace Dapr.Client
         /// <summary>
         /// Attempt to start the given workflow with response indicating success.
         /// </summary>
-        /// <param name="instanceId">Identifier of the specific run.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
         /// <param name="workflowName">Name of the workflow to run.</param>
+        /// <param name="instanceId">Identifier of the specific run.</param>
+        /// <param name="input">The JSON-serializeable input for the given workflow.</param>
         /// <param name="workflowOptions">The list of options that are potentially needed to start a workflow.</param>
-        /// <param name="input">The input input for the given workflow.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task"/> containing a <see cref="WorkflowReference"/></returns>
+        /// <returns>A <see cref="Task"/> containing a <see cref="StartWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<WorkflowReference> StartWorkflowAsync(
-            string instanceId,
+        public abstract Task<StartWorkflowResponse> StartWorkflowAsync(
             string workflowComponent,
             string workflowName,
-            Object input,
+            string instanceId = null,
+            object input = null,
             IReadOnlyDictionary<string, string> workflowOptions = default,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Waits for a workflow to start running and returns a <see cref="GetWorkflowResponse"/> object that contains metadata
+        /// about the started workflow.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A "started" workflow instance is any instance not in the <see cref="WorkflowRuntimeStatus.Pending"/> state.
+        /// </para><para>
+        /// This method will return a completed task if the workflow has already started running or has already completed.
+        /// </para>
+        /// </remarks>
+        /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the wait operation.</param>
+        /// <returns>
+        /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow starts running.
+        /// </exception>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public virtual async Task<GetWorkflowResponse> WaitForWorkflowStartAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default)
+        {
+            while (true)
+            {
+                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
+                if (response.RuntimeStatus != WorkflowRuntimeStatus.Pending)
+                {
+                    return response;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Waits for a workflow to complete and returns a <see cref="GetWorkflowResponse"/>
+        /// object that contains metadata about the started instance.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A "completed" workflow instance is any instance in one of the terminal states. For example, the
+        /// <see cref="WorkflowRuntimeStatus.Completed"/>, <see cref="WorkflowRuntimeStatus.Failed"/>, or
+        /// <see cref="WorkflowRuntimeStatus.Terminated"/> states.
+        /// </para><para>
+        /// Workflows are long-running and could take hours, days, or months before completing.
+        /// Workflows can also be eternal, in which case they'll never complete unless terminated.
+        /// In such cases, this call may block indefinitely, so care must be taken to ensure appropriate timeouts are
+        /// enforced using the <paramref name="cancellationToken"/> parameter.
+        /// </para><para>
+        /// If a workflow instance is already complete when this method is called, the method will return immediately.
+        /// </para>
+        /// </remarks>
+        /// <returns>
+        /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
+        /// </returns>
+        /// <exception cref="OperationCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow completes.
+        /// </exception>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public virtual async Task<GetWorkflowResponse> WaitForWorkflowCompletionAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default)
+        {
+            while (true)
+            {
+                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
+                if (response.RuntimeStatus == WorkflowRuntimeStatus.Completed ||
+                    response.RuntimeStatus == WorkflowRuntimeStatus.Failed ||
+                    response.RuntimeStatus == WorkflowRuntimeStatus.Terminated)
+                {
+                    return response;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            }
+        }
 
         /// <summary>
         /// Attempt to get information about the given workflow.
         /// </summary>
         /// <param name="instanceId">The unique ID of the target workflow instance.</param>
         /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="workflowName">Name of the workflow to run.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="GetWorkflowResponse"/></returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task<GetWorkflowResponse> GetWorkflowAsync(
             string instanceId,
             string workflowComponent,
-            string workflowName,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -1018,6 +1392,64 @@ namespace Dapr.Client
         /// <returns>A <see cref="Task" /> that will complete when the terminate operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
         [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public abstract Task TerminateWorkflowAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Attempt to raise an event the given workflow with response indicating success.
+        /// </summary>
+        /// <param name="instanceId">Identifier of the specific run.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="eventName">Name of the event to raise.</param>
+        /// <param name="eventData">The JSON-serializable event payload to include in the raised event.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the raise event operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task RaiseWorkflowEventAsync(
+            string instanceId,
+            string workflowComponent,
+            string eventName,
+            object eventData = null,
+            CancellationToken cancellationToken = default);
+
+
+        /// <summary>
+        /// Pauses the specified workflow instance.
+        /// </summary>
+        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the pause operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task PauseWorkflowAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default);
+
+
+        /// <summary>
+        /// Resumes a paused workflow instance.
+        /// </summary>
+        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the resume operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task ResumeWorkflowAsync(
+            string instanceId,
+            string workflowComponent,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Delete all state associated with the specified workflow instance. The workflow must be in a non-running state to be purged.
+        /// </summary>
+        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+        /// <param name="workflowComponent">The component to interface with.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the purge operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
+        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public abstract Task PurgeWorkflowAsync(
             string instanceId,
             string workflowComponent,
             CancellationToken cancellationToken = default);

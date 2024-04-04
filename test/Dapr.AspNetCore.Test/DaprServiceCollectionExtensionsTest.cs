@@ -47,5 +47,23 @@ namespace Dapr.AspNetCore.Test
 
             Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
+
+#if NET8_0_OR_GREATER
+        [Fact]
+        public void AddDaprClient_WithKeyedServices()
+        {
+            var services = new ServiceCollection();
+
+            services.AddKeyedSingleton("key1", new Object());
+
+            services.AddDaprClient();
+
+            var serviceProvider = services.BuildServiceProvider();
+
+            var daprClient = serviceProvider.GetService<DaprClient>();
+
+            Assert.NotNull(daprClient);
+        }
+#endif
     }
 }
