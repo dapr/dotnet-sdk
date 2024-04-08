@@ -11,6 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#nullable enable
 using System.Collections.Generic;
 
 namespace Dapr.Client
@@ -75,9 +76,9 @@ namespace Dapr.Client
         public string Key { get; }
 
         /// <summary>
-        /// The data of the the key from the matched query.
+        /// The data of the key from the matched query.
         /// </summary>
-        public TValue Data { get; }
+        public TValue? Data { get; }
 
         /// <summary>
         /// The ETag for the key from the matched query.
