@@ -57,7 +57,7 @@ namespace Dapr.Client
         // property exposed for testing purposes
         internal GrpcChannelOptions GrpcChannelOptions { get; private set; }
         internal string DaprApiToken { get; private set; }
-        internal TimeSpan Timeout { get; private set; } // in milliseconds
+        internal TimeSpan Timeout { get; private set; } 
 
         /// <summary>
         /// Overrides the HTTP endpoint used by <see cref="DaprClient" /> for communicating with the Dapr runtime.
