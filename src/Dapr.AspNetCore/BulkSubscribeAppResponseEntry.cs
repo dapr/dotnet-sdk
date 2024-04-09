@@ -24,7 +24,7 @@ namespace Dapr.AspNetCore
         /// </summary>
         /// <param name="entryId">Entry ID of the event.</param>
         /// <param name="status">Status of the event processing in application.</param>
-        public BulkSubscribeAppResponseEntry(string entryId, BulkSubscribeAppResponseStatus status) {
+        public BulkSubscribeAppResponseEntry(string? entryId, BulkSubscribeAppResponseStatus status) {
             this.EntryId = entryId;
             this.Status = status.ToString();
         }
@@ -32,7 +32,7 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// Entry ID of the event.
         /// </summary>
-        public string EntryId { get; }
+        public string? EntryId { get; }
         
         /// <summary>
         /// Status of the event processing in application.

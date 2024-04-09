@@ -24,7 +24,7 @@ namespace Dapr
         /// <remarks>
         /// It is only used for simple identification,<see cref="IOwnedOriginalTopicMetadata.OwnedMetadatas"/>. When it is empty, it can be used for all topics in the current context.
         /// </remarks>
-        string Id { get; }
+        string? Id { get; }
 
         /// <summary>
         /// Gets the topic metadata name.

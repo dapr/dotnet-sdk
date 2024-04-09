@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Authentication
         /// By default, the token will be read from the APP_API_TOKEN environment variable.
         /// </param>
         /// <returns>A reference to <paramref name="builder"/> after the operation has completed.</returns>
-        public static AuthenticationBuilder AddDapr(this AuthenticationBuilder builder, Action<DaprAuthenticationOptions> configureOptions)
+        public static AuthenticationBuilder AddDapr(this AuthenticationBuilder builder, Action<DaprAuthenticationOptions>? configureOptions)
         {
             return builder
                 .AddScheme<DaprAuthenticationOptions, DaprAuthenticationHandler>(

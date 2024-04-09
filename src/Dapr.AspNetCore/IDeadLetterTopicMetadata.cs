@@ -21,7 +21,7 @@ namespace Dapr
         /// <summary>
         /// Gets the dead letter topic name
         /// </summary>
-        public string DeadLetterTopic { get; }
+        public string? DeadLetterTopic { get; }
     }
 }
 

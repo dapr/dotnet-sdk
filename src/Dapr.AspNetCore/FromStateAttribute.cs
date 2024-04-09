@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Mvc
         /// </summary>
         /// <param name="storeName">The state store name.</param>
         /// <param name="key">The state key.</param>
-        public FromStateAttribute(string storeName, string key)
+        public FromStateAttribute(string storeName, string? key)
         {
             this.StoreName = storeName;
             this.Key = key;
@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Mvc
         /// <summary>
         /// Gets the state store key.
         /// </summary>
-        public string Key { get; }
+        public string? Key { get; }
 
         /// <summary>
         /// Gets the <see cref="BindingSource" />.

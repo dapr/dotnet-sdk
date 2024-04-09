@@ -34,7 +34,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="builder">The <see cref="IMvcBuilder" />.</param>
         /// <param name="configureClient">The (optional) <see cref="DaprClientBuilder" /> to use for configuring the DaprClient.</param>
         /// <returns>The <see cref="IMvcBuilder" /> builder.</returns>
-        public static IMvcBuilder AddDapr(this IMvcBuilder builder, Action<DaprClientBuilder> configureClient = null)
+        public static IMvcBuilder AddDapr(this IMvcBuilder builder, Action<DaprClientBuilder>? configureClient = null)
         {
             if (builder is null)
             {

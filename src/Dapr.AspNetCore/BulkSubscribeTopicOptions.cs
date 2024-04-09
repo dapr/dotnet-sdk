@@ -19,6 +19,6 @@
         /// <summary>
         /// The name of the topic to be bulk subscribed.
         /// </summary>
-        public string TopicName { get; set; }
+        public string? TopicName { get; set; }
     }
 }

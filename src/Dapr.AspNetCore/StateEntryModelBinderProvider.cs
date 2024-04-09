@@ -18,7 +18,7 @@ namespace Dapr.AspNetCore
 
     internal class StateEntryModelBinderProvider : IModelBinderProvider
     {
-        public IModelBinder GetBinder(ModelBinderProviderContext context)
+        public IModelBinder? GetBinder(ModelBinderProviderContext context)
         {
             if (context is null)
             {
@@ -31,11 +31,16 @@ namespace Dapr.AspNetCore
             }
 
             var storename = (context.BindingInfo.BindingSource as FromStateBindingSource)?.StoreName;
+            if (storename == null)
+            {
+                throw new Exception("Store Name cannot be null");
+            }
+            
             var key = (context.BindingInfo.BindingSource as FromStateBindingSource)?.Key;
             return new StateEntryModelBinder(storename, key, type != context.Metadata.ModelType, type);
         }
 
-        private static bool CanBind(ModelBinderProviderContext context, out Type type)
+        private static bool CanBind(ModelBinderProviderContext context, out Type? type)
         {
             if (context.BindingInfo.BindingSource?.Id == "state")
             {
@@ -48,9 +53,9 @@ namespace Dapr.AspNetCore
             return false;
         }
 
-        private static Type Unwrap(Type type)
+        private static Type? Unwrap(Type? type)
         {
-            if (type.IsGenericType &&
+            if (type is {IsGenericType: true} &&
                 type.GetGenericTypeDefinition() == typeof(StateEntry<>))
             {
                 return type.GetGenericArguments()[0];

@@ -49,12 +49,12 @@ namespace Microsoft.AspNetCore.Builder
         /// <param name="options">Configuration options</param>
         /// <returns>The <see cref="IEndpointConventionBuilder" />.</returns>
         /// <seealso cref="MapSubscribeHandler(IEndpointRouteBuilder)"/>
-        public static IEndpointConventionBuilder MapSubscribeHandler(this IEndpointRouteBuilder endpoints, SubscribeOptions options)
+        public static IEndpointConventionBuilder MapSubscribeHandler(this IEndpointRouteBuilder endpoints, SubscribeOptions? options)
         {
             return CreateSubscribeEndPoint(endpoints, options);
         }
 
-        private static IEndpointConventionBuilder CreateSubscribeEndPoint(IEndpointRouteBuilder endpoints, SubscribeOptions options = null)
+        private static IEndpointConventionBuilder CreateSubscribeEndPoint(IEndpointRouteBuilder endpoints, SubscribeOptions? options = null)
         {
             if (endpoints is null)
             {
@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Builder
 
             return endpoints.MapGet("dapr/subscribe", async context =>
             {
-                var logger = context.RequestServices.GetService<ILoggerFactory>().CreateLogger("DaprTopicSubscription");
+                var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("DaprTopicSubscription");
                 var dataSource = context.RequestServices.GetRequiredService<EndpointDataSource>();
                 var subscriptions = dataSource.Endpoints
                     .OfType<RouteEndpoint>()
@@ -74,13 +74,13 @@ namespace Microsoft.AspNetCore.Builder
                         var originalTopicMetadata = e.Metadata.GetOrderedMetadata<IOriginalTopicMetadata>();
                         var bulkSubscribeMetadata = e.Metadata.GetOrderedMetadata<IBulkSubscribeMetadata>();
 
-                        var subs = new List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload, 
-                            string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, 
-                            string MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe)>();
+                        var subs = new List<(string? PubsubName, string? Name, string? DeadLetterTopic, bool? EnableRawPayload, 
+                            string? Match, int Priority, Dictionary<string, string[]>? OriginalTopicMetadata, 
+                            string? MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe)>();
 
                         for (int i = 0; i < topicMetadata.Count(); i++)
                         {
-                            DaprTopicBulkSubscribe bulkSubscribe = null;
+                            DaprTopicBulkSubscribe? bulkSubscribe = null;
 
                             foreach (var bulkSubscribeAttr in bulkSubscribeMetadata)
                             {
@@ -97,6 +97,20 @@ namespace Microsoft.AspNetCore.Builder
                                 };
                                 break;
                             }
+
+                            // var pubsubName = topicMetadata[i].PubsubName;
+                            // var name = topicMetadata[i].Name;
+                            // var deadLetterTopic = (topicMetadata[i] as IDeadLetterTopicMetadata)?.DeadLetterTopic;
+                            // var enableRawPayload = (topicMetadata[i] as IRawTopicMetadata)?.EnableRawPayload;
+                            // var match = topicMetadata[i].Match;
+                            // var priority = topicMetadata[i].Priority;
+                            // var afterPriority = originalTopicMetadata.Where(m => (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.OwnedMetadatas?.Any(o => o.Equals(m.Id)) == true || string.IsNullOrEmpty(m.Id))
+                            //     .GroupBy(c => c.Name)
+                            //     .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray());
+                            // var metadataSeparator = (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.MetadataSeparator;
+                            // var routePattern = e.RoutePattern;
+                            // var bulkSubscribeValue = bulkSubscribe;
+                            
                             
                             subs.Add((topicMetadata[i].PubsubName,
                                 topicMetadata[i].Name,
@@ -119,11 +133,12 @@ namespace Microsoft.AspNetCore.Builder
                     .Select(e => e.OrderBy(e => e.Priority))
                     .Select(e =>
                     {
-                        var first = e.First();
-                        var rawPayload = e.Any(e => e.EnableRawPayload.GetValueOrDefault());
-                        var metadataSeparator = e.FirstOrDefault(e => !string.IsNullOrEmpty(e.MetadataSeparator)).MetadataSeparator ?? ",";
-                        var rules = e.Where(e => !string.IsNullOrEmpty(e.Match)).ToList();
-                        var defaultRoutes = e.Where(e => string.IsNullOrEmpty(e.Match)).Select(e => RoutePatternToString(e.RoutePattern)).ToList();
+                        (string PubsubName, string Name, string? DeadLetterTopic, bool? EnableRawPayload, string? Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string? MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe) first = e.First();
+                        var rawPayload = e.Any(f => f.EnableRawPayload.GetValueOrDefault());
+                        var separator = e.FirstOrDefault(f => !string.IsNullOrEmpty(f.MetadataSeparator));
+                        var metadataSeparator = separator.MetadataSeparator ?? ",";
+                        List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe)> rules = e.Where(f => !string.IsNullOrEmpty(f.Match)).ToList();
+                        var defaultRoutes = e.Where(f => string.IsNullOrEmpty(f.Match)).Select(f => RoutePatternToString(f.RoutePattern)).ToList();
                         var defaultRoute = defaultRoutes.FirstOrDefault();
 
                         //multiple identical names. use comma separation.

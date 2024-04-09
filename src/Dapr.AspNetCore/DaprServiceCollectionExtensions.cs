@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection" />.</param>
         /// <param name="configure"></param>
-        public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder> configure = null)
+        public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null)
         {
             if (services is null)
             {
@@ -39,10 +39,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton(_ =>
             {
                 var builder = new DaprClientBuilder();
-                if (configure != null)
-                {
-                    configure.Invoke(builder);
-                }
+                configure?.Invoke(builder);
 
                 return builder.Build();
             });
