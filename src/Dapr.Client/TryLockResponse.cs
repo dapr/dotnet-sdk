@@ -30,17 +30,17 @@ namespace Dapr.Client
         /// <summary>
         /// The resourceId required to unlock the lock
         /// </summary>
-        public string ResourceId { get; init; }
+        public string? ResourceId { get; init; }
 
          /// <summary>
         /// The LockOwner required to unlock the lock
         /// </summary>
-        public string LockOwner { get; init; }
+        public string? LockOwner { get; init; }
 
          /// <summary>
         /// The StoreName required to unlock the lock
         /// </summary>
-        public string StoreName { get; init; }
+        public string? StoreName { get; init; }
 
         /// <summary>
         /// Constructor for a TryLockResponse.
@@ -50,11 +50,11 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc />
-        public async ValueTask DisposeAsync() {
-            using (var client = new DaprClientBuilder().Build()) {
-                if(this.Success) {
-                    await client.Unlock(StoreName, ResourceId, LockOwner);
-                }
+        public async ValueTask DisposeAsync()
+        {
+            using var client = new DaprClientBuilder().Build();
+            if(this.Success) {
+                await client.Unlock(StoreName, ResourceId, LockOwner);
             }
         }
     }

@@ -28,7 +28,7 @@ namespace Dapr.Client
         /// <param name="eventData">Event to be published.</param>
         /// <param name="contentType">Content Type of the event to be published.</param>
         /// <param name="metadata">Metadata for the event.</param>
-        public BulkPublishEntry(string entryId, TValue eventData, string contentType, IReadOnlyDictionary<string, string> metadata = default)
+        public BulkPublishEntry(string entryId, TValue eventData, string contentType, IReadOnlyDictionary<string, string>? metadata = default)
         {
             this.EntryId = entryId;
             this.EventData = eventData;
@@ -55,7 +55,7 @@ namespace Dapr.Client
         /// The metadata set for this particular event.
         /// Any particular values in this metadata overrides the request metadata present in BulkPublishRequest.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; }
+        public IReadOnlyDictionary<string, string>? Metadata { get; }
 
     }
 }

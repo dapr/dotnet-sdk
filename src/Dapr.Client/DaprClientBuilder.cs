@@ -49,10 +49,10 @@ namespace Dapr.Client
         // property exposed for testing purposes
         internal string HttpEndpoint { get; private set; }
 
-        private Func<HttpClient> HttpClientFactory { get; set; }
+        private Func<HttpClient>? HttpClientFactory { get; set; }
 
         // property exposed for testing purposes
-        internal JsonSerializerOptions JsonSerializerOptions { get; private set; }
+        internal JsonSerializerOptions? JsonSerializerOptions { get; private set; }
 
         // property exposed for testing purposes
         internal GrpcChannelOptions GrpcChannelOptions { get; private set; }
@@ -109,7 +109,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="options">Json serialization options.</param>
         /// <returns>The <see cref="DaprClientBuilder" /> instance.</returns>
-        public DaprClientBuilder UseJsonSerializationOptions(JsonSerializerOptions options)
+        public DaprClientBuilder UseJsonSerializationOptions(JsonSerializerOptions? options)
         {
             this.JsonSerializerOptions = options;
             return this;
@@ -177,7 +177,7 @@ namespace Dapr.Client
 
 
             var apiTokenHeader = DaprClient.GetDaprApiTokenHeader(this.DaprApiToken);
-            var httpClient = HttpClientFactory is object ? HttpClientFactory() : new HttpClient();
+            var httpClient = HttpClientFactory != null ? HttpClientFactory() : new HttpClient();
             
             if (this.Timeout > TimeSpan.Zero)
             {

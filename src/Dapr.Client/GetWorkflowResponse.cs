@@ -24,17 +24,17 @@ namespace Dapr.Client
         /// <summary>
         /// Gets the instance ID of the workflow.
         /// </summary>
-        public string InstanceId { get; init; }
+        public string? InstanceId { get; init; }
         
         /// <summary>
         /// Gets the name of the workflow.
         /// </summary>
-        public string WorkflowName { get; init; }
+        public string? WorkflowName { get; init; }
 
         /// <summary>
         /// Gets the name of the workflow component.
         /// </summary>
-        public string WorkflowComponentName { get; init; }
+        public string? WorkflowComponentName { get; init; }
 
         /// <summary>
         /// Gets the time at which the workflow was created.
@@ -54,12 +54,12 @@ namespace Dapr.Client
         /// <summary>
         /// Gets the component-specific workflow properties.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Properties { get; init; }
+        public IReadOnlyDictionary<string, string>? Properties { get; init; }
 
         /// <summary>
         /// Gets the details associated with the workflow failure, if any.
         /// </summary>
-        public WorkflowFailureDetails FailureDetails { get; init; }
+        public WorkflowFailureDetails? FailureDetails { get; init; }
 
         /// <summary>
         /// Deserializes the workflow input into <typeparamref name="T"/> using <see cref="JsonSerializer"/>.
@@ -67,16 +67,16 @@ namespace Dapr.Client
         /// <typeparam name="T">The type to deserialize the workflow input into.</typeparam>
         /// <param name="options">Options to control the behavior during parsing.</param>
         /// <returns>Returns the input as <typeparamref name="T"/>, or returns a default value if the workflow doesn't have an input.</returns>
-        public T ReadInputAs<T>(JsonSerializerOptions options = null)
+        public T? ReadInputAs<T>(JsonSerializerOptions? options = null)
         {
             // FUTURE: Make this part of the protobuf contract instead of properties
             string defaultInputKey = $"{this.WorkflowComponentName}.workflow.input";
-            if (!this.Properties.TryGetValue(defaultInputKey, out string serializedInput))
+            if (this.Properties != null && this.Properties.TryGetValue(defaultInputKey, out string? serializedInput))
             {
-                return default;
+                return JsonSerializer.Deserialize<T>(serializedInput, options);        
             }
 
-            return JsonSerializer.Deserialize<T>(serializedInput, options);
+            return default;
         }
 
         /// <summary>
@@ -85,16 +85,16 @@ namespace Dapr.Client
         /// <typeparam name="T">The type to deserialize the workflow output into.</typeparam>
         /// <param name="options">Options to control the behavior during parsing.</param>
         /// <returns>Returns the output as <typeparamref name="T"/>, or returns a default value if the workflow doesn't have an output.</returns>
-        public T ReadOutputAs<T>(JsonSerializerOptions options = null)
+        public T? ReadOutputAs<T>(JsonSerializerOptions? options = null)
         {
             // FUTURE: Make this part of the protobuf contract instead of properties
             string defaultOutputKey = $"{this.WorkflowComponentName}.workflow.output";
-            if (!this.Properties.TryGetValue(defaultOutputKey, out string serializedOutput))
+            if (this.Properties != null && this.Properties.TryGetValue(defaultOutputKey, out var serializedOutput))
             {
-                return default;
+                return JsonSerializer.Deserialize<T>(serializedOutput, options); 
             }
 
-            return JsonSerializer.Deserialize<T>(serializedOutput, options);
+            return default;
         }
     }
 }

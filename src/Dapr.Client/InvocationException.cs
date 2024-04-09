@@ -25,7 +25,7 @@ namespace Dapr.Client
         /// <summary>
         /// Initializes a new <see cref="InvocationException" /> for a non-successful HTTP request.
         /// </summary>
-        public InvocationException(string appId, string methodName, Exception innerException, HttpResponseMessage response)
+        public InvocationException(string? appId, string? methodName, Exception innerException, HttpResponseMessage? response)
             : base(FormatExceptionForFailedRequest(appId, methodName), innerException)
         {
             this.AppId = appId ?? "unknown";
@@ -36,7 +36,7 @@ namespace Dapr.Client
         /// <summary>
         /// Initializes a new <see cref="InvocationException" /> for a non-successful gRPC request.
         /// </summary>
-        public InvocationException(string appId, string methodName, RpcException innerException)
+        public InvocationException(string? appId, string? methodName, RpcException innerException)
             : base(FormatExceptionForFailedRequest(appId, methodName), innerException)
         {
             this.AppId = appId ?? "unknown";
@@ -46,20 +46,20 @@ namespace Dapr.Client
         /// <summary>
         /// Gets the destination app-id of the invocation request that failed.
         /// </summary>
-        public string AppId { get; }
+        public string? AppId { get; }
 
         /// <summary>
         /// Gets the destination method name of the invocation request that failed.
         /// </summary>
-        public string MethodName { get; }
+        public string? MethodName { get; }
 
         /// <summary>
         /// Gets the <see cref="HttpResponseMessage" /> of the request that failed. Will be <c>null</c> if the 
-        /// failure was not related to an HTTP request or preventing the response from being recieved.
+        /// failure was not related to an HTTP request or preventing the response from being received.
         /// </summary>
-        public HttpResponseMessage Response { get; }
+        public HttpResponseMessage? Response { get; }
 
-        private static string FormatExceptionForFailedRequest(string appId, string methodName)
+        private static string FormatExceptionForFailedRequest(string? appId, string? methodName)
         {
             return $"An exception occurred while invoking method: '{methodName}' on app-id: '{appId}'";
         }
