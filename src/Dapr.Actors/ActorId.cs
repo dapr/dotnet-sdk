@@ -47,7 +47,7 @@ namespace Dapr.Actors
         /// <param name="id1">The first actorId to compare, or null.</param>
         /// <param name="id2">The second actorId to compare, or null.</param>
         /// <returns>true if the id is same for both objects; otherwise, false.</returns>
-        public static bool operator ==(ActorId id1, ActorId id2)
+        public static bool operator ==(ActorId? id1, ActorId? id2)
         {
             if (id1 is null && id2 is null)
             {
@@ -79,7 +79,7 @@ namespace Dapr.Actors
         /// </summary>
         /// <returns>A new ActorId object.</returns>
         /// <remarks>This method is thread-safe and generates a new random <see cref="ActorId"/> every time it is called.</remarks>
-        public static ActorId CreateRandom()
+        public static ActorId? CreateRandom()
         {
             return new ActorId(Guid.NewGuid().ToString());
         }
@@ -118,7 +118,7 @@ namespace Dapr.Actors
         /// <param name="obj">The actorId to compare to this instance.</param>
         /// <returns>true if obj is a <see cref="ActorId"/> and its value is the same as this instance;
         /// otherwise, false. If obj is null, the method returns false.</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is null || obj.GetType() != typeof(ActorId))
             {
@@ -156,19 +156,19 @@ namespace Dapr.Actors
         /// <returns>A 32-bit signed integer that indicates whether this instance precedes, follows, or appears
         ///  in the same position in the sort order as the other parameter.</returns>
         /// <remarks>The comparison is done based on the id if both the instances.</remarks>
-        public int CompareTo(ActorId other)
+        public int CompareTo(ActorId? other)
         {
             return other is null ? 1 : CompareContents(this, other);
         }
 
-        private static bool EqualsContents(ActorId id1, ActorId id2)
+        private static bool EqualsContents(ActorId? id1, ActorId? id2)
         {
-            return string.Equals(id1.stringId, id2.stringId, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(id1?.stringId, id2?.stringId, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static int CompareContents(ActorId id1, ActorId id2)
+        private static int CompareContents(ActorId? id1, ActorId? id2)
         {
-            return string.Compare(id1.stringId, id2.stringId, StringComparison.OrdinalIgnoreCase);
+            return string.Compare(id1?.stringId, id2?.stringId, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -35,10 +35,10 @@ namespace Dapr.Actors.Runtime
         /// <param name="dueTime">The reminder due time.</param>
         /// <param name="period">The reminder period.</param>
         public ActorReminder(
-            string actorType,
-            ActorId actorId,
+            string? actorType,
+            ActorId? actorId,
             string name,
-            byte[] state,
+            byte[]? state,
             TimeSpan dueTime,
             TimeSpan period)
             : this(new ActorReminderOptions
@@ -202,7 +202,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets the reminder state.
         /// </summary>
-        public byte[] State { get; }
+        public byte[]? State { get; }
 
         /// <summary>
         /// Gets the reminder due time.

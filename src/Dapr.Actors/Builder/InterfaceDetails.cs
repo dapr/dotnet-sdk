@@ -29,7 +29,7 @@ namespace Dapr.Actors.Builder
             this.RequestKnownTypes = new List<Type>();
         }
 
-        public Type ServiceInterfaceType { get; internal set; }
+        public Type? ServiceInterfaceType { get; internal set; }
 
         public int Id { get; internal set; }
 
@@ -37,9 +37,9 @@ namespace Dapr.Actors.Builder
 
         public List<Type> ResponseKnownTypes { get; internal set; }
 
-        public IEnumerable<Type> RequestWrappedKnownTypes { get; internal set; }
+        public IEnumerable<Type>? RequestWrappedKnownTypes { get; internal set; }
 
-        public IEnumerable<Type> ResponseWrappedKnownTypes { get; internal set; }
+        public IEnumerable<Type>? ResponseWrappedKnownTypes { get; internal set; }
 
         public Dictionary<string, int> MethodNames { get; internal set; }
     }

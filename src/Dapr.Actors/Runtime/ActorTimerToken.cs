@@ -27,8 +27,8 @@ namespace Dapr.Actors.Runtime
         /// <param name="actorId">The actor id.</param>
         /// <param name="name">The timer name.</param>
         public ActorTimerToken(
-            string actorType,
-            ActorId actorId,
+            string? actorType,
+            ActorId? actorId,
             string name)
         {
             if (actorType == null)
@@ -54,12 +54,12 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets the actor type.
         /// </summary>
-        public string ActorType { get; }
+        public string? ActorType { get; }
 
         /// <summary>
         /// Gets the actor id.
         /// </summary>
-        public ActorId ActorId { get; }
+        public ActorId? ActorId { get; }
 
         /// <summary>
         /// Gets the timer name.

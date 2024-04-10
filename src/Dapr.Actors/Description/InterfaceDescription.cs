@@ -22,7 +22,7 @@ namespace Dapr.Actors.Description
 
     internal abstract class InterfaceDescription
     {
-        private readonly Type remotedInterfaceType;
+        private readonly Type? remotedInterfaceType;
         private readonly bool useCRCIdGeneration;
         private readonly int interfaceId;
         private readonly int interfaceIdV1;
@@ -31,7 +31,7 @@ namespace Dapr.Actors.Description
 
         protected InterfaceDescription(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             bool useCRCIdGeneration,
             MethodReturnCheck methodReturnCheck = MethodReturnCheck.EnsureReturnsTask)
         {
@@ -64,7 +64,7 @@ namespace Dapr.Actors.Description
             get { return this.interfaceId; }
         }
 
-        public Type InterfaceType
+        public Type? InterfaceType
         {
             get { return this.remotedInterfaceType; }
         }
@@ -76,7 +76,7 @@ namespace Dapr.Actors.Description
 
         private static void EnsureNotGeneric(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType)
+            Type? remotedInterfaceType)
         {
             if (remotedInterfaceType.GetTypeInfo().IsGenericType ||
                 remotedInterfaceType.GetTypeInfo().IsGenericTypeDefinition)
@@ -93,7 +93,7 @@ namespace Dapr.Actors.Description
 
         private static MethodDescription[] GetMethodDescriptions(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodReturnCheck methodReturnCheck,
             bool useCRCIdGeneration)
         {
@@ -110,7 +110,7 @@ namespace Dapr.Actors.Description
 
         private static void EnsureValidMethods(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodReturnCheck methodReturnCheck)
         {
             var methodNameSet = new HashSet<string>();
@@ -134,7 +134,7 @@ namespace Dapr.Actors.Description
 
         private static void EnsureNotOverloaded(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodInfo methodInfo,
             ISet<string> methodNameSet)
         {
@@ -152,7 +152,7 @@ namespace Dapr.Actors.Description
 
         private static void EnsureNotGeneric(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodInfo methodInfo)
         {
             if (methodInfo.IsGenericMethod)
@@ -167,7 +167,7 @@ namespace Dapr.Actors.Description
 
         private static void EnsureNotVariableArgs(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodInfo methodInfo)
         {
             if (methodInfo.CallingConvention.HasFlag(CallingConventions.VarArgs))
@@ -182,7 +182,7 @@ namespace Dapr.Actors.Description
 
         private static void EnsureReturnsTask(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodInfo methodInfo)
         {
             if (!TypeUtility.IsTaskType(methodInfo.ReturnType))
@@ -197,7 +197,7 @@ namespace Dapr.Actors.Description
 
         private static void EnsureReturnsVoid(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodInfo methodInfo)
         {
             if (!TypeUtility.IsVoidType(methodInfo.ReturnType))
@@ -217,7 +217,7 @@ namespace Dapr.Actors.Description
 
         private static void ThrowArgumentExceptionForMethodChecks(
             string remotedInterfaceKindName,
-            Type remotedInterfaceType,
+            Type? remotedInterfaceType,
             MethodInfo methodInfo,
             string resourceName)
         {

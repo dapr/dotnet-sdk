@@ -35,13 +35,13 @@ namespace Dapr.Actors.Runtime
         private readonly ActorActivator activator;
         private readonly ILoggerFactory loggerFactory;
         private readonly IActorProxyFactory proxyFactory;
-        private readonly ActorTimerManager timerManager;
-        private readonly ConcurrentDictionary<ActorId, ActorActivatorState> activeActors;
+        private readonly ActorTimerManager? timerManager;
+        private readonly ConcurrentDictionary<ActorId?, ActorActivatorState> activeActors;
         private readonly ActorMethodContext reminderMethodContext;
         private readonly ActorMethodContext timerMethodContext;
         private readonly ActorMessageSerializersManager serializersManager;
         private readonly IActorMessageBodyFactory messageBodyFactory;
-        private readonly JsonSerializerOptions jsonSerializerOptions;
+        private readonly JsonSerializerOptions? jsonSerializerOptions;
 
         // method dispatchermap used by remoting calls.
         private readonly ActorMethodDispatcherMap methodDispatcherMap;
@@ -56,7 +56,7 @@ namespace Dapr.Actors.Runtime
         internal ActorManager(
             ActorRegistration registration,
             ActorActivator activator, 
-            JsonSerializerOptions jsonSerializerOptions,
+            JsonSerializerOptions? jsonSerializerOptions,
             bool useJsonSerialization,
             ILoggerFactory loggerFactory,
             IActorProxyFactory proxyFactory,
@@ -76,12 +76,12 @@ namespace Dapr.Actors.Runtime
 
             // map for non-remoting calls.
             this.actorMethodInfoMap = new ActorMethodInfoMap(this.registration.Type.InterfaceTypes);
-            this.activeActors = new ConcurrentDictionary<ActorId, ActorActivatorState>();
+            this.activeActors = new ConcurrentDictionary<ActorId?, ActorActivatorState>();
             this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
             this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
 
             // provide a serializer if 'useJsonSerialization' is true and no serialization provider is provided.
-            IActorMessageBodySerializationProvider serializationProvider = null;
+            IActorMessageBodySerializationProvider? serializationProvider = null;
             if (useJsonSerialization)
             {
                 serializationProvider = new ActorMessageBodyJsonSerializationProvider(jsonSerializerOptions);
@@ -95,7 +95,7 @@ namespace Dapr.Actors.Runtime
 
         internal ActorTypeInformation ActorTypeInfo => this.registration.Type;
 
-        internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken)
+        internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId? actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
@@ -108,7 +108,7 @@ namespace Dapr.Actors.Runtime
             // Get the deserialized Body.
             var msgBodySerializer = this.serializersManager.GetRequestMessageBodySerializer(actorMessageHeader.InterfaceId);
 
-            IActorRequestMessageBody actorMessageBody;
+            IActorRequestMessageBody? actorMessageBody;
             using (var stream = new MemoryStream())
             {
                 await data.CopyToAsync(stream);
@@ -119,9 +119,9 @@ namespace Dapr.Actors.Runtime
             var methodDispatcher = this.methodDispatcherMap.GetDispatcher(actorMessageHeader.InterfaceId);
 
             // Create a Func to be invoked by common method.
-            async Task<Tuple<string, byte[]>> RequestFunc(Actor actor, CancellationToken ct)
+            async Task<Tuple<string, byte[]?>> RequestFunc(Actor actor, CancellationToken ct)
             {
-                IActorResponseMessageBody responseMsgBody = null;
+                IActorResponseMessageBody? responseMsgBody = null;
 
                 responseMsgBody = (IActorResponseMessageBody)await methodDispatcher.DispatchAsync(
                     actor,
@@ -136,7 +136,7 @@ namespace Dapr.Actors.Runtime
             return await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
+        internal async Task DispatchWithoutRemotingAsync(ActorId? actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
         {
             var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
@@ -196,7 +196,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+        internal async Task FireReminderAsync(ActorId? actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             // Only FireReminder if its IRemindable, else ignore it.
             if (this.ActorTypeInfo.IsRemindable)
@@ -220,7 +220,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
+        internal async Task FireTimerAsync(ActorId? actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             #pragma warning disable 0618
             var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
@@ -244,7 +244,7 @@ namespace Dapr.Actors.Runtime
             var result = await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
         }
 
-        internal async Task ActivateActorAsync(ActorId actorId)
+        internal async Task ActivateActorAsync(ActorId? actorId)
         {
             // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
             var state = await this.CreateActorAsync(actorId);
@@ -279,7 +279,7 @@ namespace Dapr.Actors.Runtime
             await DeactivateActorCore(state);
         }
 
-        private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
+        private async Task<ActorActivatorState> CreateActorAsync(ActorId? actorId)
         {
             this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.timerManager)
@@ -291,7 +291,7 @@ namespace Dapr.Actors.Runtime
             return state;
         }
 
-        internal async Task DeactivateActorAsync(ActorId actorId)
+        internal async Task DeactivateActorAsync(ActorId? actorId)
         {
             if (this.activeActors.TryRemove(actorId, out var deactivatedActor))
             {
@@ -320,7 +320,7 @@ namespace Dapr.Actors.Runtime
         }
 
         // Used for testing - do not leak the actor instances outside of this method in library code.
-        public bool TryGetActorAsync(ActorId id, out Actor actor)
+        public bool TryGetActorAsync(ActorId? id, out Actor actor)
         {
             var found = this.activeActors.TryGetValue(id, out var state);
             actor = found ? state.Actor : default;
@@ -328,7 +328,7 @@ namespace Dapr.Actors.Runtime
         } 
 
         private static ActorMessageSerializersManager IntializeSerializationManager(
-            IActorMessageBodySerializationProvider serializationProvider)
+            IActorMessageBodySerializationProvider? serializationProvider)
         {
             // TODO serializer settings
             return new ActorMessageSerializersManager(
@@ -336,7 +336,7 @@ namespace Dapr.Actors.Runtime
                 new ActorMessageHeaderSerializer());
         }
 
-        private async Task<T> DispatchInternalAsync<T>(ActorId actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
+        private async Task<T> DispatchInternalAsync<T>(ActorId? actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
         {
             if (!this.activeActors.ContainsKey(actorId))
             {
@@ -387,7 +387,7 @@ namespace Dapr.Actors.Runtime
             return retval;
         }
 
-        private Tuple<string, byte[]> CreateResponseMessage(IActorResponseMessageBody msgBody, int interfaceId)
+        private Tuple<string, byte[]?> CreateResponseMessage(IActorResponseMessageBody? msgBody, int interfaceId)
         {
             var responseMsgBodyBytes = Array.Empty<byte>();
             if (msgBody != null)
@@ -396,7 +396,7 @@ namespace Dapr.Actors.Runtime
                 responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
             }
 
-            return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
+            return new Tuple<string, byte[]?>(string.Empty, responseMsgBodyBytes);
         }
     }
 }

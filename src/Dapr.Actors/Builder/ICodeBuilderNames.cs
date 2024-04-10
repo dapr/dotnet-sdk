@@ -33,7 +33,7 @@ namespace Dapr.Actors.Builder
         /// <summary>
         /// Gets the name for the retval field.
         /// </summary>
-        string RetVal { get; }
+        string? RetVal { get; }
 
         /// <summary>
         /// Gets the name for the request body field.
@@ -45,14 +45,14 @@ namespace Dapr.Actors.Builder
         /// </summary>
         /// <param name="interfaceType">The name of the remoted interface.</param>
         /// <returns>The assembly name for the method body types.</returns>
-        string GetMethodBodyTypesAssemblyName(Type interfaceType);
+        string GetMethodBodyTypesAssemblyName(Type? interfaceType);
 
         /// <summary>
         /// Gets the namespace of the assembly in which to generate the method body types.
         /// </summary>
         /// <param name="interfaceType">The name of the remoted interface.</param>
         /// <returns>The assembly namespace for the method body types.</returns>
-        string GetMethodBodyTypesAssemblyNamespace(Type interfaceType);
+        string GetMethodBodyTypesAssemblyNamespace(Type? interfaceType);
 
         /// <summary>
         /// Gets the name of the request body type for the specified method.
@@ -72,55 +72,55 @@ namespace Dapr.Actors.Builder
         /// Gets the data contract namespace for the generated types.
         /// </summary>
         /// <returns>The data contract namespace.</returns>
-        string GetDataContractNamespace();
+        string? GetDataContractNamespace();
 
         /// <summary>
         /// Gets the name of the assembly in which to generate the method dispatcher type.
         /// </summary>
         /// <param name="interfaceType">The remoted interface type.</param>
         /// <returns>The name of the assembly for method disptacher.</returns>
-        string GetMethodDispatcherAssemblyName(Type interfaceType);
+        string GetMethodDispatcherAssemblyName(Type? interfaceType);
 
         /// <summary>
         /// Gets the namespace of the assembly in which to generate the method dispatcher type.
         /// </summary>
         /// <param name="interfaceType">The remoted interface type.</param>
         /// <returns>The namespace of the assembly for method disptacher.</returns>
-        string GetMethodDispatcherAssemblyNamespace(Type interfaceType);
+        string GetMethodDispatcherAssemblyNamespace(Type? interfaceType);
 
         /// <summary>
         /// Gets the name of the method dispatcher class for dispatching methods to the implementation of the specified interface.
         /// </summary>
         /// <param name="interfaceType">The remoted interface type.</param>
         /// <returns>The name of the method dispatcher class.</returns>
-        string GetMethodDispatcherClassName(Type interfaceType);
+        string GetMethodDispatcherClassName(Type? interfaceType);
 
         /// <summary>
         /// Gets the name of the assembly in which to generate the proxy of the specified remoted interface.
         /// </summary>
         /// <param name="interfaceType">The remoted interface type.</param>
         /// <returns>The name of the assembly for proxy.</returns>
-        string GetProxyAssemblyName(Type interfaceType);
+        string GetProxyAssemblyName(Type? interfaceType);
 
         /// <summary>
         /// Gets the namespace of the assembly in which to generate the proxy of the specified remoted interface.
         /// </summary>
         /// <param name="interfaceType">The remoted interface type.</param>
         /// <returns>The namespace of the assembly for proxy.</returns>
-        string GetProxyAssemblyNamespace(Type interfaceType);
+        string GetProxyAssemblyNamespace(Type? interfaceType);
 
         /// <summary>
         /// Gets the name of the proxy class for the specified interface.
         /// </summary>
         /// <param name="interfaceType">The remoted interface type.</param>
         /// <returns>The name of proxy class.</returns>
-        string GetProxyClassName(Type interfaceType);
+        string GetProxyClassName(Type? interfaceType);
 
         /// <summary>
         /// Gets the name of the proxy factory (or activator) class for the specified interface.
         /// </summary>
         /// <param name="interfaceType">The remoted interface type.</param>
         /// <returns>The name of proxy activator class.</returns>
-        string GetProxyActivatorClassName(Type interfaceType);
+        string GetProxyActivatorClassName(Type? interfaceType);
     }
 }

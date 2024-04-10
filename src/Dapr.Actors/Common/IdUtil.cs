@@ -36,22 +36,25 @@ namespace Dapr.Actors.Common
             return hash;
         }
 
-        internal static int ComputeId(Type type)
+        internal static int ComputeId(Type? type)
         {
-            var hash = type.Name.GetHashCode();
-            if (type.Namespace != null)
+            if (type != null)
             {
-                hash = HashCombine(type.Namespace.GetHashCode(), hash);
-            }
+                var hash = type.Name.GetHashCode();
+                if (type.Namespace != null)
+                {
+                    hash = HashCombine(type.Namespace.GetHashCode(), hash);
+                }
 
-            return hash;
+                return hash;
+            }
         }
 
-        internal static int ComputeIdWithCRC(Type type)
+        internal static int ComputeIdWithCRC(Type? type)
         {
-            var name = type.Name;
+            var name = type?.Name;
 
-            if (type.Namespace != null)
+            if (type?.Namespace != null)
             {
                 name = string.Concat(type.Namespace, name);
             }

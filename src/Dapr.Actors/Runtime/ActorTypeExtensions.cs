@@ -28,7 +28,7 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <param name="type">The type of class implementing actor.</param>
         /// <returns>An array containing actor interface which the type implements.</returns>
-        public static Type[] GetActorInterfaces(this Type type)
+        public static Type[] GetActorInterfaces(this Type? type)
         {
             var list = new List<Type>(type.GetInterfaces().Where(t => typeof(IActor).IsAssignableFrom(t)));
             list.RemoveAll(t => (t.GetNonActorParentType() != null));
@@ -79,9 +79,9 @@ namespace Dapr.Actors.Runtime
             return actorType.IsActor() && actorType.GetInterfaces().Contains(typeof(IRemindable));
         }
 
-        public static Type GetNonActorParentType(this Type type)
+        public static Type? GetNonActorParentType(this Type? type)
         {
-            var list = new List<Type>(type.GetInterfaces());
+            var list = new List<Type?>(type.GetInterfaces());
 
             // must have IActor as the parent, so removal of it should result in reduction in the count.
             if (list.RemoveAll(t => (t == typeof(IActor))) == 0)

@@ -21,10 +21,10 @@ namespace Dapr.Actors.Communication
     {
         private readonly ConcurrentDictionary<int, CacheEntry> cachedBodySerializers;
         private readonly IActorMessageHeaderSerializer headerSerializer;
-        private readonly IActorMessageBodySerializationProvider serializationProvider;
+        private readonly IActorMessageBodySerializationProvider? serializationProvider;
 
         public ActorMessageSerializersManager(
-            IActorMessageBodySerializationProvider serializationProvider,
+            IActorMessageBodySerializationProvider? serializationProvider,
             IActorMessageHeaderSerializer headerSerializer)
         {
             if (serializationProvider == null)
@@ -42,7 +42,7 @@ namespace Dapr.Actors.Communication
             this.headerSerializer = headerSerializer;
         }
 
-        public IActorMessageBodySerializationProvider GetSerializationProvider()
+        public IActorMessageBodySerializationProvider? GetSerializationProvider()
         {
             return this.serializationProvider;
         }
@@ -80,7 +80,7 @@ namespace Dapr.Actors.Communication
                this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, interfaceDetails.ResponseWrappedKnownTypes));
         }
 
-        internal InterfaceDetails GetInterfaceDetails(int interfaceId)
+        internal InterfaceDetails? GetInterfaceDetails(int interfaceId)
         {
             if (!ActorCodeBuilder.TryGetKnownTypes(interfaceId, out var interfaceDetails))
             {

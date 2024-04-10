@@ -24,11 +24,11 @@ namespace Dapr.Actors.Builder
     internal class MethodDispatcherBuilder<TMethodDispatcher> : CodeBuilderModule
         where TMethodDispatcher : ActorMethodDispatcherBase
     {
-        private static readonly MethodInfo getTypeFromHandle = typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle));
-        private readonly Type methodDispatcherBaseType;
-        private readonly MethodInfo continueWithResultMethodInfo;
-        private readonly MethodInfo continueWithMethodInfo;
-        private readonly MethodInfo checkIfitsWrapped;
+        private static readonly MethodInfo? getTypeFromHandle = typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle));
+        private readonly Type? methodDispatcherBaseType;
+        private readonly MethodInfo? continueWithResultMethodInfo;
+        private readonly MethodInfo? continueWithMethodInfo;
+        private readonly MethodInfo? checkIfitsWrapped;
 
         public MethodDispatcherBuilder(ICodeBuilder codeBuilder)
             : base(codeBuilder)
@@ -51,7 +51,7 @@ namespace Dapr.Actors.Builder
                 null);
         }
 
-        public MethodDispatcherBuildResult Build(
+        public MethodDispatcherBuildResult? Build(
             InterfaceDescription interfaceDescription)
         {
             var context = new CodeBuilderContext(
@@ -80,10 +80,10 @@ namespace Dapr.Actors.Builder
             var methodNameMap = GetMethodNameMap(interfaceDescription);
 
             // create the dispatcher type, instantiate and initialize it
-            result.MethodDispatcherType = classBuilder.CreateTypeInfo().AsType();
+            result.MethodDispatcherType = classBuilder.CreateTypeInfo()?.AsType();
             result.MethodDispatcher = (TMethodDispatcher)Activator.CreateInstance(result.MethodDispatcherType);
             var v2MethodDispatcherBase = (ActorMethodDispatcherBase)result.MethodDispatcher;
-            v2MethodDispatcherBase.Initialize(interfaceDescription, methodNameMap);
+            v2MethodDispatcherBase?.Initialize(interfaceDescription, methodNameMap);
 
             context.Complete();
             return result;

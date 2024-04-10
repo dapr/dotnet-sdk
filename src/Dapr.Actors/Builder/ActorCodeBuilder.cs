@@ -28,9 +28,9 @@ namespace Dapr.Actors.Builder
         private readonly MethodDispatcherBuilder<ActorMethodDispatcherBase> methodDispatcherBuilder;
         private readonly ActorProxyGeneratorBuilder proxyGeneratorBuilder;
 
-        private readonly Dictionary<Type, MethodBodyTypesBuildResult> methodBodyTypesBuildResultMap;
-        private readonly Dictionary<Type, MethodDispatcherBuildResult> methodDispatcherBuildResultMap;
-        private readonly Dictionary<Type, ActorProxyGeneratorBuildResult> proxyGeneratorBuildResultMap;
+        private readonly Dictionary<Type?, MethodBodyTypesBuildResult> methodBodyTypesBuildResultMap;
+        private readonly Dictionary<Type?, MethodDispatcherBuildResult?> methodDispatcherBuildResultMap;
+        private readonly Dictionary<Type?, ActorProxyGeneratorBuildResult> proxyGeneratorBuildResultMap;
 
         private readonly ICodeBuilderNames codeBuilderNames;
 
@@ -38,9 +38,9 @@ namespace Dapr.Actors.Builder
         {
             this.codeBuilderNames = codeBuilderNames;
 
-            this.methodBodyTypesBuildResultMap = new Dictionary<Type, MethodBodyTypesBuildResult>();
-            this.methodDispatcherBuildResultMap = new Dictionary<Type, MethodDispatcherBuildResult>();
-            this.proxyGeneratorBuildResultMap = new Dictionary<Type, ActorProxyGeneratorBuildResult>();
+            this.methodBodyTypesBuildResultMap = new Dictionary<Type?, MethodBodyTypesBuildResult>();
+            this.methodDispatcherBuildResultMap = new Dictionary<Type?, MethodDispatcherBuildResult?>();
+            this.proxyGeneratorBuildResultMap = new Dictionary<Type?, ActorProxyGeneratorBuildResult>();
 
             this.methodBodyTypesBuilder = new MethodBodyTypesBuilder(this);
             this.methodDispatcherBuilder = new MethodDispatcherBuilder<ActorMethodDispatcherBase>(this);
@@ -52,7 +52,7 @@ namespace Dapr.Actors.Builder
             get { return this.codeBuilderNames; }
         }
 
-        public static ActorProxyGenerator GetOrCreateProxyGenerator(Type actorInterfaceType)
+        public static ActorProxyGenerator GetOrCreateProxyGenerator(Type? actorInterfaceType)
         {
             lock (BuildLock)
             {
@@ -60,7 +60,7 @@ namespace Dapr.Actors.Builder
             }
         }
 
-        public static ActorMethodDispatcherBase GetOrCreateMethodDispatcher(Type actorInterfaceType)
+        public static ActorMethodDispatcherBase GetOrCreateMethodDispatcher(Type? actorInterfaceType)
         {
             lock (BuildLock)
             {
@@ -68,7 +68,7 @@ namespace Dapr.Actors.Builder
             }
         }
 
-        MethodDispatcherBuildResult ICodeBuilder.GetOrBuilderMethodDispatcher(Type interfaceType)
+        MethodDispatcherBuildResult? ICodeBuilder.GetOrBuilderMethodDispatcher(Type? interfaceType)
         {
             if (this.TryGetMethodDispatcher(interfaceType, out var result))
             {
@@ -81,7 +81,7 @@ namespace Dapr.Actors.Builder
             return result;
         }
 
-        MethodBodyTypesBuildResult ICodeBuilder.GetOrBuildMethodBodyTypes(Type interfaceType)
+        MethodBodyTypesBuildResult ICodeBuilder.GetOrBuildMethodBodyTypes(Type? interfaceType)
         {
             if (this.methodBodyTypesBuildResultMap.TryGetValue(interfaceType, out var result))
             {
@@ -94,7 +94,7 @@ namespace Dapr.Actors.Builder
             return result;
         }
 
-        ActorProxyGeneratorBuildResult ICodeBuilder.GetOrBuildProxyGenerator(Type interfaceType)
+        ActorProxyGeneratorBuildResult ICodeBuilder.GetOrBuildProxyGenerator(Type? interfaceType)
         {
             if (this.TryGetProxyGenerator(interfaceType, out var result))
             {
@@ -107,24 +107,24 @@ namespace Dapr.Actors.Builder
             return result;
         }
 
-        internal static bool TryGetKnownTypes(int interfaceId, out InterfaceDetails interfaceDetails)
+        internal static bool TryGetKnownTypes(int interfaceId, out InterfaceDetails? interfaceDetails)
         {
             return InterfaceDetailsStore.TryGetKnownTypes(interfaceId, out interfaceDetails);
         }
 
-        internal static bool TryGetKnownTypes(string interfaceName, out InterfaceDetails interfaceDetails)
+        internal static bool TryGetKnownTypes(string interfaceName, out InterfaceDetails? interfaceDetails)
         {
             return InterfaceDetailsStore.TryGetKnownTypes(interfaceName, out interfaceDetails);
         }
 
-        protected MethodDispatcherBuildResult BuildMethodDispatcher(Type interfaceType)
+        protected MethodDispatcherBuildResult? BuildMethodDispatcher(Type? interfaceType)
         {
             var actorInterfaceDescription = ActorInterfaceDescription.CreateUsingCRCId(interfaceType);
             var res = this.methodDispatcherBuilder.Build(actorInterfaceDescription);
             return res;
         }
 
-        protected MethodBodyTypesBuildResult BuildMethodBodyTypes(Type interfaceType)
+        protected MethodBodyTypesBuildResult BuildMethodBodyTypes(Type? interfaceType)
         {
             var actorInterfaceDescriptions = ActorInterfaceDescription.CreateUsingCRCId(interfaceType);
             var result = this.methodBodyTypesBuilder.Build(actorInterfaceDescriptions);
@@ -132,10 +132,10 @@ namespace Dapr.Actors.Builder
             return result;
         }
 
-        protected ActorProxyGeneratorBuildResult BuildProxyGenerator(Type interfaceType)
+        protected ActorProxyGeneratorBuildResult BuildProxyGenerator(Type? interfaceType)
         {
             // create all actor interfaces that this interface derives from
-            var actorInterfaces = new List<Type>() { interfaceType };
+            var actorInterfaces = new List<Type?>() { interfaceType };
             actorInterfaces.AddRange(interfaceType.GetActorInterfaces());
 
             // create interface descriptions for all interfaces
@@ -146,14 +146,14 @@ namespace Dapr.Actors.Builder
             return res;
         }
 
-        protected void UpdateMethodDispatcherBuildMap(Type interfaceType, MethodDispatcherBuildResult result)
+        protected void UpdateMethodDispatcherBuildMap(Type? interfaceType, MethodDispatcherBuildResult? result)
         {
             this.methodDispatcherBuildResultMap.Add(interfaceType, result);
         }
 
         protected bool TryGetMethodDispatcher(
-            Type interfaceType,
-            out MethodDispatcherBuildResult builderMethodDispatcher)
+            Type? interfaceType,
+            out MethodDispatcherBuildResult? builderMethodDispatcher)
         {
             if (this.methodDispatcherBuildResultMap.TryGetValue(interfaceType, out var result))
             {
@@ -167,12 +167,12 @@ namespace Dapr.Actors.Builder
             return false;
         }
 
-        protected void UpdateProxyGeneratorMap(Type interfaceType, ActorProxyGeneratorBuildResult result)
+        protected void UpdateProxyGeneratorMap(Type? interfaceType, ActorProxyGeneratorBuildResult result)
         {
             this.proxyGeneratorBuildResultMap.Add(interfaceType, result);
         }
 
-        protected bool TryGetProxyGenerator(Type interfaceType, out ActorProxyGeneratorBuildResult orBuildProxyGenerator)
+        protected bool TryGetProxyGenerator(Type? interfaceType, out ActorProxyGeneratorBuildResult? orBuildProxyGenerator)
         {
             if (this.proxyGeneratorBuildResultMap.TryGetValue(interfaceType, out var result))
             {

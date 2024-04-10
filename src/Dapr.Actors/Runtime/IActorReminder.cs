@@ -48,6 +48,6 @@ namespace Dapr.Actors.Runtime
         /// Gets the user state passed to the reminder invocation.
         /// </summary>
         /// <value>The user state passed to the reminder invocation.</value>
-        byte[] State { get; }
+        byte[]? State { get; }
     }
 }

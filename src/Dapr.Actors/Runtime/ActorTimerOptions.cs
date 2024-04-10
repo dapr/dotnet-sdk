@@ -9,12 +9,12 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// The name of the type of the Actor that the timer will fire for.
         /// </summary>
-        public string ActorTypeName { get; set; }
+        public string? ActorTypeName { get; set; }
 
         /// <summary>
         /// The <see cref="ActorId"/> that the timer will fire for.
         /// </summary>
-        public ActorId Id { get; set; }
+        public ActorId? Id { get; set; }
 
         /// <summary>
         /// The name of the timer.

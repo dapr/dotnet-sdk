@@ -33,6 +33,6 @@ namespace Dapr.Actors.Runtime
         /// <para>The state of this actor is saved by the actor runtime upon completion of the task returned by this method. If an error occurs while saving the state, then all state cached by this actor's <see cref="Dapr.Actors.Runtime.Actor.StateManager" /> will be discarded and reloaded from previously saved state when the next actor method or reminder invocation occurs.
         /// </para>
         /// </remarks>
-        Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period);
+        Task ReceiveReminderAsync(string reminderName, byte[]? state, TimeSpan dueTime, TimeSpan period);
     }
 }

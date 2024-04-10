@@ -33,7 +33,7 @@ namespace Dapr.Actors.Runtime
             Enabled = false,
         };
         private bool useJsonSerialization = false;
-        private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
+        private JsonSerializerOptions? jsonSerializerOptions = JsonSerializerDefaults.Web;
         private string daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
         private int? remindersStoragePartitions = null;
 
@@ -171,7 +171,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// The <see cref="JsonSerializerOptions"/> to use for actor state persistence and message deserialization
         /// </summary>
-        public JsonSerializerOptions JsonSerializerOptions
+        public JsonSerializerOptions? JsonSerializerOptions
         {
             get
             {

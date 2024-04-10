@@ -16,9 +16,9 @@ namespace Dapr.Actors.Communication
     internal class ActorRequestMessage : IActorRequestMessage
     {
         private readonly IActorRequestMessageHeader header;
-        private readonly IActorRequestMessageBody msgBody;
+        private readonly IActorRequestMessageBody? msgBody;
 
-        public ActorRequestMessage(IActorRequestMessageHeader header, IActorRequestMessageBody msgBody)
+        public ActorRequestMessage(IActorRequestMessageHeader header, IActorRequestMessageBody? msgBody)
         {
             this.header = header;
             this.msgBody = msgBody;
@@ -29,7 +29,7 @@ namespace Dapr.Actors.Communication
             return this.header;
         }
 
-        public IActorRequestMessageBody GetBody()
+        public IActorRequestMessageBody? GetBody()
         {
             return this.msgBody;
         }

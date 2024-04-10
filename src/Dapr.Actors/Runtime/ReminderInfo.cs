@@ -23,7 +23,7 @@ namespace Dapr.Actors.Runtime
     internal class ReminderInfo
     {
         public ReminderInfo(
-            byte[] data,
+            byte[]? data,
             TimeSpan dueTime,
             TimeSpan period,
             int? repetitions = null,
@@ -40,13 +40,13 @@ namespace Dapr.Actors.Runtime
 
         public TimeSpan Period { get; private set; }
 
-        public byte[] Data { get; private set; }
+        public byte[]? Data { get; private set; }
 
         public TimeSpan? Ttl { get; private set; }
         
         public int? Repetitions { get; private set; }
 
-        internal static async Task<ReminderInfo> DeserializeAsync(Stream stream)
+        internal static async Task<ReminderInfo?> DeserializeAsync(Stream stream)
         {
             var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
             if(json.ValueKind == JsonValueKind.Null)
@@ -62,13 +62,19 @@ namespace Dapr.Actors.Runtime
             if (json.TryGetProperty("dueTime", out var dueTimeProperty))
             {
                 var dueTimeString = dueTimeProperty.GetString();
-                dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
+                if (dueTimeString != null)
+                {
+                    dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
+                }
             }
 
             if (json.TryGetProperty("period", out var periodProperty))
             {
                 var periodString = periodProperty.GetString();
-                (period, repetition) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(periodString);
+                if (periodString != null)
+                {
+                    (period, repetition) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(periodString);
+                }
             }
 
             if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
@@ -79,7 +85,10 @@ namespace Dapr.Actors.Runtime
             if (json.TryGetProperty("ttl", out var ttlProperty))
             {
                 var ttlString = ttlProperty.GetString();
-                ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
+                if (ttlString != null)
+                {
+                    ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
+                }
             }
 
             return new ReminderInfo(data, dueTime, period, repetition, ttl);
@@ -88,7 +97,7 @@ namespace Dapr.Actors.Runtime
         internal async ValueTask<string> SerializeAsync()
         {
             using var stream = new MemoryStream();
-            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+            await using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
 
             writer.WriteStartObject();
             writer.WriteString("dueTime", ConverterUtils.ConvertTimeSpanValueInDaprFormat(this.DueTime));

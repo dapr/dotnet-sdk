@@ -27,31 +27,31 @@ namespace Dapr.Actors.Runtime
     /// </summary>
     internal class DaprStateProvider
     {
-        private readonly IActorStateSerializer actorStateSerializer;
-        private readonly JsonSerializerOptions jsonSerializerOptions;
+        private readonly IActorStateSerializer? actorStateSerializer;
+        private readonly JsonSerializerOptions? jsonSerializerOptions;
 
         private readonly IDaprInteractor daprInteractor;
 
-        public DaprStateProvider(IDaprInteractor daprInteractor, IActorStateSerializer actorStateSerializer = null)
+        public DaprStateProvider(IDaprInteractor daprInteractor, IActorStateSerializer? actorStateSerializer = null)
         {
             this.actorStateSerializer = actorStateSerializer;
             this.daprInteractor = daprInteractor;
         }
 
-        public DaprStateProvider(IDaprInteractor daprInteractor, JsonSerializerOptions jsonSerializerOptions = null)
+        public DaprStateProvider(IDaprInteractor daprInteractor, JsonSerializerOptions? jsonSerializerOptions = null)
         {
             this.jsonSerializerOptions = jsonSerializerOptions;
             this.daprInteractor = daprInteractor;
         }
 
-        public async Task<ConditionalValue<ActorStateResponse<T>>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+        public async Task<ConditionalValue<ActorStateResponse<T>?>> TryLoadStateAsync<T>(string? actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
-            var result = new ConditionalValue<ActorStateResponse<T>>(false, default);
+            var result = new ConditionalValue<ActorStateResponse<T>?>(false, default);
             var response = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
 
             if (response.Value.Length != 0 && (!response.TTLExpireTime.HasValue || response.TTLExpireTime.Value > DateTimeOffset.UtcNow))
             {
-                T typedResult;
+                T? typedResult;
 
                 // perform default json de-serialization if custom serializer was not provided.
                 if (this.actorStateSerializer != null)
@@ -64,24 +64,27 @@ namespace Dapr.Actors.Runtime
                     typedResult = JsonSerializer.Deserialize<T>(response.Value, jsonSerializerOptions);
                 }
 
-                result = new ConditionalValue<ActorStateResponse<T>>(true, new ActorStateResponse<T>(typedResult, response.TTLExpireTime));
+                if (typedResult != null)
+                {
+                    result = new ConditionalValue<ActorStateResponse<T>?>(true, new ActorStateResponse<T>(typedResult, response.TTLExpireTime));
+                }
             }
 
             return result;
         }
 
-        public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+        public async Task<bool> ContainsStateAsync(string? actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
         {
             var result = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
             return (result.Value.Length != 0 && (!result.TTLExpireTime.HasValue || result.TTLExpireTime.Value > DateTimeOffset.UtcNow));
         }
 
-        public async Task SaveStateAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
+        public async Task SaveStateAsync(string? actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
         {
             await this.DoStateChangesTransactionallyAsync(actorType, actorId, stateChanges, cancellationToken);
         }
 
-        private async Task DoStateChangesTransactionallyAsync(string actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
+        private async Task DoStateChangesTransactionallyAsync(string? actorType, string actorId, IReadOnlyCollection<ActorStateChange> stateChanges, CancellationToken cancellationToken = default)
         {
             // Transactional state update request body:
             /*
@@ -153,7 +156,7 @@ namespace Dapr.Actors.Runtime
 
             writer.WriteEndArray();
 
-            await writer.FlushAsync();
+            await writer.FlushAsync(cancellationToken);
             var content = Encoding.UTF8.GetString(stream.ToArray());
             await this.daprInteractor.SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
         }

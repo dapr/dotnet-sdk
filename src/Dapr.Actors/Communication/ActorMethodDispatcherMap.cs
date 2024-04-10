@@ -26,7 +26,7 @@ namespace Dapr.Actors.Communication
     {
         private readonly IDictionary<int, ActorMethodDispatcherBase> map;
 
-        public ActorMethodDispatcherMap(IEnumerable<Type> interfaceTypes)
+        public ActorMethodDispatcherMap(IEnumerable<Type?> interfaceTypes)
         {
             this.map = new Dictionary<int, ActorMethodDispatcherBase>();
 

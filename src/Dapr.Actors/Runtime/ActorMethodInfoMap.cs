@@ -24,7 +24,7 @@ namespace Dapr.Actors.Runtime
     {
         private readonly Dictionary<string, MethodInfo> methods;
 
-        public ActorMethodInfoMap(IEnumerable<Type> interfaceTypes)
+        public ActorMethodInfoMap(IEnumerable<Type?> interfaceTypes)
         {
             this.methods = new Dictionary<string, MethodInfo>();
 

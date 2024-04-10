@@ -46,6 +46,6 @@ namespace Dapr.Actors.Communication
         /// </summary>
         /// <param name="messageHeader">Messaging layer header to be deserialized.</param>
         /// <returns>An <see cref="IActorRequestMessageHeader"/> that has the deserialized contents of the specified message header.</returns>
-        IActorResponseMessageHeader DeserializeResponseHeaders(Stream messageHeader);
+        IActorResponseMessageHeader? DeserializeResponseHeaders(Stream messageHeader);
     }
 }

@@ -81,7 +81,7 @@ namespace Dapr.Actors.Description
                             SR.ErrorRemotedMethodCancellationTokenOutOfOrder,
                             remotedInterfaceKindName,
                             methodInfo.Name,
-                            methodInfo.DeclaringType.FullName,
+                            methodInfo.DeclaringType?.FullName,
                             param.Name,
                             typeof(CancellationToken)),
                         remotedInterfaceKindName + "InterfaceType");

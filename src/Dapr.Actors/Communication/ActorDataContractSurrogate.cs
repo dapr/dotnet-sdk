@@ -30,7 +30,7 @@ namespace Dapr.Actors.Communication
             return type;
         }
 
-        public object GetObjectToSerialize(object obj, Type targetType)
+        public object? GetObjectToSerialize(object? obj, Type targetType)
         {
             if (obj == null)
             {
@@ -44,7 +44,7 @@ namespace Dapr.Actors.Communication
             return obj;
         }
 
-        public object GetDeserializedObject(object obj, Type targetType)
+        public object GetDeserializedObject(object obj, Type? targetType)
         {
             if (obj == null)
             {

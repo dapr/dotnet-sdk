@@ -36,7 +36,7 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <value>The <see cref="string"/> name of the actor type represented by the actor.</value>
         /// <remarks>Defaults to the name of the class implementing the actor. Can be overridden using the <see cref="Dapr.Actors.Runtime.ActorAttribute.TypeName" /> property.</remarks>
-        public string ActorTypeName { get; private set; }
+        public string? ActorTypeName { get; private set; }
 
         /// <summary>
         /// Gets the type of the class implementing the actor.
@@ -48,7 +48,7 @@ namespace Dapr.Actors.Runtime
         /// Gets the actor interface types which derive from <see cref="IActor"/> and implemented by actor class.
         /// </summary>
         /// <value>An enumerator that can be used to iterate through the actor interface type.</value>
-        public IEnumerable<Type> InterfaceTypes { get; private set; }
+        public IEnumerable<Type?> InterfaceTypes { get; private set; }
 
         /// <summary>
         /// Gets a value indicating whether the class implementing actor is abstract.
@@ -118,7 +118,7 @@ namespace Dapr.Actors.Runtime
         /// and is not marked as abstract.</para>
         /// </exception>
         /// <remarks>The value of <paramref name="actorTypeName"/> will have precedence over the default actor type name derived from the actor implementation type or any type name set via <see cref="ActorAttribute"/>.</remarks>
-        public static ActorTypeInformation Get(Type actorType, string actorTypeName)
+        public static ActorTypeInformation Get(Type actorType, string? actorTypeName)
         {
             if (!actorType.IsActor())
             {

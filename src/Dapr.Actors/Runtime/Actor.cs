@@ -29,7 +29,7 @@ namespace Dapr.Actors.Runtime
     /// </remarks>
     public abstract class Actor
     {
-        private readonly string actorTypeName;
+        private readonly string? actorTypeName;
 
         /// <summary>
         /// The Logger
@@ -52,7 +52,7 @@ namespace Dapr.Actors.Runtime
         /// Gets the identity of this actor.
         /// </summary>
         /// <value>The <see cref="ActorId"/> for the actor.</value>
-        public ActorId Id => Host.Id;
+        public ActorId? Id => Host.Id;
 
         /// <summary>
         /// Gets the host of this actor within the actor runtime.
@@ -381,7 +381,7 @@ namespace Dapr.Actors.Runtime
         internal async Task<IActorReminder> RegisterReminderAsync(ActorReminderOptions options)
         {
             var reminder = new ActorReminder(options);
-            await this.Host.TimerManager.RegisterReminderAsync(reminder);
+            await this.Host.TimerManager?.RegisterReminderAsync(reminder);
             return reminder;
         }
 
@@ -392,9 +392,9 @@ namespace Dapr.Actors.Runtime
         /// <returns>
         /// Returns a task that represents the asynchronous get operation. The result of the task contains the reminder if it exists, otherwise null.
         /// </returns>
-        protected async Task<IActorReminder> GetReminderAsync(string reminderName)
+        protected async Task<IActorReminder?> GetReminderAsync(string reminderName)
         {
-            return await this.Host.TimerManager.GetReminderAsync(new ActorReminderToken(this.actorTypeName, this.Id, reminderName));
+            return await this.Host.TimerManager?.GetReminderAsync(new ActorReminderToken(this.actorTypeName, this.Id, reminderName));
         }
 
         /// <summary>
@@ -406,8 +406,8 @@ namespace Dapr.Actors.Runtime
         /// </returns>
         protected Task UnregisterReminderAsync(IActorReminder reminder)
         {
-            var token = reminder is ActorReminderToken ? (ActorReminderToken)reminder : new ActorReminderToken(this.actorTypeName, this.Id, reminder.Name);
-            return this.Host.TimerManager.UnregisterReminderAsync(token);
+            var token = reminder is ActorReminderToken reminderToken ? reminderToken : new ActorReminderToken(this.actorTypeName, this.Id, reminder.Name);
+            return this.Host.TimerManager?.UnregisterReminderAsync(token);
         }
 
         /// <summary>

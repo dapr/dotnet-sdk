@@ -26,7 +26,7 @@ namespace Dapr.Actors
         /// <summary>
         /// The reentrancy context for a given request, if one is present.
         /// </summary>
-        public static string ReentrancyContext
+        public static string? ReentrancyContext
         {
             get
             {
@@ -50,7 +50,7 @@ namespace Dapr.Actors
 
         private class ActorReentrancyContextHolder
         {
-            public string Context;
+            public string? Context;
         }
     }
 }

@@ -25,7 +25,7 @@ namespace Dapr.Actors.Client
     public class ActorProxyFactory : IActorProxyFactory
     {
         private ActorProxyOptions defaultOptions;
-        private readonly HttpMessageHandler handler;
+        private readonly HttpMessageHandler? handler;
 
         /// <inheritdoc/>
         public ActorProxyOptions DefaultOptions
@@ -50,19 +50,19 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorProxyFactory"/> class.
         /// </summary>
-        public ActorProxyFactory(ActorProxyOptions options = null, HttpMessageHandler handler = null)
+        public ActorProxyFactory(ActorProxyOptions options = null, HttpMessageHandler? handler = null)
         {
             this.defaultOptions = options ?? new ActorProxyOptions();
             this.handler = handler;
         }
 
         /// <inheritdoc/>
-        public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType, ActorProxyOptions options = null)
+        public TActorInterface CreateActorProxy<TActorInterface>(ActorId? actorId, string? actorType, ActorProxyOptions options = null)
             where TActorInterface : IActor
             => (TActorInterface)this.CreateActorProxy(actorId, typeof(TActorInterface), actorType, options ?? this.defaultOptions);
 
         /// <inheritdoc/>
-        public ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null)
+        public ActorProxy Create(ActorId? actorId, string? actorType, ActorProxyOptions options = null)
         {
             options ??= this.DefaultOptions;
 
@@ -75,14 +75,14 @@ namespace Dapr.Actors.Client
         }
 
         /// <inheritdoc/>
-        public object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null)
+        public object CreateActorProxy(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions options = null)
         {
             options ??= this.DefaultOptions;
 
             var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
             
             // provide a serializer if 'useJsonSerialization' is true and no serialization provider is provided.
-            IActorMessageBodySerializationProvider serializationProvider = null;
+            IActorMessageBodySerializationProvider? serializationProvider = null;
             if (options.UseJsonSerialization)
             {
                 serializationProvider = new ActorMessageBodyJsonSerializationProvider(options.JsonSerializerOptions);

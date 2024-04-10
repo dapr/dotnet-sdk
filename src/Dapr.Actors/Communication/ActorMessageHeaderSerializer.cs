@@ -91,7 +91,7 @@ namespace Dapr.Actors.Communication
             return stream.ToArray();
         }
 
-        public IActorResponseMessageHeader DeserializeResponseHeaders(Stream messageHeader)
+        public IActorResponseMessageHeader? DeserializeResponseHeaders(Stream messageHeader)
         {
             if ((messageHeader == null) || (messageHeader.Length == 0))
             {

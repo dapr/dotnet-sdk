@@ -33,9 +33,9 @@ namespace Dapr.Actors.Client
         /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>An actor proxy object that implements IActorProxy and TActorInterface.</returns>
         TActorInterface CreateActorProxy<TActorInterface>(
-            ActorId actorId,
-            string actorType,
-            ActorProxyOptions options = null)
+            ActorId? actorId,
+            string? actorType,
+            ActorProxyOptions? options = null)
             where TActorInterface : IActor;
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Dapr.Actors.Client
         /// <param name="actorType">Actor implementation Type.</param>
         /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Returns Actor Proxy.</returns>
-        object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null);
+        object CreateActorProxy(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions? options = null);
 
         /// <summary>
         /// Creates an Actor Proxy for making calls without Remoting.
@@ -55,6 +55,6 @@ namespace Dapr.Actors.Client
         /// <param name="actorType">Type of actor.</param>
         /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Actor proxy to interact with remote actor object.</returns>
-        ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null);
+        ActorProxy Create(ActorId? actorId, string? actorType, ActorProxyOptions? options = null);
     }
 }

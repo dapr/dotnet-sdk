@@ -30,7 +30,7 @@ namespace Dapr.Actors.Runtime
         /// Gets or sets the <see cref="ActorId" />.
         /// </summary>
         /// <returns></returns>
-        public ActorId ActorId { get; set; } = ActorId.CreateRandom();
+        public ActorId? ActorId { get; set; } = ActorId.CreateRandom();
 
         /// <summary>
         /// Gets or sets the <see cref="ILoggerFactory" />.
@@ -41,7 +41,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets or sets the <see cref="JsonSerializerOptions" />.
         /// </summary>
-        public JsonSerializerOptions JsonSerializerOptions { get; set; } = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        public JsonSerializerOptions? JsonSerializerOptions { get; set; } = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
         /// <summary>
         /// Gets or sets the <see cref="IActorProxyFactory" />.
@@ -51,7 +51,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets or sets the <see cref="ActorTimerManager" />.
         /// </summary>
-        public ActorTimerManager TimerManager { get; set; } = new InvalidTimerManager();
+        public ActorTimerManager? TimerManager { get; set; } = new InvalidTimerManager();
 
         private class InvalidProxyFactory : IActorProxyFactory
         {
@@ -59,17 +59,17 @@ namespace Dapr.Actors.Runtime
                 "This actor was initialized for tests without providing a replacement for the proxy factory. " +
                 "Provide a mock implementation of 'IProxyFactory' by setting 'ActorTestOptions.ProxyFactory'."; 
 
-            public ActorProxy Create(ActorId actorId, string actorType, ActorProxyOptions options = null)
+            public ActorProxy Create(ActorId? actorId, string? actorType, ActorProxyOptions? options = null)
             {
                 throw new NotImplementedException(Message);
             }
 
-            public TActorInterface CreateActorProxy<TActorInterface>(ActorId actorId, string actorType, ActorProxyOptions options = null) where TActorInterface : IActor
+            public TActorInterface CreateActorProxy<TActorInterface>(ActorId? actorId, string? actorType, ActorProxyOptions? options = null) where TActorInterface : IActor
             {
                 throw new NotImplementedException(Message);
             }
 
-            public object CreateActorProxy(ActorId actorId, Type actorInterfaceType, string actorType, ActorProxyOptions options = null)
+            public object CreateActorProxy(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions? options = null)
             {
                 throw new NotImplementedException(Message);
             }
@@ -91,7 +91,7 @@ namespace Dapr.Actors.Runtime
                 throw new NotImplementedException(Message);
             }
 
-            public override Task<IActorReminder> GetReminderAsync(ActorReminderToken reminder)
+            public override Task<IActorReminder?> GetReminderAsync(ActorReminderToken reminder)
             {
                 throw new NotImplementedException(Message);
             }

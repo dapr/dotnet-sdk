@@ -20,14 +20,14 @@ namespace Dapr.Actors.Communication
     internal class ActorResponseMessageBody : IActorResponseMessageBody
     {
         [DataMember]
-        private object response;
+        private object? response;
 
-        public void Set(object response)
+        public void Set(object? response)
         {
             this.response = response;
         }
 
-        public object Get(Type paramType)
+        public object? Get(Type paramType)
         {
             return this.response;
         }

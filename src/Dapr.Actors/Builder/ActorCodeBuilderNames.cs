@@ -40,7 +40,7 @@ namespace Dapr.Actors.Builder
             get { return "methodId"; }
         }
 
-        public string RetVal
+        public string? RetVal
         {
             get { return "retVal"; }
         }
@@ -50,12 +50,12 @@ namespace Dapr.Actors.Builder
             get { return "requestBody"; }
         }
 
-        public string GetMethodBodyTypesAssemblyName(Type interfaceType)
+        public string GetMethodBodyTypesAssemblyName(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}_.{1}.mt", interfaceType.FullName, this.namePrefix);
         }
 
-        public string GetMethodBodyTypesAssemblyNamespace(Type interfaceType)
+        public string GetMethodBodyTypesAssemblyNamespace(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}_.{1}.mt", interfaceType.FullName, this.namePrefix);
         }
@@ -70,42 +70,42 @@ namespace Dapr.Actors.Builder
             return string.Format(CultureInfo.InvariantCulture, "{0}RespBody", methodName);
         }
 
-        public string GetMethodDispatcherAssemblyName(Type interfaceType)
+        public string GetMethodDispatcherAssemblyName(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}_.{1}.disp", interfaceType.FullName, this.namePrefix);
         }
 
-        public string GetMethodDispatcherAssemblyNamespace(Type interfaceType)
+        public string GetMethodDispatcherAssemblyNamespace(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}_.{1}.disp", interfaceType.FullName, this.namePrefix);
         }
 
-        public string GetMethodDispatcherClassName(Type interfaceType)
+        public string GetMethodDispatcherClassName(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}MethodDispatcher", interfaceType.Name);
         }
 
-        public string GetProxyAssemblyName(Type interfaceType)
+        public string GetProxyAssemblyName(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}_.{1}.proxy", interfaceType.FullName, this.namePrefix);
         }
 
-        public string GetProxyAssemblyNamespace(Type interfaceType)
+        public string GetProxyAssemblyNamespace(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}_.{1}.proxy", interfaceType.FullName, this.namePrefix);
         }
 
-        public string GetProxyClassName(Type interfaceType)
+        public string GetProxyClassName(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}{1}Proxy", interfaceType.Name, this.namePrefix);
         }
 
-        public string GetProxyActivatorClassName(Type interfaceType)
+        public string GetProxyActivatorClassName(Type? interfaceType)
         {
             return string.Format(CultureInfo.InvariantCulture, "{0}{1}ProxyActivator", interfaceType.Name, this.namePrefix);
         }
 
-        public string GetDataContractNamespace()
+        public string? GetDataContractNamespace()
         {
             return Constants.Namespace;
         }

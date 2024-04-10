@@ -53,7 +53,7 @@ namespace Dapr.Actors.Communication
         public string InvocationId { get; set; }
 
         [DataMember(IsRequired = false, Order = 3)]
-        public ActorId ActorId { get; set; }
+        public ActorId? ActorId { get; set; }
 
         [DataMember(IsRequired = false, Order = 4)]
         public string CallContext { get; set; }
@@ -72,7 +72,7 @@ namespace Dapr.Actors.Communication
         public string MethodName { get; set; }
 
         [DataMember(IsRequired = false, Order = 7)]
-        public string ActorType { get; set; }
+        public string? ActorType { get; set; }
 
         public void AddHeader(string headerName, byte[] headerValue)
         {

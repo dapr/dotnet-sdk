@@ -19,23 +19,23 @@ namespace Dapr.Actors.Communication.Client
     internal class ActorRemotingClient
     {
         private readonly ActorMessageSerializersManager serializersManager;
-        private readonly IActorMessageBodyFactory remotingMessageBodyFactory = null;
+        private readonly IActorMessageBodyFactory? remotingMessageBodyFactory = null;
         private readonly IDaprInteractor daprInteractor;
 
         public ActorRemotingClient(
             IDaprInteractor daprInteractor,
-            IActorMessageBodySerializationProvider serializationProvider = null)
+            IActorMessageBodySerializationProvider? serializationProvider = null)
         {
             this.daprInteractor = daprInteractor;
-            this.serializersManager = IntializeSerializationManager(serializationProvider);
-            this.remotingMessageBodyFactory = this.serializersManager.GetSerializationProvider().CreateMessageBodyFactory();
+            this.serializersManager = InitializeSerializationManager(serializationProvider);
+            this.remotingMessageBodyFactory = this.serializersManager.GetSerializationProvider()?.CreateMessageBodyFactory();
         }
 
         /// <summary>
         /// Gets a factory for creating the remoting message bodies.
         /// </summary>
         /// <returns>A factory for creating the remoting message bodies.</returns>
-        public IActorMessageBodyFactory GetRemotingMessageBodyFactory()
+        public IActorMessageBodyFactory? GetRemotingMessageBodyFactory()
         {
             return this.remotingMessageBodyFactory;
         }
@@ -47,8 +47,8 @@ namespace Dapr.Actors.Communication.Client
               return await this.daprInteractor.InvokeActorMethodWithRemotingAsync(this.serializersManager, remotingRequestMessage, cancellationToken);
         }
 
-        private static ActorMessageSerializersManager IntializeSerializationManager(
-            IActorMessageBodySerializationProvider serializationProvider)
+        private static ActorMessageSerializersManager InitializeSerializationManager(
+            IActorMessageBodySerializationProvider? serializationProvider)
         {
             // TODO serializer settings
             return new ActorMessageSerializersManager(

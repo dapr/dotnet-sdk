@@ -26,13 +26,13 @@ namespace Dapr.Actors.Builder
 
     internal class ActorProxyGeneratorBuilder : CodeBuilderModule
     {
-        private readonly Type proxyBaseType;
-        private readonly MethodInfo createMessage;
-        private readonly MethodInfo invokeAsyncMethodInfo;
-        private readonly MethodInfo invokeMethodInfo;
-        private readonly MethodInfo continueWithResultMethodInfo;
-        private readonly MethodInfo continueWithMethodInfo;
-        private readonly MethodInfo checkIfitsWrapped;
+        private readonly Type? proxyBaseType;
+        private readonly MethodInfo? createMessage;
+        private readonly MethodInfo? invokeAsyncMethodInfo;
+        private readonly MethodInfo? invokeMethodInfo;
+        private readonly MethodInfo? continueWithResultMethodInfo;
+        private readonly MethodInfo? continueWithMethodInfo;
+        private readonly MethodInfo? checkIfitsWrapped;
 
         public ActorProxyGeneratorBuilder(ICodeBuilder codeBuilder)
             : base(codeBuilder)
@@ -85,10 +85,10 @@ namespace Dapr.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
-        protected Type ProxyBaseType => this.proxyBaseType;
+        protected Type? ProxyBaseType => this.proxyBaseType;
 
         public ActorProxyGeneratorBuildResult Build(
-            Type proxyInterfaceType,
+            Type? proxyInterfaceType,
             IEnumerable<InterfaceDescription> interfaceDescriptions)
         {
             // create the context to build the proxy
@@ -244,7 +244,7 @@ namespace Dapr.Actors.Builder
         }
 
         protected ActorProxyGenerator CreateProxyGenerator(
-           Type proxyInterfaceType,
+           Type? proxyInterfaceType,
            Type proxyActivatorType)
         {
             return new ActorProxyGenerator(
@@ -277,7 +277,7 @@ namespace Dapr.Actors.Builder
 
         private Type BuildProxyActivatorType(
             CodeBuilderContext context,
-            Type proxyInterfaceType,
+            Type? proxyInterfaceType,
             Type proxyType)
         {
             var classBuilder = CodeBuilderUtils.CreateClassBuilder(
@@ -383,7 +383,7 @@ namespace Dapr.Actors.Builder
 
         private Type BuildProxyType(
             CodeBuilderContext context,
-            Type proxyInterfaceType,
+            Type? proxyInterfaceType,
             IDictionary<InterfaceDescription, MethodBodyTypesBuildResult> methodBodyTypesResultsMap)
         {
             var classBuilder = CodeBuilderUtils.CreateClassBuilder(

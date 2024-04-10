@@ -36,17 +36,17 @@ namespace Dapr.Actors.Runtime
             }
 
             var serialized = await SerializeReminderAsync(reminder);
-            await this.interactor.RegisterReminderAsync(reminder.ActorType, reminder.ActorId.ToString(), reminder.Name, serialized);
+            await this.interactor.RegisterReminderAsync(reminder.ActorType, reminder.ActorId?.ToString(), reminder.Name, serialized);
         }
 
-        public override async Task<IActorReminder> GetReminderAsync(ActorReminderToken token)
+        public override async Task<IActorReminder?> GetReminderAsync(ActorReminderToken token)
         {
             if (token == null)
             {
                 throw new ArgumentNullException(nameof(token));
             }
             
-            var responseStream = await this.interactor.GetReminderAsync(token.ActorType, token.ActorId.ToString(), token.Name);
+            var responseStream = await this.interactor.GetReminderAsync(token.ActorType, token.ActorId?.ToString(), token.Name);
             var reminder = await DeserializeReminderAsync(responseStream, token);
             return reminder;
         }
@@ -58,7 +58,7 @@ namespace Dapr.Actors.Runtime
                 throw new ArgumentNullException(nameof(reminder));
             }
             
-            await this.interactor.UnregisterReminderAsync(reminder.ActorType, reminder.ActorId.ToString(), reminder.Name);
+            await this.interactor.UnregisterReminderAsync(reminder.ActorType, reminder.ActorId?.ToString(), reminder.Name);
         }
 
         public override async Task RegisterTimerAsync(ActorTimer timer)
@@ -72,7 +72,7 @@ namespace Dapr.Actors.Runtime
             var timerInfo = new TimerInfo(timer.TimerCallback, timer.Data, timer.DueTime, timer.Period, timer.Ttl);
             #pragma warning restore 0618
             var data = JsonSerializer.Serialize(timerInfo);
-            await this.interactor.RegisterTimerAsync(timer.ActorType, timer.ActorId.ToString(), timer.Name, data);
+            await this.interactor.RegisterTimerAsync(timer.ActorType, timer.ActorId?.ToString(), timer.Name, data);
         }
 
         public override async Task UnregisterTimerAsync(ActorTimerToken timer)
@@ -82,7 +82,7 @@ namespace Dapr.Actors.Runtime
                 throw new ArgumentNullException(nameof(timer));
             }
 
-            await this.interactor.UnregisterTimerAsync(timer.ActorType, timer.ActorId.ToString(), timer.Name);
+            await this.interactor.UnregisterTimerAsync(timer.ActorType, timer.ActorId?.ToString(), timer.Name);
         }
 
         private async ValueTask<string> SerializeReminderAsync(ActorReminder reminder)
@@ -92,7 +92,7 @@ namespace Dapr.Actors.Runtime
             return await info.SerializeAsync();
         }
 
-        private async ValueTask<ActorReminder> DeserializeReminderAsync(Stream stream, ActorReminderToken token)
+        private async ValueTask<ActorReminder?> DeserializeReminderAsync(Stream stream, ActorReminderToken token)
         {
             if (stream == null)
             {
