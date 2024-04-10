@@ -37,7 +37,7 @@ namespace Dapr
         /// </summary>
         /// <param name="message">The exception message.</param>
         /// <param name="innerException">The inner exception.</param>
-        public DaprException(string message, Exception? innerException)
+        public DaprException(string? message, Exception? innerException)
             : base(message, innerException)
         {
         }

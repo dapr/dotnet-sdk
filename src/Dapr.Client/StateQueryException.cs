@@ -14,7 +14,7 @@ namespace Dapr.Client
         /// <param name="message">The description of the exception from the source.</param>
         /// <param name="response">The response containing successful items, if any, in a response with errors.</param>
         /// <param name="failedKeys">The key(s) that encountered an error during the query.</param>
-        public StateQueryException(string message, StateQueryResponse<TValue> response, IReadOnlyList<string> failedKeys)
+        public StateQueryException(string? message, StateQueryResponse<TValue> response, IReadOnlyList<string> failedKeys)
             : base(message)
         {
             Response = response;

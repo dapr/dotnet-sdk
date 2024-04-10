@@ -34,7 +34,7 @@ namespace Dapr
         /// Initializes a new instance of the <see cref="DaprApiException"/> class with error code 'UNKNOWN' and a specified error message.
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
-        public DaprApiException(string message)
+        public DaprApiException(string? message)
             : this(message, errorCode: null, false)
         {
         }
@@ -45,7 +45,7 @@ namespace Dapr
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="innerException">The exception that is the cause of the current exception.</param>
-        public DaprApiException(string message, Exception innerException)
+        public DaprApiException(string? message, Exception innerException)
             : this(message, innerException, errorCode: null, false)
         {
         }
@@ -66,7 +66,7 @@ namespace Dapr
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">Indicating if its an transient exception. </param>
-        public DaprApiException(string message, string? errorCode, bool isTransient)
+        public DaprApiException(string? message, string? errorCode, bool isTransient)
             : this(message, null, errorCode, isTransient)
         {
         }
@@ -80,7 +80,7 @@ namespace Dapr
         /// <param name="inner">The exception that is the cause of the current exception or null if no inner exception is specified. The <see cref="System.Exception" /> class provides more details about the inner exception..</param>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">Indicating if its an transient exception. </param>
-        public DaprApiException(string message, Exception? inner, string? errorCode, bool isTransient)
+        public DaprApiException(string? message, Exception? inner, string? errorCode, bool isTransient)
             : base(message, inner)
         {
             this.ErrorCode = errorCode ?? "UNKNOWN";
