@@ -215,7 +215,7 @@ namespace Dapr.Actors
             return Encoding.UTF8.GetString(base64EncodedBytes);
         }
 
-        public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string? actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default)
+        public async Task<Stream> InvokeActorMethodWithoutRemotingAsync(string? actorType, string actorId, string methodName, string? jsonPayload, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
 

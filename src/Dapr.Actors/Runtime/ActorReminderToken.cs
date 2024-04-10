@@ -28,7 +28,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="name">The reminder name.</param>
         public ActorReminderToken(
             string? actorType,
-            ActorId? actorId,
+            ActorId actorId,
             string name)
         {
             if (actorId == null)
@@ -49,7 +49,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets the actor id.
         /// </summary>
-        public ActorId? ActorId { get; }
+        public ActorId ActorId { get; }
 
         /// <summary>
         /// Gets the reminder name.

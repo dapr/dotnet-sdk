@@ -24,7 +24,7 @@ public abstract class WrappedMessage
     /// Gets or sets  the wrapped object.
     /// </summary>
     [DataMember(Name = "value", IsRequired = true, Order = 1)]
-    public object Value
+    public object? Value
     {
         get;
         set;

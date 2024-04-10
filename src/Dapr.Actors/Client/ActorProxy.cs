@@ -67,7 +67,7 @@ namespace Dapr.Actors.Client
         /// <param name="actorType">Type of actor implementation.</param>
         /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Proxy to the actor object.</returns>
-        public static TActorInterface Create<TActorInterface>(ActorId? actorId, string? actorType, ActorProxyOptions options = null)
+        public static TActorInterface Create<TActorInterface>(ActorId? actorId, string? actorType, ActorProxyOptions? options = null)
             where TActorInterface : IActor
         {
             return DefaultProxyFactory.CreateActorProxy<TActorInterface>(actorId, actorType, options);
@@ -85,7 +85,7 @@ namespace Dapr.Actors.Client
         /// <param name="actorType">Type of actor implementation.</param>
         /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Proxy to the actor object.</returns>
-        public static object Create(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions options = null)
+        public static object? Create(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions? options = null)
         {
             if (!typeof(IActor).IsAssignableFrom(actorInterfaceType))
             {
@@ -101,7 +101,7 @@ namespace Dapr.Actors.Client
         /// <param name="actorType">Type of actor.</param>
         /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Actor proxy to interact with remote actor object.</returns>
-        public static ActorProxy Create(ActorId? actorId, string? actorType, ActorProxyOptions options = null)
+        public static ActorProxy Create(ActorId? actorId, string? actorType, ActorProxyOptions? options = null)
         {
             return DefaultProxyFactory.Create(actorId, actorType, options);
         }
@@ -247,7 +247,7 @@ namespace Dapr.Actors.Client
             int parameterCount,
             object wrappedRequest)
         {
-            return this.ActorMessageBodyFactory.CreateRequestMessageBody(interfaceName, methodName, parameterCount, wrappedRequest);
+            return this.ActorMessageBodyFactory?.CreateRequestMessageBody(interfaceName, methodName, parameterCount, wrappedRequest);
         }
 
         /// <summary>
@@ -269,7 +269,7 @@ namespace Dapr.Actors.Client
         /// <param name="methodId">Method Id for the actor method.</param>
         /// <param name="responseBody">Response body.</param>
         /// <returns>Return value of method call as <see cref="object"/>.</returns>
-        protected virtual object GetReturnValue(int interfaceId, int methodId, object responseBody)
+        protected virtual object GetReturnValue(int interfaceId, int methodId, object? responseBody)
         {
             return Task.CompletedTask;
         }

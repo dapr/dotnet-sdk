@@ -69,7 +69,7 @@ namespace Dapr.Actors.Runtime
                 throw new NotImplementedException(Message);
             }
 
-            public object CreateActorProxy(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions? options = null)
+            public object? CreateActorProxy(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions? options = null)
             {
                 throw new NotImplementedException(Message);
             }

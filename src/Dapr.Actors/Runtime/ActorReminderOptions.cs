@@ -19,7 +19,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// The name of the reminder.
         /// </summary>
-        public string ReminderName { get; set; }
+        public string? ReminderName { get; set; }
 
         /// <summary>
         /// State that is passed to the Actor when the reminder fires.

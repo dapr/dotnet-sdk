@@ -36,7 +36,7 @@ namespace Dapr.Actors.Runtime
             }
 
             var serialized = await SerializeReminderAsync(reminder);
-            await this.interactor.RegisterReminderAsync(reminder.ActorType, reminder.ActorId?.ToString(), reminder.Name, serialized);
+            await this.interactor.RegisterReminderAsync(reminder.ActorType, reminder.ActorId.ToString(), reminder.Name, serialized);
         }
 
         public override async Task<IActorReminder?> GetReminderAsync(ActorReminderToken token)

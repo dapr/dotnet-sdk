@@ -62,7 +62,7 @@ namespace Dapr.Actors
         }
 
         /// <inheritdoc/>
-        public object Bind(Type? actorInterfaceType)
+        public object? Bind(Type? actorInterfaceType)
         {
             return ActorProxy.DefaultProxyFactory.CreateActorProxy(this.ActorId, actorInterfaceType, this.ActorType);
         }

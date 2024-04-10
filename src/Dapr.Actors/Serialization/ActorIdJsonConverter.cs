@@ -20,7 +20,7 @@ namespace Dapr.Actors.Seralization
     // Converter for ActorId - will be serialized as a JSON string
     internal class ActorIdJsonConverter : JsonConverter<ActorId>
     {
-        public override ActorId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override ActorId? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (typeToConvert != typeof(ActorId))
             {
@@ -31,7 +31,7 @@ namespace Dapr.Actors.Seralization
             // but we don't actually enforce a format. Ids could be a number, or a date, or whatever,
             // we don't really care. However we always **represent** Ids in JSON as strings.
             if (reader.TokenType == JsonTokenType.String && 
-                reader.GetString() is string text && 
+                reader.GetString() is { } text && 
                 !string.IsNullOrWhiteSpace(text))
             {
                 return new ActorId(text);

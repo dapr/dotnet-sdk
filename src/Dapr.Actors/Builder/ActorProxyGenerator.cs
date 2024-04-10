@@ -30,7 +30,7 @@ namespace Dapr.Actors.Builder
 
         public Type? ProxyInterfaceType { get; }
 
-        public ActorProxy CreateActorProxy()
+        public ActorProxy? CreateActorProxy()
         {
             return (ActorProxy)this.proxyActivator.CreateInstance();
         }

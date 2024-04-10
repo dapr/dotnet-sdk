@@ -30,7 +30,9 @@ namespace Dapr.Actors.Communication
             return type;
         }
 
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
         public object? GetObjectToSerialize(object? obj, Type targetType)
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
             if (obj == null)
             {
@@ -44,13 +46,16 @@ namespace Dapr.Actors.Communication
             return obj;
         }
 
-        public object GetDeserializedObject(object obj, Type? targetType)
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
+        public object? GetDeserializedObject(object? obj, Type? targetType)
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
             if (obj == null)
             {
                 return null;
             }
-            else if (obj is IActorReference reference && 
+            
+            if (obj is IActorReference reference && 
                     typeof(IActor).IsAssignableFrom(targetType) &&
                      !typeof(IActorReference).IsAssignableFrom(targetType))
             {

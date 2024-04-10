@@ -32,7 +32,7 @@ namespace Dapr.Actors
         /// <param name="jsonPayload">Serialized body.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task<Stream> InvokeActorMethodWithoutRemotingAsync(string? actorType, string actorId, string methodName, string jsonPayload, CancellationToken cancellationToken = default);
+        Task<Stream> InvokeActorMethodWithoutRemotingAsync(string? actorType, string actorId, string methodName, string? jsonPayload, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Saves state batch to Dapr.

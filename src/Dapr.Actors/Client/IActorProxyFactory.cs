@@ -46,7 +46,7 @@ namespace Dapr.Actors.Client
         /// <param name="actorType">Actor implementation Type.</param>
         /// <param name="options">The optional <see cref="ActorProxyOptions" /> to use when creating the actor proxy.</param>
         /// <returns>Returns Actor Proxy.</returns>
-        object CreateActorProxy(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions? options = null);
+        object? CreateActorProxy(ActorId? actorId, Type? actorInterfaceType, string? actorType, ActorProxyOptions? options = null);
 
         /// <summary>
         /// Creates an Actor Proxy for making calls without Remoting.

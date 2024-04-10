@@ -24,12 +24,12 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// The name of the callback for the timer.
         /// </summary>
-        public string TimerCallback { get; set; }
+        public string? TimerCallback { get; set; }
 
         /// <summary>
         /// State that is passed to the Actor when the timer fires.
         /// </summary>
-        public byte[] Data { get; set; }
+        public byte[]? Data { get; set; }
 
         /// <summary>
         /// <see cref="TimeSpan"/> that determines when the timer will first fire.

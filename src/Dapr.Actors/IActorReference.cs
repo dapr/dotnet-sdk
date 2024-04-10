@@ -28,6 +28,6 @@ namespace Dapr.Actors
         /// </summary>
         /// <param name="actorInterfaceType">Actor interface for the created <see cref="ActorProxy"/> to implement.</param>
         /// <returns>An actor proxy object that implements <see cref="IActorProxy"/> and TActorInterface.</returns>
-        object Bind(Type? actorInterfaceType);
+        object? Bind(Type? actorInterfaceType);
     }
 }

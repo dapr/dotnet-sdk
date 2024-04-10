@@ -154,12 +154,12 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets the callback name.
         /// </summary>
-        public string TimerCallback { get; }
+        public string? TimerCallback { get; }
 
         /// <summary>
         /// Gets the state passed to the callback.
         /// </summary>
-        public byte[] Data { get; }
+        public byte[]? Data { get; }
 
         /// <summary>
         /// Gets the time when the timer is first due to be invoked.

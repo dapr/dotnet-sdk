@@ -538,12 +538,12 @@ namespace Dapr.Actors.Runtime
             await this.Host.TimerManager.UnregisterTimerAsync(token);
         }
 
-        internal MethodInfo GetMethodInfoUsingReflection(Type actorType, string callback)
+        internal MethodInfo GetMethodInfoUsingReflection(Type actorType, string? callback)
         {
             return actorType.GetMethod(callback, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static);
         }
 
-        internal void ValidateTimerCallback(ActorHost host, string callback)
+        internal void ValidateTimerCallback(ActorHost host, string? callback)
         {
             var actorTypeName = host.ActorTypeInfo.ActorTypeName;
             var actorType = host.ActorTypeInfo.ImplementationType;
