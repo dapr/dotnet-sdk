@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-  <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Protobuf Include="Proto/message.proto" />
-  </ItemGroup>
+    <PropertyGroup>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <Protobuf Include="Proto/message.proto" />
+    </ItemGroup>
 </Project>
