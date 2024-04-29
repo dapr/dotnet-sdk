@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ namespace Dapr.Actors
     using System;
     using System.Runtime.Serialization;
     using Dapr.Actors.Client;
+    using Dapr.Actors.Runtime;
 
     /// <summary>
     /// Encapsulation of a reference to an actor for serialization.
@@ -74,18 +75,25 @@ namespace Dapr.Actors
                 throw new ArgumentNullException("actor");
             }
 
-            // try as IActorProxy for backward compatibility as customers's mock framework may rely on it before V2 remoting stack.
-            if (actor is IActorProxy actorProxy)
+            var actorReference = actor switch
             {
-                return new ActorReference()
+                // try as IActorProxy for backward compatibility as customers's mock framework may rely on it before V2 remoting stack.
+                IActorProxy actorProxy => new ActorReference()
                 {
                     ActorId = actorProxy.ActorId,
                     ActorType = actorProxy.ActorType,
-                };
-            }
+                },
+                // Handle case when we want to get ActorReference inside the Actor implementation.
+                Actor actorBase => new ActorReference()
+                {
+                    ActorId = actorBase.Id,
+                    ActorType = actorBase.Host.ActorTypeInfo.ActorTypeName,
+                },
+                // Handle case when we can't cast to IActorProxy or Actor.
+                _ => throw new ArgumentOutOfRangeException("actor"),
+            };
 
-            // TODO check for ActorBase
-            throw new ArgumentOutOfRangeException("actor");
+            return actorReference;
         }
     }
 }
