@@ -1,4 +1,6 @@
-﻿using Dapr.Actors.Client;
+﻿using System.Threading.Tasks;
+using Dapr.Actors.Client;
+using Dapr.Actors.Runtime;
 using Dapr.Actors.Test;
 using Xunit;
 
@@ -36,7 +38,41 @@ namespace Dapr.Actors
             Assert.Equal(expectedActorType, actorReference.ActorType);
         }
 
+        [Fact]
+        public async Task GetActorReference_FromActorImplementation_ReturnsActorReference()
+        {
+            // Arrange
+            var expectedActorId = new ActorId("abc");
+            var expectedActorType = nameof(ActorReferenceTestActor);
+            var host = ActorHost.CreateForTest<ActorReferenceTestActor>(new ActorTestOptions() { ActorId = expectedActorId });
+            var actor = new ActorReferenceTestActor(host);
 
+            // Act
+            var actorReference = await actor.GetActorReference();
 
+            // Assert
+            Assert.NotNull(actorReference);
+            Assert.Equal(expectedActorId, actorReference.ActorId);
+            Assert.Equal(expectedActorType, actorReference.ActorType);
+        }
+
+    }
+
+    public interface IActorReferenceTestActor : IActor
+    {
+        Task<ActorReference> GetActorReference();
+    }
+
+    public class ActorReferenceTestActor : Actor, IActorReferenceTestActor
+    {
+        public ActorReferenceTestActor(ActorHost host)
+            : base(host)
+        {
+        }
+
+        public Task<ActorReference> GetActorReference()
+        {
+            return Task.FromResult(ActorReference.Get(this));
+        }
     }
 }
