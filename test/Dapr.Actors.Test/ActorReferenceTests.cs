@@ -9,7 +9,7 @@ namespace Dapr.Actors
     public class ActorReferenceTests
     {
         [Fact]
-        public void GetActorReference_WhenActorIsNull_ReturnsNull()
+        public void Get_WhenActorIsNull_ReturnsNull()
         {
             // Arrange
             object actor = null;
@@ -22,7 +22,7 @@ namespace Dapr.Actors
         }
 
         [Fact]
-        public void GetActorReference_FromActorProxy_ReturnsActorReference()
+        public void Get_FromActorProxy_ReturnsActorReference()
         {
             // Arrange
             var expectedActorId = new ActorId("abc");
@@ -39,7 +39,7 @@ namespace Dapr.Actors
         }
 
         [Fact]
-        public async Task GetActorReference_FromActorImplementation_ReturnsActorReference()
+        public async Task Get_FromActorImplementation_ReturnsActorReference()
         {
             // Arrange
             var expectedActorId = new ActorId("abc");
