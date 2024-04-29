@@ -70,10 +70,7 @@ namespace Dapr.Actors
 
         private static ActorReference GetActorReference(object actor)
         {
-            if (actor == null)
-            {
-                throw new ArgumentNullException("actor");
-            }
+            ArgumentNullException.ThrowIfNull(actor, nameof(actor));
 
             var actorReference = actor switch
             {
