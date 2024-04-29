@@ -80,7 +80,8 @@ namespace Dapr.Actors
                     ActorId = actorProxy.ActorId,
                     ActorType = actorProxy.ActorType,
                 },
-                // Handle case when we want to get ActorReference inside the Actor implementation.
+                // Handle case when we want to get ActorReference inside the Actor implementation,
+                // we gather actor id and actor type from Actor base class.
                 Actor actorBase => new ActorReference()
                 {
                     ActorId = actorBase.Id,
