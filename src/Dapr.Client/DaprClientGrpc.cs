@@ -955,7 +955,7 @@ namespace Dapr.Client
                 throw new DaprException("State operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
             }
         }
-        //mycode
+        
         /// <inheritdoc/>
         public override async Task SaveByteStateAsync(
            string storeName,
@@ -965,7 +965,6 @@ namespace Dapr.Client
            IReadOnlyDictionary<string, string> metadata = default,
            CancellationToken cancellationToken = default)
         {
-            //throw new NotImplementedException();
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
             _ = await this.MakeSaveByteStateCallAsync(
@@ -987,7 +986,6 @@ namespace Dapr.Client
            IReadOnlyDictionary<string, string> metadata = default,
            CancellationToken cancellationToken = default)
         {
-            //throw new NotImplementedException();
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
             ArgumentVerifier.ThrowIfNull(etag, nameof(etag));
