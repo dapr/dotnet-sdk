@@ -88,7 +88,7 @@ namespace Dapr.Actors
                     ActorType = actorBase.Host.ActorTypeInfo.ActorTypeName,
                 },
                 // Handle case when we can't cast to IActorProxy or Actor.
-                _ => throw new ArgumentOutOfRangeException("actor"),
+                _ => throw new ArgumentOutOfRangeException("actor", "Invalid actor object type."),
             };
 
             return actorReference;

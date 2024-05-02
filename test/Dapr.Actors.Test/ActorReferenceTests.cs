@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 using Dapr.Actors.Test;
@@ -56,6 +57,20 @@ namespace Dapr.Actors
             Assert.Equal(expectedActorType, actorReference.ActorType);
         }
 
+        [Fact]
+        public void Get_WithInvalidObjectType_ThrowArgumentOutOfRangeException()
+        {
+            // Arrange
+            var actor = new object();
+
+            // Act
+            var act = () => ActorReference.Get(actor);
+
+            // Assert
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(act);
+            Assert.Equal("actor", exception.ParamName);
+            Assert.Equal("Invalid actor object type. (Parameter 'actor')", exception.Message);
+        }
     }
 
     public interface IActorReferenceTestActor : IActor
