@@ -62,16 +62,20 @@ namespace Dapr.AspNetCore.IntegrationTest.App
                 endpoints.MapSubscribeHandler();
                 endpoints.MapControllers();
 
-                endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("testpubsub", "A").WithTopic("testpubsub", "A.1");
+                endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("testpubsub", "A")
+                    .WithTopic("testpubsub", "A.1");
 
-                endpoints.MapPost("/splitTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitTopicBuilder");
+                endpoints.MapPost("/splitTopics", context => Task.CompletedTask)
+                    .WithTopic("pubsub", "splitTopicBuilder");
 
-                endpoints.MapPost("/splitMetadataTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitMetadataTopicBuilder", new Dictionary<string, string> { { "n1", "v1" }, { "n2", "v1" } });
+                endpoints.MapPost("/splitMetadataTopics", context => Task.CompletedTask).WithTopic("pubsub",
+                    "splitMetadataTopicBuilder", new Dictionary<string, string> {{"n1", "v1"}, {"n2", "v1"}});
 
                 endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
                 {
                     var daprClient = context.RequestServices.GetRequiredService<DaprClient>();
-                    var state = await daprClient.GetStateEntryAsync<Widget>("testStore", (string)context.Request.RouteValues["widget"]);
+                    var state = await daprClient.GetStateEntryAsync<Widget>("testStore",
+                        (string)context.Request.RouteValues["widget"]);
                     state.Value.Count++;
                     await state.SaveAsync();
                 });

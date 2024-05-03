@@ -152,7 +152,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
         {
             public void ConfigureServices(IServiceCollection services)
             {
-                services.AddActors(default);
+                services.AddActors(_ => {});
                 services.AddAuthentication().AddDapr(options => options.Token = "abcdefg");
 
                 services.AddAuthorization(o => o.AddDapr());
@@ -174,7 +174,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
         {
             public void ConfigureServices(IServiceCollection services)
             {
-                services.AddActors(default);
+                services.AddActors(_ => { });
             }
 
             public void Configure(IApplicationBuilder app)
@@ -184,10 +184,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
                 {
                     // This routing feature registers a "route of last resort" which is what
                     // was tripping out Actors prior to changing how they are registered.
-                    endpoints.MapFallback(context =>
-                    {
-                        throw new InvalidTimeZoneException("This should not be called!");
-                    });
+                    endpoints.MapFallback(_ => throw new InvalidTimeZoneException("This should not be called!"));
                     endpoints.MapActorsHandlers();
                 });
             }
@@ -197,7 +194,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
         {
             public void ConfigureServices(IServiceCollection services)
             {
-                services.AddActors(default);
+                services.AddActors(_ => {});
             }
 
             public void Configure(IApplicationBuilder app)

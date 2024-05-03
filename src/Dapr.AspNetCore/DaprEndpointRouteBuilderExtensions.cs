@@ -119,11 +119,11 @@ namespace Microsoft.AspNetCore.Builder
                                 topicMetadata[i].Match,
                                 topicMetadata[i].Priority,
                                 originalTopicMetadata.Where(m => (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.OwnedMetadatas?.Any(o => o.Equals(m.Id)) == true || string.IsNullOrEmpty(m.Id))
-                                                     .GroupBy(c => c.Name)
-                                                     .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),
+                                    .GroupBy(c => c.Name)
+                                    .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),
                                 (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.MetadataSeparator,
                                 e.RoutePattern,
-                                bulkSubscribe));
+                                bulkSubscribe)!);
                         }
 
                         return subs;
@@ -133,16 +133,16 @@ namespace Microsoft.AspNetCore.Builder
                     .Select(e => e.OrderBy(e => e.Priority))
                     .Select(e =>
                     {
-                        (string PubsubName, string Name, string? DeadLetterTopic, bool? EnableRawPayload, string? Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string? MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe) first = e.First();
+                        (string? PubsubName, string? Name, string? DeadLetterTopic, bool? EnableRawPayload, string? Match, int Priority, Dictionary<string, string[]>? OriginalTopicMetadata, string? MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe) first = e.FirstOrDefault();
                         var rawPayload = e.Any(f => f.EnableRawPayload.GetValueOrDefault());
                         var separator = e.FirstOrDefault(f => !string.IsNullOrEmpty(f.MetadataSeparator));
                         var metadataSeparator = separator.MetadataSeparator ?? ",";
-                        List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload, string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, string MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe)> rules = e.Where(f => !string.IsNullOrEmpty(f.Match)).ToList();
+                        List<(string? PubsubName, string? Name, string? DeadLetterTopic, bool? EnableRawPayload, string? Match, int Priority, Dictionary<string, string[]>? OriginalTopicMetadata, string? MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe)> rules = e.Where(f => !string.IsNullOrEmpty(f.Match)).ToList();
                         var defaultRoutes = e.Where(f => string.IsNullOrEmpty(f.Match)).Select(f => RoutePatternToString(f.RoutePattern)).ToList();
                         var defaultRoute = defaultRoutes.FirstOrDefault();
 
                         //multiple identical names. use comma separation.
-                        var metadata = new Metadata(e.SelectMany(c => c.OriginalTopicMetadata).GroupBy(c => c.Key).ToDictionary(c => c.Key, c => string.Join(metadataSeparator, c.SelectMany(c => c.Value).Distinct())));
+                        var metadata = new Metadata(e.SelectMany(c => c.OriginalTopicMetadata!).GroupBy(c => c.Key).ToDictionary(c => c.Key, c => string.Join(metadataSeparator, c.SelectMany(c => c.Value).Distinct())));
                         if (rawPayload || options?.EnableRawPayload is true)
                         {
                             metadata.Add(Metadata.RawPayload, "true");

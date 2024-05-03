@@ -76,7 +76,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         }
 
         [BulkSubscribe("metadata.1", 500, 2000)]
-        [Topic("pubsub", "metadata", new string[1] { "id1" })]
+        [Topic("pubsub", "metadata", new string[1] {"id1"})]
         [Topic("pubsub", "metadata.1", true)]
         [HttpPost("/multiMetadataTopicAttr")]
         [TopicMetadata("n1", "v1")]
@@ -98,7 +98,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         [HttpPost("/topicmetadataseparatorattrbyemptytring")]
         [TopicMetadata("n1", "v1")]
         [TopicMetadata("n1", "")]
-        public void TopicMetadataSeparatorByemptytring ()
+        public void TopicMetadataSeparatorByemptytring()
         {
         }
 
@@ -125,7 +125,8 @@ namespace Dapr.AspNetCore.IntegrationTest.App
         }
 
         [HttpPost("/controllerwithoutstateentry/{widget}")]
-        public async Task AddOneWithoutStateEntry([FromServices] DaprClient state, [FromState("testStore")] Widget widget)
+        public async Task AddOneWithoutStateEntry([FromServices] DaprClient state,
+            [FromState("testStore")] Widget widget)
         {
             widget.Count++;
             await state.SaveStateAsync("testStore", (string)this.HttpContext.Request.RouteValues["widget"], widget);
