@@ -14,6 +14,7 @@
 ﻿using System;
 using System.Text.Json;
 using Dapr.Client;
+using Grpc.Core;
 using Grpc.Net.Client;
 using Xunit;
 
@@ -110,5 +111,15 @@ namespace Dapr.AspNetCore.Test
             var entry = DaprClient.GetDaprApiTokenHeader(builder.DaprApiToken);
             Assert.Equal(default, entry);
         }
+
+        [Fact]
+        public void DaprClientBuilder_SetsTimeout()
+        {
+            var builder = new DaprClientBuilder();
+            builder.UseTimeout(TimeSpan.FromSeconds(2));
+            builder.Build();
+            Assert.Equal(2, builder.Timeout.Seconds);
+        }
     }
+
 }

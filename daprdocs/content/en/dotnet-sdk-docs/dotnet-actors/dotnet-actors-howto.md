@@ -319,11 +319,8 @@ namespace MyActorService
 
             app.UseRouting();
 
-            app.UseEndpoints(endpoints =>
-            {
-                // Register actors handlers that interface with the Dapr runtime.
-                endpoints.MapActorsHandlers();
-            });
+            // Register actors handlers that interface with the Dapr runtime.
+            app.MapActorsHandlers();
         }
     }
 }
