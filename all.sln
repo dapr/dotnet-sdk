@@ -1,4 +1,3 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32929.385
@@ -71,8 +70,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StateManagement", "examples
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServiceInvocation", "examples\Client\ServiceInvocation\ServiceInvocation.csproj", "{8B570E70-0E73-4042-A4B6-1CC3CC782A65}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PublishSubscribe", "examples\Client\PublishSubscribe\PublishSubscribe.csproj", "{DE6913E3-E5D9-4D1D-95F9-9FED87BD09BC}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test", "test\Dapr.E2E.Test\Dapr.E2E.Test.csproj", "{4AA9E7B7-36BF-4AAE-BFA3-C9CE8740F4A0}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.App", "test\Dapr.E2E.Test.App\Dapr.E2E.Test.App.csproj", "{345FC3FB-D1E9-4AE8-9052-17D20AB01FA2}"
@@ -106,18 +103,19 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkflowUnitTest", "example
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GeneratedActor", "GeneratedActor", "{7592AFA4-426B-42F3-AE82-957C86814482}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorClient", "examples\GeneratedActor\ActorClient\ActorClient.csproj", "{61C24126-F39D-4BEA-96DC-FC87BA730554}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ActorClient", "examples\GeneratedActor\ActorClient\ActorClient.csproj", "{61C24126-F39D-4BEA-96DC-FC87BA730554}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorCommon", "examples\GeneratedActor\ActorCommon\ActorCommon.csproj", "{CB903D21-4869-42EF-BDD6-5B1CFF674337}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ActorCommon", "examples\GeneratedActor\ActorCommon\ActorCommon.csproj", "{CB903D21-4869-42EF-BDD6-5B1CFF674337}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Generators", "src\Dapr.Actors.Generators\Dapr.Actors.Generators.csproj", "{980B5FD8-0107-41F7-8FAD-E4E8BAE8A625}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.Generators", "src\Dapr.Actors.Generators\Dapr.Actors.Generators.csproj", "{980B5FD8-0107-41F7-8FAD-E4E8BAE8A625}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActorService", "examples\GeneratedActor\ActorService\ActorService.csproj", "{7C06FE2D-6C62-48F5-A505-F0D715C554DE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ActorService", "examples\GeneratedActor\ActorService\ActorService.csproj", "{7C06FE2D-6C62-48F5-A505-F0D715C554DE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Generators.Test", "test\Dapr.Actors.Generators.Test\Dapr.Actors.Generators.Test.csproj", "{AF89083D-4715-42E6-93E9-38497D12A8A6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.Generators.Test", "test\Dapr.Actors.Generators.Test\Dapr.Actors.Generators.Test.csproj", "{AF89083D-4715-42E6-93E9-38497D12A8A6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.Actors.Generators", "test\Dapr.E2E.Test.Actors.Generators\Dapr.E2E.Test.Actors.Generators.csproj", "{B5CDB0DC-B26D-48F1-B934-FE5C1C991940}"
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "examples\Client\Cryptography\Cryptography.csproj", "{C74FBA78-13E8-407F-A173-4555AEE41FF3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.Actors.Generators", "test\Dapr.E2E.Test.Actors.Generators\Dapr.E2E.Test.Actors.Generators.csproj", "{B5CDB0DC-B26D-48F1-B934-FE5C1C991940}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cryptography", "examples\Client\Cryptography\Cryptography.csproj", "{C74FBA78-13E8-407F-A173-4555AEE41FF3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -291,10 +289,6 @@ Global
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Debug|Any CPU.ActiveCfg = Debug
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Debug|Any CPU.Build.0 = Debug
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Release|Any CPU.ActiveCfg = Release
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Release|Any CPU.Build.0 = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -343,10 +337,23 @@ Global
 		{7592AFA4-426B-42F3-AE82-957C86814482} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
 		{61C24126-F39D-4BEA-96DC-FC87BA730554} = {7592AFA4-426B-42F3-AE82-957C86814482}
 		{CB903D21-4869-42EF-BDD6-5B1CFF674337} = {7592AFA4-426B-42F3-AE82-957C86814482}
-		{980B5FD8-0107-41F7-8FAD-E4E8BAE8A625} = {7592AFA4-426B-42F3-AE82-957C86814482}
+		{980B5FD8-0107-41F7-8FAD-E4E8BAE8A625} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{7C06FE2D-6C62-48F5-A505-F0D715C554DE} = {7592AFA4-426B-42F3-AE82-957C86814482}
 		{AF89083D-4715-42E6-93E9-38497D12A8A6} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{B5CDB0DC-B26D-48F1-B934-FE5C1C991940} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+		{C74FBA78-13E8-407F-A173-4555AEE41FF3} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
+	EndGlobalSection
+EndGlobal
+8-446B-AECD-DCC2CC871F73}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
+	EndGlobalSection
+EndGlobal
+C991940} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
