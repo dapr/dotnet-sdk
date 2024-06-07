@@ -22,7 +22,7 @@ The Actor example shows how to create a virtual actor (`DemoActor`) and invoke i
 To run the actor service locally run this command in `DemoActor` directory:
 
 ```sh
- dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5010 dotnet run
+dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5010 --config ./previewConfig.yaml dotnet run
 ```
 
 The `DemoActor` service will listen on port `5010` for HTTP.
@@ -54,15 +54,14 @@ Following curl call will save data for actor id "abc"
 
 On Linux, MacOS:
 
-```sh
+``` bash
 curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "PropertyA": "ValueA", "PropertyB": "ValueB" }'
 ```
 
  On Windows:
 
-```sh
-curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d "{ \"PropertyA\": \"ValueA\", \"PropertyB\": \"ValueB\" }"
-
+``` powershell
+Invoke-WebRequest -Method POST -Uri http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -ContentType "application/json" -Body '{ "data": {"PropertyA": "ValueA", "PropertyB": "ValueB" }, "ttl": "00:10:00" }' 
 ```
 
 **Get Data**
@@ -71,14 +70,14 @@ Following curl call will get data for actor id "abc"
 
 On Linux, MacOS:
 
-```sh
+``` bash
 curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
 ```
 
 On Windows:
 
-```sh
-curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
+``` powershell
+Invoke-WebRequest -Method POST -Uri http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
 ```
 
 ### Build and push Docker image
