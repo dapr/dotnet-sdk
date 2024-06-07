@@ -118,12 +118,18 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.Actors.Genera
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cryptography", "examples\Client\Cryptography\Cryptography.csproj", "{C74FBA78-13E8-407F-A173-4555AEE41FF3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoActor.UnitTest", "examples\Actor\DemoActor.UnitTest\DemoActor.UnitTest.csproj", "{67EB5D79-B31D-4CDB-8AA2-BC50AB82828A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{67EB5D79-B31D-4CDB-8AA2-BC50AB82828A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67EB5D79-B31D-4CDB-8AA2-BC50AB82828A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67EB5D79-B31D-4CDB-8AA2-BC50AB82828A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67EB5D79-B31D-4CDB-8AA2-BC50AB82828A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C2DB4B64-B7C3-4FED-8753-C040F677C69A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C2DB4B64-B7C3-4FED-8753-C040F677C69A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C2DB4B64-B7C3-4FED-8753-C040F677C69A}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -295,6 +301,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{67EB5D79-B31D-4CDB-8AA2-BC50AB82828A} = {02374BD0-BF0B-40F8-A04A-C4C4D61D4992}
 		{C2DB4B64-B7C3-4FED-8753-C040F677C69A} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{41BF4392-54BD-4FE7-A3EB-CD045F88CA9A} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{B9C12532-0969-4DAC-A2F8-CA9208D7A901} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
