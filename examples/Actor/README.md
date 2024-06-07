@@ -4,7 +4,7 @@ The Actor example shows how to create a virtual actor (`DemoActor`) and invoke i
 
 ## Prerequisites
 
-- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
+- [.NET 6+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
