@@ -21,17 +21,17 @@ namespace Dapr
         /// <summary>
         /// Gets the topic name.
         /// </summary>
-        string Name { get; }
+        string? Name { get; }
 
         /// <summary>
         /// Gets the pubsub component name name.
         /// </summary>
-        string PubsubName { get; }
+        string? PubsubName { get; }
 
         /// <summary>
         /// The CEL expression to use to match events for this handler.
         /// </summary>
-        string Match { get; }
+        string? Match { get; }
 
         /// <summary>
         /// The priority in which this rule should be evaluated (lower to higher).

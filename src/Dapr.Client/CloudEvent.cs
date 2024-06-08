@@ -26,19 +26,19 @@ namespace Dapr
 		/// CloudEvent 'source' attribute.
 		/// </summary>
 		[JsonPropertyName("source")]
-		public Uri Source { get; init; }
+		public Uri? Source { get; init; }
 
 		/// <summary>
 		/// CloudEvent 'type' attribute.
 		/// </summary>
 		[JsonPropertyName("type")]
-		public string Type { get; init; }
+		public string? Type { get; init; }
 
 		/// <summary>
 		/// CloudEvent 'subject' attribute.
 		/// </summary>
 		[JsonPropertyName("subject")]
-		public string Subject { get; init; }
+		public string? Subject { get; init; }
 	}
 
 	/// <summary>

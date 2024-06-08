@@ -34,8 +34,8 @@ namespace Dapr.AspNetCore
         /// <param name="specversion">Version of the event spec.</param>
         /// <param name="datacontenttype">Type of the payload.</param>
         /// <param name="data">Payload.</param>
-        public BulkMessageModel(string id, string source, string type, string specversion, string datacontenttype, 
-            TValue data) {
+        public BulkMessageModel(string? id, string? source, string? type, string? specversion, string? datacontenttype, 
+            TValue? data) {
             this.Id = id;
             this.Source = source;
             this.Type = type;
@@ -47,31 +47,31 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// Identifier of the message being processed.
         /// </summary>
-        public string Id { get; set; }
+        public string? Id { get; set; }
         
         /// <summary>
         /// Source for this event.
         /// </summary>
-        public string Source { get; set; }
+        public string? Source { get; set; }
         
         /// <summary>
         /// Type of event.
         /// </summary>
-        public string Type { get; set; }
+        public string? Type { get; set; }
         
         /// <summary>
         /// Version of the event spec.
         /// </summary>
-        public string Specversion { get; set; }
+        public string? Specversion { get; set; }
         
         /// <summary>
         /// Type of the payload.
         /// </summary>
-        public string Datacontenttype { get; set; }
+        public string? Datacontenttype { get; set; }
         
         /// <summary>
         /// Payload.
         /// </summary>
-        public TValue Data { get; set; }
+        public TValue? Data { get; set; }
     }
 }

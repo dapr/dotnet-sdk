@@ -45,7 +45,7 @@ namespace Dapr.Actors.Communication
         /// <see cref="IActorMessageBodyFactory" /> that provides an instance of the factory for creating
         /// remoting request and response message bodies.
         /// </returns>
-        public IActorMessageBodyFactory CreateMessageBodyFactory()
+        public IActorMessageBodyFactory? CreateMessageBodyFactory()
         {
             return new WrappedRequestMessageFactory();
         }
@@ -61,12 +61,15 @@ namespace Dapr.Actors.Communication
         /// actor request message body to a messaging body for transferring over the transport.
         /// </returns>
         public IActorRequestMessageBodySerializer CreateRequestMessageBodySerializer(
-            Type serviceInterfaceType,
+            Type? serviceInterfaceType,
             IEnumerable<Type> methodRequestParameterTypes,
-            IEnumerable<Type> wrappedRequestMessageTypes = null)
+            IEnumerable<Type>? wrappedRequestMessageTypes = null)
         {
             var knownTypes = new List<Type>(DefaultKnownTypes);
-            knownTypes.AddRange(wrappedRequestMessageTypes);
+            if (wrappedRequestMessageTypes != null)
+            {
+                knownTypes.AddRange(wrappedRequestMessageTypes);
+            }
 
             DataContractSerializer serializer = this.CreateMessageBodyDataContractSerializer(
                 typeof(WrappedMessageBody),
@@ -86,12 +89,15 @@ namespace Dapr.Actors.Communication
         /// actor response message body to a messaging body for transferring over the transport.
         /// </returns>
         public IActorResponseMessageBodySerializer CreateResponseMessageBodySerializer(
-            Type serviceInterfaceType,
+            Type? serviceInterfaceType,
             IEnumerable<Type> methodReturnTypes,
-            IEnumerable<Type> wrappedResponseMessageTypes = null)
+            IEnumerable<Type>? wrappedResponseMessageTypes = null)
         {
             var knownTypes = new List<Type>(DefaultKnownTypes);
-            knownTypes.AddRange(wrappedResponseMessageTypes);
+            if (wrappedResponseMessageTypes != null)
+            {
+                knownTypes.AddRange(wrappedResponseMessageTypes);
+            }
 
             DataContractSerializer serializer = this.CreateMessageBodyDataContractSerializer(
                 typeof(WrappedMessageBody),
@@ -123,7 +129,7 @@ namespace Dapr.Actors.Communication
         ///     An <see cref="System.Xml.XmlDictionaryReader" /> using which the serializer will read the object from the
         ///     stream.
         /// </returns>
-        internal XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
+        internal XmlDictionaryReader CreateXmlDictionaryReader(Stream? inputStream)
         {
             return XmlDictionaryReader.CreateBinaryReader(inputStream, XmlDictionaryReaderQuotas.Max);
         }
@@ -171,7 +177,7 @@ namespace Dapr.Actors.Communication
                 this.serializer = serializer;
             }
 
-            byte[] IActorRequestMessageBodySerializer.Serialize(IActorRequestMessageBody actorRequestMessageBody)
+            byte[]? IActorRequestMessageBodySerializer.Serialize(IActorRequestMessageBody? actorRequestMessageBody)
             {
                 if (actorRequestMessageBody == null)
                 {
@@ -186,7 +192,7 @@ namespace Dapr.Actors.Communication
                 return stream.ToArray();
             }
 
-            ValueTask<IActorRequestMessageBody> IActorRequestMessageBodySerializer.DeserializeAsync(Stream stream)
+            ValueTask<IActorRequestMessageBody?> IActorRequestMessageBodySerializer.DeserializeAsync(Stream? stream)
             {
                 if (stream == null)
                 {
@@ -200,10 +206,10 @@ namespace Dapr.Actors.Communication
 
                 stream.Position = 0;
                 using var reader = this.CreateXmlDictionaryReader(stream);
-                return new ValueTask<IActorRequestMessageBody>((TRequest)this.serializer.ReadObject(reader));
+                return new ValueTask<IActorRequestMessageBody?>((TRequest)this.serializer.ReadObject(reader));
             }
 
-            byte[] IActorResponseMessageBodySerializer.Serialize(IActorResponseMessageBody actorResponseMessageBody)
+            byte[]? IActorResponseMessageBodySerializer.Serialize(IActorResponseMessageBody? actorResponseMessageBody)
             {
                 if (actorResponseMessageBody == null)
                 {
@@ -218,7 +224,7 @@ namespace Dapr.Actors.Communication
                 return stream.ToArray();
             }
 
-            ValueTask<IActorResponseMessageBody> IActorResponseMessageBodySerializer.DeserializeAsync(Stream messageBody)
+            ValueTask<IActorResponseMessageBody?> IActorResponseMessageBodySerializer.DeserializeAsync(Stream? messageBody)
             {
                 if (messageBody == null)
                 {
@@ -236,7 +242,7 @@ namespace Dapr.Actors.Communication
                 }
 
                 using var reader = this.CreateXmlDictionaryReader(stream);
-                return new ValueTask<IActorResponseMessageBody>((TResponse)this.serializer.ReadObject(reader));
+                return new ValueTask<IActorResponseMessageBody?>((TResponse)this.serializer.ReadObject(reader));
             }
 
             /// <summary>
@@ -262,7 +268,7 @@ namespace Dapr.Actors.Communication
             ///     An <see cref="System.Xml.XmlDictionaryReader" /> using which the serializer will read the object from the
             ///     stream.
             /// </returns>
-            private XmlDictionaryReader CreateXmlDictionaryReader(Stream inputStream)
+            private XmlDictionaryReader CreateXmlDictionaryReader(Stream? inputStream)
             {
                 return this.serializationProvider.CreateXmlDictionaryReader(inputStream);
             }

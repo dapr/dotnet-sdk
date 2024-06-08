@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Builder
         /// <param name="name">The topic name.</param>
         /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
         /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
-        public static T WithTopic<T>(this T builder, string pubsubName, string name)
+        public static T WithTopic<T>(this T builder, string? pubsubName, string? name)
             where T : IEndpointConventionBuilder
         {
             return WithTopic(builder, pubsubName, name, false);
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Builder
         /// </param>
         /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
         /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
-        public static T WithTopic<T>(this T builder, string pubsubName, string name, IDictionary<string, string> metadata)
+        public static T WithTopic<T>(this T builder, string? pubsubName, string? name, IDictionary<string, string>? metadata)
             where T : IEndpointConventionBuilder
         {
             return WithTopic(builder, pubsubName, name, false, metadata);
@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Builder
         /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
         /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
         /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
-        public static T WithTopic<T>(this T builder, string pubsubName, string name, bool enableRawPayload)
+        public static T WithTopic<T>(this T builder, string? pubsubName, string? name, bool enableRawPayload)
             where T : IEndpointConventionBuilder
         {
             return WithTopic(builder, pubsubName, name, enableRawPayload, null);
@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Builder
         /// </param>
         /// <typeparam name="T">The <see cref="IEndpointConventionBuilder" /> type.</typeparam>
         /// <returns>The <see cref="IEndpointConventionBuilder" /> builder object.</returns>
-        public static T WithTopic<T>(this T builder, string pubsubName, string name, bool enableRawPayload, IDictionary<string, string> metadata)
+        public static T WithTopic<T>(this T builder, string? pubsubName, string? name, bool enableRawPayload, IDictionary<string, string>? metadata)
             where T : IEndpointConventionBuilder
         {
             if (builder is null)

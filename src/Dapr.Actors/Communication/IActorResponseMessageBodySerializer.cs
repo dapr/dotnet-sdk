@@ -26,13 +26,13 @@ namespace Dapr.Actors.Communication
         /// </summary>
         /// <param name="actorResponseMessageBody">Actor request message body object.</param>
         /// <returns>Serialized message body.</returns>
-        byte[] Serialize(IActorResponseMessageBody actorResponseMessageBody);
+        byte[]? Serialize(IActorResponseMessageBody? actorResponseMessageBody);
 
         /// <summary>
         /// Deserializes an incoming message body to remoting response body object.
         /// </summary>
         /// <param name="messageBody">Serialized message body.</param>
         /// <returns>Deserialized actor response message body object.</returns>
-        ValueTask<IActorResponseMessageBody> DeserializeAsync(Stream messageBody);
+        ValueTask<IActorResponseMessageBody?> DeserializeAsync(Stream? messageBody);
     }
 }

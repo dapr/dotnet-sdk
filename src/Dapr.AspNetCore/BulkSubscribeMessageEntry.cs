@@ -34,8 +34,8 @@ namespace Dapr.AspNetCore
         /// <param name="contentType">Content type of the event.</param>
         /// <param name="metadata">Metadata for the event.</param>
         /// <param name="eventData">The pubsub event.</param>
-        public BulkSubscribeMessageEntry(string entryId, string contentType, Dictionary<string, string> metadata, 
-            TValue eventData)
+        public BulkSubscribeMessageEntry(string? entryId, string? contentType, Dictionary<string, string>? metadata, 
+            TValue? eventData)
         {
             this.EntryId = entryId;
             this.ContentType = contentType;
@@ -46,22 +46,22 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// A unique identifier for the event.
         /// </summary>
-        public string EntryId { get; set; }
+        public string? EntryId { get; set; }
         
         /// <summary>
         /// Content type of the event.
         /// </summary>
-        public string ContentType { get; set; }
+        public string? ContentType { get; set; }
         
         /// <summary>
         /// Metadata for the event.
         /// </summary>
-        public Dictionary<string, string> Metadata { get; set; }
+        public Dictionary<string, string>? Metadata { get; set; }
         
         /// <summary>
         /// The pubsub event.
         /// </summary>
-        public TValue Event { get; set; }
+        public TValue? Event { get; set; }
         
     }
 }

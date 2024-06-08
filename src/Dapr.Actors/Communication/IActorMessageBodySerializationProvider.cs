@@ -25,7 +25,7 @@ namespace Dapr.Actors.Communication
         /// Create a IServiceRemotingMessageBodyFactory used for creating remoting request and response body.
         /// </summary>
         /// <returns>A custom <see cref="IActorMessageBodyFactory"/> that can be used for creating remoting request and response message bodies.</returns>
-        IActorMessageBodyFactory CreateMessageBodyFactory();
+        IActorMessageBodyFactory? CreateMessageBodyFactory();
 
         /// <summary>
         /// Creates IActorRequestMessageBodySerializer for a serviceInterface using Wrapped Message DataContract implementation.
@@ -38,9 +38,9 @@ namespace Dapr.Actors.Communication
         /// actor request message body to a messaging body for transferring over the transport.
         /// </returns>
         IActorRequestMessageBodySerializer CreateRequestMessageBodySerializer(
-            Type serviceInterfaceType,
+            Type? serviceInterfaceType,
             IEnumerable<Type> methodRequestParameterTypes,
-            IEnumerable<Type> wrappedRequestMessageTypes = null);
+            IEnumerable<Type>? wrappedRequestMessageTypes = null);
 
         /// <summary>
         /// Creates IActorResponseMessageBodySerializer for a serviceInterface using Wrapped Message DataContract implementation.
@@ -53,8 +53,8 @@ namespace Dapr.Actors.Communication
         /// actor response message body to a messaging body for transferring over the transport.
         /// </returns>
         IActorResponseMessageBodySerializer CreateResponseMessageBodySerializer(
-            Type serviceInterfaceType,
+            Type? serviceInterfaceType,
             IEnumerable<Type> methodReturnTypes,
-            IEnumerable<Type> wrappedResponseMessageTypes = null);
+            IEnumerable<Type>? wrappedResponseMessageTypes = null);
     }
 }

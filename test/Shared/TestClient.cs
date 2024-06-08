@@ -42,10 +42,10 @@ namespace Dapr
         }
         #endif
 
-        public static TestClient<HttpMessageHandler> CreateForMessageHandler()
+        public static TestClient<HttpMessageHandler?> CreateForMessageHandler()
         {
             var handler = new CapturingHandler();
-            return new TestClient<HttpMessageHandler>(handler, handler);
+            return new TestClient<HttpMessageHandler?>(handler, handler);
         }
 
         public static TestClient<DaprClient> CreateForDaprClient(Action<DaprClientBuilder>? configure = default)
@@ -354,7 +354,7 @@ namespace Dapr
 
     public class TestClient<TClient> : TestClient, IAsyncDisposable
     {
-        public TestClient(TClient innerClient, CapturingHandler handler)
+        public TestClient(TClient innerClient, CapturingHandler? handler)
         {
             this.InnerClient = innerClient;
             this.Handler = handler;
@@ -362,7 +362,7 @@ namespace Dapr
 
         public TClient InnerClient { get; }
 
-        private CapturingHandler Handler { get; }
+        private CapturingHandler? Handler { get; }
 
         public async Task<TestHttpRequest> CaptureHttpRequestAsync(Func<TClient, Task> operation)
         {
@@ -390,7 +390,7 @@ namespace Dapr
 
         private async Task<(HttpRequestMessage, CaptureToken, Task)> CaptureHttpRequestMessageAsync(Func<TClient, Task> operation)
         {
-            var capture = this.Handler.Capture();
+            var capture = this.Handler?.Capture();
             var task = operation(this.InnerClient);
             if (task.IsFaulted)
             {
@@ -403,7 +403,10 @@ namespace Dapr
             {
                 // Apply a 10 second timeout to waiting for the task to be queued. This is a very
                 // generous timeout so if we hit it then it's likely a bug.
-                request = await capture.GetRequestAsync(TimeSpan.FromSeconds(10));
+                if (capture != null)
+                {
+                    request = await capture.GetRequestAsync(TimeSpan.FromSeconds(10));
+                }
             }
 
             // If the original operation threw, report that instead of the timeout
@@ -420,8 +423,8 @@ namespace Dapr
         {
             (this.InnerClient as IDisposable)?.Dispose();
 
-            var requests = this.Handler.GetOutstandingRequests().ToArray();
-            if (requests.Length > 0)
+            var requests = this.Handler?.GetOutstandingRequests().ToArray();
+            if (requests?.Length > 0)
             {
                 throw new InvalidOperationException(
                     "The client has 1 or more incomplete requests. " +

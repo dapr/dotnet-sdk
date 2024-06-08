@@ -35,7 +35,7 @@ namespace Dapr.Actors.Builder
         /// <value><see cref="bool"/> to get or set enable debugging flag for the attribute to be used by auto code generation.</value>
         public bool EnableDebugging { get; set; }
 
-        internal static bool IsDebuggingEnabled(Type type = null)
+        internal static bool IsDebuggingEnabled(Type? type = null)
         {
             var enableDebugging = false;
             var entryAssembly = Assembly.GetEntryAssembly();
@@ -43,18 +43,18 @@ namespace Dapr.Actors.Builder
             if (entryAssembly != null)
             {
                 var attribute = entryAssembly.GetCustomAttribute<CodeBuilderAttribute>();
-                enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
+                enableDebugging = attribute is {EnableDebugging: true};
             }
 
             if (!enableDebugging && (type != null))
             {
                 var attribute = type.GetTypeInfo().Assembly.GetCustomAttribute<CodeBuilderAttribute>();
-                enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
+                enableDebugging = attribute is {EnableDebugging: true};
 
                 if (!enableDebugging)
                 {
                     attribute = type.GetTypeInfo().GetCustomAttribute<CodeBuilderAttribute>(true);
-                    enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
+                    enableDebugging = attribute is {EnableDebugging: true};
                 }
             }
 

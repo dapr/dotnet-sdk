@@ -35,7 +35,7 @@ namespace Dapr.Actors.Communication
 
         public void AddHeader(string headerName, byte[] headerValue)
         {
-            if (this.headers.ContainsKey(headerName))
+            if (!this.headers.TryAdd(headerName, headerValue))
             {
                 // TODO throw Dapr specific translated exception type
                 throw new System.Exception(
@@ -44,28 +44,16 @@ namespace Dapr.Actors.Communication
                         SR.ErrorHeaderAlreadyExists,
                         headerName));
             }
-
-            this.headers[headerName] = headerValue;
         }
 
         public bool CheckIfItsEmpty()
         {
-           if (this.headers == null || this.headers.Count == 0)
-           {
-                return true;
-           }
-
-           return false;
+            return this.headers.Count == 0;
         }
 
-        public bool TryGetHeaderValue(string headerName, out byte[] headerValue)
+        public bool TryGetHeaderValue(string headerName, out byte[]? headerValue)
         {
             headerValue = null;
-
-            if (this.headers == null)
-            {
-                return false;
-            }
 
             return this.headers.TryGetValue(headerName, out headerValue);
         }

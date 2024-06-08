@@ -52,7 +52,7 @@ namespace Dapr
             // The philosophy here is that we don't report an error for things we don't support, because
             // that would block someone from implementing their own support for it. We only report an error
             // when something we do support isn't correct.
-            if (!this.MatchesContentType(httpContext, out var charSet))
+            if (!this.MatchesContentType(httpContext, out var charSet) || charSet is null)
             {
                 return this.next(httpContext);
             }
@@ -69,18 +69,16 @@ namespace Dapr
             }
             else
             {
-                using (var reader = new HttpRequestStreamReader(httpContext.Request.Body, Encoding.GetEncoding(charSet)))
-                {
-                    var text = await reader.ReadToEndAsync();
-                    json = JsonSerializer.Deserialize<JsonElement>(text);
-                }
+                using var reader = new HttpRequestStreamReader(httpContext.Request.Body, Encoding.GetEncoding(charSet));
+                var text = await reader.ReadToEndAsync();
+                json = JsonSerializer.Deserialize<JsonElement>(text);
             }
 
             Stream originalBody;
             Stream body;
 
-            string originalContentType;
-            string contentType;
+            string? originalContentType;
+            string? contentType;
 
             // Check whether to use data or data_base64 as per https://github.com/cloudevents/spec/blob/v1.0.1/json-format.md#31-handling-of-data
             var isDataSet = json.TryGetProperty("data", out var data);
@@ -109,8 +107,8 @@ namespace Dapr
                 {
                     // Rehydrate body from contents of the string
                     var text = data.GetString();
-                    using var writer = new HttpResponseStreamWriter(body, Encoding.UTF8);
-                    writer.Write(text);
+                    await using var writer = new HttpResponseStreamWriter(body, Encoding.UTF8);
+                    await writer.WriteAsync(text);
                 }
 
                 body.Seek(0L, SeekOrigin.Begin);
@@ -148,9 +146,9 @@ namespace Dapr
             }
         }
 
-        private string GetDataContentType(JsonElement json, out bool isJson)
+        private string? GetDataContentType(JsonElement json, out bool isJson)
         {
-            string contentType;
+            string? contentType;
             if (json.TryGetProperty("datacontenttype", out var dataContentType) &&
                 dataContentType.ValueKind == JsonValueKind.String && 
                 MediaTypeHeaderValue.TryParse(dataContentType.GetString(), out var parsed))
@@ -163,7 +161,7 @@ namespace Dapr
                 // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
                 // to remove any charset information. We generally just assume utf-8 everywhere, so omitting
                 // a charset is a safe bet.
-                if (contentType.Contains("charset"))
+                if (contentType != null && contentType.Contains("charset"))
                 {
                     parsed.Charset = StringSegment.Empty;
                     contentType = parsed.ToString();
@@ -179,7 +177,7 @@ namespace Dapr
             return contentType;
         }
 
-        private bool MatchesContentType(HttpContext httpContext, out string charSet)
+        private bool MatchesContentType(HttpContext httpContext, out string? charSet)
         {
             if (httpContext.Request.ContentType == null)
             {

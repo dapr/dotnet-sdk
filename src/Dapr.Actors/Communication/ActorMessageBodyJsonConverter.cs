@@ -26,19 +26,23 @@ namespace Dapr.Actors.Communication
 
         public ActorMessageBodyJsonConverter(
             List<Type> methodRequestParameterTypes,
-            List<Type> wrappedRequestMessageTypes = null
+            List<Type>? wrappedRequestMessageTypes = null
         )
         {
             this.methodRequestParameterTypes = methodRequestParameterTypes;
-            this.wrappedRequestMessageTypes = wrappedRequestMessageTypes;
 
-            if (this.wrappedRequestMessageTypes != null && this.wrappedRequestMessageTypes.Count == 1)
+            if (wrappedRequestMessageTypes != null)
+            {
+                this.wrappedRequestMessageTypes = wrappedRequestMessageTypes;
+            }
+
+            if (this.wrappedRequestMessageTypes is {Count: 1})
             {
                 this.wrapperMessageType = this.wrappedRequestMessageTypes[0];
             }
         }
 
-        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions? options)
         {
             // Ensure start-of-object, then advance
             if (reader.TokenType != JsonTokenType.StartObject) throw new JsonException();
@@ -64,7 +68,7 @@ namespace Dapr.Actors.Communication
                 // Construct a new WrappedMessageBody with the deserialized value.
                 var wrapper = new WrappedMessageBody()
                 {
-                    Value = value,
+                    Value = value
                 };
 
                 // Read the end object token.

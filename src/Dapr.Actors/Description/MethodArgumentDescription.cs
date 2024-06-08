@@ -27,7 +27,7 @@ namespace Dapr.Actors.Description
             this.parameterInfo = parameterInfo;
         }
 
-        public string Name
+        public string? Name
         {
             get { return this.parameterInfo.Name; }
         }

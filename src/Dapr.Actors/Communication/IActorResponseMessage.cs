@@ -22,12 +22,12 @@ namespace Dapr.Actors.Communication
         /// Gets the header of the response message.
         /// </summary>
         /// <returns>The header of this response message.</returns>
-        IActorResponseMessageHeader GetHeader();
+        IActorResponseMessageHeader? GetHeader();
 
         /// <summary>
         /// Gets the body of the response message.
         /// </summary>
         /// <returns>The body of this response message.</returns>
-        IActorResponseMessageBody GetBody();
+        IActorResponseMessageBody? GetBody();
     }
 }

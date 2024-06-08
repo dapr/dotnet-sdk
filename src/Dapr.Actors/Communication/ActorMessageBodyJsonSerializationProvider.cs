@@ -26,12 +26,12 @@ namespace Dapr.Actors.Communication
     /// </summary>
     internal class ActorMessageBodyJsonSerializationProvider : IActorMessageBodySerializationProvider
     {
-        public JsonSerializerOptions Options { get; }
+        public JsonSerializerOptions? Options { get; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ActorMessageBodyJsonSerializationProvider"/> class.
         /// </summary>
-        public ActorMessageBodyJsonSerializationProvider(JsonSerializerOptions options)
+        public ActorMessageBodyJsonSerializationProvider(JsonSerializerOptions? options)
         {
             Options = options;
         }
@@ -43,7 +43,7 @@ namespace Dapr.Actors.Communication
         /// <see cref="IActorMessageBodyFactory" /> that provides an instance of the factory for creating
         /// remoting request and response message bodies.
         /// </returns>
-        public IActorMessageBodyFactory CreateMessageBodyFactory()
+        public IActorMessageBodyFactory? CreateMessageBodyFactory()
         {
             return new WrappedRequestMessageFactory();
         }
@@ -59,9 +59,9 @@ namespace Dapr.Actors.Communication
         /// actor request message body to a messaging body for transferring over the transport.
         /// </returns>
         public IActorRequestMessageBodySerializer CreateRequestMessageBodySerializer(
-            Type serviceInterfaceType,
+            Type? serviceInterfaceType,
             IEnumerable<Type> methodRequestParameterTypes,
-            IEnumerable<Type> wrappedRequestMessageTypes = null)
+            IEnumerable<Type>? wrappedRequestMessageTypes = null)
         {
             return new MemoryStreamMessageBodySerializer<WrappedMessageBody, WrappedMessageBody>(Options, serviceInterfaceType, methodRequestParameterTypes, wrappedRequestMessageTypes);
         }
@@ -77,9 +77,9 @@ namespace Dapr.Actors.Communication
         /// actor response message body to a messaging body for transferring over the transport.
         /// </returns>
         public IActorResponseMessageBodySerializer CreateResponseMessageBodySerializer(
-            Type serviceInterfaceType,
+            Type? serviceInterfaceType,
             IEnumerable<Type> methodReturnTypes,
-            IEnumerable<Type> wrappedResponseMessageTypes = null)
+            IEnumerable<Type>? wrappedResponseMessageTypes = null)
         {
             return new MemoryStreamMessageBodySerializer<WrappedMessageBody, WrappedMessageBody>(Options, serviceInterfaceType, methodReturnTypes, wrappedResponseMessageTypes);
         }
@@ -94,16 +94,20 @@ namespace Dapr.Actors.Communication
             where TRequest : IActorRequestMessageBody
             where TResponse : IActorResponseMessageBody
         {
-            private readonly JsonSerializerOptions serializerOptions;
+            private readonly JsonSerializerOptions? serializerOptions;
 
             public MemoryStreamMessageBodySerializer(
-                JsonSerializerOptions serializerOptions,
-                Type serviceInterfaceType,
+                JsonSerializerOptions? serializerOptions,
+                Type? serviceInterfaceType,
                 IEnumerable<Type> methodRequestParameterTypes,
-                IEnumerable<Type> wrappedRequestMessageTypes = null)
+                IEnumerable<Type>? wrappedRequestMessageTypes = null)
             {
                 var _methodRequestParameterTypes = new List<Type>(methodRequestParameterTypes);
-                var _wrappedRequestMessageTypes = new List<Type>(wrappedRequestMessageTypes);
+                var _wrappedRequestMessageTypes = new List<Type>();
+                if (wrappedRequestMessageTypes != null)
+                {
+                    _wrappedRequestMessageTypes.AddRange(wrappedRequestMessageTypes);
+                }
 
                 this.serializerOptions = new(serializerOptions)
                 {
@@ -116,7 +120,7 @@ namespace Dapr.Actors.Communication
                 this.serializerOptions.Converters.Add(new ActorMessageBodyJsonConverter<TResponse>(_methodRequestParameterTypes, _wrappedRequestMessageTypes));
             }
 
-            byte[] IActorRequestMessageBodySerializer.Serialize(IActorRequestMessageBody actorRequestMessageBody)
+            byte[]? IActorRequestMessageBodySerializer.Serialize(IActorRequestMessageBody? actorRequestMessageBody)
             {
                 if (actorRequestMessageBody == null)
                 {
@@ -126,7 +130,7 @@ namespace Dapr.Actors.Communication
                 return JsonSerializer.SerializeToUtf8Bytes<object>(actorRequestMessageBody, this.serializerOptions);
             }
 
-            async ValueTask<IActorRequestMessageBody> IActorRequestMessageBodySerializer.DeserializeAsync(Stream stream)
+            async ValueTask<IActorRequestMessageBody?> IActorRequestMessageBodySerializer.DeserializeAsync(Stream? stream)
             {
                 if (stream == null)
                 {
@@ -142,7 +146,7 @@ namespace Dapr.Actors.Communication
                 return await JsonSerializer.DeserializeAsync<TRequest>(stream, this.serializerOptions);
             }
 
-            byte[] IActorResponseMessageBodySerializer.Serialize(IActorResponseMessageBody actorResponseMessageBody)
+            byte[]? IActorResponseMessageBodySerializer.Serialize(IActorResponseMessageBody? actorResponseMessageBody)
             {
                 if (actorResponseMessageBody == null)
                 {
@@ -152,7 +156,7 @@ namespace Dapr.Actors.Communication
                 return JsonSerializer.SerializeToUtf8Bytes<object>(actorResponseMessageBody, this.serializerOptions);
             }
 
-            async ValueTask<IActorResponseMessageBody> IActorResponseMessageBodySerializer.DeserializeAsync(Stream messageBody)
+            async ValueTask<IActorResponseMessageBody?> IActorResponseMessageBodySerializer.DeserializeAsync(Stream? messageBody)
             {
                 if (messageBody == null)
                 {
@@ -160,7 +164,7 @@ namespace Dapr.Actors.Communication
                 }
 
                 using var stream = new MemoryStream();
-                messageBody.CopyTo(stream);
+                await messageBody.CopyToAsync(stream);
                 stream.Position = 0;
 
                 if (stream.Capacity == 0)

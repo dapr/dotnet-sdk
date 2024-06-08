@@ -32,7 +32,7 @@ namespace Dapr.Actors.Runtime
         /// </summary>
         /// <param name="reminder">The <see cref="ActorReminderToken" /> to unregister.</param>
         /// <returns>A task which will complete when the operation completes.</returns>
-        public abstract Task<IActorReminder> GetReminderAsync(ActorReminderToken reminder);
+        public abstract Task<IActorReminder?> GetReminderAsync(ActorReminderToken reminder);
 
         /// <summary>
         /// Unregisters the provided reminder with the runtime.

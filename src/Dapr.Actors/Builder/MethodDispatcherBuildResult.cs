@@ -22,8 +22,8 @@ namespace Dapr.Actors.Builder
         {
         }
 
-        public Type MethodDispatcherType { get; set; }
+        public Type? MethodDispatcherType { get; set; }
 
-        public ActorMethodDispatcherBase MethodDispatcher { get; set; }
+        public ActorMethodDispatcherBase? MethodDispatcher { get; set; }
     }
 }

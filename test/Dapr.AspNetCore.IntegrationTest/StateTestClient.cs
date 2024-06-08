@@ -36,7 +36,7 @@ namespace Dapr.Client
         {
         }
 
-        public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default) where TValue : default
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
@@ -72,12 +72,11 @@ namespace Dapr.Client
             return Task.FromResult<IReadOnlyList<BulkStateItem>>(response);
         }
 
-        public override Task<(TValue value, string etag)> GetStateAndETagAsync<TValue>(
-            string storeName,
+        public override Task GetStateAndETagAsync<TValue>(string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
             IReadOnlyDictionary<string, string> metadata = default,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default) where TValue : default
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));

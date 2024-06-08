@@ -70,7 +70,7 @@ namespace Dapr.Actors
         /// <param name="stream">The stream that contains the serialized exception or exception message.</param>
         /// <param name="result">Exception from the remote side.</param>
         /// <returns>true if there was a valid exception, false otherwise.</returns>
-        internal static bool ToException(Stream stream, out Exception result)
+        internal static bool ToException(Stream? stream, out Exception? result)
         {
             // try to de-serialize the bytes in to exception requestMessage and create service exception
             if (ActorInvokeException.TryDeserialize(stream, out result))
@@ -81,7 +81,7 @@ namespace Dapr.Actors
             return false;
         }
 
-        internal static bool TryDeserialize(Stream stream, out Exception result, ILogger logger = null)
+        internal static bool TryDeserialize(Stream? stream, out Exception? result, ILogger? logger = null)
         {
             try
             {

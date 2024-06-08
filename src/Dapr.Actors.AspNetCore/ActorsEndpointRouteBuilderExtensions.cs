@@ -74,8 +74,8 @@ namespace Microsoft.AspNetCore.Builder
             return endpoints.MapDelete("actors/{actorTypeName}/{actorId}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
-                var actorTypeName = (string)routeValues["actorTypeName"];
-                var actorId = (string)routeValues["actorId"];
+                var actorTypeName = (string?)routeValues["actorTypeName"];
+                var actorId = (string?)routeValues["actorId"];
                 await runtime.DeactivateAsync(actorTypeName, actorId);
             }).WithDisplayName(b => "Dapr Actors Deactivation");
         }
@@ -86,21 +86,18 @@ namespace Microsoft.AspNetCore.Builder
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/{methodName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
-                var actorTypeName = (string)routeValues["actorTypeName"];
-                var actorId = (string)routeValues["actorId"];
-                var methodName = (string)routeValues["methodName"];
+                var actorTypeName = (string?)routeValues["actorTypeName"];
+                var actorId = (string?)routeValues["actorId"];
+                var methodName = (string?)routeValues["methodName"];
 
-                if (context.Request.Headers.ContainsKey(Constants.ReentrancyRequestHeaderName))
+                if (context.Request.Headers.TryGetValue(Constants.ReentrancyRequestHeaderName, out var daprReentrancyHeader))
                 {
-                    var daprReentrancyHeader = context.Request.Headers[Constants.ReentrancyRequestHeaderName];
                     ActorReentrancyContextAccessor.ReentrancyContext = daprReentrancyHeader;
                 }
 
                 // If Header is present, call is made using Remoting, use Remoting dispatcher.
-                if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
+                if (context.Request.Headers.TryGetValue(Constants.RequestHeaderName, out var daprActorheader))
                 {
-                    var daprActorheader = context.Request.Headers[Constants.RequestHeaderName];
-
                     try
                     {
                         var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body, context.RequestAborted);
@@ -112,14 +109,14 @@ namespace Microsoft.AspNetCore.Builder
                             context.Response.Headers[Constants.ErrorResponseHeaderName] = header; // add error header
                         }
 
-                        await context.Response.Body.WriteAsync(body, 0, body.Length, context.RequestAborted); // add response message body
+                        await context.Response.Body.WriteAsync(body, context.RequestAborted); // add response message body
                     }
                     catch (Exception ex)
                     {
                         var (header, body) = CreateExceptionResponseMessage(ex);
 
                         context.Response.Headers[Constants.ErrorResponseHeaderName] = header;
-                        await context.Response.Body.WriteAsync(body, 0, body.Length, context.RequestAborted);
+                        await context.Response.Body.WriteAsync(body, context.RequestAborted);
                     }
                     finally
                     {
@@ -146,9 +143,9 @@ namespace Microsoft.AspNetCore.Builder
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/remind/{reminderName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
-                var actorTypeName = (string)routeValues["actorTypeName"];
-                var actorId = (string)routeValues["actorId"];
-                var reminderName = (string)routeValues["reminderName"];
+                var actorTypeName = (string?)routeValues["actorTypeName"];
+                var actorId = (string?)routeValues["actorId"];
+                var reminderName = (string?)routeValues["reminderName"];
 
                 // read dueTime, period and data from Request Body.
                 await runtime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body);
@@ -161,9 +158,9 @@ namespace Microsoft.AspNetCore.Builder
             return endpoints.MapPut("actors/{actorTypeName}/{actorId}/method/timer/{timerName}", async context =>
             {
                 var routeValues = context.Request.RouteValues;
-                var actorTypeName = (string)routeValues["actorTypeName"];
-                var actorId = (string)routeValues["actorId"];
-                var timerName = (string)routeValues["timerName"];
+                var actorTypeName = (string?)routeValues["actorTypeName"];
+                var actorId = (string?)routeValues["actorId"];
+                var timerName = (string?)routeValues["timerName"];
 
                 // read dueTime, period and data from Request Body.
                 await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body);
@@ -220,9 +217,9 @@ namespace Microsoft.AspNetCore.Builder
 
             public void Add(Action<EndpointBuilder> convention)
             {
-                for (var i = 0; i < inner.Length; i++)
+                foreach (var t in inner)
                 {
-                    inner[i].Add(convention);
+                    t.Add(convention);
                 }
             }
         }

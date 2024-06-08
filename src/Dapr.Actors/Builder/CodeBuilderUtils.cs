@@ -27,7 +27,7 @@ namespace Dapr.Actors.Builder
         private static readonly PropertyInfo DcAttrNamespacePropInfo;
         private static readonly ConstructorInfo DmAttrCtorInfo;
         private static readonly PropertyInfo DmAttrIsRequiredPropInfo;
-        private static readonly object[] EmptyObjectArray = { };
+        private static readonly object[] EmptyObjectArray = Array.Empty<object>();
 
         static CodeBuilderUtils()
         {
@@ -59,7 +59,7 @@ namespace Dapr.Actors.Builder
             ModuleBuilder moduleBuilder,
             string ns,
             string className,
-            Type baseType = null)
+            Type? baseType = null)
         {
             if (!string.IsNullOrEmpty(ns))
             {
@@ -83,7 +83,7 @@ namespace Dapr.Actors.Builder
             ModuleBuilder moduleBuilder,
             string ns,
             string className,
-            IEnumerable<Type> interfaces = null)
+            IEnumerable<Type>? interfaces = null)
         {
             return CreateClassBuilder(moduleBuilder, ns, className, null, interfaces);
         }
@@ -92,8 +92,8 @@ namespace Dapr.Actors.Builder
             ModuleBuilder moduleBuilder,
             string ns,
             string className,
-            Type baseType,
-            IEnumerable<Type> interfaces)
+            Type? baseType,
+            IEnumerable<Type>? interfaces)
         {
             var typeBuilder = CreateClassBuilder(moduleBuilder, ns, className, baseType);
             if (interfaces != null)
@@ -107,7 +107,7 @@ namespace Dapr.Actors.Builder
             return typeBuilder;
         }
 
-        public static FieldBuilder CreateFieldBuilder(TypeBuilder typeBuilder, Type fieldType, string fieldName)
+        public static FieldBuilder CreateFieldBuilder(TypeBuilder typeBuilder, Type fieldType, string? fieldName)
         {
             return typeBuilder.DefineField(
                 fieldName,
@@ -164,7 +164,7 @@ namespace Dapr.Actors.Builder
                 MethodAttributes.Final);
 
             var methodBuilder = typeBuilder.DefineMethod(
-                string.Concat(interfaceMethod.DeclaringType.Name, ".", interfaceMethod.Name),
+                string.Concat(interfaceMethod.DeclaringType?.Name, ".", interfaceMethod.Name),
                 methodAttrs,
                 interfaceMethod.ReturnType,
                 parameterTypes);
@@ -179,55 +179,55 @@ namespace Dapr.Actors.Builder
             ModuleBuilder moduleBuilder,
             string ns,
             string typeName,
-            string dcNamespace = null,
-            string dcName = null)
+            string? dcNamespace = null,
+            string? dcName = null)
         {
             var typeBuilder = CreateClassBuilder(moduleBuilder, ns, typeName, Type.EmptyTypes);
             AddDataContractAttribute(typeBuilder, dcNamespace, dcName);
             return typeBuilder;
         }
 
-        public static void AddDataMemberField(TypeBuilder dcTypeBuilder, Type fieldType, string fieldName)
+        public static void AddDataMemberField(TypeBuilder dcTypeBuilder, Type fieldType, string? fieldName)
         {
             var fieldBuilder = CreateFieldBuilder(dcTypeBuilder, fieldType, fieldName);
             fieldBuilder.SetCustomAttribute(CreateCustomDataMemberAttributeBuilder());
         }
 
-        private static void AddDataContractAttribute(TypeBuilder typeBuilder, string dcNamespace, string dcName)
+        private static void AddDataContractAttribute(TypeBuilder typeBuilder, string? dcNamespace, string? dcName)
         {
             typeBuilder.SetCustomAttribute(CreateCustomDataContractAttributeBuilder(dcNamespace, dcName));
         }
 
-        private static CustomAttributeBuilder CreateCustomDataContractAttributeBuilder(string dcNamespace, string dcName)
+        private static CustomAttributeBuilder CreateCustomDataContractAttributeBuilder(string? dcNamespace, string? dcName)
         {
             if (string.IsNullOrEmpty(dcName) && string.IsNullOrEmpty(dcNamespace))
             {
                 return new CustomAttributeBuilder(DcAttrCtorInfo, EmptyObjectArray);
             }
 
-            if (string.IsNullOrEmpty(dcName))
+            if (string.IsNullOrEmpty(dcName) && !string.IsNullOrEmpty(dcNamespace))
             {
                 return new CustomAttributeBuilder(
                     DcAttrCtorInfo,
                     EmptyObjectArray,
-                    new[] { DcAttrNamespacePropInfo },
-                    new object[] { dcNamespace });
+                    new[] {DcAttrNamespacePropInfo},
+                    new object[] {dcNamespace});
             }
 
-            if (string.IsNullOrEmpty(dcNamespace))
+            if (string.IsNullOrEmpty(dcNamespace) && !string.IsNullOrEmpty(dcName))
             {
                 return new CustomAttributeBuilder(
                     DcAttrCtorInfo,
                     EmptyObjectArray,
-                    new[] { DcAttrNamePropInfo },
-                    new object[] { dcName });
+                    new[] {DcAttrNamePropInfo},
+                    new object[] {dcName});
             }
 
             return new CustomAttributeBuilder(
                 DcAttrCtorInfo,
                 EmptyObjectArray,
                 new[] { DcAttrNamespacePropInfo, DcAttrNamePropInfo },
-                new object[] { dcNamespace, dcName });
+                new object[] { dcNamespace!, dcName! });
         }
 
         private static CustomAttributeBuilder CreateCustomDataMemberAttributeBuilder()

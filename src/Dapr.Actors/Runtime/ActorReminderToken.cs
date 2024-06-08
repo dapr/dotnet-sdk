@@ -27,34 +27,24 @@ namespace Dapr.Actors.Runtime
         /// <param name="actorId">The actor id.</param>
         /// <param name="name">The reminder name.</param>
         public ActorReminderToken(
-            string actorType,
+            string? actorType,
             ActorId actorId,
             string name)
         {
-            if (actorType == null)
-            {
-                throw new ArgumentNullException(nameof(actorType));
-            }
-
             if (actorId == null)
             {
                 throw new ArgumentNullException(nameof(actorId));
             }
 
-            if (name == null)
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
-
-            this.ActorType = actorType;
+            this.ActorType = actorType ?? throw new ArgumentNullException(nameof(actorType));
             this.ActorId = actorId;
-            this.Name = name;
+            this.Name = name ?? throw new ArgumentNullException(nameof(name));
         }
 
         /// <summary>
         /// Gets the actor type.
         /// </summary>
-        public string ActorType { get; }
+        public string? ActorType { get; }
 
         /// <summary>
         /// Gets the actor id.

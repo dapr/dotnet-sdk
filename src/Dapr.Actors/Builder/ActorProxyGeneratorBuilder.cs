@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,12 +27,12 @@ namespace Dapr.Actors.Builder
     internal class ActorProxyGeneratorBuilder : CodeBuilderModule
     {
         private readonly Type proxyBaseType;
-        private readonly MethodInfo createMessage;
-        private readonly MethodInfo invokeAsyncMethodInfo;
-        private readonly MethodInfo invokeMethodInfo;
-        private readonly MethodInfo continueWithResultMethodInfo;
-        private readonly MethodInfo continueWithMethodInfo;
-        private readonly MethodInfo checkIfitsWrapped;
+        private readonly MethodInfo? createMessage;
+        private readonly MethodInfo? invokeAsyncMethodInfo;
+        private readonly MethodInfo? invokeMethodInfo;
+        private readonly MethodInfo? continueWithResultMethodInfo;
+        private readonly MethodInfo? continueWithMethodInfo;
+        private readonly MethodInfo? checkIfitsWrapped;
 
         public ActorProxyGeneratorBuilder(ICodeBuilder codeBuilder)
             : base(codeBuilder)
@@ -85,10 +85,10 @@ namespace Dapr.Actors.Builder
                 BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
-        protected Type ProxyBaseType => this.proxyBaseType;
+        protected Type? ProxyBaseType => this.proxyBaseType;
 
         public ActorProxyGeneratorBuildResult Build(
-            Type proxyInterfaceType,
+            Type? proxyInterfaceType,
             IEnumerable<InterfaceDescription> interfaceDescriptions)
         {
             // create the context to build the proxy
@@ -118,7 +118,7 @@ namespace Dapr.Actors.Builder
             return result;
         }
 
-        internal static LocalBuilder CreateWrappedRequestBody(
+        internal static LocalBuilder? CreateWrappedRequestBody(
         MethodDescription methodDescription,
         MethodBodyTypes methodBodyTypes,
         ILGenerator ilGen,
@@ -175,7 +175,7 @@ namespace Dapr.Actors.Builder
 
             var parameters = interfaceMethod.GetParameters();
 
-            LocalBuilder requestBody = null;
+            LocalBuilder? requestBody = null;
 
             if (parameters.Length > 0)
             {
@@ -196,7 +196,7 @@ namespace Dapr.Actors.Builder
             ilGen.Emit(OpCodes.Ldc_I4, interfaceDescriptionId); // interfaceId
             ilGen.Emit(OpCodes.Ldc_I4, methodDescription.Id); // methodId
 
-            if (parameters.Length > 0)
+            if (parameters.Length > 0 && requestBody is not null)
             {
                 ilGen.Emit(OpCodes.Ldloc, requestBody);
             }
@@ -277,7 +277,7 @@ namespace Dapr.Actors.Builder
 
         private Type BuildProxyActivatorType(
             CodeBuilderContext context,
-            Type proxyInterfaceType,
+            Type? proxyInterfaceType,
             Type proxyType)
         {
             var classBuilder = CodeBuilderUtils.CreateClassBuilder(
@@ -383,7 +383,7 @@ namespace Dapr.Actors.Builder
 
         private Type BuildProxyType(
             CodeBuilderContext context,
-            Type proxyInterfaceType,
+            Type? proxyInterfaceType,
             IDictionary<InterfaceDescription, MethodBodyTypesBuildResult> methodBodyTypesResultsMap)
         {
             var classBuilder = CodeBuilderUtils.CreateClassBuilder(

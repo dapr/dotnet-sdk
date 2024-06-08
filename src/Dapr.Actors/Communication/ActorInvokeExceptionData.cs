@@ -37,7 +37,7 @@ namespace Dapr.Actors
         [DataMember]
         public string Message { get; private set; }
 
-        internal static ActorInvokeExceptionData Deserialize(Stream stream)
+        internal static ActorInvokeExceptionData? Deserialize(Stream? stream)
         {
             if ((stream == null) || (stream.Length == 0))
             {

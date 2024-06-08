@@ -22,27 +22,27 @@ namespace Dapr.Actors.Description
 
     internal class ActorInterfaceDescription : InterfaceDescription
     {
-        private ActorInterfaceDescription(Type actorInterfaceType, bool useCRCIdGeneration)
+        private ActorInterfaceDescription(Type? actorInterfaceType, bool useCRCIdGeneration)
             : base("actor", actorInterfaceType, useCRCIdGeneration, MethodReturnCheck.EnsureReturnsTask)
         {
         }
 
-        public static ActorInterfaceDescription Create(Type actorInterfaceType)
+        public static ActorInterfaceDescription Create(Type? actorInterfaceType)
         {
             EnsureActorInterface(actorInterfaceType);
             return new ActorInterfaceDescription(actorInterfaceType, false);
         }
 
-        public static ActorInterfaceDescription CreateUsingCRCId(Type actorInterfaceType)
+        public static ActorInterfaceDescription CreateUsingCRCId(Type? actorInterfaceType)
         {
             EnsureActorInterface(actorInterfaceType);
 
             return new ActorInterfaceDescription(actorInterfaceType, true);
         }
 
-        private static void EnsureActorInterface(Type actorInterfaceType)
+        private static void EnsureActorInterface(Type? actorInterfaceType)
         {
-            if (!actorInterfaceType.GetTypeInfo().IsInterface)
+            if (actorInterfaceType != null && !actorInterfaceType.GetTypeInfo().IsInterface)
             {
                 throw new ArgumentException(
                     string.Format(
@@ -72,7 +72,7 @@ namespace Dapr.Actors.Description
                        string.Format(
                            CultureInfo.CurrentCulture,
                            SR.ErrorNotAnActorInterface_DerivationCheck2,
-                           actorInterfaceType.FullName,
+                           actorInterfaceType?.FullName,
                            nonActorParentInterface.FullName,
                            typeof(IActor).FullName),
                        "actorInterfaceType");

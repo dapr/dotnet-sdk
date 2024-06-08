@@ -21,12 +21,12 @@ namespace Dapr.Actors.Communication
         /// <summary>
         /// Gets or sets the actorId to which remoting request will dispatch to.
         /// </summary>
-        ActorId ActorId { get; set; }
+        ActorId? ActorId { get; set; }
 
         /// <summary>
         /// Gets or sets the actorType to which remoting request will dispatch to.
         /// </summary>
-        string ActorType { get; set; }
+        string? ActorType { get; set; }
 
         /// <summary>
         /// Gets or sets the call context which is used to limit re-eentrancy in Actors.

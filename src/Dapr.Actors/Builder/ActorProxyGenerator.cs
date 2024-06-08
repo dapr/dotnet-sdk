@@ -21,16 +21,16 @@ namespace Dapr.Actors.Builder
         private readonly IProxyActivator proxyActivator;
 
         public ActorProxyGenerator(
-            Type proxyInterfaceType,
+            Type? proxyInterfaceType,
             IProxyActivator proxyActivator)
         {
             this.proxyActivator = proxyActivator;
             this.ProxyInterfaceType = proxyInterfaceType;
         }
 
-        public Type ProxyInterfaceType { get; }
+        public Type? ProxyInterfaceType { get; }
 
-        public ActorProxy CreateActorProxy()
+        public ActorProxy? CreateActorProxy()
         {
             return (ActorProxy)this.proxyActivator.CreateInstance();
         }

@@ -23,7 +23,7 @@ namespace Dapr.Actors.Client
     {
         // TODO: Add actor retry settings
 
-        private JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        private JsonSerializerOptions? jsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
         /// <summary>
         /// The constructor
@@ -35,7 +35,7 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// The <see cref="JsonSerializerOptions"/> used for actor proxy message serialization in non-remoting invocation.
         /// </summary>
-        public JsonSerializerOptions JsonSerializerOptions
+        public JsonSerializerOptions? JsonSerializerOptions
         {
             get => this.jsonSerializerOptions;
             set => this.jsonSerializerOptions = value ??

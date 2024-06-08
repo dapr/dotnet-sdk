@@ -27,7 +27,7 @@ namespace Dapr.Actors
         public const string Config = "config";
         public const string State = "state";
         public const string Actors = "actors";
-        public const string Namespace = "urn:actors";
+        public const string? Namespace = "urn:actors";
         public const string DaprDefaultEndpoint = "127.0.0.1";
         public const string DaprDefaultPort = "3500";
         public const string DaprVersion = "v1.0";

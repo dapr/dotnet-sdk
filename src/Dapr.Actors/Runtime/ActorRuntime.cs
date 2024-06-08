@@ -30,13 +30,13 @@ namespace Dapr.Actors.Runtime
     public sealed class ActorRuntime
     {
         // Map of ActorType --> ActorManager.
-        private readonly Dictionary<string, ActorManager> actorManagers = new Dictionary<string, ActorManager>();
-        private readonly ActorRuntimeOptions options;
+        private readonly Dictionary<string?, ActorManager> actorManagers = new Dictionary<string?, ActorManager>();
+        private readonly ActorRuntimeOptions? options;
         private readonly ILogger logger;
         private readonly ActorActivatorFactory activatorFactory;
         private readonly IActorProxyFactory proxyFactory;
 
-        internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory, IActorProxyFactory proxyFactory)
+        internal ActorRuntime(ActorRuntimeOptions? options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory, IActorProxyFactory proxyFactory)
         {
             this.options = options;
             this.logger = loggerFactory.CreateLogger(this.GetType());
@@ -109,7 +109,7 @@ namespace Dapr.Actors.Runtime
             return writer.FlushAsync();
         }
 
-        private void writeActorOptions(Utf8JsonWriter writer, ActorRuntimeOptions actorOptions)
+        private void writeActorOptions(Utf8JsonWriter writer, ActorRuntimeOptions? actorOptions)
         {
             if (actorOptions.ActorIdleTimeout != null)
             {
@@ -149,7 +149,7 @@ namespace Dapr.Actors.Runtime
         }
 
         // Deactivates an actor for an actor type with given actor id.
-        internal async Task DeactivateAsync(string actorTypeName, string actorId)
+        internal async Task DeactivateAsync(string? actorTypeName, string actorId)
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}", actorTypeName, actorId))
             {
@@ -158,7 +158,7 @@ namespace Dapr.Actors.Runtime
         }
 
         // Invokes the specified method for the actor when used with Remoting from CSharp client.
-        internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
+        internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string? actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, MethodName: {Reminder}", actorTypeName, actorId, actorMethodName))
             {
@@ -167,13 +167,13 @@ namespace Dapr.Actors.Runtime
         }
 
         // Invokes the specified method for the actor when used without remoting, this is mainly used for cross language invocation.
-        internal Task DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken = default)
+        internal Task DispatchWithoutRemotingAsync(string? actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken = default)
         {
             return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, cancellationToken);
         }
 
         // Fires a reminder for the Actor.
-        internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+        internal Task FireReminderAsync(string? actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, ReminderName: {Reminder}", actorTypeName, actorId, reminderName))
             {
@@ -182,7 +182,7 @@ namespace Dapr.Actors.Runtime
         }
 
         // Fires a timer for the Actor.
-        internal Task FireTimerAsync(string actorTypeName, string actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+        internal Task FireTimerAsync(string? actorTypeName, string actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
             using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, TimerName: {Timer}", actorTypeName, actorId, timerName))
             {
@@ -190,7 +190,7 @@ namespace Dapr.Actors.Runtime
             }
         }
 
-        private ActorManager GetActorManager(string actorTypeName)
+        private ActorManager GetActorManager(string? actorTypeName)
         {
             if (!this.actorManagers.TryGetValue(actorTypeName, out var actorManager))
             {

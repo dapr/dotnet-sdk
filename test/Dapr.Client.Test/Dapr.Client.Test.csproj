@@ -1,38 +1,41 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="coverlet.msbuild" Version="2.9.0">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="FluentAssertions" Version="5.9.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.15.8" />
-    <PackageReference Include="Grpc.Core.Testing" Version="2.46.3" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.52.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.47.0" PrivateAssets="All" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
-    <PackageReference Include="moq" Version="4.14.7" />
-    <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.0.123" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="3.1.8" />
-    <PackageReference Include="xunit" Version="2.4.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="coverlet.msbuild" Version="2.9.0">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="FluentAssertions" Version="5.9.0" />
+        <PackageReference Include="Google.Protobuf" Version="3.15.8" />
+        <PackageReference Include="Grpc.Core.Testing" Version="2.46.3" />
+        <PackageReference Include="Grpc.Net.Client" Version="2.52.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.47.0" PrivateAssets="All" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
+        <PackageReference Include="moq" Version="4.14.7" />
+        <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.0.123" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="3.1.8" />
+        <PackageReference Include="xunit" Version="2.4.1" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Protobuf Include="Protos\test.proto" ProtoRoot="Protos" GrpcServices="Client" />
-  </ItemGroup>
+    <ItemGroup>
+        <Protobuf Include="Protos\test.proto" ProtoRoot="Protos" GrpcServices="Client" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="..\Shared\AppCallbackClient.cs" />
-    <Compile Include="..\Shared\TestClient.cs" />
-    <Compile Include="..\Shared\GrpcUtils.cs" />
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Include="..\Shared\AppCallbackClient.cs" />
+        <Compile Include="..\Shared\TestClient.cs" />
+        <Compile Include="..\Shared\GrpcUtils.cs" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Dapr.Client\Dapr.Client.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Dapr.Client\Dapr.Client.csproj" />
+    </ItemGroup>
 
 </Project>

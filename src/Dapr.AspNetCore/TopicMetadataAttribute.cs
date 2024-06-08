@@ -40,7 +40,7 @@ namespace Dapr
         /// <param name="id">The metadata id.</param>
         /// <param name="name">The metadata name.</param>
         /// <param name="value">The metadata value.</param>
-        public TopicMetadataAttribute(string id, string name, string value)
+        public TopicMetadataAttribute(string? id, string name, string value)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(id, nameof(name));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -51,7 +51,7 @@ namespace Dapr
         }
 
         /// <inheritdoc/>
-        public string Id { get; }
+        public string? Id { get; }
 
         /// <inheritdoc/>
         public string Name { get; }

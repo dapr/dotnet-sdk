@@ -9,22 +9,22 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// The name of the type of the Actor that the reminder will fire for.
         /// </summary>
-        public string ActorTypeName { get; set; }
+        public string? ActorTypeName { get; set; }
 
         /// <summary>
         /// The <see cref="ActorId"/> that the reminder will fire for.
         /// </summary>
-        public ActorId Id { get; set; }
+        public ActorId? Id { get; set; }
 
         /// <summary>
         /// The name of the reminder.
         /// </summary>
-        public string ReminderName { get; set; }
+        public string? ReminderName { get; set; }
 
         /// <summary>
         /// State that is passed to the Actor when the reminder fires.
         /// </summary>
-        public byte[] State { get; set; }
+        public byte[]? State { get; set; }
 
         /// <summary>
         /// <see cref="TimeSpan"/> that determines when the reminder will first fire.

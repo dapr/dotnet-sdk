@@ -20,9 +20,9 @@ namespace Dapr.Client
     /// <param name="ErrorType">The error type, which is defined by the workflow component implementation.</param>
     /// <param name="StackTrace">The stack trace of the failure.</param>
     public record WorkflowFailureDetails(
-        string ErrorMessage,
-        string ErrorType,
-        string StackTrace = null)
+        string? ErrorMessage,
+        string? ErrorType,
+        string? StackTrace = null)
     {
         /// <summary>
         /// Creates a user-friendly string representation of the failure information.

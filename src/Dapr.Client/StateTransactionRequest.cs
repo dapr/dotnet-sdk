@@ -32,7 +32,7 @@ namespace Dapr.Client
         /// <param name="etag">The etag (optional).</param>
         /// <param name="metadata">Additional key value pairs for the state (optional).</param>
         /// <param name="options">State options (optional).</param>
-        public StateTransactionRequest(string key, byte[] value, StateOperationType operationType, string etag = default, IReadOnlyDictionary<string, string> metadata = default, StateOptions options = default)
+        public StateTransactionRequest(string key, byte[] value, StateOperationType operationType, string? etag = default, IReadOnlyDictionary<string, string>? metadata = default, StateOptions? options = default)
         {
             ArgumentVerifier.ThrowIfNull(key, nameof(key));
 
@@ -63,16 +63,16 @@ namespace Dapr.Client
         /// <summary>
         /// The ETag (optional).
         /// </summary>
-        public string ETag { get; set; }
+        public string? ETag { get; set; }
 
         /// <summary>
         /// Additional key-value pairs to be passed to the state store (optional).
         /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; set; }
+        public IReadOnlyDictionary<string, string>? Metadata { get; set; }
 
         /// <summary>
         /// State Options (optional).
         /// </summary>
-        public StateOptions Options;
+        public StateOptions? Options;
     }
 }

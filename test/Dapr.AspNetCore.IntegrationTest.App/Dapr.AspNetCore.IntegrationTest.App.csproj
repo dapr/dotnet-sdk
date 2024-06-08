@@ -1,7 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
-  </ItemGroup>
+    <PropertyGroup>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    </ItemGroup>
 
 </Project>

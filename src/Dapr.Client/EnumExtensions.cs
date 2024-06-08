@@ -25,7 +25,7 @@ namespace Dapr.Client
         /// <typeparam name="T">The enum.</typeparam>
         /// <param name="value">The value of the enum to pull the value for.</param>
         /// <returns></returns>
-        public static string GetValueFromEnumMember<T>(this T value) where T : Enum
+        public static string? GetValueFromEnumMember<T>(this T value) where T : Enum
         {
             var memberInfo = typeof(T).GetMember(value.ToString(), BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly);
             if (memberInfo.Length <= 0)

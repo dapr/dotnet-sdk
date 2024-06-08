@@ -34,7 +34,7 @@ namespace Dapr.AspNetCore
         /// <param name="entries">A list of entries representing the event and other metadata.</param>
         /// <param name="topic">The name of the pubsub topic.</param>
         /// <param name="metadata">Metadata for the bulk message.</param>
-        public BulkSubscribeMessage(List<BulkSubscribeMessageEntry<TValue>> entries, string topic, Dictionary<string, string> metadata)
+        public BulkSubscribeMessage(List<BulkSubscribeMessageEntry<TValue>>? entries, string? topic, Dictionary<string, string>? metadata)
         {
             this.Entries = entries;
             this.Topic = topic;
@@ -44,16 +44,16 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// A list of entries representing the event and other metadata.
         /// </summary>
-        public List<BulkSubscribeMessageEntry<TValue>> Entries { get; set; }
+        public List<BulkSubscribeMessageEntry<TValue>>? Entries { get; set; }
         
         /// <summary>
         /// The name of the pubsub topic.
         /// </summary>
-        public string Topic { get; set; }
+        public string? Topic { get; set; }
         
         /// <summary>
         /// Metadata for the bulk message.
         /// </summary>
-        public Dictionary<string, string> Metadata { get; set; }
+        public Dictionary<string, string>? Metadata { get; set; }
     }
 }

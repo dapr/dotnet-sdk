@@ -22,18 +22,18 @@ namespace Dapr.Actors.Builder
 
     internal class InterfaceDetailsStore
     {
-        private readonly ConcurrentDictionary<int, InterfaceDetails> knownTypesMap =
-            new ConcurrentDictionary<int, InterfaceDetails>();
+        private readonly ConcurrentDictionary<int, InterfaceDetails?> knownTypesMap =
+            new ConcurrentDictionary<int, InterfaceDetails?>();
 
         private readonly ConcurrentDictionary<string, int> interfaceIdMapping =
             new ConcurrentDictionary<string, int>();
 
-        public bool TryGetKnownTypes(int interfaceId, out InterfaceDetails interfaceDetails)
+        public bool TryGetKnownTypes(int interfaceId, out InterfaceDetails? interfaceDetails)
         {
             return this.knownTypesMap.TryGetValue(interfaceId, out interfaceDetails);
         }
 
-        public bool TryGetKnownTypes(string interfaceName, out InterfaceDetails interfaceDetails)
+        public bool TryGetKnownTypes(string interfaceName, out InterfaceDetails? interfaceDetails)
         {
             if (!this.interfaceIdMapping.TryGetValue(interfaceName, out var interfaceId))
             {
@@ -76,13 +76,13 @@ namespace Dapr.Actors.Builder
                 RequestWrappedKnownTypes = methodBodyTypesBuildResult.GetRequestBodyTypes(),
                 ResponseWrappedKnownTypes = methodBodyTypesBuildResult.GetResponseBodyTypes(),
             };
-            this.UpdateKnownTypes(interfaceDescription.Id, interfaceDescription.InterfaceType.FullName, knownType);
+            this.UpdateKnownTypes(interfaceDescription.Id, interfaceDescription.InterfaceType?.FullName, knownType);
         }
 
         private void UpdateKnownTypes(
             int interfaceId,
             string interfaceName,
-            InterfaceDetails knownTypes)
+            InterfaceDetails? knownTypes)
         {
             if (this.knownTypesMap.ContainsKey(interfaceId))
             {

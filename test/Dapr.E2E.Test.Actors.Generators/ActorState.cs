@@ -18,7 +18,7 @@ namespace Dapr.E2E.Test.Actors.Generators;
 
 internal static class ActorState
 {
-    public static async Task EnsureReadyAsync<TActor>(ActorId actorId, string actorType, ActorProxyOptions? options = null, CancellationToken cancellationToken = default)
+    public static async Task EnsureReadyAsync<TActor>(ActorId? actorId, string? actorType, ActorProxyOptions? options = null, CancellationToken cancellationToken = default)
         where TActor : IPingActor
     {
         var pingProxy = ActorProxy.Create<TActor>(actorId, actorType, options);

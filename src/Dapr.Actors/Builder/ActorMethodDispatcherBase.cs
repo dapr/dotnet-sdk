@@ -28,7 +28,7 @@ namespace Dapr.Actors.Builder
     /// </summary>
     public abstract class ActorMethodDispatcherBase
     {
-        private IReadOnlyDictionary<int, string> methodNameMap;
+        private IReadOnlyDictionary<int, string> methodNameMap = new Dictionary<int, string>();
 
         /// <summary>
         /// Gets the id of the interface supported by this method dispatcher.
@@ -53,7 +53,7 @@ namespace Dapr.Actors.Builder
         public Task<IActorResponseMessageBody> DispatchAsync(
             object objectImplementation,
             int methodId,
-            IActorRequestMessageBody requestBody,
+            IActorRequestMessageBody? requestBody,
             IActorMessageBodyFactory remotingMessageBodyFactory,
             CancellationToken cancellationToken)
         {
@@ -161,7 +161,7 @@ namespace Dapr.Actors.Builder
         protected abstract Task<IActorResponseMessageBody> OnDispatchAsync(
                     int methodId,
                     object remotedObject,
-                    IActorRequestMessageBody requestBody,
+                    IActorRequestMessageBody? requestBody,
                     IActorMessageBodyFactory remotingMessageBodyFactory,
                     CancellationToken cancellationToken);
 

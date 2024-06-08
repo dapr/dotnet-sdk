@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace Dapr.Actors.Builder
         private readonly ActorProxyGeneratorBuilder proxyGeneratorBuilder;
 
         private readonly Dictionary<Type, MethodBodyTypesBuildResult> methodBodyTypesBuildResultMap;
-        private readonly Dictionary<Type, MethodDispatcherBuildResult> methodDispatcherBuildResultMap;
+        private readonly Dictionary<Type, MethodDispatcherBuildResult?> methodDispatcherBuildResultMap;
         private readonly Dictionary<Type, ActorProxyGeneratorBuildResult> proxyGeneratorBuildResultMap;
 
         private readonly ICodeBuilderNames codeBuilderNames;
@@ -39,7 +39,7 @@ namespace Dapr.Actors.Builder
             this.codeBuilderNames = codeBuilderNames;
 
             this.methodBodyTypesBuildResultMap = new Dictionary<Type, MethodBodyTypesBuildResult>();
-            this.methodDispatcherBuildResultMap = new Dictionary<Type, MethodDispatcherBuildResult>();
+            this.methodDispatcherBuildResultMap = new Dictionary<Type, MethodDispatcherBuildResult?>();
             this.proxyGeneratorBuildResultMap = new Dictionary<Type, ActorProxyGeneratorBuildResult>();
 
             this.methodBodyTypesBuilder = new MethodBodyTypesBuilder(this);
@@ -60,15 +60,15 @@ namespace Dapr.Actors.Builder
             }
         }
 
-        public static ActorMethodDispatcherBase GetOrCreateMethodDispatcher(Type actorInterfaceType)
+        public static ActorMethodDispatcherBase? GetOrCreateMethodDispatcher(Type actorInterfaceType)
         {
             lock (BuildLock)
             {
-                return (ActorMethodDispatcherBase)Instance.GetOrBuilderMethodDispatcher(actorInterfaceType).MethodDispatcher;
+                return (ActorMethodDispatcherBase?)Instance.GetOrBuilderMethodDispatcher(actorInterfaceType)?.MethodDispatcher;
             }
         }
 
-        MethodDispatcherBuildResult ICodeBuilder.GetOrBuilderMethodDispatcher(Type interfaceType)
+        MethodDispatcherBuildResult? ICodeBuilder.GetOrBuilderMethodDispatcher(Type interfaceType)
         {
             if (this.TryGetMethodDispatcher(interfaceType, out var result))
             {
@@ -98,7 +98,7 @@ namespace Dapr.Actors.Builder
         {
             if (this.TryGetProxyGenerator(interfaceType, out var result))
             {
-                return result;
+                return result!;
             }
 
             result = this.BuildProxyGenerator(interfaceType);
@@ -107,17 +107,17 @@ namespace Dapr.Actors.Builder
             return result;
         }
 
-        internal static bool TryGetKnownTypes(int interfaceId, out InterfaceDetails interfaceDetails)
+        internal static bool TryGetKnownTypes(int interfaceId, out InterfaceDetails? interfaceDetails)
         {
             return InterfaceDetailsStore.TryGetKnownTypes(interfaceId, out interfaceDetails);
         }
 
-        internal static bool TryGetKnownTypes(string interfaceName, out InterfaceDetails interfaceDetails)
+        internal static bool TryGetKnownTypes(string interfaceName, out InterfaceDetails? interfaceDetails)
         {
             return InterfaceDetailsStore.TryGetKnownTypes(interfaceName, out interfaceDetails);
         }
 
-        protected MethodDispatcherBuildResult BuildMethodDispatcher(Type interfaceType)
+        protected MethodDispatcherBuildResult? BuildMethodDispatcher(Type interfaceType)
         {
             var actorInterfaceDescription = ActorInterfaceDescription.CreateUsingCRCId(interfaceType);
             var res = this.methodDispatcherBuilder.Build(actorInterfaceDescription);
@@ -140,20 +140,20 @@ namespace Dapr.Actors.Builder
 
             // create interface descriptions for all interfaces
             var actorInterfaceDescriptions = actorInterfaces.Select<Type, InterfaceDescription>(
-                t => ActorInterfaceDescription.CreateUsingCRCId(t));
+                ActorInterfaceDescription.CreateUsingCRCId);
 
             var res = this.proxyGeneratorBuilder.Build(interfaceType, actorInterfaceDescriptions);
             return res;
         }
 
-        protected void UpdateMethodDispatcherBuildMap(Type interfaceType, MethodDispatcherBuildResult result)
+        protected void UpdateMethodDispatcherBuildMap(Type interfaceType, MethodDispatcherBuildResult? result)
         {
             this.methodDispatcherBuildResultMap.Add(interfaceType, result);
         }
 
         protected bool TryGetMethodDispatcher(
             Type interfaceType,
-            out MethodDispatcherBuildResult builderMethodDispatcher)
+            out MethodDispatcherBuildResult? builderMethodDispatcher)
         {
             if (this.methodDispatcherBuildResultMap.TryGetValue(interfaceType, out var result))
             {
@@ -172,7 +172,7 @@ namespace Dapr.Actors.Builder
             this.proxyGeneratorBuildResultMap.Add(interfaceType, result);
         }
 
-        protected bool TryGetProxyGenerator(Type interfaceType, out ActorProxyGeneratorBuildResult orBuildProxyGenerator)
+        protected bool TryGetProxyGenerator(Type interfaceType, out ActorProxyGeneratorBuildResult? orBuildProxyGenerator)
         {
             if (this.proxyGeneratorBuildResultMap.TryGetValue(interfaceType, out var result))
             {

@@ -27,6 +27,6 @@ namespace Dapr.Actors.Communication
         /// <summary>
         /// Gets the Actor Request Message Body.</summary>
         /// <returns>IActorRequestMessageBody.</returns>
-        IActorRequestMessageBody GetBody();
+        IActorRequestMessageBody? GetBody();
     }
 }

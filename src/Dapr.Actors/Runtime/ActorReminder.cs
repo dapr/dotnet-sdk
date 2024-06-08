@@ -23,7 +23,7 @@ namespace Dapr.Actors.Runtime
     /// </summary>
     public class ActorReminder : ActorReminderToken, IActorReminder
     {
-        private static readonly TimeSpan MiniumPeriod = Timeout.InfiniteTimeSpan;
+        private static readonly TimeSpan MinimumPeriod = Timeout.InfiniteTimeSpan;
 
         /// <summary>
         /// Initializes a new instance of <see cref="ActorReminder" />.
@@ -35,10 +35,10 @@ namespace Dapr.Actors.Runtime
         /// <param name="dueTime">The reminder due time.</param>
         /// <param name="period">The reminder period.</param>
         public ActorReminder(
-            string actorType,
+            string? actorType,
             ActorId actorId,
             string name,
-            byte[] state,
+            byte[]? state,
             TimeSpan dueTime,
             TimeSpan period)
             : this(new ActorReminderOptions
@@ -166,12 +166,12 @@ namespace Dapr.Actors.Runtime
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
-            if (options.Period < MiniumPeriod)
+            if (options.Period < MinimumPeriod)
             {
                 throw new ArgumentOutOfRangeException(nameof(options.Period), string.Format(
                     CultureInfo.CurrentCulture,
                     SR.TimerArgumentOutOfRange,
-                    MiniumPeriod.TotalMilliseconds,
+                    MinimumPeriod.TotalMilliseconds,
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
 
@@ -184,7 +184,7 @@ namespace Dapr.Actors.Runtime
                     TimeSpan.MaxValue.TotalMilliseconds));
             }
             
-            if (options.Repetitions != null && options.Repetitions <= 0)
+            if (options.Repetitions is <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(options.Repetitions), string.Format(
                     CultureInfo.CurrentCulture,
@@ -202,7 +202,7 @@ namespace Dapr.Actors.Runtime
         /// <summary>
         /// Gets the reminder state.
         /// </summary>
-        public byte[] State { get; }
+        public byte[]? State { get; }
 
         /// <summary>
         /// Gets the reminder due time.

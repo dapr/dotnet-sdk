@@ -87,7 +87,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> GetStateAsync<T>(string stateName, CancellationToken cancellationToken = default);
+        Task<T?> GetStateAsync<T>(string stateName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sets an actor state with given state name to specified value.
@@ -205,7 +205,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<ConditionalValue<T>> TryGetStateAsync<T>(string stateName, CancellationToken cancellationToken = default);
+        Task<ConditionalValue<T?>> TryGetStateAsync<T>(string stateName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Attempts to remove an actor state with specified state name.
@@ -253,7 +253,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> GetOrAddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default);
+        Task<T?> GetOrAddStateAsync<T>(string stateName, T? value, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets an actor state with the given state name if it exists. If it does not
@@ -276,7 +276,7 @@ namespace Dapr.Actors.Runtime
         /// The type of state value <typeparamref name="T"/> must be
         /// <see href="https://msdn.microsoft.com/library/ms731923.aspx">Data Contract</see> serializable.
         /// </remarks>
-        Task<T> GetOrAddStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken = default);
+        Task<T?> GetOrAddStateAsync<T>(string stateName, T? value, TimeSpan ttl, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Adds an actor state with given state name, if it does not already exist or updates

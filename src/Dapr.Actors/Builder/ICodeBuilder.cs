@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ namespace Dapr.Actors.Builder
         /// </summary>
         /// <param name="interfaceType">Interface for which to generate the method dispatcher.</param>
         /// <returns>A <see cref="MethodDispatcherBuildResult"/> containing the dispatcher to dispatch the messages destined the specified interfaces.</returns>
-        MethodDispatcherBuildResult GetOrBuilderMethodDispatcher(Type interfaceType);
+        MethodDispatcherBuildResult? GetOrBuilderMethodDispatcher(Type interfaceType);
 
         /// <summary>
         /// Gets or builds a communication message body types that can store the method arguments of the specified interface.

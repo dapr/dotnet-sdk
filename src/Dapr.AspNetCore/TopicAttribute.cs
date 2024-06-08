@@ -28,7 +28,7 @@ namespace Dapr
         /// <param name="name">The topic name.</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, string[] ownedMetadatas = null, string metadataSeparator = null)
+        public TopicAttribute(string? pubsubName, string? name, string[]? ownedMetadatas = null, string? metadataSeparator = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -47,7 +47,7 @@ namespace Dapr
         /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null)
+        public TopicAttribute(string? pubsubName, string? name, bool enableRawPayload, string[]? ownedMetadatas = null, string? metadataSeparator = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -68,7 +68,7 @@ namespace Dapr
         /// <param name="priority">The priority of the rule (low-to-high values).</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null)
+        public TopicAttribute(string? pubsubName, string? name, string? match, int priority, string[]? ownedMetadatas = null, string? metadataSeparator = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -91,7 +91,7 @@ namespace Dapr
         /// <param name="priority">The priority of the rule (low-to-high values).</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null)
+        public TopicAttribute(string? pubsubName, string? name, bool enableRawPayload, string? match, int priority, string[]? ownedMetadatas = null, string? metadataSeparator = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -114,7 +114,7 @@ namespace Dapr
         /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
         /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
         /// <param name="metadataSeparator">Separator to use for metadata.</param>
-        public TopicAttribute(string pubsubName, string name, string deadLetterTopic, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null)
+        public TopicAttribute(string? pubsubName, string? name, string? deadLetterTopic, bool enableRawPayload, string[]? ownedMetadatas = null, string? metadataSeparator = null)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
             ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -128,27 +128,27 @@ namespace Dapr
         }
 
         /// <inheritdoc/>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         /// <inheritdoc/>
-        public string PubsubName { get; set; }
+        public string? PubsubName { get; set; }
 
         /// <inheritdoc/>
         public bool? EnableRawPayload { get; set; }
 
         /// <inheritdoc/>
-        public new string Match { get; set; }
+        public new string? Match { get; set; }
 
         /// <inheritdoc/>
         public int Priority { get; set; }
 
         /// <inheritdoc/>
-        public string[] OwnedMetadatas { get; set; }
+        public string[]? OwnedMetadatas { get; set; }
 
         /// <inheritdoc/>
-        public string MetadataSeparator { get; set; }
+        public string? MetadataSeparator { get; set; }
 
         /// <inheritdoc/>
-        public string DeadLetterTopic { get; set; }
+        public string? DeadLetterTopic { get; set; }
     }
 }
