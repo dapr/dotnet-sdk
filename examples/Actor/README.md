@@ -55,7 +55,7 @@ Following curl call will save data for actor id "abc"
 On Linux, MacOS:
 
 ``` bash
-curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "PropertyA": "ValueA", "PropertyB": "ValueB" }'
+curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "data": {"PropertyA": "ValueA", "PropertyB": "ValueB" }, "ttl": "00:10:00" }' 
 ```
 
  On Windows:
