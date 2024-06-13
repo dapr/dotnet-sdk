@@ -58,6 +58,9 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ControllerSample", "examples\AspNetCore\ControllerSample\ControllerSample.csproj", "{3160CC92-1D6E-42CB-AE89-9401C8CEC5CB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Actor", "Actor", "{02374BD0-BF0B-40F8-A04A-C4C4D61D4992}"
+	ProjectSection(SolutionItems) = preProject
+		examples\Actor\README.md = examples\Actor\README.md
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IDemoActor", "examples\Actor\IDemoActor\IDemoActor.csproj", "{7957E852-1291-4FAA-9034-FB66CE817FF1}"
 EndProject
