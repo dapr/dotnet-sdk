@@ -154,6 +154,13 @@ namespace Dapr.Actors.Runtime
                 {
                     awaitable = methodInfo.Invoke(actor, parameters.Length == 0 ? null : new object[] { ct });
                 }
+                else if (parameters.Length == 1 || (parameters.Length == 2 && parameters[1].ParameterType == typeof(CancellationToken)))
+                {
+                    // deserialize using stream.
+                    var type = parameters[0].ParameterType;
+                    var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
+                    awaitable = methodInfo.Invoke(actor, parameters.Length == 1 ? new object[] { deserializedType } : new object[] { deserializedType, ct });
+                }
                 else
                 {
 #if NET8_0_OR_GREATER
