@@ -33,12 +33,28 @@ namespace DaprDemoActor
 
         private readonly BankService bank;
 
-        public DemoActor(ActorHost host, BankService bank)
+        /// <summary>
+        /// Initializes a new instance of <see cref="DemoActor"/>.
+        /// </summary>
+        /// <param name="host">ActorHost.</param>
+        /// <param name="bank">BankService.</param>
+        /// <param name="actorStateManager">ActorStateManager used in UnitTests.</param>
+        public DemoActor(
+            ActorHost host,
+            BankService bank,
+            IActorStateManager actorStateManager = null)
             : base(host)
         {
             // BankService is provided by dependency injection.
             // See Program.cs
             this.bank = bank;
+
+            // Assign ActorStateManager when passed as parameter.
+            // This is used in UnitTests.
+            if (actorStateManager != null)
+            {
+                this.StateManager = actorStateManager;
+            }
         }
 
         public async Task SaveData(MyData data, TimeSpan ttl)
@@ -74,12 +90,12 @@ namespace DaprDemoActor
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), ttl);
         }
-        
+
         public async Task RegisterReminderWithRepetitions(int repetitions)
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions);
         }
-        
+
         public async Task RegisterReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions)
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions, ttl);
@@ -98,7 +114,7 @@ namespace DaprDemoActor
                 }
                 : null;
         }
-        
+
         public Task UnregisterReminder()
         {
             return this.UnregisterReminderAsync("TestReminder");
