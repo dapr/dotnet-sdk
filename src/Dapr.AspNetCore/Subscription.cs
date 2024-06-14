@@ -18,7 +18,7 @@ namespace Dapr
     /// <summary>
     /// This class defines subscribe endpoint response
     /// </summary>
-    internal class Subscription
+    public class Subscription
     {
         /// <summary>
         /// Gets or sets the topic name.
@@ -44,7 +44,7 @@ namespace Dapr
         /// Gets or sets the metadata.
         /// </summary>
         public Metadata Metadata { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the deadletter topic.
         /// </summary>
@@ -59,10 +59,17 @@ namespace Dapr
     /// <summary>
     /// This class defines the metadata for subscribe endpoint.
     /// </summary>
-    internal class Metadata : Dictionary<string, string>
+    public class Metadata : Dictionary<string, string>
     {
+        /// <summary>
+        /// Initializes a new instance of the Metadata class.
+        /// </summary>
         public Metadata() { }
 
+        /// <summary>
+        /// Initializes a new instance of the Metadata class.
+        /// </summary>
+        /// <param name="dictionary"></param>
         public Metadata(IDictionary<string, string> dictionary) : base(dictionary) { }
 
         /// <summary>
@@ -71,7 +78,10 @@ namespace Dapr
         internal const string RawPayload = "rawPayload";
     }
 
-    internal class Routes
+    /// <summary>
+    /// This class defines the routes for subscribe endpoint.
+    /// </summary>
+    public class Routes
     {
         /// <summary>
         /// Gets or sets the default route
@@ -84,7 +94,10 @@ namespace Dapr
         public List<Rule> Rules { get; set; }
     }
 
-    internal class Rule
+    /// <summary>
+    /// This class defines the rule for subscribe endpoint.
+    /// </summary>
+    public class Rule
     {
         /// <summary>
         /// Gets or sets the CEL expression to match this route.
@@ -97,7 +110,10 @@ namespace Dapr
         public string Path { get; set; }
     }
 
-    internal class DaprTopicBulkSubscribe
+    /// <summary>
+    /// This class defines the bulk subscribe options for subscribe endpoint.
+    /// </summary>
+    public class DaprTopicBulkSubscribe
     {
         /// <summary>
         /// Gets or sets whether bulk subscribe option is enabled for a topic.
