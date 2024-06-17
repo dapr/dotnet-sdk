@@ -99,7 +99,7 @@ Now the image can be pushed to your Docker registry by running the following com
 
 ``` Bash
 # Replace <your-docker-registry> with your Docker registry
-docket tag demo-actor:latest <your-docker-registry>/demo-actor:latest
+docker tag demo-actor:latest <your-docker-registry>/demo-actor:latest
 
 # Push the image to your Docker registry
 docker push <your-docker-registry>/demo-actor:latest
