@@ -80,3 +80,27 @@ On Windows:
 ```sh
 curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
 ```
+
+### Build and push Docker image
+You can build the docker image of `DemoActor` service by running the following commands in the `DemoActor` project directory:
+
+On Linux, MacOS:
+``` Bash
+. ./build-container.sh
+```
+
+On Windows:
+``` PowerShell
+powershell .\build-container.ps1
+```
+
+The build produce and image with tag `demo-actor:latest`. 
+Now the image can be pushed to your Docker registry by running the following commands:
+
+``` Bash
+# Replace <your-docker-registry> with your Docker registry
+docket tag demo-actor:latest <your-docker-registry>/demo-actor:latest
+
+# Push the image to your Docker registry
+docker push <your-docker-registry>/demo-actor:latest
+```
