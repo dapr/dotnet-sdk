@@ -104,3 +104,43 @@ docket tag demo-actor:latest <your-docker-registry>/demo-actor:latest
 # Push the image to your Docker registry
 docker push <your-docker-registry>/demo-actor:latest
 ```
+
+### Deploy the Actor service to Kubernetes
+#### Prerequisites
+- A Kubernetes cluster with `kubectl` configured to access it.
+- Dapr v1.13+ installed on the Kubernetes cluster. Follow the instructions [here](https://docs.dapr.io/getting-started/install-dapr-kubernetes/).
+- A Docker registry where you pushed the `DemoActor` image.
+
+#### Deploy the Actor service
+To deploy the `DemoActor` service to Kubernetes, you can use the provided Kubernetes manifest file `demo-actor.yaml` in the `DemoActor` project directory.
+Before applying the manifest file, replace the image name in the manifest file with the image name you pushed to your Docker registry.
+
+Part to update in `demo-actor.yaml`:
+``` YAML
+image: <your-docker-registry>/demoactor:latest
+```
+
+To install the application in `default` namespace, run the following command:
+
+``` Bash
+kubectl apply -f demo-actor.yaml
+```
+
+This will deploy the `DemoActor` service to Kubernetes. You can check the status of the deployment by running:
+
+``` Bash
+kubectl get pods -n default
+```
+
+The manifest create 2 services:
+
+- `demoactor` service: The service that hosts the `DemoActor` actor.
+- `demoactor-dapr` service: The service that hosts the Dapr sidecar for the `DemoActor` actor.
+
+### Make client calls to the deployed Actor service
+To make client calls to the deployed `DemoActor` service, you can use the `ActorClient` project.
+Before running the client, update the `DAPR_HTTP_PORT` environment variable in the `ActorClient` project directory to the port on which Dapr is running in the Kubernetes cluster.
+
+``` Bash
+export DAPR_HTTP_PORT=<dapr-http-port>
+```
