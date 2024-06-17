@@ -1,16 +1,15 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:6.0-jammy-chiseled AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:6.0-jammy-chiseled-extra AS base
 WORKDIR /app
 EXPOSE 5010
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0-jammy AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
 WORKDIR /
 # Copy base projects
 COPY ["examples/Actor/DemoActor/", "examples/Actor/DemoActor/"]
-# Copy shared dependencies
+# Copy dependencies
 COPY ["examples/Actor/IDemoActor/", "examples/Actor/IDemoActor/"]
-COPY ["src/Dapr.Actors/", "src/Dapr.Actors/"]
-COPY ["src/Dapr.Actors.AspNetCore/", "src/Dapr.Actors.AspNetCore/"]
-COPY ["src/Dapr.Client/", "src/Dapr.Client/"]
+COPY ["src/", "src/"]
+COPY ["properties/", "properties/"]
 # Restore the project and build it
 WORKDIR "/examples/Actor/DemoActor"
 RUN dotnet restore "DemoActor.csproj"
