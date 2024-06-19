@@ -309,6 +309,20 @@ namespace Dapr.Client
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
         /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the <c>POST</c> HTTP method.
+        /// </summary>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public HttpRequestMessage CreateInvokeMethodRequest(string appId, string methodName, IReadOnlyCollection<KeyValuePair<string,string>> queryStringParameters)
+        {
+            return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, queryStringParameters);
+        }
+        
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
         /// with the HTTP method specified by <paramref name="httpMethod" />.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
@@ -316,6 +330,19 @@ namespace Dapr.Client
         /// <param name="methodName">The name of the method to invoke.</param>
         /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public abstract HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName);
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" />.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public abstract HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId,
+            string methodName, IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters);
 
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
@@ -346,6 +373,21 @@ namespace Dapr.Client
         /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data);
 
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
+        /// <paramref name="data" />.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, IReadOnlyCollection<KeyValuePair<string,string>> queryStringParameters, TRequest data);
+        
         /// <summary>
         /// Perform health-check of Dapr sidecar. Return 'true' if sidecar is healthy. Otherwise 'false'.
         /// CheckHealthAsync handle <see cref="HttpRequestException"/> and will return 'false' if error will occur on transport level
