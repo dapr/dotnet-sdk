@@ -14,9 +14,8 @@
 namespace Microsoft.AspNetCore.Mvc
 {
     using System;
-    using System.ComponentModel;
     using Dapr;
-    using Microsoft.AspNetCore.Mvc.ModelBinding;
+    using ModelBinding;
 
     /// <summary>
     /// Attributes a parameter or property as retrieved from the Dapr state store.

@@ -19,9 +19,9 @@ namespace Microsoft.AspNetCore.Builder
     using System.Text.Json.Serialization;
     using Dapr;
     using Dapr.AspNetCore;
-    using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Routing;
-    using Microsoft.AspNetCore.Routing.Patterns;
+    using Http;
+    using Routing;
+    using Routing.Patterns;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
 

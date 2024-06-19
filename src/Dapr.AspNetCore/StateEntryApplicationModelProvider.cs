@@ -14,7 +14,7 @@
 namespace Dapr.AspNetCore
 {
     using System;
-    using Dapr.AspNetCore.Resources;
+    using Resources;
     using Microsoft.AspNetCore.Mvc.ApplicationModels;
 
     internal class StateEntryApplicationModelProvider : IApplicationModelProvider

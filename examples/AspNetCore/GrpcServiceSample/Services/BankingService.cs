@@ -62,13 +62,13 @@ namespace GrpcServiceSample
             switch (request.Method)
             {
                 case "getaccount":                
-                    var input = request.Data.Unpack<GrpcServiceSample.Generated.GetAccountRequest>();
+                    var input = request.Data.Unpack<GetAccountRequest>();
                     var output = await GetAccount(input, context);
                     response.Data = Any.Pack(output);
                     break;
                 case "deposit":
                 case "withdraw":
-                    var transaction = request.Data.Unpack<GrpcServiceSample.Generated.Transaction>();
+                    var transaction = request.Data.Unpack<Transaction>();
                     var account = request.Method == "deposit" ?
                         await Deposit(transaction, context) :
                         await Withdraw(transaction, context);
@@ -113,7 +113,7 @@ namespace GrpcServiceSample
             if (request.PubsubName == "pubsub")
             {
                 var input = JsonSerializer.Deserialize<Models.Transaction>(request.Data.ToStringUtf8(), this.jsonOptions);
-                var transaction = new GrpcServiceSample.Generated.Transaction() { Id = input.Id, Amount = (int)input.Amount, };
+                var transaction = new Transaction() { Id = input.Id, Amount = (int)input.Amount, };
                 if (request.Topic == "deposit")
                 {
                     await Deposit(transaction, context);
@@ -133,10 +133,10 @@ namespace GrpcServiceSample
         /// <param name="input"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async Task<GrpcServiceSample.Generated.Account> GetAccount(GetAccountRequest input, ServerCallContext context)
+        public async Task<Account> GetAccount(GetAccountRequest input, ServerCallContext context)
         {
             var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, input.Id);
-            return new GrpcServiceSample.Generated.Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, }; 
+            return new Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, }; 
         }
 
         /// <summary>
@@ -145,14 +145,14 @@ namespace GrpcServiceSample
         /// <param name="transaction"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async Task<GrpcServiceSample.Generated.Account> Deposit(GrpcServiceSample.Generated.Transaction transaction, ServerCallContext context)
+        public async Task<Account> Deposit(Transaction transaction, ServerCallContext context)
         {
             _logger.LogDebug("Enter deposit");
             var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
             state.Value ??= new Models.Account() { Id = transaction.Id, };
             state.Value.Balance += transaction.Amount;
             await state.SaveAsync();
-            return new GrpcServiceSample.Generated.Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, }; 
+            return new Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, }; 
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace GrpcServiceSample
         /// <param name="transaction"></param>
         /// <param name="context"></param>
         /// <returns></returns>
-        public async Task<GrpcServiceSample.Generated.Account> Withdraw(GrpcServiceSample.Generated.Transaction transaction, ServerCallContext context)
+        public async Task<Account> Withdraw(Transaction transaction, ServerCallContext context)
         {
             _logger.LogDebug("Enter withdraw");
             var state = await _daprClient.GetStateEntryAsync<Models.Account>(StoreName, transaction.Id);
@@ -173,7 +173,7 @@ namespace GrpcServiceSample
 
             state.Value.Balance -= transaction.Amount;
             await state.SaveAsync();
-            return new GrpcServiceSample.Generated.Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, };
+            return new Account() { Id = state.Value.Id, Balance = (int)state.Value.Balance, };
         }
     }
 }

@@ -18,8 +18,8 @@ namespace Dapr.Actors.Builder
     using System.Reflection.Emit;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
-    using Dapr.Actors.Description;
+    using Communication;
+    using Description;
 
     internal class MethodDispatcherBuilder<TMethodDispatcher> : CodeBuilderModule
         where TMethodDispatcher : ActorMethodDispatcherBase

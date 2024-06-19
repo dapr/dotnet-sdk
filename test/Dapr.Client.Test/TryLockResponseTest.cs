@@ -19,7 +19,7 @@ using System;
 
 namespace Dapr.Client.Test
 {
-    [System.Obsolete]
+    [Obsolete]
     public class TryLockResponseTest
     {
         [Fact]
@@ -47,7 +47,7 @@ namespace Dapr.Client.Test
                 Success = true
             };
 
-            var domainResponse = await request.CompleteWithMessageAsync(invokeResponse);
+            await request.CompleteWithMessageAsync(invokeResponse);
 
             //testing unlocking
             

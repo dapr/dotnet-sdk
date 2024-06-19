@@ -15,17 +15,16 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
-    using System.Collections.Generic;
     using System.Linq;
     using System.IO;
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using Dapr.Actors;
+    using Actors;
     using Dapr.Actors.Runtime;
     using Microsoft.Extensions.Logging;
     using Xunit;
-    using Dapr.Actors.Client;
+    using Client;
     using System.Reflection;
     using System.Threading;
 

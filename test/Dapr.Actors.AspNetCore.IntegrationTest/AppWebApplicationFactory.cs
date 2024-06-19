@@ -13,8 +13,7 @@
 
 namespace Dapr.Actors.AspNetCore.IntegrationTest
 {
-    using Dapr.Actors.AspNetCore.IntegrationTest.App;
-    using Microsoft.AspNetCore.Hosting;
+    using App;
     using Microsoft.AspNetCore.Mvc.Testing;
     using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;

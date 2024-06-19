@@ -16,7 +16,7 @@ namespace Dapr.AspNetCore.IntegrationTest.App
     using System.Text;
     using System.Threading.Tasks;
     using Dapr;
-    using Dapr.Client;
+    using Client;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.WebUtilities;

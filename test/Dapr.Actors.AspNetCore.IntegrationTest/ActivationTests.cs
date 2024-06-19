@@ -13,7 +13,6 @@
 
 using System;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr.Actors.AspNetCore.IntegrationTest.App.ActivationTests;
 using Xunit;
@@ -23,12 +22,6 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
 {
     public class ActivationTests
     {
-        private readonly JsonSerializerOptions options = new JsonSerializerOptions()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            PropertyNameCaseInsensitive = true,
-        };
-
         [Fact]
         public async Task CanActivateActorWithDependencyInjection()
         {

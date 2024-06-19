@@ -16,7 +16,7 @@ namespace Dapr.AspNetCore.Test
     using System;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using Dapr.Client;
+    using Client;
     using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
     using Microsoft.AspNetCore.Http;
@@ -167,7 +167,7 @@ namespace Dapr.AspNetCore.Test
             };
         }
 
-        private async Task SendResponseWithState<T>(T state, TestClient<DaprClient>.TestGrpcRequest request)
+        private async Task SendResponseWithState<T>(T state, TestClient.TestGrpcRequest request)
         {
             var stateData = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
             var stateResponse = new GetStateResponse()

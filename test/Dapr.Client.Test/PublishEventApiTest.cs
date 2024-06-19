@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json.Serialization;
@@ -142,7 +141,7 @@ namespace Dapr.Client.Test
             request.Dismiss();
 
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
-            var jsonFromRequest = envelope.Data.ToStringUtf8();
+            envelope.Data.ToStringUtf8();
 
             envelope.PubsubName.Should().Be(TestPubsubName);
             envelope.Topic.Should().Be("test");
@@ -214,7 +213,6 @@ namespace Dapr.Client.Test
         {
             await using var client = TestClient.CreateForDaprClient();
 
-            var publishData = new PublishData() { PublishObjectParameter = "testparam" };
             var cloudEvent = new CloudEvent
             {
                 Source = new Uri("urn:testsource"),
@@ -263,7 +261,7 @@ namespace Dapr.Client.Test
 
             // Setup the mock client to throw an Rpc Exception with the expected details info
             client.Mock
-                .Setup(m => m.PublishEventAsync(It.IsAny<Autogen.Grpc.v1.PublishEventRequest>(), It.IsAny<CallOptions>()))
+                .Setup(m => m.PublishEventAsync(It.IsAny<PublishEventRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
             var ex = await Assert.ThrowsAsync<DaprException>(async () =>

@@ -16,7 +16,7 @@ namespace Dapr.Actors.Communication
     using System.Collections.Generic;
     using System.Globalization;
     using System.Runtime.Serialization;
-    using Dapr.Actors.Resources;
+    using Resources;
 
     [DataContract(Name = "ActorResponseMessageHeaders", Namespace = Constants.Namespace)]
 

@@ -18,7 +18,7 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using Dapr.AspNetCore.IntegrationTest.App;
+    using App;
     using FluentAssertions;
     using Xunit;
 

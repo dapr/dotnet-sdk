@@ -16,7 +16,7 @@ namespace Dapr.Actors.Builder
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.Linq;
-    using Dapr.Actors.Description;
+    using Description;
 
     internal abstract class CodeBuilderModule
     {

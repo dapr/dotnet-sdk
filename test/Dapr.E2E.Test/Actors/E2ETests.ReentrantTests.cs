@@ -19,7 +19,7 @@ namespace Dapr.E2E.Test
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Client;
-    using Dapr.E2E.Test.Actors.Reentrancy;
+    using Actors.Reentrancy;
     using Xunit;
     using Xunit.Abstractions;
 

@@ -14,7 +14,7 @@
 namespace Dapr.Actors.Builder
 {
     using System;
-    using Dapr.Actors.Client;
+    using Client;
 
     internal class ActorProxyGenerator
     {

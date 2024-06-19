@@ -13,11 +13,10 @@
 namespace Dapr.E2E.Test
 {
     using System;
-    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
-    using Dapr.E2E.Test.Actors.State;
+    using Actors.State;
     using Xunit;
 
     public partial class E2ETests : IAsyncLifetime

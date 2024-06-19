@@ -16,7 +16,7 @@ namespace Dapr
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Client;
+    using Client;
 
     /// <summary>
     /// Represents a value in the Dapr state store.

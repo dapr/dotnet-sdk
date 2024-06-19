@@ -19,7 +19,7 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Text.Json.Serialization;
     using System.Threading;
-    using Dapr.Actors.Resources;
+    using Resources;
 
     /// <summary>
     /// Represents the details of the timer set on an Actor.

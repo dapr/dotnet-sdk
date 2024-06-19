@@ -15,7 +15,7 @@ namespace Dapr.AspNetCore.IntegrationTest
 {
     using System.Net.Http;
     using System.Threading.Tasks;
-    using Dapr.AspNetCore.IntegrationTest.App;
+    using App;
     using FluentAssertions;
     using Newtonsoft.Json;
     using Xunit;
@@ -67,7 +67,6 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-                var daprClient = factory.DaprClient;
 
                 var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithoutstateentry/test");
                 var response = await httpClient.SendAsync(request);
@@ -142,7 +141,6 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-                var daprClient = factory.DaprClient;
 
                 var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/controllerwithstateentry/test");
                 var response = await httpClient.SendAsync(request);
@@ -159,7 +157,6 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-                var daprClient = factory.DaprClient;
 
                 var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/echo-user?name=jimmy");
                 var response = await httpClient.SendAsync(request);

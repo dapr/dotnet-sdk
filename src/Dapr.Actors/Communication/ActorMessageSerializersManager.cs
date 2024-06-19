@@ -15,7 +15,7 @@ namespace Dapr.Actors.Communication
 {
     using System;
     using System.Collections.Concurrent;
-    using Dapr.Actors.Builder;
+    using Builder;
 
     internal class ActorMessageSerializersManager
     {

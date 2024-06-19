@@ -16,9 +16,9 @@ namespace Dapr.Actors.Description
     using System;
     using System.Globalization;
     using System.Reflection;
-    using Dapr.Actors;
-    using Dapr.Actors.Resources;
-    using Dapr.Actors.Runtime;
+    using Actors;
+    using Resources;
+    using Runtime;
 
     internal class ActorInterfaceDescription : InterfaceDescription
     {

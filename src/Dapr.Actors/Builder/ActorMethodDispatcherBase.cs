@@ -18,9 +18,9 @@ namespace Dapr.Actors.Builder
     using System.Globalization;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
-    using Dapr.Actors.Description;
-    using Dapr.Actors.Resources;
+    using Communication;
+    using Description;
+    using Resources;
 
     /// <summary>
     /// The class is used by actor remoting code generator to generate a type that dispatches requests to actor

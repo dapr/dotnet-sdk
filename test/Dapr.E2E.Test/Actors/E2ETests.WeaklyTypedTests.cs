@@ -16,7 +16,7 @@ namespace Dapr.E2E.Test
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
-    using Dapr.E2E.Test.Actors.WeaklyTypedTesting;
+    using Actors.WeaklyTypedTesting;
     using FluentAssertions;
     using Xunit;
 

@@ -19,7 +19,7 @@ namespace Dapr.AspNetCore
     using Microsoft.AspNetCore.Mvc.ModelBinding;
     using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
     using Microsoft.Extensions.DependencyInjection;
-    using Dapr.Client;
+    using Client;
 
     internal class StateEntryModelBinder : IModelBinder
     {

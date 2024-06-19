@@ -25,8 +25,8 @@ namespace Dapr.Actors
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
-    using Dapr.Actors.Resources;
+    using Communication;
+    using Resources;
     using System.Xml;
 
     /// <summary>
@@ -211,7 +211,7 @@ namespace Dapr.Actors
             {
                 exceptionDetails = exceptionValueXML.Item(1).LastChild.InnerText;
             }
-            var base64EncodedBytes = System.Convert.FromBase64String(exceptionDetails);
+            var base64EncodedBytes = Convert.FromBase64String(exceptionDetails);
             return Encoding.UTF8.GetString(base64EncodedBytes);
         }
 

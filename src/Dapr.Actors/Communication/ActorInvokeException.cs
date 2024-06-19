@@ -14,12 +14,7 @@
 namespace Dapr.Actors
 {
     using System;
-    using System.Globalization;
     using System.IO;
-    using System.Runtime.Serialization;
-    using System.Text;
-    using System.Xml;
-    using Dapr.Actors.Resources;
     using Microsoft.Extensions.Logging;
 
     /// <summary>
@@ -73,7 +68,7 @@ namespace Dapr.Actors
         internal static bool ToException(Stream stream, out Exception result)
         {
             // try to de-serialize the bytes in to exception requestMessage and create service exception
-            if (ActorInvokeException.TryDeserialize(stream, out result))
+            if (TryDeserialize(stream, out result))
             {
                 return true;
             }

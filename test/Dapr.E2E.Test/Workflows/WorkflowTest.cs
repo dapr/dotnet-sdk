@@ -19,7 +19,6 @@ using Dapr.Client;
 using FluentAssertions;
 using Xunit;
 using System.Linq;
-using System.Diagnostics;
 
 namespace Dapr.E2E.Test
 {
@@ -157,7 +156,7 @@ namespace Dapr.E2E.Test
             var event5 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
 
             var externalEvents = Task.WhenAll(event1, event2, event3, event4, event5);
-            var winner = await Task.WhenAny(externalEvents, Task.Delay(TimeSpan.FromSeconds(30)));
+            await Task.WhenAny(externalEvents, Task.Delay(TimeSpan.FromSeconds(30)));
             externalEvents.IsCompletedSuccessfully.Should().BeTrue($"Unsuccessful at raising events. Status of events: {externalEvents.IsCompletedSuccessfully}");
             
             // Wait up to 30 seconds for the workflow to complete and check the output

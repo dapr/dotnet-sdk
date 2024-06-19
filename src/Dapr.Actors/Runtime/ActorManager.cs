@@ -20,9 +20,9 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors;
-    using Dapr.Actors.Client;
-    using Dapr.Actors.Communication;
+    using Actors;
+    using Client;
+    using Communication;
     using Microsoft.Extensions.Logging;
 
     // The ActorManager serves as a cache for a variety of different concerns related to an Actor type
@@ -229,7 +229,6 @@ namespace Dapr.Actors.Runtime
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
                 var actorType = actor.Host.ActorTypeInfo.ImplementationType;
                 var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
 
@@ -241,7 +240,7 @@ namespace Dapr.Actors.Runtime
                 return default;
             }
 
-            var result = await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
+            await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task ActivateActorAsync(ActorId actorId)
@@ -269,7 +268,7 @@ namespace Dapr.Actors.Runtime
             // The policy we have chosen is to always keep the registered instance if we hit a double-activation
             // so that means we have to destroy the 'new' instance.
             var current = this.activeActors.AddOrUpdate(actorId, state, (key, oldValue) => oldValue);
-            if (object.ReferenceEquals(state, current))
+            if (ReferenceEquals(state, current))
             {
                 // On this code path it was an *Add*. Nothing left to do.
                 return;

@@ -15,7 +15,7 @@ namespace Dapr.Actors.Runtime
 {
     using System;
     using System.Text.Json;
-    using Dapr.Actors.Client;
+    using Client;
     using Microsoft.Extensions.Logging;
 
     /// <summary>

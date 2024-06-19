@@ -14,19 +14,12 @@
 namespace Dapr.Actors.Test
 {
     using System;
-    using System.Globalization;
-    using System.Linq;
-    using System.Net;
-    using System.Net.Http;
-    using System.Security;
-    using System.Security.Authentication;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Collections.Generic;
-    using FluentAssertions;
     using Xunit;
-    using Dapr.Actors.Communication;
+    using Communication;
     using Dapr.Actors.Runtime;
     using Moq;
 

@@ -17,8 +17,8 @@ namespace Dapr.Actors.Description
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
-    using Dapr.Actors.Common;
-    using Dapr.Actors.Resources;
+    using Common;
+    using Resources;
 
     internal abstract class InterfaceDescription
     {

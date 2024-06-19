@@ -16,7 +16,7 @@ namespace Dapr.E2E.Test
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
-    using Dapr.E2E.Test.Actors.Timers;
+    using Actors.Timers;
     using Xunit;
 
     public partial class E2ETests : IAsyncLifetime

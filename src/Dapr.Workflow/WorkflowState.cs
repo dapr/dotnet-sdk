@@ -14,7 +14,7 @@
 namespace Dapr.Workflow
 {
     using System;
-    using Dapr.Client;
+    using Client;
     using Microsoft.DurableTask.Client;
 
     /// <summary>

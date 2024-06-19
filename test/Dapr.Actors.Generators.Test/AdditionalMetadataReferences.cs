@@ -17,5 +17,5 @@ namespace Dapr.Actors.Generators;
 
 internal static class AdditionalMetadataReferences
 {
-    public static readonly MetadataReference Actors = MetadataReference.CreateFromFile(typeof(Dapr.Actors.Client.ActorProxy).Assembly.Location);
+    public static readonly MetadataReference Actors = MetadataReference.CreateFromFile(typeof(Client.ActorProxy).Assembly.Location);
 }

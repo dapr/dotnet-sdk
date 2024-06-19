@@ -13,7 +13,7 @@
 
 namespace Dapr.Actors.Builder
 {
-    using Dapr.Actors.Client;
+    using Client;
 
     /// <summary>
     /// Interface to create <see cref="ActorProxy"/> objects.

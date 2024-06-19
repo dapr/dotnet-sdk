@@ -15,13 +15,11 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
     using System.Linq;
-    using System.Text.Json;
-    using Dapr;
     using Dapr.AspNetCore;
     using Dapr.Client;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.ApplicationModels;
-    using Microsoft.Extensions.DependencyInjection.Extensions;
+    using AspNetCore.Mvc;
+    using AspNetCore.Mvc.ApplicationModels;
+    using Extensions;
 
     /// <summary>
     /// Provides extension methods for <see cref="IMvcBuilder" />.

@@ -15,8 +15,8 @@ namespace Dapr.Actors.Client
 {
     using System;
     using System.Net.Http;
-    using Dapr.Actors.Builder;
-    using Dapr.Actors.Communication;
+    using Builder;
+    using Communication;
     using Dapr.Actors.Communication.Client;
 
     /// <summary>

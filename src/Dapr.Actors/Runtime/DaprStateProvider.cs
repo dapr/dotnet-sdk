@@ -20,7 +20,7 @@ namespace Dapr.Actors.Runtime
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
+    using Communication;
 
     /// <summary>
     /// State Provider to interact with Dapr runtime.

@@ -13,11 +13,10 @@
 
 namespace Dapr.Actors.Test
 {
-    using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Builder;
-    using Dapr.Actors.Communication;
-    using Dapr.Actors.Description;
+    using Builder;
+    using Communication;
+    using Description;
     using Dapr.Actors.Runtime;
     using Xunit;
 
@@ -32,7 +31,7 @@ namespace Dapr.Actors.Test
         [Fact]
         public void TestBuildActorProxyGenerator()
         {
-            ActorProxyGenerator proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(typeof(ITestActor));
+            ActorCodeBuilder.GetOrCreateProxyGenerator(typeof(ITestActor));
         }
 
         [Fact]

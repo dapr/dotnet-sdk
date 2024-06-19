@@ -122,7 +122,7 @@ namespace Dapr.Client.Test
                 return await daprClient.InvokeBindingAsync(bindingRequest);
             });
 
-            var gRpcResponse = new Autogen.Grpc.v1.InvokeBindingResponse()
+            var gRpcResponse = new InvokeBindingResponse()
             {
                 Data = ByteString.CopyFrom(JsonSerializer.SerializeToUtf8Bytes(new Widget() { Color = "red", }, client.InnerClient.JsonSerializerOptions)),
                 Metadata = 
@@ -185,7 +185,7 @@ namespace Dapr.Client.Test
             var rpcException = new RpcException(rpcStatus, new Metadata(), "not gonna work");
 
             client.Mock
-                .Setup(m => m.InvokeBindingAsync(It.IsAny<Autogen.Grpc.v1.InvokeBindingRequest>(), It.IsAny<CallOptions>()))
+                .Setup(m => m.InvokeBindingAsync(It.IsAny<InvokeBindingRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
             var ex = await Assert.ThrowsAsync<DaprException>(async () => 
@@ -200,7 +200,7 @@ namespace Dapr.Client.Test
         {
             await using var client = TestClient.CreateForDaprClient();
 
-            var response = new Autogen.Grpc.v1.InvokeBindingResponse();
+            var response = new InvokeBindingResponse();
             var bytes = JsonSerializer.SerializeToUtf8Bytes<Widget>(new Widget(){ Color = "red", }, client.InnerClient.JsonSerializerOptions);
             response.Data = ByteString.CopyFrom(bytes.Take(10).ToArray()); // trim it to make invalid JSON blob
 
@@ -209,7 +209,7 @@ namespace Dapr.Client.Test
                 return await daprClient.InvokeBindingAsync<InvokeRequest, Widget>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
             });
 
-            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
             var ex = await Assert.ThrowsAsync<DaprException>(async () => 
             {
                 await request.CompleteWithMessageAsync(response);

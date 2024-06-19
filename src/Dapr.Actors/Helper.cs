@@ -15,7 +15,7 @@ namespace Dapr.Actors
 {
     using System;
     using System.Globalization;
-    using Dapr.Actors.Communication;
+    using Communication;
 
     internal class Helper
     {

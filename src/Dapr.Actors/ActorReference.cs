@@ -15,7 +15,7 @@ namespace Dapr.Actors
 {
     using System;
     using System.Runtime.Serialization;
-    using Dapr.Actors.Client;
+    using Client;
 
     /// <summary>
     /// Encapsulation of a reference to an actor for serialization.

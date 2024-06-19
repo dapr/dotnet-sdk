@@ -15,7 +15,7 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Reflection;
-    using Dapr.Actors;
+    using Actors;
     using Dapr.Actors.Runtime;
     using Xunit;
 

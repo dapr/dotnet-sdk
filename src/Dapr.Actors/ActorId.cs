@@ -16,7 +16,7 @@ namespace Dapr.Actors
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
-    using Dapr.Actors.Seralization;
+    using Seralization;
 
     /// <summary>
     /// The ActorId represents the identity of an actor within an actor service.

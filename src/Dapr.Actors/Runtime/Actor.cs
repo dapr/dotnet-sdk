@@ -16,7 +16,7 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Reflection;
     using System.Threading.Tasks;
-    using Dapr.Actors.Client;
+    using Client;
     using Microsoft.Extensions.Logging;
 
     /// <summary>

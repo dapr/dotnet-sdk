@@ -68,7 +68,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
-            var response = new Autogen.Grpc.v1.InvokeResponse()
+            var response = new InvokeResponse()
             {
                 Data = Any.Pack(data),
             };
@@ -88,10 +88,10 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response =
-                client.Call<InvokeResponse>()
-                .SetResponse(invokeResponse)
-                .Build();
+            await client
+                    .Call<InvokeResponse>()
+                    .SetResponse(invokeResponse)
+                    .Build();
 
             const string rpcExceptionMessage = "RPC exception";
             const StatusCode rpcStatusCode = StatusCode.Unavailable;
@@ -102,7 +102,7 @@ namespace Dapr.Client.Test
 
             // Setup the mock client to throw an Rpc Exception with the expected details info
             client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
             var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
@@ -133,7 +133,7 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
-            var response = new Autogen.Grpc.v1.InvokeResponse()
+            var response = new InvokeResponse()
             {
                 Data = Any.Pack(data),
             };
@@ -153,8 +153,8 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response =
-                client.Call<InvokeResponse>()
+            await client
+                .Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
 
@@ -167,7 +167,7 @@ namespace Dapr.Client.Test
             var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
 
             client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
             var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
@@ -194,7 +194,7 @@ namespace Dapr.Client.Test
                 .Build();
 
             client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Returns(response);
 
             FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request)).Should().NotThrow();
@@ -210,12 +210,11 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response =
-                client.Call<InvokeResponse>()
+            await client
+                .Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
-
-
+            
             const string rpcExceptionMessage = "RPC exception";
             const StatusCode rpcStatusCode = StatusCode.Unavailable;
             const string rpcStatusDetail = "Non success";
@@ -225,7 +224,7 @@ namespace Dapr.Client.Test
 
             // Setup the mock client to throw an Rpc Exception with the expected details info
             client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+                .Setup(m => m.InvokeServiceAsync(It.IsAny<InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Throws(rpcException);
 
             var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
@@ -287,13 +286,13 @@ namespace Dapr.Client.Test
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
-            var response = new Autogen.Grpc.v1.InvokeResponse()
+            var response = new InvokeResponse()
             {
                 Data = Any.Pack(data),
             };
 
             // Validate Response
-            var invokedResponse = await request.CompleteWithMessageAsync(response);
+            await request.CompleteWithMessageAsync(response);
             invokeResponse.Name.Should().Be(invokeResponse.Name);
         }
 
@@ -393,7 +392,7 @@ namespace Dapr.Client.Test
 
 
             // Create Response & Respond
-            var response = new Autogen.Grpc.v1.GetMetadataResponse()
+            var response = new GetMetadataResponse()
             {
                 ActorRuntime = new(),
                 Id = "testId",

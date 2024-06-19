@@ -14,7 +14,7 @@
 namespace Dapr.Actors
 {
     using System;
-    using Dapr.Actors.Client;
+    using Client;
 
     /// <summary>
     /// Interface for ActorReference.

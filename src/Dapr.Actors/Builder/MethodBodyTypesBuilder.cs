@@ -16,7 +16,7 @@ namespace Dapr.Actors.Builder
     using System;
     using System.Collections.Generic;
     using System.Reflection;
-    using Dapr.Actors.Description;
+    using Description;
 
     internal class MethodBodyTypesBuilder : CodeBuilderModule
     {

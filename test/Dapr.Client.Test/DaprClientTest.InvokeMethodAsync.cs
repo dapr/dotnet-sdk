@@ -14,7 +14,6 @@
 namespace Dapr.Client.Test
 {
     using System;
-    using System.Collections.Generic;
     using System.Net;
     using System.Net.Http;
     using System.Net.Http.Json;
@@ -22,8 +21,7 @@ namespace Dapr.Client.Test
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Client;
-    using FluentAssertions;
+    using Client;
     using Xunit;
 
     // Most of the InvokeMethodAsync functionality on DaprClient is non-abstract methods that

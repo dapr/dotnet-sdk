@@ -16,8 +16,8 @@ namespace Dapr.Actors.Builder
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Dapr.Actors.Description;
-    using Dapr.Actors.Runtime;
+    using Description;
+    using Runtime;
 
     internal class ActorCodeBuilder : ICodeBuilder
     {

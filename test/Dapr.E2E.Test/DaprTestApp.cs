@@ -97,7 +97,7 @@ namespace Dapr.E2E.Test
             // TODO: we don't do any quoting right now because our paths are guaranteed not to contain spaces
             var daprStart = new DaprCommand(this.testOutput)
             {
-                DaprBinaryName = DaprTestApp.daprBinaryName,
+                DaprBinaryName = daprBinaryName,
                 Command = string.Join(" ", arguments),
                 OutputToMatch = outputToMatchOnStart,
                 Timeout = TimeSpan.FromSeconds(30),
@@ -120,7 +120,7 @@ namespace Dapr.E2E.Test
             var daprStopCommand = $" stop --app-id {appId}";
             var daprStop = new DaprCommand(this.testOutput)
             {
-                DaprBinaryName = DaprTestApp.daprBinaryName,
+                DaprBinaryName = daprBinaryName,
                 Command = daprStopCommand,
                 OutputToMatch = outputToMatchOnStop,
                 Timeout = TimeSpan.FromSeconds(30),

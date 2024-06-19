@@ -62,7 +62,7 @@ namespace Dapr.Actors.Serialization
         [Fact]
         public void CanDeserializeNullActorId()
         {
-            var id = ActorId.CreateRandom().GetId();
+            ActorId.CreateRandom().GetId();
             var document = $@"
 {{
     ""actor"": null

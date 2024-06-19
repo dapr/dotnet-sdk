@@ -14,7 +14,6 @@
 ﻿using System;
 using System.Text.Json;
 using Dapr.Client;
-using Grpc.Core;
 using Grpc.Net.Client;
 using Xunit;
 
@@ -44,7 +43,7 @@ namespace Dapr.AspNetCore.Test
         public void DaprClientBuilder_UsesThrowOperationCanceledOnCancellation_ByDefault()
         {
             var builder = new DaprClientBuilder();
-            var daprClient = builder.Build();
+            builder.Build();
             Assert.True(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
 
@@ -52,7 +51,7 @@ namespace Dapr.AspNetCore.Test
         public void DaprClientBuilder_DoesNotOverrideUserGrpcChannelOptions()
         {
             var builder = new DaprClientBuilder();
-            var daprClient = builder.UseGrpcChannelOptions(new GrpcChannelOptions()).Build();
+            builder.UseGrpcChannelOptions(new GrpcChannelOptions()).Build();
             Assert.False(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
 

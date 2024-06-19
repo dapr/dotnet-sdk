@@ -18,7 +18,7 @@ namespace Dapr.Actors.Builder
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using Dapr.Actors.Description;
+    using Description;
 
     internal class InterfaceDetailsStore
     {

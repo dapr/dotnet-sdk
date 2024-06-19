@@ -20,9 +20,9 @@ namespace Dapr.Actors.Builder
     using System.Reflection.Emit;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Client;
-    using Dapr.Actors.Communication;
-    using Dapr.Actors.Description;
+    using Client;
+    using Communication;
+    using Description;
 
     internal class ActorProxyGeneratorBuilder : CodeBuilderModule
     {

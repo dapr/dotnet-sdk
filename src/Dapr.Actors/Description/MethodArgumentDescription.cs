@@ -16,7 +16,7 @@ namespace Dapr.Actors.Description
     using System;
     using System.Globalization;
     using System.Reflection;
-    using Dapr.Actors.Resources;
+    using Resources;
 
     internal sealed class MethodArgumentDescription
     {

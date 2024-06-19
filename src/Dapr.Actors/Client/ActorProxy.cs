@@ -19,7 +19,7 @@ namespace Dapr.Actors.Client
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
+    using Communication;
     using Dapr.Actors.Communication.Client;
 
     /// <summary>
@@ -220,7 +220,7 @@ namespace Dapr.Actors.Client
                 ActorType = this.ActorType,
                 InterfaceId = interfaceId,
                 MethodId = methodId,
-                CallContext = Actors.Helper.GetCallContext(),
+                CallContext = Helper.GetCallContext(),
                 MethodName = methodName,
             };
 

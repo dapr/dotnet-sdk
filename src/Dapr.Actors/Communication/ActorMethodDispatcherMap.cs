@@ -16,8 +16,8 @@ namespace Dapr.Actors.Communication
     using System;
     using System.Collections.Generic;
     using System.Globalization;
-    using Dapr.Actors.Builder;
-    using Dapr.Actors.Resources;
+    using Builder;
+    using Resources;
 
     /// <summary>
     /// Actor method dispatcher map for remoting calls.

@@ -17,7 +17,7 @@ namespace Dapr.Actors.Runtime
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
-    using Dapr.Actors.Resources;
+    using Resources;
 
     /// <summary>
     /// Contains the information about the type implementing an actor.
