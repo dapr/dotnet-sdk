@@ -356,7 +356,7 @@ namespace Dapr.Client
         /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public HttpRequestMessage CreateInvokeMethodRequest<TRequest>(string appId, string methodName, TRequest data)
         {
-            return CreateInvokeMethodRequest<TRequest>(HttpMethod.Post, appId, methodName, data);
+            return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, data);
         }
 
         /// <summary>
