@@ -14,7 +14,6 @@
 ﻿using System;
 using System.Text.Json;
 using Dapr.Client;
-using Grpc.Core;
 using Grpc.Net.Client;
 using Xunit;
 

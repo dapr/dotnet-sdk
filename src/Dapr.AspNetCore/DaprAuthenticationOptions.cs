@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
 using Microsoft.AspNetCore.Authentication;
 
 namespace Dapr.AspNetCore

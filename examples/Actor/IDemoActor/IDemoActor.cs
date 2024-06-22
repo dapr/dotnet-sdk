@@ -16,7 +16,6 @@ namespace IDemoActorInterface
     using System;
     using System.Threading.Tasks;
     using Dapr.Actors;
-    using Dapr.Actors.Runtime;
 
     /// <summary>
     /// Interface for Actor method.

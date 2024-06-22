@@ -19,7 +19,6 @@ using Dapr.Client;
 using FluentAssertions;
 using Xunit;
 using System.Linq;
-using System.Diagnostics;
 
 namespace Dapr.E2E.Test
 {
