@@ -14,7 +14,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Text;
 
 namespace Dapr.Client
@@ -22,21 +21,21 @@ namespace Dapr.Client
     /// <summary>
     /// Provides extensions specific to HTTP types.
     /// </summary>
-    public static class HttpExtensions
+    internal static class HttpExtensions
     {
         /// <summary>
         /// Appends key/value pairs to the query string on an HttpRequestMessage.
         /// </summary>
-        /// <param name="message">The message to append the query string parameters to.</param>
+        /// <param name="uri">The uri to append the query string parameters to.</param>
         /// <param name="queryStringParameters">The key/value pairs to populate the query string with.</param>
-        public static void AddQueryParameters(this HttpRequestMessage? message,
+        public static Uri AddQueryParameters(this Uri? uri,
             IReadOnlyCollection<KeyValuePair<string, string>>? queryStringParameters)
         {
-            ArgumentNullException.ThrowIfNull(message, nameof(message));
-            if (queryStringParameters is null || message.RequestUri is null)
-                return;
+            ArgumentNullException.ThrowIfNull(uri, nameof(uri));
+            if (queryStringParameters is null)
+                return uri;
 
-            var uriBuilder = new UriBuilder(message.RequestUri);
+            var uriBuilder = new UriBuilder(uri);
             var qsBuilder = new StringBuilder(uriBuilder.Query);
             foreach (var kvParam in queryStringParameters)
             {
@@ -46,7 +45,7 @@ namespace Dapr.Client
             }
 
             uriBuilder.Query = qsBuilder.ToString();
-            message.RequestUri = uriBuilder.Uri;
+            return uriBuilder.Uri;
         }
     }
 }

@@ -382,7 +382,7 @@ namespace Dapr.Client
             // This approach avoids some common pitfalls that could lead to undesired encoding.
             var path = $"/v1.0/invoke/{appId}/method/{methodName.TrimStart('/')}";
             var request = new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path));
-            request.AddQueryParameters(queryStringParameters);
+            request.RequestUri = request.RequestUri.AddQueryParameters(queryStringParameters);
 
             request.Options.Set(new HttpRequestOptionsKey<string>(AppIdKey), appId);
             request.Options.Set(new HttpRequestOptionsKey<string>(MethodNameKey), methodName);
