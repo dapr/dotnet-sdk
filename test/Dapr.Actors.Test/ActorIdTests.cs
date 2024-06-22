@@ -117,7 +117,7 @@ namespace Dapr.Actors.Test
         {
             Assert.Throws<ArgumentException>(() =>
             {
-                ActorId actorId = new ActorId(id);
+                new ActorId(id);
             });
         }
 
