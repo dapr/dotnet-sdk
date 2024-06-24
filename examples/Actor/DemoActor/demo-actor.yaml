@@ -1,3 +1,14 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+spec:
+  type: state.in-memory
+  version: v1
+  metadata: 
+  - name: actorStateStore
+    value: "true"
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -8,9 +19,14 @@ spec:
   selector:
     app: demoactor
   ports:
-  - protocol: TCP
+  - name: app-port
+    protocol: TCP
     port: 5010
     targetPort: app-port
+  - name: dapr-http
+    protocol: TCP
+    port: 3500
+    targetPort: 3500
   type: LoadBalancer
 ---
 apiVersion: apps/v1
@@ -33,12 +49,14 @@ spec:
         dapr.io/app-id: "demoactor"
         dapr.io/app-port: "5010"
         dapr.io/enable-api-logging: "true"
+        dapr.io/sidecar-listen-addresses: "0.0.0.0"
     spec:
       containers:
       - name: demoactor
         # image: <your-docker-registry>/demo-actor:latest
         image: demo-actor:latest
         # if you are using docker desktop, you can use imagePullPolicy: Never to use local image
+        # built with build-container.sh/ps1
         imagePullPolicy: Never
         env:
         - name: APP_PORT
