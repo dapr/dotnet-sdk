@@ -4,8 +4,15 @@
         <TargetFramework>net6</TargetFramework>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <IsPublishable>true</IsPublishable>
+        <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+        <ContainerRepository>demo-actor</ContainerRepository>
+        <ContainerBaseImage>mcr.microsoft.com/dotnet/runtime:6.0-jammy-chiseled-extra</ContainerBaseImage>
+    </PropertyGroup>
+
     <ItemGroup>
-        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.1" />
+        <ContainerPort Include="8080" Type="tcp" />
     </ItemGroup>
 
     <ItemGroup>
