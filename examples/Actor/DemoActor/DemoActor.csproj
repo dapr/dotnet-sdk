@@ -8,10 +8,10 @@
         <IsPublishable>true</IsPublishable>
         <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
         <ContainerRepository>demo-actor</ContainerRepository>
-        <ContainerBaseImage>mcr.microsoft.com/dotnet/runtime:6.0-jammy-chiseled-extra</ContainerBaseImage>
     </PropertyGroup>
 
     <ItemGroup>
+        <ContainerEnvironmentVariable Include="ASPNETCORE_URLS" Value="http://+:8080" />
         <ContainerPort Include="8080" Type="tcp" />
     </ItemGroup>
 

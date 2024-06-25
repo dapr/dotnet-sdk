@@ -85,7 +85,7 @@ curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/GetData
 You can build the docker image of `DemoActor` service by running the following commands in the `DemoActor` project directory:
 
 ``` Bash
-dotnet publish --os linux --arch x64 /t:PublishContainer -p ContainerImageTags='"latest"'
+dotnet publish --os linux --arch x64 /t:PublishContainer -p ContainerImageTags='"latest"' --self-contained
 ```
 
 The build produce and image with tag `demo-actor:latest` and load it in the local registry. 
