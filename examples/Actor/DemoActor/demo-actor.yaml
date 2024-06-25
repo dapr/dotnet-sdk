@@ -56,7 +56,6 @@ spec:
         # image: <your-docker-registry>/demo-actor:latest
         image: demo-actor:latest
         # if you are using docker desktop, you can use imagePullPolicy: Never to use local image
-        # built with build-container.sh/ps1
         imagePullPolicy: Never
         env:
         - name: APP_PORT
