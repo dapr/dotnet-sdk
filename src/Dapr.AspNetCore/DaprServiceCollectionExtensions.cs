@@ -31,18 +31,32 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="configure"></param>
         public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder> configure = null)
         {
-            if (services is null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
+            ArgumentNullException.ThrowIfNull(services, nameof(services));
 
             services.TryAddSingleton(_ =>
             {
                 var builder = new DaprClientBuilder();
-                if (configure != null)
-                {
-                    configure.Invoke(builder);
-                }
+                configure?.Invoke(builder);
+
+                return builder.Build();
+            });
+        }
+        
+        /// <summary>
+        /// Adds Dapr client services to the provided <see cref="IServiceCollection"/>. This does not include integration
+        /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration. 
+        /// </summary>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <param name="configure"></param>
+        public static void AddDaprClient(this IServiceCollection services,
+            Action<IServiceProvider, DaprClientBuilder> configure)
+        {
+            ArgumentNullException.ThrowIfNull(services, nameof(services));
+
+            services.TryAddSingleton(serviceProvider =>
+            {
+                var builder = new DaprClientBuilder();
+                configure?.Invoke(serviceProvider, builder);
 
                 return builder.Build();
             });
