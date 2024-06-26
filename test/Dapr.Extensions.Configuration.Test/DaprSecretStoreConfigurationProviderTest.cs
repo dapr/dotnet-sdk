@@ -199,6 +199,35 @@ namespace Dapr.Extensions.Configuration.Test
         }
 
         [Fact]
+        public void LoadSecrets_FromSecretStoreThatCanReturnsMultivaluedValues()
+        {
+            var storeName = "store";
+            var parentSecretKey = "connectionStrings";
+            var firstSecretKey = "first_secret";
+            var secondSecretKey = "second_secret";
+            var firstSecretValue = "secret1";
+            var secondSecretValue = "secret2";
+
+            var secretDescriptors = new[]
+            {
+                new DaprSecretDescriptor(parentSecretKey)
+            };
+
+            var daprClient = new Mock<DaprClient>();
+
+            daprClient.Setup(c => c.GetSecretAsync(storeName, parentSecretKey,
+                    It.IsAny<Dictionary<string, string>>(), default))
+                .ReturnsAsync(new Dictionary<string, string> { { firstSecretKey, firstSecretValue }, { secondSecretKey, secondSecretValue } });
+
+            var config = CreateBuilder()
+                .AddDaprSecretStore(storeName, secretDescriptors, daprClient.Object)
+                .Build();
+
+            config[firstSecretKey].Should().Be(firstSecretValue);
+            config[secondSecretKey].Should().Be(secondSecretValue);
+        }
+
+        [Fact]
         public void LoadSecrets_FromSecretStoreWithADifferentSecretKeyAndName()
         {
             var storeName = "store";
