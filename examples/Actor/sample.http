@@ -1,0 +1,7 @@
+POST http://localhost:3500/v1.0/actors/DemoActor/abc/method/SaveData
+
+{ "PropertyA": "ValueA", "PropertyB": "ValueB" }
+
+###
+
+GET http://localhost:3500/v1.0/actors/DemoActor/abc/method/GetData
