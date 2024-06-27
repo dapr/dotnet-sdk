@@ -1,5 +1,4 @@
-﻿using System;
-namespace Dapr.Client
+﻿namespace Dapr.Client
 {
     /// <summary>
     /// Response from an Unsubscribe Configuration call.

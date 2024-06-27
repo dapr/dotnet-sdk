@@ -17,7 +17,6 @@ using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 using Dapr.Extensions.Configuration.DaprSecretStore;
 using System.Linq;
-using System.Threading;
 
 namespace Dapr.Extensions.Configuration
 {

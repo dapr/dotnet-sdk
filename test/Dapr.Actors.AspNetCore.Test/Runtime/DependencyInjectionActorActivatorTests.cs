@@ -13,9 +13,7 @@
 
 using System;
 using System.Threading.Tasks;
-using Dapr.Actors.Client;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Dapr.Actors.Runtime

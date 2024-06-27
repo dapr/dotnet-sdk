@@ -14,7 +14,6 @@
 namespace Dapr.Client.Test
 {
     using System.Text.Json;
-    using Dapr.Client.Autogen.Test.Grpc.v1;
     using FluentAssertions;
     using Xunit;
 

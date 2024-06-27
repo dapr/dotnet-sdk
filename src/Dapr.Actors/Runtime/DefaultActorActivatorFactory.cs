@@ -11,9 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
-using System.Threading.Tasks;
-
 namespace Dapr.Actors.Runtime
 {
     /// <summary>

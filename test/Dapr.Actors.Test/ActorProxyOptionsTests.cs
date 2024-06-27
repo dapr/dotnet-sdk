@@ -14,10 +14,6 @@
 namespace Dapr.Actors.Client
 {
     using System;
-    using System.Text.Json;
-    using Dapr.Actors.Builder;
-    using Dapr.Actors.Client;
-    using Dapr.Actors.Test;
     using FluentAssertions;
     using Xunit;
 
