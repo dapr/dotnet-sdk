@@ -60,7 +60,6 @@ namespace Dapr.Client.Test
             string lockOwner = "owner1";
             Int32 expiryInSeconds = 0;
             // Get response and validate
-            var invokeResponse = new ArgumentException();
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.Lock(storeName, resourceId, lockOwner, expiryInSeconds));
         }
 

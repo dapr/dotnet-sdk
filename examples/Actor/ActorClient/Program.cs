@@ -83,7 +83,7 @@ namespace ActorClient
             var nonRemotingProxy = ActorProxy.Create(actorId, "DemoActor");
             await nonRemotingProxy.InvokeMethodAsync("TestNoArgumentNoReturnType");
             await nonRemotingProxy.InvokeMethodAsync("SaveData", data);
-            var res = await nonRemotingProxy.InvokeMethodAsync<MyData>("GetData");
+            await nonRemotingProxy.InvokeMethodAsync<MyData>("GetData");
 
             Console.WriteLine("Registering the timer and reminder");
             await proxy.RegisterTimer();
