@@ -48,6 +48,31 @@ namespace Dapr.AspNetCore.Test
             Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
+        [Fact]
+        public void AddDaprClient_RegistersUsingDependencyFromIServiceProvider()
+        {
+            
+            var services = new ServiceCollection();
+            services.AddSingleton<TestConfigurationProvider>();
+            services.AddDaprClient((provider, builder) =>
+            {
+                var configProvider = provider.GetRequiredService<TestConfigurationProvider>();
+                var caseSensitivity = configProvider.GetCaseSensitivity();
+
+                builder.UseJsonSerializationOptions(new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = caseSensitivity
+                });
+            });
+
+            var serviceProvider = services.BuildServiceProvider();
+            
+            DaprClientGrpc client = serviceProvider.GetRequiredService<DaprClient>() as DaprClientGrpc;
+            
+            //Registers with case-insensitive as true by default, but we set as false above
+            Assert.False(client.JsonSerializerOptions.PropertyNameCaseInsensitive);
+        }
+
 #if NET8_0_OR_GREATER
         [Fact]
         public void AddDaprClient_WithKeyedServices()
@@ -65,5 +90,10 @@ namespace Dapr.AspNetCore.Test
             Assert.NotNull(daprClient);
         }
 #endif
+        
+        private class TestConfigurationProvider
+        {
+            public bool GetCaseSensitivity() => false;
+        }
     }
 }

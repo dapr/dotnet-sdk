@@ -32,6 +32,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1BD1276E-D28A-45EA-89B1-6AD48471500D}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.AspNetCore.Test", "test\Dapr.Actors.AspNetCore.Test\Dapr.Actors.AspNetCore.Test.csproj", "{9C1D6ABA-5EDE-4FA0-A8A9-0AB98CB74737}"
@@ -341,19 +342,6 @@ Global
 		{7C06FE2D-6C62-48F5-A505-F0D715C554DE} = {7592AFA4-426B-42F3-AE82-957C86814482}
 		{AF89083D-4715-42E6-93E9-38497D12A8A6} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{B5CDB0DC-B26D-48F1-B934-FE5C1C991940} = {DD020B34-460F-455F-8D17-CF4A949F100B}
-		{C74FBA78-13E8-407F-A173-4555AEE41FF3} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
-	EndGlobalSection
-EndGlobal
-8-446B-AECD-DCC2CC871F73}
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
-	EndGlobalSection
-EndGlobal
-C991940} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
