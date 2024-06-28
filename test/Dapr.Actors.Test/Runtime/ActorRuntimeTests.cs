@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,19 +15,18 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
-    using System.Collections.Generic;
-    using System.Linq;
     using System.IO;
+    using System.Linq;
+    using System.Reflection;
     using System.Text;
     using System.Text.Json;
+    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
+    using Dapr.Actors.Client;
     using Dapr.Actors.Runtime;
     using Microsoft.Extensions.Logging;
     using Xunit;
-    using Dapr.Actors.Client;
-    using System.Reflection;
-    using System.Threading;
 
     public sealed class ActorRuntimeTests
     {
@@ -46,7 +45,7 @@ namespace Dapr.Actors.Test
         public void TestInferredActorType()
         {
             var actorType = typeof(TestActor);
-            
+
             var options = new ActorRuntimeOptions();
             options.Actors.RegisterActor<TestActor>();
             var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
@@ -119,6 +118,10 @@ namespace Dapr.Actors.Test
             Task<string> SingleArgumentAsync(bool arg);
 
             Task<string> SingleArgumentWithCancellationAsync(bool arg, CancellationToken cancellationToken = default);
+
+            Task<string> MultiArgumentsAsync(bool arg1, string arg2);
+
+            Task<string> MultiArgumentsWithCancellationAsync(bool arg1, string arg2, CancellationToken cancellationToken = default);
         }
 
         public sealed class NotRemotedActor : Actor, INotRemotedActor
@@ -147,6 +150,16 @@ namespace Dapr.Actors.Test
             {
                 return Task.FromResult(nameof(SingleArgumentWithCancellationAsync));
             }
+
+            public Task<string> MultiArgumentsAsync(bool arg1, string arg2)
+            {
+                return Task.FromResult(nameof(MultiArgumentsAsync));
+            }
+
+            public Task<string> MultiArgumentsWithCancellationAsync(bool arg1, string arg2, CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(nameof(MultiArgumentsWithCancellationAsync));
+            }
         }
 
         public async Task<string> InvokeMethod<T>(string methodName, object arg = null) where T : Actor
@@ -167,7 +180,7 @@ namespace Dapr.Actors.Test
             }
 
             using var output = new MemoryStream();
-            
+
             await runtime.DispatchWithoutRemotingAsync(typeof(T).Name, ActorId.CreateRandom().ToString(), methodName, input, output);
 
             output.Seek(0, SeekOrigin.Begin);
@@ -179,17 +192,17 @@ namespace Dapr.Actors.Test
         public async Task NoRemotingMethodWithNoArguments()
         {
             string methodName = nameof(INotRemotedActor.NoArgumentsAsync);
-            
+
             string result = await InvokeMethod<NotRemotedActor>(methodName);
 
-           Assert.Equal(methodName, result);
+            Assert.Equal(methodName, result);
         }
 
         [Fact]
         public async Task NoRemotingMethodWithNoArgumentsWithCancellation()
         {
             string methodName = nameof(INotRemotedActor.NoArgumentsWithCancellationAsync);
-            
+
             string result = await InvokeMethod<NotRemotedActor>(methodName);
 
             Assert.Equal(methodName, result);
@@ -199,7 +212,7 @@ namespace Dapr.Actors.Test
         public async Task NoRemotingMethodWithSingleArgument()
         {
             string methodName = nameof(INotRemotedActor.SingleArgumentAsync);
-            
+
             string result = await InvokeMethod<NotRemotedActor>(methodName, true);
 
             Assert.Equal(methodName, result);
@@ -209,8 +222,30 @@ namespace Dapr.Actors.Test
         public async Task NoRemotingMethodWithSingleArgumentWithCancellation()
         {
             string methodName = nameof(INotRemotedActor.SingleArgumentWithCancellationAsync);
-            
+
             string result = await InvokeMethod<NotRemotedActor>(methodName, true);
+
+            Assert.Equal(methodName, result);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithMultiArguments()
+        {
+            var arg = new { arg1 = true, arg2 = "abc" };
+            string methodName = nameof(INotRemotedActor.MultiArgumentsAsync);
+
+            string result = await InvokeMethod<NotRemotedActor>(methodName, arg);
+
+            Assert.Equal(methodName, result);
+        }
+
+        [Fact]
+        public async Task NoRemotingMethodWithMultiArgumentsWithCancellation()
+        {
+            var arg = new { arg1 = true, arg2 = "abc" };
+            string methodName = nameof(INotRemotedActor.MultiArgumentsWithCancellationAsync);
+
+            string result = await InvokeMethod<NotRemotedActor>(methodName, arg);
 
             Assert.Equal(methodName, result);
         }
@@ -330,7 +365,7 @@ namespace Dapr.Actors.Test
         }
 
         [Fact]
-        public async Task TestActorSettingsWithReentrancy() 
+        public async Task TestActorSettingsWithReentrancy()
         {
             var actorType = typeof(TestActor);
 
@@ -465,7 +500,7 @@ namespace Dapr.Actors.Test
 
             public override Task<ActorActivatorState> CreateAsync(ActorHost host)
             {
-                CreateCallCount++;;
+                CreateCallCount++; ;
                 return base.CreateAsync(host);
             }
 

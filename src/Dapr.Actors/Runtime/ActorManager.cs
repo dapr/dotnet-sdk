@@ -16,8 +16,10 @@ namespace Dapr.Actors.Runtime
     using System;
     using System.Collections.Concurrent;
     using System.IO;
+    using System.Linq;
     using System.Text;
     using System.Text.Json;
+    using System.Text.Json.Nodes;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors;
@@ -26,7 +28,7 @@ namespace Dapr.Actors.Runtime
     using Microsoft.Extensions.Logging;
 
     // The ActorManager serves as a cache for a variety of different concerns related to an Actor type
-    // as well as the runtime managment for Actor instances of that type.
+    // as well as the runtime management for Actor instances of that type.
     internal sealed class ActorManager
     {
         private const string ReceiveReminderMethodName = "ReceiveReminderAsync";
@@ -55,7 +57,7 @@ namespace Dapr.Actors.Runtime
 
         internal ActorManager(
             ActorRegistration registration,
-            ActorActivator activator, 
+            ActorActivator activator,
             JsonSerializerOptions jsonSerializerOptions,
             bool useJsonSerialization,
             ILoggerFactory loggerFactory,
@@ -161,8 +163,32 @@ namespace Dapr.Actors.Runtime
                 }
                 else
                 {
-                    var errorMsg = $"Method {string.Concat(methodInfo.DeclaringType.Name, ".", methodInfo.Name)} has more than one parameter and can't be invoked through http";
-                    throw new ArgumentException(errorMsg);
+#if NET8_0_OR_GREATER
+                    var jsonNodes = await JsonNode.ParseAsync(requestBodyStream);
+#else
+                    using var streamReader = new StreamReader(requestBodyStream);
+                    var jsonString = await streamReader.ReadToEndAsync();
+                    var jsonNodes = JsonNode.Parse(jsonString);
+#endif
+                    var parametersList = parameters.Select(parameter =>
+                    {
+                        // If the parameter is of type CancellationToken, return the token.
+                        if (parameter.ParameterType == typeof(CancellationToken))
+                        {
+                            return ct;
+                        }
+
+                        // Deserialize the parameter from the JSON node.
+                        // The parameter name is used to look up the JSON node and must match the JSON property name.
+                        var parameterName = parameter.Name;
+                        var parameterType = parameter.ParameterType;
+                        var jsonNode = jsonNodes[parameterName];
+                        var deserializedType = JsonSerializer.Deserialize(jsonNode, parameterType, jsonSerializerOptions);
+
+                        return deserializedType;
+                    });
+
+                    awaitable = methodInfo.Invoke(actor, parametersList.ToArray());
                 }
 
                 await awaitable;
@@ -190,7 +216,7 @@ namespace Dapr.Actors.Runtime
                 var resultType = methodInfo.ReturnType.GenericTypeArguments[0];
                 await JsonSerializer.SerializeAsync(responseBodyStream, result, resultType, jsonSerializerOptions);
 #else
-                await JsonSerializer.SerializeAsync<object>(responseBodyStream, result, jsonSerializerOptions); 
+                await JsonSerializer.SerializeAsync<object>(responseBodyStream, result, jsonSerializerOptions);
 #endif
 
             }
@@ -222,9 +248,9 @@ namespace Dapr.Actors.Runtime
 
         internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
         {
-            #pragma warning disable 0618
+#pragma warning disable 0618
             var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
-            #pragma warning restore 0618
+#pragma warning restore 0618
 
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
@@ -286,7 +312,7 @@ namespace Dapr.Actors.Runtime
             {
                 StateProvider = new DaprStateProvider(this.daprInteractor, this.jsonSerializerOptions),
             };
-            var state =  await this.activator.CreateAsync(host);
+            var state = await this.activator.CreateAsync(host);
             this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
             return state;
         }
@@ -325,7 +351,7 @@ namespace Dapr.Actors.Runtime
             var found = this.activeActors.TryGetValue(id, out var state);
             actor = found ? state.Actor : default;
             return found;
-        } 
+        }
 
         private static ActorMessageSerializersManager IntializeSerializationManager(
             IActorMessageBodySerializationProvider serializationProvider)
@@ -344,7 +370,7 @@ namespace Dapr.Actors.Runtime
             }
 
             if (!this.activeActors.TryGetValue(actorId, out var state))
-            {             
+            {
                 var errorMsg = $"Actor {actorId} is not yet activated.";
                 throw new InvalidOperationException(errorMsg);
             }
