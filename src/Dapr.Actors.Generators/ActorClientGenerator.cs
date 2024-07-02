@@ -19,7 +19,7 @@ namespace Dapr.Actors.Generators;
 /// <summary>
 /// Generates strongly-typed actor clients that use the non-remoting actor proxy.
 /// </summary>
-[Generator]
+//[Generator]
 public sealed class ActorClientGenerator : ISourceGenerator
 {
     private const string GeneratorsNamespace = "Dapr.Actors.Generators";
@@ -194,7 +194,7 @@ namespace {namespaceName}
     private static string GetClientName(INamedTypeSymbol interfaceSymbol, AttributeData attributeData)
     {
         string? clientName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString();
-        
+
         clientName ??= $"{(interfaceSymbol.Name.StartsWith("I") ? interfaceSymbol.Name.Substring(1) : interfaceSymbol.Name)}Client";
 
         return clientName;
@@ -271,33 +271,33 @@ namespace {namespaceName}
     }
 }
 
-internal static class Extensions
-{
-    public static int IndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
-    {
-        int index = 0;
+//internal static class Extensions
+//{
+//    public static int IndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+//    {
+//        int index = 0;
 
-        foreach (var item in source)
-        {
-            if (predicate(item))
-            {
-                return index;
-            }
+//        foreach (var item in source)
+//        {
+//            if (predicate(item))
+//            {
+//                return index;
+//            }
 
-            index++;
-        }
+//            index++;
+//        }
 
-        return -1;
-    }
-}
+//        return -1;
+//    }
+//}
 
-internal sealed class DiagnosticsException : Exception
-{
-    public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
-        : base(String.Join("\n", diagnostics.Select(d => d.ToString())))
-    {
-        this.Diagnostics = diagnostics.ToArray();
-    }
+//internal sealed class DiagnosticsException : Exception
+//{
+//    public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
+//        : base(String.Join("\n", diagnostics.Select(d => d.ToString())))
+//    {
+//        this.Diagnostics = diagnostics.ToArray();
+//    }
 
-    public IEnumerable<Diagnostic> Diagnostics { get; }
-}
+//    public IEnumerable<Diagnostic> Diagnostics { get; }
+//}
