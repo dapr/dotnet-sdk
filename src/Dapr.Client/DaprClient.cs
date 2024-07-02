@@ -356,23 +356,9 @@ namespace Dapr.Client
         /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public HttpRequestMessage CreateInvokeMethodRequest<TRequest>(string appId, string methodName, TRequest data)
         {
-            return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, data);
+            return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, new List<KeyValuePair<string, string>>(), data);
         }
-
-        /// <summary>
-        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
-        /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
-        /// <paramref name="data" />.
-        /// </summary>
-        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
-        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
-        /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>
-        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
-        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
-        public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data);
-
+        
         /// <summary>
         /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
         /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
@@ -568,7 +554,7 @@ namespace Dapr.Client
             TRequest data,
             CancellationToken cancellationToken = default)
         {
-            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, data);
+            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, new List<KeyValuePair<string, string>>(), data);
             return InvokeMethodAsync(request, cancellationToken);
         }
 
@@ -662,7 +648,7 @@ namespace Dapr.Client
             TRequest data,
             CancellationToken cancellationToken = default)
         {
-            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, data);
+            var request = CreateInvokeMethodRequest<TRequest>(httpMethod, appId, methodName, new List<KeyValuePair<string, string>>(), data);
             return InvokeMethodAsync<TResponse>(request, cancellationToken);
         }
 

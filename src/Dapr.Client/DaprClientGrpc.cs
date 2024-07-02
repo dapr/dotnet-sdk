@@ -381,9 +381,9 @@ namespace Dapr.Client
             //
             // This approach avoids some common pitfalls that could lead to undesired encoding.
             var path = $"/v1.0/invoke/{appId}/method/{methodName.TrimStart('/')}";
-            var request = new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path));
-            request.RequestUri = request.RequestUri.AddQueryParameters(queryStringParameters);
-
+            var requestUri = new Uri(this.httpEndpoint, path).AddQueryParameters(queryStringParameters);
+            var request = new HttpRequestMessage(httpMethod, requestUri);
+            
             request.Options.Set(new HttpRequestOptionsKey<string>(AppIdKey), appId);
             request.Options.Set(new HttpRequestOptionsKey<string>(MethodNameKey), methodName);
 
@@ -393,23 +393,6 @@ namespace Dapr.Client
             }
 
             return request;
-        }
-
-        /// <summary>
-        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
-        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
-        /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
-        /// <paramref name="data" />.
-        /// </summary>
-        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
-        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
-        /// <param name="appId">The Dapr application id to invoke the method on.</param>
-        /// <param name="methodName">The name of the method to invoke.</param>
-        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
-        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
-        public override HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data)
-        {
-            return CreateInvokeMethodRequest(httpMethod, appId, methodName, new List<KeyValuePair<string,string>>(), data);
         }
 
         /// <summary>
