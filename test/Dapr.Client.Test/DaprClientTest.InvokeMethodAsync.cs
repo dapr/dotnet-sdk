@@ -519,6 +519,18 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
+        public async Task CreateInvokeMethodRequest_AppendQueryStringValuesCorrectly()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var request = client.InnerClient.CreateInvokeMethodRequest("test-app", "mymethod", (IReadOnlyCollection<KeyValuePair<string,string>>)new List<KeyValuePair<string, string>> { new("a", "0"), new("b", "1") });
+            Assert.Equal(new Uri("https://test-endpoint:3501/v1.0/invoke/test-app/method/mymethod?a=0&b=1").AbsoluteUri, request.RequestUri.AbsoluteUri);
+        }
+
+        [Fact]
         public async Task CreateInvokeMethodRequest_WithoutApiToken_CreatesHttpRequestWithoutApiTokenHeader()
         {
             await using var client = TestClient.CreateForDaprClient(c => 
@@ -616,6 +628,34 @@ namespace Dapr.Client.Test
             var actual = await content.ReadFromJsonAsync<Widget>(this.jsonSerializerOptions);
             Assert.Equal(data.Color, actual.Color);
         }
+
+        [Fact]
+        public async Task CreateInvokeMethodRequest_WithData_CreatesJsonContentWithQueryString()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
+
+            var data = new Widget
+            {
+                Color = "red",
+            };
+
+            var request = client.InnerClient.CreateInvokeMethodRequest(HttpMethod.Post, "test-app", "test", new List<KeyValuePair<string, string>> { new("a", "0"), new("b", "1") }, data);
+
+            Assert.Equal(new Uri("https://test-endpoint:3501/v1.0/invoke/test-app/method/test?a=0&b=1").AbsoluteUri, request.RequestUri.AbsoluteUri);
+
+            var content = Assert.IsType<JsonContent>(request.Content);
+            Assert.Equal(typeof(Widget), content.ObjectType);
+            Assert.Same(data, content.Value);
+
+            // the best way to verify the usage of the correct settings object
+            var actual = await content.ReadFromJsonAsync<Widget>(this.jsonSerializerOptions);
+            Assert.Equal(data.Color, actual.Color);
+        }
+
+
 
         [Fact]
         public async Task InvokeMethodWithResponseAsync_ReturnsMessageWithoutCheckingStatus()
