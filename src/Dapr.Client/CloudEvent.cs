@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,19 +26,19 @@ namespace Dapr
 		/// CloudEvent 'source' attribute.
 		/// </summary>
 		[JsonPropertyName("source")]
-		public Uri Source { get; init; }
+		public Uri? Source { get; init; }
 
 		/// <summary>
 		/// CloudEvent 'type' attribute.
 		/// </summary>
 		[JsonPropertyName("type")]
-		public string Type { get; init; }
+		public string? Type { get; init; }
 
 		/// <summary>
 		/// CloudEvent 'subject' attribute.
 		/// </summary>
 		[JsonPropertyName("subject")]
-		public string Subject { get; init; }
+		public string? Subject { get; init; }
 	}
 
 	/// <summary>

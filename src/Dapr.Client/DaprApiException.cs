@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ namespace Dapr
         /// </summary>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">True, if the exception is to be treated as an transient exception.</param>
-        public DaprApiException(string errorCode, bool isTransient)
+        public DaprApiException(string? errorCode, bool isTransient)
             : this(string.Empty, errorCode, isTransient)
         {
         }
@@ -66,7 +66,7 @@ namespace Dapr
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">Indicating if its an transient exception. </param>
-        public DaprApiException(string message, string errorCode, bool isTransient)
+        public DaprApiException(string message, string? errorCode, bool isTransient)
             : this(message, null, errorCode, isTransient)
         {
         }
@@ -80,7 +80,7 @@ namespace Dapr
         /// <param name="inner">The exception that is the cause of the current exception or null if no inner exception is specified. The <see cref="System.Exception" /> class provides more details about the inner exception..</param>
         /// <param name="errorCode">The error code associated with the exception.</param>
         /// <param name="isTransient">Indicating if its an transient exception. </param>
-        public DaprApiException(string message, Exception inner, string errorCode, bool isTransient)
+        public DaprApiException(string message, Exception? inner, string? errorCode, bool isTransient)
             : base(message, inner)
         {
             this.ErrorCode = errorCode ?? "UNKNOWN";
@@ -100,7 +100,7 @@ namespace Dapr
         {
             if (info != null)
             {
-                this.ErrorCode = (string)info.GetValue(nameof(this.ErrorCode), typeof(string));
+                this.ErrorCode = info.GetValue(nameof(this.ErrorCode), typeof(string)) as string;
                 this.IsTransient = info.GetBoolean(nameof(this.IsTransient));
             }
         }
@@ -109,7 +109,7 @@ namespace Dapr
         /// Gets the error code parameter.
         /// </summary>
         /// <value>The error code associated with the <see cref="DaprApiException" /> exception.</value>
-        public string ErrorCode { get; }
+        public string? ErrorCode { get; }
 
         /// <summary>
         /// Gets a value indicating whether gets exception is Transient and operation can be retried.

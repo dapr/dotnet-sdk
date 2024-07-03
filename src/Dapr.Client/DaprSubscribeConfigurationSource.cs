@@ -69,9 +69,11 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        public IDictionary<string, ConfigurationItem> Current
+        public IDictionary<string, ConfigurationItem>? Current
         {
+#pragma warning disable CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
             get
+#pragma warning restore CS8766 // Nullability of reference types in return type doesn't match implicitly implemented member (possibly because of nullability attributes).
             {
                 var current = call.ResponseStream.Current;
                 if (current != null)

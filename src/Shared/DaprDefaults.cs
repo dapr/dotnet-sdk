@@ -19,14 +19,14 @@ namespace Dapr
     {
         private static string httpEndpoint = string.Empty;
         private static string grpcEndpoint = string.Empty;
-        private static string daprApiToken = string.Empty;
+        private static string? daprApiToken = string.Empty;
         private static string appApiToken = string.Empty;
 
         /// <summary>
         /// Get the value of environment variable DAPR_API_TOKEN
         /// </summary>
         /// <returns>The value of environment variable DAPR_API_TOKEN</returns>
-        public static string GetDefaultDaprApiToken()
+        public static string? GetDefaultDaprApiToken()
         {
             // Lazy-init is safe because this is just populating the default
             // We don't plan to support the case where the user changes environment variables

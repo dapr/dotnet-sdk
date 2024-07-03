@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ namespace Dapr
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public Task DeleteAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public Task DeleteAsync(StateOptions? stateOptions = default, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default)
         {
             // ETag is intentionally not specified
             return this.client.DeleteStateAsync(this.StoreName, this.Key, stateOptions, metadata, cancellationToken);
@@ -93,7 +93,7 @@ namespace Dapr
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-        public Task SaveAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public Task SaveAsync(StateOptions? stateOptions = default, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default)
         {
             // ETag is intentionally not specified
             return this.client.SaveStateAsync(
@@ -112,7 +112,7 @@ namespace Dapr
         /// <param name="stateOptions">Options for Save state operation.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
-        public Task<bool> TrySaveAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public Task<bool> TrySaveAsync(StateOptions? stateOptions = default, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default)
         {
             return this.client.TrySaveStateAsync(
                 this.StoreName,
@@ -125,14 +125,14 @@ namespace Dapr
         }
 
         /// <summary>
-        /// Tries to delete the the state using the 
+        /// Tries to delete the state using the 
         /// <see cref="ETag"/> from the Dapr state. State store implementation will allow the delete only if the attached ETag matches with the latest ETag in the state store.
         /// </summary>
         /// <param name="stateOptions">Options for Save state operation.</param>        
         /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
-        public Task<bool> TryDeleteAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation succeeded.</returns>
+        public Task<bool> TryDeleteAsync(StateOptions? stateOptions = default, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default)
         {
             return this.client.TryDeleteStateAsync(
                 this.StoreName,

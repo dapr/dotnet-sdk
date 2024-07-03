@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -76,7 +77,7 @@ namespace Dapr.Client
         /// a single client object can be reused for the life of the application.
         /// </para>
         /// </remarks>
-        public static HttpClient CreateInvokeHttpClient(string appId = null, string daprEndpoint = null, string daprApiToken = null)
+        public static HttpClient CreateInvokeHttpClient(string? appId = null, string? daprEndpoint = null, string? daprApiToken = null)
         {
             var handler = new InvocationHandler()
             {
@@ -136,13 +137,13 @@ namespace Dapr.Client
         /// <see cref="CallInvoker"/> can be used throughout the lifetime of the application.
         /// </para>
         /// </remarks>
-        public static CallInvoker CreateInvocationInvoker(string appId, string daprEndpoint = null, string daprApiToken = null)
+        public static CallInvoker CreateInvocationInvoker(string appId, string? daprEndpoint = null, string? daprApiToken = null)
         {
             var channel = GrpcChannel.ForAddress(daprEndpoint ?? DaprDefaults.GetDefaultGrpcEndpoint());
             return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultDaprApiToken()));
         }
 
-        internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
+        internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string? apiToken)
         {
             if (string.IsNullOrWhiteSpace(apiToken))
             {
@@ -226,7 +227,7 @@ namespace Dapr.Client
             string pubsubName,
             string topicName,
             IReadOnlyList<TValue> events,
-            Dictionary<string, string> metadata = default,
+            Dictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -244,7 +245,7 @@ namespace Dapr.Client
             string topicName,
             ReadOnlyMemory<byte> data,
             string dataContentType = Constants.ContentTypeApplicationJson,
-            Dictionary<string, string> metadata = default,
+            Dictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -261,7 +262,7 @@ namespace Dapr.Client
             string bindingName,
             string operation,
             TRequest data,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -275,11 +276,11 @@ namespace Dapr.Client
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will complete when the operation has completed.</returns>
-        public abstract Task<TResponse> InvokeBindingAsync<TRequest, TResponse>(
+        public abstract Task<TResponse?> InvokeBindingAsync<TRequest, TResponse>(
             string bindingName,
             string operation,
             TRequest data,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -472,7 +473,7 @@ namespace Dapr.Client
         /// </param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public abstract Task<TResponse> InvokeMethodAsync<TResponse>(HttpRequestMessage request, CancellationToken cancellationToken = default);
+        public abstract Task<TResponse?> InvokeMethodAsync<TResponse>(HttpRequestMessage request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Perform service invocation for the application identified by <paramref name="appId" /> and invokes the method 
@@ -570,7 +571,7 @@ namespace Dapr.Client
         /// <param name="methodName">The name of the method to invoke.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public Task<TResponse> InvokeMethodAsync<TResponse>(
+        public Task<TResponse?> InvokeMethodAsync<TResponse>(
             string appId,
             string methodName,
             CancellationToken cancellationToken = default)
@@ -592,7 +593,7 @@ namespace Dapr.Client
         /// <param name="methodName">The name of the method to invoke.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public Task<TResponse> InvokeMethodAsync<TResponse>(
+        public Task<TResponse?> InvokeMethodAsync<TResponse>(
             HttpMethod httpMethod,
             string appId,
             string methodName,
@@ -616,7 +617,7 @@ namespace Dapr.Client
         /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
+        public Task<TResponse?> InvokeMethodAsync<TRequest, TResponse>(
             string appId,
             string methodName,
             TRequest data,
@@ -641,7 +642,7 @@ namespace Dapr.Client
         /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
+        public Task<TResponse?> InvokeMethodAsync<TRequest, TResponse>(
             HttpMethod httpMethod,
             string appId,
             string methodName,
@@ -732,7 +733,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to read.</typeparam>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public abstract Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        public abstract Task<TValue?> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a list of values associated with the <paramref name="keys" /> from the Dapr state store.
@@ -743,7 +744,7 @@ namespace Dapr.Client
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of values when the operation has completed.</returns>
-        public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        public abstract Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a list of deserialized values associated with the <paramref name="keys" /> from the Dapr state store. This overload should be used
@@ -757,7 +758,7 @@ namespace Dapr.Client
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of deserialized values when the operation has completed.</returns>
-        public abstract Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        public abstract Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// Saves a list of <paramref name="items" /> to the Dapr state store.
@@ -787,7 +788,9 @@ namespace Dapr.Client
         /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.  This wraps the read value and an ETag.</returns>
-        public abstract Task<(TValue value, string etag)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default);
+        public abstract Task<(TValue?, string Etag)> GetStateAndETagAsync<TValue>(string storeName, string key,
+            ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string>? metadata = default,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a <see cref="StateEntry{T}" /> for the current value associated with the <paramref name="key" /> from
@@ -800,13 +803,13 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The type of the data that will be JSON deserialized from the state store response.</typeparam>
         /// <returns>A <see cref="Task" /> that will return the <see cref="StateEntry{T}" /> when the operation has completed.</returns>
-        public async Task<StateEntry<TValue>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        public async Task<StateEntry<TValue?>> GetStateEntryAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string>? metadata = default, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
 
             var (state, etag) = await this.GetStateAndETagAsync<TValue>(storeName, key, consistencyMode, metadata, cancellationToken);
-            return new StateEntry<TValue>(this, storeName, key, state, etag);
+            return new StateEntry<TValue?>(this, storeName, key, state, etag);
         }
 
         /// <summary>
@@ -825,8 +828,8 @@ namespace Dapr.Client
             string storeName,
             string key,
             TValue value,
-            StateOptions stateOptions = default,
-            IReadOnlyDictionary<string, string> metadata = default,
+            StateOptions? stateOptions = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -848,8 +851,8 @@ namespace Dapr.Client
             string key,
             TValue value,
             string etag,
-            StateOptions stateOptions = default,
-            IReadOnlyDictionary<string, string> metadata = default,
+            StateOptions? stateOptions = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -864,7 +867,7 @@ namespace Dapr.Client
         public abstract Task ExecuteStateTransactionAsync(
             string storeName,
             IReadOnlyList<StateTransactionRequest> operations,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -879,8 +882,8 @@ namespace Dapr.Client
         public abstract Task DeleteStateAsync(
             string storeName,
             string key,
-            StateOptions stateOptions = default,
-            IReadOnlyDictionary<string, string> metadata = default,
+            StateOptions? stateOptions = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -898,8 +901,8 @@ namespace Dapr.Client
             string storeName,
             string key,
             string etag,
-            StateOptions stateOptions = default,
-            IReadOnlyDictionary<string, string> metadata = default,
+            StateOptions? stateOptions = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -912,10 +915,10 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <typeparam name="TValue">The data type of the value to read.</typeparam>
         /// <returns>A <see cref="StateQueryResponse{TValue}"/> that may be paginated, use <see cref="StateQueryResponse{TValue}.Token"/> to continue the query.</returns>
-        public abstract Task<StateQueryResponse<TValue>> QueryStateAsync<TValue>(
+        public abstract Task<StateQueryResponse<TValue?>> QueryStateAsync<TValue>(
             string storeName,
             string jsonQuery,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -929,7 +932,7 @@ namespace Dapr.Client
         public abstract Task<Dictionary<string, string>> GetSecretAsync(
             string storeName,
             string key,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -941,7 +944,7 @@ namespace Dapr.Client
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<Dictionary<string, Dictionary<string, string>>> GetBulkSecretAsync(
             string storeName,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -955,7 +958,7 @@ namespace Dapr.Client
         public abstract Task<GetConfigurationResponse> GetConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -969,7 +972,7 @@ namespace Dapr.Client
         public abstract Task<SubscribeConfigurationResponse> SubscribeConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
-            IReadOnlyDictionary<string, string> metadata = default,
+            IReadOnlyDictionary<string, string>? metadata = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -1311,9 +1314,9 @@ namespace Dapr.Client
         public abstract Task<StartWorkflowResponse> StartWorkflowAsync(
             string workflowComponent,
             string workflowName,
-            string instanceId = null,
-            object input = null,
-            IReadOnlyDictionary<string, string> workflowOptions = default,
+            string? instanceId = null,
+            object? input = null,
+            IReadOnlyDictionary<string, string>? workflowOptions = default,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -1438,7 +1441,7 @@ namespace Dapr.Client
             string instanceId,
             string workflowComponent,
             string eventName,
-            object eventData = null,
+            object? eventData = null,
             CancellationToken cancellationToken = default);
 
 
@@ -1507,7 +1510,7 @@ namespace Dapr.Client
         protected static ProductInfoHeaderValue UserAgent()
         {
             var assembly = typeof(DaprClient).Assembly;
-            string assemblyVersion = assembly
+            string? assemblyVersion = assembly
                 .GetCustomAttributes<AssemblyInformationalVersionAttribute>()
                 .FirstOrDefault()?
                 .InformationalVersion;

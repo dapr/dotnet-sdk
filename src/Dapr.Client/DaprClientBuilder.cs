@@ -49,14 +49,14 @@ namespace Dapr.Client
         // property exposed for testing purposes
         internal string HttpEndpoint { get; private set; }
 
-        private Func<HttpClient> HttpClientFactory { get; set; }
+        private Func<HttpClient>? HttpClientFactory { get; set; }
 
         // property exposed for testing purposes
         internal JsonSerializerOptions JsonSerializerOptions { get; private set; }
 
         // property exposed for testing purposes
         internal GrpcChannelOptions GrpcChannelOptions { get; private set; }
-        internal string DaprApiToken { get; private set; }
+        internal string? DaprApiToken { get; private set; }
         internal TimeSpan Timeout { get; private set; } 
 
         /// <summary>
@@ -131,7 +131,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="apiToken">The token to be added to the request headers/>.</param>
         /// <returns>The <see cref="DaprClientBuilder" /> instance.</returns>
-        public DaprClientBuilder UseDaprApiToken(string apiToken)
+        public DaprClientBuilder UseDaprApiToken(string? apiToken)
         {
             this.DaprApiToken = apiToken;
             return this;

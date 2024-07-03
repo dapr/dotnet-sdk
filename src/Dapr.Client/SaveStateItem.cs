@@ -28,7 +28,7 @@ namespace Dapr.Client
         /// <param name="etag">The ETag.</param>
         /// <param name="stateOptions">The stateOptions.</param>
         /// <param name="metadata">The metadata.</param>
-        public SaveStateItem(string key, TValue value, string etag, StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default)
+        public SaveStateItem(string key, TValue value, string etag, StateOptions? stateOptions = default, IReadOnlyDictionary<string, string>? metadata = default)
         {
             this.Key = key;
             this.Value = value;
@@ -55,11 +55,11 @@ namespace Dapr.Client
         /// <summary>
         /// Gets the StateOptions.
         /// </summary>
-        public StateOptions StateOptions { get; }
+        public StateOptions? StateOptions { get; }
 
         /// <summary>
         /// Gets the Metadata.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; }
+        public IReadOnlyDictionary<string, string>? Metadata { get; }
     }
 }

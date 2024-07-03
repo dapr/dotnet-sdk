@@ -22,7 +22,7 @@ namespace Dapr.Client
     public record WorkflowFailureDetails(
         string ErrorMessage,
         string ErrorType,
-        string StackTrace = null)
+        string? StackTrace = null)
     {
         /// <summary>
         /// Creates a user-friendly string representation of the failure information.

@@ -1,5 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <PropertyGroup>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="..\Shared\ArgumentVerifier.cs" />
     <Compile Include="..\Shared\DaprDefaults.cs" />
@@ -13,7 +17,7 @@
 
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
-    <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
+      <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.15.0" />

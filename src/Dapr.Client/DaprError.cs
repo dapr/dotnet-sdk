@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ namespace Dapr
         /// <summary>
         /// Gets ErrorCode.
         /// </summary>        
-        public string ErrorCode { get; set; }
+        public string? ErrorCode { get; set; }
 
         /// <summary>
         /// Gets error message.
         /// </summary>        
-        public string Message { get; set; }
+        public string? Message { get; set; }
     }
 }
