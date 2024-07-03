@@ -72,7 +72,7 @@ namespace Dapr.Client
             return Task.FromResult<IReadOnlyList<BulkStateItem>>(response);
         }
 
-        public override Task GetStateAndETagAsync<TValue>(string storeName,
+        public override Task<(TValue, string Etag)> GetStateAndETagAsync<TValue>(string storeName,
             string key,
             ConsistencyMode? consistencyMode = default,
             IReadOnlyDictionary<string, string> metadata = default,
