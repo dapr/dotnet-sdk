@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+
 using System;
 using System.Text.Json.Serialization;
 using Dapr.Client;

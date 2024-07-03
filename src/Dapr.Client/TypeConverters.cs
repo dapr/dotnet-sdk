@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+
 namespace Dapr.Client
 {
     using System.Text.Json;

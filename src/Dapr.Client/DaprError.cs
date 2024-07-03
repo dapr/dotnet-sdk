@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+
 namespace Dapr
 {
     /// <summary>
