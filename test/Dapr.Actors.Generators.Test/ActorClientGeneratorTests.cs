@@ -17,7 +17,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Text;
-using VerifyCS = CSharpSourceGeneratorVerifier<ActorClientGenerator>;
+using VerifyCS = CSharpSourceGeneratorVerifier<ActorClientGeneratorOld>;
 
 public sealed class ActorClientGeneratorTests
 {

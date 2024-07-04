@@ -19,8 +19,8 @@ namespace Dapr.Actors.Generators;
 /// <summary>
 /// Generates strongly-typed actor clients that use the non-remoting actor proxy.
 /// </summary>
-//[Generator]
-public sealed class ActorClientGenerator : ISourceGenerator
+[Generator]
+public sealed class ActorClientGenerator : IIncrementalGenerator
 {
     private const string GeneratorsNamespace = "Dapr.Actors.Generators";
 
@@ -97,6 +97,17 @@ public sealed class ActorClientGenerator : ISourceGenerator
     #region ISourceGenerator Members
 
     /// <inheritdoc />
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        context.RegisterPostInitializationOutput(context =>
+        {
+            context.AddSource($"{ActorMethodAttributeFullTypeName}.g.cs", ActorMethodAttributeText);
+            context.AddSource($"{GenerateActorClientAttributeFullTypeName}.g.cs", GenerateActorClientAttributeText);
+        });
+    }
+
+    /// <inheritdoc />
+    [Obsolete]
     public void Execute(GeneratorExecutionContext context)
     {
         if (context.SyntaxContextReceiver is not ActorInterfaceSyntaxReceiver actorInterfaceSyntaxReceiver)
@@ -157,6 +168,7 @@ namespace {namespaceName}
     }
 
     /// <inheritdoc />
+    [Obsolete]
     public void Initialize(GeneratorInitializationContext context)
     {
         /*
@@ -271,33 +283,33 @@ namespace {namespaceName}
     }
 }
 
-//internal static class Extensions
-//{
-//    public static int IndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
-//    {
-//        int index = 0;
+internal static class Extensions
+{
+    public static int IndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+    {
+        int index = 0;
 
-//        foreach (var item in source)
-//        {
-//            if (predicate(item))
-//            {
-//                return index;
-//            }
+        foreach (var item in source)
+        {
+            if (predicate(item))
+            {
+                return index;
+            }
 
-//            index++;
-//        }
+            index++;
+        }
 
-//        return -1;
-//    }
-//}
+        return -1;
+    }
+}
 
-//internal sealed class DiagnosticsException : Exception
-//{
-//    public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
-//        : base(String.Join("\n", diagnostics.Select(d => d.ToString())))
-//    {
-//        this.Diagnostics = diagnostics.ToArray();
-//    }
+internal sealed class DiagnosticsException : Exception
+{
+    public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
+        : base(String.Join("\n", diagnostics.Select(d => d.ToString())))
+    {
+        this.Diagnostics = diagnostics.ToArray();
+    }
 
-//    public IEnumerable<Diagnostic> Diagnostics { get; }
-//}
+    public IEnumerable<Diagnostic> Diagnostics { get; }
+}
