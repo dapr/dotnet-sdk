@@ -457,7 +457,7 @@ namespace Dapr.Client
         /// <para>
         /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
         /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
-        /// property will be replaced with a new URI with the authority section replaced by <paramref name="daprEndpoint" />
+        /// property will be replaced with a new URI with the authority section replaced by the HTTP endpoint value
         /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
         /// </para>
         /// </summary>
@@ -466,11 +466,10 @@ namespace Dapr.Client
         ///     <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
         ///     If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
         /// </param>
-        /// <param name="daprEndpoint">The HTTP endpoint of the Dapr process to use for service invocation calls.</param>
         /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
         /// <remarks>
         /// </remarks>
-        public abstract HttpClient CreateInvokableHttpClient(string? appId = null, string? daprEndpoint = null);
+        public abstract HttpClient CreateInvokableHttpClient(string? appId = null);
 #nullable disable
 
         /// <summary>

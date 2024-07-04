@@ -22,7 +22,7 @@ namespace Dapr.Client
         public void CreateInvokableHttpClient_WithAppId_FromDaprClient()
         {
             var daprClient = new MockClient().DaprClient;
-            var client = daprClient.CreateInvokableHttpClient(appId: "bank", daprEndpoint: "http://localhost:3500");
+            var client = daprClient.CreateInvokableHttpClient(appId: "bank");
             Assert.Equal("http://bank/", client.BaseAddress.AbsoluteUri);
         }
 
@@ -44,32 +44,9 @@ namespace Dapr.Client
         public void CreateInvokableHttpClient_WithoutAppId_FromDaprClient()
         {
             var daprClient = new MockClient().DaprClient;
-            var client = daprClient.CreateInvokableHttpClient(daprEndpoint: "http://localhost:3500");
+            
+            var client = daprClient.CreateInvokableHttpClient();
             Assert.Null(client.BaseAddress);
-        }
-
-        [Fact]
-        public void CreateInvokableHttpClient_InvalidDaprEndpoint_InvalidFormat_FromDaprClient()
-        {
-            var daprClient = new MockClient().DaprClient;
-            Assert.Throws<UriFormatException>(() =>
-            {
-                _ = daprClient.CreateInvokableHttpClient(daprEndpoint: "");
-            });
-
-            // Exception message comes from the runtime, not validating it here.
-        }
-
-        [Fact]
-        public void CreateInvokableHttpClient_InvalidDaprEndpoint_InvalidScheme_FromDaprClient()
-        {
-            var daprClient = new MockClient().DaprClient;
-            var ex = Assert.Throws<ArgumentException>(() =>
-            {
-                _ = daprClient.CreateInvokableHttpClient(daprEndpoint: "ftp://localhost:3500");
-            });
-
-            Assert.Contains("The URI scheme of the Dapr endpoint must be http or https.", ex.Message);
         }
     }
 }

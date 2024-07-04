@@ -458,7 +458,7 @@ namespace Dapr.Client
         /// <para>
         /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
         /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
-        /// property will be replaced with a new URI with the authority section replaced by <paramref name="daprEndpoint" />
+        /// property will be replaced with a new URI with the authority section replaced by the instance's <see cref="httpEndpoint"/> value
         /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
         /// </para>
         /// </summary>
@@ -467,12 +467,11 @@ namespace Dapr.Client
         ///     <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
         ///     If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
         /// </param>
-        /// <param name="daprEndpoint"></param>
         /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
         /// <remarks>
         /// </remarks>
         #nullable enable
-        public override HttpClient CreateInvokableHttpClient(string? appId = null, string? daprEndpoint = null)
+        public override HttpClient CreateInvokableHttpClient(string? appId = null)
         {
             var handler = new InvocationHandler
             {
@@ -486,10 +485,10 @@ namespace Dapr.Client
                 handler.DaprApiToken = this.apiTokenHeader.Value.Value;
             }
 
-            if (daprEndpoint is not null)
+            if (this.httpEndpoint is not null)
             {
                 //DaprEndpoint performs validation
-                handler.DaprEndpoint = daprEndpoint;
+                handler.DaprEndpoint = this.httpEndpoint.AbsoluteUri;
             }
 
             var httpClient = new HttpClient(handler);
