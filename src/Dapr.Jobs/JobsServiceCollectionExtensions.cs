@@ -21,10 +21,10 @@ namespace Dapr.Jobs;
 public static class JobsServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds Dapr Jobs support to the service collection.
+    /// Adds Dapr Jobs client support to the service collection.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-    public static IServiceCollection AddDaprJobs(this IServiceCollection serviceCollection)
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
