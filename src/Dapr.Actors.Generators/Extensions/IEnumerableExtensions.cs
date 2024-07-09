@@ -40,9 +40,7 @@
         /// <returns></returns>
         public static IEnumerable<T> Concat<T>(this IEnumerable<T> source, T item)
         {
-            source.Concat(new[] { item });
-
-            return source;
+            return source.Concat(new[] { item });
         }
     }
 }
