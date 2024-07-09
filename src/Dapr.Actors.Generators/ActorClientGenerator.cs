@@ -177,7 +177,13 @@ namespace {generatorNamespace}
                 {
                     SyntaxFactory.Parameter(SyntaxFactory.Identifier("actorProxy")).WithType(SyntaxFactory.ParseTypeName("Dapr.Actors.Client.ActorProxy"))
                 })))
-                .WithBody(default);
+                .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new[]
+                {
+                    SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                        SyntaxFactory.IdentifierName("this.actorProxy"),
+                        SyntaxFactory.IdentifierName("actorProxy"))
+                    )
+                })));
 
             var actorMethods = descriptor.Methods
                 .OrderBy(member => member.DeclaredAccessibility)
@@ -185,12 +191,13 @@ namespace {generatorNamespace}
                 .Select(member => GenerateMethodImplementation(context, member, actorMethodAttributeSymbol, cancellationTokenSymbol))
                 .Select(m => SyntaxFactory.ParseMemberDeclaration(m)!);
 
-            var actorField = SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName("Dapr.Actors.Client.ActorProxy"))
+            var actorProxyField = SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName("Dapr.Actors.Client.ActorProxy"))
                 .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier("actorProxy")))))
-                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)));
+                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)))
+                .WithLeadingTrivia(SyntaxFactory.TriviaList(new[] { SyntaxFactory.CarriageReturnLineFeed }));
 
             var actorMembers = new List<MemberDeclarationSyntax>()
-                .Concat(actorField)
+                .Concat(actorProxyField)
                 .Concat(actorCtor)
                 .Concat(actorMethods)
                 .ToList();
