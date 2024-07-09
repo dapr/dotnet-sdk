@@ -11,96 +11,96 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Net;
-using System.Net.Http.Json;
+using System.Text.Json;
+using Dapr.Jobs.Models.Responses;
+using Dapr.Scheduler.Autogen.Grpc.v1;
+using Google.Protobuf;
 
 namespace Dapr.Jobs;
 
 /// <summary>
 /// Defines client operations for managing Dapr jobs.
 /// </summary>
-public class DaprJobsClient
+public abstract class DaprJobsClient
 {
-    private readonly HttpClient httpClient;
+    /// <summary>
+    /// Gets the <see cref="JsonSerializerOptions"/> used for JSON serialization purposes.
+    /// </summary>
+    public abstract JsonSerializerOptions JsonSerializerOptions { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="DaprJobsClient"/> class.
+    /// Schedules a recurring job using a cron expression.
     /// </summary>
-    /// <param name="httpClient">The <see cref="HttpClient"/> used to communicate with the Dapr sidecar.</param>
-    public DaprJobsClient(HttpClient httpClient)
-    {
-        this.httpClient = httpClient;
-    }
+    /// <param name="jobName">The name of the job being scheduled.</param>
+    /// <param name="cronExpression">The systemd Cron-like expression indicating when the job should be triggered.</param>
+    /// <param name="dueTime">The optional point-in-time from which the job schedule should start.</param>
+    /// <param name="repeats">The optional number of times the job should be triggered.</param>
+    /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
+    /// <param name="payload">The main payload of the job.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public abstract Task ScheduleJobAsync<T>(string jobName, string cronExpression, DateTime? dueTime,
+        uint? repeats = null,  DateTime? ttl = null, T? payload = default, CancellationToken cancellationToken = default) where T : IMessage;
 
     /// <summary>
-    /// Schedules a job with a name.
+    /// Schedules a recurring job with an optional future starting date.
     /// </summary>
-    /// <param name="name">The name of the job being scheduled.</param>
-    /// <param name="jsonSerializableData">A string value providing any related content. Content is returned when the reminder expires.</param>
-    /// <param name="dueTime">Specifies the time after which this job is invoked.</param>
-    public async Task ScheduleJobAsync(string name, object jsonSerializableData, TimeSpan dueTime)
-    {
-        ArgumentNullException.ThrowIfNull(name, nameof(name));
-        ArgumentNullException.ThrowIfNull(jsonSerializableData, nameof(jsonSerializableData));
-        ArgumentNullException.ThrowIfNull(dueTime, nameof(dueTime));
-
-        var options =
-            new ScheduleJobOptions(new ScheduleJobInnerOptions(jsonSerializableData, dueTime.ToDurationString()));
-
-        var response = await httpClient.PostAsJsonAsync($"/{name}", options);
-
-        switch (response.StatusCode)
-        {
-            case HttpStatusCode.BadRequest:
-                throw new MalformedJobException(response);
-            case HttpStatusCode.InternalServerError:
-                throw new DaprJobsServiceException(response);
-            default:
-                return;
-        }
-    }
+    /// <param name="jobName">The name of the job being scheduled.</param>
+    /// <param name="interval">The interval at which the job should be triggered.</param>
+    /// <param name="startingFrom">The optional point-in-time from which the job schedule should start.</param>
+    /// <param name="repeats">The optional maximum number of times the job should be triggered.</param>
+    /// <param name="ttl">Represents when the job should expire. If both this and StartingFrom are set, TTL needs to represent a later point in time.</param>
+    /// <param name="payload">The main payload of the job.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public abstract Task ScheduleJobAsync<T>(string jobName, TimeSpan interval, DateTime? startingFrom,
+        uint? repeats = null, DateTime? ttl = null, T? payload = default,
+        CancellationToken cancellationToken = default) where T : IMessage;
 
     /// <summary>
-    /// Gets a job from its name.
+    /// Schedules a one-time job.
     /// </summary>
-    /// <param name="name">The name of the scheduled job being retrieved.</param>
-    /// <returns>The job data.</returns>
-    public async Task<string> GetJobDataAsync(string name)
-    {
-        ArgumentNullException.ThrowIfNull(name, nameof(name));
-
-        var response = await httpClient.GetAsync($"/{name}");
-
-        switch (response.StatusCode)
-        {
-            case HttpStatusCode.BadRequest:
-                throw new MalformedJobException(response);
-            case HttpStatusCode.InternalServerError:
-                throw new DaprJobsServiceException(response);
-            default:
-                return await response.Content.ReadAsStringAsync();
-        }
-    }
+    /// <param name="jobName">The name of the job being scheduled.</param>
+    /// <param name="scheduledTime">The point in time when the job should be run.</param>
+    /// <param name="payload">Stores the main payload of the job which is passed to the trigger function.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public abstract Task ScheduleJobAsync<T>(string jobName, DateTime scheduledTime, T? payload = default,
+        CancellationToken cancellationToken = default) where T : IMessage;
 
     /// <summary>
-    /// Deletes a named job.
+    /// Retrieves the details of a registered job.
     /// </summary>
-    /// <param name="name">The name of the job being deleted.</param>
+    /// <param name="jobName">The jobName of the job.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The details comprising the job.</returns>
+    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public abstract Task<JobDetails<T>> GetJobAsync<T>(string jobName, CancellationToken cancellationToken = default)
+        where T : IMessage, new();
+
+    /// <summary>
+    /// Deletes the specified job.
+    /// </summary>
+    /// <param name="jobName">The jobName of the job.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public abstract Task DeleteJobAsync(string jobName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Watches for triggered jobs.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    public async Task DeleteJobAsync(string name)
+    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public abstract Task<IAsyncEnumerable<WatchJobsResponse>> WatchJobsAsync(CancellationToken cancellationToken = default);
+
+    internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
     {
-        ArgumentNullException.ThrowIfNull(name, nameof(name));
-
-        var response = await httpClient.DeleteAsync($"/{name}");
-
-        switch (response.StatusCode)
+        if (string.IsNullOrWhiteSpace(apiToken))
         {
-            case HttpStatusCode.BadRequest:
-                throw new MalformedJobException(response);
-            case HttpStatusCode.InternalServerError:
-                throw new DaprJobsServiceException(response);
-            default:
-                return;
+            return null;
         }
+
+        return new KeyValuePair<string, string>("dapr-api-token", apiToken);
     }
 }
