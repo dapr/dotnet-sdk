@@ -72,4 +72,56 @@ public class TimeSpanExtensionsTest
 
         Assert.Equal("2h4m24s28ms", result);
     }
+
+    [Fact]
+    public void FromDurationString_AllSegments()
+    {
+        const string interval = "13h57m4s10ms";
+        var result = interval.FromDurationString();
+
+        Assert.Equal(13, result.Hours);
+        Assert.Equal(57, result.Minutes);
+        Assert.Equal(4, result.Seconds);
+        Assert.Equal(10, result.Milliseconds);
+    }
+
+    [Fact]
+    public void FromDurationString_LimitedSegments1()
+    {
+        const string interval = "5h12ms";
+        var result = interval.FromDurationString();
+
+        Assert.Equal(5, result.Hours);
+        Assert.Equal(12, result.Milliseconds);
+    }
+
+    [Fact]
+    public void FromDurationString_LimitedSegments2()
+    {
+        const string interval = "5m";
+        var result = interval.FromDurationString();
+
+        Assert.Equal(5, result.Minutes);
+    }
+
+    [Fact]
+    public void FromDurationString_LimitedSegments3()
+    {
+        const string interval = "16s43ms";
+        var result = interval.FromDurationString();
+
+        Assert.Equal(16, result.Seconds);
+        Assert.Equal(43, result.Milliseconds);
+    }
+
+    [Fact]
+    public void FromDurationString_LimitedSegments4()
+    {
+        const string interval = "4h32m16s";
+        var result = interval.FromDurationString();
+
+        Assert.Equal(4, result.Hours);
+        Assert.Equal(32, result.Minutes);
+        Assert.Equal(16, result.Seconds);
+    }
 }

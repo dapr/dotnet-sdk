@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Dapr.Jobs;
 
@@ -44,5 +45,44 @@ internal static class TimeSpanExtensions
             sb.Append($"{timespan.Milliseconds}ms");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TimeSpan"/> given a Golang duration string.
+    /// </summary>
+    /// <param name="interval">The duration string to parse.</param>
+    /// <returns>A timespan value.</returns>
+    public static TimeSpan FromDurationString(this string interval)
+    {
+        interval = interval.Replace("ms", "q");
+
+        //Define regular expressions to capture each segment
+        var hourRegex = new Regex(@"(\d+)h");
+        var minuteRegex = new Regex(@"(\d+)m");
+        var secondRegex = new Regex(@"(\d+)s");
+        var millisecondRegex = new Regex(@"(\d+)q");
+
+        int hours = 0;
+        int minutes = 0;
+        int seconds = 0;
+        int milliseconds = 0;
+
+        var hourMatch = hourRegex.Match(interval);
+        if (hourMatch.Success)
+            hours = int.Parse(hourMatch.Groups[1].Value);
+
+        var minuteMatch = minuteRegex.Match(interval);
+        if (minuteMatch.Success)
+            minutes = int.Parse(minuteMatch.Groups[1].Value);
+
+        var secondMatch = secondRegex.Match(interval);
+        if (secondMatch.Success)
+            seconds = int.Parse(secondMatch.Groups[1].Value);
+
+        var millisecondMatch = millisecondRegex.Match(interval);
+        if (millisecondMatch.Success)
+            milliseconds = int.Parse(millisecondMatch.Groups[1].Value);
+
+        return new TimeSpan(0, hours, minutes, seconds, milliseconds);
     }
 }
