@@ -92,7 +92,7 @@ public abstract class DaprJobsClient
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task<IAsyncEnumerable<WatchJobsResponse>> WatchJobsAsync(CancellationToken cancellationToken = default);
+    public abstract Task<IAsyncEnumerable<WatchedJobDetails<T>>> WatchJobsAsync<T>(CancellationToken cancellationToken = default) where T : IMessage, new()
 
     internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
     {
