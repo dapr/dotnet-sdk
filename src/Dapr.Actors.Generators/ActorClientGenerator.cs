@@ -224,10 +224,13 @@ namespace {descriptor.NamespaceName}
         public string FullyQualifiedTypeName => $"{NamespaceName}.{ClientTypeName}";
 
         /// <summary>
-        /// Methods to generate for the client.
+        /// Methods to generate in the client.
         /// </summary>
         public IEnumerable<IMethodSymbol> Methods { get; set; } = Array.Empty<IMethodSymbol>();
 
+        /// <summary>
+        /// Compilation to use for generating the client.
+        /// </summary>
         public Compilation Compilation { get; set; } = null!;
     }
 

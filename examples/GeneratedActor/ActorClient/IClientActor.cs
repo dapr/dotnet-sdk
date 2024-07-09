@@ -26,15 +26,3 @@ internal interface IClientActor
     [ActorMethod(Name = "SetState")]
     Task SetStateAsync(ClientState state, CancellationToken cancellationToken = default);
 }
-
-[GenerateActorClient]
-internal interface IClientActor2
-{
-    [ActorMethod(Name = "GetState")]
-    Task<ClientState> GetStateAsync(CancellationToken cancellationToken = default);
-
-    [ActorMethod(Name = "SetState")]
-    Task SetStateAsync(CancellationToken cancellationToken, ClientState state);
-
-    Task SetStateAsync(ClientState state, string test, CancellationToken cancellationToken = default);
-}
