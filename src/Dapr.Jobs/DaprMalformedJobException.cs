@@ -14,16 +14,16 @@
 namespace Dapr.Jobs;
 
 /// <summary>
-/// The exception type thrown when an malformed request is made to the Dapr Jobs service.
+/// The exception type thrown when a malformed request is made to the Dapr Scheduler service.
 /// </summary>
 [Serializable]
-public class MalformedJobException : Exception
+public class DaprMalformedJobException : Exception
 {
     /// <summary>
     /// Initializes a new <see cref="DaprJobsServiceException"/> for a non-successful HTTP request.
     /// </summary>
     /// <param name="response"></param>
-    public MalformedJobException(HttpResponseMessage? response) : base(FormatExceptionForFailedRequest())
+    public DaprMalformedJobException(HttpResponseMessage? response) : base(FormatExceptionForFailedRequest())
     {
         Response = response;
     }
