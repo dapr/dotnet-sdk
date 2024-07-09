@@ -270,34 +270,3 @@ namespace {namespaceName}
         }}";
     }
 }
-
-//internal static class Extensions
-//{
-//    public static int IndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
-//    {
-//        int index = 0;
-
-//        foreach (var item in source)
-//        {
-//            if (predicate(item))
-//            {
-//                return index;
-//            }
-
-//            index++;
-//        }
-
-//        return -1;
-//    }
-//}
-
-//internal sealed class DiagnosticsException : Exception
-//{
-//    public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
-//        : base(String.Join("\n", diagnostics.Select(d => d.ToString())))
-//    {
-//        this.Diagnostics = diagnostics.ToArray();
-//    }
-
-//    public IEnumerable<Diagnostic> Diagnostics { get; }
-//}
