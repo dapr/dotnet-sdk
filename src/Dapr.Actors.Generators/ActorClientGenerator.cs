@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Dapr.Actors.Generators;
 
@@ -64,38 +63,6 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             }}
         }}";
 
-    private sealed class ActorInterfaceSyntaxReceiver : ISyntaxContextReceiver
-    {
-        private readonly List<INamedTypeSymbol> models = new();
-
-        public IEnumerable<INamedTypeSymbol> Models => this.models;
-
-        #region ISyntaxContextReceiver Members
-
-        public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
-        {
-            if (context.Node is not InterfaceDeclarationSyntax interfaceDeclarationSyntax
-                || interfaceDeclarationSyntax.AttributeLists.Count == 0)
-            {
-                return;
-            }
-
-            var interfaceSymbol = context.SemanticModel.GetDeclaredSymbol(interfaceDeclarationSyntax) as INamedTypeSymbol;
-
-            if (interfaceSymbol is null
-                || !interfaceSymbol.GetAttributes().Any(a => a.AttributeClass?.ToString() == GenerateActorClientAttributeFullTypeName))
-            {
-                return;
-            }
-
-            this.models.Add(interfaceSymbol);
-        }
-
-        #endregion
-    }
-
-    #region ISourceGenerator Members
-
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -104,39 +71,54 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             context.AddSource($"{ActorMethodAttributeFullTypeName}.g.cs", ActorMethodAttributeText);
             context.AddSource($"{GenerateActorClientAttributeFullTypeName}.g.cs", GenerateActorClientAttributeText);
         });
+
+        // Do a simple filter for enums
+        IncrementalValuesProvider<ActorClientToGenerate?> actorClientsToGenerate = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                GenerateActorClientAttributeFullTypeName,
+                predicate: static (_, _) => true,
+                transform: static (gasc, cancellationToken) => GetSemanticTargetForGeneration(gasc, cancellationToken))
+            .Where(static m => m is not null); // Filter out errors that we don't care about
+
+        context.RegisterSourceOutput(actorClientsToGenerate, GenerateActorClientCode);
     }
 
-    /// <inheritdoc />
-    [Obsolete]
-    public void Execute(GeneratorExecutionContext context)
+    static ActorClientToGenerate? GetSemanticTargetForGeneration(
+        GeneratorAttributeSyntaxContext context,
+        CancellationToken cancellationToken)
     {
-        if (context.SyntaxContextReceiver is not ActorInterfaceSyntaxReceiver actorInterfaceSyntaxReceiver)
-        {
-            return;
-        }
+        var actorMethodAttributeSymbol = context.SemanticModel.Compilation.GetTypeByMetadataName(ActorMethodAttributeFullTypeName)
+            ?? throw new InvalidOperationException("Could not find ActorMethodAttribute.");
 
-        var actorMethodAttributeSymbol = context.Compilation.GetTypeByMetadataName(ActorMethodAttributeFullTypeName) ?? throw new InvalidOperationException("Could not find ActorMethodAttribute.");
-        var generateActorClientAttributeSymbol = context.Compilation.GetTypeByMetadataName(GenerateActorClientAttributeFullTypeName) ?? throw new InvalidOperationException("Could not find GenerateActorClientAttribute.");
-        var cancellationTokenSymbol = context.Compilation.GetTypeByMetadataName("System.Threading.CancellationToken") ?? throw new InvalidOperationException("Could not find CancellationToken.");
+        var cancellationTokenSymbol = context.SemanticModel.Compilation.GetTypeByMetadataName("System.Threading.CancellationToken")
+            ?? throw new InvalidOperationException("Could not find CancellationToken.");
 
-        foreach (var interfaceSymbol in actorInterfaceSyntaxReceiver.Models)
-        {
-            try
-            {
-                var actorInterfaceTypeName = interfaceSymbol.Name;
-                var fullyQualifiedActorInterfaceTypeName = interfaceSymbol.ToString();
+        // Return the attribute data of GenerateActorClientAttribute, which is the attribute that triggered this generator
+        // and is expected to be the only attribute in the list of matching attributes.
+        var attributeData = context.Attributes.Single();
 
-                var attributeData = interfaceSymbol.GetAttributes().Single(a => a.AttributeClass?.Equals(generateActorClientAttributeSymbol, SymbolEqualityComparer.Default) == true);
+        var actorInterfaceSymbol = (INamedTypeSymbol)context.TargetSymbol;
 
-                var accessibility = GetClientAccessibility(interfaceSymbol);
-                var clientTypeName = GetClientName(interfaceSymbol, attributeData);
-                var namespaceName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Namespace").Value.Value?.ToString() ?? interfaceSymbol.ContainingNamespace.ToDisplayString();
+        var actorInterfaceTypeName = actorInterfaceSymbol.Name;
+        var fullyQualifiedActorInterfaceTypeName = actorInterfaceSymbol.ToString();
 
-                var members = interfaceSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => m.MethodKind == MethodKind.Ordinary).ToList();
+        var accessibility = GetClientAccessibility(actorInterfaceSymbol);
+        var clientTypeName = GetClientName(actorInterfaceSymbol, attributeData);
 
-                var methodImplementations = String.Join("\n", members.Select(member => GenerateMethodImplementation(member, actorMethodAttributeSymbol, cancellationTokenSymbol)));
+        var namespaceName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Namespace").Value.Value?.ToString()
+            ?? actorInterfaceSymbol.ContainingNamespace.ToDisplayString();
 
-                var source = $@"
+        var members = actorInterfaceSymbol
+            .GetMembers()
+            .OfType<IMethodSymbol>()
+            .Where(m => m.MethodKind == MethodKind.Ordinary)
+            .ToList();
+
+        var methodImplementations = string.Join(
+            "\n",
+            members.Select(member => GenerateMethodImplementation(member, actorMethodAttributeSymbol, cancellationTokenSymbol)));
+
+        var source = $@"
 // <auto-generated/>
 
 namespace {namespaceName}
@@ -154,43 +136,32 @@ namespace {namespaceName}
     }}
 }}
 ";
-                // Add the source code to the compilation
-                context.AddSource($"{namespaceName}.{clientTypeName}.g.cs", source);
-            }
-            catch (DiagnosticsException e)
-            {
-                foreach (var diagnostic in e.Diagnostics)
-                {
-                    context.ReportDiagnostic(diagnostic);
-                }
-            }
-        }
-    }
 
-    /// <inheritdoc />
-    [Obsolete]
-    public void Initialize(GeneratorInitializationContext context)
-    {
-        /*
-        while (!Debugger.IsAttached)
+        return new ActorClientToGenerate
         {
-            System.Threading.Thread.Sleep(500);
-        }
-        */
-
-        context.RegisterForPostInitialization(
-            i =>
-            {
-                i.AddSource($"{ActorMethodAttributeFullTypeName}.g.cs", ActorMethodAttributeText);
-                i.AddSource($"{GenerateActorClientAttributeFullTypeName}.g.cs", GenerateActorClientAttributeText);
-            });
-
-        context.RegisterForSyntaxNotifications(() => new ActorInterfaceSyntaxReceiver());
+            FullyQualifiedActorCleintTypeName = $"{namespaceName}.{clientTypeName}",
+            Source = source
+        };
     }
 
-    #endregion
+    static void GenerateActorClientCode(SourceProductionContext context, ActorClientToGenerate? source)
+    {
+        if (source is null)
+        {
+            return;
+        }
 
-    private static string GetClientAccessibility(INamedTypeSymbol interfaceSymbol)
+        context.AddSource($"{source.FullyQualifiedActorCleintTypeName}.g.cs", source.Source);
+    }
+
+    private class ActorClientToGenerate
+    {
+        public string FullyQualifiedActorCleintTypeName { get; set; } = string.Empty;
+
+        public string Source { get; set; } = string.Empty;
+    }
+
+    private static string GetClientAccessibility(ISymbol interfaceSymbol)
     {
         return interfaceSymbol.DeclaredAccessibility switch
         {
@@ -203,7 +174,7 @@ namespace {namespaceName}
         };
     }
 
-    private static string GetClientName(INamedTypeSymbol interfaceSymbol, AttributeData attributeData)
+    private static string GetClientName(ISymbol interfaceSymbol, AttributeData attributeData)
     {
         string? clientName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString();
 
@@ -306,7 +277,7 @@ internal static class Extensions
 internal sealed class DiagnosticsException : Exception
 {
     public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
-        : base(String.Join("\n", diagnostics.Select(d => d.ToString())))
+        : base(string.Join("\n", diagnostics.Select(d => d.ToString())))
     {
         this.Diagnostics = diagnostics.ToArray();
     }
