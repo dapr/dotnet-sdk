@@ -259,6 +259,12 @@ namespace {descriptor.NamespaceName}
         public Compilation Compilation { get; set; } = null!;
     }
 
+    /// <summary>
+    /// Returns the syntax kinds for the specified accessibility.
+    /// </summary>
+    /// <param name="accessibility"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     private static IEnumerable<SyntaxKind> GetSyntaxKinds(Accessibility accessibility)
     {
         var syntaxKinds = new List<SyntaxKind>();
