@@ -188,7 +188,7 @@ namespace {generatorNamespace}
                 {
                     SyntaxFactory.Parameter(SyntaxFactory.Identifier("actorProxy")).WithType(SyntaxFactory.ParseTypeName("Dapr.Actors.Client.ActorProxy"))
                 })))
-                .WithBody(SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(new StatementSyntax[]
+                .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
                 {
                     SyntaxFactory.IfStatement(
                         SyntaxFactory.BinaryExpression(
@@ -388,15 +388,4 @@ namespace {generatorNamespace}
             return this.actorProxy.InvokeMethodAsync{templateArgs}({argumentList});
         }}";
     }
-}
-
-internal sealed class DiagnosticsException : Exception
-{
-    public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
-        : base(string.Join("\n", diagnostics.Select(d => d.ToString())))
-    {
-        this.Diagnostics = diagnostics.ToArray();
-    }
-
-    public IEnumerable<Diagnostic> Diagnostics { get; }
 }
