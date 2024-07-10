@@ -39,7 +39,7 @@ public static class DaprJobsServiceCollectionExtensions
 
             return builder.Build();
         });
-        
+
         return serviceCollection;
     }
 
