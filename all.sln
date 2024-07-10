@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -117,6 +117,12 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.Actors.Generators", "test\Dapr.E2E.Test.Actors.Generators\Dapr.E2E.Test.Actors.Generators.csproj", "{B5CDB0DC-B26D-48F1-B934-FE5C1C991940}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cryptography", "examples\Client\Cryptography\Cryptography.csproj", "{C74FBA78-13E8-407F-A173-4555AEE41FF3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Messaging", "src\Dapr.Messaging\Dapr.Messaging.csproj", "{5D5EB9E0-183F-46FE-AE43-1FFAD10F5545}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Protos", "src\Dapr.Protos\Dapr.Protos.csproj", "{DF909D90-64B7-4A1C-A2D7-4A4D21EAEEF9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamingSubscribeExample", "examples\Client\PublishSubscribe\StreamingSubscribeExample\StreamingSubscribeExample.csproj", "{C218CC4D-930A-4E96-A354-71263CAD43CD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -290,6 +296,18 @@ Global
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D5EB9E0-183F-46FE-AE43-1FFAD10F5545}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D5EB9E0-183F-46FE-AE43-1FFAD10F5545}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D5EB9E0-183F-46FE-AE43-1FFAD10F5545}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D5EB9E0-183F-46FE-AE43-1FFAD10F5545}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF909D90-64B7-4A1C-A2D7-4A4D21EAEEF9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF909D90-64B7-4A1C-A2D7-4A4D21EAEEF9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF909D90-64B7-4A1C-A2D7-4A4D21EAEEF9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF909D90-64B7-4A1C-A2D7-4A4D21EAEEF9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C218CC4D-930A-4E96-A354-71263CAD43CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C218CC4D-930A-4E96-A354-71263CAD43CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C218CC4D-930A-4E96-A354-71263CAD43CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C218CC4D-930A-4E96-A354-71263CAD43CD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -343,6 +361,9 @@ Global
 		{AF89083D-4715-42E6-93E9-38497D12A8A6} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{B5CDB0DC-B26D-48F1-B934-FE5C1C991940} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
+		{5D5EB9E0-183F-46FE-AE43-1FFAD10F5545} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{DF909D90-64B7-4A1C-A2D7-4A4D21EAEEF9} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{C218CC4D-930A-4E96-A354-71263CAD43CD} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
