@@ -9,11 +9,11 @@ namespace Dapr.Actors.Generators.Helpers
     public static partial class SyntaxFactoryHelpers
     {
         /// <summary>
-        /// Generates a syntax for ArgumentNullException syntax for the given parameter name.
+        /// Generates a syntax for <see cref="ArgumentNullException"></see> syntax for the given argument name.
         /// </summary>
-        /// <param name="parameterName"></param>
+        /// <param name="argumentName"></param>
         /// <returns></returns>
-        public static ThrowExpressionSyntax ArgumentNullExceptionSyntax(string parameterName)
+        public static ThrowExpressionSyntax ArgumentNullExceptionSyntax(string argumentName)
         {
             return SyntaxFactory.ThrowExpression(
                 SyntaxFactory.Token(SyntaxKind.ThrowKeyword),
@@ -21,7 +21,7 @@ namespace Dapr.Actors.Generators.Helpers
                     SyntaxFactory.ParseTypeName("System.ArgumentNullException"),
                     SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
                     {
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(parameterName))
+                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(argumentName))
                     }))
                 )
             );
