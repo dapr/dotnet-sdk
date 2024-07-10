@@ -16,6 +16,7 @@ using System.Text;
 using Dapr.Actors.Generators.Diagnostics;
 using Dapr.Actors.Generators.Extensions;
 using Dapr.Actors.Generators.Helpers;
+using Dapr.Actors.Generators.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -254,47 +255,6 @@ namespace {generatorNamespace}
                 context.ReportDiagnostic(diagnostic);
             }
         }
-    }
-
-    /// <summary>
-    /// Describes an actor client to generate.
-    /// </summary>
-    private record class ActorClientDescriptor : IEquatable<ActorClientDescriptor>
-    {
-        /// <summary>
-        /// Gets the actor interface symbol.
-        /// </summary>
-        public INamedTypeSymbol InterfaceType { get; set; } = null!;
-
-        /// <summary>
-        /// Accessibility of the generated client.
-        /// </summary>
-        public Accessibility Accessibility { get; set; }
-
-        /// <summary>
-        /// Namespace of the generated client.
-        /// </summary>
-        public string NamespaceName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Name of the generated client.
-        /// </summary>
-        public string ClientTypeName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Fully qualified type name of the generated client.
-        /// </summary>
-        public string FullyQualifiedTypeName => $"{NamespaceName}.{ClientTypeName}";
-
-        /// <summary>
-        /// Methods to generate in the client.
-        /// </summary>
-        public IEnumerable<IMethodSymbol> Methods { get; set; } = Array.Empty<IMethodSymbol>();
-
-        /// <summary>
-        /// Compilation to use for generating the client.
-        /// </summary>
-        public Compilation Compilation { get; set; } = null!;
     }
 
     /// <summary>
