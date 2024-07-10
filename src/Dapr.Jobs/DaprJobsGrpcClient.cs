@@ -74,7 +74,7 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleJobAsync<T>(string jobName, string cronExpression, DateTime? dueTime, uint? repeats = null,
+    public override async Task ScheduleJobAsync<T>(string jobName, string cronExpression, DateTime? dueTime = null, uint? repeats = null,
         DateTime? ttl = null, T? payload = default, CancellationToken cancellationToken = default) where T : default
     {
         if (string.IsNullOrWhiteSpace(jobName))
@@ -129,7 +129,7 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleJobAsync<T>(string jobName, TimeSpan interval, DateTime? startingFrom, uint? repeats = null,
+    public override async Task ScheduleJobAsync<T>(string jobName, TimeSpan interval, DateTime? startingFrom = null, uint? repeats = null,
         DateTime? ttl = null, T? payload = default, CancellationToken cancellationToken = default) where T : default
     {
         if (string.IsNullOrWhiteSpace(jobName))
