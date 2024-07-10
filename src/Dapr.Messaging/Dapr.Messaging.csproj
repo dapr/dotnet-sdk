@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+  </ItemGroup>
+
+</Project>
