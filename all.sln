@@ -122,7 +122,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Jobs", "src\Dapr.Jobs\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Jobs.Test", "test\Dapr.Jobs.Test\Dapr.Jobs.Test.csproj", "{EDEE625E-6815-40E1-935F-35129771A0F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Common", "src\Dapr.Common\Dapr.Common.csproj", "{3E075F71-185E-4C09-9449-79D21A958487}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Common", "src\Dapr.Common\Dapr.Common.csproj", "{3E075F71-185E-4C09-9449-79D21A958487}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
