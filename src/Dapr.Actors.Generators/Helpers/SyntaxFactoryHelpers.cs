@@ -17,12 +17,14 @@ namespace Dapr.Actors.Generators.Helpers
         {
             return SyntaxFactory.ThrowExpression(
                 SyntaxFactory.Token(SyntaxKind.ThrowKeyword),
-                SyntaxFactory.InvocationExpression(
+                SyntaxFactory.ObjectCreationExpression(
+                    SyntaxFactory.Token(SyntaxKind.NewKeyword),
                     SyntaxFactory.ParseTypeName("System.ArgumentNullException"),
                     SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
                     {
-                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(argumentName))
-                    }))
+                        SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(argumentName)))
+                    })),
+                    default
                 )
             );
         }
