@@ -38,9 +38,10 @@ public abstract class DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleJobAsync<T>(string jobName, string cronExpression, DateTime? dueTime = null,
-        uint? repeats = null,  DateTime? ttl = null, T? payload = default, CancellationToken cancellationToken = default) where T : IMessage;
-
+    public abstract Task ScheduleCronJobAsync<T>(string jobName, string cronExpression, DateTime? dueTime = null,
+        uint? repeats = null, DateTime? ttl = null, T? payload = default, CancellationToken cancellationToken = default)
+        where T : IMessage;
+    
     /// <summary>
     /// Schedules a recurring job using a cron expression.
     /// </summary>
@@ -52,7 +53,7 @@ public abstract class DaprJobsClient
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete(
         "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleJobAsync(string jobName, string cronExpression, DateTime? dueTime = null,
+    public abstract Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? dueTime = null,
         uint? repeats = null, DateTime? ttl = null, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -66,7 +67,7 @@ public abstract class DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleJobAsync<T>(string jobName, TimeSpan interval, DateTime? startingFrom = null,
+    public abstract Task ScheduleIntervalJobAsync<T>(string jobName, TimeSpan interval, DateTime? startingFrom = null,
         uint? repeats = null, DateTime? ttl = null, T? payload = default,
         CancellationToken cancellationToken = default) where T : IMessage;
 
@@ -81,7 +82,7 @@ public abstract class DaprJobsClient
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete(
         "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleJobAsync(string jobName, TimeSpan interval, DateTime? startingFrom = null,
+    public abstract Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval, DateTime? startingFrom = null,
         uint? repeats = null, DateTime? ttl = null, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -92,7 +93,7 @@ public abstract class DaprJobsClient
     /// <param name="payload">Stores the main payload of the job which is passed to the trigger function.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleJobAsync<T>(string jobName, DateTime scheduledTime, T? payload = default,
+    public abstract Task ScheduleOneTimeJobAsync<T>(string jobName, DateTime scheduledTime, T? payload = default,
         CancellationToken cancellationToken = default) where T : IMessage;
 
     /// <summary>
@@ -102,7 +103,7 @@ public abstract class DaprJobsClient
     /// <param name="scheduledTime">The point in time when the job should be run.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleJobAsync(string jobName, DateTime scheduledTime,
+    public abstract Task ScheduleOneTimeJobAsync(string jobName, DateTime scheduledTime,
         CancellationToken cancellationToken = default);
 
     /// <summary>

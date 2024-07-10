@@ -75,7 +75,7 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleJobAsync<T>(string jobName, string cronExpression, DateTime? dueTime = null, uint? repeats = null,
+    public override async Task ScheduleCronJobAsync<T>(string jobName, string cronExpression, DateTime? dueTime = null, uint? repeats = null,
         DateTime? ttl = null, T? payload = default, CancellationToken cancellationToken = default) where T : default
     {
         if (string.IsNullOrWhiteSpace(jobName))
@@ -129,10 +129,10 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override Task ScheduleJobAsync(string jobName, string cronExpression, DateTime? dueTime = null, uint? repeats = null,
+    public override Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? dueTime = null, uint? repeats = null,
         DateTime? ttl = null, CancellationToken cancellationToken = default)
     {
-        return ScheduleJobAsync<IMessage>(jobName, cronExpression, dueTime, repeats, ttl, null, cancellationToken);
+        return ScheduleCronJobAsync<IMessage>(jobName, cronExpression, dueTime, repeats, ttl, null, cancellationToken);
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleJobAsync<T>(string jobName, TimeSpan interval, DateTime? startingFrom = null, uint? repeats = null,
+    public override async Task ScheduleIntervalJobAsync<T>(string jobName, TimeSpan interval, DateTime? startingFrom = null, uint? repeats = null,
         DateTime? ttl = null, T? payload = default, CancellationToken cancellationToken = default) where T : default
     {
         if (string.IsNullOrWhiteSpace(jobName))
@@ -198,10 +198,10 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="ttl">Represents when the job should expire. If both this and StartingFrom are set, TTL needs to represent a later point in time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override Task ScheduleJobAsync(string jobName, TimeSpan interval, DateTime? startingFrom = null, uint? repeats = null,
+    public override Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval, DateTime? startingFrom = null, uint? repeats = null,
         DateTime? ttl = null, CancellationToken cancellationToken = default)
     {
-        return ScheduleJobAsync<IMessage>(jobName, interval, startingFrom, repeats, ttl, null, cancellationToken);
+        return ScheduleIntervalJobAsync<IMessage>(jobName, interval, startingFrom, repeats, ttl, null, cancellationToken);
     }
 
     /// <summary>
@@ -212,7 +212,7 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">Stores the main payload of the job which is passed to the trigger function.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleJobAsync<T>(string jobName, DateTime scheduledTime, T? payload = default,
+    public override async Task ScheduleOneTimeJobAsync<T>(string jobName, DateTime scheduledTime, T? payload = default,
         CancellationToken cancellationToken = default) where T : default
     {
         if (string.IsNullOrWhiteSpace(jobName))
@@ -246,9 +246,9 @@ internal class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="scheduledTime">The point in time when the job should be run.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override Task ScheduleJobAsync(string jobName, DateTime scheduledTime, CancellationToken cancellationToken = default)
+    public override Task ScheduleOneTimeJobAsync(string jobName, DateTime scheduledTime, CancellationToken cancellationToken = default)
     {
-        return ScheduleJobAsync<IMessage>(jobName, scheduledTime, null, cancellationToken);
+        return ScheduleOneTimeJobAsync<IMessage>(jobName, scheduledTime, null, cancellationToken);
     }
 
     /// <summary>
