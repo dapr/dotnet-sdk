@@ -12,12 +12,14 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Immutable;
+using System.Text;
 using Dapr.Actors.Generators.Diagnostics;
 using Dapr.Actors.Generators.Extensions;
 using Dapr.Actors.Generators.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Dapr.Actors.Generators;
 
@@ -27,15 +29,7 @@ namespace Dapr.Actors.Generators;
 [Generator]
 public sealed class ActorClientGenerator : IIncrementalGenerator
 {
-    private const string GeneratorsNamespace = "Dapr.Actors.Generators";
-
-    private const string ActorMethodAttributeTypeName = "ActorMethodAttribute";
-    private const string ActorMethodAttributeFullTypeName = GeneratorsNamespace + "." + ActorMethodAttributeTypeName;
-
-    private const string GenerateActorClientAttribute = "GenerateActorClientAttribute";
-    private const string GenerateActorClientAttributeFullTypeName = GeneratorsNamespace + "." + GenerateActorClientAttribute;
-
-    private static string ActorMethodAttributeSourceText(string generatorNamespace)
+    private static SourceText ActorMethodAttributeSourceText(string generatorNamespace)
     {
         if (generatorNamespace == null)
         {
@@ -52,16 +46,20 @@ using System;
 namespace {generatorNamespace}
 {{
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-    internal sealed class ActorMethodAttribute : Attribute
+    internal sealed class {GeneratorConstants.ActorMethodAttributeTypeName} : Attribute
     {{
         public string? Name {{ get; set; }}
     }}
 }}";
 
-        return source;
+        return SourceText.From(
+            SyntaxFactory.ParseCompilationUnit(source)
+                .NormalizeWhitespace()
+                .ToFullString(),
+            Encoding.UTF8);
     }
 
-    private static string GenerateActorClientAttributeSourceText(string generatorNamespace)
+    private static SourceText GenerateActorClientAttributeSourceText(string generatorNamespace)
     {
         if (generatorNamespace == null)
         {
@@ -78,7 +76,7 @@ using System;
 namespace {generatorNamespace}
 {{
     [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
-    internal sealed class GenerateActorClientAttribute : Attribute
+    internal sealed class {GeneratorConstants.GenerateActorClientAttributeTypeName} : Attribute
     {{
         public string? Name {{ get; set; }}
 
@@ -86,25 +84,36 @@ namespace {generatorNamespace}
     }}
 }}";
 
-        return source;
+        return SourceText.From(
+            SyntaxFactory.ParseCompilationUnit(source)
+                .NormalizeWhitespace()
+                .ToFullString(),
+            Encoding.UTF8);
     }
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        // Register the source output that generates the attribute definitions for ActorMethodAttribute and GenerateActorClientAttribute.
         context.RegisterPostInitializationOutput(context =>
         {
-            context.AddSource($"{ActorMethodAttributeFullTypeName}.g.cs", ActorMethodAttributeSourceText(GeneratorsNamespace));
-            context.AddSource($"{GenerateActorClientAttributeFullTypeName}.g.cs", GenerateActorClientAttributeSourceText(GeneratorsNamespace));
+            context.AddSource(
+                $"{GeneratorConstants.ActorMethodAttributeFullTypeName}.g.cs",
+                ActorMethodAttributeSourceText(GeneratorConstants.GeneratorsNamespace));
+
+            context.AddSource(
+                $"{GeneratorConstants.GenerateActorClientAttributeFullTypeName}.g.cs",
+                GenerateActorClientAttributeSourceText(GeneratorConstants.GeneratorsNamespace));
         });
 
-        // Register the attribute that triggers the generation of actor clients.
+        // Register the value provider that triggers the generation of actor clients based on the GenerateActorClientAttribute.
         IncrementalValuesProvider<ActorClientDescriptor?> actorClientsToGenerate = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                GenerateActorClientAttributeFullTypeName,
+                GeneratorConstants.GenerateActorClientAttributeFullTypeName,
                 predicate: static (_, _) => true,
                 transform: static (gasc, cancellationToken) => GetActorClientDescription(gasc, cancellationToken));
 
+        // Register the source output that generates the actor clients.
         context.RegisterSourceOutput(actorClientsToGenerate, GenerateActorClientCode);
     }
 
@@ -159,7 +168,7 @@ namespace {generatorNamespace}
 
         try
         {
-            var actorMethodAttributeSymbol = descriptor.Compilation.GetTypeByMetadataName(ActorMethodAttributeFullTypeName)
+            var actorMethodAttributeSymbol = descriptor.Compilation.GetTypeByMetadataName(GeneratorConstants.ActorMethodAttributeFullTypeName)
                 ?? throw new InvalidOperationException("Could not find ActorMethodAttribute.");
 
             var cancellationTokenSymbol = descriptor.Compilation.GetTypeByMetadataName("System.Threading.CancellationToken")
@@ -321,20 +330,6 @@ namespace {generatorNamespace}
         }
 
         return syntaxKinds;
-    }
-
-    // TODO: check there is a better way to get the accessibility
-    private static string GetTextAccessibility(Accessibility accessibility)
-    {
-        return accessibility switch
-        {
-            Accessibility.Public => "public",
-            Accessibility.Internal => "internal",
-            Accessibility.Private => "private",
-            Accessibility.Protected => "protected",
-            Accessibility.ProtectedAndInternal => "protected internal",
-            _ => throw new InvalidOperationException("Unexpected accessibility.")
-        };
     }
 
     private static string GenerateMethodImplementation(
