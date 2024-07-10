@@ -14,6 +14,7 @@
 using System.Collections.Immutable;
 using Dapr.Actors.Generators.Diagnostics;
 using Dapr.Actors.Generators.Extensions;
+using Dapr.Actors.Generators.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -187,14 +188,16 @@ namespace {generatorNamespace}
                 {
                     SyntaxFactory.Parameter(SyntaxFactory.Identifier("actorProxy")).WithType(SyntaxFactory.ParseTypeName("Dapr.Actors.Client.ActorProxy"))
                 })))
-                .WithBody(SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(new[]
+                .WithBody(SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(new StatementSyntax[]
                 {
-                    //SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ArgumentNullExceptionSyntax("actorProxy")),
-                    //SyntaxFactory.ExpressionStatement(SyntaxFactory.BinaryExpression(
-                    //    SyntaxKind.IsExpression,
-                    //    SyntaxFactory.IdentifierName("actorProxy"),
-                    //    SyntaxFactory.(SyntaxKind.NullableKeyword)
-                    //)),
+                    SyntaxFactory.IfStatement(
+                        SyntaxFactory.BinaryExpression(
+                            SyntaxKind.IsExpression,
+                            SyntaxFactory.IdentifierName("actorProxy"),
+                            SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
+                        ),
+                        SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ArgumentNullExceptionSyntax("actorProxy"))
+                    ),
                     SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         SyntaxFactory.IdentifierName("this.actorProxy"),
