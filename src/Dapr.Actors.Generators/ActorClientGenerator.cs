@@ -142,14 +142,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 })))
                 .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
                 {
-                    SyntaxFactory.IfStatement(
-                        SyntaxFactory.BinaryExpression(
-                            SyntaxKind.IsExpression,
-                            SyntaxFactory.IdentifierName("actorProxy"),
-                            SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
-                        ),
-                        SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ArgumentNullExceptionSyntax("actorProxy"))
-                    ),
+                    SyntaxFactoryHelpers.ThrowIfArgumentNull("actorProxy"),
                     SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         SyntaxFactory.IdentifierName("this.actorProxy"),
