@@ -1,8 +1,16 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using Dapr.Messaging.PublishSubscribe;
+using Microsoft.Extensions.Logging;
 
-var client = DaprPublishSubscribeClient.Create();
+var loggerFactory = LoggerFactory.Create(
+    builder =>
+    {
+        builder.SetMinimumLevel(LogLevel.Debug);
+        builder.AddConsole();
+    });
+
+var client = DaprPublishSubscribeClient.Create(new() { LoggerFactory = loggerFactory });
 
 Console.WriteLine("Subscribing to topic A...");
 
@@ -13,7 +21,7 @@ var subscriptionA = client.SubscribeAsync(
     {
         Console.WriteLine($"Received message on topic A: {request}");
 
-        return Task.FromResult(TopicResponse.Success);
+        return Task.FromResult(TopicResponse.Drop);
     });
 
 Console.WriteLine("Subscribing to topic B...");

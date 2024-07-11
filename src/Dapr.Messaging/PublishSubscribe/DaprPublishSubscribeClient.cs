@@ -12,12 +12,23 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
+using Microsoft.Extensions.Logging;
 
 namespace Dapr.Messaging.PublishSubscribe;
+
+/// <summary>
+/// 
+/// </summary>
+public sealed record DaprPublishSubscribeClientOptions
+{
+    /// <summary>
+    /// 
+    /// </summary>
+    public ILoggerFactory? LoggerFactory { get; init; }
+}
 
 /// <summary>
 /// 
@@ -28,7 +39,7 @@ public abstract class DaprPublishSubscribeClient
     /// 
     /// </summary>
     /// <returns></returns>
-    public static DaprPublishSubscribeClient Create()
+    public static DaprPublishSubscribeClient Create(DaprPublishSubscribeClientOptions? options = null)
     {
         string? daprGrpcEndpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
         
@@ -41,7 +52,20 @@ public abstract class DaprPublishSubscribeClient
         
         GrpcChannel channel = GrpcChannel.ForAddress(daprGrpcEndpoint);
 
-        return new DaprPublishSubscribeGrpcClient(channel);
+        return new DaprPublishSubscribeGrpcClient(channel, options);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="pubSubName"></param>
+    /// <param name="topicName"></param>
+    /// <param name="handler"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, CancellationToken cancellationToken = default)
+    {
+        return SubscribeAsync(pubSubName, topicName, handler, null, cancellationToken);
     }
 
     /// <summary>
@@ -53,5 +77,5 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="options"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public abstract Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options = null, CancellationToken cancellationToken = default);
+    public abstract Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options, CancellationToken cancellationToken = default);
 }

@@ -12,7 +12,7 @@
 To run the sample locally run this command in the DaprClient directory:
 
 ```sh
-dapr run --app-id test --dapr-http-port 3500 -- dotnet run
+dapr run --dapr-http-port 3500 -- dotnet run
 ```
 
 ## Publishing Pub/Sub Events

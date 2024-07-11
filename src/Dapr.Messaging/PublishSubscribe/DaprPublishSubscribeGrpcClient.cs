@@ -16,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Grpc.Net.Client;
+using Microsoft.Extensions.Logging;
 using C = Dapr.AppCallback.Autogen.Grpc.v1;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
@@ -24,13 +25,16 @@ namespace Dapr.Messaging.PublishSubscribe;
 sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
 {
     private readonly P.Dapr.DaprClient client;
+    private readonly ILogger<DaprPublishSubscribeGrpcClient>? logger;
 
-    public DaprPublishSubscribeGrpcClient(GrpcChannel channel)
+    public DaprPublishSubscribeGrpcClient(GrpcChannel channel, DaprPublishSubscribeClientOptions? options)
     {
         this.client = new P.Dapr.DaprClient(channel);
+        
+        this.logger = options?.LoggerFactory?.CreateLogger<DaprPublishSubscribeGrpcClient>();
     }
 
-    public override async Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options = null, CancellationToken cancellationToken = default)
+    public override async Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -52,15 +56,21 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
                 }
             }
 
+            this.logger?.LogDebug("Sent subscription request for topic {Topic}.", topicName);
+
             await result.RequestStream.WriteAsync(
                 new()
                 {
                     InitialRequest = initialRequest
                 },
                 cancellationToken);
-            
+
+            this.logger?.LogDebug("Waiting for topic events...");
+
             await foreach (var response in result.ResponseStream.ReadAllAsync(cancellationToken))
             {
+                this.logger?.LogDebug("Received event {Id}.", response.Id);
+
                 var request = new TopicRequest
                 {
                     Id = response.Id,
@@ -97,6 +107,8 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
                             }
                     },
                     cancellationToken);
+
+                this.logger?.LogDebug("Wrote {Response} response for event {Id}.", topicResponse, response.Id);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
