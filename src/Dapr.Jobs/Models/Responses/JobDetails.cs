@@ -11,15 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Google.Protobuf;
-
 namespace Dapr.Jobs.Models.Responses;
 
 /// <summary>
 /// Represents the details of a retrieved job.
 /// </summary>
-/// <typeparam name="T">The type to deserialize the payload to.</typeparam>
-public record JobDetails<T> where T : IMessage
+public record JobDetails
 {
     ///<summary>
     /// A cron-like expression that defines when a job should be triggered.
@@ -27,7 +24,7 @@ public record JobDetails<T> where T : IMessage
     /// <remarks>
     /// Either this or the <see cref="Interval"/> property should be specified.
     /// </remarks>
-    public string? CronExpression { get; init; }
+    public string? CronExpression { get; init; } = null;
 
     /// <summary>
     /// The interval expression that defines when a job should be triggered.
@@ -35,18 +32,18 @@ public record JobDetails<T> where T : IMessage
     /// <remarks>
     /// Either this or the <see cref="CronExpression"/> property should be specified.
     /// </remarks>
-    public TimeSpan? Interval { get; init; }
+    public TimeSpan? Interval { get; init; } = null;
 
     /// <summary>
     /// Allows for jobs with fixed repeat counts.
     /// </summary>
-    public uint? RepeatCount { get; init; }
+    public uint? RepeatCount { get; init; } = null;
 
     /// <summary>
     /// Identifies a point-in-time representing when the job schedule should start from,
     /// or as a "one-shot" time if other scheduling fields are not provided.
     /// </summary>
-    public DateTime? DueTime { get; init; }
+    public DateTime? DueTime { get; init; } = null;
 
     /// <summary>
     /// A point-in-time value representing with the job should expire.
@@ -54,10 +51,10 @@ public record JobDetails<T> where T : IMessage
     /// <remarks>
     /// This must be greater than <see cref="DueTime"/> if both are set.
     /// </remarks>
-    public DateTime? TTL { get; init; }
+    public DateTime? TTL { get; init; } = null;
 
     /// <summary>
     /// Stores the main payload of the job which is passed to the trigger function.
     /// </summary>
-    public T? Payload { get; init; }
+    public byte[]? Payload { get; init; } = null;
 }
