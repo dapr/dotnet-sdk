@@ -61,11 +61,10 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="pubSubName"></param>
     /// <param name="topicName"></param>
     /// <param name="handler"></param>
-    /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, CancellationToken cancellationToken = default)
+    public IDisposable SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler)
     {
-        return SubscribeAsync(pubSubName, topicName, handler, null, cancellationToken);
+        return SubscribeAsync(pubSubName, topicName, handler, null);
     }
 
     /// <summary>
@@ -75,7 +74,6 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="topicName"></param>
     /// <param name="handler"></param>
     /// <param name="options"></param>
-    /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public abstract Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options, CancellationToken cancellationToken = default);
+    public abstract IDisposable SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options);
 }

@@ -14,7 +14,7 @@ var client = DaprPublishSubscribeClient.Create(new() { LoggerFactory = loggerFac
 
 Console.WriteLine("Subscribing to topic A...");
 
-var subscriptionA = client.SubscribeAsync(
+using var subscriptionA = client.SubscribeAsync(
     "pubsub",
     "topicA",
     (request, cancellationToken) =>
@@ -26,7 +26,7 @@ var subscriptionA = client.SubscribeAsync(
 
 Console.WriteLine("Subscribing to topic B...");
 
-var subscriptionB = client.SubscribeAsync(
+using var subscriptionB = client.SubscribeAsync(
     "pubsub",
     "topicB",
     (request, cancellationToken) =>
@@ -36,8 +36,8 @@ var subscriptionB = client.SubscribeAsync(
         return Task.FromResult(TopicResponse.Success);
     });
 
-Console.WriteLine("Waiting for messages or completion...");
+Console.WriteLine("Waiting 30s to exit...");
 
-await Task.WhenAll(subscriptionA, subscriptionB);
+await Task.Delay(TimeSpan.FromSeconds(30));
 
-Console.WriteLine("Done.");
+Console.WriteLine("Exiting...");

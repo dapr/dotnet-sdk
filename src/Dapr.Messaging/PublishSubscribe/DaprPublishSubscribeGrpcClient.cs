@@ -34,11 +34,27 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
         this.logger = options?.LoggerFactory?.CreateLogger<DaprPublishSubscribeGrpcClient>();
     }
 
-    public override async Task SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options, CancellationToken cancellationToken = default)
+    public override IDisposable SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options)
+    {
+        var cts = new CancellationTokenSource();
+        
+        var task = this.OnSubscribeAsync(pubSubName, topicName, handler, options, cts.Token);
+        
+        return new Disposable(
+            () =>
+            {
+                cts.Cancel();
+
+                // TODO: Consider using IAsyncDisposable instead.
+                task.Wait(TimeSpan.FromSeconds(3));
+            });
+    }
+
+    private async Task OnSubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options, CancellationToken cancellationToken)
     {
         try
         {
-            var result = this.client.SubscribeTopicEventsAlpha1(cancellationToken: cancellationToken);
+            using var result = this.client.SubscribeTopicEventsAlpha1(cancellationToken: cancellationToken);
 
             P.SubscribeTopicEventsInitialRequestAlpha1 initialRequest =
                 new()
@@ -69,7 +85,7 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
 
             await foreach (var response in result.ResponseStream.ReadAllAsync(cancellationToken))
             {
-                this.logger?.LogDebug("Received event {Id}.", response.Id);
+                this.logger?.LogDebug("Received event {Id} on topic {TopicName} from {PubSubName}.", response.Id, response.Topic, response.PubsubName);
 
                 var request = new TopicRequest
                 {
@@ -101,7 +117,7 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
                                             TopicResponse.Success => C.TopicEventResponse.Types.TopicEventResponseStatus.Success,
                                             TopicResponse.Retry => C.TopicEventResponse.Types.TopicEventResponseStatus.Retry,
                                             TopicResponse.Drop => C.TopicEventResponse.Types.TopicEventResponseStatus.Drop,
-                                            _ => throw new InvalidOperationException("Unknown TopicResponse")
+                                            _ => throw new InvalidOperationException($"Unrecognized topic response: {topicResponse}")
                                         }
                                     }
                             }
@@ -113,7 +129,26 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // Ignore
+            // Ignore our own cancellation.
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+        {
+            // Ignore a remote cancellation due to our own cancellation.
+        }
+    }
+
+    private sealed class Disposable : IDisposable
+    {
+        private readonly Action? onDispose;
+
+        public Disposable(Action? onDispose = null)
+        {
+            this.onDispose = onDispose;
+        }
+
+        public void Dispose()
+        {
+            this.onDispose?.Invoke();
         }
     }
 }
