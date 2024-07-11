@@ -3,7 +3,7 @@
     /// <summary>
     /// Constants used by the code generator.
     /// </summary>
-    internal static class GeneratorConstants
+    internal static class Constants
     {
         /// <summary>
         /// The namespace used by the generated code.
