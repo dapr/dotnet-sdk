@@ -16,15 +16,14 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 
 /// <remarks>
 /// From Roslyn Source Generators Cookbook: https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 /// </remarks>
 internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
-    where TSourceGenerator : ISourceGenerator, new()
+    where TSourceGenerator : IIncrementalGenerator, new()
 {
-    public class Test : CSharpSourceGeneratorTest<TSourceGenerator, XUnitVerifier>
+    public class Test : CSharpSourceGeneratorTest<TSourceGenerator, DefaultVerifier>
     {
         public Test()
         {
