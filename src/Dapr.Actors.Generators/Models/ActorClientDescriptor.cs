@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
 
 namespace Dapr.Actors.Generators.Models
 {
@@ -35,7 +36,7 @@ namespace Dapr.Actors.Generators.Models
         /// <summary>
         /// Methods to generate in the client.
         /// </summary>
-        public IEnumerable<IMethodSymbol> Methods { get; set; } = Array.Empty<IMethodSymbol>();
+        public ImmutableArray<IMethodSymbol> Methods { get; set; } = Array.Empty<IMethodSymbol>().ToImmutableArray();
 
         /// <summary>
         /// Compilation to use for generating the client.
