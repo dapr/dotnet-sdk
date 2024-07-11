@@ -28,5 +28,25 @@ namespace Dapr.Actors.Generators.Helpers
                 )
             );
         }
+
+        /// <summary>
+        /// Generates a syntax for null check for the given argument name.
+        /// </summary>
+        /// <param name="argumentName"></param>
+        /// <returns></returns>
+        public static IfStatementSyntax ThrowIfArgumentNull(string argumentName)
+        {
+            return SyntaxFactory.IfStatement(
+                SyntaxFactory.BinaryExpression(
+                    SyntaxKind.IsExpression,
+                    SyntaxFactory.IdentifierName(argumentName),
+                    SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
+                ),
+                SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
+                {
+                    SyntaxFactory.ExpressionStatement(ArgumentNullExceptionSyntax(argumentName))
+                }))
+            );
+        }
     }
 }
