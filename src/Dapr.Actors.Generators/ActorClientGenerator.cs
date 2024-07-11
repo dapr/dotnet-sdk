@@ -43,12 +43,12 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 Templates.GenerateActorClientAttributeSourceText(Constants.GeneratorsNamespace));
         });
 
-        // Register the value provider that triggers the generation of actor clients based on the GenerateActorClientAttribute.
+        // Register the value provider that triggers the generation of actor clients when detecting the GenerateActorClientAttribute.
         IncrementalValuesProvider<ActorClientDescriptor?> actorClientsToGenerate = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 Constants.GenerateActorClientAttributeFullTypeName,
                 predicate: static (_, _) => true,
-                transform: static (gasc, cancellationToken) => GetActorClientDescription(gasc, cancellationToken));
+                transform: static (gasc, cancellationToken) => CreateActorClientDescriptor(gasc, cancellationToken));
 
         // Register the source output that generates the actor clients.
         context.RegisterSourceOutput(actorClientsToGenerate, GenerateActorClientCode);
@@ -61,7 +61,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    static ActorClientDescriptor? GetActorClientDescription(
+    static ActorClientDescriptor? CreateActorClientDescriptor(
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken)
     {
@@ -71,11 +71,11 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
 
         var actorInterfaceSymbol = (INamedTypeSymbol)context.TargetSymbol;
 
-        // Use the namespace specified in the attribute, or the namespace of the actor interface if not specified.
+        // Use the namespace specified in the GenerateActorClientAttribute, or the namespace of the actor interface if not specified.
         var namespaceName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Namespace").Value.Value?.ToString()
             ?? actorInterfaceSymbol.ContainingNamespace.ToDisplayString();
 
-        // Use the name specified in the attribute, or the name of the actor interface with a "Client" suffix if not specified.
+        // Use the name specified in the GenerateActorClientAttribute, or the name of the actor interface with a "Client" suffix if not specified.
         var clientName = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString()
             ?? $"{(actorInterfaceSymbol.Name.StartsWith("I") ? actorInterfaceSymbol.Name.Substring(1) : actorInterfaceSymbol.Name)}Client";
 
@@ -83,7 +83,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             .GetMembers()
             .OfType<IMethodSymbol>()
             .Where(m => m.MethodKind == MethodKind.Ordinary)
-            .ToList();
+            .ToImmutableArray();
 
         return new ActorClientDescriptor
         {
@@ -96,6 +96,12 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
         };
     }
 
+    /// <summary>
+    /// Generates the actor client code based on the specified descriptor.
+    /// </summary>
+    /// <param name="context"></param>
+    /// <param name="descriptor"></param>
+    /// <exception cref="InvalidOperationException"></exception>
     static void GenerateActorClientCode(SourceProductionContext context, ActorClientDescriptor? descriptor)
     {
         if (descriptor is null)

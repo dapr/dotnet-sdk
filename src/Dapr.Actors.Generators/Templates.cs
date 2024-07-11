@@ -13,14 +13,14 @@ namespace Dapr.Actors.Generators
         /// <summary>
         /// Returns the source text for the ActorMethodAttribute.
         /// </summary>
-        /// <param name="generatorNamespace"></param>
+        /// <param name="destinationNamespace"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static SourceText ActorMethodAttributeSourceText(string generatorNamespace)
+        public static SourceText ActorMethodAttributeSourceText(string destinationNamespace)
         {
-            if (generatorNamespace == null)
+            if (destinationNamespace == null)
             {
-                throw new ArgumentNullException(nameof(generatorNamespace));
+                throw new ArgumentNullException(nameof(destinationNamespace));
             }
 
             var source = $@"
@@ -30,7 +30,7 @@ namespace Dapr.Actors.Generators
 
 using System;
 
-namespace {generatorNamespace}
+namespace {destinationNamespace}
 {{
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
     internal sealed class {Constants.ActorMethodAttributeTypeName} : Attribute
@@ -49,14 +49,14 @@ namespace {generatorNamespace}
         /// <summary>
         /// Returns the source text for the GenerateActorClientAttribute.
         /// </summary>
-        /// <param name="generatorNamespace"></param>
+        /// <param name="destinationNamespace"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static SourceText GenerateActorClientAttributeSourceText(string generatorNamespace)
+        public static SourceText GenerateActorClientAttributeSourceText(string destinationNamespace)
         {
-            if (generatorNamespace == null)
+            if (destinationNamespace == null)
             {
-                throw new ArgumentNullException(nameof(generatorNamespace));
+                throw new ArgumentNullException(nameof(destinationNamespace));
             }
 
             string source = $@"
@@ -66,7 +66,7 @@ namespace {generatorNamespace}
 
 using System;
 
-namespace {generatorNamespace}
+namespace {destinationNamespace}
 {{
     [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
     internal sealed class {Constants.GenerateActorClientAttributeTypeName} : Attribute
