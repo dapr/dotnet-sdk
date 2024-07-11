@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Text;
-using VerifyCS = CSharpSourceGeneratorVerifier<ActorClientGeneratorOld>;
+using VerifyCS = CSharpSourceGeneratorVerifier<ActorClientGenerator>;
 
 public sealed class ActorClientGeneratorTests
 {
