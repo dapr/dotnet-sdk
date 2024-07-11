@@ -13,7 +13,7 @@ namespace Dapr.Actors.Generators.Helpers
         /// </summary>
         /// <param name="argumentName"></param>
         /// <returns></returns>
-        public static ThrowExpressionSyntax ArgumentNullExceptionSyntax(string argumentName)
+        public static ThrowExpressionSyntax ThrowArgumentNullExceptionSyntax(string argumentName)
         {
             return SyntaxFactory.ThrowExpression(
                 SyntaxFactory.Token(SyntaxKind.ThrowKeyword),
@@ -44,7 +44,7 @@ namespace Dapr.Actors.Generators.Helpers
                 ),
                 SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
                 {
-                    SyntaxFactory.ExpressionStatement(ArgumentNullExceptionSyntax(argumentName))
+                    SyntaxFactory.ExpressionStatement(ThrowArgumentNullExceptionSyntax(argumentName))
                 }))
             );
         }
