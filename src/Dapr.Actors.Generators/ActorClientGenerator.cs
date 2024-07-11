@@ -149,7 +149,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             var actorMethods = descriptor.Methods
                 .OrderBy(member => member.DeclaredAccessibility)
                 .ThenBy(member => member.Name)
-                .Select(member => GenerateMethodImplementation(context, member, actorMethodAttributeSymbol, cancellationTokenSymbol))
+                .Select(member => GenerateMethodImplementation(member, actorMethodAttributeSymbol, cancellationTokenSymbol))
                 .Select(m => SyntaxFactory.ParseMemberDeclaration(m)!);
 
             var actorMembers = new List<MemberDeclarationSyntax>()
@@ -231,28 +231,32 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <summary>
     /// Generates the method implementation for the specified method.
     /// </summary>
-    /// <param name="context"></param>
     /// <param name="method"></param>
     /// <param name="generateActorClientAttributeSymbol"></param>
     /// <param name="cancellationTokenSymbol"></param>
     /// <returns></returns>
     private static string GenerateMethodImplementation(
-        SourceProductionContext context,
         IMethodSymbol method,
         INamedTypeSymbol generateActorClientAttributeSymbol,
         INamedTypeSymbol cancellationTokenSymbol)
     {
         int cancellationTokenIndex = method.Parameters.IndexOf(p => p.Type.Equals(cancellationTokenSymbol, SymbolEqualityComparer.Default));
         var cancellationTokenParameter = cancellationTokenIndex != -1 ? method.Parameters[cancellationTokenIndex] : null;
+        var diagnostics = new List<Diagnostic>();
 
         if (cancellationTokenParameter is not null && cancellationTokenIndex != method.Parameters.Length - 1)
         {
-            context.ReportDiagnostic(CancellationTokensMustBeTheLastArgument.CreateDiagnostic(cancellationTokenParameter));
+            diagnostics.Add(CancellationTokensMustBeTheLastArgument.CreateDiagnostic(cancellationTokenParameter));
         }
 
         if ((method.Parameters.Length > 1 && cancellationTokenIndex == -1) || (method.Parameters.Length > 2))
         {
-            context.ReportDiagnostic(MethodMustOnlyHaveASingleArgumentOptionallyFollowedByACancellationToken.CreateDiagnostic(method));
+            diagnostics.Add(MethodMustOnlyHaveASingleArgumentOptionallyFollowedByACancellationToken.CreateDiagnostic(method));
+        }
+
+        if (diagnostics.Any())
+        {
+            throw new DiagnosticsException(diagnostics);
         }
 
         var attributeData = method.GetAttributes()
