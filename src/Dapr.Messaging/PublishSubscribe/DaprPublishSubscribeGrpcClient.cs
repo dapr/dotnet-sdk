@@ -34,7 +34,7 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
         this.logger = options?.LoggerFactory?.CreateLogger<DaprPublishSubscribeGrpcClient>();
     }
 
-    public override IDisposable SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options)
+    public override IDisposable Subscribe(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options)
     {
         var cts = new CancellationTokenSource();
         
@@ -94,6 +94,7 @@ sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
                     Type = response.Type,
                     SpecVersion = response.SpecVersion,
                     DataContentType = response.DataContentType,
+                    Data = response.Data.Memory,
                     Topic = response.Topic,
                     PubSubName = response.PubsubName,
                     Path = response.Path,

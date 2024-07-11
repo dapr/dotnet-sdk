@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+
 namespace Dapr.Messaging.PublishSubscribe;
 
 /// <summary>
@@ -42,6 +44,11 @@ public sealed record TopicRequest
     /// 
     /// </summary>
     public string DataContentType { get; init; } = default!;
+    
+    /// <summary>
+    /// 
+    /// </summary>
+    public ReadOnlyMemory<byte> Data { get; init; }
     
     /// <summary>
     /// 

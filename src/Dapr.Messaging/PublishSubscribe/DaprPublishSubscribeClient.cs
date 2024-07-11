@@ -62,9 +62,9 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="topicName"></param>
     /// <param name="handler"></param>
     /// <returns></returns>
-    public IDisposable SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler)
+    public IDisposable Subscribe(string pubSubName, string topicName, TopicRequestHandler handler)
     {
-        return SubscribeAsync(pubSubName, topicName, handler, null);
+        return Subscribe(pubSubName, topicName, handler, null);
     }
 
     /// <summary>
@@ -75,5 +75,5 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="handler"></param>
     /// <param name="options"></param>
     /// <returns></returns>
-    public abstract IDisposable SubscribeAsync(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options);
+    public abstract IDisposable Subscribe(string pubSubName, string topicName, TopicRequestHandler handler, DaprSubscriptionOptions? options);
 }
