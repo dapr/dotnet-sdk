@@ -34,7 +34,7 @@ namespace Dapr.Actors.Generators.Helpers
         /// </summary>
         /// <param name="argumentName"></param>
         /// <returns></returns>
-        public static IfStatementSyntax ThrowIfArgumentNull(string argumentName)
+        public static IfStatementSyntax ThrowIfArgumentNullSyntax(string argumentName)
         {
             return SyntaxFactory.IfStatement(
                 SyntaxFactory.BinaryExpression(
