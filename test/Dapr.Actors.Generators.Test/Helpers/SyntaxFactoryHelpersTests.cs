@@ -11,7 +11,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
         {
             // Arrange
             var argumentName = "arg0";
-            var expectedSource = $@"throw new System.ArgumentNullException(""arg0"");";
+            var expectedSource = $@"throw new System.ArgumentNullException(nameof(arg0));";
 
             // Act
             var generatedSource = SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ThrowArgumentNullExceptionSyntax(argumentName))
@@ -31,7 +31,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
             var argumentName = "arg0";
             var expectedSource = $@"if (arg0 is null)
 {{
-    throw new System.ArgumentNullException(""arg0"");
+    throw new System.ArgumentNullException(nameof(arg0));
 }}";
 
             // Act
