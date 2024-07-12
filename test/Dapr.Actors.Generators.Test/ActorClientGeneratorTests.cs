@@ -109,7 +109,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -152,7 +152,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -195,7 +195,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -238,7 +238,7 @@ namespace MyTest
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -283,7 +283,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -329,7 +329,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -374,7 +374,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -421,7 +421,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -465,7 +465,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -509,7 +509,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -556,7 +556,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
@@ -603,7 +603,7 @@ namespace Test
         {
             if (actorProxy is null)
             {
-                throw new System.ArgumentNullException(""actorProxy"");
+                throw new System.ArgumentNullException(nameof(actorProxy));
             }
 
             this.actorProxy = actorProxy;
