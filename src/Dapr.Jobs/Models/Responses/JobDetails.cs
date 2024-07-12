@@ -56,5 +56,5 @@ public record JobDetails
     /// <summary>
     /// Stores the main payload of the job which is passed to the trigger function.
     /// </summary>
-    public byte[]? Payload { get; init; } = null;
+    public ReadOnlyMemory<byte>? Payload { get; init; } = null;
 }
