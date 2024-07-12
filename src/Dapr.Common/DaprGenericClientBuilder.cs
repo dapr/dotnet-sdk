@@ -26,7 +26,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprGenericClientBuilder{TClientBuilder}"/> class.
     /// </summary>
-    public DaprGenericClientBuilder()
+    protected DaprGenericClientBuilder()
     {
         this.GrpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
         this.HttpEndpoint = DaprDefaults.GetDefaultHttpEndpoint();
