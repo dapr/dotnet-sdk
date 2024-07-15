@@ -1,15 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-      <TargetFrameworks>net6;net8</TargetFrameworks>
-      <ImplicitUsings>enable</ImplicitUsings>
-      <Nullable>enable</Nullable>
-      <PackageId>Dapr.Jobs</PackageId>
-      <Title>Dapr Jobs Authoring SDK</Title>
-      <Description>Dapr Jobs SDK for scheduling jobs and tasks with Dapr</Description>
-      <VersionPrefix>0.1.0</VersionPrefix>
-      <VersionSuffix>alpha</VersionSuffix>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>net6;net8</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.Jobs</PackageId>
+        <Title>Dapr Jobs Authoring SDK</Title>
+        <Description>Dapr Jobs SDK for scheduling jobs and tasks with Dapr</Description>
+        <VersionPrefix>0.1.0</VersionPrefix>
+        <VersionSuffix>alpha</VersionSuffix>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Google.Protobuf" Version="3.15.0" />
@@ -20,11 +24,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Include="..\Shared\DaprDefaults.cs" Link="DaprDefaults.cs" />
+        <Compile Include="..\Shared\DaprDefaults.cs" Link="DaprDefaults.cs" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
     </ItemGroup>
 
     <ItemGroup>
