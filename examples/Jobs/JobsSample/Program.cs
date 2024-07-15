@@ -21,11 +21,9 @@ app.MapScheduledJob("myJob", (ILogger logger, JobDetails details) =>
         var deserializedPayload = Encoding.UTF8.GetString(details.Payload.Value.ToArray());
         
         logger.LogInformation($"Received invocation for the 'myJob' job with payload '{deserializedPayload}'");
+        return;
     }
-    else
-    {
-        logger.LogInformation("Failed to deserialize payload for trigger invocation");
-    }
+    logger.LogInformation("Failed to deserialize payload for trigger invocation");
 });
 
 app.Run();
