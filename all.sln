@@ -128,6 +128,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Jobs", "Jobs", "{4DA40205-C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JobsSample", "examples\Jobs\JobsSample\JobsSample.csproj", "{11E59564-D677-4137-81BD-CF0B142530DB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Common.Test", "test\Dapr.Common.Test\Dapr.Common.Test.csproj", "{229BB84C-69A4-4A40-AD49-1FD6C237E0C5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -316,10 +318,10 @@ Global
 		{11E59564-D677-4137-81BD-CF0B142530DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{11E59564-D677-4137-81BD-CF0B142530DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{11E59564-D677-4137-81BD-CF0B142530DB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Debug|Any CPU.ActiveCfg = Debug
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Debug|Any CPU.Build.0 = Debug
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Release|Any CPU.ActiveCfg = Release
-		{D1786E2B-CAA0-4B2D-A974-9845EB9E420F}.Release|Any CPU.Build.0 = Release
+		{229BB84C-69A4-4A40-AD49-1FD6C237E0C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{229BB84C-69A4-4A40-AD49-1FD6C237E0C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{229BB84C-69A4-4A40-AD49-1FD6C237E0C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{229BB84C-69A4-4A40-AD49-1FD6C237E0C5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -378,6 +380,7 @@ Global
 		{3E075F71-185E-4C09-9449-79D21A958487} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{4DA40205-C38D-4E19-BD9A-0F18EE06CBAB} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
 		{11E59564-D677-4137-81BD-CF0B142530DB} = {4DA40205-C38D-4E19-BD9A-0F18EE06CBAB}
+		{229BB84C-69A4-4A40-AD49-1FD6C237E0C5} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
