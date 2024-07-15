@@ -24,7 +24,26 @@ public static class DaprJobsServiceCollectionExtensions
     /// <summary>
     /// Adds Dapr Jobs client support to the service collection.
     /// </summary>
-    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param> <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/>.</param>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
+    /// <returns></returns>
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection)
+    {
+        ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
+
+        serviceCollection.TryAddSingleton(_ =>
+        {
+            var builder = new DaprJobClientBuilder();
+            return builder.Build();
+        });
+
+        return serviceCollection;
+    }
+
+    /// <summary>
+    /// Adds Dapr Jobs client support to the service collection.
+    /// </summary>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/>.</param>
     public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<DaprJobClientBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
