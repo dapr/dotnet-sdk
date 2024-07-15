@@ -230,15 +230,11 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
             throw new DaprException(
                 "Get job operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
         }
-
-        var intervalRegex = new Regex("h|m|(ms)|s");
-
+        
         return new JobDetails
         {
             DueTime = response.Job.DueTime is not null ? DateTime.Parse(response.Job.DueTime) : null,
             TTL = response.Job.Ttl is not null ? DateTime.Parse(response.Job.Ttl) : null,
-            Interval = response.Job.Schedule is not null && intervalRegex.IsMatch(response.Job.Schedule) ? response.Job.Schedule.FromDurationString() : null,
-            CronExpression = response.Job.Schedule is null || !intervalRegex.IsMatch(response.Job.Schedule) ? response.Job.Schedule : null,
             RepeatCount = response.Job.Repeats == default ? null : response.Job.Repeats,
             Payload = response.Job.Data.ToByteArray()
         };
