@@ -32,10 +32,14 @@ namespace ActorClient
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public static async Task Main(string[] args)
         {
-            var data = new MyData()
+            var data = new MyDataWithTTL()
             {
-                PropertyA = "ValueA",
-                PropertyB = "ValueB",
+                MyData = new MyData
+                {
+                    PropertyA = "ValueA",
+                    PropertyB = "ValueB",
+                },
+                TTL = TimeSpan.FromMinutes(10),
             };
 
             // Create an actor Id.
@@ -46,7 +50,7 @@ namespace ActorClient
             var proxy = ActorProxy.Create<IDemoActor>(actorId, "DemoActor");
 
             Console.WriteLine("Making call using actor proxy to save data.");
-            await proxy.SaveData(data, TimeSpan.FromMinutes(10));
+            await proxy.SaveData(data);
             Console.WriteLine("Making call using actor proxy to get data.");
             var receivedData = await proxy.GetData();
             Console.WriteLine($"Received data is {receivedData}.");
@@ -103,7 +107,7 @@ namespace ActorClient
             await proxy.UnregisterTimer();
             Console.WriteLine("Deregistering reminder. Reminders are durable and would not stop until an explicit deregistration or the actor is deleted.");
             await proxy.UnregisterReminder();
-            
+
             Console.WriteLine("Registering reminder with repetitions - The reminder will repeat 3 times.");
             await proxy.RegisterReminderWithRepetitions(3);
             Console.WriteLine("Waiting so the reminder can be triggered");

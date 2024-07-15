@@ -16,7 +16,6 @@ namespace IDemoActorInterface
     using System;
     using System.Threading.Tasks;
     using Dapr.Actors;
-    using Dapr.Actors.Runtime;
 
     /// <summary>
     /// Interface for Actor method.
@@ -26,10 +25,9 @@ namespace IDemoActorInterface
         /// <summary>
         /// Method to save data.
         /// </summary>
-        /// <param name="data">DAta to save.</param>
-        /// <param name="ttl">TTL of state key.</param>
+        /// <param name="data">Data to save with its TTL.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task SaveData(MyData data, TimeSpan ttl);
+        Task SaveData(MyDataWithTTL data);
 
         /// <summary>
         /// Method to get data.
@@ -80,14 +78,14 @@ namespace IDemoActorInterface
         /// <param name="ttl">Optional TimeSpan that dictates when the timer expires.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
         Task RegisterTimerWithTtl(TimeSpan ttl);
-        
+
         /// <summary>
         /// Registers a reminder with repetitions.
         /// </summary>
         /// <param name="repetitions">The number of repetitions for which the reminder should be invoked.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
         Task RegisterReminderWithRepetitions(int repetitions);
-        
+
         /// <summary>
         /// Registers a reminder with ttl and repetitions.
         /// </summary>
@@ -134,6 +132,25 @@ namespace IDemoActorInterface
         }
     }
 
+    /// <summary>
+    /// Variant of MyData with TTL.
+    /// </summary>
+    public class MyDataWithTTL
+    {
+        /// <summary>
+        /// Gets or sets the MyData value.
+        /// </summary>
+        public MyData MyData { get; set; }
+
+        /// <summary>
+        /// Duration for which the state is valid.
+        /// </summary>
+        public TimeSpan TTL { get; set; }
+    }
+
+    /// <summary>
+    /// Object to hold reminder data.
+    /// </summary>
     public class ActorReminderData
     {
         public string Name { get; set; }

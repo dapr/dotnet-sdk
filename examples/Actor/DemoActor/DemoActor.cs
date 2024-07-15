@@ -57,50 +57,59 @@ namespace DaprDemoActor
             }
         }
 
-        public async Task SaveData(MyData data, TimeSpan ttl)
+        /// <inheritdoc/>
+        public async Task SaveData(MyDataWithTTL data)
         {
             Console.WriteLine($"This is Actor id {this.Id} with data {data}.");
 
             // Set State using StateManager, state is saved after the method execution.
-            await this.StateManager.SetStateAsync<MyData>(StateName, data, ttl);
+            await this.StateManager.SetStateAsync<MyData>(StateName, data.MyData, data.TTL);
         }
 
+        /// <inheritdoc/>
         public Task<MyData> GetData()
         {
             // Get state using StateManager.
             return this.StateManager.GetStateAsync<MyData>(StateName);
         }
 
+        /// <inheritdoc/>
         public Task TestThrowException()
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public Task TestNoArgumentNoReturnType()
         {
             return Task.CompletedTask;
         }
 
+        /// <inheritdoc/>
         public async Task RegisterReminder()
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
 
+        /// <inheritdoc/>
         public async Task RegisterReminderWithTtl(TimeSpan ttl)
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), ttl);
         }
 
+        /// <inheritdoc/>
         public async Task RegisterReminderWithRepetitions(int repetitions)
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions);
         }
 
+        /// <inheritdoc/>
         public async Task RegisterReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions)
         {
             await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions, ttl);
         }
 
+        /// <inheritdoc/>
         public async Task<ActorReminderData> GetReminder()
         {
             var reminder = await this.GetReminderAsync("TestReminder");
@@ -115,11 +124,13 @@ namespace DaprDemoActor
                 : null;
         }
 
+        /// <inheritdoc/>
         public Task UnregisterReminder()
         {
             return this.UnregisterReminderAsync("TestReminder");
         }
 
+        /// <inheritdoc/>
         public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
         {
             // This method is invoked when an actor reminder is fired.
@@ -147,6 +158,7 @@ namespace DaprDemoActor
             return this.RegisterTimerAsync("TestTimer", nameof(this.TimerCallback), serializedTimerParams, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
+        /// <inheritdoc/>
         public Task RegisterTimerWithTtl(TimeSpan ttl)
         {
             var timerParams = new TimerParams
@@ -159,6 +171,7 @@ namespace DaprDemoActor
             return this.RegisterTimerAsync("TestTimer", nameof(this.TimerCallback), serializedTimerParams, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3), ttl);
         }
 
+        /// <inheritdoc/>
         public Task UnregisterTimer()
         {
             return this.UnregisterTimerAsync("TestTimer");
@@ -195,6 +208,7 @@ namespace DaprDemoActor
             Console.WriteLine("Timer parameter2: " + timerParams.StringParam);
         }
 
+        /// <inheritdoc/>
         public async Task<AccountBalance> GetAccountBalance()
         {
             var starting = new AccountBalance()
@@ -207,6 +221,7 @@ namespace DaprDemoActor
             return balance;
         }
 
+        /// <inheritdoc/>
         public async Task Withdraw(WithdrawRequest withdraw)
         {
             var starting = new AccountBalance()
