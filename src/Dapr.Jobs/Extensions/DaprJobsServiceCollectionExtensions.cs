@@ -14,7 +14,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Dapr.Jobs;
+namespace Dapr.Jobs.Extensions;
 
 /// <summary>
 /// Contains extension methods for using Dapr Jobs with dependency injection.
@@ -24,17 +24,14 @@ public static class DaprJobsServiceCollectionExtensions
     /// <summary>
     /// Adds Dapr Jobs client support to the service collection.
     /// </summary>
-    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-    /// <param name="options">The options used to configure the <see cref="DaprJobClientBuilder"/>.</param>
-    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/>.</param>
-    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, DaprJobClientOptions options, Action<DaprJobClientBuilder>? configure = null)
+    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param> <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/>.</param>
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<DaprJobClientBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
-        ArgumentNullException.ThrowIfNull(options, nameof(options));
 
         serviceCollection.TryAddSingleton(_ =>
         {
-            var builder = new DaprJobClientBuilder(options);
+            var builder = new DaprJobClientBuilder();
             configure?.Invoke(builder);
 
             return builder.Build();
@@ -47,17 +44,15 @@ public static class DaprJobsServiceCollectionExtensions
     /// Adds Dapr Jobs client support to the service collection.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-    /// <param name="options">The options used to configure the <see cref="DaprJobClientBuilder"/>.</param>
     /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/> using injected services.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, DaprJobClientOptions options,
-        Action<IServiceProvider, DaprJobClientBuilder>? configure = null)
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobClientBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
         serviceCollection.TryAddSingleton(serviceProvider =>
         {
-            var builder = new DaprJobClientBuilder(options);
+            var builder = new DaprJobClientBuilder();
             configure?.Invoke(serviceProvider, builder);
 
             return builder.Build();
