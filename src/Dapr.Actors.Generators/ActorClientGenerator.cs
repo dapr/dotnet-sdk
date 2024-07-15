@@ -44,7 +44,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
         });
 
         // Register the value provider that triggers the generation of actor clients when detecting the GenerateActorClientAttribute.
-        IncrementalValuesProvider<ActorClientDescriptor?> actorClientsToGenerate = context.SyntaxProvider
+        IncrementalValuesProvider<ActorClientDescriptor> actorClientsToGenerate = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 Constants.GenerateActorClientAttributeFullTypeName,
                 predicate: static (_, _) => true,
@@ -61,7 +61,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    static ActorClientDescriptor? CreateActorClientDescriptor(
+    static ActorClientDescriptor CreateActorClientDescriptor(
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken)
     {
@@ -103,13 +103,8 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <param name="context"></param>
     /// <param name="descriptor"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    static void GenerateActorClientCode(SourceProductionContext context, ActorClientDescriptor? descriptor)
+    static void GenerateActorClientCode(SourceProductionContext context, ActorClientDescriptor descriptor)
     {
-        if (descriptor is null)
-        {
-            return;
-        }
-
         try
         {
             var actorMethodAttributeSymbol = descriptor.Compilation.GetTypeByMetadataName(Constants.ActorMethodAttributeFullTypeName)
@@ -254,6 +249,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             diagnostics.Add(MethodMustOnlyHaveASingleArgumentOptionallyFollowedByACancellationToken.CreateDiagnostic(method));
         }
 
+        // If there are any diagnostics, throw an exception to report them.
         if (diagnostics.Any())
         {
             throw new DiagnosticsException(diagnostics);
