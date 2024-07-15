@@ -21,17 +21,6 @@ namespace Dapr.Jobs;
 /// </summary>
 public sealed class DaprJobClientBuilder : DaprGenericClientBuilder<DaprJobsClient>
 {
-    private readonly DaprJobClientOptions options;
-
-    /// <summary>
-    /// Used to construct a new instance of <see cref="DaprJobClientBuilder"/>.
-    /// </summary>
-    /// <param name="options"></param>
-    public DaprJobClientBuilder(DaprJobClientOptions options)
-    {
-        this.options = options;
-    }
-
     /// <summary>
     /// Builds the client instance from the properties of the builder.
     /// </summary>
@@ -44,6 +33,6 @@ public sealed class DaprJobClientBuilder : DaprGenericClientBuilder<DaprJobsClie
         var apiTokenHeader = DaprJobsClient.GetDaprApiTokenHeader("dapr-api-token");
 
         return new DaprJobsGrpcClient(daprClientDependencies.channel, client, daprClientDependencies.httpClient,
-            daprClientDependencies.httpEndpoint, this.JsonSerializerOptions, apiTokenHeader, this.options);
+            daprClientDependencies.httpEndpoint, this.JsonSerializerOptions, apiTokenHeader);
     }
 }
