@@ -55,13 +55,13 @@ Following curl call will save data for actor id "abc"
 On Linux, MacOS:
 
 ``` bash
-curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "data": {"PropertyA": "ValueA", "PropertyB": "ValueB" }, "ttl": "00:10:00" }' 
+curl -X POST http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -d '{ "mydata": {"PropertyA": "ValueA", "PropertyB": "ValueB" }, "ttl": "00:10:00" }' 
 ```
 
  On Windows:
 
 ``` powershell
-Invoke-WebRequest -Method POST -Uri http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -ContentType "application/json" -Body '{ "data": {"PropertyA": "ValueA", "PropertyB": "ValueB" }, "ttl": "00:10:00" }' 
+Invoke-WebRequest -Method POST -Uri http://127.0.0.1:3500/v1.0/actors/DemoActor/abc/method/SaveData -ContentType "application/json" -Body '{ "mydata": {"PropertyA": "ValueA", "PropertyB": "ValueB" }, "ttl": "00:10:00" }' 
 ```
 
 **Get Data**
