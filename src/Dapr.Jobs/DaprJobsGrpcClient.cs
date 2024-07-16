@@ -71,7 +71,8 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? dueTime = null, uint? repeats = null,
+    public override async Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? dueTime = null,
+        int? repeats = null,
         DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jobName))
@@ -85,7 +86,12 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
             job.DueTime = ((DateTime)dueTime).ToString("O");
 
         if (repeats is not null)
+        {
+            if (repeats < 0)
+                throw new ArgumentOutOfRangeException(nameof(repeats));
+
             job.Repeats = (uint)repeats;
+        }
 
         if (payload is not null)
             job.Data = new Any { Value = ByteString.CopyFrom(payload.Value.Span), TypeUrl = "dapr.io/schedule/jobpayload" };
@@ -126,7 +132,8 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval, DateTime? startingFrom = null, uint? repeats = null,
+    public override async Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval,
+        DateTime? startingFrom = null, int? repeats = null,
         DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jobName))
@@ -138,7 +145,12 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
             job.DueTime = ((DateTime)startingFrom).ToString("O");
 
         if (repeats is not null)
+        {
+            if (repeats < 0)
+                throw new ArgumentOutOfRangeException(nameof(repeats));
+
             job.Repeats = (uint)repeats;
+        }
 
         if (payload is not null)
             job.Data = job.Data = new Any { Value = ByteString.CopyFrom(payload.Value.Span), TypeUrl = "dapr.io/schedule/jobpayload" };

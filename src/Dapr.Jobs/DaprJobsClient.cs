@@ -38,7 +38,7 @@ public abstract class DaprJobsClient
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public abstract Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? dueTime = null,
-        uint? repeats = null, DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null,
+        int? repeats = null, DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -53,7 +53,7 @@ public abstract class DaprJobsClient
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public abstract Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval, DateTime? startingFrom = null,
-        uint? repeats = null, DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null,
+        int? repeats = null, DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
