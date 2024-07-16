@@ -24,8 +24,7 @@ public class DaprJobsServiceCollectionExtensionsTest
         DaprJobsGrpcClient daprJobClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
 
         Assert.Null(daprJobClient!.apiTokenHeader);
-        Assert.True(daprJobClient.httpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var apiTokenValue));
-        Assert.Equal("", apiTokenValue.First());
+        Assert.False(daprJobClient.httpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
     }
 
     [Fact]
