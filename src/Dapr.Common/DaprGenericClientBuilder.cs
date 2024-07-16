@@ -66,10 +66,11 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// Property exposed for testing purposes.
     /// </summary>
     public GrpcChannelOptions GrpcChannelOptions { get; private set; }
+
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public string? DaprApiToken { get; private set; }
+    public string DaprApiToken { get; private set; }
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
@@ -210,6 +211,9 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
         {
             httpClient.Timeout = this.Timeout;
         }
+
+        //Set the API token in the HttpClient default headers even if it's an empty string
+        httpClient.DefaultRequestHeaders.Add("dapr-api-token", DaprApiToken);
 
         return (channel, httpClient, httpEndpoint);
     }

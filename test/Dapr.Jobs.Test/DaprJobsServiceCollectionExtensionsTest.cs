@@ -18,12 +18,15 @@ public class DaprJobsServiceCollectionExtensionsTest
         var clientBuilder = new Action<DaprJobsClientBuilder>(builder =>
             builder.UseDaprApiToken("abc"));
         
-        services.AddDaprJobsClient(); //Doesn't set an API token value
+        services.AddDaprJobsClient(); //Sets a default API token value of an empty string
         services.AddDaprJobsClient(clientBuilder); //Sets the API token value
 
         var serviceProvider = services.BuildServiceProvider();
-        DaprJobsGrpcClient daprClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
-        Assert.False(daprClient.httpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
+        DaprJobsGrpcClient daprJobClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
+
+        Assert.Null(daprJobClient!.apiTokenHeader);
+        Assert.True(daprJobClient.httpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var apiTokenValue));
+        Assert.Equal("", apiTokenValue.First());
     }
 
     [Fact]
@@ -57,9 +60,15 @@ public class DaprJobsServiceCollectionExtensionsTest
 
         var serviceProvider = services.BuildServiceProvider();
         var client = serviceProvider.GetRequiredService<DaprJobsClient>() as DaprJobsGrpcClient;
-        var apiTokenValue = client.httpClient.DefaultRequestHeaders.GetValues("dapr-api-token").First();
 
+        //Validate it's set on the HttpClient
+        var apiTokenValue = client.httpClient.DefaultRequestHeaders.GetValues("dapr-api-token").First();
         Assert.Equal("abcdef", apiTokenValue);
+
+        //Validate it's set in the apiTokenHeader property
+        Assert.NotNull(client.apiTokenHeader);
+        Assert.Equal("dapr-api-token", client.apiTokenHeader.Value.Key);
+        Assert.Equal("abcdef", client.apiTokenHeader.Value.Value);
     }
     
     private class TestSecretRetriever
