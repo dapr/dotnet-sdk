@@ -102,6 +102,18 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     }
 
     /// <summary>
+    /// Overrides the legacy mechanism for building an HttpClient and uses the new <see cref="IHttpClientFactory"/>
+    /// introduced in .NET Core 2.1.
+    /// </summary>
+    /// <param name="httpClientFactory">The factory used to create <see cref="HttpClient"/> instances.</param>
+    /// <returns></returns>
+    public DaprGenericClientBuilder<TClientBuilder> UseHttpClientFactory(IHttpClientFactory httpClientFactory)
+    {
+        this.HttpClientFactory = httpClientFactory.CreateClient;
+        return this;
+    }
+
+    /// <summary>
     /// Overrides the gRPC endpoint used by the Dapr client for communicating with the Dapr runtime.
     /// </summary>
     /// <param name="grpcEndpoint">
