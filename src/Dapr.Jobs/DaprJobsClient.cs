@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Text.Json;
 using Dapr.Jobs.Models.Responses;
 
 namespace Dapr.Jobs;
@@ -35,24 +34,19 @@ namespace Dapr.Jobs;
 public abstract class DaprJobsClient : IDisposable
 {
     private bool disposed;
-
-    /// <summary>
-    /// Gets the <see cref="JsonSerializerOptions"/> used for JSON serialization purposes.
-    /// </summary>
-    public abstract JsonSerializerOptions JsonSerializerOptions { get; }
-
+    
     /// <summary>
     /// Schedules a recurring job using a cron expression.
     /// </summary>
     /// <param name="jobName">The name of the job being scheduled.</param>
     /// <param name="cronExpression">The systemd Cron-like expression indicating when the job should be triggered.</param>
-    /// <param name="dueTime">The optional point-in-time from which the job schedule should start.</param>
+    /// <param name="startingFrom">The optional point-in-time from which the job schedule should start.</param>
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? dueTime = null,
+    public abstract Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? startingFrom = null,
         int? repeats = null, DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null,
         CancellationToken cancellationToken = default);
 
