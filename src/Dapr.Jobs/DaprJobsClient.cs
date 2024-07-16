@@ -17,10 +17,25 @@ using Dapr.Jobs.Models.Responses;
 namespace Dapr.Jobs;
 
 /// <summary>
+/// <para>
 /// Defines client operations for managing Dapr jobs.
+/// Use <see cref="DaprJobsClientBuilder"/> to create a <see cref="DaprJobsClient"/> or register
+/// for use with dependency injection via <see>
+///     <cref>DaprJobsServiceCollectionExtensions.AddDaprJobsClient</cref>
+/// </see>.
+/// </para>
+/// <para>
+/// Implementations of <see cref="DaprJobsClient"/> implement <see cref="IDisposable"/> because the
+/// client accesses network resources. For best performance, create a single long-lived client instance
+/// and share it for the lifetime of the application. This is done for you if created via the DI extensions. Avoid
+/// creating a disposing a client instance for each operation that the application performs - this can lead to socket
+/// exhaustion and other problems.
+/// </para>
 /// </summary>
-public abstract class DaprJobsClient
+public abstract class DaprJobsClient : IDisposable
 {
+    private bool disposed;
+
     /// <summary>
     /// Gets the <see cref="JsonSerializerOptions"/> used for JSON serialization purposes.
     /// </summary>
@@ -92,5 +107,23 @@ public abstract class DaprJobsClient
         }
 
         return new KeyValuePair<string, string>("dapr-api-token", apiToken);
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (!this.disposed)
+        {
+            Dispose(disposing: true);
+            this.disposed = true;
+        }
+    }
+
+    /// <summary>
+    /// Disposes the resources associated with the object.
+    /// </summary>
+    /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
+    protected virtual void Dispose(bool disposing)
+    {
     }
 }
