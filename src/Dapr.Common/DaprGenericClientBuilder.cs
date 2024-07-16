@@ -69,7 +69,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public string DaprApiToken { get; private set; }
+    public string? DaprApiToken { get; private set; }
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
@@ -182,7 +182,6 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// Builds out the inner DaprClient that provides the core shape of the
     /// runtime gRPC client used by the consuming package.
     /// </summary>
-    /// <returns>A DaprClient instance.</returns>
     /// <exception cref="InvalidOperationException"></exception>
     protected (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint) BuildDaprClientDependencies()
     {

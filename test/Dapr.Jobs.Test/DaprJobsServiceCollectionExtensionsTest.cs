@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using Dapr.Jobs.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,43 +16,54 @@ public class DaprJobsServiceCollectionExtensionsTest
         var services = new ServiceCollection();
 
         var clientBuilder = new Action<DaprJobsClientBuilder>(builder =>
-            builder.UseJsonSerializationOptions(new JsonSerializerOptions { PropertyNameCaseInsensitive = false }));
-
-        //Registers with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
-        services.AddDaprJobsClient();
-        //Register with PropertyNameCaseInsensitive = false
-        services.AddDaprJobsClient(clientBuilder);
+            builder.UseDaprApiToken("abc"));
+        
+        services.AddDaprJobsClient(); //Doesn't set an API token value
+        services.AddDaprJobsClient(clientBuilder); //Sets the API token value
 
         var serviceProvider = services.BuildServiceProvider();
         DaprJobsGrpcClient daprClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
-        Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+        Assert.False(daprClient.httpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
+    }
+
+    [Fact]
+    public void AddDaprJobsClient_RegistersIHttpClientFactory()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprJobsClient();
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
+        Assert.NotNull(httpClientFactory);
+
+        var daprJobsClient = serviceProvider.GetService<DaprJobsClient>();
+        Assert.NotNull(daprJobsClient);
     }
 
     [Fact]
     public void AddDaprJobsClient_RegistersUsingDependencyFromIServiceProvider()
     {
         var services = new ServiceCollection();
-        services.AddSingleton<TestConfigurationProvider>();
+        services.AddSingleton<TestSecretRetriever>();
         services.AddDaprJobsClient((provider, builder) =>
         {
-            var configProvider = provider.GetRequiredService<TestConfigurationProvider>();
-            var caseSensitivity = configProvider.GetCaseSensitivity();
+            var configProvider = provider.GetRequiredService<TestSecretRetriever>();
+            var daprApiToken = configProvider.GetApiTokenValue();
 
-            builder.UseJsonSerializationOptions(new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = caseSensitivity
-            });
+            builder.UseDaprApiToken(daprApiToken);
         });
 
         var serviceProvider = services.BuildServiceProvider();
-        DaprJobsGrpcClient client = serviceProvider.GetRequiredService<DaprJobsClient>() as DaprJobsGrpcClient;
+        var client = serviceProvider.GetRequiredService<DaprJobsClient>() as DaprJobsGrpcClient;
+        var apiTokenValue = client.httpClient.DefaultRequestHeaders.GetValues("dapr-api-token").First();
 
-        //Registers with case-insensitive as true by default, but we set as false above
-        Assert.False(client.JsonSerializerOptions.PropertyNameCaseInsensitive);
+        Assert.Equal("abcdef", apiTokenValue);
     }
     
-    private class TestConfigurationProvider
+    private class TestSecretRetriever
     {
-        public bool GetCaseSensitivity() => false;
+        public string GetApiTokenValue() => "abcdef";
     }
 }
