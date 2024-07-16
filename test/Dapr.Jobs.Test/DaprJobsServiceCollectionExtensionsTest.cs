@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
 using Dapr.Jobs.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
