@@ -32,7 +32,7 @@ public static class DaprJobsServiceCollectionExtensions
 
         serviceCollection.TryAddSingleton(_ =>
         {
-            var builder = new DaprJobClientBuilder();
+            var builder = new DaprJobsClientBuilder();
             return builder.Build();
         });
 
@@ -44,13 +44,13 @@ public static class DaprJobsServiceCollectionExtensions
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
     /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/>.</param>
-    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<DaprJobClientBuilder>? configure = null)
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<DaprJobsClientBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
         serviceCollection.TryAddSingleton(_ =>
         {
-            var builder = new DaprJobClientBuilder();
+            var builder = new DaprJobsClientBuilder();
             configure?.Invoke(builder);
 
             return builder.Build();
@@ -65,13 +65,13 @@ public static class DaprJobsServiceCollectionExtensions
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
     /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/> using injected services.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobClientBuilder>? configure = null)
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobsClientBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
         serviceCollection.TryAddSingleton(serviceProvider =>
         {
-            var builder = new DaprJobClientBuilder();
+            var builder = new DaprJobsClientBuilder();
             configure?.Invoke(serviceProvider, builder);
 
             return builder.Build();
