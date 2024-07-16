@@ -19,6 +19,10 @@ public static class EndpointRouteBuilderExtensions
     public static IEndpointConventionBuilder MapDaprScheduledJob(this IEndpointRouteBuilder endpoints, string jobName,
         Delegate handler)
     {
+        ArgumentNullException.ThrowIfNull(endpoints, nameof(endpoints));
+        ArgumentNullException.ThrowIfNull(jobName, nameof(jobName));
+        ArgumentNullException.ThrowIfNull(handler, nameof(handler));
+        
         return endpoints.MapPost($"/job/{jobName}", handler);
     }
 }
