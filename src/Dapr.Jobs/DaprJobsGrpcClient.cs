@@ -14,7 +14,6 @@
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Dapr.Jobs.Models.Responses;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
