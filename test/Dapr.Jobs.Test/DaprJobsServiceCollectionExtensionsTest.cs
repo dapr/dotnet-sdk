@@ -13,7 +13,7 @@ public class DaprJobsServiceCollectionExtensionsTest
     {
         var services = new ServiceCollection();
 
-        var clientBuilder = new Action<DaprJobClientBuilder>(builder =>
+        var clientBuilder = new Action<DaprJobsClientBuilder>(builder =>
             builder.UseJsonSerializationOptions(new JsonSerializerOptions { PropertyNameCaseInsensitive = false }));
 
         //Registers with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
