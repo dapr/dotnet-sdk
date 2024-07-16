@@ -19,7 +19,7 @@ namespace Dapr.Jobs;
 /// <summary>
 /// Builds a <see cref="DaprJobsClient"/>.
 /// </summary>
-public sealed class DaprJobClientBuilder : DaprGenericClientBuilder<DaprJobsClient>
+public sealed class DaprJobsClientBuilder : DaprGenericClientBuilder<DaprJobsClient>
 {
     /// <summary>
     /// Builds the client instance from the properties of the builder.
