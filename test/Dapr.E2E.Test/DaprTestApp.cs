@@ -58,6 +58,7 @@ namespace Dapr.E2E.Test
                 "--components-path", componentsPath,
                 "--config", configPath,
                 "--log-level", "debug",
+                "--dapr-http-max-request-size", "32",
 
             };
 

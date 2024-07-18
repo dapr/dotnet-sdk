@@ -60,7 +60,7 @@ namespace Dapr.Workflow
 
                 if (TryGetGrpcAddress(out string address))
                 {
-                    var client = new HttpClient();
+                    var client = options?.GrpcChannelOptions?.HttpClient ?? new HttpClient();
                     var daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
 
                     if (!string.IsNullOrEmpty(daprApiToken))
@@ -68,14 +68,14 @@ namespace Dapr.Workflow
                         client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
                     }
 
-                    builder.UseGrpc(CreateChannel(address, client, options.GrpcChannelOptions));
+                    builder.UseGrpc(CreateChannel(address, client, options?.GrpcChannelOptions));
                 }
                 else
                 {
                     builder.UseGrpc();
                 }
 
-                builder.AddTasks(registry => options.AddWorkflowsAndActivitiesToRegistry(registry));
+                builder.AddTasks(registry => options?.AddWorkflowsAndActivitiesToRegistry(registry));
             });
 
             return serviceCollection;
@@ -151,8 +151,9 @@ namespace Dapr.Workflow
 
         static GrpcChannel CreateChannel(string address, HttpClient client, GrpcChannelOptions? grpcChannelOptions = null)
         {
+            ArgumentNullException.ThrowIfNull(client);
+
             GrpcChannelOptions options = grpcChannelOptions ?? new();
-            options.HttpClient ??= client;
             
             var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
             if (!String.IsNullOrEmpty(daprEndpoint))
