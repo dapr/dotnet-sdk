@@ -33,6 +33,7 @@ namespace Dapr.E2E.Test
     using System;
     using Microsoft.Extensions.Logging;
     using Serilog;
+    using Grpc.Net.Client;
 
     /// <summary>
     /// Startup class.
@@ -96,6 +97,25 @@ namespace Dapr.E2E.Test
                 options.RegisterActivity<string, string>("ShipProduct", implementation: (context, input) =>
                 {
                     return Task.FromResult($"We are shipping {input} to the customer using our hoard of drones!");
+                });
+            });
+            services.AddDaprWorkflow(options =>
+            {
+                // Example of registering a "StartOrder" workflow function
+                options.RegisterWorkflow<string, string>("StartLargeOrder", implementation: async (context, input) =>
+                {
+                    var itemToPurchase = input;
+                    itemToPurchase = await context.WaitForExternalEventAsync<string>("FinishLargeOrder");
+                    return itemToPurchase;
+                });
+                options.RegisterActivity<string, string>("FinishLargeOrder", implementation: (context, input) =>
+                {
+                    return Task.FromResult($"We are finishing, it's huge!");
+                });
+                options.UseGrpcChannelOptions(new GrpcChannelOptions
+                {
+                    MaxReceiveMessageSize = 32 * 1024 * 1024,
+                    MaxSendMessageSize = 32 * 1024 * 1024
                 });
             });
             services.AddActors(options =>

@@ -20,6 +20,7 @@ using FluentAssertions;
 using Xunit;
 using System.Linq;
 using System.Diagnostics;
+using Grpc.Net.Client;
 
 namespace Dapr.E2E.Test
 {
@@ -82,13 +83,11 @@ namespace Dapr.E2E.Test
         [Fact]
         public async Task TestWorkflows()
         {
-            var instanceId = "testInstanceId";
-            var instanceId2 = "EventRaiseId";
-            var workflowComponent = "dapr";
-            var workflowName = "PlaceOrder";
+            const string instanceId = "testInstanceId";
+            const string workflowComponent = "dapr";
+            const string workflowName = "PlaceOrder";
             object input = "paperclips";
-            Dictionary<string, string> workflowOptions = new Dictionary<string, string>();
-            workflowOptions.Add("task_queue", "testQueue");
+            var workflowOptions = new Dictionary<string, string> { { "task_queue", "testQueue" } };
 
             using var daprClient = new DaprClientBuilder().UseGrpcEndpoint(this.GrpcEndpoint).UseHttpEndpoint(this.HttpEndpoint).Build();
             var health = await daprClient.CheckHealthAsync();
@@ -140,33 +139,101 @@ namespace Dapr.E2E.Test
             {
                 ex.InnerException.Message.Should().Contain("no such instance exists", $"Instance {instanceId} was not correctly purged");
             }
-
-            // Start another workflow for event raising purposes
-            startResponse = await daprClient.StartWorkflowAsync(
-                instanceId: instanceId2,
+            
+        }
+        [Fact]
+        public async Task TestEventRaisingWorkflows()
+        {
+            const string instanceId = "EventRaiseId";
+            const string workflowComponent = "dapr";
+            const string workflowName = "PlaceOrder";
+            object input = "paperclips";
+            var workflowOptions = new Dictionary<string, string> { { "task_queue", "testQueue" } };
+            
+            using var daprClient = new DaprClientBuilder()
+                .UseGrpcEndpoint(this.GrpcEndpoint)
+                .UseHttpEndpoint(this.HttpEndpoint).Build();
+            var health = await daprClient.CheckHealthAsync();
+            
+            health.Should().Be(true, "DaprClient is not healthy");
+            
+            var startResponse = await daprClient.StartWorkflowAsync(
+                instanceId: instanceId,
                 workflowComponent: workflowComponent,
                 workflowName: workflowName,
                 input: input,
                 workflowOptions: workflowOptions);
-
+        
             // PARALLEL RAISE EVENT TEST
-            var event1 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
-            var event2 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
-            var event3 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
-            var event4 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
-            var event5 = daprClient.RaiseWorkflowEventAsync(instanceId2, workflowComponent, "ChangePurchaseItem", "computers");
-
+            var event1 = daprClient.RaiseWorkflowEventAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers");
+            var event2 = daprClient.RaiseWorkflowEventAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers");
+            var event3 = daprClient.RaiseWorkflowEventAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers");
+            var event4 = daprClient.RaiseWorkflowEventAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers");
+            var event5 = daprClient.RaiseWorkflowEventAsync(instanceId, workflowComponent, "ChangePurchaseItem", "computers");
+        
             var externalEvents = Task.WhenAll(event1, event2, event3, event4, event5);
-            var winner = await Task.WhenAny(externalEvents, Task.Delay(TimeSpan.FromSeconds(30)));
+            await Task.WhenAny(externalEvents, Task.Delay(TimeSpan.FromSeconds(30)));
             externalEvents.IsCompletedSuccessfully.Should().BeTrue($"Unsuccessful at raising events. Status of events: {externalEvents.IsCompletedSuccessfully}");
             
             // Wait up to 30 seconds for the workflow to complete and check the output
             using var cts = new CancellationTokenSource(delay: TimeSpan.FromSeconds(30));
-            getResponse = await daprClient.WaitForWorkflowCompletionAsync(instanceId2, workflowComponent, cts.Token);
+            var getResponse = await daprClient.WaitForWorkflowCompletionAsync(instanceId, workflowComponent, cts.Token);
             var outputString = getResponse.Properties["dapr.workflow.output"];
             outputString.Should().Be("\"computers\"", $"Purchased item {outputString} was not correct");
             var deserializedOutput = getResponse.ReadOutputAs<string>();
             deserializedOutput.Should().Be("computers", $"Deserialized output '{deserializedOutput}' was not expected");
+        }
+        [Fact]
+        public async Task TestLargeMessageWorkflow()
+        {
+            const string instanceId = "testLargeMessageId";
+            const string workflowComponent = "dapr";
+            const string workflowName = "StartLargeOrder";
+            object input = "paperclips";
+            var workflowOptions = new Dictionary<string, string> { { "task_queue", "testQueue" } };
+            const int messageSize = 32 * 1024 * 1024; // 32Mb  
+            const int payloadOverhead = 2000; //substract to allow for some overhead.
+            var largeString = GetRandomAlphaNumericString(messageSize - payloadOverhead);
+            
+            var channelOptions = new GrpcChannelOptions
+            {
+                MaxReceiveMessageSize = messageSize, MaxSendMessageSize = messageSize
+            };
+            
+            using var daprClient = new DaprClientBuilder()
+                .UseGrpcEndpoint(this.GrpcEndpoint)
+                .UseGrpcChannelOptions(channelOptions)
+                .UseHttpEndpoint(this.HttpEndpoint)
+                .Build();
+            
+            var health = await daprClient.CheckHealthAsync();
+            health.Should().Be(true, "DaprClient is not healthy");
+            
+            var startResponse = await daprClient.StartWorkflowAsync(
+                instanceId: instanceId,
+                workflowComponent: workflowComponent,
+                workflowName: workflowName,
+                input: input,
+                workflowOptions: workflowOptions);
+            
+            var event1 = daprClient.RaiseWorkflowEventAsync(instanceId, workflowComponent, "FinishLargeOrder", largeString);
+            await event1;
+            event1.IsCompletedSuccessfully.Should().BeTrue($"Cant send large message {event1.Exception}");
+            
+            // Wait up to 30 seconds for the workflow to complete and check the output
+            using var cts = new CancellationTokenSource(delay: TimeSpan.FromSeconds(30));
+            var getResponse = await daprClient.WaitForWorkflowCompletionAsync(instanceId, workflowComponent, cts.Token);
+            var outputString = getResponse.Properties["dapr.workflow.output"];
+            outputString.Should().Be("\"" + largeString + "\"", $"Purchased item {outputString} was not correct");
+            var deserializedOutput = getResponse.ReadOutputAs<string>();
+            deserializedOutput.Should().Be(largeString, $"Deserialized output '{deserializedOutput}' was not expected");
+        }
+        private static string GetRandomAlphaNumericString(int length)
+        {
+            const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+            var rand = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[rand.Next(s.Length)]).ToArray());
         }
     }
 }
