@@ -1,5 +1,4 @@
-﻿using System;
-namespace DistributedLock.Model
+﻿namespace DistributedLock.Model
 {
 #nullable enable
     public class StateData

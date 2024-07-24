@@ -15,9 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 

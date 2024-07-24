@@ -15,8 +15,6 @@ namespace Dapr.E2E.Test
 {
     using System;
     using System.Threading.Tasks;
-    using Dapr;
-    using Dapr.Client;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;

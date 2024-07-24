@@ -11,13 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
 using System.IO;
 using System.Runtime.Serialization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Xml;
-using System.Xml.Linq;
 using FluentAssertions;
 using Xunit;
 
