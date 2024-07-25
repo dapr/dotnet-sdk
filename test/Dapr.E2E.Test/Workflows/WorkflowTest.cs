@@ -11,15 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 using System;
-using System.IO;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
 using FluentAssertions;
 using Xunit;
-using System.Linq;
-using System.Diagnostics;
 
 namespace Dapr.E2E.Test
 {
@@ -43,7 +42,7 @@ namespace Dapr.E2E.Test
             var health = await daprClient.CheckHealthAsync();
             health.Should().Be(true, "DaprClient is not healthy");
 
-            var searchTask = Task.Run(async() =>
+            var searchTask = Task.Run(async () =>
             {
                 using (StreamReader reader = new StreamReader(logFilePath))
                 {
@@ -76,7 +75,7 @@ namespace Dapr.E2E.Test
             }
             if (!allLogsFound)
             {
-                Assert.True(false, "The logs were not able to found within the timeout");
+                Assert.Fail("The logs were not able to found within the timeout");
             }
         }
         [Fact]
@@ -96,7 +95,7 @@ namespace Dapr.E2E.Test
 
             // START WORKFLOW TEST
             var startResponse = await daprClient.StartWorkflowAsync(
-                instanceId: instanceId, 
+                instanceId: instanceId,
                 workflowComponent: workflowComponent,
                 workflowName: workflowName,
                 input: input,
@@ -131,10 +130,10 @@ namespace Dapr.E2E.Test
             // PURGE TEST
             await daprClient.PurgeWorkflowAsync(instanceId, workflowComponent);
 
-            try 
+            try
             {
                 getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponent);
-                Assert.True(false, "The GetWorkflowAsync call should have failed since the instance was purged");
+                Assert.Fail("The GetWorkflowAsync call should have failed since the instance was purged");
             }
             catch (DaprException ex)
             {
@@ -159,7 +158,7 @@ namespace Dapr.E2E.Test
             var externalEvents = Task.WhenAll(event1, event2, event3, event4, event5);
             var winner = await Task.WhenAny(externalEvents, Task.Delay(TimeSpan.FromSeconds(30)));
             externalEvents.IsCompletedSuccessfully.Should().BeTrue($"Unsuccessful at raising events. Status of events: {externalEvents.IsCompletedSuccessfully}");
-            
+
             // Wait up to 30 seconds for the workflow to complete and check the output
             using var cts = new CancellationTokenSource(delay: TimeSpan.FromSeconds(30));
             getResponse = await daprClient.WaitForWorkflowCompletionAsync(instanceId2, workflowComponent, cts.Token);
