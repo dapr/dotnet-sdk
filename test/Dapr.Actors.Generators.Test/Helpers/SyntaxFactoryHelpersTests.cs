@@ -44,5 +44,25 @@ namespace Dapr.Actors.Generators.Test.Helpers
             // Assert
             Assert.Equal(expectedSource, generatedSource);
         }
+
+        [Theory]
+        [InlineData(Accessibility.Public, new[] { SyntaxKind.PublicKeyword })]
+        [InlineData(Accessibility.Internal, new[] { SyntaxKind.InternalKeyword })]
+        [InlineData(Accessibility.Private, new[] { SyntaxKind.PrivateKeyword })]
+        [InlineData(Accessibility.Protected, new[] { SyntaxKind.ProtectedKeyword })]
+        [InlineData(Accessibility.ProtectedAndInternal, new[] { SyntaxKind.ProtectedKeyword, SyntaxKind.InternalKeyword })]
+        public void GetSyntaxKinds_GenerateSyntaxForGivenAccessibility(Accessibility accessibility, SyntaxKind[] expectedSyntaxKinds)
+        {
+            // Arrange
+
+            // Act
+            var generatedSyntaxKinds = SyntaxFactoryHelpers.GetSyntaxKinds(accessibility);
+
+            // Assert
+            foreach (var expectedSyntaxKind in expectedSyntaxKinds)
+            {
+                Assert.Contains(expectedSyntaxKind, generatedSyntaxKinds);
+            }
+        }
     }
 }

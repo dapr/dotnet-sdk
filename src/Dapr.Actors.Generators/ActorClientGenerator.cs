@@ -154,7 +154,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 .ToList();
 
             var actorClientClassModifiers = new List<SyntaxKind>()
-                .Concat(GetSyntaxKinds(descriptor.Accessibility))
+                .Concat(SyntaxFactoryHelpers.GetSyntaxKinds(descriptor.Accessibility))
                 .Concat(SyntaxKind.SealedKeyword)
                 .Select(sk => SyntaxFactory.Token(sk));
 
@@ -186,41 +186,6 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 context.ReportDiagnostic(diagnostic);
             }
         }
-    }
-
-    /// <summary>
-    /// Returns the syntax kinds for the specified accessibility.
-    /// </summary>
-    /// <param name="accessibility"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    private static IEnumerable<SyntaxKind> GetSyntaxKinds(Accessibility accessibility)
-    {
-        var syntaxKinds = new List<SyntaxKind>();
-
-        switch (accessibility)
-        {
-            case Accessibility.Public:
-                syntaxKinds.Add(SyntaxKind.PublicKeyword);
-                break;
-            case Accessibility.Internal:
-                syntaxKinds.Add(SyntaxKind.InternalKeyword);
-                break;
-            case Accessibility.Private:
-                syntaxKinds.Add(SyntaxKind.PrivateKeyword);
-                break;
-            case Accessibility.Protected:
-                syntaxKinds.Add(SyntaxKind.ProtectedKeyword);
-                break;
-            case Accessibility.ProtectedAndInternal:
-                syntaxKinds.Add(SyntaxKind.ProtectedKeyword);
-                syntaxKinds.Add(SyntaxKind.InternalKeyword);
-                break;
-            default:
-                throw new InvalidOperationException("Unexpected accessibility");
-        }
-
-        return syntaxKinds;
     }
 
     /// <summary>
