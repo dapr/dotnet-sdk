@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Dapr.Actors.Generators.Helpers
@@ -55,6 +56,41 @@ namespace Dapr.Actors.Generators.Helpers
                     SyntaxFactory.ExpressionStatement(ThrowArgumentNullExceptionSyntax(argumentName))
                 }))
             );
+        }
+
+        /// <summary>
+        /// Returns the syntax kinds for the specified accessibility.
+        /// </summary>
+        /// <param name="accessibility"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static ICollection<SyntaxKind> GetSyntaxKinds(Accessibility accessibility)
+        {
+            var syntaxKinds = new List<SyntaxKind>();
+
+            switch (accessibility)
+            {
+                case Accessibility.Public:
+                    syntaxKinds.Add(SyntaxKind.PublicKeyword);
+                    break;
+                case Accessibility.Internal:
+                    syntaxKinds.Add(SyntaxKind.InternalKeyword);
+                    break;
+                case Accessibility.Private:
+                    syntaxKinds.Add(SyntaxKind.PrivateKeyword);
+                    break;
+                case Accessibility.Protected:
+                    syntaxKinds.Add(SyntaxKind.ProtectedKeyword);
+                    break;
+                case Accessibility.ProtectedAndInternal:
+                    syntaxKinds.Add(SyntaxKind.ProtectedKeyword);
+                    syntaxKinds.Add(SyntaxKind.InternalKeyword);
+                    break;
+                default:
+                    throw new InvalidOperationException("Unexpected accessibility");
+            }
+
+            return syntaxKinds;
         }
     }
 }
