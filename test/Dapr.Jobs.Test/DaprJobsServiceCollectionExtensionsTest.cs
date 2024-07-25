@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Net.Http;
 using Dapr.Jobs.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,12 +58,10 @@ public class DaprJobsServiceCollectionExtensionsTest
         var serviceProvider = services.BuildServiceProvider();
         var client = serviceProvider.GetRequiredService<DaprJobsClient>() as DaprJobsGrpcClient;
 
-        //Validate it's set on the HttpClient
-        var apiTokenValue = client.httpClient.DefaultRequestHeaders.GetValues("dapr-api-token").First();
-        Assert.Equal("abcdef", apiTokenValue);
-
-        //Validate it's set in the apiTokenHeader property
+        //Validate it's set on the GrpcClient - note that it doesn't get set on the HttpClient
+        Assert.NotNull(client);
         Assert.NotNull(client.apiTokenHeader);
+        Assert.True(client.apiTokenHeader.HasValue);
         Assert.Equal("dapr-api-token", client.apiTokenHeader.Value.Key);
         Assert.Equal("abcdef", client.apiTokenHeader.Value.Value);
     }
