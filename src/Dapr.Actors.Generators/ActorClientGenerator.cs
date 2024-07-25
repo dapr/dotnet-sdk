@@ -144,8 +144,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             var actorMethods = descriptor.Methods
                 .OrderBy(member => member.DeclaredAccessibility)
                 .ThenBy(member => member.Name)
-                .Select(member => GenerateMethodImplementation(member, actorMethodAttributeSymbol, cancellationTokenSymbol))
-                .Select(m => SyntaxFactory.ParseMemberDeclaration(m)!);
+                .Select(member => GenerateMethodImplementation(member, actorMethodAttributeSymbol, cancellationTokenSymbol));
 
             var actorMembers = new List<MemberDeclarationSyntax>()
                 .Concat(actorProxyField)
@@ -195,7 +194,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <param name="generateActorClientAttributeSymbol"></param>
     /// <param name="cancellationTokenSymbol"></param>
     /// <returns></returns>
-    private static string GenerateMethodImplementation(
+    private static MethodDeclarationSyntax GenerateMethodImplementation(
         IMethodSymbol method,
         INamedTypeSymbol generateActorClientAttributeSymbol,
         INamedTypeSymbol cancellationTokenSymbol)
@@ -223,33 +222,68 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
         var attributeData = method.GetAttributes()
             .SingleOrDefault(a => a.AttributeClass?.Equals(generateActorClientAttributeSymbol, SymbolEqualityComparer.Default) == true);
 
-        string? actualMethodName = attributeData?.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString() ?? method.Name;
+        var daprMethodName = attributeData?.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString() ?? method.Name;
 
-        var requestParameter = method.Parameters.Length > 0 && cancellationTokenIndex != 0 ? method.Parameters[0] : null;
+        var methodModifiers = new List<SyntaxKind>()
+            .Concat(SyntaxFactoryHelpers.GetSyntaxKinds(method.DeclaredAccessibility))
+            .Select(sk => SyntaxFactory.Token(sk));
 
-        var returnTypeArgument = (method.ReturnType as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
+        var methodParameters = method.Parameters
+            .Where(p => p.Type is not INamedTypeSymbol { Name: "CancellationToken" })
+            .Select(p => SyntaxFactory.Parameter(SyntaxFactory.Identifier(p.Name)).WithType(SyntaxFactory.ParseTypeName(p.Type.ToString())));
 
-        string argumentDefinitions = string.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}"));
-
+        // Append the CancellationToken parameter if it exists.
         if (cancellationTokenParameter is not null
             && cancellationTokenParameter.IsOptional
             && cancellationTokenParameter.HasExplicitDefaultValue
             && cancellationTokenParameter.ExplicitDefaultValue is null)
         {
-            argumentDefinitions = argumentDefinitions + " = default";
+            methodParameters = methodParameters.Append(
+                SyntaxFactory.Parameter(SyntaxFactory.Identifier(cancellationTokenParameter.Name))
+                .WithDefault(SyntaxFactory.EqualsValueClause(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)))
+                .WithType(SyntaxFactory.ParseTypeName(cancellationTokenParameter.Type.ToString())));
         }
 
-        string argumentList = string.Join(", ", new[] { $@"""{actualMethodName}""" }.Concat(method.Parameters.Select(p => p.Name)));
+        var methodxx = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
+            .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
+            .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(methodParameters)))
+            .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
+            {
+                //SyntaxFactoryHelpers.ThrowIfArgumentNullSyntax("actorProxy"),
+                //SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(
+                //    SyntaxKind.SimpleAssignmentExpression,
+                //    SyntaxFactory.IdentifierName("this.actorProxy"),
+                //    SyntaxFactory.IdentifierName("actorProxy"))
+                //),
+            })));
 
-        string templateArgs =
-            returnTypeArgument is not null
-                ? $"<{(requestParameter is not null ? $"{requestParameter.Type}, " : "")}{returnTypeArgument}>"
-                : "";
+        return methodxx;
 
-        return
-        $@"public {method.ReturnType} {method.Name}({argumentDefinitions})
-        {{
-            return this.actorProxy.InvokeMethodAsync{templateArgs}({argumentList});
-        }}";
+        //var requestParameter = method.Parameters.Length > 0 && cancellationTokenIndex != 0 ? method.Parameters[0] : null;
+
+        //var returnTypeArgument = (method.ReturnType as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
+
+        //string argumentDefinitions = string.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}"));
+
+        //if (cancellationTokenParameter is not null
+        //    && cancellationTokenParameter.IsOptional
+        //    && cancellationTokenParameter.HasExplicitDefaultValue
+        //    && cancellationTokenParameter.ExplicitDefaultValue is null)
+        //{
+        //    argumentDefinitions = argumentDefinitions + " = default";
+        //}
+
+        //string argumentList = string.Join(", ", new[] { $@"""{actualMethodName}""" }.Concat(method.Parameters.Select(p => p.Name)));
+
+        //string templateArgs =
+        //    returnTypeArgument is not null
+        //        ? $"<{(requestParameter is not null ? $"{requestParameter.Type}, " : "")}{returnTypeArgument}>"
+        //        : "";
+
+        //return
+        //$@"public {method.ReturnType} {method.Name}({argumentDefinitions})
+        //{{
+        //    return this.actorProxy.InvokeMethodAsync{templateArgs}({argumentList});
+        //}}";
     }
 }
