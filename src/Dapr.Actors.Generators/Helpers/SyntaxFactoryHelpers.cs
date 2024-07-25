@@ -23,15 +23,7 @@ namespace Dapr.Actors.Generators.Helpers
                     SyntaxFactory.ParseTypeName("System.ArgumentNullException"),
                     SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
                     {
-                        SyntaxFactory.Argument(
-                            SyntaxFactory.InvocationExpression(
-                                SyntaxFactory.IdentifierName("nameof"),
-                                SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
-                                {
-                                    SyntaxFactory.Argument(SyntaxFactory.IdentifierName(argumentName))
-                                }))
-                            )
-                        )
+                        SyntaxFactory.Argument(SyntaxFactory.TypeOfExpression(SyntaxFactory.IdentifierName(argumentName)))
                     })),
                     default
                 )
