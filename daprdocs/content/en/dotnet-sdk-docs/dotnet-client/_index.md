@@ -56,7 +56,7 @@ Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance)
 
 #### gRPC
 You can use the `DaprClient` to invoke your services over gRPC.
-{{% codetab %}}
+
 ```csharp
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 var invoker = DaprClient.CreateInvocationInvoker(appId: myAppId, daprEndpoint: serviceEndpoint);
@@ -67,8 +67,6 @@ await client.MyMethodAsync(new Empty(), options);
 
 Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
 ```
-{{% /codetab %}}
-
 
 - For a full guide on service invocation visit [How-To: Invoke a service]({{< ref howto-invoke-discover-services.md >}}).
 
@@ -162,7 +160,7 @@ var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secre
 Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
 ```
 
-{{% / codetab %}}
+{{% /codetab %}}
 
 {{% codetab %}}
 
