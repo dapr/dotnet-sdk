@@ -9,7 +9,7 @@
         /// <param name="source"></param>
         /// <param name="predicate"></param>
         /// <returns>Return the zero-based index of the first occurrence of an element that satisfies the condition, if found; otherwise, -1.</returns>
-        public static int IndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+        internal static int IndexOf<T>(this IEnumerable<T> source, Func<T, bool> predicate)
         {
             if (predicate is null)
             {
@@ -38,7 +38,7 @@
         /// <param name="source"></param>
         /// <param name="item"></param>
         /// <returns></returns>
-        public static IEnumerable<T> Concat<T>(this IEnumerable<T> source, T item)
+        internal static IEnumerable<T> Concat<T>(this IEnumerable<T> source, T item)
         {
             return source.Concat(new[] { item });
         }
