@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
+#nullable enable
 
 using System.Collections.Generic;
 
@@ -27,7 +29,7 @@ namespace Dapr.Client
         /// <param name="etag">The ETag.</param>
         /// <param name="stateOptions">The stateOptions.</param>
         /// <param name="metadata">The metadata.</param>
-        public BulkDeleteStateItem(string key, string etag, StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default)
+        public BulkDeleteStateItem(string key, string? etag, StateOptions? stateOptions = default, IReadOnlyDictionary<string, string>? metadata = default)
         {
             this.Key = key;
             this.ETag = etag;
@@ -43,16 +45,16 @@ namespace Dapr.Client
         /// <summary>
         /// Get the ETag.
         /// </summary>
-        public string ETag { get; }
+        public string? ETag { get; }
 
         /// <summary>
         /// Gets the StateOptions.
         /// </summary>
-        public StateOptions StateOptions { get; }
+        public StateOptions? StateOptions { get; }
 
         /// <summary>
         /// Gets the Metadata.
         /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; }
+        public IReadOnlyDictionary<string, string>? Metadata { get; }
     }
 }

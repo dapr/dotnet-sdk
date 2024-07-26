@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
+#nullable enable
 
 using System;
 using System.Runtime.Serialization;
@@ -37,7 +39,7 @@ namespace Dapr
         /// </summary>
         /// <param name="message">The exception message.</param>
         /// <param name="innerException">The inner exception.</param>
-        public DaprException(string message, Exception innerException)
+        public DaprException(string message, Exception? innerException)
             : base(message, innerException)
         {
         }

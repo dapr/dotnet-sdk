@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
+#nullable enable
 
 using System;
 using System.Threading.Tasks;
@@ -24,14 +26,14 @@ namespace Dapr.Client
     public class InvocationInterceptor : Interceptor
     {
         private string appId;
-        private string daprApiToken;
+        private string? daprApiToken;
 
         /// <summary>
         /// Constructor.
         /// <param name="appId">The Id of the Dapr Application.</param>
         /// <param name="daprApiToken">The api token used for authentication, can be null.</param>
         /// </summary>
-        public InvocationInterceptor(string appId, string daprApiToken)
+        public InvocationInterceptor(string appId, string? daprApiToken)
         {
             this.appId = appId;
             this.daprApiToken = daprApiToken;

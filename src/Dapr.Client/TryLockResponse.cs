@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,19 @@ namespace Dapr.Client
     public sealed class TryLockResponse :  IAsyncDisposable
     {
         /// <summary>
+        /// Constructor for a TryLockResponse,
+        /// </summary>
+        /// <param name="resourceId">The resourceId required to unlock the lock.</param>
+        /// <param name="lockOwner">The LockOwner required to unlock the lock.</param>
+        /// <param name="storeName">The StoreName required to unlock the lock.</param>
+        public TryLockResponse(string resourceId, string lockOwner, string storeName)
+        {
+            ResourceId = resourceId;
+            LockOwner = lockOwner;
+            StoreName = storeName;
+        }
+
+        /// <summary>
         /// The success value of the tryLock API call
         /// </summary>
         public bool Success { get; init; }
@@ -32,22 +45,15 @@ namespace Dapr.Client
         /// </summary>
         public string ResourceId { get; init; }
 
-         /// <summary>
+        /// <summary>
         /// The LockOwner required to unlock the lock
         /// </summary>
         public string LockOwner { get; init; }
 
-         /// <summary>
+        /// <summary>
         /// The StoreName required to unlock the lock
         /// </summary>
         public string StoreName { get; init; }
-
-        /// <summary>
-        /// Constructor for a TryLockResponse.
-        /// </summary>
-        public TryLockResponse()
-        {
-        }
 
         /// <inheritdoc />
         public async ValueTask DisposeAsync() {
