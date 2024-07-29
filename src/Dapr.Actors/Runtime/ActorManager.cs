@@ -229,7 +229,6 @@ namespace Dapr.Actors.Runtime
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
                 var actorType = actor.Host.ActorTypeInfo.ImplementationType;
                 var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
 
@@ -241,7 +240,7 @@ namespace Dapr.Actors.Runtime
                 return default;
             }
 
-            var result = await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
+            await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task ActivateActorAsync(ActorId actorId)
