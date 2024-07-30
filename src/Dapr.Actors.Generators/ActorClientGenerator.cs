@@ -216,15 +216,18 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             diagnostics.Add(MethodMustOnlyHaveASingleArgumentOptionallyFollowedByACancellationToken.CreateDiagnostic(method));
         }
 
-        // If there are any diagnostics, throw an exception to report them.
+        // If there are any diagnostics, throw an exception to report them and stop the generation.
         if (diagnostics.Any())
         {
             throw new DiagnosticsException(diagnostics);
         }
 
+        // Get the ActorMethodAttribute data for the method, if it exists.
         var attributeData = method.GetAttributes()
             .SingleOrDefault(a => a.AttributeClass?.Equals(generateActorClientAttributeSymbol, SymbolEqualityComparer.Default) == true);
 
+        // Generate the method name to use for the Dapr actor method invocation, using the Name the property of ActorMethodAttribute if specified,
+        // or the original method name otherwise.
         var daprMethodName = attributeData?.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString() ?? method.Name;
 
         var methodModifiers = new List<SyntaxKind>()
@@ -243,50 +246,73 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
         {
             methodParameters = methodParameters.Append(
                 SyntaxFactory.Parameter(SyntaxFactory.Identifier(cancellationTokenParameter.Name))
-                .WithDefault(SyntaxFactory.EqualsValueClause(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)))
-                .WithType(SyntaxFactory.ParseTypeName(cancellationTokenParameter.Type.ToString())));
+                    .WithDefault(SyntaxFactory.EqualsValueClause(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)))
+                    .WithType(SyntaxFactory.ParseTypeName(cancellationTokenParameter.Type.ToString())));
         }
 
-        var methodxx = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
-            .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
-            .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(methodParameters)))
-            .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
-            {
-                //SyntaxFactoryHelpers.ThrowIfArgumentNullSyntax("actorProxy"),
-                //SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(
-                //    SyntaxKind.SimpleAssignmentExpression,
-                //    SyntaxFactory.IdentifierName("this.actorProxy"),
-                //    SyntaxFactory.IdentifierName("actorProxy"))
-                //),
-            })));
+        var methodReturnType = (INamedTypeSymbol)method.ReturnType;
+        var methodReturnTypeArguments = methodReturnType.TypeArguments
+            .Cast<INamedTypeSymbol>()
+            .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString()));
 
-        return methodxx;
+        if (methodReturnTypeArguments.Any())
+        {
+            var generatedMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
+                .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
+                .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(methodParameters)))
+                .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
+                {
+                    SyntaxFactory.ReturnStatement(
+                        SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                SyntaxFactory.MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    SyntaxFactory.ThisExpression(),
+                                    SyntaxFactory.IdentifierName("actorProxy")),
+                                SyntaxFactory.GenericName(
+                                    SyntaxFactory.Identifier("InvokeMethodAsync"),
+                                    SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(methodReturnTypeArguments)))
+                                ))
+                        .WithArgumentList(SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
+                                .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
+                                .Concat(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(cancellationTokenParameter?.Name ?? "default")))
+                            )
+                        ))
+                    ),
+                })));
 
-        //var requestParameter = method.Parameters.Length > 0 && cancellationTokenIndex != 0 ? method.Parameters[0] : null;
+            return generatedMethod;
+        }
+        else
+        {
+            var generatedMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
+                .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
+                .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(methodParameters)))
+                .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
+                {
+                    SyntaxFactory.ReturnStatement(
+                        SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                SyntaxFactory.MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    SyntaxFactory.ThisExpression(),
+                                    SyntaxFactory.IdentifierName("actorProxy")),
+                                SyntaxFactory.IdentifierName("InvokeMethodAsync")
+                                ))
+                        .WithArgumentList(SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SeparatedList(new[]
+                            {
+                                SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))),
+                                SyntaxFactory.Argument(SyntaxFactory.IdentifierName(cancellationTokenParameter?.Name ?? "default"))
+                            }))
+                        )
+                    ),
+                })));
 
-        //var returnTypeArgument = (method.ReturnType as INamedTypeSymbol)?.TypeArguments.FirstOrDefault();
-
-        //string argumentDefinitions = string.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}"));
-
-        //if (cancellationTokenParameter is not null
-        //    && cancellationTokenParameter.IsOptional
-        //    && cancellationTokenParameter.HasExplicitDefaultValue
-        //    && cancellationTokenParameter.ExplicitDefaultValue is null)
-        //{
-        //    argumentDefinitions = argumentDefinitions + " = default";
-        //}
-
-        //string argumentList = string.Join(", ", new[] { $@"""{actualMethodName}""" }.Concat(method.Parameters.Select(p => p.Name)));
-
-        //string templateArgs =
-        //    returnTypeArgument is not null
-        //        ? $"<{(requestParameter is not null ? $"{requestParameter.Type}, " : "")}{returnTypeArgument}>"
-        //        : "";
-
-        //return
-        //$@"public {method.ReturnType} {method.Name}({argumentDefinitions})
-        //{{
-        //    return this.actorProxy.InvokeMethodAsync{templateArgs}({argumentList});
-        //}}";
+            return generatedMethod;
+        }
     }
 }
