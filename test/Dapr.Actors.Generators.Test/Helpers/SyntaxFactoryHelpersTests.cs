@@ -51,7 +51,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
         [InlineData(Accessibility.Private, new[] { SyntaxKind.PrivateKeyword })]
         [InlineData(Accessibility.Protected, new[] { SyntaxKind.ProtectedKeyword })]
         [InlineData(Accessibility.ProtectedAndInternal, new[] { SyntaxKind.ProtectedKeyword, SyntaxKind.InternalKeyword })]
-        public void GetSyntaxKinds_GenerateSyntaxForGivenAccessibility(Accessibility accessibility, SyntaxKind[] expectedSyntaxKinds)
+        public void GetSyntaxKinds_GenerateSyntaxForGivenAccessibility(Accessibility accessibility, ICollection<SyntaxKind> expectedSyntaxKinds)
         {
             // Arrange
 
@@ -63,6 +63,8 @@ namespace Dapr.Actors.Generators.Test.Helpers
             {
                 Assert.Contains(expectedSyntaxKind, generatedSyntaxKinds);
             }
+
+            Assert.Equal(expectedSyntaxKinds.Count, generatedSyntaxKinds.Count);
         }
     }
 }
