@@ -136,7 +136,10 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                     SyntaxFactoryHelpers.ThrowIfArgumentNullSyntax("actorProxy"),
                     SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
-                        SyntaxFactory.IdentifierName("this.actorProxy"),
+                         SyntaxFactory.MemberAccessExpression(
+                             SyntaxKind.SimpleMemberAccessExpression,
+                             SyntaxFactory.ThisExpression(),
+                             SyntaxFactory.IdentifierName("actorProxy")),
                         SyntaxFactory.IdentifierName("actorProxy"))
                     ),
                 })));
