@@ -45,6 +45,22 @@ namespace Dapr.Actors.Generators.Test.Helpers
             Assert.Equal(expectedSource, generatedSource);
         }
 
+        [Fact]
+        public void NameOfExpression()
+        {
+            // Arrange
+            var argumentName = "arg0";
+            var expectedSource = $@"nameof(arg0)";
+
+            // Act
+            var generatedSource = SyntaxFactoryHelpers.NameOfExpression(argumentName)
+                .NormalizeWhitespace()
+                .ToFullString();
+
+            // Assert
+            Assert.Equal(expectedSource, generatedSource);
+        }
+
         [Theory]
         [InlineData(Accessibility.Public, new[] { SyntaxKind.PublicKeyword })]
         [InlineData(Accessibility.Internal, new[] { SyntaxKind.InternalKeyword })]
