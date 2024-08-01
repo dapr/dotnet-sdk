@@ -23,7 +23,7 @@ namespace Dapr.Actors.Generators.Helpers
                     SyntaxFactory.ParseTypeName("System.ArgumentNullException"),
                     SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
                     {
-                        SyntaxFactory.Argument(SyntaxFactory.TypeOfExpression(SyntaxFactory.IdentifierName(argumentName)))
+                        SyntaxFactory.Argument(NameOfExpression(argumentName))
                     })),
                     default
                 )
@@ -46,6 +46,29 @@ namespace Dapr.Actors.Generators.Helpers
                 SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
                 {
                     SyntaxFactory.ExpressionStatement(ThrowArgumentNullExceptionSyntax(argumentName))
+                }))
+            );
+        }
+
+        /// <summary>
+        /// Generates a syntax for nameof expression for the given argument name.
+        /// </summary>
+        /// <param name="argumentName"></param>
+        /// <returns></returns>
+        public static ExpressionSyntax NameOfExpression(string argumentName)
+        {
+            var nameofIdentifier = SyntaxFactory.Identifier(
+                SyntaxFactory.TriviaList(),
+                SyntaxKind.NameOfKeyword,
+                "nameof",
+                "nameof",
+                SyntaxFactory.TriviaList());
+
+            return SyntaxFactory.InvocationExpression(
+                SyntaxFactory.IdentifierName(nameofIdentifier),
+                SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
+                {
+                    SyntaxFactory.Argument(SyntaxFactory.IdentifierName(argumentName))
                 }))
             );
         }
