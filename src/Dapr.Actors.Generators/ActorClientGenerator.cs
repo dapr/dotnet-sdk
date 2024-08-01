@@ -255,6 +255,10 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             .Cast<INamedTypeSymbol>()
             .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString()));
 
+        var proxyInvocationArguments = method.Parameters
+            .Where(p => p.Type is not INamedTypeSymbol { Name: "CancellationToken" })
+            .Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name)));
+
         if (methodReturnTypeArguments.Any())
         {
             var generatedMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
@@ -277,6 +281,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                         .WithArgumentList(SyntaxFactory.ArgumentList(
                             SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
                                 .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
+                                .Concat(proxyInvocationArguments)
                                 .Concat(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(cancellationTokenParameter?.Name ?? "default")))
                             )
                         ))
@@ -303,12 +308,12 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                                 SyntaxFactory.IdentifierName("InvokeMethodAsync")
                                 ))
                         .WithArgumentList(SyntaxFactory.ArgumentList(
-                            SyntaxFactory.SeparatedList(new[]
-                            {
-                                SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))),
-                                SyntaxFactory.Argument(SyntaxFactory.IdentifierName(cancellationTokenParameter?.Name ?? "default"))
-                            }))
-                        )
+                            SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
+                                .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
+                                .Concat(proxyInvocationArguments)
+                                .Concat( SyntaxFactory.Argument(SyntaxFactory.IdentifierName(cancellationTokenParameter?.Name ?? "default")))
+                            )
+                        ))
                     ),
                 })));
 
