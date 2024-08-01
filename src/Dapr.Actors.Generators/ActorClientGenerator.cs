@@ -256,7 +256,6 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString()));
 
         var proxyInvocationArguments = method.Parameters
-            .Where(p => p.Type is not INamedTypeSymbol { Name: "CancellationToken" })
             .Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name)));
 
         if (methodReturnTypeArguments.Any())
@@ -282,7 +281,6 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                             SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
                                 .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
                                 .Concat(proxyInvocationArguments)
-                                .Concat(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(cancellationTokenParameter?.Name ?? "default")))
                             )
                         ))
                     ),
@@ -311,7 +309,6 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                             SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
                                 .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
                                 .Concat(proxyInvocationArguments)
-                                .Concat( SyntaxFactory.Argument(SyntaxFactory.IdentifierName(cancellationTokenParameter?.Name ?? "default")))
                             )
                         ))
                     ),
