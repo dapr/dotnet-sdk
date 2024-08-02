@@ -337,7 +337,7 @@ namespace Test
 
         public System.Threading.Tasks.Task TestMethod(Test.TestValue value)
         {
-            return this.actorProxy.InvokeMethodAsync(""TestMethod"", value);
+            return this.actorProxy.InvokeMethodAsync<Test.TestValue>(""TestMethod"", value);
         }
     }
 }";
@@ -564,7 +564,7 @@ namespace Test
 
         public System.Threading.Tasks.Task TestMethodAsync(Test.TestValue value, System.Threading.CancellationToken cancellationToken)
         {
-            return this.actorProxy.InvokeMethodAsync(""TestMethodAsync"", value, cancellationToken);
+            return this.actorProxy.InvokeMethodAsync<Test.TestValue>(""TestMethodAsync"", value, cancellationToken);
         }
     }
 }";
@@ -611,7 +611,7 @@ namespace Test
 
         public System.Threading.Tasks.Task TestMethodAsync(Test.TestValue value, System.Threading.CancellationToken cancellationToken = default)
         {
-            return this.actorProxy.InvokeMethodAsync(""TestMethodAsync"", value, cancellationToken);
+            return this.actorProxy.InvokeMethodAsync<Test.TestValue>(""TestMethodAsync"", value, cancellationToken);
         }
     }
 }";

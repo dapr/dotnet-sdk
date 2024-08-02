@@ -251,15 +251,24 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
         }
 
         var methodReturnType = (INamedTypeSymbol)method.ReturnType;
-        var methodReturnTypeArguments = methodReturnType.TypeArguments
-            .Cast<INamedTypeSymbol>()
-            .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString()));
 
+        // Define the type arguments to pass to the actor proxy method invocation.
+        var proxyInvocationTypeArguments = new List<TypeSyntax>()
+            .Concat(method.Parameters
+                .Where(p => p.Type is not INamedTypeSymbol { Name: "CancellationToken" })
+                .Select(p => SyntaxFactory.ParseTypeName(p.Type.ToString())))
+            .Concat(methodReturnType.TypeArguments
+                .Cast<INamedTypeSymbol>()
+                .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString())));
+
+        // Define the arguments to pass to the actor proxy method invocation.
         var proxyInvocationArguments = new List<ArgumentSyntax>()
+            // Name of remove method to invoke.
             .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
+            // Actor method arguments, including the CancellationToken if it exists.
             .Concat(method.Parameters.Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name))));
 
-        if (methodReturnTypeArguments.Any())
+        if (proxyInvocationTypeArguments.Any())
         {
             var generatedMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
                 .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
@@ -276,14 +285,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                                     SyntaxFactory.IdentifierName("actorProxy")),
                                 SyntaxFactory.GenericName(
                                     SyntaxFactory.Identifier("InvokeMethodAsync"),
-                                    SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(methodReturnTypeArguments)))
+                                    SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(proxyInvocationTypeArguments)))
                                 ))
                         .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(proxyInvocationArguments)))
-                            SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
-                                .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
-                                .Concat(proxyInvocationArguments)
-                            )
-                        ))
                     ),
                 })));
 
@@ -307,11 +311,6 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                                 SyntaxFactory.IdentifierName("InvokeMethodAsync")
                                 ))
                         .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(proxyInvocationArguments)))
-                            SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
-                                .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
-                                .Concat(proxyInvocationArguments)
-                            )
-                        ))
                     ),
                 })));
 
