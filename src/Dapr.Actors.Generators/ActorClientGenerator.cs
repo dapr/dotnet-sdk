@@ -239,15 +239,23 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             .Select(p => SyntaxFactory.Parameter(SyntaxFactory.Identifier(p.Name)).WithType(SyntaxFactory.ParseTypeName(p.Type.ToString())));
 
         // Append the CancellationToken parameter if it exists.
-        if (cancellationTokenParameter is not null
-            && cancellationTokenParameter.IsOptional
-            && cancellationTokenParameter.HasExplicitDefaultValue
-            && cancellationTokenParameter.ExplicitDefaultValue is null)
+        if (cancellationTokenParameter is not null)
         {
-            methodParameters = methodParameters.Append(
-                SyntaxFactory.Parameter(SyntaxFactory.Identifier(cancellationTokenParameter.Name))
-                    .WithDefault(SyntaxFactory.EqualsValueClause(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)))
-                    .WithType(SyntaxFactory.ParseTypeName(cancellationTokenParameter.Type.ToString())));
+            if (cancellationTokenParameter.IsOptional
+                && cancellationTokenParameter.HasExplicitDefaultValue
+                && cancellationTokenParameter.ExplicitDefaultValue is null)
+            {
+                methodParameters = methodParameters.Append(
+                    SyntaxFactory.Parameter(SyntaxFactory.Identifier(cancellationTokenParameter.Name))
+                        .WithDefault(SyntaxFactory.EqualsValueClause(SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression)))
+                        .WithType(SyntaxFactory.ParseTypeName(cancellationTokenParameter.Type.ToString())));
+            }
+            else
+            {
+                methodParameters = methodParameters.Append(
+                    SyntaxFactory.Parameter(SyntaxFactory.Identifier(cancellationTokenParameter.Name))
+                        .WithType(SyntaxFactory.ParseTypeName(cancellationTokenParameter.Type.ToString())));
+            }
         }
 
         var methodReturnType = (INamedTypeSymbol)method.ReturnType;
