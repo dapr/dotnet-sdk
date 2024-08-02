@@ -17,7 +17,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
             var generatedSource = SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ThrowArgumentNullExceptionSyntax(argumentName))
                 .SyntaxTree
                 .GetRoot()
-                .NormalizeWhitespace()
+                .NormalizeWhitespace(eol: "\r\n")
                 .ToFullString();
 
             // Assert
@@ -38,7 +38,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
             var generatedSource = SyntaxFactoryHelpers.ThrowIfArgumentNullSyntax(argumentName)
                 .SyntaxTree
                 .GetRoot()
-                .NormalizeWhitespace()
+                .NormalizeWhitespace(eol: "\r\n")
                 .ToFullString();
 
             // Assert
@@ -54,7 +54,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
 
             // Act
             var generatedSource = SyntaxFactoryHelpers.NameOfExpression(argumentName)
-                .NormalizeWhitespace()
+                .NormalizeWhitespace(eol: "\r\n")
                 .ToFullString();
 
             // Assert
