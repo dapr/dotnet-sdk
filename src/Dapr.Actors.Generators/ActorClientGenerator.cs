@@ -119,7 +119,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             var actorProxyTypeSyntax = SyntaxFactory.ParseTypeName(Constants.ActorProxyTypeName);
 
             // Generate the actor proxy field to store the actor proxy instance.
-            var actorProxyField = SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(actorProxyTypeSyntax)
+            var actorProxyFieldDeclaration = SyntaxFactory.FieldDeclaration(SyntaxFactory.VariableDeclaration(actorProxyTypeSyntax)
                 .WithVariables(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier("actorProxy")))))
                 .WithModifiers(SyntaxFactory.TokenList(new[]
                 {
@@ -153,10 +153,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 .Select(member => GenerateMethodImplementation(member, actorMethodAttributeSymbol, cancellationTokenSymbol));
 
             var actorMembers = new List<MemberDeclarationSyntax>()
-                .Concat(actorProxyField)
+                .Concat(actorProxyFieldDeclaration)
                 .Concat(actorCtor)
-                .Concat(actorMethods)
-                .ToList();
+                .Concat(actorMethods);
 
             var actorClientClassModifiers = new List<SyntaxKind>()
                 .Concat(SyntaxFactoryHelpers.GetSyntaxKinds(descriptor.Accessibility))
@@ -237,11 +236,13 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             .Concat(SyntaxFactoryHelpers.GetSyntaxKinds(method.DeclaredAccessibility))
             .Select(sk => SyntaxFactory.Token(sk));
 
+        // Define the parameters to pass to the actor proxy method invocation.
+        // Exclude the CancellationToken parameter if it exists, because it need to be handled separately.
         var methodParameters = method.Parameters
             .Where(p => p.Type is not INamedTypeSymbol { Name: "CancellationToken" })
             .Select(p => SyntaxFactory.Parameter(SyntaxFactory.Identifier(p.Name)).WithType(SyntaxFactory.ParseTypeName(p.Type.ToString())));
 
-        // Append the CancellationToken parameter if it exists.
+        // Append the CancellationToken parameter if it exists, handling the case where it is optional and has no default value.
         if (cancellationTokenParameter is not null)
         {
             if (cancellationTokenParameter.IsOptional
