@@ -29,5 +29,10 @@
         /// The full type name of the attribute used to mark actor interfaces.
         /// </summary>
         public const string GenerateActorClientAttributeFullTypeName = GeneratorsNamespace + "." + GenerateActorClientAttributeTypeName;
+
+        /// <summary>
+        /// Actor proxy type name.
+        /// </summary>
+        public const string ActorProxyTypeName = "Dapr.Actors.Client.ActorProxy";
     }
 }
