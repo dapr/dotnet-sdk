@@ -12,16 +12,20 @@ namespace Dapr.Actors.Generators.Test.Helpers
             // Arrange
             var argumentName = "arg0";
             var expectedSource = $@"throw new System.ArgumentNullException(nameof(arg0));";
+            var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
+                .GetRoot()
+                .NormalizeWhitespace()
+                .ToFullString();
 
             // Act
             var generatedSource = SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ThrowArgumentNullExceptionSyntax(argumentName))
                 .SyntaxTree
                 .GetRoot()
-                .NormalizeWhitespace(eol: "\r\n")
+                .NormalizeWhitespace()
                 .ToFullString();
 
             // Assert
-            Assert.Equal(expectedSource, generatedSource);
+            Assert.Equal(expectedSourceNormalized, generatedSource);
         }
 
         [Fact]
@@ -33,16 +37,20 @@ namespace Dapr.Actors.Generators.Test.Helpers
 {{
     throw new System.ArgumentNullException(nameof(arg0));
 }}";
+            var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
+                .GetRoot()
+                .NormalizeWhitespace()
+                .ToFullString();
 
             // Act
             var generatedSource = SyntaxFactoryHelpers.ThrowIfArgumentNullSyntax(argumentName)
                 .SyntaxTree
                 .GetRoot()
-                .NormalizeWhitespace(eol: "\r\n")
+                .NormalizeWhitespace()
                 .ToFullString();
 
             // Assert
-            Assert.Equal(expectedSource, generatedSource);
+            Assert.Equal(expectedSourceNormalized, generatedSource);
         }
 
         [Fact]
@@ -51,14 +59,20 @@ namespace Dapr.Actors.Generators.Test.Helpers
             // Arrange
             var argumentName = "arg0";
             var expectedSource = $@"nameof(arg0)";
+            var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
+                .GetRoot()
+                .NormalizeWhitespace()
+                .ToFullString();
 
             // Act
             var generatedSource = SyntaxFactoryHelpers.NameOfExpression(argumentName)
-                .NormalizeWhitespace(eol: "\r\n")
+                .SyntaxTree
+                .GetRoot()
+                .NormalizeWhitespace()
                 .ToFullString();
 
             // Assert
-            Assert.Equal(expectedSource, generatedSource);
+            Assert.Equal(expectedSourceNormalized, generatedSource);
         }
 
         [Theory]
