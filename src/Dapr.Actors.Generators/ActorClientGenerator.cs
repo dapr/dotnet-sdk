@@ -255,8 +255,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             .Cast<INamedTypeSymbol>()
             .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString()));
 
-        var proxyInvocationArguments = method.Parameters
-            .Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name)));
+        var proxyInvocationArguments = new List<ArgumentSyntax>()
+            .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
+            .Concat(method.Parameters.Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name))));
 
         if (methodReturnTypeArguments.Any())
         {
@@ -277,7 +278,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                                     SyntaxFactory.Identifier("InvokeMethodAsync"),
                                     SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(methodReturnTypeArguments)))
                                 ))
-                        .WithArgumentList(SyntaxFactory.ArgumentList(
+                        .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(proxyInvocationArguments)))
                             SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
                                 .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
                                 .Concat(proxyInvocationArguments)
@@ -305,7 +306,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                                     SyntaxFactory.IdentifierName("actorProxy")),
                                 SyntaxFactory.IdentifierName("InvokeMethodAsync")
                                 ))
-                        .WithArgumentList(SyntaxFactory.ArgumentList(
+                        .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(proxyInvocationArguments)))
                             SyntaxFactory.SeparatedList(new List<ArgumentSyntax>()
                                 .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
                                 .Concat(proxyInvocationArguments)
