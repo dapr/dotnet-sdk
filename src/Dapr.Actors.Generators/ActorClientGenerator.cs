@@ -271,7 +271,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
 
         // Define the arguments to pass to the actor proxy method invocation.
         var proxyInvocationArguments = new List<ArgumentSyntax>()
-            // Name of remove method to invoke.
+            // Name of remote method to invoke.
             .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
             // Actor method arguments, including the CancellationToken if it exists.
             .Concat(method.Parameters.Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name))));
