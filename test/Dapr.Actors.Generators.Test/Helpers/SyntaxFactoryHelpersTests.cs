@@ -7,7 +7,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
     public class SyntaxFactoryHelpersTests
     {
         [Fact]
-        public void ThrowArgumentNullExceptionSyntax_GenerateThrowArgumentNullExceptionSyntaxWithGivenArgumentName()
+        public void ThrowArgumentNullException_GenerateThrowArgumentNullExceptionSyntaxWithGivenArgumentName()
         {
             // Arrange
             var argumentName = "arg0";
@@ -18,7 +18,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
                 .ToFullString();
 
             // Act
-            var generatedSource = SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ThrowArgumentNullExceptionSyntax(argumentName))
+            var generatedSource = SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ThrowArgumentNullException(argumentName))
                 .SyntaxTree
                 .GetRoot()
                 .NormalizeWhitespace()
@@ -29,7 +29,7 @@ namespace Dapr.Actors.Generators.Test.Helpers
         }
 
         [Fact]
-        public void ThrowIfArgumentNullExceptionSyntax_GivesNullCheckSyntaxWithGivenArgumentName()
+        public void ThrowIfArgumentNullException_GivesNullCheckSyntaxWithGivenArgumentName()
         {
             // Arrange
             var argumentName = "arg0";
@@ -43,11 +43,44 @@ namespace Dapr.Actors.Generators.Test.Helpers
                 .ToFullString();
 
             // Act
-            var generatedSource = SyntaxFactoryHelpers.ThrowIfArgumentNullSyntax(argumentName)
+            var generatedSource = SyntaxFactoryHelpers.ThrowIfArgumentNull(argumentName)
                 .SyntaxTree
                 .GetRoot()
                 .NormalizeWhitespace()
                 .ToFullString();
+
+            // Assert
+            Assert.Equal(expectedSourceNormalized, generatedSource);
+        }
+
+        [Fact]
+        public void ActorProxyInvokeMethodAsync_WithoutReturnTypeAndParamters_ReturnNonGenericInvokeMethodAsync()
+        {
+            // Arrange
+            var remoteMethodName = "RemoteMethodToCall";
+            var remoteMethodParameters = Array.Empty<IParameterSymbol>();
+            var remoteMethodReturnTypes = Array.Empty<ITypeSymbol>();
+            var actorProxMemberAccessSyntax = SyntaxFactory.MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                SyntaxFactory.ThisExpression(),
+                SyntaxFactory.IdentifierName("actorProxy")
+            );
+            var expectedSource = $@"this.actorProxy.InvokeMethodAsync(""RemoteMethodToCall"")";
+            var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
+                .GetRoot()
+                .NormalizeWhitespace()
+                .ToFullString();
+
+            // Act
+            var generatedSource = SyntaxFactoryHelpers.ActorProxyInvokeMethodAsync(
+                actorProxMemberAccessSyntax,
+                remoteMethodName,
+                remoteMethodParameters,
+                remoteMethodReturnTypes)
+                .SyntaxTree
+                .GetRoot()
+                .NormalizeWhitespace()
+                .ToFullString(); ;
 
             // Assert
             Assert.Equal(expectedSourceNormalized, generatedSource);

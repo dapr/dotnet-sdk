@@ -136,7 +136,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 })))
                 .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
                 {
-                    SyntaxFactoryHelpers.ThrowIfArgumentNullSyntax("actorProxy"),
+                    SyntaxFactoryHelpers.ThrowIfArgumentNull("actorProxy"),
                     SyntaxFactory.ExpressionStatement(SyntaxFactory.AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                          SyntaxFactory.MemberAccessExpression(
@@ -228,7 +228,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
         var attributeData = method.GetAttributes()
             .SingleOrDefault(a => a.AttributeClass?.Equals(generateActorClientAttributeSymbol, SymbolEqualityComparer.Default) == true);
 
-        // Generate the method name to use for the Dapr actor method invocation, using the Name the property of ActorMethodAttribute if specified,
+        // Generate the method name to use for the Dapr actor method invocation, using the Name property of ActorMethodAttribute if specified,
         // or the original method name otherwise.
         var daprMethodName = attributeData?.NamedArguments.SingleOrDefault(kvp => kvp.Key == "Name").Value.Value?.ToString() ?? method.Name;
 
@@ -262,71 +262,26 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             }
         }
 
+        // Extract the return type of the method.
         var methodReturnType = (INamedTypeSymbol)method.ReturnType;
 
-        // Define the type arguments to pass to the actor proxy method invocation.
-        var proxyInvocationTypeArguments = new List<TypeSyntax>()
-            .Concat(method.Parameters
-                .Where(p => p.Type is not INamedTypeSymbol { Name: "CancellationToken" })
-                .Select(p => SyntaxFactory.ParseTypeName(p.Type.ToString())))
-            .Concat(methodReturnType.TypeArguments
-                .Cast<INamedTypeSymbol>()
-                .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString())));
+        // Generate the method implementation.
+        var generatedMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
+            .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
+            .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(methodParameters)))
+            .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
+            {
+                SyntaxFactory.ReturnStatement(SyntaxFactoryHelpers.ActorProxyInvokeMethodAsync(
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ThisExpression(),
+                        SyntaxFactory.IdentifierName("actorProxy")),
+                    daprMethodName,
+                    method.Parameters,
+                    methodReturnType.TypeArguments
+                )),
+            })));
 
-        // Define the arguments to pass to the actor proxy method invocation.
-        var proxyInvocationArguments = new List<ArgumentSyntax>()
-            // Name of remote method to invoke.
-            .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(daprMethodName))))
-            // Actor method arguments, including the CancellationToken if it exists.
-            .Concat(method.Parameters.Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name))));
-
-        if (proxyInvocationTypeArguments.Any())
-        {
-            var generatedMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
-                .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
-                .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(methodParameters)))
-                .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
-                {
-                    SyntaxFactory.ReturnStatement(
-                        SyntaxFactory.InvocationExpression(
-                            SyntaxFactory.MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                SyntaxFactory.MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    SyntaxFactory.ThisExpression(),
-                                    SyntaxFactory.IdentifierName("actorProxy")),
-                                SyntaxFactory.GenericName(
-                                    SyntaxFactory.Identifier("InvokeMethodAsync"),
-                                    SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(proxyInvocationTypeArguments)))
-                                ))
-                        .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(proxyInvocationArguments)))
-                    ),
-                })));
-
-            return generatedMethod;
-        }
-        else
-        {
-            var generatedMethod = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(method.ReturnType.ToString()), method.Name)
-                .WithModifiers(SyntaxFactory.TokenList(methodModifiers))
-                .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SeparatedList(methodParameters)))
-                .WithBody(SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
-                {
-                    SyntaxFactory.ReturnStatement(
-                        SyntaxFactory.InvocationExpression(
-                            SyntaxFactory.MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                SyntaxFactory.MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    SyntaxFactory.ThisExpression(),
-                                    SyntaxFactory.IdentifierName("actorProxy")),
-                                SyntaxFactory.IdentifierName("InvokeMethodAsync")
-                                ))
-                        .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(proxyInvocationArguments)))
-                    ),
-                })));
-
-            return generatedMethod;
-        }
+        return generatedMethod;
     }
 }
