@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapr.Actors.Generators.Extensions;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -14,7 +15,7 @@ namespace Dapr.Actors.Generators.Helpers
         /// </summary>
         /// <param name="argumentName"></param>
         /// <returns></returns>
-        public static ThrowExpressionSyntax ThrowArgumentNullExceptionSyntax(string argumentName)
+        public static ThrowExpressionSyntax ThrowArgumentNullException(string argumentName)
         {
             return SyntaxFactory.ThrowExpression(
                 SyntaxFactory.Token(SyntaxKind.ThrowKeyword),
@@ -35,7 +36,7 @@ namespace Dapr.Actors.Generators.Helpers
         /// </summary>
         /// <param name="argumentName"></param>
         /// <returns></returns>
-        public static IfStatementSyntax ThrowIfArgumentNullSyntax(string argumentName)
+        public static IfStatementSyntax ThrowIfArgumentNull(string argumentName)
         {
             return SyntaxFactory.IfStatement(
                 SyntaxFactory.BinaryExpression(
@@ -45,7 +46,7 @@ namespace Dapr.Actors.Generators.Helpers
                 ),
                 SyntaxFactory.Block(SyntaxFactory.List(new StatementSyntax[]
                 {
-                    SyntaxFactory.ExpressionStatement(ThrowArgumentNullExceptionSyntax(argumentName))
+                    SyntaxFactory.ExpressionStatement(ThrowArgumentNullException(argumentName))
                 }))
             );
         }
@@ -71,6 +72,54 @@ namespace Dapr.Actors.Generators.Helpers
                     SyntaxFactory.Argument(SyntaxFactory.IdentifierName(argumentName))
                 }))
             );
+        }
+
+        /// <summary>
+        /// Generates the invocation syntax to call a remote method with the actor proxy.
+        /// </summary>
+        /// <param name="actorProxyMemberSyntax">Memeber syntax to access actorProxy member.</param>
+        /// <param name="remoteMethodName">Name of remote method to invoke.</param>
+        /// <param name="remoteMethodParameters">Remote method parameters.</param>
+        /// <param name="remoteMethodReturnTypes">Return types of remote method invocation.</param>
+        /// <returns></returns>
+        public static InvocationExpressionSyntax ActorProxyInvokeMethodAsync(
+            MemberAccessExpressionSyntax actorProxyMemberSyntax,
+            string remoteMethodName,
+            IEnumerable<IParameterSymbol> remoteMethodParameters,
+            IEnumerable<ITypeSymbol> remoteMethodReturnTypes)
+        {
+            // Define the type arguments to pass to the actor proxy method invocation.
+            var proxyInvocationTypeArguments = new List<TypeSyntax>()
+                .Concat(remoteMethodParameters
+                    .Where(p => p.Type is not { Name: "CancellationToken" })
+                    .Select(p => SyntaxFactory.ParseTypeName(p.Type.ToString())))
+                .Concat(remoteMethodReturnTypes
+                    .Select(a => SyntaxFactory.ParseTypeName(a.OriginalDefinition.ToString())));
+
+            // Define the arguments to pass to the actor proxy method invocation.
+            var proxyInvocationArguments = new List<ArgumentSyntax>()
+                // Name of remote method to invoke.
+                .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(remoteMethodName))))
+                // Actor method arguments, including the CancellationToken if it exists.
+                .Concat(remoteMethodParameters.Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name))));
+
+            // If the invocation has return types or input parameters, we need to use the generic version of the method.
+            SimpleNameSyntax invokeAsyncSyntax = proxyInvocationTypeArguments.Any()
+                ? SyntaxFactory.GenericName(
+                    SyntaxFactory.Identifier("InvokeMethodAsync"),
+                    SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList(proxyInvocationTypeArguments)))
+                : SyntaxFactory.IdentifierName("InvokeMethodAsync");
+
+            // Generate the invocation syntax.
+            var generatedInvocationSyntax = SyntaxFactory.InvocationExpression(
+                SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    actorProxyMemberSyntax,
+                    invokeAsyncSyntax
+                ))
+                .WithArgumentList(SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(proxyInvocationArguments)));
+
+            return generatedInvocationSyntax;
         }
 
         /// <summary>
