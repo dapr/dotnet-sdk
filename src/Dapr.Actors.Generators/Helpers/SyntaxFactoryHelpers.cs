@@ -1,5 +1,4 @@
-﻿using Dapr.Actors.Generators.Extensions;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -99,7 +98,7 @@ namespace Dapr.Actors.Generators.Helpers
             // Define the arguments to pass to the actor proxy method invocation.
             var proxyInvocationArguments = new List<ArgumentSyntax>()
                 // Name of remote method to invoke.
-                .Concat(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(remoteMethodName))))
+                .Append(SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(remoteMethodName))))
                 // Actor method arguments, including the CancellationToken if it exists.
                 .Concat(remoteMethodParameters.Select(p => SyntaxFactory.Argument(SyntaxFactory.IdentifierName(p.Name))));
 
