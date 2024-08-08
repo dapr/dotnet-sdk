@@ -153,13 +153,13 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 .Select(member => GenerateMethodImplementation(member, actorMethodAttributeSymbol, cancellationTokenSymbol));
 
             var actorMembers = new List<MemberDeclarationSyntax>()
-                .Concat(actorProxyFieldDeclaration)
-                .Concat(actorCtor)
+                .Append(actorProxyFieldDeclaration)
+                .Append(actorCtor)
                 .Concat(actorMethods);
 
             var actorClientClassModifiers = new List<SyntaxKind>()
                 .Concat(SyntaxFactoryHelpers.GetSyntaxKinds(descriptor.Accessibility))
-                .Concat(SyntaxKind.SealedKeyword)
+                .Append(SyntaxKind.SealedKeyword)
                 .Select(sk => SyntaxFactory.Token(sk));
 
             var actorClientClassDeclaration = SyntaxFactory.ClassDeclaration(descriptor.ClientTypeName)

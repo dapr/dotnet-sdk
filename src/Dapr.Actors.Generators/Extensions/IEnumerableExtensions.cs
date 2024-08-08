@@ -30,17 +30,5 @@
 
             return -1;
         }
-
-        /// <summary>
-        /// Concatenates the specified item to the end of the sequence.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="source"></param>
-        /// <param name="item"></param>
-        /// <returns></returns>
-        internal static IEnumerable<T> Concat<T>(this IEnumerable<T> source, T item)
-        {
-            return source.Concat(new[] { item });
-        }
     }
 }

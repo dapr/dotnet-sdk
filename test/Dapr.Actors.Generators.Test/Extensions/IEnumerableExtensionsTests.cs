@@ -48,19 +48,5 @@ namespace Dapr.Actors.Generators.Test.Extensions
             // Assert
             Assert.Equal(expected, index);
         }
-
-        [Fact]
-        public void Concat_WhenItemIsNotNull_ReturnsConcatenatedSequence()
-        {
-            // Arrange
-            var source = new[] { "a", "b", "c" };
-            string item = "d";
-
-            // Act
-            var result = source.Concat(item);
-
-            // Assert
-            Assert.Equal(new[] { "a", "b", "c", "d" }, result);
-        }
     }
 }
