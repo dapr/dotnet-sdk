@@ -32,7 +32,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1BD1276E-D28A-45EA-89B1-6AD48471500D}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
-		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.AspNetCore.Test", "test\Dapr.Actors.AspNetCore.Test\Dapr.Actors.AspNetCore.Test.csproj", "{9C1D6ABA-5EDE-4FA0-A8A9-0AB98CB74737}"
@@ -347,4 +346,6 @@ Global
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
 	EndGlobalSection
+EndGlobal
+lobalSection
 EndGlobal
