@@ -24,6 +24,12 @@ The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< 
 #### HTTP
 You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke your services.
 
+{{% alert title="Note" color="primary" %}}
+ You can also [invoke a non-Dapr endpoint using either a named `HTTPEndpoint` or an FQDN URL to the non-Dapr environment]({{< ref "howto-invoke-non-dapr-endpoints.md#using-an-httpendpoint-resource-or-fqdn-url-for-non-dapr-endpoints" >}}).
+
+{{% /alert %}}
+
+
 {{< tabs SDK HTTP>}}
 
 {{% codetab %}}
