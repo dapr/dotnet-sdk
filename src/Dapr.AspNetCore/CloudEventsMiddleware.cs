@@ -11,6 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.Generic;
+using System.Linq;
+
 namespace Dapr
 {
     using System;
@@ -27,6 +30,15 @@ namespace Dapr
     internal class CloudEventsMiddleware
     {
         private const string ContentType = "application/cloudevents+json";
+
+        // These cloudevent properties are either containing the body of the message or 
+        // are included in the headers by other components of Dapr earlier in the pipeline 
+        private static readonly string[] ExcludedPropertiesFromHeaders =
+        {
+            CloudEventPropertyNames.DataContentType, CloudEventPropertyNames.Data,
+            CloudEventPropertyNames.DataBase64, "pubsubname", "traceparent"
+        };
+
         private readonly RequestDelegate next;
         private readonly CloudEventsMiddlewareOptions options;
 
@@ -52,7 +64,7 @@ namespace Dapr
             // The philosophy here is that we don't report an error for things we don't support, because
             // that would block someone from implementing their own support for it. We only report an error
             // when something we do support isn't correct.
-            if (!this.MatchesContentType(httpContext, out var charSet))
+            if (!MatchesContentType(httpContext, out var charSet))
             {
                 return this.next(httpContext);
             }
@@ -69,7 +81,8 @@ namespace Dapr
             }
             else
             {
-                using (var reader = new HttpRequestStreamReader(httpContext.Request.Body, Encoding.GetEncoding(charSet)))
+                using (var reader =
+                       new HttpRequestStreamReader(httpContext.Request.Body, Encoding.GetEncoding(charSet)))
                 {
                     var text = await reader.ReadToEndAsync();
                     json = JsonSerializer.Deserialize<JsonElement>(text);
@@ -83,17 +96,43 @@ namespace Dapr
             string contentType;
 
             // Check whether to use data or data_base64 as per https://github.com/cloudevents/spec/blob/v1.0.1/json-format.md#31-handling-of-data
-            var isDataSet = json.TryGetProperty("data", out var data);
-            var isBinaryDataSet = json.TryGetProperty("data_base64", out var binaryData);
+            // Get the property names by OrdinalIgnoreCase comparison to support case insensitive JSON as the Json Serializer for AspCore already supports it by default.
+            var jsonPropNames = json.EnumerateObject().ToArray();
+
+            var dataPropName = jsonPropNames
+                .Select(d => d.Name)
+                .FirstOrDefault(d => d.Equals(CloudEventPropertyNames.Data, StringComparison.OrdinalIgnoreCase));
+
+            var dataBase64PropName = jsonPropNames
+                .Select(d => d.Name)
+                .FirstOrDefault(d =>
+                    d.Equals(CloudEventPropertyNames.DataBase64, StringComparison.OrdinalIgnoreCase));
+
+            var isDataSet = false;
+            var isBinaryDataSet = false;
+            JsonElement data = default;
+
+            if (dataPropName != null)
+            {
+                isDataSet = true;
+                data = json.TryGetProperty(dataPropName, out var dataJsonElement) ? dataJsonElement : data;
+            }
+
+            if (dataBase64PropName != null)
+            {
+                isBinaryDataSet = true;
+                data = json.TryGetProperty(dataBase64PropName, out var dataJsonElement) ? dataJsonElement : data;
+            }
 
             if (isDataSet && isBinaryDataSet)
             {
                 httpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 return;
             }
-            else if (isDataSet)
+
+            if (isDataSet)
             {
-                contentType = this.GetDataContentType(json, out var isJson);
+                contentType = GetDataContentType(json, out var isJson);
 
                 // If the value is anything other than a JSON string, treat it as JSON. Cloud Events requires
                 // non-JSON text to be enclosed in a JSON string.
@@ -109,8 +148,8 @@ namespace Dapr
                 {
                     // Rehydrate body from contents of the string
                     var text = data.GetString();
-                    using var writer = new HttpResponseStreamWriter(body, Encoding.UTF8);
-                    writer.Write(text);
+                    await using var writer = new HttpResponseStreamWriter(body, Encoding.UTF8);
+                    await writer.WriteAsync(text);
                 }
 
                 body.Seek(0L, SeekOrigin.Begin);
@@ -120,16 +159,18 @@ namespace Dapr
                 // As per the spec, if the implementation determines that the type of data is Binary,
                 // the value MUST be represented as a JSON string expression containing the Base64 encoded
                 // binary value, and use the member name data_base64 to store it inside the JSON object.
-                var decodedBody = binaryData.GetBytesFromBase64();
+                var decodedBody = data.GetBytesFromBase64();
                 body = new MemoryStream(decodedBody);
                 body.Seek(0L, SeekOrigin.Begin);
-                contentType = this.GetDataContentType(json, out _);
+                contentType = GetDataContentType(json, out _);
             }
             else
             {
                 body = new MemoryStream();
                 contentType = null;
             }
+
+            ForwardCloudEventPropertiesAsHeaders(httpContext, jsonPropNames);
 
             originalBody = httpContext.Request.Body;
             originalContentType = httpContext.Request.ContentType;
@@ -148,16 +189,57 @@ namespace Dapr
             }
         }
 
-        private string GetDataContentType(JsonElement json, out bool isJson)
+        private void ForwardCloudEventPropertiesAsHeaders(
+            HttpContext httpContext,
+            IEnumerable<JsonProperty> jsonPropNames)
         {
+            if (!options.ForwardCloudEventPropertiesAsHeaders)
+            {
+                return;
+            }
+
+            var filteredPropertyNames = jsonPropNames
+                .Where(d => !ExcludedPropertiesFromHeaders.Contains(d.Name, StringComparer.OrdinalIgnoreCase));
+
+            if (options.IncludedCloudEventPropertiesAsHeaders != null)
+            {
+                filteredPropertyNames = filteredPropertyNames
+                    .Where(d => options.IncludedCloudEventPropertiesAsHeaders
+                        .Contains(d.Name, StringComparer.OrdinalIgnoreCase));
+            }
+            else if (options.ExcludedCloudEventPropertiesFromHeaders != null)
+            {
+                filteredPropertyNames = filteredPropertyNames
+                    .Where(d => !options.ExcludedCloudEventPropertiesFromHeaders
+                        .Contains(d.Name, StringComparer.OrdinalIgnoreCase));
+            }
+
+            foreach (var jsonProperty in filteredPropertyNames)
+            {
+                httpContext.Request.Headers.TryAdd($"Cloudevent.{jsonProperty.Name.ToLowerInvariant()}",
+                    jsonProperty.Value.GetRawText().Trim('\"'));
+            }
+        }
+
+        private static string GetDataContentType(JsonElement json, out bool isJson)
+        {
+            var dataContentTypePropName = json
+                .EnumerateObject()
+                .Select(d => d.Name)
+                .FirstOrDefault(d =>
+                    d.Equals(CloudEventPropertyNames.DataContentType,
+                        StringComparison.OrdinalIgnoreCase));
+
             string contentType;
-            if (json.TryGetProperty("datacontenttype", out var dataContentType) &&
-                dataContentType.ValueKind == JsonValueKind.String && 
-                MediaTypeHeaderValue.TryParse(dataContentType.GetString(), out var parsed))
+
+            if (dataContentTypePropName != null 
+                && json.TryGetProperty(dataContentTypePropName, out var dataContentType) 
+                &&  dataContentType.ValueKind == JsonValueKind.String 
+                && MediaTypeHeaderValue.TryParse(dataContentType.GetString(), out var parsed))
             {
                 contentType = dataContentType.GetString();
-                isJson = 
-                    parsed.MediaType.Equals( "application/json", StringComparison.Ordinal) ||
+                isJson =
+                    parsed.MediaType.Equals("application/json", StringComparison.Ordinal) ||
                     parsed.Suffix.EndsWith("+json", StringComparison.Ordinal);
 
                 // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
@@ -179,7 +261,7 @@ namespace Dapr
             return contentType;
         }
 
-        private bool MatchesContentType(HttpContext httpContext, out string charSet)
+        private static bool MatchesContentType(HttpContext httpContext, out string charSet)
         {
             if (httpContext.Request.ContentType == null)
             {
