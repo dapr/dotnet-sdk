@@ -6,4 +6,4 @@ az extension add --name containerapp --yes
 nvm install v18.12.1
 
 # initialize Dapr
-dapr init --runtime-version=1.14.0-rc.2
+dapr init --runtime-version=1.14.0
