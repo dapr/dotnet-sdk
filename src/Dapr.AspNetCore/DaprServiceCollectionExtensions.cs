@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,55 +11,205 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Microsoft.Extensions.DependencyInjection
+#nullable enable
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+using System;
+using System.Linq;
+using Dapr;
+using Dapr.Client;
+using Extensions;
+using Microsoft.Extensions.Configuration;
+
+/// <summary>
+/// Provides extension methods for <see cref="IServiceCollection" />.
+/// </summary>
+public static class DaprServiceCollectionExtensions
 {
-    using System;
-    using System.Linq;
-    using Dapr.Client;
-    using Extensions;
+    /// <summary>
+    /// Adds Dapr client services to the provided <see cref="IServiceCollection" />. This does not include integration
+    /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection" />.</param>
+    /// <param name="configure"></param>
+    public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(services, nameof(services));
+
+        services.TryAddSingleton(serviceProvider =>
+        {
+            var builder = new DaprClientBuilder();
+
+            var configuration = serviceProvider.GetService<IConfiguration>();
+
+            //Set the HTTP endpoint, if provided
+            var httpEndpoint = GetHttpEndpoint(configuration);
+            if (!string.IsNullOrWhiteSpace(httpEndpoint))
+                builder.UseHttpEndpoint(httpEndpoint);
+
+            //Set the gRPC endpoint, if provided
+            var grpcEndpoint = GetGrpcEndpoint(configuration);
+            if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                builder.UseGrpcEndpoint(grpcEndpoint);
+
+            //Set the API token, if provided
+            var apiToken = GetApiToken(configuration);
+            if (!string.IsNullOrWhiteSpace(apiToken))
+                builder.UseDaprApiToken(apiToken);
+
+            configure?.Invoke(builder);
+
+            return builder.Build();
+        });
+    }
 
     /// <summary>
-    /// Provides extension methods for <see cref="IServiceCollection" />.
+    /// Adds Dapr client services to the provided <see cref="IServiceCollection"/>. This does not include integration
+    /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration. 
     /// </summary>
-    public static class DaprServiceCollectionExtensions
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configure"></param>
+    public static void AddDaprClient(this IServiceCollection services,
+        Action<IServiceProvider, DaprClientBuilder> configure)
     {
-        /// <summary>
-        /// Adds Dapr client services to the provided <see cref="IServiceCollection" />. This does not include integration
-        /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration.
-        /// </summary>
-        /// <param name="services">The <see cref="IServiceCollection" />.</param>
-        /// <param name="configure"></param>
-        public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder> configure = null)
+        ArgumentNullException.ThrowIfNull(services, nameof(services));
+
+        services.TryAddSingleton(serviceProvider =>
         {
-            ArgumentNullException.ThrowIfNull(services, nameof(services));
+            var builder = new DaprClientBuilder();
 
-            services.TryAddSingleton(_ =>
-            {
-                var builder = new DaprClientBuilder();
-                configure?.Invoke(builder);
+            var configuration = serviceProvider.GetService<IConfiguration>();
 
-                return builder.Build();
-            });
-        }
-        
-        /// <summary>
-        /// Adds Dapr client services to the provided <see cref="IServiceCollection"/>. This does not include integration
-        /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration. 
-        /// </summary>
-        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        /// <param name="configure"></param>
-        public static void AddDaprClient(this IServiceCollection services,
-            Action<IServiceProvider, DaprClientBuilder> configure)
+            //Set the HTTP endpoint, if provided
+            var httpEndpoint = GetHttpEndpoint(configuration);
+            if (!string.IsNullOrWhiteSpace(httpEndpoint))
+                builder.UseHttpEndpoint(httpEndpoint);
+
+            //Set the gRPC endpoint, if provided
+            var grpcEndpoint = GetGrpcEndpoint(configuration);
+            if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                builder.UseGrpcEndpoint(grpcEndpoint);
+
+            //Set the API token, if provided
+            var apiToken = GetApiToken(configuration);
+            if (!string.IsNullOrWhiteSpace(apiToken))
+                builder.UseDaprApiToken(apiToken);
+
+            configure?.Invoke(serviceProvider, builder);
+
+            return builder.Build();
+        });
+    }
+
+    /// <summary>
+    /// Builds the Dapr HTTP endpoint using the value from the IConfiguration, if available, then falling back
+    /// to the value in the environment variable(s) and finally otherwise using the default value (an empty string).
+    /// </summary>
+    /// <remarks>
+    /// Marked as internal for testing purposes.
+    /// </remarks>
+    /// <param name="configuration">An injected instance of the <see cref="IConfiguration"/>.</param>
+    /// <returns>The built HTTP endpoint.</returns>
+    internal static string GetHttpEndpoint(IConfiguration? configuration)
+    {
+        //Prioritize pulling from IConfiguration with a fallback of pulling from the environment variable directly
+        var httpEndpoint = GetResourceValue(configuration, DaprDefaults.DaprHttpEndpointName);
+        var httpPort = GetResourceValue(configuration, DaprDefaults.DaprHttpPortName);
+        int? parsedHttpPort = string.IsNullOrWhiteSpace(httpPort) ? null : int.Parse(httpPort);
+
+        var endpoint = BuildEndpoint(httpEndpoint, parsedHttpPort);
+        return string.IsNullOrWhiteSpace(endpoint) ? $"http://localhost:{DaprDefaults.DefaultHttpPort}/" : endpoint;
+    }
+
+    /// <summary>
+    /// Builds the Dapr gRPC endpoint using the value from the IConfiguration, if available, then falling back
+    /// to the value in the environment variable(s) and finally otherwise using the default value (an empty string).
+    /// </summary>
+    /// <remarks>
+    /// Marked as internal for testing purposes.
+    /// </remarks>
+    /// <param name="configuration">An injected instance of the <see cref="IConfiguration"/>.</param>
+    /// <returns>The built gRPC endpoint.</returns>
+    internal static string GetGrpcEndpoint(IConfiguration? configuration)
+    {
+        //Prioritize pulling from IConfiguration with a fallback from pulling from the environment variable directly
+        var grpcEndpoint = GetResourceValue(configuration, DaprDefaults.DaprGrpcEndpointName);
+        var grpcPort = GetResourceValue(configuration, DaprDefaults.DaprGrpcPortName);
+        int? parsedGrpcPort = string.IsNullOrWhiteSpace(grpcPort) ? null : int.Parse(grpcPort);
+
+        var endpoint = BuildEndpoint(grpcEndpoint, parsedGrpcPort);
+        return string.IsNullOrWhiteSpace(endpoint) ? $"http://localhost:{DaprDefaults.DefaultGrpcPort}/" : endpoint;
+    }
+
+    /// <summary>
+    /// Retrieves the Dapr API token first from the <see cref="IConfiguration"/>, if available, then falling back
+    /// to the value in the environment variable(s) directly, then finally otherwise using the default value (an
+    /// empty string).
+    /// </summary>
+    /// <remarks>
+    /// Marked as internal for testing purposes.
+    /// </remarks>
+    /// <param name="configuration">An injected instance of the <see cref="IConfiguration"/>.</param>
+    /// <returns>The Dapr API token.</returns>
+    internal static string GetApiToken(IConfiguration? configuration)
+    {
+        //Prioritize pulling from IConfiguration with a fallback of pulling from the environment variable directly
+        return GetResourceValue(configuration, DaprDefaults.DaprApiTokenName);
+    }
+
+    /// <summary>
+    /// Retrieves the specified value prioritizing pulling it from <see cref="IConfiguration"/>, falling back
+    /// to an environment variable, and using an empty string as a default.
+    /// </summary>
+    /// <param name="configuration">An instance of an <see cref="IConfiguration"/>.</param>
+    /// <param name="name">The name of the value to retrieve.</param>
+    /// <returns>The value of the resource.</returns>
+    private static string GetResourceValue(IConfiguration? configuration, string name)
+    {
+        //Attempt to retrieve first from the configuration
+        var configurationValue = configuration?.GetValue<string?>(name);
+        if (configurationValue is not null)
+            return configurationValue;
+
+        //Fall back to the environment variable with the same name or default to an empty string
+        var envVar = Environment.GetEnvironmentVariable(name);
+        return envVar ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Builds the endpoint provided an optional endpoint and optional port.
+    /// </summary>
+    /// <remarks>
+    /// Marked as internal for testing purposes.
+    /// </remarks>
+    /// <param name="endpoint">The endpoint.</param>
+    /// <param name="endpointPort">The port</param>
+    /// <returns>A constructed endpoint value.</returns>
+    internal static string BuildEndpoint(string? endpoint, int? endpointPort)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint) && endpointPort is null)
+            return string.Empty;
+
+        var endpointBuilder = new UriBuilder();
+        if (!string.IsNullOrWhiteSpace(endpoint))
         {
-            ArgumentNullException.ThrowIfNull(services, nameof(services));
+            //Extract the scheme, host and port from the endpoint
+            var uri = new Uri(endpoint);
+            endpointBuilder.Scheme = uri.Scheme;
+            endpointBuilder.Host = uri.Host;
+            endpointBuilder.Port = uri.Port;
 
-            services.TryAddSingleton(serviceProvider =>
-            {
-                var builder = new DaprClientBuilder();
-                configure?.Invoke(serviceProvider, builder);
-
-                return builder.Build();
-            });
+            //Update the port if provided separately
+            if (endpointPort is not null)
+                endpointBuilder.Port = (int)endpointPort;
         }
+        else if (string.IsNullOrWhiteSpace(endpoint) && endpointPort is not null)
+        {
+            endpointBuilder.Host = "localhost";
+            endpointBuilder.Port = (int)endpointPort;
+        }
+
+        return endpointBuilder.ToString();
     }
 }
