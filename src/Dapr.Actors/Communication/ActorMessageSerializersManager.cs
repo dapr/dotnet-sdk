@@ -87,12 +87,14 @@ namespace Dapr.Actors.Communication
             else
             {
                 // This path should be used for JSON serialization
-                var requestWrapperTypeAsList = new List<Type>(1){
-                    interfaceDetails.RequestWrappedKnownTypes.Single(r => r.Name == $"{data.methodName}ReqBody")
-                };
-                var responseWrapperTypeAsList = new List<Type>(1){
-                    interfaceDetails.RequestWrappedKnownTypes.Single(r => r.Name == $"{data.methodName}RespBody")
-                };
+                var requestWrapperTypeAsList = interfaceDetails.RequestWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}ReqBody").ToList();
+                if(requestWrapperTypeAsList.Count > 1){
+                    throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
+                }
+                var responseWrapperTypeAsList = interfaceDetails.ResponseWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}RespBody").ToList();
+                    if(responseWrapperTypeAsList.Count > 1){
+                    throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
+                }
                 return new CacheEntry(
                     this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, requestWrapperTypeAsList),
                     this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, responseWrapperTypeAsList));
