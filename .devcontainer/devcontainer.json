@@ -44,7 +44,7 @@
 		5000,
 		5007
 	],
-	"postCreateCommand": ".devcontainer/localinit.sh",
+	"postCreateCommand": "chmod +x .devcontainer/localinit.sh && .devcontainer/localinit.sh",
 	"remoteUser": "vscode",
 	"hostRequirements": {
 		"memory": "8gb"
