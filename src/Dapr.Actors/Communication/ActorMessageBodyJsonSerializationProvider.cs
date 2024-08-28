@@ -104,7 +104,10 @@ namespace Dapr.Actors.Communication
             {
                 var _methodRequestParameterTypes = new List<Type>(methodRequestParameterTypes);
                 var _wrappedRequestMessageTypes = new List<Type>(wrappedRequestMessageTypes);
-
+                if(_wrappedRequestMessageTypes.Count != 1){
+                    throw new NotSupportedException("JSON serialisation should always provide the actor method, that was called" +
+                        " to support (de)serialisation. This is a dapr sdk error, open an issue on github.");
+                }
                 this.serializerOptions = new(serializerOptions)
                 {
                     // Workaround since WrappedMessageBody creates an object
