@@ -24,8 +24,8 @@ namespace Dapr.E2E.Test.Actors.Serialization
             return Task.FromResult(payload);
         }
 
-        public Task<DateTime> AnotherMethod(){
-            return Task.FromResult(DateTime.UtcNow);
+        public Task<DateTime> AnotherMethod(DateTime payload){
+            return Task.FromResult(payload);
         }
     }
 }
