@@ -10,8 +10,8 @@
 		"ghcr.io/devcontainers/features/azure-cli:1": {
 			"version": "2.38"
 		},
-		"ghcr.io/devcontainers/features/docker-from-docker:1": {
-			"version": "20.10"
+		"ghcr.io/devcontainers/features/docker-in-docker": {
+			"version": "latest"
 		},
 		"ghcr.io/devcontainers/features/dotnet": {
 			"version": "6.0",
