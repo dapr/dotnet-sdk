@@ -14,8 +14,11 @@
 			"version": "latest"
 		},
 		"ghcr.io/devcontainers/features/dotnet": {
-			"version": "6.0",
-			"additionalVersions": ["7.0", "8.0"]
+			"version": "8.0",
+			"additionalVersions": [
+				"6.0",
+				"7.0"
+			]
 		},
 		"ghcr.io/devcontainers/features/github-cli:1": {
 			"version": "2"
@@ -49,5 +52,4 @@
 	"hostRequirements": {
 		"memory": "8gb"
 	}
-  }
-  
+}
