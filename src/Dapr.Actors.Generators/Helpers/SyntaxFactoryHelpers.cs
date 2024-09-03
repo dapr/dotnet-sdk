@@ -10,10 +10,10 @@ namespace Dapr.Actors.Generators.Helpers
     public static partial class SyntaxFactoryHelpers
     {
         /// <summary>
-        /// Generates a syntax for <see cref="ArgumentNullException"></see> syntax for the given argument name.
+        /// Generates a syntax for <see cref="ArgumentNullException"/> syntax for the given argument name.
         /// </summary>
-        /// <param name="argumentName"></param>
-        /// <returns></returns>
+        /// <param name="argumentName">Name of the argument that generated the exception.</param>
+        /// <returns>Returns <see cref="ThrowExpressionSyntax"/> used to throw an <see cref="ArgumentNullException"/>.</returns>
         public static ThrowExpressionSyntax ThrowArgumentNullException(string argumentName)
         {
             return SyntaxFactory.ThrowExpression(
@@ -33,8 +33,8 @@ namespace Dapr.Actors.Generators.Helpers
         /// <summary>
         /// Generates a syntax for null check for the given argument name.
         /// </summary>
-        /// <param name="argumentName"></param>
-        /// <returns></returns>
+        /// <param name="argumentName">Name of the argument whose null check is to be generated.</param>
+        /// <returns>Returns <see cref="IfStatementSyntax"/> representing an argument null check.</returns>
         public static IfStatementSyntax ThrowIfArgumentNull(string argumentName)
         {
             return SyntaxFactory.IfStatement(
@@ -53,8 +53,8 @@ namespace Dapr.Actors.Generators.Helpers
         /// <summary>
         /// Generates a syntax for nameof expression for the given argument name.
         /// </summary>
-        /// <param name="argumentName"></param>
-        /// <returns></returns>
+        /// <param name="argumentName">Name of the argument from which the syntax is to be generated.</param>
+        /// <returns>Return a <see cref="ExpressionSyntax"/> representing a NameOf expression.</returns>
         public static ExpressionSyntax NameOfExpression(string argumentName)
         {
             var nameofIdentifier = SyntaxFactory.Identifier(
@@ -76,11 +76,11 @@ namespace Dapr.Actors.Generators.Helpers
         /// <summary>
         /// Generates the invocation syntax to call a remote method with the actor proxy.
         /// </summary>
-        /// <param name="actorProxyMemberSyntax">Memeber syntax to access actorProxy member.</param>
+        /// <param name="actorProxyMemberSyntax">Member syntax to access actorProxy member.</param>
         /// <param name="remoteMethodName">Name of remote method to invoke.</param>
         /// <param name="remoteMethodParameters">Remote method parameters.</param>
         /// <param name="remoteMethodReturnTypes">Return types of remote method invocation.</param>
-        /// <returns></returns>
+        /// <returns>The <see cref="InvocationExpressionSyntax"/> representing a call to the actor proxy.</returns>
         public static InvocationExpressionSyntax ActorProxyInvokeMethodAsync(
             MemberAccessExpressionSyntax actorProxyMemberSyntax,
             string remoteMethodName,
@@ -124,9 +124,9 @@ namespace Dapr.Actors.Generators.Helpers
         /// <summary>
         /// Returns the syntax kinds for the specified accessibility.
         /// </summary>
-        /// <param name="accessibility"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <param name="accessibility">Accessibility to convert into a SyntaxKind.</param>
+        /// <returns>Return the collection of <see cref="SyntaxKind"/> representing the given accessibility.</returns>
+        /// <exception cref="InvalidOperationException">Throws when un unexpected syntax is passed.</exception>
         public static ICollection<SyntaxKind> GetSyntaxKinds(Accessibility accessibility)
         {
             var syntaxKinds = new List<SyntaxKind>();

@@ -57,10 +57,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <summary>
     /// Returns the descriptor for the actor client to generate.
     /// </summary>
-    /// <param name="context"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <param name="context">Current generator syntax context passed from generator pipeline.</param>
+    /// <param name="cancellationToken">Cancellation token used to interrupt the generation.</param>
+    /// <returns>Returns the descriptor of actor client to generate.</returns>
     static ActorClientDescriptor CreateActorClientDescriptor(
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken)
@@ -100,9 +99,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <summary>
     /// Generates the actor client code based on the specified descriptor.
     /// </summary>
-    /// <param name="context"></param>
-    /// <param name="descriptor"></param>
-    /// <exception cref="InvalidOperationException"></exception>
+    /// <param name="context">Context passed from the source generator when it has registered an output.</param>
+    /// <param name="descriptor">Descriptor of actor client to generate.</param>
+    /// <exception cref="InvalidOperationException">Throws when assembly doesn't one or more required symbols.</exception>
     static void GenerateActorClientCode(SourceProductionContext context, ActorClientDescriptor descriptor)
     {
         try

@@ -11,11 +11,11 @@ namespace Dapr.Actors.Generators
     internal static partial class Templates
     {
         /// <summary>
-        /// Returns the source text for the ActorMethodAttribute.
+        /// Returns the <see cref="SourceText"/> for the ActorMethodAttribute.
         /// </summary>
-        /// <param name="destinationNamespace"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="destinationNamespace">Namespace where to generate attribute.</param>
+        /// <returns>The <see cref="SourceText"/> representing the ActorMethodAttribute.</returns>
+        /// <exception cref="ArgumentNullException">Throws when destinationNamespace is null.</exception>
         public static SourceText ActorMethodAttributeSourceText(string destinationNamespace)
         {
             if (destinationNamespace == null)
@@ -47,11 +47,11 @@ namespace {destinationNamespace}
         }
 
         /// <summary>
-        /// Returns the source text for the GenerateActorClientAttribute.
+        /// Returns the <see cref="SourceText"/> for the GenerateActorClientAttribute.
         /// </summary>
-        /// <param name="destinationNamespace"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="destinationNamespace">Namespace where to generate attribute.</param>
+        /// <returns>The <see cref="SourceText"/> representing the ActorMethodAttribute.</returns>
+        /// <exception cref="ArgumentNullException">Throws when destinationNamespace is null.</exception>
         public static SourceText GenerateActorClientAttributeSourceText(string destinationNamespace)
         {
             if (destinationNamespace == null)
