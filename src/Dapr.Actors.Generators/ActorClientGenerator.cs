@@ -195,10 +195,14 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <summary>
     /// Generates the method implementation for the specified method.
     /// </summary>
-    /// <param name="method"></param>
-    /// <param name="generateActorClientAttributeSymbol"></param>
-    /// <param name="cancellationTokenSymbol"></param>
-    /// <returns></returns>
+    /// <param name="method">
+    /// MethodSymbol extracted from the actor interface representing the method to generate.
+    /// </param>
+    /// <param name="generateActorClientAttributeSymbol">
+    /// ActorMethodAttribute symbol used to extract generation the original actor method to use when making runtime calls.
+    /// </param>
+    /// <param name="cancellationTokenSymbol">Used to check search the position of optional cancellationToken.</param>
+    /// <returns>Returns a <see cref="MethodDeclarationSyntax"/> of the generated method.</returns>
     private static MethodDeclarationSyntax GenerateMethodImplementation(
         IMethodSymbol method,
         INamedTypeSymbol generateActorClientAttributeSymbol,
@@ -262,7 +266,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             }
         }
 
-        // Extract the return type of the method.
+        // Extract the return type of the original method.
         var methodReturnType = (INamedTypeSymbol)method.ReturnType;
 
         // Generate the method implementation.
