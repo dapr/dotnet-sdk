@@ -29,6 +29,9 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// </summary>
     private readonly P.DaprClient daprClient;
 
+    // property exposed for testing purposes
+    internal P.DaprClient Client => daprClient;
+
     /// <summary>
     /// Creates a new instance of a <see cref="DaprPublishSubscribeGrpcClient"/>
     /// </summary>
