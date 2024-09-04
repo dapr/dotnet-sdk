@@ -11,29 +11,31 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using P = Dapr.Client.Autogen.Grpc.v1.Dapr;
+
 namespace Dapr.Messaging.PublishSubscribe;
 
 /// <summary>
-/// 
+/// A client for interacting with the Dapr endpoints.
 /// </summary>
-public sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
+internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
 {
-    /// <summary>
-    /// Maintains a reference to the receiver builder factory.
-    /// </summary>
-    private readonly PublishSubscribeReceiverBuilder _builder;
     /// <summary>
     /// The various receiver clients created for each combination of Dapr pubsub component and topic name.
     /// </summary>
     private readonly Dictionary<(string, string), PublishSubscribeReceiver> _clients =
         new Dictionary<(string, string), PublishSubscribeReceiver>();
+    /// <summary>
+    /// The Dapr client.
+    /// </summary>
+    private readonly P.DaprClient _daprClient;
 
     /// <summary>
     /// Creates a new instance of a <see cref="DaprPublishSubscribeGrpcClient"/>
     /// </summary>
-    public DaprPublishSubscribeGrpcClient(PublishSubscribeReceiverBuilder builder)
+    public DaprPublishSubscribeGrpcClient(P.DaprClient client)
     {
-        _builder = builder;
+        _daprClient = client;
     }
 
     /// <summary>
@@ -47,7 +49,7 @@ public sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
     public override IAsyncEnumerable<TopicMessage> SubscribeAsync(string pubsubName, string topicName, DaprSubscriptionOptions options,
         CancellationToken cancellationToken)
     {
-        var receiver = _builder.Build(pubsubName, topicName, options);
+        var receiver = new PublishSubscribeReceiver(pubsubName, topicName, options, _daprClient);
         _clients[(pubsubName, topicName)] = receiver;
 
         return receiver.SubscribeAsync(cancellationToken);

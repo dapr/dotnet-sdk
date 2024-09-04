@@ -46,4 +46,19 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="topicName">The name of the topic to subscribe to.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public abstract Task UnsubscribeAsync(string pubsubName, string topicName, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Gets the Dapr API token header for the given token value.
+    /// </summary>
+    /// <param name="apiToken">The value of the Dapr API token.</param>
+    /// <returns></returns>
+    internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
+    {
+        if (string.IsNullOrWhiteSpace(apiToken))
+        {
+            return null;
+        }
+
+        return new KeyValuePair<string, string>("dapr-api-token", apiToken);
+    }
 }
