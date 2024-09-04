@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -100,9 +101,9 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     public async Task AcknowledgeMessageAsync(string messageId, TopicMessageAction messageAction, CancellationToken cancellationToken)
     {
         var stream = await connectionManager.GetStreamAsync(cancellationToken);
-        await stream.RequestStream.WriteAsync(new SubscribeTopicEventsRequestAlpha1
+        await stream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
         {
-            EventResponse = new SubscribeTopicEventsResponseAlpha1
+            EventResponse = new P.SubscribeTopicEventsResponseAlpha1
             {
                 Id = messageId,
                 Status = new C.TopicEventResponse
@@ -221,7 +222,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
                 }
             }
 
-            await stream.RequestStream.WriteAsync(new SubscribeTopicEventsRequestAlpha1 { InitialRequest = initialRequest }, cancellationToken);
+            await stream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1 { InitialRequest = initialRequest }, cancellationToken);
 
             await foreach (var response in stream.ResponseStream.ReadAllAsync(cancellationToken))
             {
@@ -270,7 +271,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 }
 
 /// <summary>
-/// 
+/// Factory method used to build an instance of a <see cref="PublishSubscribeReceiver"/>.
 /// </summary>
 public sealed class PublishSubscribeReceiverBuilder
 {
@@ -278,10 +279,8 @@ public sealed class PublishSubscribeReceiverBuilder
     private readonly P.Dapr.DaprClient daprClient;
 
     /// <summary>
-    /// 
+    /// Initializes a new instance of a <see cref="PublishSubscribeReceiverBuilder"/>.
     /// </summary>
-    /// <param name="loggerFactory"></param>
-    /// <param name="daprClient"></param>
     public PublishSubscribeReceiverBuilder(ILoggerFactory? loggerFactory, P.Dapr.DaprClient daprClient)
     {
         this.loggerFactory = loggerFactory;
@@ -289,11 +288,11 @@ public sealed class PublishSubscribeReceiverBuilder
     }
 
     /// <summary>
-    /// 
+    /// Builds an instance of a <see cref="PublishSubscribeReceiver"/>.
     /// </summary>
-    /// <param name="pubsubName"></param>
-    /// <param name="topicName"></param>
-    /// <param name="options"></param>
+    /// <param name="pubsubName">The name of the Dapr pub/sub component.</param>
+    /// <param name="topicName">The name of the topic to subscribe to.</param>
+    /// <param name="options">Configuration options.</param>
     /// <returns></returns>
     public PublishSubscribeReceiver Build(string pubsubName, string topicName,
         DaprSubscriptionOptions options) =>
