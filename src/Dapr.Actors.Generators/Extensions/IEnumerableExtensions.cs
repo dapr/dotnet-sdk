@@ -5,7 +5,7 @@
         /// <summary>
         /// Returns the index of the first item in the sequence that satisfies the predicate. If no item satisfies the predicate, -1 is returned.
         /// </summary>
-        /// <typeparam name="T">Tipe of items.</typeparam>
+        /// <typeparam name="T">Type of items.</typeparam>
         /// <param name="source">Source enumerable where to search.</param>
         /// <param name="predicate">Function performed to check whether an item satisfies the condition.</param>
         /// <returns>Return the zero-based index of the first occurrence of an element that satisfies the condition, if found; otherwise, -1.</returns>

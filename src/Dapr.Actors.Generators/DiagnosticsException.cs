@@ -10,7 +10,7 @@ namespace Dapr.Actors.Generators
         /// <summary>
         /// Initializes a new instance of the <see cref="DiagnosticsException"/> class.
         /// </summary>
-        /// <param name="diagnostics"></param>
+        /// <param name="diagnostics">List of diagnostics generated.</param>
         public DiagnosticsException(IEnumerable<Diagnostic> diagnostics)
             : base(string.Join("\n", diagnostics.Select(d => d.ToString())))
         {
