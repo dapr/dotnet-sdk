@@ -4,6 +4,10 @@
         <Description>This package contains the reference assemblies for developing messaging services using Dapr.</Description>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackageId>Dapr.Messaging</PackageId>
+        <Title>Dapr Messaging SDK</Title>
+        <Description>Dapr Messaging SDK for building applications that utilize messaging components.</Description>
+        <VersionSuffix>alpha</VersionSuffix>
     </PropertyGroup>
 
     <ItemGroup>
