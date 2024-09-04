@@ -11,9 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using Dapr.Client.Autogen.Grpc.v1;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

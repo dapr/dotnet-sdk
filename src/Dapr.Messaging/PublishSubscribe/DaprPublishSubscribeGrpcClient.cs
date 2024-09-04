@@ -18,28 +18,32 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// </summary>
 public sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
 {
+    /// <summary>
+    /// Maintains a reference to the receiver builder factory.
+    /// </summary>
     private readonly PublishSubscribeReceiverBuilder _builder;
-
+    /// <summary>
+    /// The various receiver clients created for each combination of Dapr pubsub component and topic name.
+    /// </summary>
     private readonly Dictionary<(string, string), PublishSubscribeReceiver> _clients =
         new Dictionary<(string, string), PublishSubscribeReceiver>();
 
     /// <summary>
-    /// 
+    /// Creates a new instance of a <see cref="DaprPublishSubscribeGrpcClient"/>
     /// </summary>
-    /// <param name="builder"></param>
     public DaprPublishSubscribeGrpcClient(PublishSubscribeReceiverBuilder builder)
     {
         _builder = builder;
     }
 
     /// <summary>
-    /// 
+    /// Dynamically subscribes to a Publish/Subscribe component and topic.
     /// </summary>
-    /// <param name="pubsubName"></param>
-    /// <param name="topicName"></param>
-    /// <param name="options"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <param name="pubsubName">The name of the Publish/Subscribe component.</param>
+    /// <param name="topicName">The name of the topic to subscribe to.</param>
+    /// <param name="options">Configuration options.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing the various messages returned by the subscription.</returns>
     public override IAsyncEnumerable<TopicMessage> SubscribeAsync(string pubsubName, string topicName, DaprSubscriptionOptions options,
         CancellationToken cancellationToken)
     {
@@ -50,14 +54,13 @@ public sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
     }
 
     /// <summary>
-    /// 
+    /// Used to acknowledge receipt of a message and indicate how the Dapr sidecar should handle it.
     /// </summary>
-    /// <param name="pubsubName"></param>
-    /// <param name="topicName"></param>
-    /// <param name="messageId"></param>
-    /// <param name="messageAction"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <param name="pubsubName">The name of the Publish/Subscribe component.</param>
+    /// <param name="topicName">The name of the topic to subscribe to.</param>
+    /// <param name="messageId">The identifier of the message to apply the action to.</param>
+    /// <param name="messageAction">Indicates the action to perform on the message.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public override async Task AcknowledgeMessageAsync(string pubsubName, string topicName, string messageId,
         TopicMessageAction messageAction, CancellationToken cancellationToken)
     {
@@ -69,6 +72,12 @@ public sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
         await receiver.AcknowledgeMessageAsync(messageId, messageAction, cancellationToken);
     }
 
+    /// <summary>
+    /// Unsubscribes a streaming subscription for the specified Publish/Subscribe component and topic.
+    /// </summary>
+    /// <param name="pubsubName">The name of the Publish/Subscribe component.</param>
+    /// <param name="topicName">The name of the topic to subscribe to.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public override async Task UnsubscribeAsync(string pubsubName, string topicName, CancellationToken cancellationToken)
     {
         if (!_clients.TryGetValue((pubsubName, topicName), out var receiver))

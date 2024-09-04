@@ -14,7 +14,7 @@
 namespace Dapr.Messaging.PublishSubscribe;
 
 /// <summary>
-/// 
+/// The base implementation of a Dapr pub/sub client.
 /// </summary>
 public abstract class DaprPublishSubscribeClient
 {
@@ -25,7 +25,7 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="topicName">The name of the topic to subscribe to.</param>
     /// <param name="options">Configuration options.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns></returns>
+    /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing the various messages returned by the subscription.</returns>
     public abstract IAsyncEnumerable<TopicMessage> SubscribeAsync(string pubsubName, string topicName, DaprSubscriptionOptions options, CancellationToken cancellationToken);
 
     /// <summary>
@@ -36,7 +36,6 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="messageId">The identifier of the message to apply the action to.</param>
     /// <param name="messageAction">Indicates the action to perform on the message.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns></returns>
     public abstract Task AcknowledgeMessageAsync(string pubsubName, string topicName, string messageId,
         TopicMessageAction messageAction, CancellationToken cancellationToken);
 
@@ -46,6 +45,5 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="pubsubName">The name of the Publish/Subscribe component.</param>
     /// <param name="topicName">The name of the topic to subscribe to.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns></returns>
     public abstract Task UnsubscribeAsync(string pubsubName, string topicName, CancellationToken cancellationToken);
 }
