@@ -101,7 +101,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// </summary>
     /// <param name="context">Context passed from the source generator when it has registered an output.</param>
     /// <param name="descriptor">Descriptor of actor client to generate.</param>
-    /// <exception cref="InvalidOperationException">Throws when assembly doesn't one or more required symbols.</exception>
+    /// <exception cref="InvalidOperationException">Throws when one or more required symbols assembly are missing.</exception>
     static void GenerateActorClientCode(SourceProductionContext context, ActorClientDescriptor descriptor)
     {
         try
@@ -198,9 +198,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// MethodSymbol extracted from the actor interface representing the method to generate.
     /// </param>
     /// <param name="generateActorClientAttributeSymbol">
-    /// ActorMethodAttribute symbol used to extract generation the original actor method to use when making runtime calls.
+    /// ActorMethodAttribute symbol used to extract the original actor method name to use when making runtime calls.
     /// </param>
-    /// <param name="cancellationTokenSymbol">Used to check search the position of optional cancellationToken.</param>
+    /// <param name="cancellationTokenSymbol">Symbol used to search the position of cancellationToken between method parameters.</param>
     /// <returns>Returns a <see cref="MethodDeclarationSyntax"/> of the generated method.</returns>
     private static MethodDeclarationSyntax GenerateMethodImplementation(
         IMethodSymbol method,
