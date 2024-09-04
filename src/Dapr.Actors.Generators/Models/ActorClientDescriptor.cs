@@ -9,7 +9,7 @@ namespace Dapr.Actors.Generators.Models
     internal record class ActorClientDescriptor : IEquatable<ActorClientDescriptor>
     {
         /// <summary>
-        /// Gets the actor interface symbol.
+        /// Gets or sets the symbol representing the actor interface.
         /// </summary>
         public INamedTypeSymbol InterfaceType { get; set; } = null!;
 

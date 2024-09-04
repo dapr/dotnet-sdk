@@ -5,12 +5,12 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Dapr.Actors.Generators.Helpers
 {
     /// <summary>
-    /// Syntax factory helpers for generating exception syntax.
+    /// Syntax factory helpers for generating syntax.
     /// </summary>
     public static partial class SyntaxFactoryHelpers
     {
         /// <summary>
-        /// Generates a syntax for <see cref="ArgumentNullException"/> syntax for the given argument name.
+        /// Generates a syntax for an <see cref="ArgumentNullException"/> based on the given argument name.
         /// </summary>
         /// <param name="argumentName">Name of the argument that generated the exception.</param>
         /// <returns>Returns <see cref="ThrowExpressionSyntax"/> used to throw an <see cref="ArgumentNullException"/>.</returns>
@@ -80,7 +80,7 @@ namespace Dapr.Actors.Generators.Helpers
         /// <param name="remoteMethodName">Name of remote method to invoke.</param>
         /// <param name="remoteMethodParameters">Remote method parameters.</param>
         /// <param name="remoteMethodReturnTypes">Return types of remote method invocation.</param>
-        /// <returns>The <see cref="InvocationExpressionSyntax"/> representing a call to the actor proxy.</returns>
+        /// <returns>Returns the <see cref="InvocationExpressionSyntax"/> representing a call to the actor proxy.</returns>
         public static InvocationExpressionSyntax ActorProxyInvokeMethodAsync(
             MemberAccessExpressionSyntax actorProxyMemberSyntax,
             string remoteMethodName,
@@ -122,11 +122,11 @@ namespace Dapr.Actors.Generators.Helpers
         }
 
         /// <summary>
-        /// Returns the syntax kinds for the specified accessibility.
+        /// Returns the <see cref="SyntaxKind"/> for the specified accessibility.
         /// </summary>
-        /// <param name="accessibility">Accessibility to convert into a SyntaxKind.</param>
-        /// <returns>Return the collection of <see cref="SyntaxKind"/> representing the given accessibility.</returns>
-        /// <exception cref="InvalidOperationException">Throws when un unexpected syntax is passed.</exception>
+        /// <param name="accessibility">Accessibility to convert into a <see cref="SyntaxKind"/>.</param>
+        /// <returns>Returns the collection of <see cref="SyntaxKind"/> representing the given accessibility.</returns>
+        /// <exception cref="InvalidOperationException">Throws when un unexpected accessibility is passed.</exception>
         public static ICollection<SyntaxKind> GetSyntaxKinds(Accessibility accessibility)
         {
             var syntaxKinds = new List<SyntaxKind>();
