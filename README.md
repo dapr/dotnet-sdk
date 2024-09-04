@@ -44,7 +44,10 @@ This repo builds the following packages:
 - Dapr.AspNetCore
 - Dapr.Actors
 - Dapr.Actors.AspNetCore
+- Dapr.Common
 - Dapr.Extensions.Configuration
+- Dapr.Messaging
+- Dapr.Protos
 - Dapr.Workflow
 
 ### Prerequisites
