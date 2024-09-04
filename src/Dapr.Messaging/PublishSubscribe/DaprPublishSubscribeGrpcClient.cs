@@ -23,19 +23,18 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <summary>
     /// The various receiver clients created for each combination of Dapr pubsub component and topic name.
     /// </summary>
-    private readonly Dictionary<(string, string), PublishSubscribeReceiver> _clients =
-        new Dictionary<(string, string), PublishSubscribeReceiver>();
+    private readonly Dictionary<(string, string), PublishSubscribeReceiver> clients = new();
     /// <summary>
     /// The Dapr client.
     /// </summary>
-    private readonly P.DaprClient _daprClient;
+    private readonly P.DaprClient daprClient;
 
     /// <summary>
     /// Creates a new instance of a <see cref="DaprPublishSubscribeGrpcClient"/>
     /// </summary>
     public DaprPublishSubscribeGrpcClient(P.DaprClient client)
     {
-        _daprClient = client;
+        daprClient = client;
     }
 
     /// <summary>
@@ -49,8 +48,8 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     public override IAsyncEnumerable<TopicMessage> SubscribeAsync(string pubsubName, string topicName, DaprSubscriptionOptions options,
         CancellationToken cancellationToken)
     {
-        var receiver = new PublishSubscribeReceiver(pubsubName, topicName, options, _daprClient);
-        _clients[(pubsubName, topicName)] = receiver;
+        var receiver = new PublishSubscribeReceiver(pubsubName, topicName, options, daprClient);
+        clients[(pubsubName, topicName)] = receiver;
 
         return receiver.SubscribeAsync(cancellationToken);
     }
@@ -66,7 +65,7 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     public override async Task AcknowledgeMessageAsync(string pubsubName, string topicName, string messageId,
         TopicMessageAction messageAction, CancellationToken cancellationToken)
     {
-        if (!_clients.TryGetValue((pubsubName, topicName), out var receiver))
+        if (!clients.TryGetValue((pubsubName, topicName), out var receiver))
         {
             throw new Exception($"Unable to find receiver instance for specified publish/subscribe component name '{pubsubName}' and topic '{topicName}'.");
         }
@@ -82,7 +81,7 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <param name="cancellationToken">Cancellation token.</param>
     public override async Task UnsubscribeAsync(string pubsubName, string topicName, CancellationToken cancellationToken)
     {
-        if (!_clients.TryGetValue((pubsubName, topicName), out var receiver))
+        if (!clients.TryGetValue((pubsubName, topicName), out var receiver))
         {
             throw new Exception($"Unable to find receiver instance for specified publish/subscribe component name '{pubsubName}' and topic '{topicName}'.");
         }
