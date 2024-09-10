@@ -60,7 +60,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <param name="context">Current generator syntax context passed from generator pipeline.</param>
     /// <param name="cancellationToken">Cancellation token used to interrupt the generation.</param>
     /// <returns>Returns the descriptor of actor client to generate.</returns>
-    static ActorClientDescriptor CreateActorClientDescriptor(
+    private static ActorClientDescriptor CreateActorClientDescriptor(
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken)
     {
@@ -102,7 +102,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
     /// <param name="context">Context passed from the source generator when it has registered an output.</param>
     /// <param name="descriptor">Descriptor of actor client to generate.</param>
     /// <exception cref="InvalidOperationException">Throws when one or more required symbols assembly are missing.</exception>
-    static void GenerateActorClientCode(SourceProductionContext context, ActorClientDescriptor descriptor)
+    private static void GenerateActorClientCode(SourceProductionContext context, ActorClientDescriptor descriptor)
     {
         try
         {

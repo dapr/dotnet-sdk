@@ -18,7 +18,7 @@ namespace Dapr.Actors.Generators
         /// <exception cref="ArgumentNullException">Throws when destinationNamespace is null.</exception>
         public static SourceText ActorMethodAttributeSourceText(string destinationNamespace)
         {
-            if (destinationNamespace == null)
+            if (destinationNamespace is null)
             {
                 throw new ArgumentNullException(nameof(destinationNamespace));
             }
@@ -54,7 +54,7 @@ namespace {destinationNamespace}
         /// <exception cref="ArgumentNullException">Throws when destinationNamespace is null.</exception>
         public static SourceText GenerateActorClientAttributeSourceText(string destinationNamespace)
         {
-            if (destinationNamespace == null)
+            if (destinationNamespace is null)
             {
                 throw new ArgumentNullException(nameof(destinationNamespace));
             }
