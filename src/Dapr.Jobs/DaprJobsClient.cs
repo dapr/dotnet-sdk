@@ -19,9 +19,8 @@ namespace Dapr.Jobs;
 /// <para>
 /// Defines client operations for managing Dapr jobs.
 /// Use <see cref="DaprJobsClientBuilder"/> to create a <see cref="DaprJobsClient"/> or register
-/// for use with dependency injection via <see>
-///     <cref>DaprJobsServiceCollectionExtensions.AddDaprJobsClient</cref>
-/// </see>.
+/// for use with dependency injection via
+/// <see><cref>DaprJobsServiceCollectionExtensions.AddDaprJobsClient</cref></see>.
 /// </para>
 /// <para>
 /// Implementations of <see cref="DaprJobsClient"/> implement <see cref="IDisposable"/> because the
@@ -34,7 +33,7 @@ namespace Dapr.Jobs;
 public abstract class DaprJobsClient : IDisposable
 {
     private bool disposed;
-    
+
     /// <summary>
     /// Schedules a recurring job using a cron expression.
     /// </summary>
@@ -46,8 +45,8 @@ public abstract class DaprJobsClient : IDisposable
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? startingFrom = null,
-        int? repeats = null, DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null,
+    public abstract Task ScheduleCronJobAsync(string jobName, string cronExpression,
+        DateTimeOffset? startingFrom = null, int? repeats = null, DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -61,8 +60,8 @@ public abstract class DaprJobsClient : IDisposable
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval, DateTime? startingFrom = null,
-        int? repeats = null, DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null,
+    public abstract Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval,
+        DateTimeOffset? startingFrom = null, int? repeats = null, DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -73,8 +72,8 @@ public abstract class DaprJobsClient : IDisposable
     /// <param name="payload">Stores the main payload of the job which is passed to the trigger function.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleOneTimeJobAsync(string jobName, DateTime scheduledTime, ReadOnlyMemory<byte>? payload = null,
-        CancellationToken cancellationToken = default);
+    public abstract Task ScheduleOneTimeJobAsync(string jobName, DateTimeOffset scheduledTime,
+        ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves the details of a registered job.

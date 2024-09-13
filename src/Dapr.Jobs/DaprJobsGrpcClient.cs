@@ -66,9 +66,10 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleCronJobAsync(string jobName, string cronExpression, DateTime? startingFrom = null,
+    public override async Task ScheduleCronJobAsync(string jobName, string cronExpression,
+        DateTimeOffset? startingFrom = null,
         int? repeats = null,
-        DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default)
+        DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jobName))
             throw new ArgumentNullException(nameof(jobName));
@@ -128,8 +129,8 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public override async Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval,
-        DateTime? startingFrom = null, int? repeats = null,
-        DateTime? ttl = null, ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default)
+        DateTimeOffset? startingFrom = null, int? repeats = null,
+        DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jobName))
             throw new ArgumentNullException(nameof(jobName));
@@ -183,7 +184,8 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="payload">Stores the main payload of the job which is passed to the trigger function.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleOneTimeJobAsync(string jobName, DateTime scheduledTime, ReadOnlyMemory<byte>? payload = null,
+    public override async Task ScheduleOneTimeJobAsync(string jobName, DateTimeOffset scheduledTime,
+        ReadOnlyMemory<byte>? payload = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jobName))
