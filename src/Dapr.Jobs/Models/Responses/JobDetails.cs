@@ -63,7 +63,7 @@ public sealed record JobDetails
     /// Allows for jobs with fixed repeat counts.
     /// </summary>
     [JsonPropertyName("repeats")]
-    public uint? RepeatCount { get; init; } = null;
+    public int? RepeatCount { get; init; } = null;
 
     /// <summary>
     /// Identifies a point-in-time representing when the job schedule should start from,
