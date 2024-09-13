@@ -11,12 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-#nullable enable
-using System;
 using System.Reflection;
 using System.Runtime.Serialization;
 
-namespace Dapr.Client
+namespace Dapr.Common
 {
     internal static class EnumExtensions
     {

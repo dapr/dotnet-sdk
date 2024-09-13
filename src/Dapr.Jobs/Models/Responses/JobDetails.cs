@@ -13,6 +13,7 @@
 
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Dapr.Jobs.Extensions;
 
 namespace Dapr.Jobs.Models.Responses;
 
@@ -24,34 +25,48 @@ public sealed record JobDetails
     /// <summary>
     /// Regular expression used to determine if a given schedule is a Cron expression or an interval.
     /// </summary>
-    private readonly Regex isIntervalRegex = new("h|m|(ms)|s");
+    private readonly Regex isIntervalRegex = new("h|m|(ms)|s", RegexOptions.Compiled);
 
-    ///<summary>
-    /// A cron-like expression that defines when a job should be triggered.
+    /// <summary>
+    /// If the schedule is recurring due to either a Cron-like or prefixed period value, its representation can be retrieved from
+    /// this property.
     /// </summary>
-    /// <remarks>
-    /// Either this or the <see cref="Interval"/> property should be specified.
-    /// </remarks>
-    public string? CronExpression => Schedule is null || !isIntervalRegex.IsMatch(Schedule) ? Schedule : null;
+    public DaprJobSchedule? ScheduleExpression =>
+        Schedule is not null && (IsPrefixedPeriodExpression || IsScheduleExpression) ? new DaprJobSchedule(Schedule) : null;
 
     /// <summary>
     /// The interval expression that defines when a job should be triggered.
     /// </summary>
-    /// <remarks>
-    /// Either this or the <see cref="CronExpression"/> property should be specified.
-    /// </remarks>
     public TimeSpan? Interval =>
         Schedule is not null && isIntervalRegex.IsMatch(Schedule) ? Schedule.FromDurationString() : null;
 
     /// <summary>
     /// Represents whether the job is scheduled using a Cron expression.
     /// </summary>
-    public bool IsCronExpression => CronExpression is not null;
+    public bool IsScheduleExpression => Schedule is not null && !IsPrefixedPeriodExpression && !IsIntervalExpression;
+
+    /// <summary>
+    /// Indicates that the expression is a prefixed period.
+    /// </summary>
+    public bool IsPrefixedPeriodExpression
+    {
+        get
+        {
+            if (Schedule is null)
+                return false;
+            return Schedule is not null && Schedule.StartsWith('@') && (Schedule.StartsWith("@every") ||
+                                                                        Schedule.EndsWithAny(new[]
+                                                                        {
+                                                                            "yearly", "monthly", "weekly", "daily",
+                                                                            "midnight", "hourly"
+                                                                        }));
+        }
+    }
 
     /// <summary>
     /// Represents whether the job is scheduled using an interval expression.
     /// </summary>
-    public bool IsIntervalExpression => !IsCronExpression;
+    public bool IsIntervalExpression => 
 
     /// <summary>
     /// The string-based schedule value returned by the job details payload.

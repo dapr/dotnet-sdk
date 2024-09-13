@@ -14,9 +14,14 @@ public sealed class DaprJobSchedule
     /// Initializes the value of <see cref="ExpressionValue"/> based on the provided value from each of the factory methods.
     /// </summary>
     /// <param name="expressionValue">The value of the scheduling expression.</param>
-    private DaprJobSchedule(string expressionValue)
+    internal DaprJobSchedule(string expressionValue)
     {
         ExpressionValue = expressionValue;
+    }
+
+    public static DaprJobSchedule FromCronExpression(int? seconds = null, int? minutes = null, int? hours = null, int? dayOfMonth = null, int? month = null, int? dayOfWeek = null )
+    {
+
     }
 
     /// <summary>
