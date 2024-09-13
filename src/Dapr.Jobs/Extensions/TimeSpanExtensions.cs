@@ -21,6 +21,11 @@ namespace Dapr.Jobs;
 /// </summary>
 internal static class TimeSpanExtensions
 {
+    private static readonly Regex hourRegex = new Regex(@"(\d+)h", RegexOptions.Compiled);
+    private static readonly Regex minuteRegex = new Regex(@"(\d+)m", RegexOptions.Compiled);
+    private static readonly Regex secondRegex = new Regex(@"(\d+)s", RegexOptions.Compiled);
+    private static readonly Regex millisecondRegex = new Regex(@"(\d+)q", RegexOptions.Compiled);
+
     /// <summary>
     /// Creates a duration string that matches the specification at https://pkg.go.dev/time#ParseDuration per the
     /// Jobs API specification https://v1-14.docs.dapr.io/reference/api/jobs_api/#schedule-a-job.
@@ -55,12 +60,6 @@ internal static class TimeSpanExtensions
     public static TimeSpan FromDurationString(this string interval)
     {
         interval = interval.Replace("ms", "q");
-
-        //Define regular expressions to capture each segment
-        var hourRegex = new Regex(@"(\d+)h");
-        var minuteRegex = new Regex(@"(\d+)m");
-        var secondRegex = new Regex(@"(\d+)s");
-        var millisecondRegex = new Regex(@"(\d+)q");
 
         int hours = 0;
         int minutes = 0;
