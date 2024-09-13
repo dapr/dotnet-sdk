@@ -35,20 +35,20 @@ public abstract class DaprJobsClient : IDisposable
     private bool disposed;
 
     /// <summary>
-    /// Schedules a recurring job using a cron expression.
+    /// Schedules a recurring job using a systemd Cron-like expression or '@' prefixed period string.
     /// </summary>
     /// <param name="jobName">The name of the job being scheduled.</param>
-    /// <param name="cronExpression">The systemd Cron-like expression indicating when the job should be triggered.</param>
+    /// <param name="schedule">The job schedule to trigger the job by.</param>
     /// <param name="startingFrom">The optional point-in-time from which the job schedule should start.</param>
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
     /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleCronJobAsync(string jobName, string cronExpression,
-        DateTimeOffset? startingFrom = null, int? repeats = null, DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null,
+    public abstract Task ScheduleRecurringJobAsync(string jobName, DaprJobSchedule schedule, DateTimeOffset? startingFrom = null,
+        int? repeats = null, DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null,
         CancellationToken cancellationToken = default);
-
+    
     /// <summary>
     /// Schedules a recurring job with an optional future starting date.
     /// </summary>

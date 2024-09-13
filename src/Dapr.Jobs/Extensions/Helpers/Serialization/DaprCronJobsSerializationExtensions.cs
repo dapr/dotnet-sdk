@@ -12,11 +12,11 @@ public static class DaprCronJobsSerializationExtensions
     private static readonly JsonSerializerOptions defaultOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     /// <summary>
-    /// Schedules a recurring job using a cron expression.
+    /// Schedules a recurring job using a systemd Cron-like expression or '@' prefixed period string.
     /// </summary>
     /// <param name="client">The <see cref="DaprJobsClient"/> instance.</param>
     /// <param name="jobName">The name of the job being scheduled.</param>
-    /// <param name="cronExpression">The systemd Cron-like expression indicating when the job should be triggered.</param>
+    /// <param name="schedule">The job schedule to trigger the job by.</param>
     /// <param name="payload">The main payload of the job expressed as a JSON-serializable object.</param>
     /// <param name="jsonSerializerOptions">Optional options to use for the <see cref="JsonSerializer"/>.</param>
     /// <param name="dueTime">The optional point-in-time from which the job schedule should start.</param>
@@ -26,7 +26,7 @@ public static class DaprCronJobsSerializationExtensions
     /// <returns></returns>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleCronJobWithPayloadAsync(this DaprJobsClient client, string jobName,
-        string cronExpression, object payload, JsonSerializerOptions? jsonSerializerOptions = null,
+        DaprJobSchedule schedule, object payload, JsonSerializerOptions? jsonSerializerOptions = null,
         DateTimeOffset? dueTime = null, int? repeats = null, DateTimeOffset? ttl = null,
         CancellationToken cancellationToken = default)
     {
@@ -36,16 +36,16 @@ public static class DaprCronJobsSerializationExtensions
         var payloadBytes =
             JsonSerializer.SerializeToUtf8Bytes(payload, serializerOptions);
 
-        await client.ScheduleCronJobAsync(jobName, cronExpression, dueTime, repeats, ttl, payloadBytes,
+        await client.ScheduleRecurringJobAsync(jobName, schedule, dueTime, repeats, ttl, payloadBytes,
             cancellationToken);
     }
 
     /// <summary>
-    /// Schedules a recurring job using a cron expression.
+    /// Schedules a recurring job using a systemd Cron-like expression or '@' prefixed period string.
     /// </summary>
     /// <param name="client">The <see cref="DaprJobsClient"/> instance.</param>
     /// <param name="jobName">The name of the job being scheduled.</param>
-    /// <param name="cronExpression">The systemd Cron-like expression indicating when the job should be triggered.</param>
+    /// <param name="schedule">The job schedule to trigger the job by.</param>
     /// <param name="payload">The main payload of the job expressed as a string.</param>
     /// <param name="dueTime">The optional point-in-time from which the job schedule should start.</param>
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
@@ -54,7 +54,7 @@ public static class DaprCronJobsSerializationExtensions
     /// <returns></returns>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleCronJobWithPayloadAsync(this DaprJobsClient client, string jobName,
-        string cronExpression, string payload, DateTimeOffset? dueTime = null, int? repeats = null,
+        DaprJobSchedule schedule, string payload, DateTimeOffset? dueTime = null, int? repeats = null,
         DateTimeOffset? ttl = null,
         CancellationToken cancellationToken = default)
     {
@@ -62,7 +62,7 @@ public static class DaprCronJobsSerializationExtensions
 
         var payloadBytes = Encoding.UTF8.GetBytes(payload);
 
-        await client.ScheduleCronJobAsync(jobName, cronExpression, dueTime, repeats, ttl, payloadBytes,
+        await client.ScheduleRecurringJobAsync(jobName, schedule, dueTime, repeats, ttl, payloadBytes,
             cancellationToken);
     }
 }
