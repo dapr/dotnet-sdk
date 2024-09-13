@@ -7,7 +7,7 @@
         <PackageId>Dapr.Jobs</PackageId>
         <Title>Dapr Jobs Authoring SDK</Title>
         <Description>Dapr Jobs SDK for scheduling jobs and tasks with Dapr</Description>
-        <VersionPrefix>0.1.0</VersionPrefix>
+        <VersionPrefix>1.14.0</VersionPrefix>
         <VersionSuffix>alpha</VersionSuffix>
     </PropertyGroup>
 
