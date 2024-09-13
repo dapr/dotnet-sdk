@@ -16,7 +16,7 @@ public class ByteArrayDeserializationExtensionsTest
         const string originalStringValue = "This is a simple test!";
         var serializedString = Encoding.UTF8.GetBytes(originalStringValue);
 
-        var deserializedString = serializedString.DeserializeToString();
+        var deserializedString = ByteArrayDeserializationExtensions.DeserializeToString(serializedString);
         Assert.Equal(originalStringValue, deserializedString);
     }
 
@@ -26,7 +26,7 @@ public class ByteArrayDeserializationExtensionsTest
         var originalType = new TestType { Name = "Test", Value = 5 };
         var serialized = JsonSerializer.SerializeToUtf8Bytes(originalType);
 
-        var deserializedType = serialized.DeserializeFromJsonBytes<TestType>();
+        var deserializedType = ByteArrayDeserializationExtensions.DeserializeFromJsonBytes<TestType>(serialized);
         Assert.Equal(originalType, deserializedType);
     }
 
@@ -37,7 +37,7 @@ public class ByteArrayDeserializationExtensionsTest
         var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, PropertyNameCaseInsensitive = true, NumberHandling = JsonNumberHandling.AllowReadingFromString};
         var serializedBytes = Encoding.UTF8.GetBytes(json);
 
-        var deserializedType = serializedBytes.DeserializeFromJsonBytes<TestType>(jsonOptions);
+        var deserializedType = ByteArrayDeserializationExtensions.DeserializeFromJsonBytes<TestType>(serializedBytes, jsonOptions);
         Assert.NotNull(deserializedType);
         Assert.Null(deserializedType.Name);
         Assert.Equal(15, deserializedType.Value);
