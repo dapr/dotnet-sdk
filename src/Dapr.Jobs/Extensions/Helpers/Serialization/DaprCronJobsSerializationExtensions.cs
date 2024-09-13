@@ -9,6 +9,8 @@ namespace Dapr.Jobs.Extensions.Helpers.Serialization;
 /// </summary>
 public static class DaprCronJobsSerializationExtensions
 {
+    private static readonly JsonSerializerOptions defaultOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
     /// <summary>
     /// Schedules a recurring job using a cron expression.
     /// </summary>
@@ -29,7 +31,7 @@ public static class DaprCronJobsSerializationExtensions
     {
         ArgumentNullException.ThrowIfNull(payload, nameof(payload));
 
-        var serializerOptions = jsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var serializerOptions = jsonSerializerOptions ?? defaultOptions;
         var payloadBytes =
             JsonSerializer.SerializeToUtf8Bytes(payload, serializerOptions);
 
