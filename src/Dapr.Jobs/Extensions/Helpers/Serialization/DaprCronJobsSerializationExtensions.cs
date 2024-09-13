@@ -26,8 +26,9 @@ public static class DaprCronJobsSerializationExtensions
     /// <returns></returns>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleCronJobWithPayloadAsync(this DaprJobsClient client, string jobName,
-        string cronExpression, object payload, JsonSerializerOptions? jsonSerializerOptions = null, DateTime? dueTime = null, int? repeats = null, DateTime? ttl = null,
-         CancellationToken cancellationToken = default)
+        string cronExpression, object payload, JsonSerializerOptions? jsonSerializerOptions = null,
+        DateTimeOffset? dueTime = null, int? repeats = null, DateTimeOffset? ttl = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payload, nameof(payload));
 
@@ -45,16 +46,17 @@ public static class DaprCronJobsSerializationExtensions
     /// <param name="client">The <see cref="DaprJobsClient"/> instance.</param>
     /// <param name="jobName">The name of the job being scheduled.</param>
     /// <param name="cronExpression">The systemd Cron-like expression indicating when the job should be triggered.</param>
+    /// <param name="payload">The main payload of the job expressed as a string.</param>
     /// <param name="dueTime">The optional point-in-time from which the job schedule should start.</param>
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
-    /// <param name="payload">The main payload of the job expressed as a string.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleCronJobWithPayloadAsync(this DaprJobsClient client, string jobName,
-        string cronExpression, string payload, DateTime? dueTime = null, int? repeats = null, DateTime? ttl = null,
-         CancellationToken cancellationToken = default)
+        string cronExpression, string payload, DateTimeOffset? dueTime = null, int? repeats = null,
+        DateTimeOffset? ttl = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payload, nameof(payload));
 
