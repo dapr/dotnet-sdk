@@ -11,6 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Actors.Communication;
+using IDemoActor;
+
 namespace ActorClient
 {
     using System;
@@ -18,7 +21,6 @@ namespace ActorClient
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Client;
-    using IDemoActorInterface;
 
     /// <summary>
     /// Actor Client class.
@@ -43,7 +45,7 @@ namespace ActorClient
 
             // Make strongly typed Actor calls with Remoting.
             // DemoActor is the type registered with Dapr runtime in the service.
-            var proxy = ActorProxy.Create<IDemoActor>(actorId, "DemoActor");
+            var proxy = ActorProxy.Create<IDemoActor.IDemoActor>(actorId, "DemoActor");
 
             Console.WriteLine("Making call using actor proxy to save data.");
             await proxy.SaveData(data, TimeSpan.FromMinutes(10));

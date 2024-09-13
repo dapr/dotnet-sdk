@@ -11,11 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace DaprDemoActor
-{
-    using Microsoft.AspNetCore.Hosting;
-    using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
+namespace DemoActor
+{
     public class Program
     {
         public static void Main(string[] args)
