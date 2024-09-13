@@ -45,36 +45,36 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public string GrpcEndpoint { get; private set; }
+    internal string GrpcEndpoint { get; private set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public string HttpEndpoint { get; private set; }
-        
-    /// <summary>
-    /// Property exposed for testing purposes.
-    /// </summary>
-    public Func<HttpClient>? HttpClientFactory { get; set; }
+    internal string HttpEndpoint { get; private set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public JsonSerializerOptions JsonSerializerOptions { get; private set; }
+    internal Func<HttpClient>? HttpClientFactory { get; set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public GrpcChannelOptions GrpcChannelOptions { get; private set; }
+    internal JsonSerializerOptions JsonSerializerOptions { get; private set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public string DaprApiToken { get; private set; }
+    internal GrpcChannelOptions GrpcChannelOptions { get; private set; }
+
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    public TimeSpan Timeout { get; private set; }
+    internal string DaprApiToken { get; private set; }
+    /// <summary>
+    /// Property exposed for testing purposes.
+    /// </summary>
+    internal TimeSpan Timeout { get; private set; }
 
     /// <summary>
     /// Overrides the HTTP endpoint used by the Dapr client for communicating with the Dapr runtime.
@@ -94,7 +94,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     }
 
     /// <summary>
-    /// Exposed internally for testing purposes.
+    /// Specifies a factory used to create the <see cref="HttpClient"/> to use.
     /// </summary>
     internal DaprGenericClientBuilder<TClientBuilder> UseHttpClientFactory(Func<HttpClient> factory)
     {
@@ -169,7 +169,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     }
 
     /// <summary>
-    ///  Sets the timeout for the HTTP client used by the Dapr client.
+    /// Sets the timeout for the HTTP client used by the Dapr client.
     /// </summary>
     /// <param name="timeout"></param>
     /// <returns></returns>
