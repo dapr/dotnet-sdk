@@ -239,7 +239,7 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
         return new JobDetails
         {
             DueTime = response.Job.DueTime is not null ? DateTime.Parse(response.Job.DueTime) : null,
-            TTL = response.Job.Ttl is not null ? DateTime.Parse(response.Job.Ttl) : null,
+            Ttl = response.Job.Ttl is not null ? DateTime.Parse(response.Job.Ttl) : null,
             RepeatCount = response.Job.Repeats == default ? null : response.Job.Repeats,
             Payload = response.Job.Data.ToByteArray()
         };

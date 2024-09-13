@@ -70,7 +70,7 @@ public sealed record JobDetails
     /// or as a "one-shot" time if other scheduling fields are not provided.
     /// </summary>
     [JsonPropertyName("dueTime")]
-    public DateTime? DueTime { get; init; } = null;
+    public DateTimeOffset? DueTime { get; init; } = null;
 
     /// <summary>
     /// A point-in-time value representing with the job should expire.
@@ -79,7 +79,7 @@ public sealed record JobDetails
     /// This must be greater than <see cref="DueTime"/> if both are set.
     /// </remarks>
     [JsonPropertyName("ttl")]
-    public DateTime? TTL { get; init; } = null;
+    public DateTimeOffset? Ttl { get; init; } = null;
 
     /// <summary>
     /// Stores the main payload of the job which is passed to the trigger function.
