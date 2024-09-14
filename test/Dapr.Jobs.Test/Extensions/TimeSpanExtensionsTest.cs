@@ -18,6 +18,25 @@ namespace Dapr.Jobs.Test.Extensions;
 
 public class TimeSpanExtensionsTest
 {
+    [Theory]
+    [InlineData("5h", true)]
+    [InlineData("5m", true)]
+    [InlineData("10s", true)]
+    [InlineData("30q", true)]
+    [InlineData("5h2m", true)]
+    [InlineData("2m44s", true)]
+    [InlineData("49s28q", true)]
+    [InlineData("21m2s9q", true)]
+    [InlineData("9h17m10s55q", true)]
+    [InlineData("12z", false)]
+    [InlineData("60ms", true)]
+    [InlineData("", false)]
+    public void IsDurationString_Validate(string original, bool expectedResult)
+    {
+        var actualResult = original.IsDurationString();
+        Assert.Equal(expectedResult, actualResult);
+    }
+
     [Fact]
     public void ToDurationString_ValidateHours()
     {

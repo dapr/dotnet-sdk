@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Runtime.Serialization;
+using System.Text.RegularExpressions;
 using Dapr.Common;
 using ArgumentException = System.ArgumentException;
 using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
@@ -23,6 +24,12 @@ namespace Dapr.Jobs;
 /// </summary>
 public sealed class CronExpressionBuilder
 {
+    private static readonly Regex secondsAndMinutesRegex = new(@"^\*|(\*|(\*\/([0-5]?\d))|(([0-5]?\d)(-([0-5]?\d))?))$", RegexOptions.Compiled);
+    private static readonly Regex hoursRegex = new(@"^\*|(\*\/(([0-1]?\d)|(2[0-3])))|((([0-1]?\d)|(2[0-3]))(-(([0-1]?\d)|(2[0-3])))?)$", RegexOptions.Compiled);
+    private static readonly Regex dayOfTheMonthRegex = new(@"^\*|(\*\/(([0-2]?\d)|(3[0-1])))|(((([0-2]?\d)|(3[0-1]))(-(([0-2]?\d)|(3[0-1])))?))$", RegexOptions.Compiled);
+    private static readonly Regex monthRegex = new(@"^\*|(\*\/([0-1]?\d))|((([0-1]?\d)(-([0-1]?\d))?))|((,?(JAN|DEC|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)+)+)|(-?(JAN|DEC|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))$");
+    private static readonly Regex dayOfTheWeekRegex = new(@"^\*|(\*\/(0?[0-6])|(0?[0-6](-0?[0-6])?)|((,?(SUN|MON|TUE|WED|THU|FRI|SAT))+)|((SUN|MON|TUE|WED|THU|FRI|SAT)(-(SUN|MON|TUE|WED|THU|FRI|SAT))?))$", RegexOptions.Compiled);
+    
     private string seconds = "*";
     private string minutes = "*";
     private string hours = "*";
@@ -220,9 +227,51 @@ public sealed class CronExpressionBuilder
             case EveryCronPeriod.DayInMonth:
                 dayOfMonth = value;
                 break;
+            case EveryCronPeriod.DayInWeek:
+                dayOfWeek = value;
+                break;
         }
 
         return this;
+    }
+
+    /// <summary>
+    /// Validates whether a given expression is valid Cron syntax.
+    /// </summary>
+    /// <param name="expression">The string to evaluate.</param>
+    /// <returns>True if the expression is valid Cron syntax; false if not.</returns>
+    internal static bool IsCronExpression(string expression)
+    {
+        var subExpressions = expression.Split(' ');
+        if (subExpressions.Length != 6)
+            return false;
+
+        //if (!secondsAndMinutesRegex.IsMatch(subExpressions[0]))
+        //    return false;
+
+        //if (!secondsAndMinutesRegex.IsMatch(subExpressions[1]))
+        //    return false;
+
+        //if (!hoursRegex.IsMatch(subExpressions[2]))
+        //    return false;
+
+        //if (!dayOfTheMonthRegex.IsMatch(subExpressions[3]))
+        //    return false;
+
+        //if (!monthRegex.IsMatch(subExpressions[4]))
+        //    return false;
+
+        //if (!dayOfTheWeekRegex.IsMatch(subExpressions[5]))
+        //    return false;
+
+        //return true;
+
+        return secondsAndMinutesRegex.IsMatch(subExpressions[0])
+               && secondsAndMinutesRegex.IsMatch(subExpressions[1])
+               && hoursRegex.IsMatch(subExpressions[2])
+               && dayOfTheMonthRegex.IsMatch(subExpressions[3])
+               && monthRegex.IsMatch(subExpressions[4])
+               && dayOfTheWeekRegex.IsMatch(subExpressions[5]);
     }
 
     /// <summary>
@@ -279,7 +328,11 @@ public enum EveryCronPeriod
     /// <summary>
     /// Identifies the days in the month value in an "Every" expression.
     /// </summary>
-    DayInMonth
+    DayInMonth,
+    /// <summary>
+    /// Identifies the days in the week value in an "Every" expression.
+    /// </summary>
+    DayInWeek,
 }
 
 /// <summary>

@@ -161,9 +161,10 @@ public sealed class CronExpressionBuilderTests
             .Every(EveryCronPeriod.Minute, 8)
             .Every(EveryCronPeriod.Hour, 2)
             .Every(EveryCronPeriod.DayInMonth, 5)
+            .Every(EveryCronPeriod.DayInWeek, 2)
             .Every(EveryCronPeriod.Month, 3);
         var result = builder.ToString();
-        Assert.Equal("*/10 */8 */2 */5 */3 *", result);
+        Assert.Equal("*/10 */8 */2 */5 */3 */2", result);
     }
 
     [Fact]
@@ -333,5 +334,49 @@ public sealed class CronExpressionBuilderTests
             var builder = new CronExpressionBuilder()
                 .On(OnCronPeriod.DayOfMonth, 32);
         });
+    }
+
+    [Theory]
+    [InlineData("* * * * * *", true)]
+    [InlineData("5 12 16 7 * *", true)]
+    [InlineData("30 * * * * *", true)]
+    [InlineData("*/5 * * * * *", true)]
+    [InlineData("0 30 * * * *", true)]
+    [InlineData("* */12 * * * *", true)]
+    [InlineData("0 0 * * * *", true)]
+    [InlineData("* * */4 * * *", true)]
+    [InlineData("* * * * */2 *", true)]
+    [InlineData("0 0 0 * * *", true)]
+    [InlineData("30 15 6 */4 JAN,APR,AUG WED,FRI", true)]
+    [InlineData("*/10 */8 */2 */5 */3 *", true)]
+    [InlineData("0 0 12 * * *", true)]
+    [InlineData("0 0 0 * * TUE,FRI", true)]
+    [InlineData("0 0 0 * * TUE", true)]
+    [InlineData("0 0 0 * * TUE-FRI", true)]
+    [InlineData("0 30 16 * OCT SAT", true)]
+    [InlineData("0 30 16 * OCT,DEC WED,SAT", true)]
+    [InlineData("0 30 16 * OCT-DEC WED-SAT", true)]
+    [InlineData("0-15 * * * * *", true)]
+    [InlineData("0-15 02-59 * * * *", true)]
+    [InlineData("0-15 02-59 07-23 * * *", true)]
+    [InlineData("0-15 0-15 0-15 1-10 8-16 *", true)]
+    [InlineData("5 12 16 7 FEB *", true)]
+    [InlineData("5 12 16 7 * MON", true)]
+    [InlineData("5 12 16 7 JAN SAT", true)]
+    [InlineData("5 * * * FEB SUN", true)]
+    [InlineData("* * */2 * * *", true)]
+    [InlineData("* * * */5 * *", true)]
+    [InlineData("30 15 6 */4 JAN,APR,AUG WED-FRI", true)]
+    [InlineData("*/10 */8 */2 */5 */3 */2", true)]
+    [InlineData("0 0 0 * OCT SAT", true)]
+    [InlineData("0 0 0 * OCT,DEC WED,SAT", true)]
+    [InlineData("0 0 0 * OCT-DEC WED-SAT", true)]
+    [InlineData("1-14 2-59 20-23 * * *", true)]
+    [InlineData("0-59 0-59 0-23 1-31 1-12 0-6", true)]
+    [InlineData("*/1 2,4,5 * 2-9 JAN,FEB,DEC MON-WED", true)]
+    public void ValidateCronExpression(string cronValue, bool isValid)
+    {
+        var result = CronExpressionBuilder.IsCronExpression(cronValue);
+        Assert.Equal(result, isValid);
     }
 }

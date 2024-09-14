@@ -22,11 +22,13 @@ namespace Dapr.Jobs;
 public sealed class DaprJobSchedule
 {
     /// <summary>
-    /// A regular expression used to evaluate whether a given string embodies a Cron expression or not.
+    /// A regular expression used to evaluate whether a given prefix period embodies an @every statement.
     /// </summary>
-    private readonly Regex isCronExpression =
-        new Regex(
-            @"^(\*|([0-5]?\d)) (\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2[0-9]|3[01])) (\*|(1[0-2]|0?[1-9])) (\*|([0-6]|(MON|TUE|WED|THU|FRI|SAT|SUN)(,(MON|TUE|WED|THU|FRI|SAT|SUN))*))$", RegexOptions.Compiled);
+    private readonly Regex isEveryExpression = new(@"^@every (\d+(m?s|m|h))+$", RegexOptions.Compiled);
+    /// <summary>
+    /// The various prefixed period values allowed.
+    /// </summary>
+    private readonly string[] acceptablePeriodValues = { "yearly", "monthly", "weekly", "daily", "midnight", "hourly" };
 
     /// <summary>
     /// The value of the expression represented by the schedule.
@@ -121,8 +123,8 @@ public sealed class DaprJobSchedule
     /// </summary>
     public bool IsPrefixedPeriodExpression =>
         ExpressionValue.StartsWith('@') &&
-        ((ExpressionValue.StartsWith("@every") && ExpressionValue.Length > "@every".Length) ||
-         ExpressionValue.EndsWithAny(new[] { "yearly", "monthly", "weekly", "daily", "midnight", "hourly" }));
+        (isEveryExpression.IsMatch(ExpressionValue) ||
+         ExpressionValue.EndsWithAny(acceptablePeriodValues));
 
     /// <summary>
     /// Reflects that the schedule represents a fixed point in time.
@@ -132,10 +134,10 @@ public sealed class DaprJobSchedule
     /// <summary>
     /// Reflects that the schedule represents a Golang duration expression.
     /// </summary>
-    public bool IsIntervalExpression => ExpressionValue.IsDurationString();
+    public bool IsDurationExpression => ExpressionValue.IsDurationString();
 
     /// <summary>
     /// Reflects that the schedule represents a Cron expression.
     /// </summary>
-    public bool IsCronExpression => isCronExpression.IsMatch(ExpressionValue);
+    public bool IsCronExpression => CronExpressionBuilder.IsCronExpression(ExpressionValue);
 }

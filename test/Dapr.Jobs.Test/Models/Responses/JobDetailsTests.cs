@@ -12,14 +12,37 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json;
+using Dapr.Jobs.Models.Responses;
+using Xunit;
 
-namespace Dapr.Jobs.Test.Models.Responses
+namespace Dapr.Jobs.Test.Models.Responses;
+
+public sealed class JobDetailsTests
 {
-    internal class JobDetailsTests
+    [Fact]
+    public void ValidatePropertiesAreAsSet()
     {
+        var payload = new TestPayload("Dapr", "Red");
+        var payloadBytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+
+        var dueTime = DateTimeOffset.UtcNow.AddDays(2);
+        var ttl = DateTimeOffset.UtcNow.AddMonths(3);
+        const int repeatCount = 15;
+
+        var details = new JobDetails(DaprJobSchedule.Midnight)
+        {
+            RepeatCount = repeatCount,
+            DueTime = dueTime,
+            Payload = payloadBytes,
+            Ttl = ttl
+        };
+
+        Assert.Equal(repeatCount, details.RepeatCount);
+        Assert.Equal(dueTime, details.DueTime);
+        Assert.Equal(ttl, details.Ttl);
+        Assert.Equal(payloadBytes, details.Payload);
     }
+
+    private sealed record TestPayload(string Name, string Color);
 }
