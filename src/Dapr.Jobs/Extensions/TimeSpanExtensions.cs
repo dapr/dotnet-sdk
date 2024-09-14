@@ -53,6 +53,20 @@ internal static class TimeSpanExtensions
     }
 
     /// <summary>
+    /// Validates whether a given string represents a parseable Golang duration string.
+    /// </summary>
+    /// <param name="interval">The duration string to parse.</param>
+    /// <returns>True if the string represents a parseable interval duration; false if not.</returns>
+    public static bool IsDurationString(this string interval)
+    {
+        interval = interval.Replace("ms", "q");
+        return hourRegex.Match(interval).Success || 
+               minuteRegex.Match(interval).Success ||
+               secondRegex.Match(interval).Success ||
+               millisecondRegex.Match(interval).Success;
+    }
+
+    /// <summary>
     /// Creates a <see cref="TimeSpan"/> given a Golang duration string.
     /// </summary>
     /// <param name="interval">The duration string to parse.</param>

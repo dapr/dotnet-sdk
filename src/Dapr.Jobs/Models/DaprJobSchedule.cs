@@ -1,4 +1,6 @@
-﻿namespace Dapr.Jobs;
+﻿using Dapr.Jobs.Models;
+
+namespace Dapr.Jobs;
 
 /// <summary>
 /// Used to build a schedule for a job.
@@ -19,21 +21,45 @@ public sealed class DaprJobSchedule
         ExpressionValue = expressionValue;
     }
 
-    public static DaprJobSchedule FromCronExpression(int? seconds = null, int? minutes = null, int? hours = null, int? dayOfMonth = null, int? month = null, int? dayOfWeek = null )
+    /// <summary>
+    /// Specifies a schedule built using the fluent Cron expression builder.
+    /// </summary>
+    /// <param name="builder">The fluent Cron expression builder.</param>
+    public static DaprJobSchedule FromCronExpression(CronExpressionBuilder builder)
     {
-
+        ArgumentVerifier.ThrowIfNull(builder, nameof(builder));
+        return new DaprJobSchedule(builder.ToString());
     }
 
+    /// <summary>
+    /// Specifies a single point in time.
+    /// </summary>
+    /// <param name="scheduledTime">The date and time when the job should be triggered.</param>
+    /// <returns></returns>
+    public static DaprJobSchedule FromDateTime(DateTimeOffset scheduledTime)
+    {
+        ArgumentVerifier.ThrowIfNull(scheduledTime, nameof(scheduledTime));
+        return new DaprJobSchedule(scheduledTime.ToString("O"));
+    }
+    
     /// <summary>
     /// Specifies a schedule using a Cron-like expression or '@' prefixed period strings.
     /// </summary>
     /// <param name="expression">The systemd Cron-like expression indicating when the job should be triggered.</param>
-    /// <returns></returns>
     public static DaprJobSchedule FromExpression(string expression)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(expression, nameof(expression));
-
         return new DaprJobSchedule(expression);
+    }
+
+    /// <summary>
+    /// Specifies a schedule using a duration interval articulated via a <see cref="TimeSpan"/>.
+    /// </summary>
+    /// <param name="duration">The duration interval.</param>
+    public static DaprJobSchedule FromDuration(TimeSpan duration)
+    {
+        ArgumentVerifier.ThrowIfNull(duration, nameof(duration));
+        return new DaprJobSchedule(duration.ToDurationString());
     }
 
     /// <summary>

@@ -10,11 +10,17 @@ public class StringExtensionsTests
     public void EndsWithAny_ContainsMatch()
     {
         const string testValue = "@weekly";
-        var result = testValue.EndsWithAny(new List<string> {"every", "monthly", "weekly", "daily", "midnight", "hourly"});
+        var result = testValue.EndsWithAny(new List<string>
+        {
+            "every",
+            "monthly",
+            "weekly",
+            "daily",
+            "midnight",
+            "hourly"
+        });
         Assert.True(result);
-    )
-
-}
+    }
 
     [Fact]
     public void EndsWithAny_DoesNotContainMatch()

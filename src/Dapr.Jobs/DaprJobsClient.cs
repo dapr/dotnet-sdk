@@ -35,45 +35,21 @@ public abstract class DaprJobsClient : IDisposable
     private bool disposed;
 
     /// <summary>
-    /// Schedules a recurring job using a systemd Cron-like expression or '@' prefixed period string.
+    /// Schedules a job with Dapr.
     /// </summary>
     /// <param name="jobName">The name of the job being scheduled.</param>
-    /// <param name="schedule">The job schedule to trigger the job by.</param>
+    /// <param name="schedule">The schedule defining when the job will be triggered.</param>
+    /// <param name="payload">The main payload of the job.</param>
     /// <param name="startingFrom">The optional point-in-time from which the job schedule should start.</param>
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
-    /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleRecurringJobAsync(string jobName, DaprJobSchedule schedule, DateTimeOffset? startingFrom = null,
-        int? repeats = null, DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null,
+    [Obsolete(
+        "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    public abstract Task ScheduleJobAsync(string jobName, DaprJobSchedule schedule,
+        ReadOnlyMemory<byte>? payload = null, DateTimeOffset? startingFrom = null, int? repeats = null,
+        DateTimeOffset? ttl = null,
         CancellationToken cancellationToken = default);
-    
-    /// <summary>
-    /// Schedules a recurring job with an optional future starting date.
-    /// </summary>
-    /// <param name="jobName">The name of the job being scheduled.</param>
-    /// <param name="interval">The interval at which the job should be triggered.</param>
-    /// <param name="startingFrom">The optional point-in-time from which the job schedule should start.</param>
-    /// <param name="repeats">The optional maximum number of times the job should be triggered.</param>
-    /// <param name="ttl">Represents when the job should expire. If both this and StartingFrom are set, TTL needs to represent a later point in time.</param>
-    /// <param name="payload">The main payload of the job.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleIntervalJobAsync(string jobName, TimeSpan interval,
-        DateTimeOffset? startingFrom = null, int? repeats = null, DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Schedules a one-time job.
-    /// </summary>
-    /// <param name="jobName">The name of the job being scheduled.</param>
-    /// <param name="scheduledTime">The point in time when the job should be run.</param>
-    /// <param name="payload">Stores the main payload of the job which is passed to the trigger function.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public abstract Task ScheduleOneTimeJobAsync(string jobName, DateTimeOffset scheduledTime,
-        ReadOnlyMemory<byte>? payload = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves the details of a registered job.
@@ -95,9 +71,7 @@ public abstract class DaprJobsClient : IDisposable
     internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
     {
         if (string.IsNullOrWhiteSpace(apiToken))
-        {
             return null;
-        }
 
         return new KeyValuePair<string, string>("dapr-api-token", apiToken);
     }

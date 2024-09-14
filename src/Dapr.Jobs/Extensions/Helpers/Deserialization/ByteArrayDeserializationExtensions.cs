@@ -9,6 +9,11 @@ namespace Dapr.Jobs.Extensions.Helpers.Deserialization;
 public static class ByteArrayDeserializationExtensions
 {
     /// <summary>
+    /// Local JSON serializer option defaults.
+    /// </summary>
+    private static readonly JsonSerializerOptions defaultOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+    /// <summary>
     /// Deserializes an array of UTF-8 encoded bytes to a string.
     /// </summary>
     /// <param name="bytes">The array of UTF-8 encoded bytes.</param>
@@ -25,7 +30,7 @@ public static class ByteArrayDeserializationExtensions
     public static TJsonObject? DeserializeFromJsonBytes<TJsonObject>(this ReadOnlySpan<byte> bytes,
         JsonSerializerOptions? jsonSerializerOptions = null)
     {
-        var serializerOptions = jsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var serializerOptions = jsonSerializerOptions ?? defaultOptions;
         return JsonSerializer.Deserialize<TJsonObject>(bytes, serializerOptions);
     }
 }

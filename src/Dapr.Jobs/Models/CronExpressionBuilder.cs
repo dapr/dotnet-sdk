@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.Serialization;
+using Dapr.Common;
+using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
 
 namespace Dapr.Jobs.Models
 {
@@ -21,14 +18,64 @@ namespace Dapr.Jobs.Models
         private string _month = "*";
         private string _dayOfWeek = "*";
 
+        /// <summary>
+        /// Reflects an expression in which the developer specifies a series of numeric values and the period they're associated
+        /// with indicating when the trigger should occur.
+        /// </summary>
+        /// <param name="period">The period of time within which the values should be associated.</param>
+        /// <param name="values">The numerical values of the time period on which the schedule should trigger.</param>
+        /// <returns></returns>
         public CronExpressionBuilder On(OnCronPeriod period, params int[] values)
         {
+            switch (period)
+            {
+                //Validate by period
+                case OnCronPeriod.Second or OnCronPeriod.Minute or OnCronPeriod.Hour when values.Any(a => a is < 0 or > 59):
+                    throw new ArgumentOutOfRangeException(nameof(values), "All values must be within 0 and 59, inclusively.");
+                case OnCronPeriod.DayOfMonth when values.Any(a => a is < 0 or > 31):
+                    throw new ArgumentOutOfRangeException(nameof(values), "All values must be within 1 and 31, inclusively."); }
 
+            var strValue = string.Join(',', values.Distinct().OrderBy(a => a));
+
+            switch (period)
+            {
+                case OnCronPeriod.Second:
+                    _seconds = strValue;
+                    break;
+                case OnCronPeriod.Minute:
+                    _minutes = strValue;
+                    break;
+                case OnCronPeriod.Hour:
+                    _hours = strValue;
+                    break;
+                case OnCronPeriod.DayOfMonth:
+                    _dayOfMonth = strValue;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(period), period, null);
+            }
+
+            return this;
         }
 
+        /// <summary>
+        /// Reflects an expression in which the developer specifies a series of months in the year on which the trigger should occur.
+        /// </summary>
+        /// <param name="months">The months of the year to invoke the trigger on.</param>
+        public CronExpressionBuilder On(params MonthOfYear[] months)
+        {
+            _month = string.Join(',', months.Distinct().OrderBy(a => a));
+            return this;
+        }
+
+        /// <summary>
+        /// Reflects an expression in which the developer specifies a series of days of the week on which the trigger should occur.
+        /// </summary>
+        /// <param name="days">The days of the week to invoke the trigger on.</param>
         public CronExpressionBuilder On(params DayOfWeek[] days)
         {
-            var value = string.Join(',', days.Distinct().OrderBy(a => a));
+            _dayOfWeek = string.Join(',', days.Distinct().OrderBy(a => a).Select(a => a.GetValueFromEnumMember()));
+            return this;
         }
 
         /// <summary>
@@ -99,34 +146,11 @@ namespace Dapr.Jobs.Models
             return this;
         }
 
-
-
-        private void SetPeriod(CronPeriod period, string value)
-        {
-            switch (period)
-            {
-                case CronPeriod.Second:
-                    _seconds = value;
-                    break;
-                case CronPeriod.Minute:
-                    _minutes = value;
-                    break;
-                case CronPeriod.Hour:
-                    _hours = value;
-                    break;
-                case CronPeriod.DayOfMonth:
-                    _dayOfMonth = value;
-                    break;
-                case CronPeriod.Month:
-                    _month = value;
-                    break;
-                case CronPeriod.DayOfWeek:
-                    _dayOfWeek = value;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(period), period, null);
-            }
-        }
+        /// <summary>
+        /// Builds the Cron expression.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString() => $"{_seconds} {_minutes} {_hours} {_dayOfMonth} {_month} {_dayOfWeek}";
     }
 
     /// <summary>
@@ -146,10 +170,6 @@ namespace Dapr.Jobs.Models
         /// Identifies the hour value for an "On" expression.
         /// </summary>
         Hour,
-        /// <summary>
-        /// Identifies the month value for an "On" expression.
-        /// </summary>
-        Month,
         /// <summary>
         /// Identifies the day in the month for an "On" expression.
         /// </summary>
@@ -260,50 +280,50 @@ namespace Dapr.Jobs.Models
         /// <summary>
         /// Month of January.
         /// </summary>
-        January = 0,
+        January = 1,
         /// <summary>
         /// Month of February.
         /// </summary>
-        February = 1,
+        February = 2,
         /// <summary>
         /// Month of March.
         /// </summary>
-        March = 2,
+        March = 3,
         /// <summary>
         /// Month of April.
         /// </summary>
-        April = 3,
+        April = 4,
         /// <summary>
         /// Month of May.
         /// </summary>
-        May = 4,
+        May = 5,
         /// <summary>
         /// Month of June.
         /// </summary>
-        June = 5,
+        June = 6,
         /// <summary>
         /// Month of July.
         /// </summary>
-        July = 6,
+        July = 7,
         /// <summary>
         /// Month of August.
         /// </summary>
-        August = 7,
+        August = 8,
         /// <summary>
         /// Month of September.
         /// </summary>
-        September = 8,
+        September = 9,
         /// <summary>
         /// Month of October.
         /// </summary>
-        October = 9,
+        October = 10,
         /// <summary>
         /// Month of November.
         /// </summary>
-        November = 10,
+        November = 11,
         /// <summary>
         /// Month of December.
         /// </summary>
-        December = 11
+        December = 12
     }
 }
