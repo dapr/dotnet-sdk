@@ -30,6 +30,18 @@ public sealed class CronExpressionBuilderTests
     }
 
     [Fact]
+    public void OnVariations()
+    {
+        var builder = new CronExpressionBuilder()
+            .On(OnCronPeriod.Second, 5)
+            .On(OnCronPeriod.Minute, 12)
+            .On(OnCronPeriod.Hour, 16)
+            .On(OnCronPeriod.DayOfMonth, 7);
+        var result = builder.ToString();
+        Assert.Equal("5 12 16 7 * *", result);
+    }
+
+    [Fact]
     public void BottomOfEveryMinute()
     {
         var builder = new CronExpressionBuilder()
@@ -189,6 +201,16 @@ public sealed class CronExpressionBuilderTests
             .Through(ThroughCronPeriod.Month, 0, 8);
         var result = builder.ToString();
         Assert.Equal("0-15 0-15 0-15 1-10 0-8 *", result);
+    }
+
+    [Fact]
+    public void ShouldThrowIfIntervalIsBelowRange()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .Every(EveryCronPeriod.Minute, -5);
+        });
     }
 
     [Fact]
