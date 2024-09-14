@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 
-namespace Dapr.Jobs.Extensions.Helpers.Serialization;
+namespace Dapr.Jobs.Extensions;
 
 /// <summary>
 /// Provides helper extensions for performing serialization operations when scheduling one-time Cron jobs for the developer.

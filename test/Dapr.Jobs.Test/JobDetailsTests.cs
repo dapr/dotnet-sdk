@@ -14,10 +14,10 @@ public class JobDetailsTests
         var jobDetails = new JobDetails { Schedule = cronSchedule };
 
         Assert.False(jobDetails.IsIntervalExpression);
-        Assert.True(jobDetails.IsCronExpression);
+        Assert.True(jobDetails.IsScheduleExpression);
         Assert.Null(jobDetails.Interval);
         Assert.Equal(cronSchedule, jobDetails.Schedule);
-        Assert.Equal(cronSchedule, jobDetails.CronExpression);
+        Assert.Equal(cronSchedule, jobDetails.);
     }
 
     [Fact]

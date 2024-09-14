@@ -11,68 +11,23 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Text.Json.Serialization;
-using Dapr.Jobs.Extensions;
-
 namespace Dapr.Jobs.Models.Responses;
 
 /// <summary>
 /// Represents the details of a retrieved job.
 /// </summary>
-public sealed record JobDetails
+/// <param name="Schedule">Represents the schedule that triggers the job.</param>
+public sealed record JobDetails(DaprJobSchedule Schedule)
 {
-    /// <summary>
-    /// If the schedule is recurring due to either a Cron-like or prefixed period value, its representation can be retrieved from
-    /// this property.
-    /// </summary>
-    public DaprJobSchedule? ScheduleExpression => IsPrefixedPeriodExpression || IsScheduleExpression ? new DaprJobSchedule(Schedule!) : null;
-
-    /// <summary>
-    /// The interval expression that defines when a job should be triggered.
-    /// </summary>
-    public TimeSpan? Interval => IsIntervalExpression ? Schedule?.FromDurationString() : null;
-
-    /// <summary>
-    /// Represents whether the job is scheduled using a Cron expression.
-    /// </summary>
-    public bool IsScheduleExpression => Schedule is not null && !IsPrefixedPeriodExpression && !IsIntervalExpression;
-
-    /// <summary>
-    /// Indicates that the expression is a prefixed period.
-    /// </summary>
-    public bool IsPrefixedPeriodExpression
-    {
-        get =>
-            Schedule is not null && Schedule.StartsWith('@') && ((Schedule.StartsWith("@every") && Schedule.Length > "@every".Length) ||
-                                                                 Schedule.EndsWithAny(new[]
-                                                                 {
-                                                                     "yearly", "monthly", "weekly", "daily",
-                                                                     "midnight", "hourly"
-                                                                 }));
-    }
-
-    /// <summary>
-    /// Represents whether the job is scheduled using an interval expression.
-    /// </summary>
-    public bool IsIntervalExpression => Schedule is not null && Schedule.IsDurationString();
-
-    /// <summary>
-    /// The string-based schedule value returned by the job details payload.
-    /// </summary>
-    [JsonPropertyName("schedule")]
-    public string? Schedule { get; init; } = null;
-
     /// <summary>
     /// Allows for jobs with fixed repeat counts.
     /// </summary>
-    [JsonPropertyName("repeats")]
     public int? RepeatCount { get; init; } = null;
 
     /// <summary>
     /// Identifies a point-in-time representing when the job schedule should start from,
     /// or as a "one-shot" time if other scheduling fields are not provided.
     /// </summary>
-    [JsonPropertyName("dueTime")]
     public DateTimeOffset? DueTime { get; init; } = null;
 
     /// <summary>
@@ -81,12 +36,10 @@ public sealed record JobDetails
     /// <remarks>
     /// This must be greater than <see cref="DueTime"/> if both are set.
     /// </remarks>
-    [JsonPropertyName("ttl")]
     public DateTimeOffset? Ttl { get; init; } = null;
 
     /// <summary>
     /// Stores the main payload of the job which is passed to the trigger function.
     /// </summary>
-    [JsonPropertyName("data")]
     public ReadOnlyMemory<byte>? Payload { get; init; } = null;
 }

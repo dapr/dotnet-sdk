@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Dapr.Jobs.Extensions.Helpers.Deserialization;
+using Dapr.Jobs.Extensions;
 using Xunit;
 
 #nullable enable

@@ -59,14 +59,15 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// </summary>
     /// <param name="jobName">The name of the job being scheduled.</param>
     /// <param name="schedule">The schedule defining when the job will be triggered.</param>
+    /// <param name="payload">The main payload of the job.</param>
     /// <param name="startingFrom">The optional point-in-time from which the job schedule should start.</param>
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
-    /// <param name="payload">The main payload of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public override async Task ScheduleJobAsync(string jobName, DaprJobSchedule schedule, DateTimeOffset? startingFrom,
-        int? repeats = null, DateTimeOffset? ttl = null, ReadOnlyMemory<byte>? payload = null,
+    public override async Task ScheduleJobAsync(string jobName, DaprJobSchedule schedule,
+        ReadOnlyMemory<byte>? payload = null, DateTimeOffset? startingFrom = null, int? repeats = null,
+        DateTimeOffset? ttl = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(jobName, nameof(jobName));
@@ -139,8 +140,8 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
             throw new DaprException(
                 "Get job operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
         }
-        
-        return new JobDetails
+
+        return new JobDetails(new DaprJobSchedule(response.Job.Schedule))
         {
             DueTime = response.Job.DueTime is not null ? DateTime.Parse(response.Job.DueTime) : null,
             Ttl = response.Job.Ttl is not null ? DateTime.Parse(response.Job.Ttl) : null,

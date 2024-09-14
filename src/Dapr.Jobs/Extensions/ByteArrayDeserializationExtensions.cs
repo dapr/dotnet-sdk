@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 
-namespace Dapr.Jobs.Extensions.Helpers.Deserialization;
+namespace Dapr.Jobs.Extensions;
 
 /// <summary>
 /// Provides utility extensions for deserializing an array of UTF-8 encoded bytes.

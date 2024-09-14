@@ -1,4 +1,6 @@
-﻿using Dapr.Jobs.Models;
+﻿using System.Text.RegularExpressions;
+using Dapr.Jobs.Extensions;
+using Dapr.Jobs.Models;
 
 namespace Dapr.Jobs;
 
@@ -7,6 +9,13 @@ namespace Dapr.Jobs;
 /// </summary>
 public sealed class DaprJobSchedule
 {
+    /// <summary>
+    /// A regular expression used to evaluate whether a given string embodies a Cron expression or not.
+    /// </summary>
+    private readonly Regex isCronExpression =
+        new Regex(
+            @"^(\*|([0-5]?\d)) (\*|([0-5]?\d)) (\*|([01]?\d|2[0-3])) (\*|([01]?\d|2[0-9]|3[01])) (\*|(1[0-2]|0?[1-9])) (\*|([0-6]|(MON|TUE|WED|THU|FRI|SAT|SUN)(,(MON|TUE|WED|THU|FRI|SAT|SUN))*))$", RegexOptions.Compiled);
+
     /// <summary>
     /// The value of the expression represented by the schedule.
     /// </summary>
@@ -91,4 +100,27 @@ public sealed class DaprJobSchedule
     /// Specifies a schedule in which the job is triggered at the top of every hour.
     /// </summary>
     public static DaprJobSchedule Hourly => new DaprJobSchedule("@hourly");
+
+    /// <summary>
+    /// Reflects that the schedule represents a prefixed period expression.
+    /// </summary>
+    public bool IsPrefixedPeriodExpression =>
+        ExpressionValue.StartsWith('@') &&
+        ((ExpressionValue.StartsWith("@every") && ExpressionValue.Length > "@every".Length) ||
+         ExpressionValue.EndsWithAny(new[] { "yearly", "monthly", "weekly", "daily", "midnight", "hourly" }));
+
+    /// <summary>
+    /// Reflects that the schedule represents a fixed point in time.
+    /// </summary>
+    public bool IsPointInTimeExpression => DateTimeOffset.TryParse(ExpressionValue, out _);
+
+    /// <summary>
+    /// Reflects that the schedule represents a Golang duration expression.
+    /// </summary>
+    public bool IsIntervalExpression => ExpressionValue.IsDurationString();
+
+    /// <summary>
+    /// Reflects that the schedule represents a Cron expression.
+    /// </summary>
+    public bool IsCronExpression => isCronExpression.IsMatch(ExpressionValue);
 }
