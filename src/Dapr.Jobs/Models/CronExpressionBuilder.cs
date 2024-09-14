@@ -63,7 +63,7 @@ public sealed class CronExpressionBuilder
     /// <param name="months">The months of the year to invoke the trigger on.</param>
     public CronExpressionBuilder On(params MonthOfYear[] months)
     {
-        month = string.Join(',', months.Distinct().OrderBy(a => a));
+        month = string.Join(',', months.Distinct().OrderBy(a => a).Select(a => a.GetValueFromEnumMember()));
         return this;
     }
 
@@ -117,18 +117,34 @@ public sealed class CronExpressionBuilder
     }
 
     /// <summary>
-    /// Reflects an expression in which the developer defines bounded range of days.
+    /// Reflects an expression in which the developer defines a bounded range of days.
     /// </summary>
     /// <param name="from">The start of the range.</param>
     /// <param name="to">The end of the range.</param>
     public CronExpressionBuilder Through(DayOfWeek from, DayOfWeek to)
     {
         if (from > to)
-            throw new ArgumentException("The date representing the From property should precede the To property");
+            throw new ArgumentException("The day representing the From property should precede the To property");
         if (from == to)
             throw new ArgumentException("The From and To properties should not be equivalent");
 
         dayOfWeek = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
+        return this;
+    }
+
+    /// <summary>
+    /// Reflects an expression in which the developer defines a bounded range of months.
+    /// </summary>
+    /// <param name="from">The start of the range.</param>
+    /// <param name="to">The end of the range.</param>
+    public CronExpressionBuilder Through(MonthOfYear from, MonthOfYear to)
+    {
+        if (from > to)
+            throw new ArgumentException("The month representing the From property should precede the To property");
+        if (from == to)
+            throw new ArgumentException("The From and To properties should not be equivalent");
+
+        month = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
         return this;
     }
 
@@ -193,6 +209,9 @@ public sealed class CronExpressionBuilder
             case EveryCronPeriod.Month:
                 month = value;
                 break;
+            case EveryCronPeriod.DayInMonth:
+                dayOfMonth = value;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(period), period, null);
         }
@@ -250,7 +269,11 @@ public enum EveryCronPeriod
     /// <summary>
     /// Identifies the month value in an "Every" expression.
     /// </summary>
-    Month
+    Month,
+    /// <summary>
+    /// Identifies the days in the month value in an "Every" expression.
+    /// </summary>
+    DayInMonth
 }
 
 /// <summary>
@@ -361,49 +384,61 @@ public enum MonthOfYear
     /// <summary>
     /// Month of January.
     /// </summary>
+    [EnumMember(Value="JAN")]
     January = 1,
     /// <summary>
     /// Month of February.
     /// </summary>
+    [EnumMember(Value="FEB")]
     February = 2,
     /// <summary>
     /// Month of March.
     /// </summary>
+    [EnumMember(Value = "MAR")]
     March = 3,
     /// <summary>
     /// Month of April.
     /// </summary>
+    [EnumMember(Value = "APR")]
     April = 4,
     /// <summary>
     /// Month of May.
     /// </summary>
+    [EnumMember(Value = "MAY")]
     May = 5,
     /// <summary>
     /// Month of June.
     /// </summary>
+    [EnumMember(Value = "JUN")]
     June = 6,
     /// <summary>
     /// Month of July.
     /// </summary>
+    [EnumMember(Value = "JUL")]
     July = 7,
     /// <summary>
     /// Month of August.
     /// </summary>
+    [EnumMember(Value = "AUG")]
     August = 8,
     /// <summary>
     /// Month of September.
     /// </summary>
+    [EnumMember(Value = "SEP")]
     September = 9,
     /// <summary>
     /// Month of October.
     /// </summary>
+    [EnumMember(Value = "OCT")]
     October = 10,
     /// <summary>
     /// Month of November.
     /// </summary>
+    [EnumMember(Value = "NOV")]
     November = 11,
     /// <summary>
     /// Month of December.
     /// </summary>
+    [EnumMember(Value = "DEC")]
     December = 12
 }

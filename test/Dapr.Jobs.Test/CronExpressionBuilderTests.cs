@@ -1,5 +1,8 @@
-﻿using Dapr.Jobs.Models;
+﻿using System;
+using Dapr.Jobs.Models;
 using Xunit;
+using ArgumentException = System.ArgumentException;
+using DayOfWeek = Dapr.Jobs.Models.DayOfWeek;
 
 namespace Dapr.Jobs.Test;
 
@@ -9,6 +12,20 @@ public sealed class CronExpressionBuilderTests
     public void WildcardByDefault()
     {
         var builder = new CronExpressionBuilder();
+        var result = builder.ToString();
+        Assert.Equal("* * * * * *", result);
+    }
+
+    [Fact]
+    public void WildcardByAssertion()
+    {
+        var builder = new CronExpressionBuilder()
+            .Each(CronPeriod.Second)
+            .Each(CronPeriod.Minute)
+            .Each(CronPeriod.Hour)
+            .Each(CronPeriod.DayOfWeek)
+            .Each(CronPeriod.DayOfMonth)
+            .Each(CronPeriod.Month);
         var result = builder.ToString();
         Assert.Equal("* * * * * *", result);
     }
@@ -100,6 +117,33 @@ public sealed class CronExpressionBuilderTests
     }
 
     [Fact]
+    public void EveryFourthDayInJanAprAugAndDecIfTheDayIsWednesdayOrFriday()
+    {
+        var builder = new CronExpressionBuilder()
+            .On(OnCronPeriod.Second, 30)
+            .On(OnCronPeriod.Minute, 15)
+            .On(OnCronPeriod.Hour, 6)
+            .Every(EveryCronPeriod.DayInMonth, 4)
+            .On(MonthOfYear.January, MonthOfYear.April, MonthOfYear.August, MonthOfYear.December)
+            .On(DayOfWeek.Wednesday, DayOfWeek.Friday);
+        var result = builder.ToString();
+        Assert.Equal("30 15 6 */4 JAN,APR,AUG,DEC WED,FRI", result);
+    }
+
+    [Fact]
+    public void EveryValidation()
+    {
+        var builder = new CronExpressionBuilder()
+            .Every(EveryCronPeriod.Second, 10)
+            .Every(EveryCronPeriod.Minute, 8)
+            .Every(EveryCronPeriod.Hour, 2)
+            .Every(EveryCronPeriod.DayInMonth, 5)
+            .Every(EveryCronPeriod.Month, 3);
+        var result = builder.ToString();
+        Assert.Equal("*/10 */8 */2 */5 */3 *", result);
+    }
+
+    [Fact]
     public void EveryDayAtNoon()
     {
         var builder = new CronExpressionBuilder()
@@ -123,14 +167,138 @@ public sealed class CronExpressionBuilderTests
     }
 
     [Fact]
-    public void FourThirtyPmOnWednesdayThroughSaturday()
+    public void FourThirtyPmOnWednesdayThroughSaturdayFromOctoberToDecember()
     {
         var builder = new CronExpressionBuilder()
             .On(OnCronPeriod.Second, 0)
             .On(OnCronPeriod.Minute, 30)
             .On(OnCronPeriod.Hour, 16)
-            .Through(DayOfWeek.Wednesday, DayOfWeek.Saturday);
+            .Through(DayOfWeek.Wednesday, DayOfWeek.Saturday)
+            .Through(MonthOfYear.October, MonthOfYear.December);
         var result = builder.ToString();
-        Assert.Equal("0 30 16 * * WED-SAT", result);
+        Assert.Equal("0 30 16 * OCT-DEC WED-SAT", result);
+    }
+
+    [Fact]
+    public void ThroughFirstAvailableUnits()
+    {
+        var builder = new CronExpressionBuilder()
+            .Through(ThroughCronPeriod.Second, 0, 15)
+            .Through(ThroughCronPeriod.Minute, 0, 15)
+            .Through(ThroughCronPeriod.Hour, 0, 15)
+            .Through(ThroughCronPeriod.DayOfMonth, 1, 10)
+            .Through(ThroughCronPeriod.Month, 0, 8);
+        var result = builder.ToString();
+        Assert.Equal("0-15 0-15 0-15 1-10 0-8 *", result);
+    }
+
+    [Fact]
+    public void ShouldThrowIfRangeValuesAreEqual()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .Through(ThroughCronPeriod.Hour, 8, 8);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfRangeValuesAreInDescendingOrder()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .Through(MonthOfYear.December, MonthOfYear.February);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfRangedMonthsAreEqual()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .Through(MonthOfYear.April, MonthOfYear.April);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfRangedMonthsAreInDescendingOrder()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .Through(ThroughCronPeriod.Minute, 10, 5);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfRangedDaysAreEqualInRange()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .Through(DayOfWeek.Thursday, DayOfWeek.Thursday);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfRangedDaysAreInDescendingOrder()
+    {
+        Assert.Throws<ArgumentException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .Through(DayOfWeek.Thursday, DayOfWeek.Monday);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfOnValuesAreBelowRange()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .On(OnCronPeriod.Second, -2);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfOnValuesAreBelowRange2()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .On(OnCronPeriod.Hour, -10);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfOnValuesAreBelowRange3()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .On(OnCronPeriod.DayOfMonth, -5);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfOnValuesAreAboveRange()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .On(OnCronPeriod.Minute, 60);
+        });
+    }
+
+    [Fact]
+    public void ShouldThrowIfOnValuesAreAboveRange2()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            var builder = new CronExpressionBuilder()
+                .On(OnCronPeriod.DayOfMonth, 32);
+        });
     }
 }
