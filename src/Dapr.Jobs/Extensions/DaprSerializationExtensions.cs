@@ -9,6 +9,11 @@ namespace Dapr.Jobs.Extensions;
 public static class DaprJobsSerializationExtensions
 {
     /// <summary>
+    /// Default JSON serializer options.
+    /// </summary>
+    private static readonly JsonSerializerOptions defaultOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+    /// <summary>
     /// Schedules a job with Dapr.
     /// </summary>
     /// <param name="client">The <see cref="DaprJobsClient"/> instance.</param>
@@ -27,7 +32,7 @@ public static class DaprJobsSerializationExtensions
     {
         ArgumentNullException.ThrowIfNull(payload, nameof(payload));
 
-        var serializerOptions = jsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var serializerOptions = jsonSerializerOptions ?? defaultOptions;
         var payloadBytes =
             JsonSerializer.SerializeToUtf8Bytes(payload, serializerOptions);
 
