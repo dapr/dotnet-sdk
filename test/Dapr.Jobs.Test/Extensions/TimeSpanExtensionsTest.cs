@@ -14,7 +14,7 @@
 using System;
 using Xunit;
 
-namespace Dapr.Jobs.Test;
+namespace Dapr.Jobs.Test.Extensions;
 
 public class TimeSpanExtensionsTest
 {

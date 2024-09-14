@@ -4,7 +4,7 @@ using Dapr.Jobs.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Dapr.Jobs.Test;
+namespace Dapr.Jobs.Test.Extensions;
 
 public class DaprJobsServiceCollectionExtensionsTest
 {
@@ -15,12 +15,12 @@ public class DaprJobsServiceCollectionExtensionsTest
 
         var clientBuilder = new Action<DaprJobsClientBuilder>(builder =>
             builder.UseDaprApiToken("abc"));
-        
+
         services.AddDaprJobsClient(); //Sets a default API token value of an empty string
         services.AddDaprJobsClient(clientBuilder); //Sets the API token value
 
         var serviceProvider = services.BuildServiceProvider();
-        DaprJobsGrpcClient daprJobClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
+        var daprJobClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
 
         Assert.Null(daprJobClient!.apiTokenHeader);
         Assert.False(daprJobClient.httpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
@@ -65,7 +65,7 @@ public class DaprJobsServiceCollectionExtensionsTest
         Assert.Equal("dapr-api-token", client.apiTokenHeader.Value.Key);
         Assert.Equal("abcdef", client.apiTokenHeader.Value.Value);
     }
-    
+
     private class TestSecretRetriever
     {
         public string GetApiTokenValue() => "abcdef";

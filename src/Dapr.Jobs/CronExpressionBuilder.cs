@@ -1,9 +1,19 @@
 ﻿using System.Runtime.Serialization;
 using Dapr.Common;
+
+/* Unmerged change from project 'Dapr.Jobs (net8)'
+Before:
+using ArgumentException = System.ArgumentException;
+After:
+using Dapr.Jobs;
+using Dapr.Jobs;
+using Dapr.Jobs.Models;
+using ArgumentException = System.ArgumentException;
+*/
 using ArgumentException = System.ArgumentException;
 using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
 
-namespace Dapr.Jobs.Models;
+namespace Dapr.Jobs;
 
 /// <summary>
 /// A fluent API used to build a valid Cron expression.
@@ -32,7 +42,8 @@ public sealed class CronExpressionBuilder
             case OnCronPeriod.Second or OnCronPeriod.Minute or OnCronPeriod.Hour when values.Any(a => a is < 0 or > 59):
                 throw new ArgumentOutOfRangeException(nameof(values), "All values must be within 0 and 59, inclusively.");
             case OnCronPeriod.DayOfMonth when values.Any(a => a is < 0 or > 31):
-                throw new ArgumentOutOfRangeException(nameof(values), "All values must be within 1 and 31, inclusively."); }
+                throw new ArgumentOutOfRangeException(nameof(values), "All values must be within 1 and 31, inclusively.");
+        }
 
         var strValue = string.Join(',', values.Distinct().OrderBy(a => a));
 
@@ -342,37 +353,37 @@ public enum DayOfWeek
     /// <summary>
     /// Sunday.
     /// </summary>
-    [EnumMember(Value="SUN")]
+    [EnumMember(Value = "SUN")]
     Sunday = 0,
     /// <summary>
     /// Monday.
     /// </summary>
-    [EnumMember(Value="MON")]
+    [EnumMember(Value = "MON")]
     Monday = 1,
     /// <summary>
     /// Tuesday.
     /// </summary>
-    [EnumMember(Value="TUE")]
+    [EnumMember(Value = "TUE")]
     Tuesday = 2,
     /// <summary>
     /// Wednesday.
     /// </summary>
-    [EnumMember(Value="WED")]
+    [EnumMember(Value = "WED")]
     Wednesday = 3,
     /// <summary>
     /// Thursday.
     /// </summary>
-    [EnumMember(Value="THU")]
+    [EnumMember(Value = "THU")]
     Thursday = 4,
     /// <summary>
     /// Friday.
     /// </summary>
-    [EnumMember(Value="FRI")]
+    [EnumMember(Value = "FRI")]
     Friday = 5,
     /// <summary>
     /// Saturday.
     /// </summary>
-    [EnumMember(Value="SAT")]
+    [EnumMember(Value = "SAT")]
     Saturday = 6
 }
 
@@ -384,12 +395,12 @@ public enum MonthOfYear
     /// <summary>
     /// Month of January.
     /// </summary>
-    [EnumMember(Value="JAN")]
+    [EnumMember(Value = "JAN")]
     January = 1,
     /// <summary>
     /// Month of February.
     /// </summary>
-    [EnumMember(Value="FEB")]
+    [EnumMember(Value = "FEB")]
     February = 2,
     /// <summary>
     /// Month of March.

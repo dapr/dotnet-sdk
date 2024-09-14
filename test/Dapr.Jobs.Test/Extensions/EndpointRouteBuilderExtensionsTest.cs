@@ -1,4 +1,4 @@
-﻿namespace Dapr.Jobs.Test;
+﻿namespace Dapr.Jobs.Test.Extensions;
 
 public class EndpointRouteBuilderExtensionsTest
 {
@@ -16,7 +16,7 @@ public class EndpointRouteBuilderExtensionsTest
     //    };
 
     //    var result = endpoints.Object.MapDaprScheduledJob(jobName, handler);
-        
+
     //    var registeredRoutes = endpoints.Invocations
     //        .Where(invocation => invocation.Method.Name == "MapPost")
     //        .ToList();

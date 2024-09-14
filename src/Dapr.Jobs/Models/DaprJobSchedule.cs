@@ -1,6 +1,5 @@
 ﻿using System.Text.RegularExpressions;
 using Dapr.Jobs.Extensions;
-using Dapr.Jobs.Models;
 
 namespace Dapr.Jobs;
 

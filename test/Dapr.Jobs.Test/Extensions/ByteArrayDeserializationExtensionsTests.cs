@@ -1,14 +1,14 @@
-﻿using System.Text;
+﻿#nullable enable
+
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dapr.Jobs.Extensions;
 using Xunit;
 
-#nullable enable
+namespace Dapr.Jobs.Test.Extensions;
 
-namespace Dapr.Jobs.Test;
-
-public class ByteArrayDeserializationExtensionsTest
+public class ByteArrayDeserializationExtensionsTests
 {
     [Fact]
     public void DeserializeToString_Deserialize()

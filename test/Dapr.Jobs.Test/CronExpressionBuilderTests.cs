@@ -1,8 +1,7 @@
 ﻿using System;
-using Dapr.Jobs.Models;
 using Xunit;
 using ArgumentException = System.ArgumentException;
-using DayOfWeek = Dapr.Jobs.Models.DayOfWeek;
+using DayOfWeek = Dapr.Jobs.DayOfWeek;
 
 namespace Dapr.Jobs.Test;
 
