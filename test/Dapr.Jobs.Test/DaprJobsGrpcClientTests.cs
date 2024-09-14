@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.Http;
+using Dapr.Jobs.Models;
 using Moq;
 using Xunit;
 
@@ -7,6 +8,7 @@ namespace Dapr.Jobs.Test;
 
 public sealed class DaprJobsGrpcClientTests
 {
+
     [Fact]
     public void ScheduleJobAsync_RepeatsCannotBeLessThanZero()
     {
@@ -153,4 +155,6 @@ public sealed class DaprJobsGrpcClientTests
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
+
+    private sealed record TestPayload(string Name, string Color);
 }

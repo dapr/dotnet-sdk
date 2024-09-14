@@ -14,7 +14,7 @@
 using System.Text.RegularExpressions;
 using Dapr.Jobs.Extensions;
 
-namespace Dapr.Jobs;
+namespace Dapr.Jobs.Models;
 
 /// <summary>
 /// Used to build a schedule for a job.

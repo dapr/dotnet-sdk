@@ -2,6 +2,7 @@
 using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
+using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 
 var builder = WebApplication.CreateBuilder(args);

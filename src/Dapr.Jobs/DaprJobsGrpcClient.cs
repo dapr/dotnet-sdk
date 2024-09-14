@@ -13,6 +13,7 @@
 
 using System.Net.Http.Headers;
 using System.Reflection;
+using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;

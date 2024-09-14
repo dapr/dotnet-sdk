@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 
 namespace Dapr.Jobs;

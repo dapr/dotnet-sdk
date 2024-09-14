@@ -13,6 +13,7 @@
 
 using System.Text;
 using System.Text.Json;
+using Dapr.Jobs.Models;
 
 namespace Dapr.Jobs.Extensions;
 

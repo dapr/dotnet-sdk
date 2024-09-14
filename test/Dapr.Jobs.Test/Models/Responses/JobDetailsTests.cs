@@ -13,6 +13,7 @@
 
 using System;
 using System.Text.Json;
+using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 using Xunit;
 
