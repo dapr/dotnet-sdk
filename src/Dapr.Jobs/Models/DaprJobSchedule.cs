@@ -24,6 +24,9 @@ public sealed class DaprJobSchedule
     /// <summary>
     /// Initializes the value of <see cref="ExpressionValue"/> based on the provided value from each of the factory methods.
     /// </summary>
+    /// <remarks>
+    /// Developers are intended to create a new <see cref="DaprJobSchedule"/> using the provided static factory methods.
+    /// </remarks>
     /// <param name="expressionValue">The value of the scheduling expression.</param>
     internal DaprJobSchedule(string expressionValue)
     {
