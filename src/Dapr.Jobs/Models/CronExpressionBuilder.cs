@@ -1,5 +1,6 @@
 ﻿using System.Runtime.Serialization;
 using Dapr.Common;
+using ArgumentException = System.ArgumentException;
 using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
 
 namespace Dapr.Jobs.Models;
@@ -73,6 +74,61 @@ public sealed class CronExpressionBuilder
     public CronExpressionBuilder On(params DayOfWeek[] days)
     {
         dayOfWeek = string.Join(',', days.Distinct().OrderBy(a => a).Select(a => a.GetValueFromEnumMember()));
+        return this;
+    }
+
+    /// <summary>
+    /// Reflects an expression in which the developer defines bounded range of numerical values for the specified period.
+    /// </summary>
+    /// <param name="period">The period of time within which the values should be associated.</param>
+    /// <param name="from">The start of the range.</param>
+    /// <param name="to">The end of the range.</param>
+    public CronExpressionBuilder Through(ThroughCronPeriod period, int from, int to)
+    {
+        if (from > to)
+            throw new ArgumentException("The date representing the From property should precede the To property");
+        if (from == to)
+            throw new ArgumentException("The From and To properties should not be equivalent");
+
+        var stringValue = $"{from}-{to}";
+
+        switch (period)
+        {
+            case ThroughCronPeriod.Second:
+                seconds = stringValue;
+                break;
+            case ThroughCronPeriod.Minute:
+                minutes = stringValue;
+                break;
+            case ThroughCronPeriod.Hour:
+                hours = stringValue;
+                break;
+            case ThroughCronPeriod.DayOfMonth:
+                dayOfMonth = stringValue;
+                break;
+            case ThroughCronPeriod.Month:
+                month = stringValue;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(period), period, null);
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// Reflects an expression in which the developer defines bounded range of days.
+    /// </summary>
+    /// <param name="from">The start of the range.</param>
+    /// <param name="to">The end of the range.</param>
+    public CronExpressionBuilder Through(DayOfWeek from, DayOfWeek to)
+    {
+        if (from > to)
+            throw new ArgumentException("The date representing the From property should precede the To property");
+        if (from == to)
+            throw new ArgumentException("The From and To properties should not be equivalent");
+
+        dayOfWeek = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
         return this;
     }
 
@@ -193,6 +249,33 @@ public enum EveryCronPeriod
     Hour,
     /// <summary>
     /// Identifies the month value in an "Every" expression.
+    /// </summary>
+    Month
+}
+
+/// <summary>
+/// Identifies the various Cron periods valid to use in a "Through" expression.
+/// </summary>
+public enum ThroughCronPeriod
+{
+    /// <summary>
+    /// Identifies the second value in the Cron expression.
+    /// </summary>
+    Second,
+    /// <summary>
+    /// Identifies the minute value in the Cron expression.
+    /// </summary>
+    Minute,
+    /// <summary>
+    /// Identifies the hour value in the Cron expression.
+    /// </summary>
+    Hour,
+    /// <summary>
+    /// Identifies the day of month value in the Cron expression.
+    /// </summary>
+    DayOfMonth,
+    /// <summary>
+    /// Identifies the month value in the Cron expression.
     /// </summary>
     Month
 }
