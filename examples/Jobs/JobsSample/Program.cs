@@ -33,7 +33,7 @@ var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
 var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
 
 logger.LogInformation("Scheduling one-time job 'myJob' to execute 10 seconds from now");
-await daprJobsClient.ScheduleOneTimeJobAsync("myJob", DateTime.UtcNow.AddSeconds(10),
+await daprJobsClient.ScheduleJobAsync("myJob", DaprJobSchedule.FromDateTime(DateTime.UtcNow.AddSeconds(10)),
     Encoding.UTF8.GetBytes("This is a test"));
 logger.LogInformation("Scheduled one-time job 'myJob'");
 
