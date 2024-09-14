@@ -24,10 +24,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="..\Shared\DaprDefaults.cs" Link="DaprDefaults.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
         <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
     </ItemGroup>
 
