@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Grpc.Core;
@@ -50,11 +51,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// A collection of <see cref="TaskCompletionSource"/> used to signal acknowledgement of received messages so a status
     /// can be sent back to the sidecar indicating what behavior should happen to each.
     /// </summary>
-    private readonly Dictionary<string, TaskCompletionSource<bool>> acknowledgementTasks = new();
-    /// <summary>
-    /// A semaphore used to ensure thread-safe access to the <see cref="acknowledgementTasks"/> dictionary.
-    /// </summary>
-    private readonly SemaphoreSlim acknowledgementSemaphore = new(1, 1);
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> acknowledgementTasks = new();
     
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
@@ -109,18 +106,9 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             }
         }, cancellationToken);
 
-        await acknowledgementSemaphore.WaitAsync(cancellationToken);
-        try
+        if (acknowledgementTasks.TryRemove(messageId, out var tcs))
         {
-            if (acknowledgementTasks.TryGetValue(messageId, out var tcs))
-            {
-                tcs.SetResult(true);
-                acknowledgementTasks.Remove(messageId);
-            }
-        }
-        finally
-        {
-            acknowledgementSemaphore.Release();
+            tcs.SetResult(true);
         }
     }
 
@@ -167,17 +155,8 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     private async Task WaitForAcknowledgementAsync(string messageId, CancellationToken cancellationToken)
     {
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await acknowledgementSemaphore.WaitAsync(cancellationToken);
+        acknowledgementTasks.AddOrUpdate(messageId, _ => tcs, (_, _) => tcs);
         
-        try
-        {
-            acknowledgementTasks[messageId] = tcs;
-        }
-        finally
-        {
-            acknowledgementSemaphore.Release();
-        }
-
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(options.MessageHandlingPolicy.TimeoutDuration);
         
@@ -256,6 +235,5 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     {
         await connectionManager.DisposeAsync();
         channel.Writer.Complete();
-        acknowledgementSemaphore.Dispose();
     }
 }
