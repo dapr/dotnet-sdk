@@ -78,7 +78,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing messages provided by the sidecar.</returns>
     public IAsyncEnumerable<TopicMessage> SubscribeAsync(CancellationToken cancellationToken)
     {
-        _ = FetchDataFromSidecar(channel.Writer, cancellationToken);
+        _ = FetchDataFromSidecarAsync(channel.Writer, cancellationToken);
         return ReadMessagesFromChannelAsync(channel.Reader, cancellationToken);
     }
 
@@ -192,7 +192,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     /// <param name="channelWriter">The channel writer instance.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    private async Task FetchDataFromSidecar(ChannelWriter<TopicMessage> channelWriter, CancellationToken cancellationToken)
+    private async Task FetchDataFromSidecarAsync(ChannelWriter<TopicMessage> channelWriter, CancellationToken cancellationToken)
     {
         try
         {
