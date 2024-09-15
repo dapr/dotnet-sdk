@@ -24,8 +24,15 @@ namespace Dapr.Jobs;
 /// </summary>
 public sealed class CronExpressionBuilder
 {
+    private static readonly Regex secondsAndMinutesRegex = new(@"^([0-5]?\d-[0-5]?\d)|([0-5]?\d,?)|(\*(\/[0-5]?\d)?)$", RegexOptions.Compiled);
+    private static readonly Regex hoursRegex = new(@"(([0-1]?\d)|(2[0-3])-([0-1]?\d)|(2[0-3]))|(([0-1]?\d)|(2[0-3]),?)|(\*(\/([0-1]?\d)|(2[0-3]))?)$", RegexOptions.Compiled);
+    private static readonly Regex dayOfTheMonthRegex = new(@"^\*|(\*\/(([0-2]?\d)|(3[0-1])))|(((([0-2]?\d)|(3[0-1]))(-(([0-2]?\d)|(3[0-1])))?))$", RegexOptions.Compiled);
+    private static readonly Regex monthRegex = new(@"^((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:-(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?(?:,(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:-(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?)*)|((\*(\/)?)?((0?\d)|1[0-2])?)$");
+    private static readonly Regex dayOfTheWeekRegex = new(@"^\*|(\*\/(0?[0-6])|(0?[0-6](-0?[0-6])?)|((,?(SUN|MON|TUE|WED|THU|FRI|SAT))+)|((SUN|MON|TUE|WED|THU|FRI|SAT)(-(SUN|MON|TUE|WED|THU|FRI|SAT))?))$", RegexOptions.Compiled);
+
+
     private static readonly Regex cronExpressionRegex = new(
-        @"^(\*|(\*\/([0-5]?\d))|(([0-5]?\d)(-([0-5]?\d))?)) (\*|(\*\/([0-5]?\d))|(([0-5]?\d)(-([0-5]?\d))?)) (\*\/(([0-1]?\d)|(2[0-3])))|((([0-1]?\d)|(2[0-3]))(-(([0-1]?\d)|(2[0-3])))?) (\*\/([0-1]?\d))|((([0-1]?\d)(-([0-1]?\d))?))|((,?(JAN|DEC|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)+)+)|(-?(JAN|DEC|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)) (\*\/(([0-2]?\d)|(3[0-1])))|(((([0-2]?\d)|(3[0-1]))(-(([0-2]?\d)|(3[0-1])))?)) (\*\/(0?[0-6])|(0?[0-6](-0?[0-6])?)|((,?(SUN|MON|TUE|WED|THU|FRI|SAT))+)|((SUN|MON|TUE|WED|THU|FRI|SAT)(-(SUN|MON|TUE|WED|THU|FRI|SAT))?))$",
+        @"^([0-5]?\d-[0-5]?\d)|([0-5]?\d,?)|(\*(\/[0-5]?\d)?) ([0-5]?\d-[0-5]?\d)|([0-5]?\d,?)|(\*(\/[0-5]?\d)?) (([0-1]?\d)|(2[0-3])-([0-1]?\d)|(2[0-3]))|(([0-1]?\d)|(2[0-3]),?)|(\*(\/([0-1]?\d)|(2[0-3]))?) ((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:-(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?(?:,(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:-(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?)*)|((\*(\/)?)?((0?\d)|1[0-2])?) (\*|(\*\/(([0-2]?\d)|(3[0-1])))|(((([0-2]?\d)|(3[0-1]))(-(([0-2]?\d)|(3[0-1])))?))) (\*|(\*\/(0?[0-6])|(0?[0-6](-0?[0-6])?)|((,?(SUN|MON|TUE|WED|THU|FRI|SAT))+)|((SUN|MON|TUE|WED|THU|FRI|SAT)(-(SUN|MON|TUE|WED|THU|FRI|SAT))?)))$",
         RegexOptions.Compiled);
     
     private string seconds = "*";
@@ -238,7 +245,7 @@ public sealed class CronExpressionBuilder
     /// </summary>
     /// <param name="expression">The string to evaluate.</param>
     /// <returns>True if the expression is valid Cron syntax; false if not.</returns>
-    internal static bool IsCronExpression(string expression) => cronExpressionRegex.IsMatch(expression);
+    internal static bool IsCronExpression(string expression) => expression.Split(' ').Length == 6 && cronExpressionRegex.IsMatch(expression);
 
     /// <summary>
     /// Builds the Cron expression.

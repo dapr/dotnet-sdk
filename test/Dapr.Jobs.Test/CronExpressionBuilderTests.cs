@@ -337,6 +337,7 @@ public sealed class CronExpressionBuilderTests
     }
 
     [Theory]
+    [InlineData("* * * * *", false)]
     [InlineData("* * * * * *", true)]
     [InlineData("5 12 16 7 * *", true)]
     [InlineData("30 * * * * *", true)]
@@ -366,12 +367,15 @@ public sealed class CronExpressionBuilderTests
     [InlineData("5 * * * FEB SUN", true)]
     [InlineData("* * */2 * * *", true)]
     [InlineData("* * * */5 * *", true)]
+    [InlineData("0,01,3 0,01,2 0,01,2 00,1,02 JAN,FEB,MAR,APR SUN,MON,TUE,WED", true)]
+    [InlineData("* * * * JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC SUN,MON,TUE,WED,THU,FRI,SAT", true)]
     [InlineData("30 15 6 */4 JAN,APR,AUG WED-FRI", true)]
     [InlineData("*/10 */8 */2 */5 */3 */2", true)]
     [InlineData("0 0 0 * OCT SAT", true)]
     [InlineData("0 0 0 * OCT,DEC WED,SAT", true)]
     [InlineData("0 0 0 * OCT-DEC WED-SAT", true)]
     [InlineData("1-14 2-59 20-23 * * *", true)]
+    [InlineData("00-59 0-59 00-23 1-31 JAN-DEC SUN-SAT", true)]
     [InlineData("0-59 0-59 0-23 1-31 1-12 0-6", true)]
     [InlineData("*/1 2,4,5 * 2-9 JAN,FEB,DEC MON-WED", true)]
     public void ValidateCronExpression(string cronValue, bool isValid)
