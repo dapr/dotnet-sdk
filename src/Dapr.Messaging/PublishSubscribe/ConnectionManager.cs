@@ -18,52 +18,53 @@ using P = Dapr.Client.Autogen.Grpc.v1;
 namespace Dapr.Messaging.PublishSubscribe;
 
 /// <summary>
-/// Maintains access to 
+/// Maintains the streaming connection to the Dapr sidecar so it can be repurposed without
+/// multiple callers opening separate connections.
 /// </summary>
 internal sealed class ConnectionManager : IAsyncDisposable
 {
     /// <summary>
     /// A reference to the DaprClient instance.
     /// </summary>
-    private readonly P.Dapr.DaprClient _client;
+    private readonly P.Dapr.DaprClient client;
     /// <summary>
     /// Used to ensure thread-safe operations against the stream.
     /// </summary>
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly SemaphoreSlim semaphore = new(1, 1);
     /// <summary>
     /// The stream connection between this instance and the Dapr sidecar.
     /// </summary>
     private AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest>?
-        _stream;
+        stream;
 
     public ConnectionManager(P.Dapr.DaprClient client)
     {
-        _client = client;
+        this.client = client;
     }
 
     public async
         Task<AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest>>
         GetStreamAsync(CancellationToken cancellationToken)
     {
-        await _semaphore.WaitAsync(cancellationToken);
+        await semaphore.WaitAsync(cancellationToken);
 
         try
         {
-            return _stream ??= _client.SubscribeTopicEventsAlpha1(cancellationToken: cancellationToken);
+            return stream ??= client.SubscribeTopicEventsAlpha1(cancellationToken: cancellationToken);
         }
         finally
         {
-            _semaphore.Release();
+            semaphore.Release();
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_stream is not null)
+        if (stream is not null)
         {
-            await _stream.RequestStream.CompleteAsync();
+            await stream.RequestStream.CompleteAsync();
         }
 
-        _semaphore.Dispose();
+        semaphore.Dispose();
     }
 }
