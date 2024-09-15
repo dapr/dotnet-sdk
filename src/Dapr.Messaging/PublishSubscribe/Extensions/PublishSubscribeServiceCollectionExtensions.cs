@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Runtime.InteropServices.ComTypes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -26,25 +27,8 @@ public static class PublishSubscribeServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection"/>.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDaprPubSubClient(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
-
-        //Register the IHttpClientFactory implementation
-        services.AddHttpClient();
-
-        services.TryAddSingleton(serviceProvider =>
-        {
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-
-            var builder = new DaprPublishSubscribeClientBuilder();
-            builder.UseHttpClientFactory(httpClientFactory);
-
-            return builder.Build();
-        });
-
-        return services;
-    }
+    public static IServiceCollection AddDaprPubSubClient(this IServiceCollection services) =>
+        AddDaprPubSubClient(services, (_, _) => { });
 
     /// <summary>
     /// Adds Dapr Publish/Subscribe support to the service collection.
@@ -52,27 +36,9 @@ public static class PublishSubscribeServiceCollectionExtensions
     /// <param name="services">The <see cref="IServiceCollection"/>.</param>
     /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprPublishSubscribeClientBuilder"/>.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDaprPubSubClient(this IServiceCollection services, Action<DaprPublishSubscribeClientBuilder>? configure)
-    {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
-
-        //Register the IHttpClientFactory implementation
-        services.AddHttpClient();
-
-        services.TryAddSingleton(serviceProvider =>
-        {
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-
-            var builder = new DaprPublishSubscribeClientBuilder();
-            builder.UseHttpClientFactory(httpClientFactory);
-
-            configure?.Invoke(builder);
-
-            return builder.Build();
-        });
-
-        return services;
-    }
+    public static IServiceCollection AddDaprPubSubClient(this IServiceCollection services,
+        Action<DaprPublishSubscribeClientBuilder>? configure) =>
+        services.AddDaprPubSubClient((_, builder) => configure?.Invoke(builder));
 
     /// <summary>
     /// Adds Dapr Publish/Subscribe support to the service collection.
