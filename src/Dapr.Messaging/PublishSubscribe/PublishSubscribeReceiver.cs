@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Grpc.Core;
 using C = Dapr.AppCallback.Autogen.Grpc.v1;
@@ -27,14 +25,9 @@ namespace Dapr.Messaging.PublishSubscribe;
 internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 {
     /// <summary>
-    /// Maintains the stream connection to the Dapr sidecar for the subscription.
-    /// </summary>
-    private readonly ConnectionManager connectionManager;
-
-    /// <summary>
     /// The name of the Dapr pubsub component.
     /// </summary>
-    private readonly string pubsubName;
+    private readonly string pubSubName;
     /// <summary>
     /// The name of the topic to subscribe to.
     /// </summary>
@@ -48,24 +41,29 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     private readonly Channel<TopicMessage> channel = Channel.CreateUnbounded<TopicMessage>();
     /// <summary>
-    /// A collection of <see cref="TaskCompletionSource"/> used to signal acknowledgement of received messages so a status
-    /// can be sent back to the sidecar indicating what behavior should happen to each.
+    /// The handler delegate responsible for processing the topic messages.
     /// </summary>
-    private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> acknowledgementTasks = new();
-    
+    private readonly TopicMessageHandler messageHandler;
+    /// <summary>
+    /// Maintains the connection to the Dapr dynamic subscription endpoint.
+    /// </summary>
+    private readonly ConnectionManager connectionManager;
+
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
     /// </summary>
-    /// <param name="pubsubName">The name of the Dapr pubsub component.</param>
+    /// <param name="pubSubName">The name of the Dapr Publish/Subscribe component.</param>
     /// <param name="topicName">The name of the topic to subscribe to.</param>
     /// <param name="options">Options allowing the behavior of the receiver to be configured.</param>
-    /// <param name="daprClient"></param>
-    internal PublishSubscribeReceiver(string pubsubName, string topicName, DaprSubscriptionOptions options, P.Dapr.DaprClient daprClient)
+    /// <param name="connectionManager">Maintains the connection to the Dapr dynamic subscription endpoint.</param>
+    /// <param name="handler">The delegate reflecting the action to take upon messages received by the subscription.</param>
+    internal PublishSubscribeReceiver(string pubSubName, string topicName, DaprSubscriptionOptions options, ConnectionManager connectionManager, TopicMessageHandler handler)
     {
-        this.pubsubName = pubsubName;
+        this.pubSubName = pubSubName;
         this.topicName = topicName;
         this.options = options;
-        connectionManager = new ConnectionManager(daprClient);
+        this.connectionManager = connectionManager;
+        this.messageHandler = handler;
     }
 
     /// <summary>
@@ -73,96 +71,44 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing messages provided by the sidecar.</returns>
-    public IAsyncEnumerable<TopicMessage> SubscribeAsync(CancellationToken cancellationToken)
+    public async Task SubscribeAsync(CancellationToken cancellationToken)
     {
+        //Retrieve the messages from the sidecar and write to the channel
         _ = FetchDataFromSidecarAsync(channel.Writer, cancellationToken);
-        return ReadMessagesFromChannelAsync(channel.Reader, cancellationToken);
-    }
 
-    /// <summary>
-    /// Specifies the action that should be taken on the message after processing it.
-    /// </summary>
-    /// <param name="messageId">The identifier of the message to acknowledge.</param>
-    /// <param name="messageAction">The action to take on the message.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task AcknowledgeMessageAsync(string messageId, TopicMessageAction messageAction, CancellationToken cancellationToken)
-    {
         var stream = await connectionManager.GetStreamAsync(cancellationToken);
-        await stream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
+        //Read the messages one-by-one out of the channel
+        while (await channel.Reader.WaitToReadAsync(cancellationToken))
         {
-            EventResponse = new P.SubscribeTopicEventsResponseAlpha1
-            {
-                Id = messageId,
-                Status = new C.TopicEventResponse
-                {
-                    Status = messageAction switch
-                    {
-                        TopicMessageAction.Retry => C.TopicEventResponse.Types.TopicEventResponseStatus.Retry,
-                        TopicMessageAction.Success => C.TopicEventResponse.Types.TopicEventResponseStatus.Success,
-                        TopicMessageAction.Drop => C.TopicEventResponse.Types.TopicEventResponseStatus.Drop,
-                        _ => throw new ArgumentOutOfRangeException(nameof(messageAction), messageAction, null)
-                    }
-                }
-            }
-        }, cancellationToken);
-
-        if (acknowledgementTasks.TryRemove(messageId, out var tcs))
-        {
-            tcs.SetResult(true);
-        }
-    }
-
-    /// <summary>
-    /// Reads the topic messages returned from the Dapr sidecar.
-    /// </summary>
-    /// <param name="reader">The channel reader instance.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing the received messages from the Dapr sidecar.</returns>
-    private async IAsyncEnumerable<TopicMessage> ReadMessagesFromChannelAsync(ChannelReader<TopicMessage> reader,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        while (await reader.WaitToReadAsync(cancellationToken))
-        {
-            while (reader.TryRead(out var message))
+            while (channel.Reader.TryRead(out var message))
             {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(options!.MessageHandlingPolicy.TimeoutDuration);
+                cts.CancelAfter(options.MessageHandlingPolicy.TimeoutDuration);
 
-                yield return message;
+                //Evaluate the message and return an acknowledgement result
+                var messageAction = await messageHandler(message, cts.Token);
 
-                try
+                //Share the result with the sidecar
+                await stream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
                 {
-                    //Wait for the message to be acknowledged
-                    await WaitForAcknowledgementAsync(message.Id, cts.Token);
-                }
-                catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
-                {
-                    //Handle the acknowledgement timeout using the specified default policy
-                    await AcknowledgeMessageAsync(message.Id, options.MessageHandlingPolicy.DefaultMessageAction,
-                        cancellationToken);
-                }
+                    EventResponse = new()
+                    {
+                        Id = message.Id,
+                        Status = new()
+                        {
+                            Status = messageAction switch
+                            {
+                                TopicResponseAction.Success => C.TopicEventResponse.Types.TopicEventResponseStatus
+                                    .Success,
+                                TopicResponseAction.Retry => C.TopicEventResponse.Types.TopicEventResponseStatus.Retry,
+                                TopicResponseAction.Drop => C.TopicEventResponse.Types.TopicEventResponseStatus.Drop,
+                                _ => throw new InvalidOperationException(
+                                    $"Unrecognized topic acknowledgement action: {messageAction}")
+                            }
+                        }
+                    }
+                }, cts.Token);
             }
-        }
-    }
-
-    /// <summary>
-    /// Sets up a timeout for message acknowledgement before the configured default action is applied
-    /// to each message.
-    /// </summary>
-    /// <param name="messageId">The identifier of the topic message.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns></returns>
-    private async Task WaitForAcknowledgementAsync(string messageId, CancellationToken cancellationToken)
-    {
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        acknowledgementTasks.AddOrUpdate(messageId, _ => tcs, (_, _) => tcs);
-        
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(options.MessageHandlingPolicy.TimeoutDuration);
-        
-        await using (cancellationToken.Register(() => tcs.TrySetCanceled()))
-        {
-            await tcs.Task;
         }
     }
 
@@ -178,7 +124,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             var stream = await connectionManager.GetStreamAsync(cancellationToken);
             var initialRequest = new P.SubscribeTopicEventsInitialRequestAlpha1()
             {
-                PubsubName = pubsubName,
+                PubsubName = pubSubName,
                 DeadLetterTopic = options?.DeadLetterTopic ?? string.Empty,
                 Topic = topicName
             };
@@ -195,16 +141,8 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 
             await foreach (var response in stream.ResponseStream.ReadAllAsync(cancellationToken))
             {
-                var message = new TopicMessage
+                var message = new TopicMessage(response.Id, response.Source, response.Type, response.SpecVersion, response.DataContentType, response.Topic, response.PubsubName)
                 {
-                    Id = response.Id,
-                    Source = response.Source,
-                    Type = response.Type,
-                    SpecVersion = response.SpecVersion,
-                    DataContentType = response.DataContentType,
-                    Data = response.Data.Memory,
-                    Topic = response.Topic,
-                    PubSubName = response.PubsubName,
                     Path = response.Path,
                     Extensions = response.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value)
                 };

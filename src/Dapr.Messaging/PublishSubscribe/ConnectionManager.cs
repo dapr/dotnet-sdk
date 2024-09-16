@@ -42,9 +42,12 @@ internal sealed class ConnectionManager : IAsyncDisposable
         this.client = client;
     }
 
-    public async
-        Task<AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest>>
-        GetStreamAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Retrieves or creates the bidirectional stream to the DaprClient for transacting pub/sub subscriptions.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns></returns>
+    public async Task<AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest>> GetStreamAsync(CancellationToken cancellationToken)
     {
         await semaphore.WaitAsync(cancellationToken);
 

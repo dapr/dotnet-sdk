@@ -21,32 +21,14 @@ public abstract class DaprPublishSubscribeClient
     /// <summary>
     /// Dynamically subscribes to a Publish/Subscribe component and topic.
     /// </summary>
-    /// <param name="pubsubName">The name of the Publish/Subscribe component.</param>
+    /// <param name="pubSubName">The name of the Publish/Subscribe component.</param>
     /// <param name="topicName">The name of the topic to subscribe to.</param>
     /// <param name="options">Configuration options.</param>
+    /// <param name="messageHandler">The delegate reflecting the action to take upon messages received by the subscription.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing the various messages returned by the subscription.</returns>
-    public abstract IAsyncEnumerable<TopicMessage> SubscribeAsync(string pubsubName, string topicName, DaprSubscriptionOptions options, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Used to acknowledge receipt of a message and indicate how the Dapr sidecar should handle it.
-    /// </summary>
-    /// <param name="pubsubName">The name of the Publish/Subscribe component.</param>
-    /// <param name="topicName">The name of the topic to subscribe to.</param>
-    /// <param name="messageId">The identifier of the message to apply the action to.</param>
-    /// <param name="messageAction">Indicates the action to perform on the message.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public abstract Task AcknowledgeMessageAsync(string pubsubName, string topicName, string messageId,
-        TopicMessageAction messageAction, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Unsubscribes a streaming subscription for the specified Publish/Subscribe component and topic.
-    /// </summary>
-    /// <param name="pubsubName">The name of the Publish/Subscribe component.</param>
-    /// <param name="topicName">The name of the topic to subscribe to.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public abstract Task UnsubscribeAsync(string pubsubName, string topicName, CancellationToken cancellationToken);
-
+    /// <returns></returns>
+    public abstract IAsyncDisposable SubscribeAsync(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken);
+    
     /// <summary>
     /// Gets the Dapr API token header for the given token value.
     /// </summary>
@@ -55,9 +37,7 @@ public abstract class DaprPublishSubscribeClient
     internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
     {
         if (string.IsNullOrWhiteSpace(apiToken))
-        {
             return null;
-        }
 
         return new KeyValuePair<string, string>("dapr-api-token", apiToken);
     }

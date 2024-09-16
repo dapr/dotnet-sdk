@@ -16,7 +16,7 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// <summary>
 /// Describes the various actions that can be taken on a topic message.
 /// </summary>
-public enum TopicMessageAction
+public enum TopicResponseAction
 {
     /// <summary>
     /// Indicates the message was processed successfully and should be deleted from the pub/sub topic.
