@@ -22,11 +22,6 @@ namespace Dapr.Messaging.PublishSubscribe;
 internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
 {
     /// <summary>
-    /// The various receiver clients created for each combination of Dapr pubsub component and topic name.
-    /// </summary>
-    private readonly ConcurrentDictionary<(string, string), Lazy<PublishSubscribeReceiver>> clients = new();
-
-    /// <summary>
     /// Maintains a single connection to the Dapr dynamic subscription endpoint.
     /// </summary>
     private readonly ConnectionManager connectionManager;
@@ -48,14 +43,5 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <param name="messageHandler">The delegate reflecting the action to take upon messages received by the subscription.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    public override PublishSubscribeReceiver Register(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken)
-    {
-        var key = (pubSubName, topicName);
-        if (clients.ContainsKey(key))
-            throw new Exception(
-                $"A subscription has already been created for Dapr pub/sub component '{pubSubName}' and topic '{topicName}'");
-
-        clients[key] = new Lazy<PublishSubscribeReceiver>(new PublishSubscribeReceiver(pubSubName, topicName, options, connectionManager, messageHandler));
-        return clients[key].Value;
-    }
+    public override PublishSubscribeReceiver Register(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken) => new(pubSubName, topicName, options, connectionManager, messageHandler);
 }
