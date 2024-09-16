@@ -130,14 +130,14 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <param name="stream">The stream connection to and from the Dream sidecar instance.</param>
     /// <param name="channelWriter">The channel writer instance.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    private async Task FetchDataFromSidecarAsync(AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest> stream, ChannelWriter<TopicMessage> channelWriter, CancellationToken cancellationToken)
+    private async Task FetchDataFromSidecarAsync(AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1> stream, ChannelWriter<TopicMessage> channelWriter, CancellationToken cancellationToken)
     {
         try
         {
-            var initialRequest = new P.SubscribeTopicEventsInitialRequestAlpha1()
+            var initialRequest = new P.SubscribeTopicEventsRequestInitialAlpha1()
             {
                 PubsubName = pubSubName,
-                DeadLetterTopic = options?.DeadLetterTopic ?? string.Empty,
+                DeadLetterTopic = options.DeadLetterTopic ?? string.Empty,
                 Topic = topicName
             };
 
@@ -153,10 +153,10 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 
             await foreach (var response in stream.ResponseStream.ReadAllAsync(cancellationToken))
             {
-                var message = new TopicMessage(response.Id, response.Source, response.Type, response.SpecVersion, response.DataContentType, response.Topic, response.PubsubName)
+                var message = new TopicMessage(response.EventMessage.Id, response.EventMessage.Source, response.EventMessage.Type, response.EventMessage.SpecVersion, response.EventMessage.DataContentType, response.EventMessage.Topic, response.EventMessage.PubsubName)
                 {
-                    Path = response.Path,
-                    Extensions = response.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value)
+                    Path = response.EventMessage.Path,
+                    Extensions = response.EventMessage.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value)
                 };
                 
                 await channelWriter.WriteAsync(message, cancellationToken);

@@ -35,7 +35,7 @@ internal sealed class ConnectionManager : IAsyncDisposable
     /// <summary>
     /// The stream connection between this instance and the Dapr sidecar.
     /// </summary>
-    private AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest>? stream;
+    private AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>? stream;
     /// <summary>
     /// Maintains the various acknowledgements for each message.
     /// </summary>
@@ -64,7 +64,7 @@ internal sealed class ConnectionManager : IAsyncDisposable
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    public async Task<AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest>> GetStreamAsync(CancellationToken cancellationToken)
+    public async Task<AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>> GetStreamAsync(CancellationToken cancellationToken)
     {
         await semaphore.WaitAsync(cancellationToken);
 
@@ -109,11 +109,15 @@ internal sealed class ConnectionManager : IAsyncDisposable
     private async Task ProcessAcknowledgementAsync(TopicAcknowledgement acknowledgement)
     {
         var messageStream = await GetStreamAsync(CancellationToken.None);
-        await messageStream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
+        await messageStream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1()
         {
-            EventResponse = new()
+            EventProcessed = new()
             {
-                Id = acknowledgement.MessageId, Status = new() { Status = acknowledgement.Action }
+                Id = acknowledgement.MessageId,
+                Status = new()
+                {
+                    Status = acknowledgement.Action
+                }
             }
         });
     }
