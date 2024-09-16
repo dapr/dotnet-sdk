@@ -21,7 +21,7 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// A thread-safe implementation of a receiver for messages from a specified Dapr publish/subscribe component and
 /// topic.
 /// </summary>
-internal sealed class PublishSubscribeReceiver : IAsyncDisposable
+public sealed class PublishSubscribeReceiver : IAsyncDisposable
 {
     /// <summary>
     /// The name of the Dapr pubsub component.
