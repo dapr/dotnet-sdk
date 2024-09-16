@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Channels;
 using Grpc.Core;
 using C = Dapr.AppCallback.Autogen.Grpc.v1;
@@ -48,7 +49,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// Maintains the connection to the Dapr dynamic subscription endpoint.
     /// </summary>
     private readonly ConnectionManager connectionManager;
-
+    
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
     /// </summary>
@@ -73,10 +74,10 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing messages provided by the sidecar.</returns>
     public async Task SubscribeAsync(CancellationToken cancellationToken)
     {
-        //Retrieve the messages from the sidecar and write to the channel
-        _ = FetchDataFromSidecarAsync(channel.Writer, cancellationToken);
-
         var stream = await connectionManager.GetStreamAsync(cancellationToken);
+        //Retrieve the messages from the sidecar and write to the channel
+        _ = FetchDataFromSidecarAsync(stream, channel.Writer, cancellationToken);
+        
         //Read the messages one-by-one out of the channel
         while (await channel.Reader.WaitToReadAsync(cancellationToken))
         {
@@ -84,44 +85,66 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(options.MessageHandlingPolicy.TimeoutDuration);
-
+                
                 //Evaluate the message and return an acknowledgement result
                 var messageAction = await messageHandler(message, cts.Token);
 
-                //Share the result with the sidecar
-                await stream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
+                try
                 {
-                    EventResponse = new()
-                    {
-                        Id = message.Id,
-                        Status = new()
-                        {
-                            Status = messageAction switch
-                            {
-                                TopicResponseAction.Success => C.TopicEventResponse.Types.TopicEventResponseStatus
-                                    .Success,
-                                TopicResponseAction.Retry => C.TopicEventResponse.Types.TopicEventResponseStatus.Retry,
-                                TopicResponseAction.Drop => C.TopicEventResponse.Types.TopicEventResponseStatus.Drop,
-                                _ => throw new InvalidOperationException(
-                                    $"Unrecognized topic acknowledgement action: {messageAction}")
-                            }
-                        }
-                    }
-                }, cts.Token);
+                    //Share the result with the sidecar
+                    await AcknowledgeMessageAsync(stream, message.Id, messageAction, cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    //Acknowledge the message using the configured default response action
+                    await AcknowledgeMessageAsync(stream, message.Id,
+                        options.MessageHandlingPolicy.DefaultResponseAction, cts.Token);
+                }
             }
         }
     }
 
     /// <summary>
+    /// Acknowledges the indicated message back to the Dapr sidecar with an indicated behavior to take on the message.
+    /// </summary>
+    /// <param name="stream">The stream connection to and from the Dream sidecar instance.</param>
+    /// <param name="messageId">The identifier of the message the behavior is in reference to.</param>
+    /// <param name="action">The behavior to take on the message as indicated by either the message handler or timeout message handling configuration.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns></returns>
+    private static async Task AcknowledgeMessageAsync(AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest> stream, string messageId, TopicResponseAction action, CancellationToken cancellationToken)
+    {
+        await stream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
+        {
+            EventResponse = new()
+            {
+                Id = messageId,
+                Status = new()
+                {
+                    Status = action switch
+                    {
+                        TopicResponseAction.Success => C.TopicEventResponse.Types.TopicEventResponseStatus
+                            .Success,
+                        TopicResponseAction.Retry => C.TopicEventResponse.Types.TopicEventResponseStatus.Retry,
+                        TopicResponseAction.Drop => C.TopicEventResponse.Types.TopicEventResponseStatus.Drop,
+                        _ => throw new InvalidOperationException(
+                            $"Unrecognized topic acknowledgement action: {action}")
+                    }
+                }
+            }
+        }, cancellationToken);
+    }
+
+    /// <summary>
     /// Retrieves the subscription stream data from the Dapr sidecar.
     /// </summary>
+    /// <param name="stream">The stream connection to and from the Dream sidecar instance.</param>
     /// <param name="channelWriter">The channel writer instance.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    private async Task FetchDataFromSidecarAsync(ChannelWriter<TopicMessage> channelWriter, CancellationToken cancellationToken)
+    private async Task FetchDataFromSidecarAsync(AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest> stream, ChannelWriter<TopicMessage> channelWriter, CancellationToken cancellationToken)
     {
         try
         {
-            var stream = await connectionManager.GetStreamAsync(cancellationToken);
             var initialRequest = new P.SubscribeTopicEventsInitialRequestAlpha1()
             {
                 PubsubName = pubSubName,
