@@ -13,7 +13,6 @@
 
 using System.Threading.Channels;
 using Grpc.Core;
-using C = Dapr.AppCallback.Autogen.Grpc.v1;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
 namespace Dapr.Messaging.PublishSubscribe;

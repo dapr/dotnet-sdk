@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Concurrent;
 using P = Dapr.Client.Autogen.Grpc.v1.Dapr;
 
 namespace Dapr.Messaging.PublishSubscribe;
