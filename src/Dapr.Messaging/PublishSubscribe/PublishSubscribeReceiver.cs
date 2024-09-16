@@ -93,13 +93,12 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
                     try
                     {
                         //Share the result with the sidecar
-                        await AcknowledgeMessageAsync(stream, message.Id, messageAction, cts.Token);
+                        await AcknowledgeMessageAsync(message.Id, messageAction);
                     }
                     catch (OperationCanceledException)
                     {
                         //Acknowledge the message using the configured default response action
-                        await AcknowledgeMessageAsync(stream, message.Id,
-                            options.MessageHandlingPolicy.DefaultResponseAction, cts.Token);
+                        await AcknowledgeMessageAsync(message.Id, options.MessageHandlingPolicy.DefaultResponseAction);
                     }
                 }
             }
@@ -109,8 +108,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             //Drain the remaining messages with the default action in the order in which they were queued
             while (channel.Reader.TryRead(out var message))
             {
-                await AcknowledgeMessageAsync(stream, message.Id, options.MessageHandlingPolicy.DefaultResponseAction,
-                    CancellationToken.None);
+                await AcknowledgeMessageAsync(message.Id, options.MessageHandlingPolicy.DefaultResponseAction);
             }
         }
     }
@@ -118,32 +116,12 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <summary>
     /// Acknowledges the indicated message back to the Dapr sidecar with an indicated behavior to take on the message.
     /// </summary>
-    /// <param name="stream">The stream connection to and from the Dream sidecar instance.</param>
     /// <param name="messageId">The identifier of the message the behavior is in reference to.</param>
     /// <param name="action">The behavior to take on the message as indicated by either the message handler or timeout message handling configuration.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    private static async Task AcknowledgeMessageAsync(AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, C.TopicEventRequest> stream, string messageId, TopicResponseAction action, CancellationToken cancellationToken)
+    private async Task AcknowledgeMessageAsync(string messageId, TopicResponseAction action)
     {
-        await stream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
-        {
-            EventResponse = new()
-            {
-                Id = messageId,
-                Status = new()
-                {
-                    Status = action switch
-                    {
-                        TopicResponseAction.Success => C.TopicEventResponse.Types.TopicEventResponseStatus
-                            .Success,
-                        TopicResponseAction.Retry => C.TopicEventResponse.Types.TopicEventResponseStatus.Retry,
-                        TopicResponseAction.Drop => C.TopicEventResponse.Types.TopicEventResponseStatus.Drop,
-                        _ => throw new InvalidOperationException(
-                            $"Unrecognized topic acknowledgement action: {action}")
-                    }
-                }
-            }
-        }, cancellationToken);
+        await connectionManager.AcknowledgeMessageAsync(messageId, action);
     }
 
     /// <summary>
