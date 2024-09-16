@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Channels;
 using Grpc.Core;
 using C = Dapr.AppCallback.Autogen.Grpc.v1;
