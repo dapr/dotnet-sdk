@@ -1,4 +1,5 @@
-﻿using Dapr.Messaging.PublishSubscribe;
+﻿using System.Text;
+using Dapr.Messaging.PublishSubscribe;
 
 var daprMessagingClientBuilder = new DaprPublishSubscribeClientBuilder();
 var daprMessagingClient = daprMessagingClientBuilder.Build();
@@ -9,6 +10,7 @@ async Task<TopicResponseAction> HandleMessage(TopicMessage message, Cancellation
     try
     {
         //Do something with the message
+        Console.WriteLine(Encoding.UTF8.GetString(message.Data.Span));
         return await Task.FromResult(TopicResponseAction.Success);
     }
     catch
