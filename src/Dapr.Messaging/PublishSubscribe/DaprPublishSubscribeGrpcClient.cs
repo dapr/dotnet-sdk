@@ -47,7 +47,7 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <param name="messageHandler">The delegate reflecting the action to take upon messages received by the subscription.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    public override IAsyncDisposable SubscribeAsync(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken)
+    public override IAsyncDisposable Register(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken)
     {
         var key = (pubSubName, topicName);
         if (clients.ContainsKey(key))

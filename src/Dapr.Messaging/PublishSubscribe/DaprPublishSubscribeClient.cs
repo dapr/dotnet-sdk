@@ -27,7 +27,7 @@ public abstract class DaprPublishSubscribeClient
     /// <param name="messageHandler">The delegate reflecting the action to take upon messages received by the subscription.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    public abstract IAsyncDisposable SubscribeAsync(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken);
+    public abstract IAsyncDisposable Register(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken);
     
     /// <summary>
     /// Gets the Dapr API token header for the given token value.
