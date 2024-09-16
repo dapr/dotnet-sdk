@@ -79,27 +79,39 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         _ = FetchDataFromSidecarAsync(stream, channel.Writer, cancellationToken);
         
         //Read the messages one-by-one out of the channel
-        while (await channel.Reader.WaitToReadAsync(cancellationToken))
+        try
         {
+            while (await channel.Reader.WaitToReadAsync(cancellationToken))
+            {
+                while (channel.Reader.TryRead(out var message))
+                {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    cts.CancelAfter(options.MessageHandlingPolicy.TimeoutDuration);
+
+                    //Evaluate the message and return an acknowledgement result
+                    var messageAction = await messageHandler(message, cts.Token);
+
+                    try
+                    {
+                        //Share the result with the sidecar
+                        await AcknowledgeMessageAsync(stream, message.Id, messageAction, cts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        //Acknowledge the message using the configured default response action
+                        await AcknowledgeMessageAsync(stream, message.Id,
+                            options.MessageHandlingPolicy.DefaultResponseAction, cts.Token);
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            //Drain the remaining messages with the default action in the order in which they were queued
             while (channel.Reader.TryRead(out var message))
             {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(options.MessageHandlingPolicy.TimeoutDuration);
-                
-                //Evaluate the message and return an acknowledgement result
-                var messageAction = await messageHandler(message, cts.Token);
-
-                try
-                {
-                    //Share the result with the sidecar
-                    await AcknowledgeMessageAsync(stream, message.Id, messageAction, cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    //Acknowledge the message using the configured default response action
-                    await AcknowledgeMessageAsync(stream, message.Id,
-                        options.MessageHandlingPolicy.DefaultResponseAction, cts.Token);
-                }
+                await AcknowledgeMessageAsync(stream, message.Id, options.MessageHandlingPolicy.DefaultResponseAction,
+                    CancellationToken.None);
             }
         }
     }
