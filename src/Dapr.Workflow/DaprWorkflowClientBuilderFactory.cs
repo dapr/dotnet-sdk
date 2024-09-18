@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2021 The Dapr Authors
+// Copyright 2024 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,115 +11,86 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Net.Http;
+using Grpc.Net.Client;
+using Microsoft.DurableTask.Client;
+using Microsoft.DurableTask.Worker;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
 #nullable enable
 
-namespace Microsoft.Extensions.DependencyInjection;
-
-using System;
-using System.Linq;
-using Dapr;
-using Dapr.Client;
-using Extensions;
-using Microsoft.Extensions.Configuration;
+namespace Dapr.Workflow;
 
 /// <summary>
-/// Provides extension methods for <see cref="IServiceCollection" />.
+/// A factory for building a <see cref="DaprWorkflowClient"/>.
 /// </summary>
-public static class DaprServiceCollectionExtensions
+internal sealed class DaprWorkflowClientBuilderFactory
 {
+    private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IServiceCollection _services;
+    
     /// <summary>
-    /// Adds Dapr client services to the provided <see cref="IServiceCollection" />. This does not include integration
-    /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration.
+    /// Constructor used to inject the required types into the factory.
     /// </summary>
-    /// <param name="services">The <see cref="IServiceCollection" />.</param>
-    /// <param name="configure"></param>
-    public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null)
+    public DaprWorkflowClientBuilderFactory(IConfiguration configuration, IHttpClientFactory httpClientFactory, IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
-
-        services.TryAddSingleton(serviceProvider =>
-        {
-            var builder = new DaprClientBuilder();
-
-            var configuration = serviceProvider.GetService<IConfiguration>();
-
-            //Set the HTTP endpoint, if provided
-            var httpEndpoint = GetHttpEndpoint(configuration);
-            if (!string.IsNullOrWhiteSpace(httpEndpoint))
-                builder.UseHttpEndpoint(httpEndpoint);
-
-            //Set the gRPC endpoint, if provided
-            var grpcEndpoint = GetGrpcEndpoint(configuration);
-            if (!string.IsNullOrWhiteSpace(grpcEndpoint))
-                builder.UseGrpcEndpoint(grpcEndpoint);
-
-            //Set the API token, if provided
-            var apiToken = GetApiToken(configuration);
-            if (!string.IsNullOrWhiteSpace(apiToken))
-                builder.UseDaprApiToken(apiToken);
-
-            configure?.Invoke(builder);
-
-            return builder.Build();
-        });
+        _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
+        _services = services;
     }
-
+    
     /// <summary>
-    /// Adds Dapr client services to the provided <see cref="IServiceCollection"/>. This does not include integration
-    /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration. 
+    /// Responsible for building the client itself.
     /// </summary>
-    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-    /// <param name="configure"></param>
-    public static void AddDaprClient(this IServiceCollection services,
-        Action<IServiceProvider, DaprClientBuilder> configure)
+    /// <returns></returns>
+    public void CreateClientBuilder(Action<WorkflowRuntimeOptions> configure)
     {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
-
-        services.TryAddSingleton(serviceProvider =>
+        _services.AddDurableTaskClient(builder =>
         {
-            var builder = new DaprClientBuilder();
+            var apiToken = GetApiToken(_configuration);
+            var grpcEndpoint = GetGrpcEndpoint(_configuration);
 
-            var configuration = serviceProvider.GetService<IConfiguration>();
+            var httpClient = _httpClientFactory.CreateClient();
 
-            //Set the HTTP endpoint, if provided
-            var httpEndpoint = GetHttpEndpoint(configuration);
-            if (!string.IsNullOrWhiteSpace(httpEndpoint))
-                builder.UseHttpEndpoint(httpEndpoint);
-
-            //Set the gRPC endpoint, if provided
-            var grpcEndpoint = GetGrpcEndpoint(configuration);
-            if (!string.IsNullOrWhiteSpace(grpcEndpoint))
-                builder.UseGrpcEndpoint(grpcEndpoint);
-
-            //Set the API token, if provided
-            var apiToken = GetApiToken(configuration);
             if (!string.IsNullOrWhiteSpace(apiToken))
-                builder.UseDaprApiToken(apiToken);
+            {
+                httpClient.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);    
+            }
 
-            configure?.Invoke(serviceProvider, builder);
-
-            return builder.Build();
+            builder.UseGrpc(GrpcChannel.ForAddress(grpcEndpoint, new GrpcChannelOptions { HttpClient = httpClient }));
+            builder.RegisterDirectly();
         });
-    }
 
-    /// <summary>
-    /// Builds the Dapr HTTP endpoint using the value from the IConfiguration, if available, then falling back
-    /// to the value in the environment variable(s) and finally otherwise using the default value (an empty string).
-    /// </summary>
-    /// <remarks>
-    /// Marked as internal for testing purposes.
-    /// </remarks>
-    /// <param name="configuration">An injected instance of the <see cref="IConfiguration"/>.</param>
-    /// <returns>The built HTTP endpoint.</returns>
-    internal static string GetHttpEndpoint(IConfiguration? configuration)
-    {
-        //Prioritize pulling from IConfiguration with a fallback of pulling from the environment variable directly
-        var httpEndpoint = GetResourceValue(configuration, DaprDefaults.DaprHttpEndpointName);
-        var httpPort = GetResourceValue(configuration, DaprDefaults.DaprHttpPortName);
-        int? parsedHttpPort = string.IsNullOrWhiteSpace(httpPort) ? null : int.Parse(httpPort);
+        _services.AddDurableTaskWorker(builder =>
+        {
+            WorkflowRuntimeOptions options = new();
+            configure?.Invoke(options);
 
-        var endpoint = BuildEndpoint(httpEndpoint, parsedHttpPort);
-        return string.IsNullOrWhiteSpace(endpoint) ? $"http://localhost:{DaprDefaults.DefaultHttpPort}/" : endpoint;
+            var apiToken = GetApiToken(_configuration);
+            var grpcEndpoint = GetGrpcEndpoint(_configuration);
+
+            if (!string.IsNullOrEmpty(grpcEndpoint))
+            {
+                var httpClient = _httpClientFactory.CreateClient();
+
+                if (!string.IsNullOrWhiteSpace(apiToken))
+                {
+                    httpClient.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
+                }
+
+                builder.UseGrpc(
+                    GrpcChannel.ForAddress(grpcEndpoint, new GrpcChannelOptions { HttpClient = httpClient }));
+            }
+            else
+            {
+                builder.UseGrpc();
+            }
+
+            builder.AddTasks(registry => options.AddWorkflowsAndActivitiesToRegistry(registry));
+        });
     }
 
     /// <summary>
@@ -131,7 +102,7 @@ public static class DaprServiceCollectionExtensions
     /// </remarks>
     /// <param name="configuration">An injected instance of the <see cref="IConfiguration"/>.</param>
     /// <returns>The built gRPC endpoint.</returns>
-    internal static string GetGrpcEndpoint(IConfiguration? configuration)
+    private string GetGrpcEndpoint(IConfiguration? configuration)
     {
         //Prioritize pulling from IConfiguration with a fallback from pulling from the environment variable directly
         var grpcEndpoint = GetResourceValue(configuration, DaprDefaults.DaprGrpcEndpointName);
@@ -152,7 +123,7 @@ public static class DaprServiceCollectionExtensions
     /// </remarks>
     /// <param name="configuration">An injected instance of the <see cref="IConfiguration"/>.</param>
     /// <returns>The Dapr API token.</returns>
-    internal static string GetApiToken(IConfiguration? configuration)
+    private string GetApiToken(IConfiguration? configuration)
     {
         //Prioritize pulling from IConfiguration with a fallback of pulling from the environment variable directly
         return GetResourceValue(configuration, DaprDefaults.DaprApiTokenName);

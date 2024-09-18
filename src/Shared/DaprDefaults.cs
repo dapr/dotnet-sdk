@@ -22,6 +22,16 @@ namespace Dapr
         private static string daprApiToken = string.Empty;
         private static string appApiToken = string.Empty;
 
+        public const string DaprApiTokenName = "DAPR_API_TOKEN";
+        public const string AppApiTokenName = "APP_API_TOKEN";
+        public const string DaprHttpEndpointName = "DAPR_HTTP_ENDPOINT";
+        public const string DaprHttpPortName = "DAPR_HTTP_PORT";
+        public const string DaprGrpcEndpointName = "DAPR_GRPC_ENDPOINT";
+        public const string DaprGrpcPortName = "DAPR_GRPC_PORT";
+
+        public const int DefaultHttpPort = 3500;
+        public const int DefaultGrpcPort = 50001;
+
         /// <summary>
         /// Get the value of environment variable DAPR_API_TOKEN
         /// </summary>
@@ -34,7 +44,7 @@ namespace Dapr
             if (string.IsNullOrEmpty(daprApiToken))
             {
                 // Treat empty the same as null since it's an environment variable
-                var value = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+                var value = Environment.GetEnvironmentVariable(DaprApiTokenName);
                 daprApiToken = string.IsNullOrEmpty(value) ? string.Empty : value;
             }
 
@@ -49,7 +59,7 @@ namespace Dapr
         {
             if (string.IsNullOrEmpty(appApiToken))
             {
-                var value = Environment.GetEnvironmentVariable("APP_API_TOKEN");
+                var value = Environment.GetEnvironmentVariable(AppApiTokenName);
                 appApiToken = string.IsNullOrEmpty(value) ? string.Empty : value;
             }
 
@@ -64,14 +74,15 @@ namespace Dapr
         {
             if (string.IsNullOrEmpty(httpEndpoint))
             {
-                var endpoint = Environment.GetEnvironmentVariable("DAPR_HTTP_ENDPOINT");
-                if (!string.IsNullOrEmpty(endpoint)) {
+                var endpoint = Environment.GetEnvironmentVariable(DaprHttpEndpointName);
+                if (!string.IsNullOrEmpty(endpoint))
+                {
                     httpEndpoint = endpoint;
                     return httpEndpoint;
                 }
 
-                var port = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT");
-                port = string.IsNullOrEmpty(port) ? "3500" : port;
+                var port = Environment.GetEnvironmentVariable(DaprHttpPortName);
+                port = string.IsNullOrEmpty(port) ? $"{DefaultHttpPort}" : port;
                 httpEndpoint = $"http://127.0.0.1:{port}";
             }
 
@@ -86,14 +97,15 @@ namespace Dapr
         {
             if (string.IsNullOrEmpty(grpcEndpoint))
             {
-                var endpoint = Environment.GetEnvironmentVariable("DAPR_GRPC_ENDPOINT");
-                if (!string.IsNullOrEmpty(endpoint)) {
+                var endpoint = Environment.GetEnvironmentVariable(DaprGrpcEndpointName);
+                if (!string.IsNullOrEmpty(endpoint))
+                {
                     grpcEndpoint = endpoint;
                     return grpcEndpoint;
                 }
 
-                var port = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-                port = string.IsNullOrEmpty(port) ? "50001" : port;
+                var port = Environment.GetEnvironmentVariable(DaprGrpcPortName);
+                port = string.IsNullOrEmpty(port) ? $"{DefaultGrpcPort}" : port;
                 grpcEndpoint = $"http://127.0.0.1:{port}";
             }
 
