@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using FluentAssertions.Equivalency;
-
 namespace Dapr.Client.Test
 {
     using System;
