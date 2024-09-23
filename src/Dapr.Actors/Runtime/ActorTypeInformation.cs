@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -120,6 +120,40 @@ namespace Dapr.Actors.Runtime
         /// <remarks>The value of <paramref name="actorTypeName"/> will have precedence over the default actor type name derived from the actor implementation type or any type name set via <see cref="ActorAttribute"/>.</remarks>
         public static ActorTypeInformation Get(Type actorType, string actorTypeName)
         {
+            return GetInternal(default, actorType, actorTypeName);
+        }
+
+        /// <summary>
+        /// Creates an <see cref="ActorTypeInformation"/> from actorType.
+        /// </summary>
+        /// <param name="actorInterfaceType">The type of interface implementing the actor to create ActorTypeInformation for.</param>
+        /// <param name="actorType">The type of class implementing the actor to create ActorTypeInformation for.</param>
+        /// <param name="actorTypeName">The name of the actor type represented by the actor.</param>
+        /// <returns><see cref="ActorTypeInformation"/> created from actorType.</returns>
+        /// <exception cref="System.ArgumentException">
+        /// <para>When <see cref="System.Type.BaseType"/> for actorType is not of type <see cref="Actor"/>.</para>
+        /// <para>When actorType does not implement an interface deriving from <see cref="IActor"/>
+        /// and is not marked as abstract.</para>
+        /// </exception>
+        /// <remarks>The value of <paramref name="actorTypeName"/> will have precedence over the default actor type name derived from the actor implementation type or any type name set via <see cref="ActorAttribute"/>.</remarks>
+        public static ActorTypeInformation Get(Type actorInterfaceType, Type actorType, string actorTypeName)
+        {
+            return GetInternal(actorInterfaceType, actorType, actorTypeName);
+        }
+
+        private static ActorTypeInformation GetInternal(Type actorInterfaceType, Type actorType, string actorTypeName)
+        {
+            if (actorInterfaceType != default && !actorInterfaceType.IsActor())
+            {
+                throw new ArgumentException(
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        SR.ErrorNotAnActorInterface,
+                        actorInterfaceType.FullName,
+                        typeof(Actor).FullName),
+                    "actorInterfaceType");
+            }
+
             if (!actorType.IsActor())
             {
                 throw new ArgumentException(
@@ -132,7 +166,7 @@ namespace Dapr.Actors.Runtime
             }
 
             // get all actor interfaces
-            var actorInterfaces = actorType.GetActorInterfaces();
+            var actorInterfaces = actorInterfaceType != default ? new Type[] { actorInterfaceType } : actorType.GetActorInterfaces();
 
             // ensure that the if the actor type is not abstract it implements at least one actor interface
             if ((actorInterfaces.Length == 0) && (!actorType.GetTypeInfo().IsAbstract))
