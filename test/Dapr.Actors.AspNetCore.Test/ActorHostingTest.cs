@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -104,8 +105,33 @@ namespace Dapr.Actors.AspNetCore
 
             Assert.Collection(
                 runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
-                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1), actorTypeName: null).ActorTypeName, t),
-                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2), actorTypeName: null).ActorTypeName, t));
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(IMyActor), typeof(InternalMyActor), actorTypeName: null).ActorTypeName, t));
+
+            Assert.Collection(
+                runtime.RegisteredActors.Select(r => r.Type.InterfaceTypes.First()).OrderBy(t => t),
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(IMyActor), typeof(InternalMyActor), actorTypeName: null).InterfaceTypes.First(), t));
+
+            Assert.True(runtime.RegisteredActors.First().Type.InterfaceTypes.Count() == 1);
+        }
+
+        [Fact]
+        public void RegisterActorThrowsArgumentExceptionWhenAnyInterfaceInTheChainIsNotIActor()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
+            {
+                Assert.Throws<ArgumentException>(() => options.Actors.RegisterActor<INonActor1, InternalMyActor>());
+            });
+        }
+
+        private interface INonActor
+        {
+        }
+
+        private interface INonActor1 : INonActor, IActor
+        {
         }
 
         private interface ITestActor : IActor
@@ -138,7 +164,7 @@ namespace Dapr.Actors.AspNetCore
             void SomeInternalMethod();
         }
 
-        public class InternalMyActor : Actor, IInternalMyActor
+        public class InternalMyActor : Actor, IInternalMyActor, INonActor1
         {
             public InternalMyActor(ActorHost host)
                 : base(host)
