@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 using Microsoft.Extensions.DependencyInjection;
@@ -88,6 +89,25 @@ namespace Dapr.Actors.AspNetCore
             Assert.Same(jsonOptions, factory.DefaultOptions.JsonSerializerOptions);
         }
 
+        [Fact]
+        public void CanRegisterActorsToSpecificInterface()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddOptions();
+            services.AddActors(options =>
+            {
+                options.Actors.RegisterActor<IMyActor, InternalMyActor>();
+            });
+
+            var runtime = services.BuildServiceProvider().GetRequiredService<ActorRuntime>();
+
+            Assert.Collection(
+                runtime.RegisteredActors.Select(r => r.Type.ActorTypeName).OrderBy(t => t),
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor1), actorTypeName: null).ActorTypeName, t),
+                t => Assert.Equal(ActorTypeInformation.Get(typeof(TestActor2), actorTypeName: null).ActorTypeName, t));
+        }
+
         private interface ITestActor : IActor
         {
         }
@@ -105,6 +125,33 @@ namespace Dapr.Actors.AspNetCore
             public TestActor2(ActorHost host) 
                 : base(host)
             {
+            }
+        }
+
+        public interface IMyActor : IActor
+        {
+            Task SomeMethod();
+        }
+
+        public interface IInternalMyActor : IMyActor
+        {
+            void SomeInternalMethod();
+        }
+
+        public class InternalMyActor : Actor, IInternalMyActor
+        {
+            public InternalMyActor(ActorHost host)
+                : base(host)
+            {
+            }
+
+            public void SomeInternalMethod()
+            {
+            }
+
+            public Task SomeMethod()
+            {
+                return Task.CompletedTask;
             }
         }
     }

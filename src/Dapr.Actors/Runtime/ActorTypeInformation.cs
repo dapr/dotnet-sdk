@@ -143,7 +143,7 @@ namespace Dapr.Actors.Runtime
 
         private static ActorTypeInformation GetInternal(Type actorInterfaceType, Type actorType, string actorTypeName)
         {
-            if (actorInterfaceType != default && !actorInterfaceType.IsActor())
+            if (actorInterfaceType != default && !actorInterfaceType.IsActorInterface())
             {
                 throw new ArgumentException(
                     string.Format(
