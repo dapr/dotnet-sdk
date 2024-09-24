@@ -74,6 +74,7 @@ namespace Dapr.Actors.Runtime
         /// <typeparam name="TActor">Type of actor.</typeparam>
         /// <param name="configure">An optional delegate used to configure the actor registration.</param>
         public void RegisterActor<TActorInterface, TActor>(Action<ActorRegistration> configure = null)
+            where TActorInterface : Actor
             where TActor : Actor
         {
             RegisterActor<TActorInterface, TActor>(actorTypeName: null, configure);
@@ -87,6 +88,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="typeOptions">An optional <see cref="ActorRuntimeOptions"/> that defines values for this type alone.</param>
         /// <param name="configure">An optional delegate used to configure the actor registration.</param>
         public void RegisterActor<TActorInterface, TActor>(ActorRuntimeOptions typeOptions, Action<ActorRegistration> configure = null)
+            where TActorInterface : Actor
             where TActor : Actor
         {
             RegisterActor(typeof(TActorInterface), typeof(TActor), null, typeOptions, configure);
@@ -101,6 +103,7 @@ namespace Dapr.Actors.Runtime
         /// <param name="configure">An optional delegate used to configure the actor registration.</param>
         /// <remarks>The value of <paramref name="actorTypeName"/> will have precedence over the default actor type name derived from the actor implementation type or any type name set via <see cref="ActorAttribute"/>.</remarks>
         public void RegisterActor<TActorInterface, TActor>(string actorTypeName, Action<ActorRegistration> configure = null)
+            where TActorInterface : Actor
             where TActor : Actor
         {
             RegisterActor(typeof(TActorInterface), typeof(TActor), actorTypeName, null, configure);
