@@ -98,15 +98,15 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
         //Retrieve the messages from the sidecar and write to the messages channel
         _ = FetchDataFromSidecarAsync(stream, channel.Writer, cancellationToken);
 
-        //Processes each acknowledgement from the acknowledgement channel reader as it's populated
-        await foreach (var acknowledgement in acknowledgements.Reader.ReadAllAsync(cancellationToken))
-        {
-            await ProcessAcknowledgementAsync(acknowledgement);
-        }
-
-        //Read the messages one-by-one out of the messages channel
         try
         {
+            //Processes each acknowledgement from the acknowledgement channel reader as it's populated
+            await foreach (var acknowledgement in acknowledgements.Reader.ReadAllAsync(cancellationToken))
+            {
+                await ProcessAcknowledgementAsync(acknowledgement);
+            }
+
+            //Read the messages one-by-one out of the messages channel
             while (await channel.Reader.WaitToReadAsync(cancellationToken))
             {
                 while (channel.Reader.TryRead(out var message))
