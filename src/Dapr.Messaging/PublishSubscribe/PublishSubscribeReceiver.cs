@@ -91,7 +91,7 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing messages provided by the sidecar.</returns>
-    public async Task SubscribeAsync(CancellationToken cancellationToken = default)
+    internal async Task SubscribeAsync(CancellationToken cancellationToken = default)
     {
         //Prevents the receiver from performing the subscribe operation more than once (as the multiple initialization messages would cancel the stream).
         if (hasInitialized)

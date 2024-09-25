@@ -19,14 +19,11 @@ async Task<TopicResponseAction> HandleMessage(TopicMessage message, Cancellation
     }
 }
 
-//Create a dynamic streaming subscription
-var subscription = daprMessagingClient.Register("pubsub", "myTopic",
-    new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(15), TopicResponseAction.Retry)),
-    HandleMessage, CancellationToken.None);
-
-//Subscribe to messages on it with a timeout of 30 seconds
-var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-await subscription.SubscribeAsync(cancellationTokenSource.Token);
+//Create a dynamic streaming subscription and subscribe with a timeout of 20 seconds
+var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+var subscription = await daprMessagingClient.SubscribeAsync("pubsub", "myTopic",
+    new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Retry)),
+    HandleMessage, cancellationTokenSource.Token);
 
 await Task.Delay(TimeSpan.FromMinutes(1));
 
