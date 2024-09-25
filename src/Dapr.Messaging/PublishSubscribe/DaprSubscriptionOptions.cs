@@ -28,4 +28,10 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     /// The optional name of the dead-letter topic to send unprocessed messages to.
     /// </summary>
     public string? DeadLetterTopic { get; init; }
+
+    /// <summary>
+    /// The maximum amount of time to take to dispose of acknowledgement messages after the cancellation token has
+    /// been signaled.
+    /// </summary>
+    public TimeSpan MaximumCleanupTimeout { get; init; } = TimeSpan.FromSeconds(30);
 }

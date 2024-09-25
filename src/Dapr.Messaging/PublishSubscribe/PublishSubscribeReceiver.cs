@@ -244,7 +244,14 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
                     Extensions = response.EventMessage.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value)
                 };
 
-            await channelWriter.WriteAsync(message, cancellationToken);
+            try
+            {
+                await channelWriter.WriteAsync(message, cancellationToken);
+            }
+            catch (Exception)
+            {
+                // Handle being unable to write because the writer is completed due to an active DisposeAsync operation
+            }
         }
     }
 
@@ -258,25 +265,17 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
             return;
         isDisposed = true;
 
-        //Stop processing new events
+        //Stop processing new events - we'll leave any messages yet unseen as unprocessed and
+        //Dapr will handle as necessary when they're not acknowledged
         topicMessagesChannel.Writer.Complete();
+        
+        //Flush the remaining acknowledgements, but start by marking the writer as complete so it doesn't receive any other messages either
+        acknowledgementsChannel.Writer.Complete();
         
         try
         {
-            //Process any remaining messages on the channel
-            await topicMessagesChannel.Reader.Completion;
-        }
-        catch (OperationCanceledException)
-        {
-            // Handled
-        }
-
-        //Flush the remaining acknowledgements, but start by marking the writer as complete
-        acknowledgementsChannel.Writer.Complete();
-        try
-        {
-            //Process any remaining acknowledgements on the channel
-            await acknowledgementsChannel.Reader.Completion;
+            //Process any remaining acknowledgements on the channel without exceeding the configured maximum clean up time
+            await acknowledgementsChannel.Reader.Completion.WaitAsync(options.MaximumCleanupTimeout);
         }
         catch (OperationCanceledException)
         {
