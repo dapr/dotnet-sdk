@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Threading;
 using System.Threading.Channels;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Grpc.Core;
@@ -64,11 +63,11 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <summary>
     /// Flag that prevents the developer from accidentally initializing the subscription more than once from the same receiver.
     /// </summary>
-    private bool hasInitialized = false;
+    private bool hasInitialized;
     /// <summary>
     /// Flag that ensures the instance is only disposed a single time.
     /// </summary>
-    private bool isDisposed = false;
+    private bool isDisposed;
 
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
@@ -221,7 +220,7 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
             PubsubName = pubSubName, DeadLetterTopic = options.DeadLetterTopic ?? string.Empty, Topic = topicName
         };
 
-        if (options?.Metadata.Count > 0)
+        if (options.Metadata.Count > 0)
         {
             foreach (var (key, value) in options.Metadata)
             {
