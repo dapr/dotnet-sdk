@@ -30,6 +30,12 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     public string? DeadLetterTopic { get; init; }
 
     /// <summary>
+    /// If populated, this reflects the maximum number of messages that can be queued for processing on the replica. By default,
+    /// no maximum boundary is enforced.
+    /// </summary>
+    public int? MaximumQueuedMessages { get; init; }
+
+    /// <summary>
     /// The maximum amount of time to take to dispose of acknowledgement messages after the cancellation token has
     /// been signaled.
     /// </summary>

@@ -24,6 +24,11 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// </summary>
 public sealed class PublishSubscribeReceiver : IAsyncDisposable
 {
+    private readonly static UnboundedChannelOptions UnboundedChannelOptions = new UnboundedChannelOptions
+    {
+        SingleWriter = true, SingleReader = true
+    };
+
     /// <summary>
     /// The name of the Dapr pubsub component.
     /// </summary>
@@ -39,11 +44,11 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <summary>
     /// A channel used to decouple the messages received from the sidecar to their consumption.
     /// </summary>
-    private readonly Channel<TopicMessage> topicMessagesChannel = Channel.CreateUnbounded<TopicMessage>();
+    private readonly Channel<TopicMessage> topicMessagesChannel;
     /// <summary>
     /// Maintains the various acknowledgements for each message.
     /// </summary>
-    private readonly Channel<TopicAcknowledgement> acknowledgementsChannel = Channel.CreateUnbounded<TopicAcknowledgement>();
+    private readonly Channel<TopicAcknowledgement> acknowledgementsChannel = Channel.CreateUnbounded<TopicAcknowledgement>(UnboundedChannelOptions);
     /// <summary>
     /// The stream connection between this instance and the Dapr sidecar.
     /// </summary>
@@ -84,6 +89,12 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
         this.topicName = topicName;
         this.options = options;
         this.messageHandler = handler;
+        topicMessagesChannel = options.MaximumQueuedMessages is > 0
+            ? Channel.CreateBounded<TopicMessage>(new BoundedChannelOptions((int)options.MaximumQueuedMessages)
+            {
+                SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait
+            })
+            : Channel.CreateUnbounded<TopicMessage>(UnboundedChannelOptions);
     }
 
     /// <summary>
@@ -246,6 +257,7 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
 
             try
             {
+                await channelWriter.WaitToWriteAsync(cancellationToken);
                 await channelWriter.WriteAsync(message, cancellationToken);
             }
             catch (Exception)
