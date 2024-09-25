@@ -10,12 +10,11 @@ public sealed class PublishSubscribeReceiverTests
     public void Constructor_ShouldInitializeFields()
     {
         var daprClient = new Mock<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
-        var connectionManager = new ConnectionManager(daprClient.Object);
         var handlerMock = new Mock<TopicMessageHandler>();
         var options =
             new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(30), TopicResponseAction.Retry));
 
-        var receiver = new PublishSubscribeReceiver("pubsub", "dapr", options, connectionManager, handlerMock.Object);
+        var receiver = new PublishSubscribeReceiver("pubsub", "dapr", options, handlerMock.Object, daprClient.Object);
 
         Assert.NotNull(receiver);
     }

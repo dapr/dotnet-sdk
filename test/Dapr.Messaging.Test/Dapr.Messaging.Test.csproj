@@ -33,8 +33,4 @@
         <Using Include="Xunit" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="PublishSubscribe\Extensions\" />
-    </ItemGroup>
-
 </Project>

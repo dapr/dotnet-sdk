@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Threading.Channels;
+using Dapr.AppCallback.Autogen.Grpc.v1;
 using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
@@ -40,28 +41,44 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     private readonly Channel<TopicMessage> channel = Channel.CreateUnbounded<TopicMessage>();
     /// <summary>
+    /// Maintains the various acknowledgements for each message.
+    /// </summary>
+    private readonly Channel<TopicAcknowledgement> acknowledgements = Channel.CreateUnbounded<TopicAcknowledgement>();
+    /// <summary>
+    /// The stream connection between this instance and the Dapr sidecar.
+    /// </summary>
+    private AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>? clientStream;
+    /// <summary>
+    /// Used to ensure thread-safe operations against the stream.
+    /// </summary>
+    private readonly SemaphoreSlim semaphore = new(1, 1);
+    /// <summary>
     /// The handler delegate responsible for processing the topic messages.
     /// </summary>
     private readonly TopicMessageHandler messageHandler;
     /// <summary>
-    /// Maintains the connection to the Dapr dynamic subscription endpoint.
+    /// A reference to the DaprClient instance.
     /// </summary>
-    private readonly ConnectionManager connectionManager;
-    
+    private readonly P.Dapr.DaprClient client;
+    /// <summary>
+    /// Flag that prevents the developer from accidentally subscribing more than once from the same receiver.
+    /// </summary>
+    private bool hasInitialized;
+
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
     /// </summary>
     /// <param name="pubSubName">The name of the Dapr Publish/Subscribe component.</param>
     /// <param name="topicName">The name of the topic to subscribe to.</param>
     /// <param name="options">Options allowing the behavior of the receiver to be configured.</param>
-    /// <param name="connectionManager">Maintains the connection to the Dapr dynamic subscription endpoint.</param>
     /// <param name="handler">The delegate reflecting the action to take upon messages received by the subscription.</param>
-    internal PublishSubscribeReceiver(string pubSubName, string topicName, DaprSubscriptionOptions options, ConnectionManager connectionManager, TopicMessageHandler handler)
+    /// <param name="client">A reference to the DaprClient instance.</param>
+    internal PublishSubscribeReceiver(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler handler, P.Dapr.DaprClient client)
     {
+        this.client = client;
         this.pubSubName = pubSubName;
         this.topicName = topicName;
         this.options = options;
-        this.connectionManager = connectionManager;
         this.messageHandler = handler;
     }
 
@@ -72,11 +89,22 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing messages provided by the sidecar.</returns>
     public async Task SubscribeAsync(CancellationToken cancellationToken)
     {
-        var stream = await connectionManager.GetStreamAsync(cancellationToken);
-        //Retrieve the messages from the sidecar and write to the channel
+        //Prevents the receiver from performing the subscribe operation more than once (as the multiple initialization messages would cancel the stream).
+        if (hasInitialized)
+            return;
+        hasInitialized = true;
+
+        var stream = await GetStreamAsync(cancellationToken);
+        //Retrieve the messages from the sidecar and write to the messages channel
         _ = FetchDataFromSidecarAsync(stream, channel.Writer, cancellationToken);
-        
-        //Read the messages one-by-one out of the channel
+
+        //Processes each acknowledgement from the acknowledgement channel reader as it's populated
+        await foreach (var acknowledgement in acknowledgements.Reader.ReadAllAsync(cancellationToken))
+        {
+            await ProcessAcknowledgementAsync(acknowledgement);
+        }
+
+        //Read the messages one-by-one out of the messages channel
         try
         {
             while (await channel.Reader.WaitToReadAsync(cancellationToken))
@@ -113,14 +141,45 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     }
 
     /// <summary>
+    /// Retrieves or creates the bidirectional stream to the DaprClient for transacting pub/sub subscriptions.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns></returns>
+    private async
+        Task<AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>>
+        GetStreamAsync(CancellationToken cancellationToken)
+    {
+        await semaphore.WaitAsync(cancellationToken);
+
+        try
+        {
+            return clientStream ??= client.SubscribeTopicEventsAlpha1(cancellationToken: cancellationToken);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    /// <summary>
     /// Acknowledges the indicated message back to the Dapr sidecar with an indicated behavior to take on the message.
     /// </summary>
     /// <param name="messageId">The identifier of the message the behavior is in reference to.</param>
-    /// <param name="action">The behavior to take on the message as indicated by either the message handler or timeout message handling configuration.</param>
+    /// <param name="behavior">The behavior to take on the message as indicated by either the message handler or timeout message handling configuration.</param>
     /// <returns></returns>
-    private async Task AcknowledgeMessageAsync(string messageId, TopicResponseAction action)
+    private async Task AcknowledgeMessageAsync(string messageId, TopicResponseAction behavior)
     {
-        await connectionManager.AcknowledgeMessageAsync(messageId, action);
+        var action = behavior switch
+        {
+            TopicResponseAction.Success => TopicEventResponse.Types.TopicEventResponseStatus.Success,
+            TopicResponseAction.Retry => TopicEventResponse.Types.TopicEventResponseStatus.Retry,
+            TopicResponseAction.Drop => TopicEventResponse.Types.TopicEventResponseStatus.Drop,
+            _ => throw new InvalidOperationException(
+                $"Unrecognized topic acknowledgement action: {behavior}")
+        };
+
+        var acknowledgement = new TopicAcknowledgement(messageId, action);
+        await acknowledgements.Writer.WriteAsync(acknowledgement);
     }
 
     /// <summary>
@@ -182,7 +241,53 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <returns></returns>
     public async ValueTask DisposeAsync()
     {
-        await connectionManager.DisposeAsync();
+        //Stop processing new events
         channel.Writer.Complete();
+        
+        try
+        {
+            //Process any remaining messages on the channel
+            await channel.Reader.Completion;
+        }
+        catch (OperationCanceledException)
+        {
+            // Handled
+        }
+
+        //Flush the remaining acknowledgements, but start by marking the writer as complete
+        acknowledgements.Writer.Complete();
+        try
+        {
+            //Process any remaining acknowledgements on the channel
+            await acknowledgements.Reader.Completion;
+        }
+        catch (OperationCanceledException)
+        {
+            //Handled
+        }
     }
+
+    /// <summary>
+    /// Processes each of the acknowledgement messages.
+    /// </summary>
+    /// <param name="acknowledgement">Information about the message and action to take on it.</param>
+    /// <returns></returns>
+    private async Task ProcessAcknowledgementAsync(TopicAcknowledgement acknowledgement)
+    {
+        var messageStream = await GetStreamAsync(CancellationToken.None);
+        await messageStream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
+        {
+            EventProcessed = new()
+            {
+                Id = acknowledgement.MessageId, Status = new() { Status = acknowledgement.Action }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Reflects the action to take on a given message identifier.
+    /// </summary>
+    /// <param name="MessageId">The identifier of the message.</param>
+    /// <param name="Action">The action to take on the message in the acknowledgement request.</param>
+    private sealed record TopicAcknowledgement(string MessageId, TopicEventResponse.Types.TopicEventResponseStatus Action);
 }

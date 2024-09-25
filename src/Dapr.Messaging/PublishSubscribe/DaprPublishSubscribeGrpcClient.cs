@@ -20,17 +20,14 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// </summary>
 internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClient
 {
-    /// <summary>
-    /// Maintains a single connection to the Dapr dynamic subscription endpoint.
-    /// </summary>
-    private readonly ConnectionManager connectionManager;
+    private readonly P.DaprClient daprClient;
 
     /// <summary>
     /// Creates a new instance of a <see cref="DaprPublishSubscribeGrpcClient"/>
     /// </summary>
     public DaprPublishSubscribeGrpcClient(P.DaprClient client)
     {
-        connectionManager = new(client);
+        daprClient = client;
     }
 
     /// <summary>
@@ -42,5 +39,5 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <param name="messageHandler">The delegate reflecting the action to take upon messages received by the subscription.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    public override PublishSubscribeReceiver Register(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken) => new(pubSubName, topicName, options, connectionManager, messageHandler);
+    public override PublishSubscribeReceiver Register(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken) => new(pubSubName, topicName, options, messageHandler, daprClient);
 }
