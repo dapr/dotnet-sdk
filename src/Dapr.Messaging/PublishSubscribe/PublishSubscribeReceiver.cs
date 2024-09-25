@@ -113,7 +113,7 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
         }
         catch (OperationCanceledException)
         {
-            await DisposeAsync();
+            // Will be cleaned up during DisposeAsync
         }
     }
 
