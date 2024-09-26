@@ -13,7 +13,7 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 
-app.MapDaprScheduledJob("myJob", (ILogger logger, JobDetails details) =>
+app.MapDaprScheduledJob("myJob", (ILogger logger, DaprJobDetails details) =>
 {
     logger.LogInformation("Received trigger invocation for 'myJob'");
 

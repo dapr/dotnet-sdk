@@ -17,7 +17,7 @@ namespace Dapr.Jobs.Models.Responses;
 /// Represents the details of a retrieved job.
 /// </summary>
 /// <param name="Schedule">Represents the schedule that triggers the job.</param>
-public sealed record JobDetails(DaprJobSchedule Schedule)
+public sealed record DaprJobDetails(DaprJobSchedule Schedule)
 {
     /// <summary>
     /// Allows for jobs with fixed repeat counts.

@@ -19,7 +19,7 @@ using Xunit;
 
 namespace Dapr.Jobs.Test.Models.Responses;
 
-public sealed class JobDetailsTests
+public sealed class DaprJobDetailsTests
 {
     [Fact]
     public void ValidatePropertiesAreAsSet()
@@ -31,7 +31,7 @@ public sealed class JobDetailsTests
         var ttl = DateTimeOffset.UtcNow.AddMonths(3);
         const int repeatCount = 15;
 
-        var details = new JobDetails(DaprJobSchedule.Midnight)
+        var details = new DaprJobDetails(DaprJobSchedule.Midnight)
         {
             RepeatCount = repeatCount,
             DueTime = dueTime,
