@@ -152,8 +152,9 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     /// <param name="messageId">The identifier of the message the behavior is in reference to.</param>
     /// <param name="behavior">The behavior to take on the message as indicated by either the message handler or timeout message handling configuration.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    private async Task AcknowledgeMessageAsync(string messageId, TopicResponseAction behavior)
+    private async Task AcknowledgeMessageAsync(string messageId, TopicResponseAction behavior, CancellationToken cancellationToken)
     {
         var action = behavior switch
         {
@@ -165,7 +166,7 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
         };
 
         var acknowledgement = new TopicAcknowledgement(messageId, action);
-        await acknowledgementsChannel.Writer.WriteAsync(acknowledgement);
+        await acknowledgementsChannel.Writer.WriteAsync(acknowledgement, cancellationToken);
     }
 
     /// <summary>
@@ -205,12 +206,12 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
             try
             {
                 //Share the result with the sidecar
-                await AcknowledgeMessageAsync(message.Id, messageAction);
+                await AcknowledgeMessageAsync(message.Id, messageAction, cancellationToken);
             }
             catch (OperationCanceledException)
             {
                 //Acknowledge the message using the configured default response action
-                await AcknowledgeMessageAsync(message.Id, options.MessageHandlingPolicy.DefaultResponseAction);
+                await AcknowledgeMessageAsync(message.Id, options.MessageHandlingPolicy.DefaultResponseAction, cancellationToken);
             }
         }
     }
