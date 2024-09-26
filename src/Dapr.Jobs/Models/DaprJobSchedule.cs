@@ -91,32 +91,32 @@ public sealed class DaprJobSchedule
     /// <summary>
     /// Specifies a schedule in which the job is triggered to run once a year.
     /// </summary>
-    public static DaprJobSchedule Yearly => new DaprJobSchedule("@yearly");
+    public static DaprJobSchedule Yearly { get; } = new DaprJobSchedule("@yearly");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered monthly.
     /// </summary>
-    public static DaprJobSchedule Monthly => new DaprJobSchedule("@monthly");
+    public static DaprJobSchedule Monthly { get; } = new DaprJobSchedule("@monthly");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered weekly.
     /// </summary>
-    public static DaprJobSchedule Weekly => new DaprJobSchedule("@weekly");
+    public static DaprJobSchedule Weekly { get; } =new DaprJobSchedule("@weekly");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered daily.
     /// </summary>
-    public static DaprJobSchedule Daily => new DaprJobSchedule("@daily");
+    public static DaprJobSchedule Daily { get; } = new DaprJobSchedule("@daily");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered once a day at midnight.
     /// </summary>
-    public static DaprJobSchedule Midnight => new DaprJobSchedule("@midnight");
+    public static DaprJobSchedule Midnight { get; } = new DaprJobSchedule("@midnight");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered at the top of every hour.
     /// </summary>
-    public static DaprJobSchedule Hourly => new DaprJobSchedule("@hourly");
+    public static DaprJobSchedule Hourly { get; } = new DaprJobSchedule("@hourly");
 
     /// <summary>
     /// Reflects that the schedule represents a prefixed period expression.
