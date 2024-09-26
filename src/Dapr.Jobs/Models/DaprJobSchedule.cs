@@ -53,7 +53,7 @@ public sealed class DaprJobSchedule
     /// <param name="builder">The fluent Cron expression builder.</param>
     public static DaprJobSchedule FromCronExpression(CronExpressionBuilder builder)
     {
-        ArgumentVerifier.ThrowIfNull(builder, nameof(builder));
+        ArgumentNullException.ThrowIfNull(builder, nameof(builder));
         return new DaprJobSchedule(builder.ToString());
     }
 
@@ -64,7 +64,7 @@ public sealed class DaprJobSchedule
     /// <returns></returns>
     public static DaprJobSchedule FromDateTime(DateTimeOffset scheduledTime)
     {
-        ArgumentVerifier.ThrowIfNull(scheduledTime, nameof(scheduledTime));
+        ArgumentNullException.ThrowIfNull(scheduledTime, nameof(scheduledTime));
         return new DaprJobSchedule(scheduledTime.ToString("O"));
     }
     
@@ -84,7 +84,7 @@ public sealed class DaprJobSchedule
     /// <param name="duration">The duration interval.</param>
     public static DaprJobSchedule FromDuration(TimeSpan duration)
     {
-        ArgumentVerifier.ThrowIfNull(duration, nameof(duration));
+        ArgumentNullException.ThrowIfNull(duration, nameof(duration));
         return new DaprJobSchedule(duration.ToDurationString());
     }
 
