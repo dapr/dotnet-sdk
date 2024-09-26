@@ -124,7 +124,7 @@ public sealed class DaprJobSchedule
     public bool IsPrefixedPeriodExpression =>
         ExpressionValue.StartsWith('@') &&
         (isEveryExpression.IsMatch(ExpressionValue) ||
-         ExpressionValue.EndsWithAny(acceptablePeriodValues));
+         ExpressionValue.EndsWithAny(acceptablePeriodValues, StringComparison.InvariantCulture));
 
     /// <summary>
     /// Reflects that the schedule represents a fixed point in time.

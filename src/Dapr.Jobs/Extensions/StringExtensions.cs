@@ -20,6 +20,8 @@ internal static class StringExtensions
     /// </summary>
     /// <param name="value">The string value to evaluate.</param>
     /// <param name="possibleValues">The possible values to look for a match within.</param>
-    /// <returns></returns>
-    public static bool EndsWithAny(this string value, IReadOnlyList<string> possibleValues) => possibleValues.Any(value.EndsWith);
+    /// <param name="comparisonType">The type of string comparison to perform.</param>
+    /// <returns>True if the value ends with any of the possible values; otherwise false.</returns>
+    public static bool EndsWithAny(this string value, IReadOnlyList<string> possibleValues,
+        StringComparison comparisonType) => possibleValues.Any(val => value.EndsWith(val, comparisonType));
 }

@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
 using System.Collections.Generic;
 using Dapr.Jobs.Extensions;
 using Xunit;
@@ -31,7 +32,7 @@ public class StringExtensionsTests
             "daily",
             "midnight",
             "hourly"
-        });
+        }, StringComparison.InvariantCulture);
         Assert.True(result);
     }
 
@@ -39,7 +40,7 @@ public class StringExtensionsTests
     public void EndsWithAny_DoesNotContainMatch()
     {
         const string testValue = "@weekly";
-        var result = testValue.EndsWithAny(new List<string> { "every", "monthly", "daily", "midnight", "hourly" });
+        var result = testValue.EndsWithAny(new List<string> { "every", "monthly", "daily", "midnight", "hourly" }, StringComparison.InvariantCulture);
         Assert.False(result);
     }
 }
