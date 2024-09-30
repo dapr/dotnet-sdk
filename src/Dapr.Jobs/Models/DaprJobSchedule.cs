@@ -11,14 +11,17 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Dapr.Jobs.Extensions;
+using Dapr.Jobs.JsonConverters;
 
 namespace Dapr.Jobs.Models;
 
 /// <summary>
 /// Used to build a schedule for a job.
 /// </summary>
+[JsonConverter(typeof(DaprJobScheduleConverter))]
 public sealed class DaprJobSchedule
 {
     /// <summary>
@@ -34,7 +37,7 @@ public sealed class DaprJobSchedule
     /// The value of the expression represented by the schedule.
     /// </summary>
     public string ExpressionValue { get; }
-
+    
     /// <summary>
     /// Initializes the value of <see cref="ExpressionValue"/> based on the provided value from each of the factory methods.
     /// </summary>

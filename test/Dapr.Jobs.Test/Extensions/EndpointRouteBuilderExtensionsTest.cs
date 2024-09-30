@@ -11,31 +11,109 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Dapr.Jobs.Extensions;
+using Dapr.Jobs.Models;
+using Dapr.Jobs.Models.Responses;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
 namespace Dapr.Jobs.Test.Extensions;
 
 public class EndpointRouteBuilderExtensionsTest
 {
-    //The following won't work because Moq can't test static methods - leaving here should the project ever adopt some sort of commercial tool that enables such testing
-    //[Fact]
-    //public void MapDaprScheduledJobs_ValidateRegisteredRoute()
-    //{
-    //    var endpoints = new Mock<IEndpointRouteBuilder>();
-    //    endpoints.Setup(a => a.DataSources).Returns(new List<EndpointDataSource>()); //While .NET 9 changed this behavior, .NET 8 and lower will throw if this isn't setup on the mock
+    [Fact]
+    public async Task MapDaprScheduledJobHandler_ValidRequest_ExecutesAction()
+    {
+        var server = CreateTestServer();
+        var client = server.CreateClient();
 
-    //    const string jobName = "test-job";
-    //    var handler = (JobDetails details) =>
-    //    {
-    //        //Doesn't matter what it does here
-    //    };
+        var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
+        var serializedPayloadBytes = Encoding.UTF8.GetBytes(serializedPayload);
+        var jobDetails = new DaprJobDetails(new DaprJobSchedule("0 0 * * *"))
+        {
+            RepeatCount = 5,
+            DueTime = DateTimeOffset.UtcNow,
+            Ttl = DateTimeOffset.UtcNow.AddHours(1),
+            Payload = serializedPayloadBytes
+        };
+        var content = new StringContent(JsonSerializer.Serialize(jobDetails), Encoding.UTF8, "application/json");
 
-    //    var result = endpoints.Object.MapDaprScheduledJob(jobName, handler);
+        const string jobName = "testJob";
+        var response = await client.PostAsync($"/job/{jobName}", content);
 
-    //    var registeredRoutes = endpoints.Invocations
-    //        .Where(invocation => invocation.Method.Name == "MapPost")
-    //        .ToList();
+        response.EnsureSuccessStatusCode();
 
-    //    Assert.Single(registeredRoutes); //One MapPost call
-    //    Assert.Equal($"job/{jobName}", registeredRoutes[0].Arguments[0]); //Validate the route
-    //    Assert.Equal(handler, registeredRoutes[0].Arguments[1]); //Validate the handler delegate
-    //}
+        //Validate the job name and payload
+        var validator = server.Services.GetRequiredService<Validator>();
+        Assert.Equal(jobName, validator.JobName);
+        Assert.Equal(serializedPayload, validator.SerializedPayload);
+    }
+
+    [Fact]
+    public async Task MapDaprScheduledJobHandler_InvalidPayload()
+    {
+        // Arrange
+        var server = CreateTestServer();
+        var client = server.CreateClient();
+
+        var content = new StringContent("", Encoding.UTF8, "application/json");
+
+        // Act
+        const string jobName = "testJob";
+        var response = await client.PostAsync($"/job/{jobName}", content);
+
+        var validator = server.Services.GetRequiredService<Validator>();
+        Assert.Equal(jobName, validator.JobName);
+        Assert.Null(validator.SerializedPayload);
+    }
+
+    private sealed record SamplePayload(string Name, int Count);
+
+    public sealed class Validator
+    {
+        public string JobName { get; set; }
+
+        public string SerializedPayload { get; set; }
+    }
+
+    private static TestServer CreateTestServer()
+    {
+        var builder = new WebHostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton<Validator>();
+                services.AddRouting();
+            })
+            .Configure(app =>
+            {
+                app.UseRouting();
+                app.UseEndpoints(endpoints =>
+                {
+                    endpoints.MapDaprScheduledJobHandler(async (serviceProvider, jobName, jobDetails) =>
+                    {
+                        var validator = serviceProvider.GetRequiredService<Validator>();
+
+                        validator.JobName = jobName;
+                        if (jobDetails?.Payload is not null)
+                        {
+                            var payloadString = Encoding.UTF8.GetString(jobDetails.Payload);
+                            validator.SerializedPayload = payloadString;
+                        }
+
+                        await Task.CompletedTask;
+                    });
+                });
+            });
+
+        return new TestServer(builder);
+    }
 }
