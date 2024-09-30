@@ -11,10 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+
 using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
@@ -80,9 +83,9 @@ public class EndpointRouteBuilderExtensionsTest
 
     public sealed class Validator
     {
-        public string JobName { get; set; }
+        public string? JobName { get; set; }
 
-        public string SerializedPayload { get; set; }
+        public string? SerializedPayload { get; set; }
     }
 
     private static TestServer CreateTestServer()
@@ -98,11 +101,10 @@ public class EndpointRouteBuilderExtensionsTest
                 app.UseRouting();
                 app.UseEndpoints(endpoints =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (serviceProvider, jobName, jobDetails) =>
+                    endpoints.MapDaprScheduledJobHandler(async (string? jobName, DaprJobDetails? jobDetails, Validator validator, CancellationToken cancellationToken) =>
                     {
-                        var validator = serviceProvider.GetRequiredService<Validator>();
-
-                        validator.JobName = jobName;
+                        if (jobName is not null)
+                            validator.JobName = jobName;
                         if (jobDetails?.Payload is not null)
                         {
                             var payloadString = Encoding.UTF8.GetString(jobDetails.Payload);

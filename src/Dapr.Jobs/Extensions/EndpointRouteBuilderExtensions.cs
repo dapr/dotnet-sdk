@@ -61,14 +61,13 @@ public static class EndpointRouteBuilderExtensions
 
             var parameters = new List<object?> { jobName, jobPayload };
             var actionParameters = action.Method.GetParameters().Skip(2).ToArray();
-            parameters.AddRange(actionParameters.Select(parameter => context.RequestServices.GetService(parameter.ParameterType)));
+            parameters.AddRange(actionParameters
+                .Where(parameter => parameter.ParameterType != typeof(CancellationToken))
+                .Select(parameter => context.RequestServices.GetService(parameter.ParameterType)));
             parameters.Add(cancellationToken);
             
             var result = action.DynamicInvoke(parameters.ToArray());
-            if (result is Task task)
-            {
-                await task;
-            }
+            if (result is Task task) await task;
         });
 
         return endpoints;
