@@ -40,8 +40,7 @@ public static class EndpointRouteBuilderExtensions
         endpoints.MapPost("/job/{jobName}", async context =>
         {
             var serviceProvider = context.RequestServices;
-            await HandleDaprJobAsync(context,
-                (jobName, jobPayload) => action(serviceProvider, jobName, jobPayload));
+            await HandleDaprJobAsync(context, (jobName, jobPayload) => action(serviceProvider, jobName, jobPayload));
         });
 
         return endpoints;
@@ -62,14 +61,12 @@ public static class EndpointRouteBuilderExtensions
 
         endpoints.MapPost("/job/{jobName}", async context =>
         {
-            await HandleDaprJobAsync(context,
-                (jobName, jobPayload) => action(jobName, jobPayload));
+            await HandleDaprJobAsync(context, (jobName, jobPayload) => action(jobName, jobPayload));
         });
 
         return endpoints;
     }
     
-
     private static async Task HandleDaprJobAsync(HttpContext context, Func<string?, DaprJobDetails?, Task> action)
     {
         var jobName = (string?)context.Request.RouteValues["jobName"];

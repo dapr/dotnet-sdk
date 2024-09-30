@@ -121,7 +121,10 @@ public class MySampleClass
 
 It's easy to set up a jobs endpoint if you're at all familiar with [minimal APIs in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/overview) as the syntax is the same between the two.
 
-Once dependency injection registration has been completed, configure the application the same way you would to handle mapping an HTTP request via the minimal API functionality in ASP.NET Core. Implemented as an extension method, pass the name of the job it should be responsive to and a delegate. Services can be injected into the delegate's arguments as you wish and you can optionally pass a `JobDetails` to get information about the job that has been triggered (e.g. access its scheduling setup or payload):
+Once dependency injection registration has been completed, configure the application the same way you would to handle mapping an HTTP request via the minimal API functionality in ASP.NET Core. Implemented as an extension method, 
+pass the name of the job it should be responsive to and a delegate. Services can be injected into the delegate's arguments as you wish and you can optionally pass a `JobDetails` to get information about the job that has been triggered (e.g. access its scheduling setup or payload).
+
+There are two delegates you can use here. One provides an `IServiceProvider` in case you need to inject other services into the handler:
 
 ```cs
 //We have this from the example above
@@ -132,9 +135,28 @@ builder.Services.AddDaprJobsClient();
 var app = builder.Build();
 
 //Add our endpoint registration
-app.MapDaprScheduledJob("myJob", (JobDetails jobDetails, ILogger logger) => {
-    logger.LogInformation("Received trigger invocation for '{jobName}'", "myJob");
+app.MapDaprScheduledJob("myJob", (IServiceProvider serviceProvider, string? jobName, JobDetails? jobDetails) => {
+    var logger = serviceProvider.GetService<ILogger>();
+    logger?.LogInformation("Received trigger invocation for '{jobName}'", "myJob");
 
+    //Do something...
+});
+
+app.Run();
+```
+
+The other overload of the delegate doesn't require an `IServiceProvider` if not necessary:
+
+```cs
+//We have this from the example above
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDaprJobsClient();
+
+var app = builder.Build();
+
+//Add our endpoint registration
+app.MapDaprScheduledJob("myJob", (string? jobName, JobDetails? jobDetails) => {
     //Do something...
 });
 
