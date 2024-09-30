@@ -14,7 +14,6 @@
 using System.Text.Json;
 using Dapr.Jobs.Models.Responses;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
 namespace Dapr.Jobs.Extensions;
@@ -29,69 +28,49 @@ public static class EndpointRouteBuilderExtensions
     /// necessarily knowing the name of the job at build time.
     /// </summary>
     /// <param name="endpoints">The <see cref="IEndpointRouteBuilder"/> to add the route to.</param>
-    /// <param name="action">The asynchronous action provided by the developer that handles any inbound requests. This is provided with an <see cref="IServiceProvider"/>,
-    /// the name of the job and the deserialized <see cref="DaprJobDetails"/> payload and is expected to return a <see cref="Task"/>.
-    /// by the callback and which expects to be returned a task.</param>
-    public static IEndpointRouteBuilder MapDaprScheduledJobHandler(this IEndpointRouteBuilder endpoints, InjectableDaprJobHandler action)
+    /// <param name="action">The asynchronous action provided by the developer that handles any inbound requests. The first two
+    /// parameters must be a nullable <see cref="string"/> for the jobName and a nullable <see cref="DaprJobDetails"/> with the
+    /// payload details, but otherwise can be populated with additional services to be injected into the delegate.</param>
+    /// <param name="cancellationToken">Cancellation token that will be passed in as the last parameter to the delegate action.</param>
+    public static IEndpointRouteBuilder MapDaprScheduledJobHandler(this IEndpointRouteBuilder endpoints,
+        Delegate action, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpoints, nameof(endpoints));
         ArgumentNullException.ThrowIfNull(action, nameof(action));
 
         endpoints.MapPost("/job/{jobName}", async context =>
         {
-            var serviceProvider = context.RequestServices;
-            await HandleDaprJobAsync(context, (jobName, jobPayload) => action(serviceProvider, jobName, jobPayload));
-        });
-
-        return endpoints;
-    }
-
-    /// <summary>
-    /// Provides for a handler to be provided that allows the user to dictate how various jobs should be handled without
-    /// necessarily knowing the name of the job at build time.
-    /// </summary>
-    /// <param name="endpoints">The <see cref="IEndpointRouteBuilder"/> to add the route to.</param>
-    /// <param name="action">The asynchronous action provided by the developer that handles any inbound requests. This is provided with an <see cref="IServiceProvider"/>,
-    /// the name of the job and the deserialized <see cref="DaprJobDetails"/> payload and is expected to return a <see cref="Task"/>.
-    /// by the callback and which expects to be returned a task.</param>
-    public static IEndpointRouteBuilder MapDaprScheduledJobHandler(this IEndpointRouteBuilder endpoints, DaprJobHandler action)
-    {
-        ArgumentNullException.ThrowIfNull(endpoints, nameof(endpoints));
-        ArgumentNullException.ThrowIfNull(action, nameof(action));
-
-        endpoints.MapPost("/job/{jobName}", async context =>
-        {
-            await HandleDaprJobAsync(context, (jobName, jobPayload) => action(jobName, jobPayload));
-        });
-
-        return endpoints;
-    }
-    
-    private static async Task HandleDaprJobAsync(HttpContext context, Func<string?, DaprJobDetails?, Task> action)
-    {
-        var jobName = (string?)context.Request.RouteValues["jobName"];
-
-        if (context.Request.ContentLength is null or 0)
-        {
-            await action(jobName, null);
-        }
-        else
-        {
-            using var reader = new StreamReader(context.Request.Body);
-            var body = await reader.ReadToEndAsync();
+            var jobName = (string?)context.Request.RouteValues["jobName"];
             DaprJobDetails? jobPayload = null;
 
-            try
+            if (context.Request.ContentLength is > 0)
             {
-                var deserializedJobPayload = JsonSerializer.Deserialize<DeserializableDaprJobDetails>(body);
-                jobPayload = deserializedJobPayload?.ToType() ?? null;
-            }
-            catch (JsonException)
-            {
-                jobPayload = null;
+                using var reader = new StreamReader(context.Request.Body);
+                var body = await reader.ReadToEndAsync();
+
+                try
+                {
+                    var deserializedJobPayload = JsonSerializer.Deserialize<DeserializableDaprJobDetails>(body);
+                    jobPayload = deserializedJobPayload?.ToType() ?? null;
+                }
+                catch (JsonException)
+                {
+                    jobPayload = null;
+                }
             }
 
-            await action(jobName, jobPayload);
-        }
+            var parameters = new List<object?> { jobName, jobPayload };
+            var actionParameters = action.Method.GetParameters().Skip(2).ToArray();
+            parameters.AddRange(actionParameters.Select(parameter => context.RequestServices.GetService(parameter.ParameterType)));
+            parameters.Add(cancellationToken);
+            
+            var result = action.DynamicInvoke(parameters.ToArray());
+            if (result is Task task)
+            {
+                await task;
+            }
+        });
+
+        return endpoints;
     }
 }

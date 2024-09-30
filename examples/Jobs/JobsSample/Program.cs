@@ -3,6 +3,7 @@ using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
+using Dapr.Jobs.Models.Responses;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,16 +12,19 @@ builder.Services.AddDaprJobsClient();
 var app = builder.Build();
 
 //Set a handler to deal with incoming jobs
-app.MapDaprScheduledJobHandler((services, jobName, jobDetails) =>
+var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+app.MapDaprScheduledJobHandler((string? jobName, DaprJobDetails? jobDetails, ILogger? logger, CancellationToken cancellationToken) =>
 {
-    var logger = services.GetService<ILogger?>();
     logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
 
     if (jobDetails?.Payload is not null)
     {
         var deserializedPayload = Encoding.UTF8.GetString(jobDetails.Payload);
 
-        logger?.LogInformation("Received invocation for the job '{jobName}' with payload '{deserializedPayload}'", jobName, deserializedPayload);
+        logger?.LogInformation("Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
+            jobName, deserializedPayload);
+
+        //Do something that needs the cancellation token
     }
     else
     {
@@ -28,7 +32,7 @@ app.MapDaprScheduledJobHandler((services, jobName, jobDetails) =>
     }
 
     return Task.CompletedTask;
-});
+}, cancellationTokenSource.Token);
 
 app.Run();
 
