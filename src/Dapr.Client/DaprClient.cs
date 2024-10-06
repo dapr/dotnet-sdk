@@ -87,7 +87,7 @@ namespace Dapr.Client
                 DefaultAppId = appId,
             };
 
-            if (daprEndpoint is string)
+            if (daprEndpoint is not null)
             {
                 // DaprEndpoint performs validation.
                 handler.DaprEndpoint = daprEndpoint;
@@ -96,7 +96,7 @@ namespace Dapr.Client
             var httpClient = new HttpClient(handler);
             httpClient.DefaultRequestHeaders.UserAgent.Add(UserAgent());
 
-            if (appId is string)
+            if (appId is not null)
             {
                 try
                 {
@@ -427,7 +427,7 @@ namespace Dapr.Client
         /// </summary>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
-        public abstract Task<DaprMetadata> GetMetadataAsync(CancellationToken cancellationToken = default);
+        public abstract Task<DaprMetadata?> GetMetadataAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Perform service add extended metadata to the Dapr sidecar.
