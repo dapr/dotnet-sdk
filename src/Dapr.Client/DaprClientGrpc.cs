@@ -423,12 +423,7 @@ namespace Dapr.Client
         public override async Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNull(request, nameof(request));
-
-            if (!this.httpEndpoint.IsBaseOf(request.RequestUri))
-            {
-                throw new InvalidOperationException("The provided request URI is not a Dapr service invocation URI.");
-            }
-
+            
             // Note: we intentionally DO NOT validate the status code here.
             // This method allows you to 'invoke' without exceptions on non-2xx.
             try
