@@ -84,6 +84,8 @@ namespace Dapr.Workflow
                         return WorkflowRuntimeStatus.Terminated;
                     case OrchestrationRuntimeStatus.Pending:
                         return WorkflowRuntimeStatus.Pending;
+                    case OrchestrationRuntimeStatus.Suspended:
+                        return WorkflowRuntimeStatus.Suspended;
                     default:
                         return WorkflowRuntimeStatus.Unknown;
                 }
