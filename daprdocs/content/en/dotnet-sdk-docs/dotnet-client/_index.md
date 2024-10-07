@@ -24,6 +24,12 @@ The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< 
 #### HTTP
 You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke your services.
 
+{{% alert title="Note" color="primary" %}}
+ You can also [invoke a non-Dapr endpoint using either a named `HTTPEndpoint` or an FQDN URL to the non-Dapr environment]({{< ref "howto-invoke-non-dapr-endpoints.md#using-an-httpendpoint-resource-or-fqdn-url-for-non-dapr-endpoints" >}}).
+
+{{% /alert %}}
+
+
 {{< tabs SDK HTTP>}}
 
 {{% codetab %}}
@@ -56,7 +62,7 @@ Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance)
 
 #### gRPC
 You can use the `DaprClient` to invoke your services over gRPC.
-{{% codetab %}}
+
 ```csharp
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 var invoker = DaprClient.CreateInvocationInvoker(appId: myAppId, daprEndpoint: serviceEndpoint);
@@ -67,8 +73,6 @@ await client.MyMethodAsync(new Empty(), options);
 
 Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
 ```
-{{% /codetab %}}
-
 
 - For a full guide on service invocation visit [How-To: Invoke a service]({{< ref howto-invoke-discover-services.md >}}).
 
@@ -162,7 +166,7 @@ var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secre
 Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
 ```
 
-{{% / codetab %}}
+{{% /codetab %}}
 
 {{% codetab %}}
 

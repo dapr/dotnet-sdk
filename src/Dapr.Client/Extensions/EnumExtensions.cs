@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
 using System;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -27,12 +28,14 @@ namespace Dapr.Client
         /// <returns></returns>
         public static string GetValueFromEnumMember<T>(this T value) where T : Enum
         {
+            ArgumentNullException.ThrowIfNull(value, nameof(value));
+
             var memberInfo = typeof(T).GetMember(value.ToString(), BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly);
             if (memberInfo.Length <= 0)
                 return value.ToString();
 
             var attributes = memberInfo[0].GetCustomAttributes(typeof(EnumMemberAttribute), false);
-            return attributes.Length > 0 ? ((EnumMemberAttribute)attributes[0]).Value : value.ToString();
+            return (attributes.Length > 0 ? ((EnumMemberAttribute)attributes[0]).Value : value.ToString()) ?? value.ToString();
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 using Xunit;
 
-namespace Dapr.Client.Test
+namespace Dapr.Client.Test.Extensions
 {
     public class EnumExtensionTest
     {
@@ -29,9 +29,9 @@ namespace Dapr.Client.Test
 
     public enum TestEnum
     {
-        [EnumMember(Value="red")]
+        [EnumMember(Value = "red")]
         Red,
-        [EnumMember(Value="YELLOW")]
+        [EnumMember(Value = "YELLOW")]
         Yellow,
         Blue
     }
