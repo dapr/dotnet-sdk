@@ -17,19 +17,11 @@ namespace Dapr.AspNetCore.Test
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using System.Text.Json;
-    using System.Threading.Tasks;
     using Dapr.AspNetCore.Resources;
-    using Dapr.Client;
-    using Dapr.Client.Autogen.Grpc.v1;
     using FluentAssertions;
-    using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.ApplicationModels;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
-    using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-    using Microsoft.AspNetCore.Mvc.Routing;
-    using Microsoft.Extensions.DependencyInjection;
     using Xunit;
 
     public class StateEntryApplicationModelProviderTest

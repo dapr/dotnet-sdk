@@ -15,7 +15,6 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.IO;
-    using Dapr.Actors.Communication;
     using FluentAssertions;
     using Xunit;
 
