@@ -18,7 +18,7 @@ Dapr offers a variety of packages to help with the development of .NET applicati
 
 - [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed
 - Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}})
-- [.NET Core 3.1 or .NET 5+](https://dotnet.microsoft.com/download) installed
+- [.NET 6+](https://dotnet.microsoft.com/download) installed
 
 ## Installation
 

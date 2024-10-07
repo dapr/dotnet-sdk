@@ -45,7 +45,7 @@ This project contains the implementation of the actor client which calls MyActor
 
 - [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed.
 - Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}}).
-- [.NET Core 3.1 or .NET 6+](https://dotnet.microsoft.com/download) installed. Dapr .NET SDK uses [ASP.NET Core](https://docs.microsoft.com/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-6.0).
+- [.NET 6+](https://dotnet.microsoft.com/download) installed. Dapr .NET SDK uses [ASP.NET Core](https://docs.microsoft.com/aspnet/core/introduction-to-aspnet-core?view=aspnetcore-6.0).
 
 ## Step 0: Prepare
 
