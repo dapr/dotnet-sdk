@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
+#nullable enable
 
 namespace Dapr.Client
 {
@@ -65,7 +67,7 @@ namespace Dapr.Client
         /// <remarks>
         /// Application code should not need to create instances of <see cref="BulkStateItem" />.
         /// </remarks>
-        public BulkStateItem(string key, TValue value, string etag)
+        public BulkStateItem(string key, TValue? value, string etag)
         {
             this.Key = key;
             this.Value = value;
@@ -80,7 +82,7 @@ namespace Dapr.Client
         /// <summary>
         /// Gets the deserialized value of the indicated type.
         /// </summary>
-        public TValue Value { get; }
+        public TValue? Value { get; }
 
         /// <summary>
         /// Get the ETag.

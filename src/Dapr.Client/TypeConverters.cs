@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
+#nullable enable
 
 namespace Dapr.Client
 {
@@ -46,7 +48,7 @@ namespace Dapr.Client
             };
         }
 
-        public static T FromJsonByteString<T>(ByteString bytes, JsonSerializerOptions options)
+        public static T? FromJsonByteString<T>(ByteString bytes, JsonSerializerOptions options)
         {
             if (bytes.Length == 0)
             {
@@ -56,7 +58,7 @@ namespace Dapr.Client
             return JsonSerializer.Deserialize<T>(bytes.Span, options);
         }
 
-        public static T FromJsonAny<T>(Any any, JsonSerializerOptions options)
+        public static T? FromJsonAny<T>(Any any, JsonSerializerOptions options)
         {
             return FromJsonByteString<T>(any.Value, options);
         }
