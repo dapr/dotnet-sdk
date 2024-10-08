@@ -25,8 +25,7 @@ namespace Dapr.E2E.Test
         public async Task ActorCanProvideExceptionDetails()
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            var actorIds = new ActorId(Guid.NewGuid().ToString());
-            
+
             var proxy = this.ProxyFactory.CreateActorProxy<IExceptionActor>(ActorId.CreateRandom(), "ExceptionActor");
             await WaitForActorRuntimeAsync(proxy, cts.Token);
             ActorMethodInvocationException ex = await Assert.ThrowsAsync<ActorMethodInvocationException>(async () => await proxy.ExceptionExample());
