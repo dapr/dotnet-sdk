@@ -136,10 +136,10 @@ public void ConfigureServices(IServiceCollection services)
     // Register actor runtime with DI
     services.AddActors(options =>
     {
-        // Register actor types and configure actor settings.
+        // Register actor types and configure actor settings
         options.Actors.RegisterActor<MyActor>();
 
-        // Register MyActor to a specific interface. 
+        // Register MyActor to a specific interface
         options.Actors.RegisterActor<IMyActor, MyActor>();
         
         // Configure default settings
