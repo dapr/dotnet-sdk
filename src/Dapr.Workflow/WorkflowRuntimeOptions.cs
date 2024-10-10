@@ -90,7 +90,7 @@ namespace Dapr.Workflow
             {
                 registry.AddActivityFunc<TInput, TOutput>(name, (innerContext, input) =>
                 {
-                    WorkflowActivityContext activityContext = new(innerContext);
+                    WorkflowActivityContext activityContext = new DaprWorkflowActivityContext(innerContext);
                     return implementation(activityContext, input);
                 });
                 WorkflowLoggingService.LogActivityName(name);
@@ -167,7 +167,7 @@ namespace Dapr.Workflow
 
             public Task<object?> RunAsync(TaskActivityContext context, object? input)
             {
-                return this.activity.RunAsync(new WorkflowActivityContext(context), input);
+                return this.activity.RunAsync(new DaprWorkflowActivityContext(context), input);
             }
         }
     }
