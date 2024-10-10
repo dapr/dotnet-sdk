@@ -118,7 +118,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.Actors.Genera
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cryptography", "examples\Client\Cryptography\Cryptography.csproj", "{C74FBA78-13E8-407F-A173-4555AEE41FF3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Workflow.Test", "test\Dapr.Workflows.Test\Dapr.Workflow.Test.csproj", "{7CA93D67-C551-430E-AA2C-BC64B77F7908}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Workflow.Test", "test\Dapr.Workflow.Test\Dapr.Workflow.Test.csproj", "{7CA93D67-C551-430E-AA2C-BC64B77F7908}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
