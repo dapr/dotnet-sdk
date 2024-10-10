@@ -84,5 +84,32 @@ namespace Dapr.E2E.Test
                 Assert.Equal(JsonSerializer.Serialize(kvp.Value), JsonSerializer.Serialize(value));
             }
         }
+
+        /// <summary>
+        /// This was actually a problem that is why the test exists.
+        /// It just checks, if the interface of the actor has more than one method defined,
+        /// that if can call it and serialize the payload correctly.
+        /// </summary>
+        /// <remarks>
+        /// More than one methods means here, that in the exact interface must be two methods defined.
+        /// That excludes hirachies. 
+        /// So <see cref="IPingActor.Ping"/> wouldn't count here, because it's not directly defined in 
+        /// <see cref="ISerializationActor"/>. (it's defined in the base of it.)
+        /// That why <see cref="ISerializationActor.AnotherMethod(DateTime)"/> was created,
+        /// so there are now more then one method.
+        /// </remark>
+        [Fact]
+        public async Task ActorCanSupportCustomSerializerAndCallMoreThenOneDefinedMethod()
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var proxy = this.ProxyFactory.CreateActorProxy<ISerializationActor>(ActorId.CreateRandom(), "SerializationActor");
+
+            await ActorRuntimeChecker.WaitForActorRuntimeAsync(this.AppId, this.Output, proxy, cts.Token);
+
+            var payload = DateTime.MinValue;
+            var result = await proxy.AnotherMethod(payload);
+
+            Assert.Equal(payload, result);
+        }
     }
 }
