@@ -136,8 +136,11 @@ public void ConfigureServices(IServiceCollection services)
     // Register actor runtime with DI
     services.AddActors(options =>
     {
-        // Register actor types and configure actor settings
+        // Register actor types and configure actor settings.
         options.Actors.RegisterActor<MyActor>();
+
+        // Register MyActor to a specific interface. 
+        options.Actors.RegisterActor<IMyActor, MyActor>();
         
         // Configure default settings
         options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
@@ -150,6 +153,12 @@ public void ConfigureServices(IServiceCollection services)
     services.AddSingleton<BankService>();
 }
 ```
+> [!IMPORTANT]  
+> When registering actors, note the return type requirements for the methods inside the interfaces:
+> * Pattern 1: `options.Actors.RegisterActor<MyActor>()`
+>     * In this case, all interfaces implemented by `MyActor` must have methods that return only `Task` or `Task<T>`. This applies to every method in all interfaces `MyActor` implements.
+> * Pattern 2: `options.Actors.RegisterActor<IMyActor, MyActor>()`
+>     * Here, only the `IMyActor` interface is required to have methods that return `Task` or `Task<T>`. Other interfaces `MyActor` are not subject to this restriction.
 
 ### Configuring JSON options
 
