@@ -1,10 +1,10 @@
 ﻿using Dapr.Client;
 using Dapr.Workflow;
 using WorkflowConsoleApp.Activities;
-using WorkflowConsoleApp.Models;
 using WorkflowConsoleApp.Workflows;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using WorkflowConsoleApp;
 
 const string StoreName = "statestore";
 
