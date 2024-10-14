@@ -1,4 +1,5 @@
-﻿using DistributedLock.Services;
+﻿using Dapr.AspNetCore;
+using DistributedLock.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
