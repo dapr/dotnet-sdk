@@ -11,9 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using IDemoActorInterface;
+using IDemoActor;
 
-namespace DaprDemoActor
+namespace DemoActor
 {
     public class BankService
     {

@@ -11,10 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Cryptography;
 using Cryptography.Examples;
 
-namespace Samples.Client
+namespace Cryptography
 {
     class Program
     {

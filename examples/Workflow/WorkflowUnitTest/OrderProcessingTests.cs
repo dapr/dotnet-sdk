@@ -1,8 +1,8 @@
 ﻿using System.Threading.Tasks;
 using Dapr.Workflow;
 using Moq;
+using WorkflowConsoleApp;
 using WorkflowConsoleApp.Activities;
-using WorkflowConsoleApp.Models;
 using WorkflowConsoleApp.Workflows;
 using Xunit;
 

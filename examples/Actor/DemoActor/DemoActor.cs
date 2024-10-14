@@ -11,14 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace DaprDemoActor
-{
-    using System;
-    using System.Text.Json;
-    using System.Threading.Tasks;
-    using Dapr.Actors.Runtime;
-    using IDemoActorInterface;
+using System;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Dapr.Actors.Runtime;
+using IDemoActor;
 
+namespace DemoActor
+{
     // The following example showcases a few features of Actors
     //
     // Every actor should inherit from the Actor type, and must implement one or more actor interfaces.
@@ -27,7 +27,7 @@ namespace DaprDemoActor
     // For Actors to use Reminders, it must derive from IRemindable.
     // If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder 
     // specific methods which are shown in the code below.
-    public class DemoActor : Actor, IDemoActor, IBankActor, IRemindable
+    public class DemoActor : Actor, IDemoActor.IDemoActor, IBankActor, IRemindable
     {
         private const string StateName = "my_data";
 

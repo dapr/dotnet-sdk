@@ -11,13 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace IDemoActorInterface
-{
-    using System;
-    using System.Threading.Tasks;
-    using Dapr.Actors;
-    using Dapr.Actors.Runtime;
+using System;
+using System.Threading.Tasks;
+using Dapr.Actors;
 
+namespace IDemoActor
+{
     /// <summary>
     /// Interface for Actor method.
     /// </summary>
