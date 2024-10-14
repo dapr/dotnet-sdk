@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+namespace Dapr.Workflow
 {
     /// <summary>
     /// Enum describing the runtime status of a workflow.
