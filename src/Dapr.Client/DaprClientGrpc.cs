@@ -470,44 +470,9 @@ namespace Dapr.Client
         /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
         /// <remarks>
         /// </remarks>
-        #nullable enable
-        public override HttpClient CreateInvokableHttpClient(string? appId = null)
-        {
-            var handler = new InvocationHandler
-            {
-                InnerHandler = new HttpClientHandler(),
-                DefaultAppId = appId
-            };
-
-            //Apply the Dapr API token if it's set on the client
-            if (this.apiTokenHeader.HasValue)
-            {
-                handler.DaprApiToken = this.apiTokenHeader.Value.Value;
-            }
-
-            if (this.httpEndpoint is not null)
-            {
-                //DaprEndpoint performs validation
-                handler.DaprEndpoint = this.httpEndpoint.AbsoluteUri;
-            }
-
-            var httpClient = new HttpClient(handler);
-            httpClient.DefaultRequestHeaders.UserAgent.Add(UserAgent());
-
-            if (appId is not null)
-            {
-                try
-                {
-                    httpClient.BaseAddress = new Uri($"http://{appId}");
-                }
-                catch (UriFormatException inner)
-                {
-                    throw new ArgumentException("The appId must be a valid hostname.", nameof(appId), inner);
-                }
-            }
-
-            return httpClient;
-        }
+#nullable enable
+        public override HttpClient CreateInvokableHttpClient(string? appId = null) =>
+            DaprClient.CreateInvokeHttpClient(appId, this.httpEndpoint?.AbsoluteUri, this.apiTokenHeader?.Value);
         #nullable disable
 
         public async override Task InvokeMethodAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
