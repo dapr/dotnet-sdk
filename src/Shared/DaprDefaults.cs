@@ -29,6 +29,7 @@ namespace Dapr
         public const string DaprGrpcEndpointName = "DAPR_GRPC_ENDPOINT";
         public const string DaprGrpcPortName = "DAPR_GRPC_PORT";
 
+        public const string DaprHostName = "localhost";
         public const int DefaultHttpPort = 3500;
         public const int DefaultGrpcPort = 50001;
 

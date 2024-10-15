@@ -115,10 +115,12 @@ public static class DaprServiceCollectionExtensions
         //Prioritize pulling from IConfiguration with a fallback of pulling from the environment variable directly
         var httpEndpoint = GetResourceValue(configuration, DaprDefaults.DaprHttpEndpointName);
         var httpPort = GetResourceValue(configuration, DaprDefaults.DaprHttpPortName);
-        int? parsedHttpPort = string.IsNullOrWhiteSpace(httpPort) ? null : int.Parse(httpPort);
+        int? parsedHttpPort = int.TryParse(httpPort, out var port) ? port : null;
 
         var endpoint = BuildEndpoint(httpEndpoint, parsedHttpPort);
-        return string.IsNullOrWhiteSpace(endpoint) ? $"http://localhost:{DaprDefaults.DefaultHttpPort}/" : endpoint;
+        return string.IsNullOrWhiteSpace(endpoint)
+            ? $"http://{DaprDefaults.DaprHostName}:{DaprDefaults.DefaultHttpPort}/"
+            : endpoint;
     }
 
     /// <summary>
@@ -135,10 +137,12 @@ public static class DaprServiceCollectionExtensions
         //Prioritize pulling from IConfiguration with a fallback from pulling from the environment variable directly
         var grpcEndpoint = GetResourceValue(configuration, DaprDefaults.DaprGrpcEndpointName);
         var grpcPort = GetResourceValue(configuration, DaprDefaults.DaprGrpcPortName);
-        int? parsedGrpcPort = string.IsNullOrWhiteSpace(grpcPort) ? null : int.Parse(grpcPort);
+        int? parsedGrpcPort = int.TryParse(grpcPort, out var port) ? port : null;
 
         var endpoint = BuildEndpoint(grpcEndpoint, parsedGrpcPort);
-        return string.IsNullOrWhiteSpace(endpoint) ? $"http://localhost:{DaprDefaults.DefaultGrpcPort}/" : endpoint;
+        return string.IsNullOrWhiteSpace(endpoint)
+            ? $"http://{DaprDefaults.DaprHostName}:{DaprDefaults.DefaultGrpcPort}/"
+            : endpoint;
     }
 
     /// <summary>
