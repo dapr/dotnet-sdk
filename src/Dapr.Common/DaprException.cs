@@ -13,7 +13,7 @@
 
 using System.Runtime.Serialization;
 
-namespace Dapr.Common;
+namespace Dapr;
 
 /// <summary>
 /// The base type of exception thrown by the Dapr .NET SDK.
