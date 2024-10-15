@@ -69,6 +69,13 @@ Put the Dapr .NET SDK to the test. Walk through the .NET quickstarts and tutoria
       <a href="{{< ref dotnet-workflow >}}" class="stretched-link"></a>
     </div>
   </div>
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title"><b>Jobs</b></h5>
+      <p class="card-text">Create and manage the scheduling and orchestration of jobs in .NET.</p>
+      <a href="{{< ref dotnet-jobs >}}" class="stretched-link"></a>
+    </div>
+  </div>
 </div>
 
 ## More information

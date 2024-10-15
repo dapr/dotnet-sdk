@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
-    using System.Linq;
     using Dapr.Client;
     using Extensions;
 

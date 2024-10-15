@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 using Xunit;
 
-namespace Dapr.Client.Test.Extensions
+namespace Dapr.Common.Test.Extensions
 {
     public class EnumExtensionTest
     {

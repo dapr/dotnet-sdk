@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,11 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client.Test
+namespace Dapr.Common.Test
 {
     using System;
     using Xunit;
-
+    
+    
     public class ArgumentVerifierTest
     {
         [Fact]
