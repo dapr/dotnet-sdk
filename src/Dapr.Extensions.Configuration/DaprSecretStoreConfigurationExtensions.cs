@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Dapr.Extensions.Configuration.DaprSecretStore;
 using System.Linq;
 using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Extensions.Configuration
 {
@@ -207,6 +208,31 @@ namespace Dapr.Extensions.Configuration
             }
 
             configurationBuilder.Add(source);
+
+            return configurationBuilder;
+        }
+
+        /// <summary>
+        /// Adds an <see cref="IConfigurationProvider"/> that reads the configuration values from the command line.
+        /// </summary>
+        /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/> from which the injected <see cref="DaprClient"/> instance is sourced.</param>
+        /// <param name="configureSource">A func that is provided with an injected <see cref="DaprClient"/> and from which the configuration source must be provided.</param>
+        /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
+        public static IConfigurationBuilder AddDaprSecretStore(
+            this IConfigurationBuilder configurationBuilder,
+            IServiceProvider serviceProvider, 
+            Action<DaprClient, DaprSecretStoreConfigurationSource> configureSource)
+        {
+            ArgumentVerifier.ThrowIfNull(serviceProvider, nameof(serviceProvider));
+            ArgumentVerifier.ThrowIfNull(configureSource, nameof(configureSource));
+            
+            var daprClient = serviceProvider.GetRequiredService<DaprClient>();
+
+            var defaultSource = new DaprSecretStoreConfigurationSource();
+            
+            configureSource?.Invoke(daprClient, defaultSource);
+            configurationBuilder.Add(defaultSource);
 
             return configurationBuilder;
         }
