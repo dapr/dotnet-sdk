@@ -16,11 +16,10 @@
 namespace Microsoft.Extensions.DependencyInjection;
 
 using System;
-using System.Linq;
 using Dapr;
 using Dapr.Client;
 using Extensions;
-using Microsoft.Extensions.Configuration;
+using Configuration;
 
 /// <summary>
 /// Provides extension methods for <see cref="IServiceCollection" />.
@@ -190,19 +189,21 @@ public static class DaprServiceCollectionExtensions
     {
         if (string.IsNullOrWhiteSpace(endpoint) && endpointPort is null)
             return string.Empty;
-
+        
+        // Per the proposal at https://github.com/artursouza/proposals/blob/cd811136d0af0aade52ef297a84c3050f3243ae8/0008-S-sidecar-endpoint-tls.md#design this will
+        // favor whatever value is provided in the endpoint value (and if the port isn't provided, it will be inferred from the protocol).
+        
+        // The endpoint port will only be evaluated if the endpoint is not provided. While the proposal calls for a value of "127.0.0.1", it does accept its
+        // equivalent, e.g. "localhost", and because of the issue detailed at https://github.com/dapr/dotnet-sdk/issues/1032
+        
         var endpointBuilder = new UriBuilder();
-        if (!string.IsNullOrWhiteSpace(endpoint))
+        if (!string.IsNullOrWhiteSpace(endpoint) && endpointPort is null)
         {
             //Extract the scheme, host and port from the endpoint
             var uri = new Uri(endpoint);
             endpointBuilder.Scheme = uri.Scheme;
             endpointBuilder.Host = uri.Host;
             endpointBuilder.Port = uri.Port;
-
-            //Update the port if provided separately
-            if (endpointPort is not null)
-                endpointBuilder.Port = (int)endpointPort;
         }
         else if (string.IsNullOrWhiteSpace(endpoint) && endpointPort is not null)
         {
