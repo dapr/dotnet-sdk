@@ -201,7 +201,7 @@ public static class DaprServiceCollectionExtensions
         // equivalent, e.g. "localhost", and because of the issue detailed at https://github.com/dapr/dotnet-sdk/issues/1032
         
         var endpointBuilder = new UriBuilder();
-        if (!string.IsNullOrWhiteSpace(endpoint) && endpointPort is null)
+        if (!string.IsNullOrWhiteSpace(endpoint)) //Ignore the endpoint port argument if the endpoint is provided
         {
             //Extract the scheme, host and port from the endpoint
             var uri = new Uri(endpoint);

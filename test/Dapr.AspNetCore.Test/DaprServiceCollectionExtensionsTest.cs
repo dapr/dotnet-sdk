@@ -156,7 +156,7 @@ namespace Dapr.AspNetCore.Test
                 var configuration = configurationBuilder.Build();
 
                 var httpEndpoint = DaprServiceCollectionExtensions.GetHttpEndpoint(configuration);
-                Assert.Equal("https://dapr.io:2569/", httpEndpoint);
+                Assert.Equal("https://dapr.io:443/", httpEndpoint);
             }
             finally
             {
@@ -184,12 +184,36 @@ namespace Dapr.AspNetCore.Test
                 var configuration = configurationBuilder.Build();
 
                 var httpEndpoint = DaprServiceCollectionExtensions.GetHttpEndpoint(configuration);
-                Assert.Equal("https://dapr.io:2569/", httpEndpoint);
+                Assert.Equal("https://dapr.io:443/", httpEndpoint);
             }
             finally
             {
                 //Restore
                 Environment.SetEnvironmentVariable(endpointVarName, original_HttpEndpoint);
+                Environment.SetEnvironmentVariable(portVarName, original_HttpPort);
+            }
+        }
+
+        [Fact]
+        public void ShouldBuildHttpEndpointUsingOnlyPortConfiguration()
+        {
+            const string portVarName = "DAPR_HTTP_PORT";
+            var original_HttpPort = Environment.GetEnvironmentVariable(portVarName);
+
+            try
+            {
+                Environment.SetEnvironmentVariable(portVarName, "2569");
+
+                var configurationBuilder = new ConfigurationBuilder();
+                configurationBuilder.AddEnvironmentVariables();
+                var configuration = configurationBuilder.Build();
+
+                var httpEndpoint = DaprServiceCollectionExtensions.GetHttpEndpoint(configuration);
+                Assert.Equal("http://localhost:2569/", httpEndpoint);
+            }
+            finally
+            {
+                //Restore
                 Environment.SetEnvironmentVariable(portVarName, original_HttpPort);
             }
         }
@@ -204,14 +228,14 @@ namespace Dapr.AspNetCore.Test
 
             try
             {
-                Environment.SetEnvironmentVariable(endpointVarName, "https://dapr.io");
+                Environment.SetEnvironmentVariable(endpointVarName, "http://dapr.io");
                 Environment.SetEnvironmentVariable(portVarName, "2569");
 
                 var configurationBuilder = new ConfigurationBuilder();
                 var configuration = configurationBuilder.Build();
 
                 var httpEndpoint = DaprServiceCollectionExtensions.GetHttpEndpoint(configuration);
-                Assert.Equal("https://dapr.io:2569/", httpEndpoint);
+                Assert.Equal("http://dapr.io:80/", httpEndpoint);
             }
             finally
             {
@@ -240,7 +264,7 @@ namespace Dapr.AspNetCore.Test
                 var configuration = configurationBuilder.Build();
 
                 var httpEndpoint = DaprServiceCollectionExtensions.GetHttpEndpoint(configuration);
-                Assert.Equal("https://dapr.io:2569/", httpEndpoint);
+                Assert.Equal("https://dapr.io:443/", httpEndpoint);
             }
             finally
             {
@@ -351,7 +375,7 @@ namespace Dapr.AspNetCore.Test
                 var configuration = configurationBuilder.Build();
 
                 var httpEndpoint = DaprServiceCollectionExtensions.GetGrpcEndpoint(configuration);
-                Assert.Equal("https://grpc.dapr.io:2570/", httpEndpoint);
+                Assert.Equal("https://grpc.dapr.io:443/", httpEndpoint);
             }
             finally
             {
@@ -460,7 +484,7 @@ namespace Dapr.AspNetCore.Test
                 var configuration = configurationBuilder.Build();
 
                 var httpEndpoint = DaprServiceCollectionExtensions.GetGrpcEndpoint(configuration);
-                Assert.Equal("https://grpc.dapr.io:4744/", httpEndpoint);
+                Assert.Equal("https://grpc.dapr.io:443/", httpEndpoint);
             }
             finally
             {
@@ -628,17 +652,24 @@ namespace Dapr.AspNetCore.Test
         }
 
         [Fact]
-        public void BuildEndpoint_WithOnlyEndpoint()
+        public void BuildEndpoint_WithOnlyHttpsEndpoint()
         {
             var output = DaprServiceCollectionExtensions.BuildEndpoint("https://dapr.io", null);
             Assert.Equal("https://dapr.io:443/", output);
+        }
+        
+        [Fact]
+        public void BuildEndpoint_WithOnlyHttpEndpoint()
+        {
+            var output = DaprServiceCollectionExtensions.BuildEndpoint("http://dapr.io", null);
+            Assert.Equal("http://dapr.io:80/", output);
         }
 
         [Fact]
         public void BuildEndpoint_WithEndpointAndPort()
         {
             var output = DaprServiceCollectionExtensions.BuildEndpoint("https://dapr.io", 3658);
-            Assert.Equal("https://dapr.io:3658/", output);
+            Assert.Equal("https://dapr.io:443/", output);
         }
 
         [Fact]
