@@ -58,7 +58,7 @@ namespace Dapr.Client
         /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
         /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
         /// property will be replaced with a new URI with the authority section replaced by <paramref name="daprEndpoint" />
-        /// and the path portion of the URI rewitten to follow the format of a Dapr service invocation request.
+        /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
         /// </para>
         /// </summary>
         /// <param name="appId">
@@ -447,6 +447,30 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
+
+#nullable enable
+        /// <summary>
+        /// <para>
+        /// Creates an <see cref="HttpClient"/> that can be used to perform Dapr service invocation using <see cref="HttpRequestMessage"/>
+        /// objects.
+        /// </para>
+        /// <para>
+        /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
+        /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
+        /// property will be replaced with a new URI with the authority section replaced by the HTTP endpoint value
+        /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
+        /// </para>
+        /// </summary>
+        /// <param name="appId">
+        ///     An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
+        ///     <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
+        ///     If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
+        /// </param>
+        /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
+        /// <remarks>
+        /// </remarks>
+        public abstract HttpClient CreateInvokableHttpClient(string? appId = null);
+#nullable disable
 
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. If the response has a non-success
