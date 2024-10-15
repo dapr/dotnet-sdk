@@ -10,13 +10,13 @@
         <PackageVersion Include="FluentAssertions" Version="5.9.0" />
         <PackageVersion Include="GitHubActionsTestLogger" Version="1.1.2" />
         <PackageVersion Include="Google.Api.CommonProtos" Version="2.2.0" />
-        <PackageVersion Include="Google.Protobuf" Version="3.21.12" />
-        <PackageVersion Include="Grpc.AspNetCore" Version="2.39.0" />
-        <PackageVersion Include="Grpc.Core.Testing" Version="2.46.3" />
-        <PackageVersion Include="Grpc.Net.Client" Version="2.52.0" />
-        <PackageVersion Include="Grpc.Net.ClientFactory" Version="2.47.0" />
-        <PackageVersion Include="Grpc.Tools" Version="2.47.0"  />
-        <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.31" />
+        <PackageVersion Include="Google.Protobuf" Version="3.28.2" />
+        <PackageVersion Include="Grpc.AspNetCore" Version="2.66.0" />
+        <PackageVersion Include="Grpc.Core.Testing" Version="2.46.6" />
+        <PackageVersion Include="Grpc.Net.Client" Version="2.66.0" />
+        <PackageVersion Include="Grpc.Net.ClientFactory" Version="2.66.0" />
+        <PackageVersion Include="Grpc.Tools" Version="2.67.0"  />
+        <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.35" />
         <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="6.0.35" />
         <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4"  />
         <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />
