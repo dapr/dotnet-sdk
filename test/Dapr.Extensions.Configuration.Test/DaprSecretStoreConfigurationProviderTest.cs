@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using Dapr.Client;
+using Dapr;
 using FluentAssertions;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;

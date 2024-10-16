@@ -22,7 +22,7 @@ using Grpc.Core;
 using GrpcServiceSample.Generated;
 using Microsoft.Extensions.Logging;
 
-namespace GrpcServiceSample
+namespace GrpcServiceSample.Services
 {
     /// <summary>
     /// BankAccount gRPC service
