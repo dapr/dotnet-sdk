@@ -28,6 +28,7 @@
         <PackageVersion Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
         <PackageVersion Include="Microsoft.Extensions.Logging" Version="6.0.0" />
         <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.4" />
+        <PackageVersion Include="Microsoft.Extensions.Http" Version="6.0.0"/>
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
         <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
         <PackageVersion Include="MinVer" Version="2.3.0"/>
