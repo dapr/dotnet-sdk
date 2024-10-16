@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dapr.Common\Dapr.Common.csproj" />
     <ProjectReference Include="..\..\src\Dapr.Extensions.Configuration\Dapr.Extensions.Configuration.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Protos\Dapr.Protos.csproj" />
   </ItemGroup>
 
   <ItemGroup>
