@@ -115,10 +115,7 @@ namespace Dapr.Actors.Test
         [InlineData("   ")]
         public void Initialize_New_ActorId_Object_With_Null_Or_Whitespace_Id(string id)
         {
-            Assert.Throws<ArgumentException>(() =>
-            {
-                new ActorId(id);
-            });
+            Assert.Throws<ArgumentException>(() => new ActorId(id));
         }
 
         [Theory]

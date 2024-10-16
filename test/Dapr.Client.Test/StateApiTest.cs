@@ -839,8 +839,7 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
 
-            await client.CallStateApi<string>()
-                .Build();
+            await client.CallStateApi<string>().Build();
 
             var rpcException = new RpcException(new Status(StatusCode.Internal, "Network Error"));
 

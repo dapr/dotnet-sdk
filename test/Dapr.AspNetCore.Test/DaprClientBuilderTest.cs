@@ -43,8 +43,8 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public void DaprClientBuilder_UsesThrowOperationCanceledOnCancellation_ByDefault()
         {
-            var builder = new DaprClientBuilder();
-            builder.Build();
+            var builder = new DaprClientBuilder().Build();
+            
             Assert.True(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
 
