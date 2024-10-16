@@ -1,28 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
-    <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
-    <Protobuf Include="Protos\dapr\proto\dapr\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
-  </ItemGroup>
-
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
     <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
   </PropertyGroup>
+   
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="Grpc.Net.Client" />
     <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
     <PackageReference Include="Google.Api.CommonProtos" />
   </ItemGroup>
-
+   
   <ItemGroup>
-    <Folder Include="Protos\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
-
+   
 </Project>
