@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
     <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
