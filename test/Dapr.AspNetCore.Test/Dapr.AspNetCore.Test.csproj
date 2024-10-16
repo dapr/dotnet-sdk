@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Protos\Dapr.Protos.csproj" />
   </ItemGroup>
 
 </Project>
