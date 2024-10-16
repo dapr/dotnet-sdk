@@ -4,10 +4,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="..\Shared\ArgumentVerifier.cs" />
-  </ItemGroup>
-
    <!-- Additional Nuget package properties. -->
   <PropertyGroup>
     <Description>Dapr Secret Store configuration provider implementation for Microsoft.Extensions.Configuration.</Description>
@@ -15,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
+    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>

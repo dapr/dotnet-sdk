@@ -15,15 +15,9 @@
         </PackageReference>
       </ItemGroup>
     
-    <PropertyGroup>
-        <NoWarn>NU1903</NoWarn>
-        <WarningsNotAsErrors>NU1903</WarningsNotAsErrors>
-        <NuGetAudit>false</NuGetAudit>
-        <NuGetAuditMode>direct</NuGetAuditMode>
-    </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Common\Dapr.Common.csproj" />
     <ProjectReference Include="..\Dapr.AspNetCore.IntegrationTest.App\Dapr.AspNetCore.IntegrationTest.App.csproj" />
   </ItemGroup>
 
