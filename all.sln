@@ -120,6 +120,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cryptography", "examples\Cl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Protos", "src\Dapr.Protos\Dapr.Protos.csproj", "{DFBABB04-50E9-42F6-B470-310E1B545638}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Common", "src\Dapr.Common\Dapr.Common.csproj", "{B445B19C-A925-4873-8CB7-8317898B6970}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -296,6 +298,10 @@ Global
 		{DFBABB04-50E9-42F6-B470-310E1B545638}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DFBABB04-50E9-42F6-B470-310E1B545638}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DFBABB04-50E9-42F6-B470-310E1B545638}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B445B19C-A925-4873-8CB7-8317898B6970}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B445B19C-A925-4873-8CB7-8317898B6970}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B445B19C-A925-4873-8CB7-8317898B6970}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B445B19C-A925-4873-8CB7-8317898B6970}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -350,6 +356,7 @@ Global
 		{B5CDB0DC-B26D-48F1-B934-FE5C1C991940} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{C74FBA78-13E8-407F-A173-4555AEE41FF3} = {A7F41094-8648-446B-AECD-DCC2CC871F73}
 		{DFBABB04-50E9-42F6-B470-310E1B545638} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{B445B19C-A925-4873-8CB7-8317898B6970} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}

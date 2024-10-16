@@ -18,12 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\Shared\DaprDefaults.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
+    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
     <ProjectReference Include="..\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 
 </Project>
