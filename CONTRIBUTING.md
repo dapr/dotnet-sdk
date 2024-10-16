@@ -126,7 +126,7 @@ This project has adopted the [Contributor Covenant Code of Conduct](https://gith
 
 
 
-## Github Dapr Bot Commands
+## GitHub Dapr Bot Commands
 
 Checkout the [daprbot documentation](https://docs.dapr.io/contributing/daprbot/) for Github commands you can run in this repo for common tasks. For example, you can comment `/assign` on an issue to assign it to yourself.
 
