@@ -24,7 +24,9 @@ using Microsoft.CodeAnalysis.Testing.Verifiers;
 internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
     where TSourceGenerator : ISourceGenerator, new()
 {
+#pragma warning disable CS0618 // Type or member is obsolete
     public class Test : CSharpSourceGeneratorTest<TSourceGenerator, XUnitVerifier>
+#pragma warning restore CS0618 // Type or member is obsolete
     {
         public Test()
         {

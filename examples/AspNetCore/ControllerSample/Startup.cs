@@ -11,7 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+
 using Dapr;
+using Dapr.AspNetCore;
+
 
 namespace ControllerSample
 {
