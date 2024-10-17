@@ -85,7 +85,9 @@ public static class DaprServiceCollectionExtensions
             //Set the API token, if provided
             var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
             if (!string.IsNullOrWhiteSpace(apiToken))
+            {
                 builder.UseDaprApiToken(apiToken);
+            }
 
             configure?.Invoke(serviceProvider, builder);
 
