@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -43,6 +44,12 @@ namespace Dapr.E2E.Test
             {
                 await responseStream.WriteAsync(new MessageResponse { Message = request.Message });
             }
+        }
+
+        public override async Task<Empty> DelayedResponse(Empty request, ServerCallContext context)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            return new Empty();
         }
     }
 }

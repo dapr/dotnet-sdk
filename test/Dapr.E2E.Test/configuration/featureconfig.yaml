@@ -12,3 +12,5 @@ spec:
       enabled: true
     - name: "proxy.grpc"
       enabled: true
+    - name: "ActorStateTTL"
+      enabled: true
