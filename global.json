@@ -2,6 +2,6 @@
   "_comment": "This policy allows the 7.0.101 SDK or patches in that family.",
   "sdk": {
     "version": "7.0.101",
-    "rollForward": "latestMajor"
+    "rollForward": "major"
   }
 }
