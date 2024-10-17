@@ -32,7 +32,7 @@ jobs:
       - name: Generate Packages
         run: dotnet pack --configuration release
       - name: Upload packages
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: packages
           path: ${{ env.NUPKG_OUTDIR }}
@@ -116,7 +116,7 @@ jobs:
     if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
     steps:
     - name: Download release artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: packages
         path: packages

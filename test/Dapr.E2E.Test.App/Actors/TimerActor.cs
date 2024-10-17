@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ namespace Dapr.E2E.Test.Actors.Timers
         public async Task StartTimer(StartTimerOptions options)
         {
             var bytes = JsonSerializer.SerializeToUtf8Bytes(options, this.Host.JsonSerializerOptions);
-            await this.RegisterTimerAsync("test-timer", nameof(Tick), bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromMilliseconds(50));
+            await this.RegisterTimerAsync("test-timer", nameof(Tick), bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromMilliseconds(100));
 
             await this.StateManager.SetStateAsync<State>("timer-state", new State(){ IsTimerRunning = true, });
         }

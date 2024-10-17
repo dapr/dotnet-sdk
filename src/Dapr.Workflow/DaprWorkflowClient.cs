@@ -158,10 +158,10 @@ namespace Dapr.Workflow
         /// the terminated state.
         /// </para>
         /// <para>
-        /// Terminating a workflow instance has no effect on any in-flight activity function executions
-        /// or child workflows that were started by the terminated instance. Those actions will continue to run
-        /// without interruption. However, their results will be discarded. If you want to terminate child-workflows,
-        /// you must issue separate terminate commands for each child workflow instance individually.
+        /// Terminating a workflow terminates all of the child workflow instances that were created by the target. But it
+        /// has no effect on any in-flight activity function executions
+        /// that were started by the terminated instance. Those actions will continue to run
+        /// without interruption. However, their results will be discarded.
         /// </para><para>
         /// At the time of writing, there is no way to terminate an in-flight activity execution.
         /// </para>
@@ -178,7 +178,11 @@ namespace Dapr.Workflow
             string? output = null,
             CancellationToken cancellation = default)
         {
-            return this.innerClient.TerminateInstanceAsync(instanceId, output, cancellation);
+            TerminateInstanceOptions options = new TerminateInstanceOptions {
+                Output = output,
+                Recursive = true,
+            };
+            return this.innerClient.TerminateInstanceAsync(instanceId, options, cancellation);
         }
 
         /// <summary>
@@ -269,6 +273,9 @@ namespace Dapr.Workflow
         /// <see cref="WorkflowRuntimeStatus.Completed"/>, <see cref="WorkflowRuntimeStatus.Failed"/>, or
         /// <see cref="WorkflowRuntimeStatus.Terminated"/> state can be purged.
         /// </para>
+        /// <para>
+        /// Purging a workflow purges all of the child workflows that were created by the target.
+        /// </para>
         /// </remarks>
         /// <param name="instanceId">The unique ID of the workflow instance to purge.</param>
         /// <param name="cancellation">
@@ -280,7 +287,8 @@ namespace Dapr.Workflow
         /// </returns>
         public async Task<bool> PurgeInstanceAsync(string instanceId, CancellationToken cancellation = default)
         {
-            PurgeResult result = await this.innerClient.PurgeInstanceAsync(instanceId, cancellation);
+            PurgeInstanceOptions options = new PurgeInstanceOptions {Recursive = true};
+            PurgeResult result = await this.innerClient.PurgeInstanceAsync(instanceId, options, cancellation);
             return result.PurgedInstanceCount > 0;
         }
 
