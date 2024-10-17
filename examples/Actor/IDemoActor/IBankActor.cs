@@ -11,12 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace IDemoActorInterface
-{
-    using System;
-    using System.Threading.Tasks;
-    using Dapr.Actors;
+using System;
+using System.Threading.Tasks;
+using Dapr.Actors;
 
+namespace IDemoActor
+{
     public interface IBankActor : IActor
     {
         Task<AccountBalance> GetAccountBalance();
