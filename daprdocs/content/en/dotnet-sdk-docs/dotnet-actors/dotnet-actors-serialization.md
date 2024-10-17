@@ -5,19 +5,129 @@ linkTitle: "Actor serialization"
 weight: 300000
 description: Necessary steps to serialize your types using remoted Actors in .NET
 ---
+# Actor Serialization
 
 The Dapr actor package enables you to use Dapr virtual actors within a .NET application with either a weakly- or strongly-typed client. Each utilizes a different serialization approach. This document will review the differences and convey a few key ground rules to understand in either scenario.
 
 Please be advised that it is not a supported scenario to use the weakly- or strongly typed actor clients interchangeably because of these different serialization approaches. The data persisted using one Actor client will not be accessible using the other Actor client, so it is important to pick one and use it consistently throughout your application.
 
-# Weakly-typed Dapr Actor client
+## Weakly-typed Dapr Actor client
 In this section, you will learn how to configure your C# types so they are properly serialized and deserialized at runtime when using a weakly-typed actor client. These clients use string-based names of methods with request and response payloads that are serialized using the System.Text.Json serializer. Please note that this serialization framework is not specific to Dapr and is separately maintained by the .NET team within the [.NET GitHub repository](https://github.com/dotnet/runtime/tree/main/src/libraries/System.Text.Json). 
 
 When using the weakly-typed Dapr Actor client to invoke methods from your various actors, it's not necessary to independently serialize or deserialize the method payloads as this will happen transparently on your behalf by the SDK.
 
-The client will use the latest version of System.Text.Json available for the version of .NET you're building against and serialization is subject to all the inherent capabilities provided in the [associated .NET documentation](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/overview). 
+The client will use the latest version of System.Text.Json available for the version of .NET you're building against and serialization is subject to all the inherent capabilities provided in the [associated .NET documentation](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/overview).
 
-# Strongly-typed Dapr Actor client
+The serializer will be configured to use the `JsonSerializerOptions.Web` [default options](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/configure-options?pivots=dotnet-8-0#web-defaults-for-jsonserializeroptions) unless overridden with a custom options configuration which means the following are applied:
+- Deserialization of the property name is performed in a case-insensitive manner
+- Serialization of the property name is performed using [camel casing](https://en.wikipedia.org/wiki/Camel_case) unless the property is overridden with a `[JsonPropertyName]` attribute
+- Deserialization will read numeric values from number and/or string values 
+
+### Basic Serialization
+In the following example, we present a simple class named Doodad though it could just as well be a record as well. 
+
+```csharp
+public class Doodad
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public int Count { get; set; }
+}
+```
+
+By default, this will serialize using the names of the members as used in the type and whatever values it was instantiated with:
+
+```json
+{"id": "a06ced64-4f42-48ad-84dd-46ae6a7e333d", "name": "DoodadName", "count": 5}
+```
+
+### Override Serialized Property Name
+The default property names can be overridden by applying the `[JsonPropertyName]` attribute to desired properties.
+
+Generally, this isn't going to be necessary for types you're persisting to the actor state as you're not intended to read or write them independent of Dapr-associated functionality, but
+the following is provided just to clearly illustrate that it's possible.
+
+Here's an example demonstrating the use of `JsonPropertyName` to change the name for the first property following serialization. Note that the last usage of `JsonPropertyName` on the `Count` property 
+matches what it would be expected to serialize to. This is largely just to demonstrate that applying this attribute won't negatively impact anything - in fact, it might be preferable if you later 
+decide to change the default serialization options but still need to consistently access the properties previously serialized before that change as `JsonPropertyName` will override those options.
+
+```csharp
+public class Doodad
+{
+    [JsonPropertyName("identifier")]
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    [JsonPropertyName("count")]
+    public int Count { get; set; }
+}
+```
+
+This would serialize to the following:
+
+```json
+{"identifier": "a06ced64-4f42-48ad-84dd-46ae6a7e333d", "name": "DoodadName", "count": 5}
+```
+
+### Enumeration types
+Enumerations, including flat enumerations are serializable to JSON, but the value persisted may surprise you. Again, it's not expected that the developer should ever engage
+with the serialized data independently of Dapr, but the following information may at least help in diagnosing why a seemingly mild version migration isn't working as expected.
+
+Take the following `enum` type providing the various seasons in the year:
+
+```csharp
+public enum Season
+{
+    Spring,
+    Summer,
+    Fall,
+    Winter
+}
+```
+
+We'll go ahead and use a separate demonstration type that references our `Season` and simultaneously illustrate how this works with records:
+
+```csharp
+public record Engagement(string Name, Season TimeOfYear);
+```
+
+Given the following initialized instance:
+
+```csharp
+var myEngagement = new Engagement("Ski Trip", Season.Winter);
+```
+
+This would serialize to the following JSON:
+```json
+{"name":  "Ski Trip", "season":  3}
+```
+
+That might be unexpected that our `Season.Winter` value was represented as a `3`, but this is because the serializer is going to automatically use numeric representations
+of the enum values starting with zero for the first value and incrementing the numeric value for each additional value available. Again, if a migration were taking place and
+a developer had flipped the order of the enums, this would affect a breaking change in your solution as the serialized numeric values would point to different values when deserialized.
+
+Rather, there is a `JsonConverter` available with `System.Text.Json` that will instead opt to use a string-based value instead of the numeric value. The `[JsonConverter]` attribute needs
+to be applied to be enum type itself to enable this, but will then be realized in any downstream serialization or deserialization operation that references the enum.
+
+```csharp
+[JsonConverter(typeof(JsonStringEnumConverter<Season>))]
+public enum Season
+{
+    Spring,
+    Summer,
+    Fall,
+    Winter
+}
+```
+
+Using the same values from our `myEngagement` instance above, this would produce the following JSON instead:
+
+```json
+{"name":  "Ski Trip", "season":  "Winter"}
+```
+
+As a result, the enum members can be shifted around without fear of introducing errors during deserialization.
+
+## Strongly-typed Dapr Actor client
 In this section, you will learn how to configure your classes and records so they are properly serialized and deserialized at runtime when using a strongly-typed actor client. These clients are implemented using .NET interfaces and are <u>not</u> compatible with Dapr Actors written using other languages.
 
 This actor client serializes data using an engine called the [Data Contract Serializer](https://learn.microsoft.com/en-us/dotnet/framework/wcf/feature-details/serializable-types) which converts your C# types to and from XML documents. This serialization framework is not specific to Dapr and is separately maintained by the .NET team within the [.NET GitHub repository](https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.DataContractSerialization/src/System/Runtime/Serialization/DataContractSerializer.cs).
