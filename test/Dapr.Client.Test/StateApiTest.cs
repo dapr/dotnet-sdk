@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,6 +75,30 @@ namespace Dapr.Client.Test
             state.Should().HaveCount(1);
         }
 
+        [Fact]
+        public async Task GetBulkStateAsync_CanReadDeserializedState()
+        {
+            await using var client = TestClient.CreateForDaprClient();
+
+            var key = "test";
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                return await daprClient.GetBulkStateAsync<Widget>("testStore", new List<string>() {key}, null);
+            });
+
+            // Create Response & Respond
+            const string size = "small";
+            const string color = "yellow";
+            var data = new Widget() {Size = size, Color = color};
+            var envelope = MakeGetBulkStateResponse<Widget>(key, data);
+            var state = await request.CompleteWithMessageAsync(envelope);
+
+            // Get response and validate
+            state.Should().HaveCount(1);
+            state[0].Value.Size.Should().Match(size);
+            state[0].Value.Color.Should().Match(color);
+        }
+        
         [Fact]
         public async Task GetBulkStateAsync_WrapsRpcException()
         {
@@ -481,7 +505,7 @@ namespace Dapr.Client.Test
             req1.Request.Etag.Value.Should().Be("testEtag");
             req1.Request.Metadata.Count.Should().Be(1);
             req1.Request.Metadata["a"].Should().Be("b");
-            req1.Request.Options.Concurrency.Should().Be(2);
+            req1.Request.Options.Concurrency.Should().Be(StateConcurrency.ConcurrencyLastWrite);
 
             var req2 = envelope.Operations[1];
             req2.Request.Key.Should().Be("stateKey2");
