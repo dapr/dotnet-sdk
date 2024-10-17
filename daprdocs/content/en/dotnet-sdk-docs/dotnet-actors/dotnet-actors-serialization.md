@@ -47,6 +47,7 @@ The default property names can be overridden by applying the `[JsonPropertyName]
 Generally, this isn't going to be necessary for types you're persisting to the actor state as you're not intended to read or write them independent of Dapr-associated functionality, but
 the following is provided just to clearly illustrate that it's possible.
 
+#### Override Property Names on Classes
 Here's an example demonstrating the use of `JsonPropertyName` to change the name for the first property following serialization. Note that the last usage of `JsonPropertyName` on the `Count` property 
 matches what it would be expected to serialize to. This is largely just to demonstrate that applying this attribute won't negatively impact anything - in fact, it might be preferable if you later 
 decide to change the default serialization options but still need to consistently access the properties previously serialized before that change as `JsonPropertyName` will override those options.
@@ -66,6 +67,20 @@ This would serialize to the following:
 
 ```json
 {"identifier": "a06ced64-4f42-48ad-84dd-46ae6a7e333d", "name": "DoodadName", "count": 5}
+```
+
+#### Override Property Names on Records
+Let's try doing the same thing with a record from C# 12 or later:
+
+```csharp
+public record Thingy(string Name, [JsonPropertyName("count")] int Count); 
+```
+
+Because the argument passed in a primary constructor (introduced in C# 12) can be applied to either a property or field within a record, using the `[JsonPropertyName]` attribute may
+require specifying that you intend the attribute to apply to a property and not a field in some ambiguous cases. Should this be necessary, you'd indicate as much in the primary constructor with:
+
+```csharp
+public record Thingy(string Name, [property: JsonPropertyName("count")] int Count);
 ```
 
 ### Enumeration types
