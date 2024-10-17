@@ -83,6 +83,9 @@ require specifying that you intend the attribute to apply to a property and not 
 public record Thingy(string Name, [property: JsonPropertyName("count")] int Count);
 ```
 
+If `[property: ]` is applied to the `[JsonPropertyName]` attribute where it's not necessary, it will not negatively impact serialization or deserialization as the operation will
+proceed normally as though it were a property (as it typically would if not marked as such).
+
 ### Enumeration types
 Enumerations, including flat enumerations are serializable to JSON, but the value persisted may surprise you. Again, it's not expected that the developer should ever engage
 with the serialized data independently of Dapr, but the following information may at least help in diagnosing why a seemingly mild version migration isn't working as expected.
