@@ -145,6 +145,115 @@ Using the same values from our `myEngagement` instance above, this would produce
 
 As a result, the enum members can be shifted around without fear of introducing errors during deserialization.
 
+#### Custom Enumeration Values
+
+The System.Text.Json serialization platform doesn't, out of the box, support the use of `[EnumMember]` to allow you to change the value of enum that's used during serialization or deserialization, but
+there are scenarios where this could be useful. Again, assume that you're tasking with refactoring the solution to apply some better names to your various
+enums. You're using the `JsonStringEnumConverter<TType>` detailed above so you're saving the name of the enum to value instead of a numeric value, but if you change
+the enum name, that will introduce a breaking change as the name will no longer match what's in state. 
+
+Do note that if you opt into using this approach, you should decorate all your enum members with the `[EnumMeber]` attribute so that the values are consistently applied for each enum value instead
+of haphazardly. Nothing will validate this at build or runtime, but it is considered a best practice operation.
+
+How can you specify the precise value persisted while still changing the name of the enum member in this scenario? Use a custom `JsonConverter` with an extension method that can pull the value
+out of the attached `[EnumMember]` attributes where provided. Add the following to your solution:
+
+```csharp
+public sealed class EnumMemberJsonConverter<T> : JsonConverter<T> where T : struct, Enum
+{
+    /// <summary>Reads and converts the JSON to type <typeparamref name="T" />.</summary>
+    /// <param name="reader">The reader.</param>
+    /// <param name="typeToConvert">The type to convert.</param>
+    /// <param name="options">An object that specifies serialization options to use.</param>
+    /// <returns>The converted value.</returns>
+    public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        // Get the string value from the JSON reader
+        var value = reader.GetString();
+
+        // Loop through all the enum values
+        foreach (var enumValue in Enum.GetValues<T>())
+        {
+            // Get the value from the EnumMember attribute, if any
+            var enumMemberValue = GetValueFromEnumMember(enumValue);
+
+            // If the values match, return the enum value
+            if (value == enumMemberValue)
+            {
+                return enumValue;
+            }
+        }
+
+        // If no match found, throw an exception
+        throw new JsonException($"Invalid value for {typeToConvert.Name}: {value}");
+    }
+
+    /// <summary>Writes a specified value as JSON.</summary>
+    /// <param name="writer">The writer to write to.</param>
+    /// <param name="value">The value to convert to JSON.</param>
+    /// <param name="options">An object that specifies serialization options to use.</param>
+    public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+    {
+        // Get the value from the EnumMember attribute, if any
+        var enumMemberValue = GetValueFromEnumMember(value);
+
+        // Write the value to the JSON writer
+        writer.WriteStringValue(enumMemberValue);
+    }
+
+    private static string GetValueFromEnumMember(T value)
+    {
+        MemberInfo[] member = typeof(T).GetMember(value.ToString(), BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public);
+        if (member.Length == 0)
+            return value.ToString();
+        object[] customAttributes = member.GetCustomAttributes(typeof(EnumMemberAttribute), false);
+        if (customAttributes.Length != 0)
+        {
+            EnumMemberAttribute enumMemberAttribute = (EnumMemberAttribute)customAttributes;
+            if (enumMemberAttribute != null && enumMemberAttribute.Value != null)
+                return enumMemberAttribute.Value;
+        }
+        return value.ToString();
+    }
+}
+```
+
+Now let's add a sample enumerator. We'll set a value that uses the lower-case version of each enum member to demonstrate this. Don't forget to decorate the enum with the `JsonConverter`
+attribute and reference our custom converter in place of the numeral-to-string converter used in the last section.
+
+```csharp
+[JsonConverter(typeof(EnumMemberJsonConverter<Season>))]
+public enum Season
+{
+    [EnumMember(Value="spring")]
+    Spring,
+    [EnumMember(Value="summer")]
+    Summer,
+    [EnumMember(Value="fall")]
+    Fall,
+    [EnumMember(Value="winter")]
+    Winter
+}
+```
+
+Let's use our sample record from before. We'll also add a `[JsonPropertyName]` attribute just to augment the demonstration:
+```csharp
+public record Engagement([property: JsonPropertyName("event")] string Name, Season TimeOfYear);
+```
+
+And finally, let's initialize a new instance of this:
+
+```csharp
+var myEngagement = new Engagement("Conference", Season.Fall);
+```
+
+This time, serialization will take into account the values from the attached `[EnumMember]` attribute providing us a mechanism to refactor our application without necessitating 
+a complex versioning scheme for our existing enum values in the state.
+
+```json
+{"event":  "Conference",  "season":  "fall"}
+```
+
 ## Strongly-typed Dapr Actor client
 In this section, you will learn how to configure your classes and records so they are properly serialized and deserialized at runtime when using a strongly-typed actor client. These clients are implemented using .NET interfaces and are <u>not</u> compatible with Dapr Actors written using other languages.
 
