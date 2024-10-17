@@ -46,14 +46,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton<ActorRuntime>(s =>
             {   
                 var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
-
-                var configuration = s.GetService<IConfiguration>();
-                options.DaprApiToken = !string.IsNullOrWhiteSpace(options.DaprApiToken)
-                    ? options.DaprApiToken
-                    : DaprDefaults.GetDefaultDaprApiToken(configuration);
-                options.HttpEndpoint = !string.IsNullOrWhiteSpace(options.HttpEndpoint)
-                    ? options.HttpEndpoint
-                    : DaprDefaults.GetDefaultHttpEndpoint();
+                ConfigureActorOptions(s, options);
                 
                 var loggerFactory = s.GetRequiredService<ILoggerFactory>();
                 var activatorFactory = s.GetRequiredService<ActorActivatorFactory>();
@@ -64,15 +57,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton<IActorProxyFactory>(s =>
             {
                 var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
-
-                //Replace the HttpEndpoint with an endpoint prioritizing IConfiguration
-                var configuration = s.GetService<IConfiguration>();
-                options.DaprApiToken = !string.IsNullOrWhiteSpace(options.DaprApiToken)
-                    ? options.DaprApiToken
-                    : DaprDefaults.GetDefaultDaprApiToken(configuration);
-                options.HttpEndpoint = !string.IsNullOrWhiteSpace(options.HttpEndpoint)
-                    ? options.HttpEndpoint
-                    : DaprDefaults.GetDefaultHttpEndpoint();
+                ConfigureActorOptions(s, options);
 
                 var factory = new ActorProxyFactory() 
                 { 
@@ -91,6 +76,17 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 services.Configure<ActorRuntimeOptions>(configure);
             }
+        }
+        
+        private static void ConfigureActorOptions(IServiceProvider serviceProvider, ActorRuntimeOptions options)
+        {
+            var configuration = serviceProvider.GetService<IConfiguration>();
+            options.DaprApiToken = !string.IsNullOrWhiteSpace(options.DaprApiToken)
+                ? options.DaprApiToken
+                : DaprDefaults.GetDefaultDaprApiToken(configuration);
+            options.HttpEndpoint = !string.IsNullOrWhiteSpace(options.HttpEndpoint)
+                ? options.HttpEndpoint
+                : DaprDefaults.GetDefaultHttpEndpoint();
         }
     }
 }

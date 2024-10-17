@@ -38,23 +38,8 @@ public static class DaprServiceCollectionExtensions
 
         services.TryAddSingleton(serviceProvider =>
         {
-            var builder = new DaprClientBuilder();
-
-            var configuration = serviceProvider.GetService<IConfiguration>();
-
-            //Set the HTTP endpoint, if provided, else use the default endpoint
-            builder.UseHttpEndpoint(DaprDefaults.GetDefaultHttpEndpoint(configuration));
-
-            //Set the gRPC endpoint, if provided
-            builder.UseGrpcEndpoint(DaprDefaults.GetDefaultGrpcEndpoint(configuration));
-            
-            //Set the API token, if provided
-            var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
-            if (!string.IsNullOrWhiteSpace(apiToken))
-                builder.UseDaprApiToken(apiToken);
-
+            var builder = CreateDaprClientBuilder(serviceProvider);
             configure?.Invoke(builder);
-
             return builder.Build();
         });
     }
@@ -72,26 +57,30 @@ public static class DaprServiceCollectionExtensions
 
         services.TryAddSingleton(serviceProvider =>
         {
-            var builder = new DaprClientBuilder();
-
-            var configuration = serviceProvider.GetService<IConfiguration>();
-
-            //Set the HTTP endpoint, if provided, else use the default endpoint
-            builder.UseHttpEndpoint(DaprDefaults.GetDefaultHttpEndpoint(configuration));
-
-            //Set the gRPC endpoint, if provided
-            builder.UseGrpcEndpoint(DaprDefaults.GetDefaultGrpcEndpoint(configuration));
-            
-            //Set the API token, if provided
-            var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
-            if (!string.IsNullOrWhiteSpace(apiToken))
-            {
-                builder.UseDaprApiToken(apiToken);
-            }
-
+            var builder = CreateDaprClientBuilder(serviceProvider);
             configure?.Invoke(serviceProvider, builder);
-
             return builder.Build();
         });
+    }
+    
+    private static DaprClientBuilder CreateDaprClientBuilder(IServiceProvider serviceProvider)
+    {
+        var builder = new DaprClientBuilder();
+        var configuration = serviceProvider.GetService<IConfiguration>();
+
+        // Set the HTTP endpoint, if provided, else use the default endpoint
+        builder.UseHttpEndpoint(DaprDefaults.GetDefaultHttpEndpoint(configuration));
+
+        // Set the gRPC endpoint, if provided
+        builder.UseGrpcEndpoint(DaprDefaults.GetDefaultGrpcEndpoint(configuration));
+
+        // Set the API token, if provided
+        var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+        if (!string.IsNullOrWhiteSpace(apiToken))
+        {
+            builder.UseDaprApiToken(apiToken);
+        }
+
+        return builder;
     }
 }
