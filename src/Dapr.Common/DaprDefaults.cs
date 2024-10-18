@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
-
 namespace Dapr
 {
     internal static class DaprDefaults

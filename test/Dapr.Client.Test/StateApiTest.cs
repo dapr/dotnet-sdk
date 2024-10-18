@@ -505,7 +505,7 @@ namespace Dapr.Client.Test
             req1.Request.Etag.Value.Should().Be("testEtag");
             req1.Request.Metadata.Count.Should().Be(1);
             req1.Request.Metadata["a"].Should().Be("b");
-            req1.Request.Options.Concurrency.Should().Be(2);
+            req1.Request.Options.Concurrency.Should().Be(StateConcurrency.ConcurrencyLastWrite);
 
             var req2 = envelope.Operations[1];
             req2.Request.Key.Should().Be("stateKey2");
