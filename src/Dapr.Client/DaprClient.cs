@@ -139,17 +139,14 @@ namespace Dapr.Client
         public static CallInvoker CreateInvocationInvoker(string appId, string daprEndpoint = null, string daprApiToken = null)
         {
             var channel = GrpcChannel.ForAddress(daprEndpoint ?? DaprDefaults.GetDefaultGrpcEndpoint());
-            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultDaprApiToken()));
+            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultDaprApiToken(null)));
         }
 
         internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
         {
-            if (string.IsNullOrWhiteSpace(apiToken))
-            {
-                return null;
-            }
-
-            return new KeyValuePair<string, string>("dapr-api-token", apiToken);
+            return string.IsNullOrWhiteSpace(apiToken)
+                ? null
+                : new KeyValuePair<string, string>("dapr-api-token", apiToken);
         }
 
         /// <summary>
