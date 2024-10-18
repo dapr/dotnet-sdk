@@ -15,11 +15,14 @@ namespace Dapr.Actors.Communication
 {
     using System;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Linq;
     using Dapr.Actors.Builder;
 
     internal class ActorMessageSerializersManager
     {
-        private readonly ConcurrentDictionary<int, CacheEntry> cachedBodySerializers;
+        private readonly ConcurrentDictionary<(int, string), CacheEntry> cachedBodySerializers;
         private readonly IActorMessageHeaderSerializer headerSerializer;
         private readonly IActorMessageBodySerializationProvider serializationProvider;
 
@@ -38,7 +41,7 @@ namespace Dapr.Actors.Communication
             }
 
             this.serializationProvider = serializationProvider;
-            this.cachedBodySerializers = new ConcurrentDictionary<int, CacheEntry>();
+            this.cachedBodySerializers = new ConcurrentDictionary<(int, string), CacheEntry>();
             this.headerSerializer = headerSerializer;
         }
 
@@ -52,19 +55,19 @@ namespace Dapr.Actors.Communication
             return this.headerSerializer;
         }
 
-        public IActorRequestMessageBodySerializer GetRequestMessageBodySerializer(int interfaceId)
+        public IActorRequestMessageBodySerializer GetRequestMessageBodySerializer(int interfaceId, [AllowNull] string methodName = null)
         {
-            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).RequestMessageBodySerializer;
+            return this.cachedBodySerializers.GetOrAdd((interfaceId, methodName), this.CreateSerializers).RequestMessageBodySerializer;
         }
 
-        public IActorResponseMessageBodySerializer GetResponseMessageBodySerializer(int interfaceId)
+        public IActorResponseMessageBodySerializer GetResponseMessageBodySerializer(int interfaceId, [AllowNull] string methodName = null)
         {
-            return this.cachedBodySerializers.GetOrAdd(interfaceId, this.CreateSerializers).ResponseMessageBodySerializer;
+            return this.cachedBodySerializers.GetOrAdd((interfaceId, methodName), this.CreateSerializers).ResponseMessageBodySerializer;
         }
 
-        internal CacheEntry CreateSerializers(int interfaceId)
+        internal CacheEntry CreateSerializers((int interfaceId, string methodName) data)
         {
-            var interfaceDetails = this.GetInterfaceDetails(interfaceId);
+            var interfaceDetails = this.GetInterfaceDetails(data.interfaceId);
 
             // get the service interface type from the code gen layer
             var serviceInterfaceType = interfaceDetails.ServiceInterfaceType;
@@ -74,10 +77,29 @@ namespace Dapr.Actors.Communication
 
             // get the known types from the codegen layer
             var responseBodyTypes = interfaceDetails.ResponseKnownTypes;
+            if (data.methodName is null)
+            {
+                // Path is mainly used for XML serialization
+                return new CacheEntry(
+                    this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes),
+                    this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, interfaceDetails.ResponseWrappedKnownTypes));
+            }
+            else
+            {
+                // This path should be used for JSON serialization
+                var requestWrapperTypeAsList = interfaceDetails.RequestWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}ReqBody").ToList();
+                if(requestWrapperTypeAsList.Count > 1){
+                    throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
+                }
+                var responseWrapperTypeAsList = interfaceDetails.ResponseWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}RespBody").ToList();
+                    if(responseWrapperTypeAsList.Count > 1){
+                    throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
+                }
+                return new CacheEntry(
+                    this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, requestWrapperTypeAsList),
+                    this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, responseWrapperTypeAsList));
+            }
 
-            return new CacheEntry(
-               this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes),
-               this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, interfaceDetails.ResponseWrappedKnownTypes));
         }
 
         internal InterfaceDetails GetInterfaceDetails(int interfaceId)
