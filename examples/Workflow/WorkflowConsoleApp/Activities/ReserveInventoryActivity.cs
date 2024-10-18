@@ -1,8 +1,6 @@
-﻿using System.Threading.Tasks;
-using Dapr.Client;
+﻿using Dapr.Client;
 using Dapr.Workflow;
 using Microsoft.Extensions.Logging;
-using WorkflowConsoleApp.Models;
 
 namespace WorkflowConsoleApp.Activities
 {
@@ -27,7 +25,7 @@ namespace WorkflowConsoleApp.Activities
                 req.ItemName);
 
             // Ensure that the store has items
-            InventoryItem item = await client.GetStateAsync<InventoryItem>(
+            InventoryItem item = await this.client.GetStateAsync<InventoryItem>(
                 storeName,
                 req.ItemName.ToLowerInvariant());
 

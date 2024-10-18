@@ -3,7 +3,7 @@
   <Import Project="dapr_common.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>10.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
     <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
@@ -53,7 +53,7 @@
 
   <!-- Use MinVer for assembly, nuget versioning based on git tags -->
   <ItemGroup>
-    <PackageReference Include="MinVer" Version="2.3.0">
+    <PackageReference Include="MinVer">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6</TargetFramework>
   </PropertyGroup>
 
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
     <ProjectReference Include="..\..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Common\Dapr.Common.csproj" />
     <ProjectReference Include="..\..\..\src\Dapr.Extensions.Configuration\Dapr.Extensions.Configuration.csproj" />
     <ProjectReference Include="..\..\AspNetCore\ControllerSample\ControllerSample.csproj" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ namespace Dapr.Actors
             this.httpClient.Timeout = requestTimeout ?? this.httpClient.Timeout;
         }
 
-        public async Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
+        public async Task<ActorStateResponse<string>> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
 
@@ -70,9 +70,20 @@ namespace Dapr.Actors
                 return request;
             }
 
-            var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
+            using var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
             var stringResponse = await response.Content.ReadAsStringAsync();
-            return stringResponse;
+
+            DateTimeOffset? ttlExpireTime = null;
+            if (response.Headers.TryGetValues(Constants.TTLResponseHeaderName, out IEnumerable<string> headerValues))
+            {
+                var ttlExpireTimeString = headerValues.First();
+                if (!string.IsNullOrEmpty(ttlExpireTimeString))
+                {
+                    ttlExpireTime = DateTime.Parse(ttlExpireTimeString, CultureInfo.InvariantCulture);
+                }
+            }
+
+            return new ActorStateResponse<string>(stringResponse, ttlExpireTime);
         }
 
         public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default)
@@ -164,11 +175,11 @@ namespace Dapr.Actors
                 // actorResponseMessageHeader is not null, it means there is remote exception
                 if (actorResponseMessageHeader != null)
                 {
-                    var isDeserialzied =
+                    var isDeserialized =
                             ActorInvokeException.ToException(
                                 responseMessageBody,
                                 out var remoteMethodException);
-                    if (isDeserialzied)
+                    if (isDeserialized)
                     {
                         var exceptionDetails = GetExceptionDetails(header.ToString());
                         throw new ActorMethodInvocationException(
@@ -185,7 +196,7 @@ namespace Dapr.Actors
                     }
                 }
 
-                actorResponseMessageBody = responseBodySerializer.Deserialize(responseMessageBody);
+                actorResponseMessageBody = await responseBodySerializer.DeserializeAsync(responseMessageBody);
             }
 
             return new ActorResponseMessage(actorResponseMessageHeader, actorResponseMessageBody);
@@ -231,8 +242,8 @@ namespace Dapr.Actors
             }
 
             var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
-            var byteArray = await response.Content.ReadAsStreamAsync();
-            return byteArray;
+            var stream = await response.Content.ReadAsStreamAsync();
+            return stream;
         }
 
         public Task RegisterReminderAsync(string actorType, string actorId, string reminderName, string data, CancellationToken cancellationToken = default)
@@ -252,6 +263,23 @@ namespace Dapr.Actors
             }
 
             return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
+        }
+
+        public async Task<Stream> GetReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
+        {
+            var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
+
+            HttpRequestMessage RequestFunc()
+            {
+                var request = new HttpRequestMessage()
+                {
+                    Method = HttpMethod.Get,
+                };    
+                return request;
+            }
+
+            var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
+            return await response.Content.ReadAsStreamAsync();
         }
 
         public Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
@@ -334,7 +362,7 @@ namespace Dapr.Actors
             string relativeUri,
             CancellationToken cancellationToken)
         {
-            var response = await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, cancellationToken);
+            using var response = await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, cancellationToken);
             var retValue = default(string);
 
             if (response != null && response.Content != null)
@@ -441,7 +469,7 @@ namespace Dapr.Actors
             HttpResponseMessage response;
 
             // Get the request using the Func as same request cannot be resent when retries are implemented.
-            var request = requestFunc.Invoke();
+            using var request = requestFunc.Invoke();
 
             // add token for dapr api token based authentication
             this.AddDaprApiTokenHeader(request);

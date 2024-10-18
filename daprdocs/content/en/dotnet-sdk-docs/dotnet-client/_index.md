@@ -21,13 +21,22 @@ The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< 
 
 ### Invoke a service
 
+#### HTTP
 You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke your services.
+
+{{% alert title="Note" color="primary" %}}
+ You can also [invoke a non-Dapr endpoint using either a named `HTTPEndpoint` or an FQDN URL to the non-Dapr environment]({{< ref "howto-invoke-non-dapr-endpoints.md#using-an-httpendpoint-resource-or-fqdn-url-for-non-dapr-endpoints" >}}).
+
+{{% /alert %}}
+
 
 {{< tabs SDK HTTP>}}
 
 {{% codetab %}}
 ```csharp
-using var client = new DaprClientBuilder().Build();
+using var client = new DaprClientBuilder().
+                UseTimeout(TimeSpan.FromSeconds(2)). // Optionally, set a timeout
+                Build(); 
 
 // Invokes a POST method named "deposit" that takes input of type "Transaction"
 var data = new { id = "17", amount = 99m };
@@ -40,14 +49,30 @@ Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance)
 ```csharp
 var client = DaprClient.CreateInvokeHttpClient(appId: "routing");
 
+// To set a timeout on the HTTP client:
+client.Timeout = TimeSpan.FromSeconds(2);
+
 var deposit = new Transaction  { Id = "17", Amount = 99m };
 var response = await client.PostAsJsonAsync("/deposit", deposit, cancellationToken);
 var account = await response.Content.ReadFromJsonAsync<Account>(cancellationToken: cancellationToken);
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
 {{% /codetab %}}
-
 {{< /tabs >}}
+
+#### gRPC
+You can use the `DaprClient` to invoke your services over gRPC.
+
+```csharp
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+var invoker = DaprClient.CreateInvocationInvoker(appId: myAppId, daprEndpoint: serviceEndpoint);
+var client = new MyService.MyServiceClient(invoker);
+
+var options = new CallOptions(cancellationToken: cts.Token, deadline: DateTime.UtcNow.AddSeconds(1));
+await client.MyMethodAsync(new Empty(), options);
+
+Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
+```
 
 - For a full guide on service invocation visit [How-To: Invoke a service]({{< ref howto-invoke-discover-services.md >}}).
 
@@ -105,7 +130,7 @@ Console.WriteLine("Published deposit event!");
 ```
 
 - For a full list of state operations visit [How-To: Publish & subscribe]({{< ref howto-publish-subscribe.md >}}).
-- Visit [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples/client/PublishSubscribe) for code samples and instructions to try out pub/sub
+- Visit [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples/Client/PublishSubscribe) for code samples and instructions to try out pub/sub
 
 ### Interact with output bindings
 
@@ -141,7 +166,7 @@ var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secre
 Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
 ```
 
-{{% / codetab %}}
+{{% /codetab %}}
 
 {{% codetab %}}
 
@@ -165,7 +190,7 @@ Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secr
 
 - For a full guide on secrets visit [How-To: Retrieve secrets]({{< ref howto-secrets.md >}}).
 
-### Get Configuration Keys (Alpha)
+### Get Configuration Keys
 ```csharp
 var client = new DaprClientBuilder().Build();
 
@@ -182,7 +207,7 @@ foreach (var item in configItems)
 }
 ```
 
-### Subscribe to Configuration Keys (Alpha)
+### Subscribe to Configuration Keys
 ```csharp
 var client = new DaprClientBuilder().Build();
 
@@ -195,6 +220,64 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
     foreach (var item in items)
     {
         Console.WriteLine($"{item.Key} -> {item.Value}")
+    }
+}
+```
+
+### Distributed lock (Alpha)
+
+#### Acquire a lock
+
+```csharp
+using System;
+using Dapr.Client;
+
+namespace LockService
+{
+    class Program
+    {
+        [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
+        static async Task Main(string[] args)
+        {
+            var daprLockName = "lockstore";
+            var fileName = "my_file_name";
+            var client = new DaprClientBuilder().Build();
+     
+            // Locking with this approach will also unlock it automatically, as this is a disposable object
+            await using (var fileLock = await client.Lock(DAPR_LOCK_NAME, fileName, "random_id_abc123", 60))
+            {
+                if (fileLock.Success)
+                {
+                    Console.WriteLine("Success");
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to lock {fileName}.");
+                }
+            }
+        }
+    }
+}
+```
+
+#### Unlock an existing lock
+
+```csharp
+using System;
+using Dapr.Client;
+
+namespace LockService
+{
+    class Program
+    {
+        static async Task Main(string[] args)
+        {
+            var daprLockName = "lockstore";
+            var client = new DaprClientBuilder().Build();
+
+            var response = await client.Unlock(DAPR_LOCK_NAME, "my_file_name", "random_id_abc123"));
+            Console.WriteLine(response.status);
+        }
     }
 }
 ```

@@ -16,7 +16,6 @@ namespace Dapr.Workflow
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.DurableTask;
 
     /// <summary>
     /// Context object used by workflow implementations to perform actions such as scheduling activities, durable timers, waiting for
@@ -97,11 +96,11 @@ namespace Dapr.Workflow
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        /// <exception cref="TaskFailedException">
+        /// <exception cref="WorkflowTaskFailedException">
         /// The activity failed with an unhandled exception. The details of the failure can be found in the
-        /// <see cref="TaskFailedException.FailureDetails"/> property.
+        /// <see cref="WorkflowTaskFailedException.FailureDetails"/> property.
         /// </exception>
-        public virtual Task CallActivityAsync(string name, object? input = null, TaskOptions? options = null)
+        public virtual Task CallActivityAsync(string name, object? input = null, WorkflowTaskOptions? options = null)
         {
             return this.CallActivityAsync<object>(name, input, options);
         }
@@ -110,7 +109,7 @@ namespace Dapr.Workflow
         /// A task that completes when the activity completes or fails. The result of the task is the activity's return value.
         /// </returns>
         /// <inheritdoc cref="CallActivityAsync"/>
-        public abstract Task<T> CallActivityAsync<T>(string name, object? input = null, TaskOptions? options = null);
+        public abstract Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null);
 
         /// <summary>
         /// Creates a durable timer that expires after the specified delay.
@@ -160,6 +159,9 @@ namespace Dapr.Workflow
         /// <returns>
         /// A task that completes when the external event is received. The value of the task is the deserialized event payload.
         /// </returns>
+        /// <exception cref="TaskCanceledException">
+        /// Thrown if <paramref name="cancellationToken"/> is cancelled before the external event is received.
+        /// </exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
@@ -173,6 +175,9 @@ namespace Dapr.Workflow
         /// number of times; they are not required to be unique.
         /// </param>
         /// <param name="timeout">The amount of time to wait before cancelling the external event task.</param>
+        /// <exception cref="TaskCanceledException">
+        /// Thrown if <paramref name="timeout"/> elapses before the external event is received.
+        /// </exception>
         /// <inheritdoc cref="WaitForExternalEventAsync{T}(string, CancellationToken)"/>
         public abstract Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout);
 
@@ -212,8 +217,11 @@ namespace Dapr.Workflow
         /// <typeparam name="TResult">
         /// The type into which to deserialize the child workflow's output.
         /// </typeparam>
-        /// <inheritdoc cref="CallChildWorkflowAsync(string, object?, TaskOptions?)"/>
-        public abstract Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, TaskOptions? options = null);
+        /// <inheritdoc cref="CallChildWorkflowAsync(string, object?, ChildWorkflowTaskOptions?)"/>
+        public abstract Task<TResult> CallChildWorkflowAsync<TResult>(
+            string workflowName,
+            object? input = null,
+            ChildWorkflowTaskOptions? options = null);
 
         /// <summary>
         /// Executes the specified workflow as a child workflow.
@@ -222,7 +230,8 @@ namespace Dapr.Workflow
         /// <para>
         /// In addition to activities, workflows can schedule other workflows as <i>child workflows</i>.
         /// A child workflow has its own instance ID, history, and status that is independent of the parent workflow
-        /// that started it.
+        /// that started it. You can use <see cref="ChildWorkflowTaskOptions.InstanceId" /> to specify an instance ID
+        /// for the child workflow. Otherwise, the instance ID will be randomly generated.
         /// </para><para>
         /// Child workflows have many benefits:
         /// <list type="bullet">
@@ -236,27 +245,29 @@ namespace Dapr.Workflow
         /// exception will be surfaced to the parent workflow, just like it is when an activity task fails with an
         /// exception. Child workflows also support automatic retry policies.
         /// </para><para>
-        /// Because child workflows are independent of their parents, terminating a parent workflow does not affect
-        /// any child workflows. You must terminate each child workflow independently using its instance ID, which is
-        /// specified by supplying <see cref="SubOrchestrationOptions" /> in place of <see cref="TaskOptions" />.
+        /// Terminating a parent workflow terminates all the child workflows created by the workflow instance. See the documentation at
+        /// https://docs.dapr.io/developing-applications/building-blocks/workflow/workflow-features-concepts/#child-workflows regarding
+        /// the terminate workflow API for more information.
         /// </para>
         /// </remarks>
         /// <param name="workflowName">The name of the workflow to call.</param>
         /// <param name="input">The serializable input to pass to the child workflow.</param>
         /// <param name="options">
-        /// Additional options that control the execution and processing of the child workflow. Callers can choose to
-        /// supply the derived type <see cref="SubOrchestrationOptions" />.
+        /// Additional options that control the execution and processing of the child workflow.
         /// </param>
         /// <returns>A task that completes when the child workflow completes or fails.</returns>
         /// <exception cref="ArgumentException">The specified workflow does not exist.</exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown if the calling thread is not the workflow dispatch thread.
         /// </exception>
-        /// <exception cref="TaskFailedException">
+        /// <exception cref="WorkflowTaskFailedException">
         /// The child workflow failed with an unhandled exception. The details of the failure can be found in the
-        /// <see cref="TaskFailedException.FailureDetails"/> property.
+        /// <see cref="WorkflowTaskFailedException.FailureDetails"/> property.
         /// </exception>
-        public virtual Task CallChildWorkflowAsync(string workflowName, object? input = null, TaskOptions? options = null)
+        public virtual Task CallChildWorkflowAsync(
+            string workflowName,
+            object? input = null,
+            ChildWorkflowTaskOptions? options = null)
         {
             return this.CallChildWorkflowAsync<object>(workflowName, input, options);
         }

@@ -67,10 +67,10 @@ namespace Dapr.Actors
         /// <param name="data">JSON data with state changes as per the Dapr spec for transaction state update.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data,
+        public virtual async Task SaveStateTransactionallyAsync(string actorType, string actorId, string data,
             CancellationToken cancellationToken = default)
         {
-            throw new System.NotImplementedException();
+            await _testDaprInteractor.SaveStateTransactionallyAsync(actorType, actorId, data);
         }
 
         /// <summary>
@@ -81,9 +81,9 @@ namespace Dapr.Actors
         /// <param name="keyName">Name of key to get value for.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task<string> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
+        public virtual async Task<ActorStateResponse<string>> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
         {
-            throw new System.NotImplementedException();
+            return await _testDaprInteractor.GetStateAsync(actorType, actorId, keyName);
         }
 
         /// <summary>
@@ -95,6 +95,20 @@ namespace Dapr.Actors
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         Task<IActorResponseMessage> IDaprInteractor.InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager,
             IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken)
+        {
+            throw new System.NotImplementedException();
+        }
+
+       /// <summary>
+        /// Gets a reminder.
+        /// </summary>
+        /// <param name="actorType">Type of actor.</param>
+        /// <param name="actorId">ActorId.</param>
+        /// <param name="reminderName">Name of reminder to unregister.</param>
+        /// <param name="cancellationToken">Cancels the operation.</param>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        public Task<Stream> GetReminderAsync(string actorType, string actorId, string reminderName,
+            CancellationToken cancellationToken = default)
         {
             throw new System.NotImplementedException();
         }

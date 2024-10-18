@@ -20,7 +20,6 @@ using System;
 
 namespace Dapr.Client.Test
 {
-    [System.Obsolete]
     public class ConfigurationApiTest
     {
         [Fact]

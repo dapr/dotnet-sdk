@@ -14,7 +14,7 @@
 namespace Dapr.Workflow
 {
     /// <summary>
-    /// Enum describing the runtime status of the workflow.
+    /// Enum describing the runtime status of a workflow.
     /// </summary>
     public enum WorkflowRuntimeStatus
     {
