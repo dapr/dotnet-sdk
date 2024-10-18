@@ -1,32 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6</TargetFramework>
-  </PropertyGroup>
-
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
     <Description>This package contains the reference assemblies for developing services using Dapr and AspNetCore.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Shared\ArgumentVerifier.cs" />
-    <Compile Include="..\Shared\DaprDefaults.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-
-    <!--
-      This is a workaround for https://github.com/dotnet/sdk/issues/14019
-      The extra reference is harmless but is needed due to a bug in the 5.0 RC dotnet SDK.
-      It can be removed when the issue is fixed (likely 5.0 GA).
-    -->
-    <PackageReference Include="System.IO.Pipelines" Version="4.7.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
+    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 
 </Project>

@@ -16,8 +16,10 @@ namespace Dapr.E2E.Test
     using Dapr.E2E.Test.Actors.Reentrancy;
     using Dapr.E2E.Test.Actors.Reminders;
     using Dapr.E2E.Test.Actors.Timers;
+    using Dapr.E2E.Test.Actors.State;
     using Dapr.E2E.Test.Actors.ExceptionTesting;
     using Dapr.E2E.Test.Actors.Serialization;
+    using Dapr.E2E.Test.Actors.WeaklyTypedTesting;
     using Dapr.E2E.Test.App.ErrorTesting;
     using Dapr.Workflow;
     using Microsoft.AspNetCore.Authentication;
@@ -29,6 +31,8 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.Hosting;
     using System.Threading.Tasks;
     using System;
+    using Microsoft.Extensions.Logging;
+    using Serilog;
 
     /// <summary>
     /// Startup class.
@@ -61,6 +65,10 @@ namespace Dapr.E2E.Test
             services.AddAuthentication().AddDapr();
             services.AddAuthorization(o => o.AddDapr());
             services.AddControllers().AddDapr();
+            services.AddLogging(builder => 
+            {
+                builder.AddConsole();
+            });
             // Register a workflow and associated activity
             services.AddDaprWorkflow(options =>
             {
@@ -70,6 +78,11 @@ namespace Dapr.E2E.Test
 
                     var itemToPurchase = input;
 
+                    // There are 5 of the same event to test that multiple similarly-named events can be raised in parallel
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
+                    await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
                     itemToPurchase = await context.WaitForExternalEventAsync<string>("ChangePurchaseItem");
 
                     // In real life there are other steps related to placing an order, like reserving
@@ -93,6 +106,8 @@ namespace Dapr.E2E.Test
                 options.Actors.RegisterActor<Regression762Actor>();
                 options.Actors.RegisterActor<ExceptionActor>();
                 options.Actors.RegisterActor<SerializationActor>();
+                options.Actors.RegisterActor<StateActor>();
+                options.Actors.RegisterActor<WeaklyTypedTestingActor>();
             });
         }
 
@@ -103,10 +118,18 @@ namespace Dapr.E2E.Test
         /// <param name="env">Webhost environment.</param>
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            var logger = new LoggerConfiguration().WriteTo.File("log.txt").CreateLogger();
+
+            var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddSerilog(logger);
+            });
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseSerilogRequestLogging();
 
             app.UseRouting();
 

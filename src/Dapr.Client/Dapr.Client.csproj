@@ -1,34 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6</TargetFramework>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="..\Shared\ArgumentVerifier.cs" />
-    <Compile Include="..\Shared\DaprDefaults.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
-    <Protobuf Include="Protos\dapr\proto\dapr\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
-    <Protobuf Include="Protos\dapr\proto\dapr\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
-  </ItemGroup>
-
   <!-- Additional Nuget package properties. -->
   <PropertyGroup>
     <Description>This package contains the reference assemblies for developing services using Dapr.</Description>
   </PropertyGroup>
+   
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.15.0" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.52.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.47.0" PrivateAssets="All" />
-    <PackageReference Include="Google.Api.CommonProtos" Version="2.2.0" />
-    <PackageReference Include="System.Net.Http.Json" Version="5.0.0" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+    <PackageReference Include="Google.Api.CommonProtos" />
   </ItemGroup>
-
+   
   <ItemGroup>
-    <Folder Include="Protos\" />
+    <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
-
+   
 </Project>

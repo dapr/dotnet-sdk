@@ -8,7 +8,6 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net6</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>latest</LangVersion>
     <NoWarn>612,618</NoWarn>
   </PropertyGroup>
 

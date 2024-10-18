@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Actors.Communication;
+using IDemoActor;
+
 namespace ActorClient
 {
     using System;
@@ -18,8 +21,6 @@ namespace ActorClient
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.Actors.Client;
-    using Dapr.Actors.Communication;
-    using IDemoActorInterface;
 
     /// <summary>
     /// Actor Client class.
@@ -44,10 +45,10 @@ namespace ActorClient
 
             // Make strongly typed Actor calls with Remoting.
             // DemoActor is the type registered with Dapr runtime in the service.
-            var proxy = ActorProxy.Create<IDemoActor>(actorId, "DemoActor");
+            var proxy = ActorProxy.Create<IDemoActor.IDemoActor>(actorId, "DemoActor");
 
             Console.WriteLine("Making call using actor proxy to save data.");
-            await proxy.SaveData(data);
+            await proxy.SaveData(data, TimeSpan.FromMinutes(10));
             Console.WriteLine("Making call using actor proxy to get data.");
             var receivedData = await proxy.GetData();
             Console.WriteLine($"Received data is {receivedData}.");
@@ -69,7 +70,7 @@ namespace ActorClient
             }
             catch (ActorMethodInvocationException ex)
             {
-                if (ex.InnerException is NotImplementedException)
+                if (ex.InnerException is ActorInvokeException invokeEx && invokeEx.ActualExceptionType is "System.NotImplementedException")
                 {
                     Console.WriteLine($"Got Correct Exception from actor method invocation.");
                 }
@@ -111,7 +112,7 @@ namespace ActorClient
             await Task.Delay(5000);
             Console.WriteLine("Getting details of the registered reminder");
             reminder = await proxy.GetReminder();
-            Console.WriteLine($"Received reminder is {reminder}.");
+            Console.WriteLine($"Received reminder is {reminder?.ToString() ?? "None"} (expecting None).");
             Console.WriteLine("Registering reminder with ttl and repetitions, i.e. reminder stops when either condition is met - The reminder will repeat 2 times.");
             await proxy.RegisterReminderWithTtlAndRepetitions(TimeSpan.FromSeconds(5), 2);
             Console.WriteLine("Getting details of the registered reminder");

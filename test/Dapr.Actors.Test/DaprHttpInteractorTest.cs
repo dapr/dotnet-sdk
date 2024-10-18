@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 
 namespace Dapr.Actors.Test
 {
+    using System;
     using System.Globalization;
     using System.Linq;
     using System.Net;
@@ -23,6 +24,7 @@ namespace Dapr.Actors.Test
     using System.Threading.Tasks;
     using FluentAssertions;
     using Xunit;
+    using Dapr.Actors.Communication;
 
     /// <summary>
     /// Contains tests for DaprHttpInteractor.
@@ -349,6 +351,59 @@ namespace Dapr.Actors.Test
 
             request.Dismiss();
             Assert.False(request.Request.Headers.Contains(Constants.ReentrancyRequestHeaderName));
+        }
+
+        [Fact]
+        public async Task GetState_TTLExpireTimeExists()
+        {
+            await using var client = TestClient.CreateForDaprHttpInterator();
+
+            var actorType = "ActorType_Test";
+            var actorId = "ActorId_Test";
+            var keyName = "StateKey_Test";
+
+            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+            {
+                return await httpInteractor.GetStateAsync(actorType, actorId, keyName);
+            });
+
+            var message = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("test"),
+                Headers =
+                {
+                    { "Metadata.ttlExpireTime", "2023-04-05T23:22:21Z" },
+                },
+            };
+
+            var actual = await request.CompleteAsync(message);
+            Assert.Equal("test", actual.Value);
+            var expTTL = new DateTimeOffset(2023, 04, 05, 23, 22, 21, 0, new GregorianCalendar(), new TimeSpan(0, 0, 0));
+            Assert.Equal(expTTL, actual.TTLExpireTime);
+        }
+
+        [Fact]
+        public async Task GetState_TTLExpireTimeNotExists()
+        {
+            await using var client = TestClient.CreateForDaprHttpInterator();
+
+            var actorType = "ActorType_Test";
+            var actorId = "ActorId_Test";
+            var keyName = "StateKey_Test";
+
+            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+            {
+                return await httpInteractor.GetStateAsync(actorType, actorId, keyName);
+            });
+
+            var message = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("test"),
+            };
+
+            var actual = await request.CompleteAsync(message);
+            Assert.Equal("test", actual.Value);
+            Assert.False(actual.TTLExpireTime.HasValue);
         }
     }
 }

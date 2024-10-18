@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,6 +82,12 @@ namespace Dapr.Client
             }
         }
 
+        /// <summary>
+        /// Gets or sets the default AppId used for service invocation
+        /// </summary>
+        /// <returns>The AppId used for service invocation</returns>
+        public string? DefaultAppId { get; set; }
+
         // Internal for testing
         internal string? DaprApiToken
         {
@@ -128,13 +134,23 @@ namespace Dapr.Client
                 return false;
             }
 
+            string host;
+
+            if (this.DefaultAppId is not null && uri.Host.Equals(this.DefaultAppId, StringComparison.InvariantCultureIgnoreCase))
+            {
+                host = this.DefaultAppId;
+            }
+            else
+            {
+                host = uri.Host;
+            }
 
             var builder = new UriBuilder(uri)
             {
                 Scheme = this.parsedEndpoint.Scheme,
                 Host = this.parsedEndpoint.Host,
                 Port = this.parsedEndpoint.Port,
-                Path = $"/v1.0/invoke/{uri.Host}/method" + uri.AbsolutePath,
+                Path = $"/v1.0/invoke/{host}/method" + uri.AbsolutePath,
             };
 
             rewritten = builder.Uri;
