@@ -8,13 +8,13 @@ description: Learn how to author and manage Dapr Workflow using the .NET SDK
 
 Let's create a Dapr workflow and invoke it using the console. In the [provided order processing workflow example](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow), the console prompts provide directions on how to both purchase and restock items. In this guide, you will:
 
-- Create a .NET console application ([WorkflowConsoleApp](./WorkflowConsoleApp)).  
+- Deploy a .NET console application ([WorkflowConsoleApp](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow/WorkflowConsoleApp)).  
 - Utilize the .NET workflow SDK and API calls to start and query workflow instances.
 
 In the .NET example project:
-- The main `Program.cs` file contains the setup of the app, including the registration of the workflow and workflow activities. 
-- The workflow definition is found in the `Workflows` directory. 
-- The workflow activity definitions are found in the `Activities` directory.
+- The main [`Program.cs`](https://github.com/dapr/dotnet-sdk/blob/master/examples/Workflow/WorkflowConsoleApp/Program.cs) file contains the setup of the app, including the registration of the workflow and workflow activities. 
+- The workflow definition is found in the [`Workflows` directory](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow/WorkflowConsoleApp/Workflows). 
+- The workflow activity definitions are found in the [`Activities` directory](https://github.com/dapr/dotnet-sdk/tree/master/examples/Workflow/WorkflowConsoleApp/Activities).
 
 ## Prerequisites
 
@@ -72,7 +72,7 @@ This guide focuses on the workflow API option.
 {{% alert title="Note" color="primary" %}}
   - You can find the commands below in the `WorkflowConsoleApp`/`demo.http` file.
   - The body of the curl request is the purchase order information used as the input of the workflow. 
-  - The "1234" in the commands represents the unique identifier for the workflow and can be replaced with any identifier of your choosing.
+  - The "12345678" in the commands represents the unique identifier for the workflow and can be replaced with any identifier of your choosing.
 {{% /alert %}}
 
 
@@ -83,9 +83,9 @@ Run the following command to start a workflow.
 {{% codetab %}}
 
 ```bash
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234/start \
+curl -i -X POST http://localhost:3500/v1.0-beta1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 \
   -H "Content-Type: application/json" \
-  -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
+  -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
 
 {{% /codetab %}}
@@ -93,9 +93,9 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 {{% codetab %}}
 
 ```powershell
-curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234/start `
+curl -i -X POST http://localhost:3500/v1.0-beta1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 `
   -H "Content-Type: application/json" `
-  -d '{ "input" : {"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}}'
+  -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
 
 {{% /codetab %}}
@@ -105,30 +105,27 @@ curl -i -X POST http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessing
 If successful, you should see a response like the following: 
 
 ```json
-{"instance_id":"1234"}
+{"instanceID":"12345678"}
 ```
 
 Send an HTTP request to get the status of the workflow that was started:
 
 ```bash
-curl -i -X GET http://localhost:3500/v1.0-alpha1/workflows/dapr/OrderProcessingWorkflow/1234
+curl -i -X GET http://localhost:3500/v1.0-beta1/workflows/dapr/12345678
 ```
 
 The workflow is designed to take several seconds to complete. If the workflow hasn't completed when you issue the HTTP request, you'll see the following JSON response (formatted for readability) with workflow status as `RUNNING`:
 
 ```json
 {
-  "WFInfo": {
-    "instance_id": "1234"
-  },
-  "start_time": "2023-02-02T23:34:53Z",
-  "metadata": {
+  "instanceID": "12345678",
+  "workflowName": "OrderProcessingWorkflow",
+  "createdAt": "2023-05-10T00:42:03.911444105Z",
+  "lastUpdatedAt": "2023-05-10T00:42:06.142214153Z",
+  "runtimeStatus": "RUNNING",
+  "properties": {
     "dapr.workflow.custom_status": "",
-    "dapr.workflow.input": "{\"Name\":\"Paperclips\",\"Quantity\":1,\"TotalCost\":99.95}",
-    "dapr.workflow.last_updated": "2023-02-02T23:35:07Z",
-    "dapr.workflow.name": "OrderProcessingWorkflow",
-    "dapr.workflow.output": "{\"Processed\":true}",
-    "dapr.workflow.runtime_status": "RUNNING"
+    "dapr.workflow.input": "{\"Name\": \"Paperclips\", \"TotalCost\": 99.95, \"Quantity\": 1}"
   }
 }
 ```
@@ -137,17 +134,15 @@ Once the workflow has completed running, you should see the following output, in
 
 ```json
 {
-  "WFInfo": {
-    "instance_id": "1234"
-  },
-  "start_time": "2023-02-02T23:34:53Z",
-  "metadata": {
+  "instanceID": "12345678",
+  "workflowName": "OrderProcessingWorkflow",
+  "createdAt": "2023-05-10T00:42:03.911444105Z",
+  "lastUpdatedAt": "2023-05-10T00:42:18.527704176Z",
+  "runtimeStatus": "COMPLETED",
+  "properties": {
     "dapr.workflow.custom_status": "",
-    "dapr.workflow.input": "{\"Name\":\"Paperclips\",\"Quantity\":1,\"TotalCost\":99.95}",
-    "dapr.workflow.last_updated": "2023-02-02T23:35:07Z",
-    "dapr.workflow.name": "OrderProcessingWorkflow",
-    "dapr.workflow.output": "{\"Processed\":true}",
-    "dapr.workflow.runtime_status": "COMPLETED"
+    "dapr.workflow.input": "{\"Name\": \"Paperclips\", \"TotalCost\": 99.95, \"Quantity\": 1}",
+    "dapr.workflow.output": "{\"Processed\":true}"
   }
 }
 ```
@@ -156,16 +151,22 @@ When the workflow has completed, the stdout of the workflow app should look like
 
 ```log
 info: WorkflowConsoleApp.Activities.NotifyActivity[0]
-      Received order 1234 for Paperclips at $99.95
+      Received order 12345678 for Paperclips at $99.95
 info: WorkflowConsoleApp.Activities.ReserveInventoryActivity[0]
-      Reserving inventory: 1234, Paperclips, 1
+      Reserving inventory: 12345678, Paperclips, 1
 info: WorkflowConsoleApp.Activities.ProcessPaymentActivity[0]
-      Processing payment: 1234, 99.95, USD
+      Processing payment: 12345678, 99.95, USD
 info: WorkflowConsoleApp.Activities.NotifyActivity[0]
-      Order 1234 processed successfully!
+      Order 12345678 processed successfully!
 ```
 
 If you have Zipkin configured for Dapr locally on your machine, then you can view the workflow trace spans in the Zipkin web UI (typically at http://localhost:9411/zipkin/).
+
+## Demo
+
+Watch this video [demonstrating .NET Workflow](https://youtu.be/BxiKpEmchgQ?t=2557):
+
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/BxiKpEmchgQ?start=2557" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
 ## Next steps
 

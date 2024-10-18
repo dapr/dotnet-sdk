@@ -1,9 +1,8 @@
 ﻿using System.Threading.Tasks;
 using Dapr.Workflow;
-using Microsoft.DurableTask;
 using Moq;
+using WorkflowConsoleApp;
 using WorkflowConsoleApp.Activities;
-using WorkflowConsoleApp.Models;
 using WorkflowConsoleApp.Workflows;
 using Xunit;
 
@@ -24,7 +23,7 @@ namespace WorkflowUnitTest
             // Mock the call to ReserveInventoryActivity
             Mock<WorkflowContext> mockContext = new();
             mockContext
-                .Setup(ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), It.IsAny<InventoryRequest>(), It.IsAny<TaskOptions>()))
+                .Setup(ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), It.IsAny<InventoryRequest>(), It.IsAny<WorkflowTaskOptions>()))
                 .Returns(Task.FromResult(inventoryResult));
 
             // Run the workflow directly
@@ -36,17 +35,17 @@ namespace WorkflowUnitTest
 
             // Verify that ReserveInventoryActivity was called with a specific input
             mockContext.Verify(
-                ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), expectedInventoryRequest, It.IsAny<TaskOptions>()),
+                ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), expectedInventoryRequest, It.IsAny<WorkflowTaskOptions>()),
                 Times.Once());
 
             // Verify that ProcessPaymentActivity was called with a specific input
             mockContext.Verify(
-                ctx => ctx.CallActivityAsync(nameof(ProcessPaymentActivity), expectedPaymentRequest, It.IsAny<TaskOptions>()),
+                ctx => ctx.CallActivityAsync(nameof(ProcessPaymentActivity), expectedPaymentRequest, It.IsAny<WorkflowTaskOptions>()),
                 Times.Once());
 
             // Verify that there were two calls to NotifyActivity
             mockContext.Verify(
-                ctx => ctx.CallActivityAsync(nameof(NotifyActivity), It.IsAny<Notification>(), It.IsAny<TaskOptions>()),
+                ctx => ctx.CallActivityAsync(nameof(NotifyActivity), It.IsAny<Notification>(), It.IsAny<WorkflowTaskOptions>()),
                 Times.Exactly(2));
         }
 
@@ -61,7 +60,7 @@ namespace WorkflowUnitTest
             // Mock the call to ReserveInventoryActivity
             Mock<WorkflowContext> mockContext = new();
             mockContext
-                .Setup(ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), It.IsAny<InventoryRequest>(), It.IsAny<TaskOptions>()))
+                .Setup(ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), It.IsAny<InventoryRequest>(), It.IsAny<WorkflowTaskOptions>()))
                 .Returns(Task.FromResult(inventoryResult));
 
             // Run the workflow directly
@@ -69,17 +68,17 @@ namespace WorkflowUnitTest
 
             // Verify that ReserveInventoryActivity was called with a specific input
             mockContext.Verify(
-                ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), expectedInventoryRequest, It.IsAny<TaskOptions>()),
+                ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), expectedInventoryRequest, It.IsAny<WorkflowTaskOptions>()),
                 Times.Once());
 
             // Verify that ProcessPaymentActivity was never called
             mockContext.Verify(
-                ctx => ctx.CallActivityAsync(nameof(ProcessPaymentActivity), It.IsAny<PaymentRequest>(), It.IsAny<TaskOptions>()),
+                ctx => ctx.CallActivityAsync(nameof(ProcessPaymentActivity), It.IsAny<PaymentRequest>(), It.IsAny<WorkflowTaskOptions>()),
                 Times.Never());
 
             // Verify that there were two calls to NotifyActivity
             mockContext.Verify(
-                ctx => ctx.CallActivityAsync(nameof(NotifyActivity), It.IsAny<Notification>(), It.IsAny<TaskOptions>()),
+                ctx => ctx.CallActivityAsync(nameof(NotifyActivity), It.IsAny<Notification>(), It.IsAny<WorkflowTaskOptions>()),
                 Times.Exactly(2));
         }
     }

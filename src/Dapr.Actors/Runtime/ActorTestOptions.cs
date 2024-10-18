@@ -91,6 +91,11 @@ namespace Dapr.Actors.Runtime
                 throw new NotImplementedException(Message);
             }
 
+            public override Task<IActorReminder> GetReminderAsync(ActorReminderToken reminder)
+            {
+                throw new NotImplementedException(Message);
+            }
+
             public override Task UnregisterReminderAsync(ActorReminderToken reminder)
             {
                 throw new NotImplementedException(Message);

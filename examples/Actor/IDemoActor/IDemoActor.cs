@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,12 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace IDemoActorInterface
-{
-    using System;
-    using System.Threading.Tasks;
-    using Dapr.Actors;
+using System;
+using System.Threading.Tasks;
+using Dapr.Actors;
 
+namespace IDemoActor
+{
     /// <summary>
     /// Interface for Actor method.
     /// </summary>
@@ -26,8 +26,9 @@ namespace IDemoActorInterface
         /// Method to save data.
         /// </summary>
         /// <param name="data">DAta to save.</param>
+        /// <param name="ttl">TTL of state key.</param>
         /// <returns>A task that represents the asynchronous save operation.</returns>
-        Task SaveData(MyData data);
+        Task SaveData(MyData data, TimeSpan ttl);
 
         /// <summary>
         /// Method to get data.
@@ -95,6 +96,13 @@ namespace IDemoActorInterface
         Task RegisterReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions);
 
         /// <summary>
+        /// Gets the registered reminder.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder.</param>
+        /// <returns>A task that returns the reminder after completion.</returns>
+        Task<ActorReminderData> GetReminder();
+
+        /// <summary>
         /// Unregisters the registered timer.
         /// </summary>
         /// <returns>A task that represents the asynchronous save operation.</returns>
@@ -122,6 +130,20 @@ namespace IDemoActorInterface
             var propAValue = this.PropertyA ?? "null";
             var propBValue = this.PropertyB ?? "null";
             return $"PropertyA: {propAValue}, PropertyB: {propBValue}";
+        }
+    }
+
+    public class ActorReminderData
+    {
+        public string Name { get; set; }
+
+        public TimeSpan DueTime { get; set; }
+
+        public TimeSpan Period { get; set; }
+
+        public override string ToString()
+        {
+            return $"Name: {this.Name}, DueTime: {this.DueTime}, Period: {this.Period}";
         }
     }
 }

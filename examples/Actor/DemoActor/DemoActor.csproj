@@ -1,13 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net6</TargetFramework>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
-    <ProjectReference Include="..\IDemoActor\IDemoActor.csproj" />
-  </ItemGroup>
+    <PropertyGroup>
+        <IsPublishable>true</IsPublishable>
+        <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+        <ContainerRepository>demo-actor</ContainerRepository>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ContainerEnvironmentVariable Include="ASPNETCORE_URLS" Value="http://+:8080" />
+        <ContainerPort Include="8080" Type="tcp" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
+        <ProjectReference Include="..\..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
+        <ProjectReference Include="..\IDemoActor\IDemoActor.csproj" />
+    </ItemGroup>
 
 </Project>

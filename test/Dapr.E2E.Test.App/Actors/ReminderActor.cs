@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,12 @@ namespace Dapr.E2E.Test.Actors.Reminders
             await this.RegisterReminderAsync("test-reminder", bytes, dueTime: TimeSpan.Zero, period: TimeSpan.FromMilliseconds(50));
 
             await this.StateManager.SetStateAsync<State>("reminder-state", new State(){ IsReminderRunning = true, });
+        }
+
+        public async Task<String> GetReminder(){
+            var reminder = await this.GetReminderAsync("test-reminder");
+            var reminderString = JsonSerializer.Serialize(reminder, this.Host.JsonSerializerOptions);
+            return reminderString;
         }
 
         public async Task StartReminderWithTtl(TimeSpan ttl)

@@ -3,6 +3,7 @@
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_nuget.props" />
 
   <PropertyGroup>
+    <TargetFrameworks>net6;net8</TargetFrameworks>
     <OutputPath>$(RepoRoot)bin\$(Configuration)\prod\$(MSBuildProjectName)\</OutputPath>
 
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
@@ -14,7 +15,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
   </ItemGroup>
 
   <!-- Enable Deterministic Builds for github actions -->

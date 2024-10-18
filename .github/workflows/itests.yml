@@ -19,45 +19,36 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['3.1', '6.0', '7.0']
+        dotnet-version: ['6.0', '7.0', '8.0']
         include:
-        - dotnet-version: '3.1'
-          install-3: true
-          display-name: '.NET Core 3.1'
-          framework: 'netcoreapp3.1'
-          prefix: 'netcoreapp31'
-          install-version: '3.1.x' # We always need a new .NET
         - dotnet-version: '6.0'
-          install-3: false
           display-name: '.NET 6.0'
           framework: 'net6'
           prefix: 'net6'
           install-version: '6.0.x'
         - dotnet-version: '7.0'
-          install-3: false
           display-name: '.NET 7.0'
           framework: 'net7'
           prefix: 'net7'
           install-version: '7.0.x'
+        - dotnet-version: '8.0'
+          display-name: '.NET 8.0'
+          framework: 'net8'
+          prefix: 'net8'
+          install-version: '8.0.x'
     env:
       NUPKG_OUTDIR: bin/Release/nugets
-      GOVER: 1.19
+      GOVER: 1.20.3
       GOOS: linux
       GOARCH: amd64
       GOPROXY: https://proxy.golang.org
-      DAPR_CLI_VER: 1.9.1
-      DAPR_RUNTIME_VER: 1.9.5
-      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/3dacfb672d55f1436c249057aaebbe597e1066f3/install/install.sh
+      DAPR_CLI_VER: 1.14.0
+      DAPR_RUNTIME_VER: 1.14.0
+      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/release-1.14/install/install.sh
       DAPR_CLI_REF: ''
-      DAPR_REF: '82e097134cdc7494c5c3be71bf80f7904d6db9ea'
     steps:
       - name: Set up Dapr CLI
         run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
-      - name: Set up Go ${{ env.GOVER }}
-        if: env.DAPR_REF != '' || env.DAPR_CLI_REF != ''
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ env.GOVER }}
       - name: Checkout Dapr CLI repo to override dapr command.
         uses: actions/checkout@v2
         if: env.DAPR_CLI_REF != ''
@@ -72,6 +63,16 @@ jobs:
           repository: dapr/dapr
           ref: ${{ env.DAPR_REF }}
           path: dapr
+      - name: Set up Go from dapr/go.mod
+        if: env.DAPR_REF != ''
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "dapr/go.mod"
+      - name: Set up Go from cli/go.mod
+        if: env.DAPR_REF == '' && env.DAPR_CLI_REF != ''
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "cli/go.mod"
       - name: Build and override dapr cli with referenced commit.
         if: env.DAPR_CLI_REF != ''
         run: |
@@ -100,29 +101,19 @@ jobs:
       - uses: actions/checkout@v1
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
-      - name: Install Local kafka using docker-compose
-        run: |
-          docker-compose -f test/Dapr.E2E.Test/deploy/local-test-kafka.yml up -d
-          docker ps
-      - name: Install Local Hashicorp Vault using docker-compose
-        run: |
-          docker-compose -f test/Dapr.E2E.Test/deploy/local-test-vault.yml up -d
-          docker ps
-      - name: Setup Vault's test token
-        run: echo myroot > /tmp/.hashicorp_vault_token
       - name: Setup ${{ matrix.display-name }}
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.install-version }}
-      - name: Setup .NET 7.0 # net7 is always required.
+      - name: Setup .NET 8.0 # net8 is always required.
         uses: actions/setup-dotnet@v1
-        if: ${{ matrix.install-version != '7.0.x' }}
+        if: ${{ matrix.install-version != '8.0.x' }}
         with:
-          dotnet-version: 7.0.x
+          dotnet-version: 8.0.x
       - name: Build
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
         run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
-      - name: Run Test
+      - name: Run General Tests
         id: tests
         continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
         run: |
@@ -137,8 +128,24 @@ jobs:
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=opencover \
             /p:GITHUB_ACTIONS=false
+      - name: Run Generators Tests
+        id: generator-tests
+        continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
+        run: |
+          dotnet test ${{ github.workspace }}/test/Dapr.E2E.Test.Actors.Generators/Dapr.E2E.Test.Actors.Generators.csproj \
+            --configuration Release \
+            --framework ${{ matrix.framework }} \
+            --no-build \
+            --no-restore \
+            --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+            --logger "GitHubActions;report-warnings=false" \
+            --logger "console;verbosity=detailed" \
+            --results-directory "${{ github.workspace }}/TestResults" \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=opencover \
+            /p:GITHUB_ACTIONS=false
       - name: Check test failure in PR
-        if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
+        if: github.event_name == 'pull_request' && (steps.tests.outcome != 'success' || steps.generator-tests.outcome != 'success')
         run: exit 1
       - name: Upload test coverage
         uses: codecov/codecov-action@v1

@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Description>This package contains the reference protos used by develop services using Dapr.</Description>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
+        <Protobuf Include="Protos\dapr\proto\runtime\v1\dapr.proto" ProtoRoot="Protos" GrpcServices="Client" />
+        <Protobuf Include="Protos\dapr\proto\runtime\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+        <PackageReference Include="Google.Api.CommonProtos" />
+    </ItemGroup>
+
+</Project>

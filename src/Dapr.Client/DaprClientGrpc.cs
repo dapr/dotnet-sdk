@@ -3,7 +3,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,10 +14,14 @@
 namespace Dapr.Client
 {
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Net.Http;
     using System.Net.Http.Json;
+    using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
@@ -341,7 +345,32 @@ namespace Dapr.Client
 
         #region InvokeMethod Apis
 
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" />.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public override HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName)
+        {
+            return CreateInvokeMethodRequest(httpMethod, appId, methodName, new List<KeyValuePair<string, string>>());
+        }
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" />.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public override HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName,
+            IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters)
         {
             ArgumentVerifier.ThrowIfNull(httpMethod, nameof(httpMethod));
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
@@ -352,14 +381,11 @@ namespace Dapr.Client
             //
             // This approach avoids some common pitfalls that could lead to undesired encoding.
             var path = $"/v1.0/invoke/{appId}/method/{methodName.TrimStart('/')}";
-            var request = new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path))
-            {
-                Properties =
-                {
-                    { AppIdKey, appId },
-                    { MethodNameKey, methodName },
-                }
-            };
+            var requestUri = new Uri(this.httpEndpoint, path).AddQueryParameters(queryStringParameters);
+            var request = new HttpRequestMessage(httpMethod, requestUri);
+            
+            request.Options.Set(new HttpRequestOptionsKey<string>(AppIdKey), appId);
+            request.Options.Set(new HttpRequestOptionsKey<string>(MethodNameKey), methodName);
 
             if (this.apiTokenHeader is not null)
             {
@@ -369,13 +395,27 @@ namespace Dapr.Client
             return request;
         }
 
-        public override HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data)
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
+        /// <paramref name="data" />.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public override HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName,
+            IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters, TRequest data)
         {
             ArgumentVerifier.ThrowIfNull(httpMethod, nameof(httpMethod));
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
             ArgumentVerifier.ThrowIfNull(methodName, nameof(methodName));
 
-            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
+            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName, queryStringParameters);
             request.Content = JsonContent.Create<TRequest>(data, options: this.JsonSerializerOptions);
             return request;
         }
@@ -399,8 +439,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -409,6 +449,31 @@ namespace Dapr.Client
                     response: null);
             }
         }
+
+        /// <summary>
+        /// <para>
+        /// Creates an <see cref="HttpClient"/> that can be used to perform Dapr service invocation using <see cref="HttpRequestMessage"/>
+        /// objects.
+        /// </para>
+        /// <para>
+        /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
+        /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
+        /// property will be replaced with a new URI with the authority section replaced by the instance's <see cref="httpEndpoint"/> value
+        /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
+        /// </para>
+        /// </summary>
+        /// <param name="appId">
+        ///     An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
+        ///     <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
+        ///     If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
+        /// </param>
+        /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
+        /// <remarks>
+        /// </remarks>
+#nullable enable
+        public override HttpClient CreateInvokableHttpClient(string? appId = null) =>
+            DaprClient.CreateInvokeHttpClient(appId, this.httpEndpoint?.AbsoluteUri, this.apiTokenHeader?.Value);
+        #nullable disable
 
         public async override Task InvokeMethodAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
         {
@@ -423,8 +488,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -447,8 +512,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -465,8 +530,8 @@ namespace Dapr.Client
             {
                 // Our code path for creating requests places these keys in the request properties. We don't want to fail
                 // if they are not present.
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -476,8 +541,8 @@ namespace Dapr.Client
             }
             catch (JsonException ex)
             {
-                request.Properties.TryGetValue(AppIdKey, out var appId);
-                request.Properties.TryGetValue(MethodNameKey, out var methodName);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(AppIdKey), out var appId);
+                request.Options.TryGetValue(new HttpRequestOptionsKey<string>(MethodNameKey), out var methodName);
 
                 throw new InvocationException(
                     appId: appId as string,
@@ -601,7 +666,50 @@ namespace Dapr.Client
 
         #region State Apis
 
+        /// <inheritdoc />
         public override async Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+        {
+            var rawBulkState = await GetBulkStateRawAsync(storeName, keys, parallelism, metadata, cancellationToken);
+
+            var bulkResponse = new List<BulkStateItem>();
+            foreach (var item in rawBulkState)
+            {
+                bulkResponse.Add(new BulkStateItem(item.Key, item.Value.ToStringUtf8(), item.Etag));
+            }
+
+            return bulkResponse;
+        }
+        
+        /// <inheritdoc/> 
+        public override async Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(
+            string storeName,
+            IReadOnlyList<string> keys, 
+            int? parallelism, 
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default)
+        {
+            var rawBulkState = await GetBulkStateRawAsync(storeName, keys, parallelism, metadata, cancellationToken);
+
+            var bulkResponse = new List<BulkStateItem<TValue>>();
+            foreach (var item in rawBulkState)
+            {
+                var deserializedValue = TypeConverters.FromJsonByteString<TValue>(item.Value, this.JsonSerializerOptions);
+                bulkResponse.Add(new BulkStateItem<TValue>(item.Key, deserializedValue, item.Etag));
+            }
+
+            return bulkResponse;
+        }
+
+        /// <summary>
+        /// Retrieves the bulk state data, but rather than deserializing the values, leaves the specific handling
+        /// to the public callers of this method to avoid duplicate deserialization.
+        /// </summary>
+        private async Task<IReadOnlyList<(string Key, string Etag, ByteString Value)>> GetBulkStateRawAsync(
+            string storeName,
+            IReadOnlyList<string> keys, 
+            int? parallelism, 
+            IReadOnlyDictionary<string, string> metadata = default,
+            CancellationToken cancellationToken = default)
         {
             ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
             if (keys.Count == 0)
@@ -609,7 +717,7 @@ namespace Dapr.Client
 
             var envelope = new Autogenerated.GetBulkStateRequest()
             {
-                StoreName = storeName,
+                StoreName = storeName, 
                 Parallelism = parallelism ?? default
             };
 
@@ -632,18 +740,20 @@ namespace Dapr.Client
             }
             catch (RpcException ex)
             {
-                throw new DaprException("State operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
+                throw new DaprException(
+                    "State operation failed: the Dapr endpoint indicated a failure. See InnerException for details.",
+                    ex);
             }
 
-            var bulkResponse = new List<BulkStateItem>();
+            var bulkResponse = new List<(string Key, string Etag, ByteString Value)>();
             foreach (var item in response.Items)
             {
-                bulkResponse.Add(new BulkStateItem(item.Key, item.Data.ToStringUtf8(), item.Etag));
+                bulkResponse.Add((item.Key, item.Etag, item.Data));
             }
 
             return bulkResponse;
         }
-
+        
         /// <inheritdoc/>
         public override async Task<TValue> GetStateAsync<TValue>(
             string storeName,
@@ -1286,7 +1396,6 @@ namespace Dapr.Client
 
         #region Configuration API
         /// <inheritdoc/>
-        [Obsolete]
         public async override Task<GetConfigurationResponse> GetConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -1317,7 +1426,7 @@ namespace Dapr.Client
             Autogenerated.GetConfigurationResponse response = new Autogenerated.GetConfigurationResponse();
             try
             {
-                response = await client.GetConfigurationAlpha1Async(request, options);
+                response = await client.GetConfigurationAsync(request, options);
             }
             catch (RpcException ex)
             {
@@ -1330,7 +1439,6 @@ namespace Dapr.Client
         }
 
         /// <inheritdoc/>
-        [Obsolete]
         public override Task<SubscribeConfigurationResponse> SubscribeConfiguration(
             string storeName,
             IReadOnlyList<string> keys,
@@ -1358,10 +1466,9 @@ namespace Dapr.Client
             }
 
             var options = CreateCallOptions(headers: null, cancellationToken: cancellationToken);
-            return Task.FromResult(new SubscribeConfigurationResponse(new DaprSubscribeConfigurationSource(client.SubscribeConfigurationAlpha1(request, options))));
+            return Task.FromResult(new SubscribeConfigurationResponse(new DaprSubscribeConfigurationSource(client.SubscribeConfiguration(request, options))));
         }
 
-        [Obsolete]
         public override async Task<UnsubscribeConfigurationResponse> UnsubscribeConfiguration(
             string storeName,
             string id,
@@ -1377,9 +1484,501 @@ namespace Dapr.Client
             };
 
             var options = CreateCallOptions(headers: null, cancellationToken);
-            var resp = await client.UnsubscribeConfigurationAlpha1Async(request, options);
+            var resp = await client.UnsubscribeConfigurationAsync(request, options);
             return new UnsubscribeConfigurationResponse(resp.Ok, resp.Message);
         }
+
+        #endregion
+
+        #region Cryptography
+
+        /// <inheritdoc />
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public override async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, 
+            ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
+            CancellationToken cancellationToken = default)
+        {
+            if (MemoryMarshal.TryGetArray(plaintextBytes, out var plaintextSegment) && plaintextSegment.Array != null)
+            {
+                var encryptionResult = await EncryptAsync(vaultResourceName, new MemoryStream(plaintextSegment.Array), keyName, encryptionOptions,
+                    cancellationToken);
+                
+                var bufferedResult = new ArrayBufferWriter<byte>();
+
+                await foreach (var item in encryptionResult.WithCancellation(cancellationToken))
+                {
+                    bufferedResult.Write(item.Span);
+                }
+                
+                return bufferedResult.WrittenMemory;                
+            }
+
+            throw new ArgumentException("The input instance doesn't have a valid underlying data store.", nameof(plaintextBytes));
+        }
+
+        /// <inheritdoc />
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName, Stream plaintextStream,
+            string keyName, EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+            ArgumentVerifier.ThrowIfNull(plaintextStream, nameof(plaintextStream));
+            ArgumentVerifier.ThrowIfNull(encryptionOptions, nameof(encryptionOptions));
+
+            var shouldOmitDecryptionKeyName = string.IsNullOrWhiteSpace(encryptionOptions.DecryptionKeyName); //Whitespace isn't likely a valid key name either
+
+            var encryptRequestOptions = new Autogenerated.EncryptRequestOptions
+            {
+                ComponentName = vaultResourceName,
+                DataEncryptionCipher = encryptionOptions.EncryptionCipher.GetValueFromEnumMember(),
+                KeyName = keyName,
+                KeyWrapAlgorithm = encryptionOptions.KeyWrapAlgorithm.GetValueFromEnumMember(),
+                OmitDecryptionKeyName = shouldOmitDecryptionKeyName
+            };
+
+            if (!shouldOmitDecryptionKeyName)
+            {
+                ArgumentVerifier.ThrowIfNullOrEmpty(encryptionOptions.DecryptionKeyName, nameof(encryptionOptions.DecryptionKeyName));
+                encryptRequestOptions.DecryptionKeyName = encryptRequestOptions.DecryptionKeyName;
+            }
+
+            var options = CreateCallOptions(headers: null, cancellationToken);
+            var duplexStream = client.EncryptAlpha1(options);
+
+            //Run both operations at the same time, but return the output of the streaming values coming from the operation
+            var receiveResult = Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken));
+            return await Task.WhenAll(
+                //Stream the plaintext data to the sidecar in chunks
+                SendPlaintextStreamAsync(plaintextStream, encryptionOptions.StreamingBlockSizeInBytes,
+                    duplexStream, encryptRequestOptions, cancellationToken),
+                //At the same time, retrieve the encrypted response from the sidecar
+                receiveResult).ContinueWith(_ => receiveResult.Result, cancellationToken);
+        }
+
+        /// <summary>
+        /// Sends the plaintext bytes in chunks to the sidecar to be encrypted.
+        /// </summary>
+        private async Task SendPlaintextStreamAsync(Stream plaintextStream,
+            int streamingBlockSizeInBytes,
+            AsyncDuplexStreamingCall<Autogenerated.EncryptRequest, Autogenerated.EncryptResponse> duplexStream,
+            Autogenerated.EncryptRequestOptions encryptRequestOptions,
+            CancellationToken cancellationToken)
+        {
+            //Start with passing the metadata about the encryption request itself in the first message
+            await duplexStream.RequestStream.WriteAsync(
+                new Autogenerated.EncryptRequest {Options = encryptRequestOptions}, cancellationToken);
+
+            //Send the plaintext bytes in blocks in subsequent messages
+            await using (var bufferedStream = new BufferedStream(plaintextStream, streamingBlockSizeInBytes))
+            {
+                var buffer = new byte[streamingBlockSizeInBytes];
+                int bytesRead;
+                ulong sequenceNumber = 0;
+
+                while ((bytesRead =
+                           await bufferedStream.ReadAsync(buffer.AsMemory(0, streamingBlockSizeInBytes), cancellationToken)) !=
+                       0)
+                {
+                    await duplexStream.RequestStream.WriteAsync(
+                        new Autogenerated.EncryptRequest
+                        {
+                            Payload = new Autogenerated.StreamPayload
+                            {
+                                Data = ByteString.CopyFrom(buffer, 0, bytesRead), Seq = sequenceNumber
+                            }
+                        }, cancellationToken);
+
+                    //Increment the sequence number
+                    sequenceNumber++;
+                }
+            }
+
+            //Send the completion message
+            await duplexStream.RequestStream.CompleteAsync();
+        }
+
+        /// <summary>
+        /// Retrieves the encrypted bytes from the encryption operation on the sidecar and returns as an enumerable stream.
+        /// </summary>
+        private async IAsyncEnumerable<ReadOnlyMemory<byte>> RetrieveEncryptedStreamAsync(AsyncDuplexStreamingCall<Autogenerated.EncryptRequest, Autogenerated.EncryptResponse> duplexStream, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await foreach (var encryptResponse in duplexStream.ResponseStream.ReadAllAsync(cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                yield return encryptResponse.Payload.Data.Memory;
+            }
+        }
+        
+        /// <inheritdoc />
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream, string keyName,
+            DecryptionOptions decryptionOptions, CancellationToken cancellationToken = default)
+        {
+            ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+            ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+            ArgumentVerifier.ThrowIfNull(ciphertextStream, nameof(ciphertextStream));
+            ArgumentVerifier.ThrowIfNull(decryptionOptions, nameof(decryptionOptions));
+
+            var decryptRequestOptions = new Autogenerated.DecryptRequestOptions
+            {
+                ComponentName = vaultResourceName, 
+                KeyName = keyName
+            };
+
+            var options = CreateCallOptions(headers: null, cancellationToken);
+            var duplexStream = client.DecryptAlpha1(options);
+
+            //Run both operations at the same time, but return the output of the streaming values coming from the operation
+            var receiveResult = Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken));
+            return await Task.WhenAll(
+                //Stream the ciphertext data to the sidecar in chunks
+                SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes,
+                    duplexStream, decryptRequestOptions, cancellationToken),
+                //At the same time, retrieve the decrypted response from the sidecar
+                receiveResult)
+                //Return only the result of the `RetrieveEncryptedStreamAsync` method
+            .ContinueWith(t => receiveResult.Result, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public override Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName,
+            Stream ciphertextStream, string keyName, CancellationToken cancellationToken = default) =>
+            DecryptAsync(vaultResourceName, ciphertextStream, keyName, new DecryptionOptions(),
+                cancellationToken);
+        
+        /// <summary>
+        /// Sends the ciphertext bytes in chunks to the sidecar to be decrypted.
+        /// </summary>
+        private async Task SendCiphertextStreamAsync(Stream ciphertextStream,
+            int streamingBlockSizeInBytes,
+            AsyncDuplexStreamingCall<Autogenerated.DecryptRequest, Autogenerated.DecryptResponse> duplexStream,
+            Autogenerated.DecryptRequestOptions decryptRequestOptions,
+            CancellationToken cancellationToken)
+        {
+            //Start with passing the metadata about the decryption request itself in the first message
+            await duplexStream.RequestStream.WriteAsync(
+                new Autogenerated.DecryptRequest { Options = decryptRequestOptions }, cancellationToken);
+            
+            //Send the ciphertext bytes in blocks in subsequent messages
+            await using (var bufferedStream = new BufferedStream(ciphertextStream, streamingBlockSizeInBytes))
+            {
+                var buffer = new byte[streamingBlockSizeInBytes];
+                int bytesRead;
+                ulong sequenceNumber = 0;
+                
+                while ((bytesRead = await bufferedStream.ReadAsync(buffer.AsMemory(0, streamingBlockSizeInBytes), cancellationToken)) != 0)
+                {
+                    await duplexStream.RequestStream.WriteAsync(new Autogenerated.DecryptRequest
+                    {
+                        Payload = new Autogenerated.StreamPayload
+                        {
+                            Data = ByteString.CopyFrom(buffer, 0, bytesRead),
+                            Seq = sequenceNumber
+                        }
+                    }, cancellationToken);
+                
+                    //Increment the sequence number
+                    sequenceNumber++;
+                }
+            }
+            
+            //Send the completion message
+            await duplexStream.RequestStream.CompleteAsync();
+        }
+
+        /// <summary>
+        /// Retrieves the decrypted bytes from the decryption operation on the sidecar and returns as an enumerable stream.
+        /// </summary>
+        private async IAsyncEnumerable<ReadOnlyMemory<byte>> RetrieveDecryptedStreamAsync(
+            AsyncDuplexStreamingCall<Autogenerated.DecryptRequest, Autogenerated.DecryptResponse> duplexStream,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await foreach (var decryptResponse in duplexStream.ResponseStream.ReadAllAsync(cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                yield return decryptResponse.Payload.Data.Memory;
+            }
+        }
+        
+        /// <inheritdoc />
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
+            ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions decryptionOptions,
+            CancellationToken cancellationToken = default)
+        {
+            if (MemoryMarshal.TryGetArray(ciphertextBytes, out var ciphertextSegment) && ciphertextSegment.Array != null)
+            {
+                var decryptionResult = await DecryptAsync(vaultResourceName, new MemoryStream(ciphertextSegment.Array),
+                    keyName, decryptionOptions, cancellationToken); 
+                
+                var bufferedResult = new ArrayBufferWriter<byte>();
+                await foreach (var item in decryptionResult.WithCancellation(cancellationToken))
+                {
+                    bufferedResult.Write(item.Span);
+                }
+
+                return bufferedResult.WrittenMemory;
+            }
+
+            throw new ArgumentException("The input instance doesn't have a valid underlying data store", nameof(ciphertextBytes));
+        }
+
+        /// <inheritdoc />
+        [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
+            ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default) =>
+            await DecryptAsync(vaultResourceName, ciphertextBytes, keyName,
+                new DecryptionOptions(), cancellationToken);
+        
+        #region Subtle Crypto Implementation
+
+        ///// <inheritdoc/>
+        //[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public override async Task<(string Name, string PublicKey)> GetKeyAsync(string vaultResourceName, string keyName, Autogenerated.SubtleGetKeyRequest.Types.KeyFormat keyFormat,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+
+        //    var envelope = new Autogenerated.SubtleGetKeyRequest()
+        //    {
+        //        ComponentName = vaultResourceName, Format = keyFormat, Name = keyName
+        //    };
+
+        //    var options = CreateCallOptions(headers: null, cancellationToken);
+        //    Autogenerated.SubtleGetKeyResponse response;
+
+        //    try
+        //    {
+        //        response = await client.SubtleGetKeyAlpha1Async(envelope, options);
+        //    }
+        //    catch (RpcException ex)
+        //    {
+        //        throw new DaprException(
+        //            "Cryptography operation failed: the Dapr endpoint indicated a failure. See InnerException for details", ex);
+        //    }
+
+        //    return (response.Name, response.PublicKey);
+        //}
+
+        ///// <inheritdoc/>
+        //[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public override async Task<(byte[] CipherTextBytes, byte[] AuthenticationTag)> EncryptAsync(string vaultResourceName, byte[] plainTextBytes, string algorithm,
+        //    string keyName, byte[] nonce, byte[] associatedData, CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(algorithm, nameof(algorithm));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+
+        //    var envelope = new Autogenerated.SubtleEncryptRequest
+        //    {
+        //        ComponentName = vaultResourceName,
+        //        Algorithm = algorithm,
+        //        KeyName = keyName,
+        //        Nonce = ByteString.CopyFrom(nonce),
+        //        Plaintext = ByteString.CopyFrom(plainTextBytes),
+        //        AssociatedData = ByteString.CopyFrom(associatedData)
+        //    };
+
+        //    var options = CreateCallOptions(headers: null, cancellationToken);
+        //    Autogenerated.SubtleEncryptResponse response;
+
+        //    try
+        //    {
+        //        response = await client.SubtleEncryptAlpha1Async(envelope, options);
+        //    }
+        //    catch (RpcException ex)
+        //    {
+        //        throw new DaprException(
+        //            "Cryptography operation failed: the Dapr endpoint indicated a failure. See InnerException for details",
+        //            ex);
+        //    }
+
+        //    return (response.Ciphertext.ToByteArray(), response.Tag.ToByteArray() ?? Array.Empty<byte>());
+        //}
+
+        ///// <inheritdoc/>
+        //[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public override async Task<byte[]> DecryptAsync(string vaultResourceName, byte[] cipherTextBytes, string algorithm, string keyName, byte[] nonce, byte[] tag,
+        //    byte[] associatedData, CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(algorithm, nameof(algorithm));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+
+        //    var envelope = new Autogenerated.SubtleDecryptRequest
+        //    {
+        //        ComponentName = vaultResourceName,
+        //        Algorithm = algorithm,
+        //        KeyName = keyName,
+        //        Nonce = ByteString.CopyFrom(nonce),
+        //        Ciphertext = ByteString.CopyFrom(cipherTextBytes),
+        //        AssociatedData = ByteString.CopyFrom(associatedData),
+        //        Tag = ByteString.CopyFrom(tag)
+        //    };
+
+        //    var options = CreateCallOptions(headers: null, cancellationToken);
+        //    Autogenerated.SubtleDecryptResponse response;
+
+        //    try
+        //    {
+        //        response = await client.SubtleDecryptAlpha1Async(envelope, options);
+        //    }
+        //    catch (RpcException ex)
+        //    {
+        //        throw new DaprException(
+        //            "Cryptography operation failed: the Dapr endpoint included a failure. See InnerException for details", ex);
+        //    }
+
+        //    return response.Plaintext.ToByteArray();
+        //}
+
+        ///// <inheritdoc/>
+        //[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public override async Task<(byte[] WrappedKey, byte[] AuthenticationTag)> WrapKeyAsync(string vaultResourceName, byte[] plainTextKey, string keyName,
+        //    string algorithm, byte[] nonce, byte[] associatedData, CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(algorithm, nameof(algorithm));
+
+        //    var envelope = new Autogenerated.SubtleWrapKeyRequest
+        //    {
+        //        ComponentName = vaultResourceName,
+        //        Algorithm = algorithm,
+        //        KeyName = keyName,
+        //        Nonce = ByteString.CopyFrom(nonce),
+        //        PlaintextKey = ByteString.CopyFrom(plainTextKey),
+        //        AssociatedData = ByteString.CopyFrom(associatedData)
+        //    };
+
+        //    var options = CreateCallOptions(headers: null, cancellationToken);
+        //    Autogenerated.SubtleWrapKeyResponse response;
+
+        //    try
+        //    {
+        //        response = await client.SubtleWrapKeyAlpha1Async(envelope, options);
+        //    }
+        //    catch (RpcException ex)
+        //    {
+        //        throw new DaprException(
+        //            "Cryptography operation failed: the Dapr endpoint included a failure. See InnerException for details",
+        //            ex);
+        //    }
+
+        //    return (response.WrappedKey.ToByteArray(), response.Tag.ToByteArray() ?? Array.Empty<byte>());
+        //}
+
+        ///// <inheritdoc/>
+        //[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public override async Task<byte[]> UnwrapKeyAsync(string vaultResourceName, byte[] wrappedKey, string algorithm,
+        //    string keyName, byte[] nonce, byte[] tag, byte[] associatedData, CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(algorithm, nameof(algorithm));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+
+        //    var envelope = new Autogenerated.SubtleUnwrapKeyRequest
+        //    {
+        //        ComponentName = vaultResourceName,
+        //        WrappedKey = ByteString.CopyFrom(wrappedKey),
+        //        AssociatedData = ByteString.CopyFrom(associatedData),
+        //        Algorithm = algorithm,
+        //        KeyName = keyName,
+        //        Nonce = ByteString.CopyFrom(nonce),
+        //        Tag = ByteString.CopyFrom(tag)
+        //    };
+
+        //    var options = CreateCallOptions(headers: null, cancellationToken);
+        //    Autogenerated.SubtleUnwrapKeyResponse response;
+
+        //    try
+        //    {
+        //        response = await client.SubtleUnwrapKeyAlpha1Async(envelope, options);
+        //    }
+        //    catch (RpcException ex)
+        //    {
+        //        throw new DaprException(
+        //            "Cryptography operation failed: the Dapr endpoint included a failure. See InnerException for details",
+        //            ex);
+        //    }
+
+        //    return response.PlaintextKey.ToByteArray();
+        //}
+
+        ///// <inheritdoc/>
+        //[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public override async Task<byte[]> SignAsync(string vaultResourceName, byte[] digest, string algorithm, string keyName, CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(algorithm, nameof(algorithm));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+
+        //    var envelope = new Autogenerated.SubtleSignRequest
+        //    {
+        //        ComponentName = vaultResourceName,
+        //        Digest = ByteString.CopyFrom(digest),
+        //        Algorithm = algorithm,
+        //        KeyName = keyName
+        //    };
+
+        //    var options = CreateCallOptions(headers: null, cancellationToken);
+        //    Autogenerated.SubtleSignResponse response;
+
+        //    try
+        //    {
+        //        response = await client.SubtleSignAlpha1Async(envelope, options);
+        //    }
+        //    catch (RpcException ex)
+        //    {
+        //        throw new DaprException(
+        //            "Cryptography operation failed: the Dapr endpoint included a failure. See InnerException for details",
+        //            ex);
+        //    }
+
+        //    return response.Signature.ToByteArray();
+        //}
+
+        ///// <inheritdoc/>
+        //[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //public override async Task<bool> VerifyAsync(string vaultResourceName, byte[] digest, byte[] signature,
+        //    string algorithm, string keyName, CancellationToken cancellationToken = default)
+        //{
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(vaultResourceName, nameof(vaultResourceName));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(algorithm, nameof(algorithm));
+        //    ArgumentVerifier.ThrowIfNullOrEmpty(keyName, nameof(keyName));
+
+        //    var envelope = new Autogenerated.SubtleVerifyRequest
+        //    {
+        //        ComponentName = vaultResourceName,
+        //        Algorithm = algorithm,
+        //        KeyName = keyName,
+        //        Signature = ByteString.CopyFrom(signature),
+        //        Digest = ByteString.CopyFrom(digest)
+        //    };
+
+        //    var options = CreateCallOptions(headers: null, cancellationToken);
+        //    Autogenerated.SubtleVerifyResponse response;
+
+        //    try
+        //    {
+        //        response = await client.SubtleVerifyAlpha1Async(envelope, options);
+        //    }
+        //    catch (RpcException ex)
+        //    {
+        //        throw new DaprException(
+        //            "Cryptography operation failed: the Dapr endpoint included a failure. See InnerException for details",
+        //            ex);
+        //    }
+
+        //    return response.Valid;
+        //}
+
+        #endregion
+
+
         #endregion
 
         #region Distributed Lock API
@@ -1462,120 +2061,6 @@ namespace Dapr.Client
 
         #endregion
 
-
-        #region Workflow API
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task<WorkflowReference> StartWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            string workflowName,
-            Object input,
-            IReadOnlyDictionary<string, string> workflowOptions = default,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowName, nameof(workflowName));
-            ArgumentVerifier.ThrowIfNull(input, nameof(input));
-
-            // Serialize json data. Converts input object to bytes and then bytestring inside the request.
-            byte[] jsonUtf8Bytes = JsonSerializer.SerializeToUtf8Bytes(input);
-
-            var request = new Autogenerated.StartWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent,
-                WorkflowName = workflowName,
-                Input = ByteString.CopyFrom(jsonUtf8Bytes),
-            };
-
-            if (workflowOptions?.Count > 0)
-            {
-                foreach (var item in workflowOptions)
-                {
-                    request.Options[item.Key] = item.Value;
-                }
-            }
-
-            try
-            {
-                var options = CreateCallOptions(headers: null, cancellationToken);
-                var response = await client.StartWorkflowAlpha1Async(request, options);
-                return new WorkflowReference(response.InstanceId);
- 
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Start Workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-        }
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task<GetWorkflowResponse> GetWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            string workflowName,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-
-            var request = new Autogenerated.GetWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent,
-                WorkflowType = workflowName //TODO: Change 'WorkflowType' to 'WorkflowName' once changes go through dapr/dapr
-            };
-
-            try
-            {
-                var options = CreateCallOptions(headers: null, cancellationToken);
-                var response = await client.GetWorkflowAlpha1Async(request, options);
-                var dateTimeValue = new DateTime(response.StartTime, DateTimeKind.Utc);
-                return new GetWorkflowResponse(response.InstanceId, dateTimeValue, response.Metadata);
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Get workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-
-        }
-
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task TerminateWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-
-            var request = new Autogenerated.TerminateWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent
-            };
-
-            var options = CreateCallOptions(headers: null, cancellationToken);
-
-            try
-            {
-                await client.TerminateWorkflowAlpha1Async(request, options);
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Terminate workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-
-        }
-
-        #endregion
-
-
         #region Dapr Sidecar Methods
 
         /// <inheritdoc/>
@@ -1583,6 +2068,12 @@ namespace Dapr.Client
         {
             var path = "/v1.0/healthz";
             var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+
+            if (this.apiTokenHeader is not null)
+            {
+                request.Headers.Add(this.apiTokenHeader.Value.Key, this.apiTokenHeader.Value.Value);
+            }
+
             try
             {
                 using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -1599,6 +2090,12 @@ namespace Dapr.Client
         {
             var path = "/v1.0/healthz/outbound";
             var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
+
+            if (this.apiTokenHeader is not null)
+            {
+                request.Headers.Add(this.apiTokenHeader.Value.Key, this.apiTokenHeader.Value.Value);
+            }
+
             try
             {
                 using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -1627,7 +2124,7 @@ namespace Dapr.Client
         /// <inheritdoc/>
         public async override Task ShutdownSidecarAsync(CancellationToken cancellationToken = default)
         {
-            await client.ShutdownAsync(new Empty(), CreateCallOptions(null, cancellationToken));
+            await client.ShutdownAsync(new Autogenerated.ShutdownRequest(), CreateCallOptions(null, cancellationToken));
         }
 
         /// <inheritdoc/>
@@ -1636,11 +2133,15 @@ namespace Dapr.Client
             var options = CreateCallOptions(headers: null, cancellationToken);
             try
             {
-                var response = await client.GetMetadataAsync(new Empty(), options);
-                return new DaprMetadata(response.Id,
-                                        response.ActiveActorsCount.Select(c => new DaprActorMetadata(c.Type, c.Count)).ToList(),
-                                        response.ExtendedMetadata.ToDictionary(c => c.Key, c => c.Value),
-                                        response.RegisteredComponents.Select(c => new DaprComponentsMetadata(c.Name, c.Type, c.Version, c.Capabilities.ToArray())).ToList());
+                var response = await client.GetMetadataAsync(new Autogenerated.GetMetadataRequest(), options);
+                return new DaprMetadata(response.Id ?? "",
+                    response.ActorRuntime?.ActiveActors?.Select(c => new DaprActorMetadata(c.Type, c.Count)).ToList() ??
+                    new List<DaprActorMetadata>(),
+                    response.ExtendedMetadata?.ToDictionary(c => c.Key, c => c.Value) ??
+                    new Dictionary<string, string>(),
+                    response.RegisteredComponents?.Select(c =>
+                        new DaprComponentsMetadata(c.Name, c.Type, c.Version, c.Capabilities.ToArray())).ToList() ??
+                    new List<DaprComponentsMetadata>());
             }
             catch (RpcException ex)
             {

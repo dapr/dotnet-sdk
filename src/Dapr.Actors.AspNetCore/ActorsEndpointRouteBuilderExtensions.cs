@@ -103,23 +103,23 @@ namespace Microsoft.AspNetCore.Builder
 
                     try
                     {
-                        var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body);
+                        var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body, context.RequestAborted);
 
                         // Item 1 is header , Item 2 is body
                         if (header != string.Empty)
                         {
                             // exception case
-                            context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header); // add error header
+                            context.Response.Headers[Constants.ErrorResponseHeaderName] = header; // add error header
                         }
 
-                        await context.Response.Body.WriteAsync(body, 0, body.Length); // add response message body
+                        await context.Response.Body.WriteAsync(body, 0, body.Length, context.RequestAborted); // add response message body
                     }
                     catch (Exception ex)
                     {
                         var (header, body) = CreateExceptionResponseMessage(ex);
 
-                        context.Response.Headers.Add(Constants.ErrorResponseHeaderName, header);
-                        await context.Response.Body.WriteAsync(body, 0, body.Length);
+                        context.Response.Headers[Constants.ErrorResponseHeaderName] = header;
+                        await context.Response.Body.WriteAsync(body, 0, body.Length, context.RequestAborted);
                     }
                     finally
                     {
@@ -130,7 +130,7 @@ namespace Microsoft.AspNetCore.Builder
                 {
                     try
                     {
-                        await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body);
+                        await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body, context.RequestAborted);
                     }
                     finally
                     {

@@ -24,7 +24,6 @@ namespace Dapr.Extensions.Configuration
     /// A configuration provider that utilizes the Dapr Configuration API. It can either be a single, constant
     /// call or a streaming call.
     /// </summary>
-    [Obsolete]
     internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposable
     {
         private string store;
