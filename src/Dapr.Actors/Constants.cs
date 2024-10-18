@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ namespace Dapr.Actors
         public const string RequestHeaderName = "X-DaprRequestHeader";
         public const string ErrorResponseHeaderName = "X-DaprErrorResponseHeader";
         public const string ReentrancyRequestHeaderName = "Dapr-Reentrancy-Id";
+        public const string TTLResponseHeaderName = "Metadata.ttlExpireTime";
         public const string Dapr = "dapr";
         public const string Config = "config";
         public const string State = "state";

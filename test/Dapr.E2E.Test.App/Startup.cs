@@ -16,8 +16,10 @@ namespace Dapr.E2E.Test
     using Dapr.E2E.Test.Actors.Reentrancy;
     using Dapr.E2E.Test.Actors.Reminders;
     using Dapr.E2E.Test.Actors.Timers;
+    using Dapr.E2E.Test.Actors.State;
     using Dapr.E2E.Test.Actors.ExceptionTesting;
     using Dapr.E2E.Test.Actors.Serialization;
+    using Dapr.E2E.Test.Actors.WeaklyTypedTesting;
     using Dapr.E2E.Test.App.ErrorTesting;
     using Dapr.Workflow;
     using Microsoft.AspNetCore.Authentication;
@@ -104,6 +106,8 @@ namespace Dapr.E2E.Test
                 options.Actors.RegisterActor<Regression762Actor>();
                 options.Actors.RegisterActor<ExceptionActor>();
                 options.Actors.RegisterActor<SerializationActor>();
+                options.Actors.RegisterActor<StateActor>();
+                options.Actors.RegisterActor<WeaklyTypedTestingActor>();
             });
         }
 

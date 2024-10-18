@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,14 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace DaprDemoActor
-{
-    using System;
-    using System.Text.Json;
-    using System.Threading.Tasks;
-    using Dapr.Actors.Runtime;
-    using IDemoActorInterface;
+using System;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Dapr.Actors.Runtime;
+using IDemoActor;
 
+namespace DemoActor
+{
     // The following example showcases a few features of Actors
     //
     // Every actor should inherit from the Actor type, and must implement one or more actor interfaces.
@@ -27,7 +27,7 @@ namespace DaprDemoActor
     // For Actors to use Reminders, it must derive from IRemindable.
     // If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder 
     // specific methods which are shown in the code below.
-    public class DemoActor : Actor, IDemoActor, IBankActor, IRemindable
+    public class DemoActor : Actor, IDemoActor.IDemoActor, IBankActor, IRemindable
     {
         private const string StateName = "my_data";
 
@@ -41,12 +41,12 @@ namespace DaprDemoActor
             this.bank = bank;
         }
 
-        public async Task SaveData(MyData data)
+        public async Task SaveData(MyData data, TimeSpan ttl)
         {
             Console.WriteLine($"This is Actor id {this.Id} with data {data}.");
 
             // Set State using StateManager, state is saved after the method execution.
-            await this.StateManager.SetStateAsync<MyData>(StateName, data);
+            await this.StateManager.SetStateAsync<MyData>(StateName, data, ttl);
         }
 
         public Task<MyData> GetData()
@@ -109,7 +109,7 @@ namespace DaprDemoActor
             // This method is invoked when an actor reminder is fired.
             var actorState = await this.StateManager.GetStateAsync<MyData>(StateName);
             actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}'";
-            await this.StateManager.SetStateAsync<MyData>(StateName, actorState);
+            await this.StateManager.SetStateAsync<MyData>(StateName, actorState, ttl: TimeSpan.FromMinutes(5));
         }
 
         class TimerParams
@@ -173,7 +173,7 @@ namespace DaprDemoActor
         {
             var state = await this.StateManager.GetStateAsync<MyData>(StateName);
             state.PropertyA = $"Timer triggered at '{DateTime.Now:yyyyy-MM-ddTHH:mm:s}'";
-            await this.StateManager.SetStateAsync<MyData>(StateName, state);
+            await this.StateManager.SetStateAsync<MyData>(StateName, state, ttl: TimeSpan.FromMinutes(5));
             var timerParams = JsonSerializer.Deserialize<TimerParams>(data);
             Console.WriteLine("Timer parameter1: " + timerParams.IntParam);
             Console.WriteLine("Timer parameter2: " + timerParams.StringParam);
