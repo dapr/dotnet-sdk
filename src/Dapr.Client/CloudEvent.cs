@@ -57,6 +57,7 @@ namespace Dapr
 		/// <summary>
 		/// CloudEvent 'data' content.
 		/// </summary>
+		[JsonPropertyName("data")]
 		public TData Data { get; }
 
 		/// <summary>
