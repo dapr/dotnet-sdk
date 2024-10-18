@@ -112,7 +112,6 @@ public sealed class ActorClientGenerator : ISourceGenerator
         {
             try
             {
-                var actorInterfaceTypeName = interfaceSymbol.Name;
                 var fullyQualifiedActorInterfaceTypeName = interfaceSymbol.ToString();
 
                 var attributeData = interfaceSymbol.GetAttributes().Single(a => a.AttributeClass?.Equals(generateActorClientAttributeSymbol, SymbolEqualityComparer.Default) == true);

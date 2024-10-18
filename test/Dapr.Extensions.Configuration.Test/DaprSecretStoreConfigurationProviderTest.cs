@@ -41,11 +41,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<ArgumentNullException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore(null, new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore(null, new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, daprClient)
+                    .Build();
+            });
 
             Assert.Contains("store", ex.Message);
         }
@@ -58,11 +58,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<ArgumentException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore(string.Empty, new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore(string.Empty, new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, daprClient)
+                    .Build();
+            });
 
             Assert.Contains("The value cannot be null or empty", ex.Message);
         }
@@ -75,11 +75,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<ArgumentNullException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore("store", (DaprSecretDescriptor[])null, daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore("store", (DaprSecretDescriptor[])null, daprClient)
+                    .Build();
+            });
 
             Assert.Contains("secretDescriptors", ex.Message);
         }
@@ -88,11 +88,11 @@ namespace Dapr.Extensions.Configuration.Test
         public void AddDaprSecretStore_UsingDescriptors_WithoutClient_ReportsError()
         {
             var ex = Assert.Throws<ArgumentNullException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore("store", new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, null)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore("store", new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, null)
+                    .Build();
+            });
 
             Assert.Contains("client", ex.Message);
         }
@@ -105,11 +105,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<ArgumentException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore("store", new DaprSecretDescriptor[] { }, daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore("store", new DaprSecretDescriptor[] { }, daprClient)
+                    .Build();
+            });
 
             Assert.Contains("No secret descriptor was provided", ex.Message);
         }
@@ -132,11 +132,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore("store", new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore("store", new DaprSecretDescriptor[] { new DaprSecretDescriptor("secretName") }, daprClient)
+                    .Build();
+            });
 
             Assert.Contains("Please remove any duplicates from your secret store.", ex.Message);
         }
@@ -310,7 +310,7 @@ namespace Dapr.Extensions.Configuration.Test
 
             var ex = Assert.Throws<DaprException>(() =>
             {
-                var config = CreateBuilder()
+                CreateBuilder()
                     .AddDaprSecretStore(storeName, secretDescriptors, daprClient)
                     .Build();
             });
@@ -327,11 +327,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<ArgumentNullException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore(null, daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore(null, daprClient)
+                    .Build();
+            });
 
             Assert.Contains("store", ex.Message);
         }
@@ -344,11 +344,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<ArgumentException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore(string.Empty, daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore(string.Empty, daprClient)
+                    .Build();
+            });
 
             Assert.Contains("The value cannot be null or empty", ex.Message);
         }
@@ -357,11 +357,11 @@ namespace Dapr.Extensions.Configuration.Test
         public void AddDaprSecretStore_WithoutClient_ReportsError()
         {
             var ex = Assert.Throws<ArgumentNullException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore("store", null)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore("store", null)
+                    .Build();
+            });
 
             Assert.Contains("client", ex.Message);
         }
@@ -384,11 +384,11 @@ namespace Dapr.Extensions.Configuration.Test
                 .Build();
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
-                {
-                    var config = CreateBuilder()
-                        .AddDaprSecretStore("store", daprClient)
-                        .Build();
-                });
+            {
+                CreateBuilder()
+                    .AddDaprSecretStore("store", daprClient)
+                    .Build();
+            });
 
             Assert.Contains("Please remove any duplicates from your secret store.", ex.Message);
         }
