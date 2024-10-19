@@ -53,7 +53,9 @@ public class DaprRegularExpressionMasker : IDaprDataMasker
     /// <param name="input">The processed input data being reversed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public Task<DaprDataOperationPayload<string?>> ReverseAsync(DaprDataOperationPayload<string> input, CancellationToken cancellationToken) => Task.FromResult(new DaprDataOperationPayload<string?>(input.Payload));
+    public Task<DaprDataOperationPayload<string?>> ReverseAsync(DaprDataOperationPayload<string> input,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DaprDataOperationPayload<string?>(input.Payload));
 
     /// <summary>
     /// Registers a pattern to match against.

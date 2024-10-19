@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common.Data.Operations;
 using Dapr.Common.Data.Operations.Providers.Integrity.Checksum;
 using Xunit;
 
@@ -20,7 +21,20 @@ public class DaprSha256ValidatorTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.True(result.Metadata.ContainsKey("Checksum"));
+        Assert.True(result.Metadata.ContainsKey($"{validator.Name}-hash"));
+        Assert.True(result.Metadata.ContainsKey("Ops"));
+        Assert.Equal(validator.Name, result.Metadata["Ops"]);
+    }
+
+    [Fact]
+    public async Task ReverseAsync_ShouldValidateChecksumWithoutMetadataHeader()
+    {
+        // Arrange
+        var validator = new DaprSha256Validator();
+        var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
+        var result = new DaprDataOperationPayload<ReadOnlyMemory<byte>>(input);
+
+        await validator.ReverseAsync(result, CancellationToken.None);
     }
 
     [Fact]

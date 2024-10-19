@@ -21,6 +21,11 @@ namespace Dapr.Common.Data.Operations.Providers.Serialization;
 public class DaprSystemTextJsonSerializer<T> : IDaprDataSerializer<T>
 {
     /// <summary>
+    /// Optionally provided <see cref="JsonSerializerOptions"/>.
+    /// </summary>
+    private JsonSerializerOptions? options = new (JsonSerializerDefaults.Web);
+    
+    /// <summary>
     /// The name of the operation.
     /// </summary>
     public string Name => "Dapr.Serialization.SystemTextJsonSerializer";
@@ -33,7 +38,7 @@ public class DaprSystemTextJsonSerializer<T> : IDaprDataSerializer<T>
     /// <returns>The output data and metadata for the operation.</returns>
     public Task<DaprDataOperationPayload<string>> ExecuteAsync(T input, CancellationToken cancellationToken = default)
     {
-        var jsonResult = JsonSerializer.Serialize(input);
+        var jsonResult = JsonSerializer.Serialize(input, options);
         var result = new DaprDataOperationPayload<string>(jsonResult, Name);
 
         return Task.FromResult(result);
@@ -46,10 +51,19 @@ public class DaprSystemTextJsonSerializer<T> : IDaprDataSerializer<T>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
     public Task<DaprDataOperationPayload<T?>> ReverseAsync(DaprDataOperationPayload<string> input,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        var value = JsonSerializer.Deserialize<T>(input.Payload);
+        var value = JsonSerializer.Deserialize<T>(input.Payload, options);
         var result = new DaprDataOperationPayload<T?>(value);
         return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// Used to provide a <see cref="JsonSerializerOptions"/> to the operation.
+    /// </summary>
+    /// <param name="jsonSerializerOptions">The configuration options to use.</param>
+    public void UseOptions(JsonSerializerOptions jsonSerializerOptions)
+    {
+        this.options = jsonSerializerOptions;
     }
 }

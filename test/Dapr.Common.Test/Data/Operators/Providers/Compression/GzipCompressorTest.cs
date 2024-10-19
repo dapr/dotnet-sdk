@@ -22,6 +22,8 @@ public class DaprGzipCompressorTests
         // Assert
         Assert.NotNull(result);
         Assert.NotEqual(input, result.Payload);
+        Assert.True(result.Metadata.ContainsKey("Ops"));
+        Assert.Equal(compressor.Name, result.Metadata["Ops"]);
     }
 
     [Fact]

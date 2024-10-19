@@ -34,8 +34,9 @@ public class DataPipeline
     /// Processes the data in the order of the provided list of <see cref="IDaprDataOperation{TInput,TOutput}"/>.
     /// </summary>
     /// <param name="input">The data to evaluate.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The evaluated data.</returns>
-    public async Task<DaprDataOperationPayload<TOutput?>> ProcessAsync<TInput, TOutput>(TInput input)
+    public async Task<DaprDataOperationPayload<TOutput?>> ProcessAsync<TInput, TOutput>(TInput input, CancellationToken cancellationToken = default)
     {
         object? currentData = input;
         var combinedMetadata = new Dictionary<string, string>();
@@ -46,10 +47,13 @@ public class DataPipeline
             var method = operation.GetType().GetMethod("ExecuteAsync");
             if (method is null || currentData is null)
                 continue;
-            
-            var genericMethod = method.MakeGenericMethod(typeof(TInput), typeof(TOutput));
-            var result = await ((Task<DaprDataOperationPayload<object>>)genericMethod.Invoke(operation, new object[] { currentData })!);
+
+            var task = (Task)method.Invoke(operation, new object[] { currentData, cancellationToken })!;
+            await task.ConfigureAwait(false);
+            var resultProperty = task.GetType().GetProperty("Result");
+            var result = (DaprDataOperationPayload<object>)resultProperty?.GetValue(task)!;
             currentData = result.Payload;
+            
             foreach (var kvp in result.Metadata)
             {
                 //Append the operation name if given that key
@@ -64,7 +68,7 @@ public class DataPipeline
                         combinedMetadata[operationNameKey] = kvp.Value;
                     }
                 }
-                
+
                 combinedMetadata[kvp.Key] = kvp.Value;
             }
         }
@@ -76,8 +80,9 @@ public class DataPipeline
     /// Processes the reverse of the data in the order of the provided list of <see cref="IDaprDataOperation{TInput,TOutput}"/>.
     /// </summary>
     /// <param name="input">The data to evaluate.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The evaluated data.</returns>
-    public async Task<DaprDataOperationPayload<TInput?>> ReverseProcessAsync<TInput, TOutput>(TOutput input)
+    public async Task<DaprDataOperationPayload<TInput?>> ReverseProcessAsync<TInput, TOutput>(TOutput input, CancellationToken cancellationToken = default)
     {
         object? currentData = input;
         var combinedMetadata = new Dictionary<string, string>();
@@ -88,8 +93,7 @@ public class DataPipeline
             if (method is null || currentData is null)
                 continue;
             
-            var genericMethod = method.MakeGenericMethod(typeof(TOutput), typeof(TInput));
-            var result = await (Task<DaprDataOperationPayload<object>>)genericMethod.Invoke(operations[i], new[] { currentData })!;
+            var result = await (Task<DaprDataOperationPayload<object>>)method.Invoke(operations[i], new[] { currentData, cancellationToken })!;
             currentData = result.Payload;
             foreach (var kvp in result.Metadata)
             {

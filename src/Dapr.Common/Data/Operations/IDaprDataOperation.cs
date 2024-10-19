@@ -46,5 +46,5 @@ public interface IDaprDataOperation<TInput, TOutput> : IDaprDataOperation
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
     Task<DaprDataOperationPayload<TInput?>> ReverseAsync(DaprDataOperationPayload<TOutput> input,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken = default);
 }
