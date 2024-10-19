@@ -1,0 +1,49 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2024 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using Dapr.Common.Data.Operations;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Dapr.Common.Data.Extensions;
+
+/// <summary>
+/// Used by the fluent registration builder to configure a Dapr data pipeline.
+/// </summary>
+public class DaprDataPipelineBuilder : IDaprDataPipelineBuilder
+{
+    /// <summary>
+    /// The registered services on the builder.
+    /// </summary>
+    public IServiceCollection Services { get; }
+
+    /// <summary>
+    /// Used to initialize a new <see cref="DaprDataPipelineBuilder"/>.
+    /// </summary>
+    public DaprDataPipelineBuilder(IServiceCollection services)
+    {
+        Services = services;
+    }
+}
+
+/// <summary>
+/// Used to perform fluent registrations on the Dapr data processing pipeline.
+/// </summary>
+public class DaprDataProcessingPipelineBuilder : DaprDataPipelineBuilder, IDaprDataProcessingBuilder
+{
+    /// <summary>
+    /// Used to initialize a new <see cref="DaprDataProcessingPipelineBuilder"/>.
+    /// </summary>
+    public DaprDataProcessingPipelineBuilder(IServiceCollection services) : base(services)
+    {
+    }
+}
