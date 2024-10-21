@@ -7,7 +7,7 @@ namespace Dapr.Actors.Generators.Helpers
     /// <summary>
     /// Syntax factory helpers for generating syntax.
     /// </summary>
-    public static partial class SyntaxFactoryHelpers
+    internal static partial class SyntaxFactoryHelpers
     {
         /// <summary>
         /// Generates a syntax for an <see cref="ArgumentNullException"/> based on the given argument name.
