@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,9 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+
 using System;
+using Dapr;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,12 +34,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection" />.</param>
         /// <param name="configure">A delegate used to configure actor options and register actor types.</param>
-        public static void AddActors(this IServiceCollection services, Action<ActorRuntimeOptions> configure)
+        public static void AddActors(this IServiceCollection? services, Action<ActorRuntimeOptions>? configure)
         {
-            if (services is null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
+            ArgumentNullException.ThrowIfNull(services, nameof(services));
 
             // Routing and health checks are required dependencies.
             services.AddRouting();
@@ -45,6 +46,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton<ActorRuntime>(s =>
             {   
                 var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
+                ConfigureActorOptions(s, options);
+                
                 var loggerFactory = s.GetRequiredService<ILoggerFactory>();
                 var activatorFactory = s.GetRequiredService<ActorActivatorFactory>();
                 var proxyFactory = s.GetRequiredService<IActorProxyFactory>();
@@ -54,6 +57,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton<IActorProxyFactory>(s =>
             {
                 var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
+                ConfigureActorOptions(s, options);
+
                 var factory = new ActorProxyFactory() 
                 { 
                     DefaultOptions =
@@ -71,6 +76,17 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 services.Configure<ActorRuntimeOptions>(configure);
             }
+        }
+        
+        private static void ConfigureActorOptions(IServiceProvider serviceProvider, ActorRuntimeOptions options)
+        {
+            var configuration = serviceProvider.GetService<IConfiguration>();
+            options.DaprApiToken = !string.IsNullOrWhiteSpace(options.DaprApiToken)
+                ? options.DaprApiToken
+                : DaprDefaults.GetDefaultDaprApiToken(configuration);
+            options.HttpEndpoint = !string.IsNullOrWhiteSpace(options.HttpEndpoint)
+                ? options.HttpEndpoint
+                : DaprDefaults.GetDefaultHttpEndpoint();
         }
     }
 }
