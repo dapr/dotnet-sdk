@@ -58,7 +58,7 @@ namespace Dapr.Client
         /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
         /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
         /// property will be replaced with a new URI with the authority section replaced by <paramref name="daprEndpoint" />
-        /// and the path portion of the URI rewitten to follow the format of a Dapr service invocation request.
+        /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
         /// </para>
         /// </summary>
         /// <param name="appId">
@@ -139,17 +139,14 @@ namespace Dapr.Client
         public static CallInvoker CreateInvocationInvoker(string appId, string daprEndpoint = null, string daprApiToken = null)
         {
             var channel = GrpcChannel.ForAddress(daprEndpoint ?? DaprDefaults.GetDefaultGrpcEndpoint());
-            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultDaprApiToken()));
+            return channel.Intercept(new InvocationInterceptor(appId, daprApiToken ?? DaprDefaults.GetDefaultDaprApiToken(null)));
         }
 
         internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
         {
-            if (string.IsNullOrWhiteSpace(apiToken))
-            {
-                return null;
-            }
-
-            return new KeyValuePair<string, string>("dapr-api-token", apiToken);
+            return string.IsNullOrWhiteSpace(apiToken)
+                ? null
+                : new KeyValuePair<string, string>("dapr-api-token", apiToken);
         }
 
         /// <summary>
@@ -447,6 +444,30 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
         public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
+
+#nullable enable
+        /// <summary>
+        /// <para>
+        /// Creates an <see cref="HttpClient"/> that can be used to perform Dapr service invocation using <see cref="HttpRequestMessage"/>
+        /// objects.
+        /// </para>
+        /// <para>
+        /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
+        /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
+        /// property will be replaced with a new URI with the authority section replaced by the HTTP endpoint value
+        /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
+        /// </para>
+        /// </summary>
+        /// <param name="appId">
+        ///     An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
+        ///     <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
+        ///     If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
+        /// </param>
+        /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
+        /// <remarks>
+        /// </remarks>
+        public abstract HttpClient CreateInvokableHttpClient(string? appId = null);
+#nullable disable
 
         /// <summary>
         /// Perform service invocation using the request provided by <paramref name="request" />. If the response has a non-success
@@ -1296,192 +1317,7 @@ namespace Dapr.Client
             string resourceId,
             string lockOwner,
             CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Attempt to start the given workflow with response indicating success.
-        /// </summary>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="workflowName">Name of the workflow to run.</param>
-        /// <param name="instanceId">Identifier of the specific run.</param>
-        /// <param name="input">The JSON-serializeable input for the given workflow.</param>
-        /// <param name="workflowOptions">The list of options that are potentially needed to start a workflow.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task"/> containing a <see cref="StartWorkflowResponse"/></returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<StartWorkflowResponse> StartWorkflowAsync(
-            string workflowComponent,
-            string workflowName,
-            string instanceId = null,
-            object input = null,
-            IReadOnlyDictionary<string, string> workflowOptions = default,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Waits for a workflow to start running and returns a <see cref="GetWorkflowResponse"/> object that contains metadata
-        /// about the started workflow.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// A "started" workflow instance is any instance not in the <see cref="WorkflowRuntimeStatus.Pending"/> state.
-        /// </para><para>
-        /// This method will return a completed task if the workflow has already started running or has already completed.
-        /// </para>
-        /// </remarks>
-        /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the wait operation.</param>
-        /// <returns>
-        /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
-        /// </returns>
-        /// <exception cref="OperationCanceledException">
-        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow starts running.
-        /// </exception>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public virtual async Task<GetWorkflowResponse> WaitForWorkflowStartAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            while (true)
-            {
-                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
-                if (response.RuntimeStatus != WorkflowRuntimeStatus.Pending)
-                {
-                    return response;
-                }
-
-                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
-            }
-        }
-
-        /// <summary>
-        /// Waits for a workflow to complete and returns a <see cref="GetWorkflowResponse"/>
-        /// object that contains metadata about the started instance.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// A "completed" workflow instance is any instance in one of the terminal states. For example, the
-        /// <see cref="WorkflowRuntimeStatus.Completed"/>, <see cref="WorkflowRuntimeStatus.Failed"/>, or
-        /// <see cref="WorkflowRuntimeStatus.Terminated"/> states.
-        /// </para><para>
-        /// Workflows are long-running and could take hours, days, or months before completing.
-        /// Workflows can also be eternal, in which case they'll never complete unless terminated.
-        /// In such cases, this call may block indefinitely, so care must be taken to ensure appropriate timeouts are
-        /// enforced using the <paramref name="cancellationToken"/> parameter.
-        /// </para><para>
-        /// If a workflow instance is already complete when this method is called, the method will return immediately.
-        /// </para>
-        /// </remarks>
-        /// <returns>
-        /// Returns a <see cref="GetWorkflowResponse"/> record that describes the workflow instance and its execution status.
-        /// </returns>
-        /// <exception cref="OperationCanceledException">
-        /// Thrown if <paramref name="cancellationToken"/> is canceled before the workflow completes.
-        /// </exception>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public virtual async Task<GetWorkflowResponse> WaitForWorkflowCompletionAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            while (true)
-            {
-                var response = await this.GetWorkflowAsync(instanceId, workflowComponent, cancellationToken);
-                if (response.RuntimeStatus == WorkflowRuntimeStatus.Completed ||
-                    response.RuntimeStatus == WorkflowRuntimeStatus.Failed ||
-                    response.RuntimeStatus == WorkflowRuntimeStatus.Terminated)
-                {
-                    return response;
-                }
-
-                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
-            }
-        }
-
-        /// <summary>
-        /// Attempt to get information about the given workflow.
-        /// </summary>
-        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task"/> containing a <see cref="GetWorkflowResponse"/></returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<GetWorkflowResponse> GetWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Attempt to get terminate the given workflow.
-        /// </summary>
-        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the terminate operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task TerminateWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Attempt to raise an event the given workflow with response indicating success.
-        /// </summary>
-        /// <param name="instanceId">Identifier of the specific run.</param>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="eventName">Name of the event to raise.</param>
-        /// <param name="eventData">The JSON-serializable event payload to include in the raised event.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the raise event operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task RaiseWorkflowEventAsync(
-            string instanceId,
-            string workflowComponent,
-            string eventName,
-            object eventData = null,
-            CancellationToken cancellationToken = default);
-
-
-        /// <summary>
-        /// Pauses the specified workflow instance.
-        /// </summary>
-        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the pause operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task PauseWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default);
-
-
-        /// <summary>
-        /// Resumes a paused workflow instance.
-        /// </summary>
-        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the resume operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task ResumeWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Delete all state associated with the specified workflow instance. The workflow must be in a non-running state to be purged.
-        /// </summary>
-        /// <param name="instanceId">The unique ID of the target workflow instance.</param>
-        /// <param name="workflowComponent">The component to interface with.</param>
-        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-        /// <returns>A <see cref="Task" /> that will complete when the purge operation has been scheduled. If the wrapped value is true the operation suceeded.</returns>
-        [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task PurgeWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default);
-
+        
         /// <inheritdoc />
         public void Dispose()
         {
