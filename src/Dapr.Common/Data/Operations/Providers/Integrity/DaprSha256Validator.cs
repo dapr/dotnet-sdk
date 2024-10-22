@@ -13,12 +13,12 @@
 
 using System.Security.Cryptography;
 
-namespace Dapr.Common.Data.Operations.Providers.Integrity.Checksum;
+namespace Dapr.Common.Data.Operations.Providers.Integrity;
 
 /// <summary>
 /// Provides a data integrity validation service using an SHA256 hash.
 /// </summary>
-public class DaprSha256Validator : IDaprDataValidator
+public class Sha256Validator : IDaprDataValidator
 {
     /// <summary>
     /// The name of the operation.
@@ -31,10 +31,10 @@ public class DaprSha256Validator : IDaprDataValidator
     /// <param name="input">The input data.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The output data and metadata for the operation.</returns>
-    public async Task<DaprDataOperationPayload<ReadOnlyMemory<byte>>> ExecuteAsync(ReadOnlyMemory<byte> input, CancellationToken cancellationToken = default)
+    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ExecuteAsync(ReadOnlyMemory<byte> input, CancellationToken cancellationToken = default)
     {
         var checksum = await CalculateChecksumAsync(input, cancellationToken);
-        var result = new DaprDataOperationPayload<ReadOnlyMemory<byte>>(input, Name);
+        var result = new DaprOperationPayload<ReadOnlyMemory<byte>>(input);
         result.Metadata.Add(GetChecksumKey(), checksum);
         return result;
     }
@@ -45,7 +45,7 @@ public class DaprSha256Validator : IDaprDataValidator
     /// <param name="input">The processed input data being reversed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public async Task<DaprDataOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprDataOperationPayload<ReadOnlyMemory<byte>> input, CancellationToken cancellationToken)
+    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, CancellationToken cancellationToken)
     {
         var checksumKey = GetChecksumKey();
         if (input.Metadata.TryGetValue(checksumKey, out var checksum))
@@ -58,7 +58,7 @@ public class DaprSha256Validator : IDaprDataValidator
         }
         
         //If there's no checksum metadata or it matches, just continue with the next operation
-        return new DaprDataOperationPayload<ReadOnlyMemory<byte>>(input.Payload);
+        return new DaprOperationPayload<ReadOnlyMemory<byte>>(input.Payload);
     }
 
     /// <summary>

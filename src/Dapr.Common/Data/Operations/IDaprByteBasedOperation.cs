@@ -11,11 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Common.Data.Operations.Providers.Serialization;
+namespace Dapr.Common.Data.Operations;
 
 /// <summary>
-/// Identifies an operation that provides a data serialization capability. 
+/// Represents a Dapr pipeline operation performed against byte values.
 /// </summary>
-public interface IDaprDataSerializer<T> : IDaprTStringTransitionOperation<T>
+public interface IDaprByteBasedOperation : IDaprDataOperation<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>
 {
 }

@@ -18,7 +18,7 @@ namespace Dapr.Common.Data.Operations.Providers.Serialization;
 /// <summary>
 /// Provides serialization capabilities using System.Text.Json.
 /// </summary>
-public class DaprSystemTextJsonSerializer<T> : IDaprDataSerializer<T>
+public sealed class SystemTextJsonSerializer<T> : IDaprDataSerializer<T>
 {
     /// <summary>
     /// Optionally provided <see cref="JsonSerializerOptions"/>.
@@ -36,10 +36,10 @@ public class DaprSystemTextJsonSerializer<T> : IDaprDataSerializer<T>
     /// <param name="input">The input data.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The output data and metadata for the operation.</returns>
-    public Task<DaprDataOperationPayload<string>> ExecuteAsync(T input, CancellationToken cancellationToken = default)
+    public Task<DaprOperationPayload<string?>> ExecuteAsync(T? input, CancellationToken cancellationToken = default)
     {
         var jsonResult = JsonSerializer.Serialize(input, options);
-        var result = new DaprDataOperationPayload<string>(jsonResult, Name);
+        var result = new DaprOperationPayload<string?>(jsonResult);
 
         return Task.FromResult(result);
     }
@@ -50,11 +50,13 @@ public class DaprSystemTextJsonSerializer<T> : IDaprDataSerializer<T>
     /// <param name="input">The processed input data being reversed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public Task<DaprDataOperationPayload<T?>> ReverseAsync(DaprDataOperationPayload<string> input,
+    public Task<DaprOperationPayload<T?>> ReverseAsync(DaprOperationPayload<string?> input,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(input.Payload, nameof(input));
+        
         var value = JsonSerializer.Deserialize<T>(input.Payload, options);
-        var result = new DaprDataOperationPayload<T?>(value);
+        var result = new DaprOperationPayload<T?>(value);
         return Task.FromResult(result);
     }
 

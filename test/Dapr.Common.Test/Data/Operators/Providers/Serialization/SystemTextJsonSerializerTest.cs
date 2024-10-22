@@ -5,13 +5,13 @@ using Xunit;
 
 namespace Dapr.Common.Test.Data.Operators.Providers.Serialization;
 
-public class DaprSystemTextJsonSerializerTest
+public class SystemTextJsonSerializerTest
 {
     [Fact]
     public async Task ExecuteAsync_ShouldSerialize()
     {
         //Arrange
-        var validator = new DaprSystemTextJsonSerializer<TestObject>();
+        var validator = new SystemTextJsonSerializer<TestObject>();
         var input = new TestObject("Test", 15);
         
         //Act
@@ -20,17 +20,15 @@ public class DaprSystemTextJsonSerializerTest
         //Assert
         Assert.NotNull(result);
         Assert.Equal("{\"name\":\"Test\",\"count\":15}", result.Payload);
-        Assert.True(result.Metadata.ContainsKey("Ops"));
-        Assert.Equal(validator.Name, result.Metadata["Ops"]);
     }
 
     [Fact]
     public async Task ReverseAsync_ShouldDeserialize()
     {
         //Arrange
-        var validator = new DaprSystemTextJsonSerializer<TestObject>();
+        var validator = new SystemTextJsonSerializer<TestObject>();
         const string input = "{\"name\":\"Test\",\"count\":15}";
-        var payload = new DaprDataOperationPayload<string>(input);
+        var payload = new DaprOperationPayload<string>(input);
         
         //Act
         var result = await validator.ReverseAsync(payload);

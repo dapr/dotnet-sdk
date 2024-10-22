@@ -14,8 +14,8 @@
 namespace Dapr.Common.Data.Operations.Providers.Compression;
 
 /// <summary>
- /// Identifies an operation that provides a data compression capability. 
- /// </summary>
-public interface IDaprDataCompressor : IDaprDataOperation<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>
+/// Identifies an operation that provides a data compression capability. 
+/// </summary>
+public interface IDaprDataCompressor : IDaprByteBasedOperation
 {
 }

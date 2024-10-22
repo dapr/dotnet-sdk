@@ -13,4 +13,8 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Dapr.Common.Data.SourceGenerators\Dapr.Common.Data.SourceGenerators\Dapr.Common.Data.SourceGenerators.csproj" />
+    </ItemGroup>
+
 </Project>

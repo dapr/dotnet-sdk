@@ -17,26 +17,15 @@ namespace Dapr.Common.Data.Operations;
 /// Contains the result of a Dapr data operation.
 /// </summary>
 /// <typeparam name="T">The type of the payload.</typeparam>
-public record DaprDataOperationPayload<T>
+public record DaprOperationPayload<T>
 {
     /// <summary>
-    /// Initializes a <see cref="DaprDataOperationPayload{T}"/>.
+    /// Initializes a <see cref="DaprOperationPayload{T}"/>.
     /// </summary>
     /// <param name="payload">The resulting payload following the operation.</param>
-    public DaprDataOperationPayload(T payload)
+    public DaprOperationPayload(T payload)
     {
         Payload = payload;
-    }
-
-    /// <summary>
-    /// Initializes a <see cref="DaprDataOperationPayload{T}"/>.
-    /// </summary>
-    /// <param name="payload">The resulting payload following the operation.</param>
-    /// <param name="operationName">The name of the operation that produced this as a result.</param>
-    public DaprDataOperationPayload(T payload, string operationName)
-    {
-        Payload = payload;
-        Metadata["Ops"] = operationName;
     }
     
     /// <summary>

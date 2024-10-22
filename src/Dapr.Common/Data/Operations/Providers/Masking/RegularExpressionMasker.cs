@@ -18,7 +18,7 @@ namespace Dapr.Common.Data.Operations.Providers.Masking;
 /// <summary>
 /// Performs a masking operation on the provided input.
 /// </summary>
-public class DaprRegularExpressionMasker : IDaprDataMasker
+public class RegularExpressionMasker : IDaprDataMasker
 {
     private readonly Dictionary<Regex, string> patterns = new();
 
@@ -33,9 +33,12 @@ public class DaprRegularExpressionMasker : IDaprDataMasker
     /// <param name="input">The input data.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The output data and metadata for the operation.</returns>
-    public Task<DaprDataOperationPayload<string>> ExecuteAsync(string input,
+    public Task<DaprOperationPayload<string?>> ExecuteAsync(string? input,
         CancellationToken cancellationToken = default)
     {
+        if (input is null)
+            return Task.FromResult(new DaprOperationPayload<string?>(null));
+        
         var updatedValue = input;
         foreach (var pattern in patterns)
         {
@@ -43,7 +46,7 @@ public class DaprRegularExpressionMasker : IDaprDataMasker
             updatedValue = pattern.Key.Replace(input, pattern.Value);
         }
 
-        var payloadResult = new DaprDataOperationPayload<string>(updatedValue, Name);
+        var payloadResult = new DaprOperationPayload<string?>(updatedValue);
         return Task.FromResult(payloadResult);
     }
 
@@ -53,9 +56,9 @@ public class DaprRegularExpressionMasker : IDaprDataMasker
     /// <param name="input">The processed input data being reversed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public Task<DaprDataOperationPayload<string?>> ReverseAsync(DaprDataOperationPayload<string> input,
+    public Task<DaprOperationPayload<string?>> ReverseAsync(DaprOperationPayload<string?> input,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(new DaprDataOperationPayload<string?>(input.Payload));
+        Task.FromResult(new DaprOperationPayload<string?>(input.Payload));
 
     /// <summary>
     /// Registers a pattern to match against.

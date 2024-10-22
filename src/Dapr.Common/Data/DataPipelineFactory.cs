@@ -22,7 +22,7 @@ namespace Dapr.Common.Data;
 /// Used to create a data pipeline specific to a given type using the ordered operation services indicated in the
 /// <see cref="DataOperationAttribute"/> attribute on that type.
 /// </summary>
-public sealed class DataPipelineFactory
+internal sealed class DataPipelineFactory
 {
     /// <summary>
     /// The service provider used to pull the registered data operation services.
@@ -38,22 +38,63 @@ public sealed class DataPipelineFactory
     }
 
     /// <summary>
-    /// Creates a pipeline with the attributes specified for a given type.
+    /// Creates a pipeline used to serialize a given type.
     /// </summary>
     /// <typeparam name="T">The type to create the pipeline for.</typeparam>
     /// <returns></returns>
-    public DataPipeline CreatePipeline<T>()
+    public DaprDataPipeline<T> CreateEncodingPipeline<T>()
     {
         var attribute = typeof(T).GetCustomAttribute<DataOperationAttribute>();
         if (attribute == null)
         {
-            return new DataPipeline(new List<IDaprDataOperation<Type, Type>>());
+            return new DaprDataPipeline<T>(new List<IDaprDataOperation<Type, Type>>());
         }
 
         var operations = attribute.DataOperationTypes
-            .Select(type => serviceProvider.GetRequiredService(type))
+            .Select(type => serviceProvider.GetRequiredService(type) as IDaprDataOperation)
+            .Where(op => op is not null)
+            .Cast<IDaprDataOperation>()
             .ToList();
 
-        return new DataPipeline(operations);
+        return new DaprDataPipeline<T>(operations);
+    }
+
+    /// <summary>
+    /// Creates a pipeline used to reverse a previously applied pipeline operation using the provided
+    /// operation names from the metadata.
+    /// </summary>
+    /// <param name="metadata">The metadata payload used to determine the order of operations.</param>
+    /// <typeparam name="T">The type to deserialize to.</typeparam>
+    /// <returns>A pipeline configured for reverse processing.</returns>
+    /// <exception cref="DaprException"></exception>
+    public DaprDataPipeline<T> CreateDecodingPipeline<T>(Dictionary<string,string> metadata)
+    {
+        const string operationKey = "ops";
+        if (!metadata.TryGetValue(operationKey, out var opNames))
+        {
+            throw new DaprException(
+                $"Unable to decode payload as its metadata is missing the key (\"${operationKey}\") containing the operation order");
+        }
+
+        //Run through the names backwards in the order of the operations as named in the metadata
+        var operations = new List<string>(opNames.Split(',').Reverse());
+
+        var matchingDataOperations = serviceProvider.GetServices<IDaprDataOperation>()
+            .Where(op => operations.Contains(op.Name))
+            .ToList();
+
+        if (matchingDataOperations.Count != operations.Count)
+        {
+            //Identify which names are missing
+            foreach (var op in matchingDataOperations)
+            {
+                operations.Remove(op.Name);
+            }
+
+            throw new DaprException(
+                $"Registered services were not located for the following operation names present in the metadata: {String.Join(',', operations)}");
+        }
+
+        return new DaprDataPipeline<T>(matchingDataOperations);
     }
 }

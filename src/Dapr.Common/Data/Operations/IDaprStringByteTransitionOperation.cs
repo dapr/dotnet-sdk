@@ -11,13 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Common.Data.Extensions;
-
 namespace Dapr.Common.Data.Operations;
 
 /// <summary>
-/// Provides a root builder for the Dapr processing functionality facilitating a more fluent-style registration.
+/// Represents a Dapr pipeline operation performed against string values that output as byte arrays.
 /// </summary>
-public interface IDaprDataProcessingBuilder : IDaprServiceBuilder
+public interface IDaprStringByteTransitionOperation : IDaprDataOperation<string, ReadOnlyMemory<byte>>
 {
 }

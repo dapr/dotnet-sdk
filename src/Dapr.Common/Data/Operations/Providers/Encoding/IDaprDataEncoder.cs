@@ -11,11 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Common.Data.Operations.Providers.Serialization;
+namespace Dapr.Common.Data.Operations.Providers.Encoding;
 
 /// <summary>
-/// Identifies an operation that provides a data serialization capability. 
+/// Identifies an operation that encodes strings into byte arrays.
 /// </summary>
-public interface IDaprDataSerializer<T> : IDaprTStringTransitionOperation<T>
+public interface IDaprDataEncoder : IDaprStringByteTransitionOperation
 {
 }

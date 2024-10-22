@@ -1,4 +1,4 @@
-﻿using Dapr.Common.Data.Operations.Providers.Compression.Gzip;
+﻿using Dapr.Common.Data.Operations.Providers.Compression;
 
 namespace Dapr.Common.Test.Data.Operators.Providers.Compression;
 
@@ -7,13 +7,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-public class DaprGzipCompressorTests
+public class GzipCompressorTests
 {
     [Fact]
     public async Task ExecuteAsync_ShouldCompressData()
     {
         // Arrange
-        var compressor = new DaprGzipCompressor();
+        var compressor = new GzipCompressor();
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
 
         // Act
@@ -22,15 +22,13 @@ public class DaprGzipCompressorTests
         // Assert
         Assert.NotNull(result);
         Assert.NotEqual(input, result.Payload);
-        Assert.True(result.Metadata.ContainsKey("Ops"));
-        Assert.Equal(compressor.Name, result.Metadata["Ops"]);
     }
 
     [Fact]
     public async Task ReverseAsync_ShouldDecompressData()
     {
         // Arrange
-        var compressor = new DaprGzipCompressor();
+        var compressor = new GzipCompressor();
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
         var compressedResult = await compressor.ExecuteAsync(input);
 

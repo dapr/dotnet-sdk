@@ -16,6 +16,6 @@ namespace Dapr.Common.Data.Operations.Providers.Integrity;
 /// <summary>
 /// Identifies an operation that provides data integrity validation.
 /// </summary>
-public interface IDaprDataValidator : IDaprDataOperation<ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>
+public interface IDaprDataValidator : IDaprByteBasedOperation
 {
 }

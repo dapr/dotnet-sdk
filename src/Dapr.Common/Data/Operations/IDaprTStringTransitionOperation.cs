@@ -11,11 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Common.Data.Operations.Providers.Serialization;
+namespace Dapr.Common.Data.Operations;
 
 /// <summary>
-/// Identifies an operation that provides a data serialization capability. 
+/// Identifies an operation that provides a transition from a generic type to a string.
 /// </summary>
-public interface IDaprDataSerializer<T> : IDaprTStringTransitionOperation<T>
+public interface IDaprTStringTransitionOperation<T> : IDaprDataOperation<T, string>
 {
 }

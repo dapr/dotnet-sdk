@@ -2,18 +2,18 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common.Data.Operations;
-using Dapr.Common.Data.Operations.Providers.Integrity.Checksum;
+using Dapr.Common.Data.Operations.Providers.Integrity;
 using Xunit;
 
 namespace Dapr.Common.Test.Data.Operators.Providers.Integrity;
 
-public class DaprSha256ValidatorTests
+public class Sha256ValidatorTests
 {
     [Fact]
     public async Task ExecuteAsync_ShouldCalculateChecksum()
     {
         // Arrange
-        var validator = new DaprSha256Validator();
+        var validator = new Sha256Validator();
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
 
         // Act
@@ -22,17 +22,15 @@ public class DaprSha256ValidatorTests
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Metadata.ContainsKey($"{validator.Name}-hash"));
-        Assert.True(result.Metadata.ContainsKey("Ops"));
-        Assert.Equal(validator.Name, result.Metadata["Ops"]);
     }
 
     [Fact]
     public async Task ReverseAsync_ShouldValidateChecksumWithoutMetadataHeader()
     {
         // Arrange
-        var validator = new DaprSha256Validator();
+        var validator = new Sha256Validator();
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
-        var result = new DaprDataOperationPayload<ReadOnlyMemory<byte>>(input);
+        var result = new DaprOperationPayload<ReadOnlyMemory<byte>>(input);
 
         await validator.ReverseAsync(result, CancellationToken.None);
     }
@@ -41,7 +39,7 @@ public class DaprSha256ValidatorTests
     public async Task ReverseAsync_ShouldValidateChecksum()
     {
         // Arrange
-        var validator = new DaprSha256Validator();
+        var validator = new Sha256Validator();
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
         var result = await validator.ExecuteAsync(input);
 
@@ -53,7 +51,7 @@ public class DaprSha256ValidatorTests
     public async Task ReverseAsync_ShouldThrowExceptionForInvalidChecksum()
     {
         // Arrange
-        var validator = new DaprSha256Validator();
+        var validator = new Sha256Validator();
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
         var result = await validator.ExecuteAsync(input);
         result = result with { Payload = new ReadOnlyMemory<byte>(new byte[] { 6, 7, 8, 9, 0 }) };

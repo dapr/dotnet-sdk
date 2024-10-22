@@ -13,10 +13,10 @@
 
 using System.IO.Compression;
 
-namespace Dapr.Common.Data.Operations.Providers.Compression.Gzip;
+namespace Dapr.Common.Data.Operations.Providers.Compression;
 
 /// <inheritdoc />
-public class DaprGzipCompressor : IDaprDataCompressor
+public sealed class GzipCompressor : IDaprDataCompressor
 {
     /// <summary>
     /// The name of the operation.
@@ -29,7 +29,7 @@ public class DaprGzipCompressor : IDaprDataCompressor
     /// <param name="input">The input data.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The output data and metadata for the operation.</returns>
-    public async Task<DaprDataOperationPayload<ReadOnlyMemory<byte>>> ExecuteAsync(ReadOnlyMemory<byte> input, CancellationToken cancellationToken = default)
+    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ExecuteAsync(ReadOnlyMemory<byte> input, CancellationToken cancellationToken = default)
     {
         using var outputStream = new MemoryStream();
         await using (var gzipStream = new GZipStream(outputStream, CompressionMode.Compress))
@@ -38,7 +38,7 @@ public class DaprGzipCompressor : IDaprDataCompressor
         }
 
         //Replace the existing payload with the compressed payload
-        return new DaprDataOperationPayload<ReadOnlyMemory<byte>>(outputStream.ToArray(), Name);
+        return new DaprOperationPayload<ReadOnlyMemory<byte>>(outputStream.ToArray());
     }
 
     /// <summary>
@@ -47,12 +47,12 @@ public class DaprGzipCompressor : IDaprDataCompressor
     /// <param name="input">The processed input data being reversed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public async Task<DaprDataOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprDataOperationPayload<ReadOnlyMemory<byte>> input, CancellationToken cancellationToken)
+    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, CancellationToken cancellationToken)
     {
         using var inputStream = new MemoryStream(input.Payload.ToArray());
         await using var gzipStream = new GZipStream(inputStream, CompressionMode.Decompress);
         using var outputStream = new MemoryStream();
         await gzipStream.CopyToAsync(outputStream, cancellationToken);
-        return new DaprDataOperationPayload<ReadOnlyMemory<byte>>(outputStream.ToArray());
+        return new DaprOperationPayload<ReadOnlyMemory<byte>>(outputStream.ToArray());
     }
 }

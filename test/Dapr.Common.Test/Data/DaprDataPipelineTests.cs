@@ -2,41 +2,54 @@
 // using System.Threading;
 // using System.Threading.Tasks;
 // using Dapr.Common.Data;
-// using Dapr.Common.Data.Attributes;
 // using Dapr.Common.Data.Operations;
-// using Microsoft.Extensions.DependencyInjection;
 // using Xunit;
 //
 // namespace Dapr.Common.Test.Data;
 //
-// public class DataPipelineFactoryTests
+// public class DaprDataPipelineTests
 // {
 //     [Fact]
-//     public void CreatePipeline_ShouldCreatePipelineWithCorrectOperations()
+//     public async Task ProcessAsync_ShouldProcessOperationsInOrder()
 //     {
 //         // Arrange
-//         var services = new ServiceCollection();
-//         
-//         
-//         services.AddSingleton<MockOperation1>();
-//         services.AddSingleton<MockOperation2>();
-//         services.AddSingleton<DataPipelineFactory>();
-//         var serviceProvider = services.BuildServiceProvider();
-//         var factory = serviceProvider.GetRequiredService<DataPipelineFactory>();
+//         var operations = new List<IDaprDataOperation>
+//         {
+//             new MockOperation1(),
+//             new MockOperation2()
+//         };
+//         var pipeline = new DaprDataPipeline<>(operations);
 //
 //         // Act
-//         var pipeline = factory.CreatePipeline<TestDataProcessor>();
+//         var result = await pipeline.ProcessAsync<string, string>("input");
 //
 //         // Assert
-//         Assert.NotNull(pipeline);
+//         Assert.Equal("input-processed1-processed2", result.Payload);
+//         Assert.Contains("Operation1", result.Metadata);
+//         Assert.Contains("Operation2", result.Metadata);
 //     }
 //
-//     [DataOperation(typeof(MockOperation1), typeof(MockOperation2))]
-//     private class TestDataProcessor
+//     [Fact]
+//     public async Task ReverseAsync_ShouldReverseOperationsInOrder()
 //     {
+//         // Arrange
+//         var operations = new List<IDaprDataOperation>
+//         {
+//             new MockOperation1(),
+//             new MockOperation2()
+//         };
+//         var pipeline = new DaprDataPipeline<>(operations);
+//
+//         // Act
+//         var result = await pipeline.ReverseProcessAsync<string, string>("input-processed1-processed2");
+//
+//         // Assert
+//         Assert.Equal("input", result.Payload);
+//         Assert.Contains("Operation1", result.Metadata);
+//         Assert.Contains("Operation2", result.Metadata);
 //     }
 //
-// private class MockOperation1 : IDaprDataOperation<string, string>
+//     private class MockOperation1 : IDaprDataOperation<string, string>
 //     {
 //         public Task<DaprOperationPayload<string>> ExecuteAsync(string input, CancellationToken cancellationToken)
 //         {

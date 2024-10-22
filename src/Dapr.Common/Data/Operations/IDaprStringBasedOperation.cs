@@ -11,23 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Common.Data.Operations.Providers.Versioning;
+namespace Dapr.Common.Data.Operations;
 
 /// <summary>
-/// Identifies an operation that provides a data versioning capability.
+/// Represents a Dapr pipeline operation performed against string values.
 /// </summary>
-public interface IDaprDataVersioner : IDaprDataOperation<string, string>
+public interface IDaprStringBasedOperation : IDaprDataOperation<string,string>
 {
-    /// <summary>
-    /// The current version of the data.
-    /// </summary>
-    int CurrentVersion { get; }
-
-    /// <summary>
-    /// Registers an upgrade function for a specific version.
-    /// </summary>
-    /// <param name="fromVersion">The version to upgrade from.</param>
-    /// <param name="upgradeFunc">The function to upgrade the data.</param>
-    /// <typeparam name="T">The type of data to upgrade.</typeparam>
-    void RegisterUpgrade<T>(int fromVersion, Func<string, string> upgradeFunc);
 }

@@ -11,19 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Text.RegularExpressions;
-
 namespace Dapr.Common.Data.Operations.Providers.Masking;
 
 /// <summary>
 /// Identifies an operation that provides a data masking capability.
 /// </summary>
-public interface IDaprDataMasker : IDaprDataOperation<string, string>
+public interface IDaprDataMasker : IDaprStringBasedOperation
 {
-    /// <summary>
-    /// Registers a pattern to match against.
-    /// </summary>
-    /// <param name="pattern">The regular expression to match to.</param>
-    /// <param name="replacement">The string to place the matching value with.</param>
-    void RegisterMatch(Regex pattern, string replacement);
 }

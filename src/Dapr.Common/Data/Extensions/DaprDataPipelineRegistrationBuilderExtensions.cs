@@ -16,7 +16,6 @@ using Dapr.Common.Data.Operations.Providers.Compression;
 using Dapr.Common.Data.Operations.Providers.Integrity;
 using Dapr.Common.Data.Operations.Providers.Masking;
 using Dapr.Common.Data.Operations.Providers.Serialization;
-using Dapr.Common.Data.Operations.Providers.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -38,27 +37,92 @@ public static class DaprDataPipelineRegistrationBuilderExtensions
     }
 
     /// <summary>
+    /// Adds a serializer data operation.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithSerializer<TService>(this IDaprDataProcessingBuilder builder,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+        where TService : class, IDaprDataOperation =>
+        builder.WithDaprOperation<TService>(lifetime);
+
+    /// <summary>
+    /// Adds a serializer data operation.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithSerializer<TInput>(this IDaprDataProcessingBuilder builder,
+        Func<IServiceProvider, IDaprDataSerializer<TInput>> serializerFactory,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
+        builder.WithDaprOperation<IDaprDataSerializer<TInput>, TInput, string>(serializerFactory, lifetime);
+
+    /// <summary>
+    /// Adds a compression data operation.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithCompressor<TService>(this IDaprDataProcessingBuilder builder,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+        where TService : class, IDaprDataCompressor =>
+        builder.WithDaprOperation<TService>(lifetime);
+
+    /// <summary>
+    /// Adds a compressor data operation.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithCompressor(this IDaprDataProcessingBuilder builder,
+        Func<IServiceProvider, IDaprDataCompressor> compressorFactory,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
+        builder.WithDaprOperation<IDaprDataCompressor, ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>(compressorFactory,
+            lifetime);
+
+    /// <summary>
+    /// Adds a data integrity operation.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithIntegrity<TService>(this IDaprDataProcessingBuilder builder,
+        ServiceLifetime serviceLifetime = ServiceLifetime.Singleton)
+        where TService : class, IDaprDataValidator
+        => builder.WithDaprOperation<TService>(serviceLifetime);
+
+    /// <summary>
+    /// Adds a data integrity operation using a factory that provides an <see cref="IServiceProvider"/>.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithIntegrity(this IDaprDataProcessingBuilder builder,
+        Func<IServiceProvider, IDaprDataValidator> validatorFactory,
+        ServiceLifetime serviceLifetime = ServiceLifetime.Singleton) =>
+        builder.WithDaprOperation<IDaprDataValidator, ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>(validatorFactory,
+            serviceLifetime);
+
+    /// <summary>
+    /// Adds a data masking operation.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithMasking<TService>(this IDaprDataProcessingBuilder builder,
+        ServiceLifetime serviceLifetime = ServiceLifetime.Singleton)
+        where TService : class, IDaprDataMasker
+        => builder.WithDaprOperation<TService>(serviceLifetime);
+
+    /// <summary>
+    /// Adds a data masking operation using a factory that provides an <see cref="IServiceProvider"/>.
+    /// </summary>
+    public static IDaprDataProcessingBuilder WithMasking(this IDaprDataProcessingBuilder builder,
+        Func<IServiceProvider, IDaprDataMasker> maskerFactory,
+        ServiceLifetime serviceLifetime = ServiceLifetime.Singleton) =>
+        builder.WithDaprOperation<IDaprDataMasker, string, string>(maskerFactory, serviceLifetime);
+    
+    /// <summary>
     /// Registers the specified Dapr operation services.
     /// </summary>
-    /// <param name="builder"></param>
-    /// <param name="lifetime"></param>
-    /// <typeparam name="TService"></typeparam>
+    /// <param name="builder">The builder to register the type on.</param>
+    /// <param name="lifetime">The lifetime the service should be registered for.</param>
     /// <returns></returns>
-    /// <exception cref="ArgumentOutOfRangeException"></exception>
-    public static IDaprDataProcessingBuilder WithDaprOperation<TService>(this IDaprDataProcessingBuilder builder,
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when an invalid service lifetime is provided.</exception>
+    private static IDaprDataProcessingBuilder WithDaprOperation<TService>(this IDaprDataProcessingBuilder builder,
         ServiceLifetime lifetime)
         where TService : class, IDaprDataOperation
     {
         switch (lifetime)
         {
             case ServiceLifetime.Singleton:
-                builder.Services.TryAddSingleton<TService>();
+                builder.Services.TryAddSingleton<IDaprDataOperation, TService>();
                 break;
             case ServiceLifetime.Scoped:
-                builder.Services.TryAddScoped<TService>();
+                builder.Services.TryAddScoped<IDaprDataOperation, TService>();
                 break;
             case ServiceLifetime.Transient:
-                builder.Services.TryAddTransient<TService>();
+                builder.Services.TryAddTransient<IDaprDataOperation, TService>();
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
@@ -73,20 +137,25 @@ public static class DaprDataPipelineRegistrationBuilderExtensions
     /// <param name="builder">The builder to register the type on.</param>
     /// <param name="operationFactory">The data operation factory used to register the data operation service.</param>
     /// <param name="lifetime">The lifetime the service should be registered for.</param>
-    public static IDaprDataProcessingBuilder WithDaprOperation<TService, TInput, TOutput>(this IDaprDataProcessingBuilder builder,
+    /// <typeparam name="TService">The type of service being registered.</typeparam>
+    /// <typeparam name="TInput">The input type provided to the operation.</typeparam>
+    /// <typeparam name="TOutput">The output type provided by the operation.</typeparam>
+    /// <returns></returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when an invalid service lifetime is provided.</exception>
+    private static IDaprDataProcessingBuilder WithDaprOperation<TService, TInput, TOutput>(this IDaprDataProcessingBuilder builder,
         Func<IServiceProvider, TService> operationFactory, ServiceLifetime lifetime)
         where TService : class, IDaprDataOperation<TInput, TOutput>
     {
         switch (lifetime)
         {
             case ServiceLifetime.Singleton:
-                builder.Services.TryAddSingleton(operationFactory);
+                builder.Services.TryAddSingleton<IDaprDataOperation>(operationFactory);
                 break;
             case ServiceLifetime.Scoped:
-                builder.Services.TryAddScoped(operationFactory);
+                builder.Services.TryAddScoped<IDaprDataOperation>(operationFactory);
                 break;
             case ServiceLifetime.Transient:
-                builder.Services.TryAddTransient(operationFactory);
+                builder.Services.TryAddTransient<IDaprDataOperation>(operationFactory);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
@@ -94,79 +163,4 @@ public static class DaprDataPipelineRegistrationBuilderExtensions
 
         return builder;
     }
-
-    /// <summary>
-    /// Adds a serializer data operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithSerializer<TService>(this IDaprDataProcessingBuilder builder,
-        ServiceLifetime lifetime)
-        where TService : class, IDaprDataOperation =>
-        builder.WithDaprOperation<TService>(lifetime);
-
-    /// <summary>
-    /// Adds a serializer data operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithSerializer<TInput>(this IDaprDataProcessingBuilder builder,
-        Func<IServiceProvider, IDaprDataSerializer<TInput>> serializerFactory, ServiceLifetime lifetime) =>
-        builder.WithDaprOperation<IDaprDataSerializer<TInput>, TInput, string>(serializerFactory, lifetime);
-
-    /// <summary>
-    /// Adds a compression data operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithCompressor<TService>(this IDaprDataProcessingBuilder builder,
-        ServiceLifetime lifetime)
-        where TService : class, IDaprDataCompressor =>
-        builder.WithDaprOperation<TService>(lifetime);
-    
-    /// <summary>
-    /// Adds a compressor data operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithCompressor(this IDaprDataProcessingBuilder builder,
-        Func<IServiceProvider, IDaprDataCompressor> compressorFactory, ServiceLifetime lifetime) =>
-        builder.WithDaprOperation<IDaprDataCompressor, ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>(compressorFactory, lifetime);
-
-    /// <summary>
-    /// Adds a data integrity operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithIntegrity<TService>(this IDaprDataProcessingBuilder builder,
-        ServiceLifetime serviceLifetime) 
-        where TService : class, IDaprDataValidator
-        => builder.WithDaprOperation<TService>(serviceLifetime);
-
-    /// <summary>
-    /// Adds a data integrity operation using a factory that provides an <see cref="IServiceProvider"/>.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithIntegrity(this IDaprDataProcessingBuilder builder,
-        Func<IServiceProvider, IDaprDataValidator> validatorFactory, ServiceLifetime serviceLifetime) =>
-        builder.WithDaprOperation<IDaprDataValidator, ReadOnlyMemory<byte>, ReadOnlyMemory<byte>>(validatorFactory, serviceLifetime);
-
-    /// <summary>
-    /// Adds a data masking operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithMasking<TService>(this IDaprDataProcessingBuilder builder,
-        IDaprDataMasker masker, ServiceLifetime serviceLifetime)
-        where TService : class, IDaprDataMasker
-        => builder.WithDaprOperation<TService>(serviceLifetime);
-
-    /// <summary>
-    /// Adds a data masking operation using a factory that provides an <see cref="IServiceProvider"/>.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithMasking(this IDaprDataProcessingBuilder builder,
-        Func<IServiceProvider, IDaprDataMasker> maskerFactory, ServiceLifetime serviceLifetime) =>
-        builder.WithDaprOperation<IDaprDataMasker, string, string>(maskerFactory, serviceLifetime);
-
-    /// <summary>
-    /// Adds a data versioning operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithVersioning<TService>(this IDaprDataProcessingBuilder builder,
-        IDaprDataVersioner versioner, ServiceLifetime serviceLifetime)
-        where TService : class, IDaprDataVersioner
-        => builder.WithDaprOperation<TService>(serviceLifetime);
-
-    /// <summary>
-    /// Adds a data versioning operation.
-    /// </summary>
-    public static IDaprDataProcessingBuilder WithVersioning(this IDaprDataProcessingBuilder builder,
-        Func<IServiceProvider, IDaprDataVersioner> versionerFactory, ServiceLifetime serviceLifetime)
-        => builder.WithDaprOperation<IDaprDataVersioner, string, string>(versionerFactory, serviceLifetime);
 }

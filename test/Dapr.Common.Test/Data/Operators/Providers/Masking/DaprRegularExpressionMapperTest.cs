@@ -13,7 +13,7 @@ public class DaprRegularExpressionMapperTest
     public async Task ExecuteAsync_ShouldRunMapperCorrectly()
     {
         //Arrange
-        var mapper = new DaprRegularExpressionMasker();
+        var mapper = new RegularExpressionMasker();
         const string input = "This is not a real social security number: 012-34-5678";
         mapper.RegisterMatch(new Regex(@"\d{3}-\d{2}-\d{4}"), "***-**-****");
         
@@ -22,15 +22,13 @@ public class DaprRegularExpressionMapperTest
 
         //Assert
         Assert.Equal("This is not a real social security number: ***-**-****", result.Payload);
-        Assert.True(result.Metadata.ContainsKey("Ops"));
-        Assert.Equal(mapper.Name, result.Metadata["Ops"]);
     }
 
     [Fact]
     public async Task ExecuteAsync_ThrowIsCancellationTokenCancelled()
     {
         //Arrange
-        var mapper = new DaprRegularExpressionMasker();
+        var mapper = new RegularExpressionMasker();
         const string input = "This is not a real social security number: 012-34-5678";
         mapper.RegisterMatch(new Regex(@"\d{3}-\d{2}-\d{4}"), "***-**-****");
         
@@ -46,7 +44,7 @@ public class DaprRegularExpressionMapperTest
     public async Task ReverseAsync_ShouldNotDoAnythingToPayload()
     {
         //Arrange
-        var mapper = new DaprRegularExpressionMasker();
+        var mapper = new RegularExpressionMasker();
         const string input = "This is a date: 2/18/2026";
         mapper.RegisterMatch(new Regex(@"\d{3}-\d{2}-\d{4}"), "***-**-****");
         

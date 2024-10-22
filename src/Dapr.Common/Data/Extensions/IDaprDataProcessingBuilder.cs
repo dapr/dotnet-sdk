@@ -11,11 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Common.Data.Operations.Providers.Serialization;
+namespace Dapr.Common.Data.Extensions;
 
 /// <summary>
-/// Identifies an operation that provides a data serialization capability. 
+/// Provides a root builder for the Dapr processing functionality facilitating a more fluent-style registration.
 /// </summary>
-public interface IDaprDataSerializer<T> : IDaprTStringTransitionOperation<T>
+public interface IDaprDataProcessingBuilder : IDaprServiceBuilder
 {
 }
