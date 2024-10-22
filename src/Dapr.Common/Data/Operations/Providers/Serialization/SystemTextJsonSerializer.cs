@@ -28,7 +28,7 @@ public sealed class SystemTextJsonSerializer<T> : IDaprDataSerializer<T>
     /// <summary>
     /// The name of the operation.
     /// </summary>
-    public string Name => "Dapr.Serialization.SystemTextJsonSerializer";
+    public string Name => "Dapr.Serialization.SystemTextJson";
 
     /// <summary>
     /// Executes the data processing operation. 

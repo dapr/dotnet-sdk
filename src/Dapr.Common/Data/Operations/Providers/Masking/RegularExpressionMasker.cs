@@ -25,7 +25,7 @@ public class RegularExpressionMasker : IDaprDataMasker
     /// <summary>
     /// The name of the operation.
     /// </summary>
-    public string Name => "Dapr.Masking.RegularExpression";
+    public string Name => "Dapr.Masking.Regexp";
 
     /// <summary>
     /// Executes the data processing operation. 

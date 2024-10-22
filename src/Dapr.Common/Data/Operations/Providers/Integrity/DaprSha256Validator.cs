@@ -23,7 +23,7 @@ public class Sha256Validator : IDaprDataValidator
     /// <summary>
     /// The name of the operation.
     /// </summary>
-    public string Name => "Dapr.Integrity.Checksum";
+    public string Name => "Dapr.Integrity.Sha256";
     
     /// <summary>
     /// Executes the data processing operation. 

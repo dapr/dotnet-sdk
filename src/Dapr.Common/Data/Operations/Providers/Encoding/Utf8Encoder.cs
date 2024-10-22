@@ -21,7 +21,7 @@ public sealed class Utf8Encoder : IDaprDataEncoder
     /// <summary>
     /// The name of the operation.
     /// </summary>
-    public string Name => "Dapr.Encoding.Utf8Encoder";
+    public string Name => "Dapr.Encoding.Utf8";
 
     /// <summary>
     /// Executes the data processing operation. 
