@@ -13,7 +13,6 @@
 
 using System;
 using System.Collections.Generic;
-using Dapr.Common;
 
 namespace Dapr.Client
 {
