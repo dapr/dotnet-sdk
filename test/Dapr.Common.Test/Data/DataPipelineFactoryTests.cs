@@ -82,15 +82,39 @@ public class DataPipelineFactoryTests
     }
 
     [Fact]
-    public void CreatePipeline_ShouldThrowIfSerializationTypeNotRegisteredForReverserocessingPipeline()
+    public void CreatePipeline_ShouldThrowIfSerializationTypeNotRegisteredForReverseProcessingPipeline()
     {
         // Arrange
         var services = new ServiceCollection();
         services.AddDaprDataProcessingPipeline()
             .WithCompressor<GzipCompressor>()
-            .WithSerializer<SystemTextJsonSerializer<SampleRecord>>()
             .WithIntegrity(_ => new Sha256Validator())
             .WithEncoder(c => new Utf8Encoder());
+
+        var serviceProvider = services.BuildServiceProvider();
+        var factory = serviceProvider.GetRequiredService<DataPipelineFactory>();
+        var metadata = new Dictionary<string, string>
+        {
+            { "Dapr.Integrity.Sha256-hash", "x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=" },
+            {
+                "ops",
+                "Dapr.Serialization.SystemTextJson,Dapr.Masking.Regexp,Dapr.Encoding.Utf8,Dapr.Compression.Gzip,Dapr.Integrity.Sha256"
+            }
+        };
+        
+        // Act & Assert
+        Assert.Throws<DaprException>(() => factory.CreateDecodingPipeline<SampleRecord>(metadata));
+    }
+    
+    [Fact]
+    public void CreatePipeline_ShouldThrowIfEncodingTypeNotRegisteredForReverseProcessingPipeline()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddDaprDataProcessingPipeline()
+            .WithCompressor<GzipCompressor>()
+            .WithIntegrity(_ => new Sha256Validator())
+            .WithSerializer<SystemTextJsonSerializer<SampleRecord>>();
 
         var serviceProvider = services.BuildServiceProvider();
         var factory = serviceProvider.GetRequiredService<DataPipelineFactory>();
