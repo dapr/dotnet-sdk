@@ -34,7 +34,7 @@ public class Sha256ValidatorTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.True(result.Metadata.ContainsKey($"{validator.Name}-hash"));
+        Assert.True(result.Metadata.ContainsKey("hash"));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class Sha256ValidatorTests
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
         var result = new DaprOperationPayload<ReadOnlyMemory<byte>>(input);
 
-        await validator.ReverseAsync(result, CancellationToken.None);
+        await validator.ReverseAsync(result, $"{validator.Name}[0]", CancellationToken.None);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class Sha256ValidatorTests
         var result = await validator.ExecuteAsync(input);
 
         // Act & Assert
-        await validator.ReverseAsync(result, CancellationToken.None);
+        await validator.ReverseAsync(result, $"{validator.Name}[0]", CancellationToken.None);
     }
 
     [Fact]
@@ -67,9 +67,12 @@ public class Sha256ValidatorTests
         var validator = new Sha256Validator();
         var input = new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3, 4, 5 });
         var result = await validator.ExecuteAsync(input);
-        result = result with { Payload = new ReadOnlyMemory<byte>(new byte[] { 6, 7, 8, 9, 0 }) };
-
+        result = result with
+        {
+            Payload = new ReadOnlyMemory<byte>(new byte[] { 6, 7, 8, 9, 0 })
+        };
+        
         // Act & Assert
-        await Assert.ThrowsAsync<DaprException>(() => validator.ReverseAsync(result, CancellationToken.None));
+        await Assert.ThrowsAsync<DaprException>(() => validator.ReverseAsync(result,string.Empty, CancellationToken.None));
     }
 }
