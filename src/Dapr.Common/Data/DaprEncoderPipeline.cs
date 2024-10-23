@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Text;
 using Dapr.Common.Data.Extensions;
 using Dapr.Common.Data.Operations;
 
@@ -20,23 +19,25 @@ namespace Dapr.Common.Data;
 /// <summary>
 /// Processes the data using the provided <see cref="IDaprDataOperation{TInput,TOutput}"/> providers.
 /// </summary>
-internal sealed class DaprDataPipeline<TInput>
+internal sealed class DaprEncoderPipeline<TInput>
 {
     /// <summary>
     /// The metadata key containing the operations.
     /// </summary>
     private const string OperationKey = "ops";
+
+    private readonly List<string> operationNames = new();
+    private readonly Dictionary<string, int> operationInvocations = new();
     
-    private readonly StringBuilder operationNameBuilder = new();
     private readonly IDaprTStringTransitionOperation<TInput>? genericToStringOp;
     private readonly List<IDaprStringBasedOperation> stringOps = new();
     private readonly IDaprStringByteTransitionOperation? stringToByteOp;
     private readonly List<IDaprByteBasedOperation> byteOps = new();
     
     /// <summary>
-    /// Used to initialize a new <see cref="DaprDataPipeline{TInput}"/>.
+    /// Used to initialize a new <see cref="DaprEncoderPipeline{TInput}"/>.
     /// </summary>
-    public DaprDataPipeline(IEnumerable<IDaprDataOperation> operations)
+    public DaprEncoderPipeline(IEnumerable<IDaprDataOperation> operations)
     {
         foreach (var op in operations)
         {
@@ -89,34 +90,30 @@ internal sealed class DaprDataPipeline<TInput>
         
         //Start by serializing the input to a string
         var serializationPayload = await genericToStringOp!.ExecuteAsync(input, cancellationToken);
-        combinedMetadata.MergeFrom(serializationPayload.Metadata);
-        AppendOperationName(genericToStringOp.Name);
+        combinedMetadata.MergeFrom(serializationPayload.Metadata, RegisterOperationInvocation(genericToStringOp.Name));
         
         //Run through any provided string-based operations
         var stringPayload = new DaprOperationPayload<string?>(serializationPayload.Payload);
         foreach (var strOp in stringOps)
         {
             stringPayload = await strOp.ExecuteAsync(stringPayload.Payload, cancellationToken);
-            combinedMetadata.MergeFrom(stringPayload.Metadata);
-            AppendOperationName(strOp.Name);
+            combinedMetadata.MergeFrom(stringPayload.Metadata, RegisterOperationInvocation(strOp.Name));
         }
         
         //Encode the string payload to a byte array
         var encodedPayload = await stringToByteOp!.ExecuteAsync(stringPayload.Payload, cancellationToken);
-        combinedMetadata.MergeFrom(encodedPayload.Metadata);
-        AppendOperationName(stringToByteOp.Name);
+        combinedMetadata.MergeFrom(encodedPayload.Metadata, RegisterOperationInvocation(stringToByteOp.Name));
         
         //Run through any provided byte-based operations
         var bytePayload = new DaprOperationPayload<ReadOnlyMemory<byte>>(encodedPayload.Payload);
         foreach (var byteOp in byteOps)
         {
             bytePayload = await byteOp.ExecuteAsync(bytePayload.Payload, cancellationToken);
-            combinedMetadata.MergeFrom(bytePayload.Metadata);
-            AppendOperationName(byteOp.Name);
+            combinedMetadata.MergeFrom(bytePayload.Metadata, RegisterOperationInvocation(byteOp.Name));
         }
         
         //Persist the op names to the metadata
-        combinedMetadata[OperationKey] = operationNameBuilder.ToString();
+        combinedMetadata[OperationKey] = string.Join(',', operationNames);
         
         //Create a payload that combines the payload and metadata
         var resultPayload = new DaprOperationPayload<ReadOnlyMemory<byte>>(bytePayload.Payload)
@@ -127,75 +124,32 @@ internal sealed class DaprDataPipeline<TInput>
     }
     
     /// <summary>
-    /// Processes the reverse of the data in the order of the provided list of <see cref="IDaprDataOperation{TInput,TOutput}"/>.
+    /// Gets the formatted operation name with its zero-based invocation count. 
     /// </summary>
-    /// <param name="payload">The data to process in reverse.</param>
-    /// <param name="metadata">The metadata providing the mechanism(s) used to encode the data.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The evaluated data.</returns>
-    public async Task<DaprOperationPayload<TInput?>> ReverseProcessAsync<TOutput>(ReadOnlyMemory<byte> payload, Dictionary<string,string> metadata, CancellationToken cancellationToken = default)
+    /// <param name="operationName">The name of the operation.</param>
+    /// <returns>A string value containing the operation name and its zero-based invocation count.</returns>
+    private string RegisterOperationInvocation(string operationName)
     {
-        //First, perform byte-based operations
-        var inboundPayload = new DaprOperationPayload<ReadOnlyMemory<byte>>(payload) { Metadata = metadata };
-        var byteBasedResult = await ReverseByteOperationsAsync(inboundPayload, cancellationToken);
+        //Add to the operation names
+        var result = $"{operationName}[{GetAndAddOperationInvocation(operationName)}]";
+        operationNames.Add(result);
         
-        //Convert this back to a string from a byte array
-        var stringResult = await stringToByteOp!.ReverseAsync(byteBasedResult, cancellationToken);
-        
-        //Perform the string-based operations
-        var stringBasedResult = await ReverseStringOperationsAsync(stringResult, cancellationToken);
-        
-        //Convert from a string back into its generic type
-        var genericResult = await genericToStringOp!.ReverseAsync(stringBasedResult, cancellationToken);
-
-        return genericResult;
+        //Return to be used in the metadata key
+        return result;
     }
 
     /// <summary>
-    /// Performs a reversal operation for the string-based operations.
+    /// Registers another operation invocation.
     /// </summary>
-    /// <param name="payload">The payload to run the reverse operation against.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns></returns>
-    private async Task<DaprOperationPayload<string?>> ReverseStringOperationsAsync(DaprOperationPayload<string?> payload, 
-            CancellationToken cancellationToken)
+    /// <param name="operationName">The name of the operation.</param>
+    /// <returns>The zero-based count of the operational invocation.</returns>
+    private int GetAndAddOperationInvocation(string operationName)
     {
-        stringOps.Reverse();
-        foreach (var op in stringOps)
-        {
-            payload = await op.ReverseAsync(payload, cancellationToken);
-        }
+        if (!operationInvocations.TryGetValue(operationName, out var invocationCount))
+            operationInvocations[operationName] = 1;
+        else
+            operationInvocations[operationName]++;
 
-        return payload;
-    }
-
-    /// <summary>
-    /// Performs a reversal operation for the byte-based operations.
-    /// </summary>
-    /// <param name="payload">The current state of the payload.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The most up-to-date payload.</returns>
-    private async Task<DaprOperationPayload<ReadOnlyMemory<byte>>>
-        ReverseByteOperationsAsync(DaprOperationPayload<ReadOnlyMemory<byte>> payload,
-            CancellationToken cancellationToken)
-    {
-        byteOps.Reverse();
-        foreach (var op in byteOps)
-        {
-            payload = await op.ReverseAsync(payload, cancellationToken);
-        }
-
-        return payload;
-    }
-
-    /// <summary>
-    /// Appends the operation name to the string.
-    /// </summary>
-    /// <param name="name">The name of the operation to append.</param>
-    private void AppendOperationName(string name)
-    {
-        if (operationNameBuilder.Length > 0)
-            operationNameBuilder.Append(',');
-        operationNameBuilder.Append(name);
+        return invocationCount;
     }
 }

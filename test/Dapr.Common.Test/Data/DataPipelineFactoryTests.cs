@@ -46,7 +46,7 @@ public class DataPipelineFactoryTests
         // Assert
         Assert.NotNull(pipeline);
     }
-
+    
     [Fact]
     public void CreatePipeline_ShouldThrowIfSerializationTypeNotRegisteredForProcessingPipeline()
     {
@@ -98,7 +98,7 @@ public class DataPipelineFactoryTests
             { "Dapr.Integrity.Sha256-hash", "x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=" },
             {
                 "ops",
-                "Dapr.Serialization.SystemTextJson,Dapr.Masking.Regexp,Dapr.Encoding.Utf8,Dapr.Compression.Gzip,Dapr.Integrity.Sha256"
+                "Dapr.Serialization.SystemTextJson[0],Dapr.Encoding.Utf8[0],Dapr.Compression.Gzip[0],Dapr.Integrity.Sha256[0]"
             }
         };
         
@@ -123,14 +123,35 @@ public class DataPipelineFactoryTests
             { "Dapr.Integrity.Sha256-hash", "x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=" },
             {
                 "ops",
-                "Dapr.Serialization.SystemTextJson,Dapr.Masking.Regexp,Dapr.Encoding.Utf8,Dapr.Compression.Gzip,Dapr.Integrity.Sha256"
+                "Dapr.Serialization.SystemTextJson[0],Dapr.Encoding.Utf8[0],Dapr.Compression.Gzip[0],Dapr.Integrity.Sha256[0]"
             }
         };
         
         // Act & Assert
         Assert.Throws<DaprException>(() => factory.CreateDecodingPipeline<SampleRecord>(metadata));
     }
+    
+    [Fact]
+    public void CreatePipeline_ShouldThrowIfOpsNotDefinedInMetadata()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddDaprDataProcessingPipeline()
+            .WithCompressor<GzipCompressor>()
+            .WithIntegrity(_ => new Sha256Validator())
+            .WithSerializer<SystemTextJsonSerializer<SampleRecord>>();
 
+        var serviceProvider = services.BuildServiceProvider();
+        var factory = serviceProvider.GetRequiredService<DataPipelineFactory>();
+        var metadata = new Dictionary<string, string>
+        {
+            { "Dapr.Integrity.Sha256[0]hash", "x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=" }
+        };
+        
+        // Act & Assert
+        Assert.Throws<DaprException>(() => factory.CreateDecodingPipeline<SampleRecord>(metadata));
+    }
+    
     [Fact]
     public void CreatePipeline_ShouldCreateReversePipelineWithCorrectOperations()
     {
@@ -149,7 +170,7 @@ public class DataPipelineFactoryTests
             { "Dapr.Integrity.Sha256-hash", "x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=" },
             {
                 "ops",
-                "Dapr.Serialization.SystemTextJson,Dapr.Encoding.Utf8,Dapr.Compression.Gzip,Dapr.Integrity.Sha256"
+                "Dapr.Serialization.SystemTextJson[0],Dapr.Encoding.Utf8[0],Dapr.Compression.Gzip[0],Dapr.Integrity.Sha256[0]"
             }
         };
         

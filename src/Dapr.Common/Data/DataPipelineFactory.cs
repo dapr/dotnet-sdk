@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Dapr.Common.Data.Attributes;
 using Dapr.Common.Data.Operations;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,12 +43,12 @@ internal sealed class DataPipelineFactory
     /// </summary>
     /// <typeparam name="T">The type to create the pipeline for.</typeparam>
     /// <returns></returns>
-    public DaprDataPipeline<T> CreateEncodingPipeline<T>()
+    public DaprEncoderPipeline<T> CreateEncodingPipeline<T>()
     {
         var attribute = typeof(T).GetCustomAttribute<DataPipelineAttribute>();
         if (attribute == null)
         {
-            return new DaprDataPipeline<T>(new List<IDaprDataOperation<Type, Type>>());
+            return new DaprEncoderPipeline<T>(new List<IDaprDataOperation<Type, Type>>());
         }
 
         var allRegisteredOperations = serviceProvider.GetServices<IDaprDataOperation>().ToList();
@@ -55,7 +56,7 @@ internal sealed class DataPipelineFactory
             .SelectMany(type => allRegisteredOperations.Where(op => op.GetType() == type))
             .ToList();
         
-        return new DaprDataPipeline<T>(operations);
+        return new DaprEncoderPipeline<T>(operations);
     }
 
     /// <summary>
@@ -66,7 +67,7 @@ internal sealed class DataPipelineFactory
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>A pipeline configured for reverse processing.</returns>
     /// <exception cref="DaprException"></exception>
-    public DaprDataPipeline<T> CreateDecodingPipeline<T>(Dictionary<string,string> metadata)
+    public DaprDecoderPipeline<T> CreateDecodingPipeline<T>(Dictionary<string,string> metadata)
     {
         const string operationKey = "ops";
         if (!metadata.TryGetValue(operationKey, out var opNames))
@@ -76,16 +77,29 @@ internal sealed class DataPipelineFactory
         }
 
         //Run through the names backwards in the order of the operations as named in the metadata
-        var operations = new List<string>(opNames.Split(',').Reverse());
+        var operations = new List<string>(opNames.Split(',').Reverse()).ToList();
+        
+        var services = serviceProvider.GetServices<IDaprDataOperation>().ToList();
+        var metadataPrefixes = new Stack<string>();
+        var operationalServices = new List<IDaprDataOperation>();
 
-        var matchingDataOperations = serviceProvider.GetServices<IDaprDataOperation>()
-            .Where(op => operations.Contains(op.Name))
-            .ToList();
+        for (var a = 0; a < operations.Count; a++)
+        {
+            var operation = operations[a];
+            var plainName = Regex.Replace(operation, @"\[\d+\]$", string.Empty);
+            
+            var matchingService = services.FirstOrDefault(op => string.Equals(op.Name, plainName));
+            if (matchingService is null)
+                throw new DaprException($"Unable to locate service matching {plainName} in service registry");
+            
+            operationalServices.Add(matchingService);
+            metadataPrefixes.Push(operation);
+        }
 
-        if (matchingDataOperations.Count != operations.Count)
+        if (operationalServices.Count != operations.Count)
         {
             //Identify which names are missing
-            foreach (var op in matchingDataOperations)
+            foreach (var op in operationalServices)
             {
                 operations.Remove(op.Name);
             }
@@ -94,6 +108,6 @@ internal sealed class DataPipelineFactory
                 $"Registered services were not located for the following operation names present in the metadata: {String.Join(',', operations)}");
         }
 
-        return new DaprDataPipeline<T>(matchingDataOperations);
+        return new DaprDecoderPipeline<T>(operationalServices, metadataPrefixes);
     }
 }

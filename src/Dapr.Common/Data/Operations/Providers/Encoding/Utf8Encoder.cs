@@ -42,9 +42,10 @@ public sealed class Utf8Encoder : IDaprDataEncoder
     /// Reverses the data operation.
     /// </summary>
     /// <param name="input">The processed input data being reversed.</param>
+    /// <param name="metadataPrefix">The prefix value of the keys containing the operation metadata.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public Task<DaprOperationPayload<string?>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, CancellationToken cancellationToken = default)
+    public Task<DaprOperationPayload<string?>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, string metadataPrefix, CancellationToken cancellationToken = default)
     {
         var strValue = System.Text.Encoding.UTF8.GetString(input.Payload.Span);
         var result = new DaprOperationPayload<string?>(strValue);

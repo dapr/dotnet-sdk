@@ -46,7 +46,7 @@ public class GzipCompressorTests
         var compressedResult = await compressor.ExecuteAsync(input);
 
         // Act
-        var result = await compressor.ReverseAsync(compressedResult, CancellationToken.None);
+        var result = await compressor.ReverseAsync(compressedResult, string.Empty, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);

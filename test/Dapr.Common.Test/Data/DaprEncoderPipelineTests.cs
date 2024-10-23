@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Dapr.Common.Data;
+using Dapr.Common.Data.Attributes;
 using Dapr.Common.Data.Operations;
 using Dapr.Common.Data.Operations.Providers.Compression;
 using Dapr.Common.Data.Operations.Providers.Encoding;
@@ -24,7 +25,7 @@ using Xunit;
 
 namespace Dapr.Common.Test.Data;
 
-public class DaprDataPipelineTests
+public class DaprEncoderPipelineTests
 {
     [Fact]
     public async Task ProcessAsync_ShouldProcessBasicOperations()
@@ -35,7 +36,7 @@ public class DaprDataPipelineTests
             new SystemTextJsonSerializer<SampleRecord>(),
             new Utf8Encoder()
         };
-        var pipeline = new DaprDataPipeline<SampleRecord>(operations);
+        var pipeline = new DaprEncoderPipeline<SampleRecord>(operations);
 
         // Act
         var result = await pipeline.ProcessAsync(new SampleRecord("Sample", 15));
@@ -43,7 +44,7 @@ public class DaprDataPipelineTests
         // Assert
         Assert.Equal("eyJuYW1lIjoiU2FtcGxlIiwidmFsdWUiOjE1fQ==", Convert.ToBase64String(result.Payload.Span));
         Assert.True(result.Metadata.ContainsKey("ops"));
-        Assert.Equal("Dapr.Serialization.SystemTextJson,Dapr.Encoding.Utf8", result.Metadata["ops"]);
+        Assert.Equal("Dapr.Serialization.SystemTextJson[0],Dapr.Encoding.Utf8[0]", result.Metadata["ops"]);
     }
 
     [Fact]
@@ -57,23 +58,21 @@ public class DaprDataPipelineTests
             new Utf8Encoder(),
             new Sha256Validator()
         };
-        var pipeline = new DaprDataPipeline<SampleRecord>(operations);
+        var pipeline = new DaprEncoderPipeline<SampleRecord>(operations);
 
         // Act
         var result = await pipeline.ProcessAsync(new SampleRecord("Sample", 15));
 
-        var base64 = Convert.ToBase64String(result.Payload.Span);
-
         Assert.Equal("H4sIAAAAAAAACqtWykvMTVWyUgpOzC3ISVXSUSpLzCkFChia1gIAotvhPBwAAAA=", Convert.ToBase64String(result.Payload.Span));
         Assert.Equal(2, result.Metadata.Keys.Count);
-        Assert.True(result.Metadata.ContainsKey("Dapr.Integrity.Sha256-hash"));
-        Assert.Equal("x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=", result.Metadata["Dapr.Integrity.Sha256-hash"]);
+        Assert.True(result.Metadata.ContainsKey("Dapr.Integrity.Sha256[0]hash"));
+        Assert.Equal("x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=", result.Metadata["Dapr.Integrity.Sha256[0]hash"]);
         Assert.True(result.Metadata.ContainsKey("ops"));
-        Assert.Equal("Dapr.Serialization.SystemTextJson,Dapr.Encoding.Utf8,Dapr.Compression.Gzip,Dapr.Integrity.Sha256", result.Metadata["ops"]);
+        Assert.Equal("Dapr.Serialization.SystemTextJson[0],Dapr.Encoding.Utf8[0],Dapr.Compression.Gzip[0],Dapr.Integrity.Sha256[0]", result.Metadata["ops"]);
     }
-
+    
     [Fact]
-    public async Task ReverseAsync_ShouldReverseOperationsInMetadataOrder()
+    public async Task ProcessAsync_ShouldProcessDuplicateOperations()
     {
         // Arrange
         var operations = new List<IDaprDataOperation>
@@ -81,24 +80,20 @@ public class DaprDataPipelineTests
             new GzipCompressor(),
             new SystemTextJsonSerializer<SampleRecord>(),
             new Utf8Encoder(),
-            new Sha256Validator()
+            new Sha256Validator(),
+            new GzipCompressor()
         };
-        var pipeline = new DaprDataPipeline<SampleRecord>(operations);
+        var pipeline = new DaprEncoderPipeline<SampleRecord>(operations);
         
         // Act
-        var payload = Convert.FromBase64String("H4sIAAAAAAAACqtWykvMTVWyUgpOzC3ISVXSUSpLzCkFChia1gIAotvhPBwAAAA=");
-        var metadata = new Dictionary<string, string>
-        {
-            { "Dapr.Integrity.Sha256-hash", "x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=" },
-            {
-                "ops",
-                "Dapr.Serialization.SystemTextJson,Dapr.Masking.Regexp,Dapr.Encoding.Utf8,Dapr.Compression.Gzip,Dapr.Integrity.Sha256"
-            }
-        };
-        var result = await pipeline.ReverseProcessAsync<SampleRecord>(payload, metadata);
-        
-        Assert.Equal("Sample", result.Payload.Name);
-        Assert.Equal(15, result.Payload.Value);
+        var result = await pipeline.ProcessAsync(new SampleRecord("Sample", 15));
+
+        Assert.Equal("H4sIAAAAAAAACpPv5mAAA67VYae8z/iGbgri8juje8Iz9FKglvcZTVYuiVnXmBgW3X5oIwNUBQAguNy9LwAAAA==", Convert.ToBase64String(result.Payload.Span));
+        Assert.Equal(2, result.Metadata.Keys.Count);
+        Assert.True(result.Metadata.ContainsKey("Dapr.Integrity.Sha256[0]hash"));
+        Assert.Equal("x9yYvPm6j9Xd7X1Iwz08iQFKidQQXR9giprO3SBZg7Y=", result.Metadata["Dapr.Integrity.Sha256[0]hash"]);
+        Assert.True(result.Metadata.ContainsKey("ops"));
+        Assert.Equal("Dapr.Serialization.SystemTextJson[0],Dapr.Encoding.Utf8[0],Dapr.Compression.Gzip[0],Dapr.Integrity.Sha256[0],Dapr.Compression.Gzip[1]", result.Metadata["ops"]);
     }
 
     private record SampleRecord(string Name, int Value);

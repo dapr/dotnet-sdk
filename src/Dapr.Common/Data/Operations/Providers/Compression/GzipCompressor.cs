@@ -45,9 +45,10 @@ public sealed class GzipCompressor : IDaprDataCompressor
     /// Reverses the data operation.
     /// </summary>
     /// <param name="input">The processed input data being reversed.</param>
+    /// <param name="metadataPrefix">The prefix value of the keys containing the operation metadata.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, CancellationToken cancellationToken)
+    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, string metadataPrefix, CancellationToken cancellationToken)
     {
         using var inputStream = new MemoryStream(input.Payload.ToArray());
         await using var gzipStream = new GZipStream(inputStream, CompressionMode.Decompress);

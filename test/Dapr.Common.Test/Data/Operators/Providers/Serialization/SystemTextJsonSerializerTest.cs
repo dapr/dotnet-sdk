@@ -44,7 +44,7 @@ public class SystemTextJsonSerializerTest
         var payload = new DaprOperationPayload<string>(input);
         
         //Act
-        var result = await validator.ReverseAsync(payload);
+        var result = await validator.ReverseAsync(payload, string.Empty);
 
         //Assert
         Assert.NotNull(result);

@@ -48,9 +48,10 @@ public sealed class SystemTextJsonSerializer<T> : IDaprDataSerializer<T>
     /// Reverses the data operation.
     /// </summary>
     /// <param name="input">The processed input data being reversed.</param>
+    /// <param name="metadataPrefix">The prefix value of the keys containing the operation metadata.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public Task<DaprOperationPayload<T?>> ReverseAsync(DaprOperationPayload<string?> input,
+    public Task<DaprOperationPayload<T?>> ReverseAsync(DaprOperationPayload<string?> input, string metadataPrefix, 
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input.Payload, nameof(input));

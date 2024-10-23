@@ -32,7 +32,7 @@ public class Utf8EncoderTest
         var encodedResult = await encoder.ExecuteAsync(input);
         
         // Act 
-        var reverseResult = await encoder.ReverseAsync(encodedResult, CancellationToken.None);
+        var reverseResult = await encoder.ReverseAsync(encodedResult, string.Empty, CancellationToken.None);
         
         // Assert
         Assert.NotNull(reverseResult);

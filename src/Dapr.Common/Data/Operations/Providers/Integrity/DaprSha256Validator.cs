@@ -24,6 +24,11 @@ public class Sha256Validator : IDaprDataValidator
     /// The name of the operation.
     /// </summary>
     public string Name => "Dapr.Integrity.Sha256";
+
+    /// <summary>
+    /// The key containing the hash value in the metadata.
+    /// </summary>
+    private const string HashKey = "hash";
     
     /// <summary>
     /// Executes the data processing operation. 
@@ -35,7 +40,7 @@ public class Sha256Validator : IDaprDataValidator
     {
         var checksum = await CalculateChecksumAsync(input, cancellationToken);
         var result = new DaprOperationPayload<ReadOnlyMemory<byte>>(input);
-        result.Metadata.Add(GetChecksumKey(), checksum);
+        result.Metadata.Add(HashKey, checksum);
         return result;
     }
 
@@ -43,11 +48,12 @@ public class Sha256Validator : IDaprDataValidator
     /// Reverses the data operation.
     /// </summary>
     /// <param name="input">The processed input data being reversed.</param>
+    /// <param name="metadataPrefix">The prefix value of the keys containing the operation metadata.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The reversed output data and metadata for the operation.</returns>
-    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, CancellationToken cancellationToken)
+    public async Task<DaprOperationPayload<ReadOnlyMemory<byte>>> ReverseAsync(DaprOperationPayload<ReadOnlyMemory<byte>> input, string metadataPrefix, CancellationToken cancellationToken)
     {
-        var checksumKey = GetChecksumKey();
+        var checksumKey = GetChecksumKey(metadataPrefix);
         if (input.Metadata.TryGetValue(checksumKey, out var checksum))
         {
             var newChecksum = await CalculateChecksumAsync(input.Payload, cancellationToken);
@@ -57,7 +63,7 @@ public class Sha256Validator : IDaprDataValidator
             }
         }
         
-        //If there's no checksum metadata or it matches, just continue with the next operation
+        //If there's no checksum metadata of if it matches, just continue with the next operation
         return new DaprOperationPayload<ReadOnlyMemory<byte>>(input.Payload);
     }
 
@@ -81,5 +87,5 @@ public class Sha256Validator : IDaprDataValidator
     /// Get the key used to store the hash in the metadata.
     /// </summary>
     /// <returns>The key value.</returns>
-    private string GetChecksumKey() => $"{Name}-hash";
+    private static string GetChecksumKey(string keyPrefix) => $"{keyPrefix}{HashKey}";
 }
