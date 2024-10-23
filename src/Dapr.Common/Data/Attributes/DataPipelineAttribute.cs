@@ -19,7 +19,7 @@ namespace Dapr.Common.Data.Attributes;
 /// Attribute-based approach for indicating which data operations should be performed on a type and in what order.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
-public sealed class DataOperationAttribute : Attribute
+public sealed class DataPipelineAttribute : Attribute
 {
     /// <summary>
     /// Contains the various data operation types available and the order in which to apply them.
@@ -27,11 +27,11 @@ public sealed class DataOperationAttribute : Attribute
     public readonly IReadOnlyList<Type> DataOperationTypes;
     
     /// <summary>
-    /// Initializes a new <see cref="DataOperationAttribute"/>.
+    /// Initializes a new <see cref="DataPipelineAttribute"/>.
     /// </summary>
     /// <param name="dataOperationTypes"></param>
     /// <exception cref="DaprException"></exception>
-    public DataOperationAttribute(params Type[] dataOperationTypes)
+    public DataPipelineAttribute(params Type[] dataOperationTypes)
     {
         var registeredTypes = new List<Type>();
         

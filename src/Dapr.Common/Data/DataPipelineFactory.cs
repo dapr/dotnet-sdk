@@ -20,7 +20,7 @@ namespace Dapr.Common.Data;
 
 /// <summary>
 /// Used to create a data pipeline specific to a given type using the ordered operation services indicated in the
-/// <see cref="DataOperationAttribute"/> attribute on that type.
+/// <see cref="DataPipelineAttribute"/> attribute on that type.
 /// </summary>
 internal sealed class DataPipelineFactory
 {
@@ -44,18 +44,17 @@ internal sealed class DataPipelineFactory
     /// <returns></returns>
     public DaprDataPipeline<T> CreateEncodingPipeline<T>()
     {
-        var attribute = typeof(T).GetCustomAttribute<DataOperationAttribute>();
+        var attribute = typeof(T).GetCustomAttribute<DataPipelineAttribute>();
         if (attribute == null)
         {
             return new DaprDataPipeline<T>(new List<IDaprDataOperation<Type, Type>>());
         }
 
+        var allRegisteredOperations = serviceProvider.GetServices<IDaprDataOperation>().ToList();
         var operations = attribute.DataOperationTypes
-            .Select(type => serviceProvider.GetRequiredService(type) as IDaprDataOperation)
-            .Where(op => op is not null)
-            .Cast<IDaprDataOperation>()
+            .SelectMany(type => allRegisteredOperations.Where(op => op.GetType() == type))
             .ToList();
-
+        
         return new DaprDataPipeline<T>(operations);
     }
 

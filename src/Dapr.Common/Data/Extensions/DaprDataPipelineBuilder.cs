@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Common.Data.Operations;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Common.Data.Extensions;
@@ -19,7 +18,7 @@ namespace Dapr.Common.Data.Extensions;
 /// <summary>
 /// Used by the fluent registration builder to configure a Dapr data pipeline.
 /// </summary>
-public class DaprDataPipelineBuilder : IDaprDataPipelineBuilder
+public sealed class DaprDataPipelineBuilder : IDaprDataPipelineBuilder
 {
     /// <summary>
     /// The registered services on the builder.
@@ -32,18 +31,5 @@ public class DaprDataPipelineBuilder : IDaprDataPipelineBuilder
     public DaprDataPipelineBuilder(IServiceCollection services)
     {
         Services = services;
-    }
-}
-
-/// <summary>
-/// Used to perform fluent registrations on the Dapr data processing pipeline.
-/// </summary>
-public class DaprDataProcessingPipelineBuilder : DaprDataPipelineBuilder, IDaprDataProcessingBuilder
-{
-    /// <summary>
-    /// Used to initialize a new <see cref="DaprDataProcessingPipelineBuilder"/>.
-    /// </summary>
-    public DaprDataProcessingPipelineBuilder(IServiceCollection services) : base(services)
-    {
     }
 }

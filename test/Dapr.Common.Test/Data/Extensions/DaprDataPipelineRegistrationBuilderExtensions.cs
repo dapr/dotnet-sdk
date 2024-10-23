@@ -1,8 +1,20 @@
-﻿using Dapr.Common.Data.Extensions;
+﻿// ------------------------------------------------------------------------
+// Copyright 2024 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using Dapr.Common.Data.Extensions;
 using Dapr.Common.Data.Operations;
 using Dapr.Common.Data.Operations.Providers.Compression;
 using Dapr.Common.Data.Operations.Providers.Integrity;
-using Dapr.Common.Data.Operations.Providers.Masking;
 using Dapr.Common.Data.Operations.Providers.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -16,14 +28,13 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataPipelineBuilder(services);
 
         // Act
-        var result = builder.AddDaprDataProcessingPipeline();
+        var result = services.AddDaprDataProcessingPipeline();
 
         // Assert
         Assert.NotNull(result);
-        Assert.IsType<DaprDataProcessingPipelineBuilder>(result);
+        Assert.IsType<DaprDataPipelineBuilder>(result);
     }
 
     [Fact]
@@ -31,10 +42,10 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
-
+        
         // Act
-        builder.WithSerializer<SystemTextJsonSerializer<SampleRecord>>();
+        services.AddDaprDataProcessingPipeline()
+            .WithSerializer<SystemTextJsonSerializer<SampleRecord>>();
 
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -48,10 +59,10 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
         
         // Act
-        builder.WithSerializer(_ => new SystemTextJsonSerializer<SampleRecord>());
+        services.AddDaprDataProcessingPipeline()
+            .WithSerializer(_ => new SystemTextJsonSerializer<SampleRecord>());
 
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -65,10 +76,10 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
 
         // Act
-        builder.WithCompressor<GzipCompressor>();
+        services.AddDaprDataProcessingPipeline()
+            .WithCompressor<GzipCompressor>();
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -82,10 +93,10 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
 
         // Act
-        builder.WithCompressor(_ => new GzipCompressor());
+        services.AddDaprDataProcessingPipeline()
+            .WithCompressor(_ => new GzipCompressor());
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -99,10 +110,10 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
-
+        
         // Act
-        builder.WithIntegrity<Sha256Validator>();
+        services.AddDaprDataProcessingPipeline()    
+            .WithIntegrity<Sha256Validator>();
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -116,10 +127,10 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
 
         // Act
-        builder.WithIntegrity(_ => new Sha256Validator());
+        services.AddDaprDataProcessingPipeline()    
+            .WithIntegrity(_ => new Sha256Validator());
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -127,50 +138,16 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
         Assert.NotNull(service);
         Assert.True(service is Sha256Validator);
     }
-
-    [Fact]
-    public void WithMasking_ShouldRegisterType()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
-
-        // Act
-        builder.WithMasking<RegularExpressionMasker>();
-        
-        // Assert
-        var serviceProvider = services.BuildServiceProvider();
-        var service = serviceProvider.GetService<IDaprDataOperation>();
-        Assert.NotNull(service);
-        Assert.True(service is RegularExpressionMasker);
-    }
-
-    [Fact]
-    public void WithMasking_ShouldRegisterFactory()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
-
-        // Act
-        builder.WithMasking(_ => new RegularExpressionMasker());
-        
-        // Assert
-        var serviceProvider = services.BuildServiceProvider();
-        var service = serviceProvider.GetService<IDaprDataOperation>();
-        Assert.NotNull(service);
-        Assert.True(service is RegularExpressionMasker);
-    }
     
     [Fact]
     public void WithDaprOperation_ShouldRegisterScopedService()
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
-    
+        
         // Act
-        builder.WithSerializer<SystemTextJsonSerializer<SampleRecord>>(ServiceLifetime.Scoped);
+        services.AddDaprDataProcessingPipeline()
+            .WithSerializer<SystemTextJsonSerializer<SampleRecord>>(ServiceLifetime.Scoped);
     
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -184,10 +161,10 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new DaprDataProcessingPipelineBuilder(services);
     
         // Act
-        builder.WithSerializer(_ => new SystemTextJsonSerializer<SampleRecord>(), ServiceLifetime.Transient);
+        services.AddDaprDataProcessingPipeline()
+            .WithSerializer(_ => new SystemTextJsonSerializer<SampleRecord>(), ServiceLifetime.Transient);
     
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -198,7 +175,7 @@ public class DaprDataPipelineRegistrationBuilderExtensionsTests
         Assert.NotSame(service1, service2);
     }
     
-    private record SampleRecord(string Name, int Count);
+    private sealed record SampleRecord(string Name, int Count);
 
     private class MockOperation : IDaprDataOperation
     {
