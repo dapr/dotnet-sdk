@@ -22,12 +22,17 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// A thread-safe implementation of a receiver for messages from a specified Dapr publish/subscribe component and
 /// topic.
 /// </summary>
-public sealed class PublishSubscribeReceiver : IAsyncDisposable
+internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 {
+    /// <summary>
+    /// Provides options for the unbounded channel.
+    /// </summary>
     private readonly static UnboundedChannelOptions UnboundedChannelOptions = new()
     {
         SingleWriter = true, SingleReader = true
     };
+    
+    private static readonly object threadLock = new object();
 
     /// <summary>
     /// The name of the Dapr publish/subscribe component.
@@ -105,12 +110,15 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     internal async Task SubscribeAsync(CancellationToken cancellationToken = default)
     {
         //Prevents the receiver from performing the subscribe operation more than once (as the multiple initialization messages would cancel the stream).
-        if (hasInitialized)
+        lock (threadLock)
         {
-            return;
-        }
+            if (hasInitialized)
+            {
+                return;
+            }
 
-        hasInitialized = true;
+            hasInitialized = true;
+        }
 
         var stream = await GetStreamAsync(cancellationToken);
 

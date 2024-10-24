@@ -42,5 +42,5 @@ public sealed record TopicMessage(string Id, string Source, string Type, string 
     /// <summary>
     /// A map of additional custom properties sent to the app. These are considered to be CloudEvent extensions.
     /// </summary>
-    public Dictionary<string, Value> Extensions { get; init; } = new();
+    public IReadOnlyDictionary<string, Value> Extensions { get; init; } = new Dictionary<string, Value>();
 }
