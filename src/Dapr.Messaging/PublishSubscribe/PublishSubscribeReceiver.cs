@@ -30,7 +30,7 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     };
 
     /// <summary>
-    /// The name of the Dapr pub/sub component.
+    /// The name of the Dapr publish/subscribe component.
     /// </summary>
     private readonly string pubSubName;
     /// <summary>
