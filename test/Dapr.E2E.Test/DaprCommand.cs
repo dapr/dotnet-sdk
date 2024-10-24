@@ -68,7 +68,8 @@ namespace Dapr.E2E.Test
             var done = outputReceived.WaitOne(this.Timeout);
             if (!done)
             {
-                var ex = new Exception($"Command: \"{this.Command}\" timed out while waiting for output: \"{this.OutputToMatch}\"");
+                var ex = new Exception($"Command: \"{this.Command}\" timed out while waiting for output: \"{this.OutputToMatch}\"{System.Environment.NewLine}" + 
+                "This could also mean the E2E app had a startup error. For more details see the Data property of this exception.");
                 // we add here the log buffer of the last 1000 lines, of the application log
                 // to make it easier to debug failing tests
                 ex.Data.Add("log", this.logBuffer.ToArray());
