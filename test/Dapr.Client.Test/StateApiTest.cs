@@ -22,15 +22,12 @@ namespace Dapr.Client.Test
     using FluentAssertions;
     using Google.Protobuf;
     using Grpc.Core;
-    using Grpc.Net.Client;
     using Moq;
     using StateConsistency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConsistency;
     using StateConcurrency = Dapr.Client.Autogen.Grpc.v1.StateOptions.Types.StateConcurrency;
     using Xunit;
     using System.Threading;
     using System.Net.Http;
-    using System.Text;
-    using System.Linq;
 
     public class StateApiTest
     {
