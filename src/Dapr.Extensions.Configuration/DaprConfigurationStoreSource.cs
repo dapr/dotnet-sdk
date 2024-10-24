@@ -13,7 +13,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 
