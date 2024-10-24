@@ -1,6 +1,4 @@
-﻿using System;
-using Xunit;
-using Dapr.Messaging.PublishSubscribe;
+﻿using Dapr.Messaging.PublishSubscribe;
 
 namespace Dapr.Messaging.Test.PublishSubscribe
 {
@@ -10,7 +8,7 @@ namespace Dapr.Messaging.Test.PublishSubscribe
         public void Test_MessageHandlingPolicy_Constructor()
         {
             var timeoutDuration = TimeSpan.FromMilliseconds(2000);
-            var defaultResponseAction = TopicResponseAction.Drop;
+            const TopicResponseAction defaultResponseAction = TopicResponseAction.Drop;
 
             var policy = new MessageHandlingPolicy(timeoutDuration, defaultResponseAction);
 
@@ -36,12 +34,12 @@ namespace Dapr.Messaging.Test.PublishSubscribe
         public void Test_MessageHandlingPolicy_Immutability()
         {
             var timeoutDuration = TimeSpan.FromMilliseconds(2000);
-            var defaultResponseAction = TopicResponseAction.Drop;
+            const TopicResponseAction defaultResponseAction = TopicResponseAction.Drop;
 
             var policy1 = new MessageHandlingPolicy(timeoutDuration, defaultResponseAction);
 
             var newTimeoutDuration = TimeSpan.FromMilliseconds(3000);
-            var newDefaultResponseAction = TopicResponseAction.Retry;
+            const TopicResponseAction newDefaultResponseAction = TopicResponseAction.Retry;
 
             // Creating a new policy with different values.
             var policy2 = policy1 with

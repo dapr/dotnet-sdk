@@ -3,7 +3,6 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
@@ -38,10 +37,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="PublishSubscribe\" />
     </ItemGroup>
 
 </Project>
