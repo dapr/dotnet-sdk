@@ -24,13 +24,13 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// </summary>
 public sealed class PublishSubscribeReceiver : IAsyncDisposable
 {
-    private readonly static UnboundedChannelOptions UnboundedChannelOptions = new UnboundedChannelOptions
+    private readonly static UnboundedChannelOptions UnboundedChannelOptions = new()
     {
         SingleWriter = true, SingleReader = true
     };
 
     /// <summary>
-    /// The name of the Dapr pubsub component.
+    /// The name of the Dapr pub/sub component.
     /// </summary>
     private readonly string pubSubName;
     /// <summary>
@@ -106,7 +106,10 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     {
         //Prevents the receiver from performing the subscribe operation more than once (as the multiple initialization messages would cancel the stream).
         if (hasInitialized)
+        {
             return;
+        }
+
         hasInitialized = true;
 
         var stream = await GetStreamAsync(cancellationToken);
@@ -180,10 +183,10 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
         {    
             await messageStream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
             {
-                EventProcessed = new()
+                EventProcessed = new P.SubscribeTopicEventsRequestProcessedAlpha1
                 {
                     Id = acknowledgement.MessageId,
-                    Status = new() { Status = acknowledgement.Action }
+                    Status = new TopicEventResponse { Status = acknowledgement.Action }
                 }
             }, cancellationToken);
         }
@@ -275,7 +278,10 @@ public sealed class PublishSubscribeReceiver : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (isDisposed)
+        {
             return;
+        }
+
         isDisposed = true;
 
         //Stop processing new events - we'll leave any messages yet unseen as unprocessed and
