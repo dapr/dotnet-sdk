@@ -156,7 +156,7 @@ namespace Dapr.Client
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
-            var response = await CallSendAsync(handler, request);
+            await CallSendAsync(handler, request);
 
             Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
             Assert.Null(capture.DaprApiToken);
@@ -181,7 +181,7 @@ namespace Dapr.Client
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
-            var response = await CallSendAsync(handler, request);
+            await CallSendAsync(handler, request);
 
             Assert.Equal("https://localhost:5000/v1.0/invoke/Bank/method/accounts/17?", capture.RequestUri?.OriginalString);
             Assert.Null(capture.DaprApiToken);
@@ -205,7 +205,7 @@ namespace Dapr.Client
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
-            var response = await CallSendAsync(handler, request);
+            await CallSendAsync(handler, request);
 
             Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
             Assert.Equal("super-duper-secure", capture.DaprApiToken);

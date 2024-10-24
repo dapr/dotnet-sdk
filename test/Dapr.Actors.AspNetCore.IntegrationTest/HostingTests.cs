@@ -42,7 +42,7 @@ namespace Dapr.Actors.AspNetCore.IntegrationTest
                 // NOTE: in 3.1 TestServer.CreateClient triggers the failure, in 5.0 it's Host.Start
                 using var host = CreateHost<BadStartup>();
                 var server = host.GetTestServer();
-                var client = server.CreateClient();
+                server.CreateClient();
             });
 
             Assert.Equal(
