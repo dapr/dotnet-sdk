@@ -15,8 +15,6 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     using System;
     using System.Linq;
-    using System.Text.Json;
-    using Dapr;
     using Dapr.AspNetCore;
     using Dapr.Client;
     using Microsoft.AspNetCore.Mvc;
