@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-﻿using System;
+using System;
 using System.Text.Json;
 using Dapr.Client;
 using Grpc.Core;
@@ -43,7 +43,7 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public void DaprClientBuilder_UsesThrowOperationCanceledOnCancellation_ByDefault()
         {
-            var builder = new DaprClientBuilder().Build();
+            var builder = new DaprClientBuilder();
             
             Assert.True(builder.GrpcChannelOptions.ThrowOperationCanceledOnCancellation);
         }
