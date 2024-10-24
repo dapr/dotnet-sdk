@@ -62,10 +62,10 @@ namespace Dapr.Actors.Serialization
         [Fact]
         public void CanDeserializeNullActorId()
         {
-            var document = $@"
-            {{
+            const string document = @"
+            {
                 ""actor"": null
-            }}";
+            }";
             
             var deserialized = JsonSerializer.Deserialize<ActorHolder>(document);
 
