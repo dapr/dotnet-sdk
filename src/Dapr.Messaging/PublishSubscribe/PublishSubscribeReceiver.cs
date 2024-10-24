@@ -32,8 +32,6 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         SingleWriter = true, SingleReader = true
     };
     
-    private static readonly object threadLock = new object();
-
     /// <summary>
     /// The name of the Dapr publish/subscribe component.
     /// </summary>
@@ -73,7 +71,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <summary>
     /// Flag that prevents the developer from accidentally initializing the subscription more than once from the same receiver.
     /// </summary>
-    private bool hasInitialized;
+    private int hasInitialized;
     /// <summary>
     /// Flag that ensures the instance is only disposed a single time.
     /// </summary>
@@ -110,14 +108,9 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     internal async Task SubscribeAsync(CancellationToken cancellationToken = default)
     {
         //Prevents the receiver from performing the subscribe operation more than once (as the multiple initialization messages would cancel the stream).
-        lock (threadLock)
+        if (Interlocked.Exchange(ref hasInitialized, 1) == 1)
         {
-            if (hasInitialized)
-            {
-                return;
-            }
-
-            hasInitialized = true;
+            return;
         }
 
         var stream = await GetStreamAsync(cancellationToken);
