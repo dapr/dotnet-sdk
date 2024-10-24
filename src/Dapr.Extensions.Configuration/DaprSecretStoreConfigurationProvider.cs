@@ -227,8 +227,15 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore
                                 $"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                         }
 
-                        data.Add(normalizeKey ? NormalizeKey(secretDescriptor.SecretName) : secretDescriptor.SecretName,
-                            result[key]);
+                        // The name of the key "as desired" by the user based on the descriptor.
+                        //
+                        // NOTE: This should vary only if a single secret of the same name is returned.
+                        string desiredKey = StringComparer.Ordinal.Equals(key, secretDescriptor.SecretKey) ? secretDescriptor.SecretName : key;
+
+                        // The name of the key normalized based on the configured delimiters.
+                        string normalizedKey = normalizeKey ? NormalizeKey(desiredKey) : desiredKey;
+
+                        data.Add(normalizedKey, result[key]);
                     }
                 }
 

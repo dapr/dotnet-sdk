@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,40 +11,76 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Microsoft.Extensions.DependencyInjection
+#nullable enable
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+using System;
+using Dapr;
+using Dapr.Client;
+using Extensions;
+using Configuration;
+
+/// <summary>
+/// Provides extension methods for <see cref="IServiceCollection" />.
+/// </summary>
+public static class DaprServiceCollectionExtensions
 {
-    using System;
-    using Dapr.Client;
-    using Extensions;
+    /// <summary>
+    /// Adds Dapr client services to the provided <see cref="IServiceCollection" />. This does not include integration
+    /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection" />.</param>
+    /// <param name="configure"></param>
+    public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(services, nameof(services));
+
+        services.TryAddSingleton(serviceProvider =>
+        {
+            var builder = CreateDaprClientBuilder(serviceProvider);
+            configure?.Invoke(builder);
+            return builder.Build();
+        });
+    }
 
     /// <summary>
-    /// Provides extension methods for <see cref="IServiceCollection" />.
+    /// Adds Dapr client services to the provided <see cref="IServiceCollection"/>. This does not include integration
+    /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration. 
     /// </summary>
-    public static class DaprServiceCollectionExtensions
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configure"></param>
+    public static void AddDaprClient(this IServiceCollection services,
+        Action<IServiceProvider, DaprClientBuilder> configure)
     {
-        /// <summary>
-        /// Adds Dapr client services to the provided <see cref="IServiceCollection" />. This does not include integration
-        /// with ASP.NET Core MVC. Use the <c>AddDapr()</c> extension method on <c>IMvcBuilder</c> to register MVC integration.
-        /// </summary>
-        /// <param name="services">The <see cref="IServiceCollection" />.</param>
-        /// <param name="configure"></param>
-        public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder> configure = null)
+        ArgumentNullException.ThrowIfNull(services, nameof(services));
+
+        services.TryAddSingleton(serviceProvider =>
         {
-            if (services is null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
+            var builder = CreateDaprClientBuilder(serviceProvider);
+            configure?.Invoke(serviceProvider, builder);
+            return builder.Build();
+        });
+    }
+    
+    private static DaprClientBuilder CreateDaprClientBuilder(IServiceProvider serviceProvider)
+    {
+        var builder = new DaprClientBuilder();
+        var configuration = serviceProvider.GetService<IConfiguration>();
 
-            services.TryAddSingleton(_ =>
-            {
-                var builder = new DaprClientBuilder();
-                if (configure != null)
-                {
-                    configure.Invoke(builder);
-                }
+        // Set the HTTP endpoint, if provided, else use the default endpoint
+        builder.UseHttpEndpoint(DaprDefaults.GetDefaultHttpEndpoint(configuration));
 
-                return builder.Build();
-            });
+        // Set the gRPC endpoint, if provided
+        builder.UseGrpcEndpoint(DaprDefaults.GetDefaultGrpcEndpoint(configuration));
+
+        // Set the API token, if provided
+        var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+        if (!string.IsNullOrWhiteSpace(apiToken))
+        {
+            builder.UseDaprApiToken(apiToken);
         }
+
+        return builder;
     }
 }

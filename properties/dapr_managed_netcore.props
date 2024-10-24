@@ -53,7 +53,7 @@
 
   <!-- Use MinVer for assembly, nuget versioning based on git tags -->
   <ItemGroup>
-    <PackageReference Include="MinVer" Version="2.3.0">
+    <PackageReference Include="MinVer">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

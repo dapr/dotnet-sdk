@@ -345,7 +345,32 @@ namespace Dapr.Client
 
         #region InvokeMethod Apis
 
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" />.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
         public override HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName)
+        {
+            return CreateInvokeMethodRequest(httpMethod, appId, methodName, new List<KeyValuePair<string, string>>());
+        }
+
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" />.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public override HttpRequestMessage CreateInvokeMethodRequest(HttpMethod httpMethod, string appId, string methodName,
+            IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters)
         {
             ArgumentVerifier.ThrowIfNull(httpMethod, nameof(httpMethod));
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
@@ -356,7 +381,8 @@ namespace Dapr.Client
             //
             // This approach avoids some common pitfalls that could lead to undesired encoding.
             var path = $"/v1.0/invoke/{appId}/method/{methodName.TrimStart('/')}";
-            var request = new HttpRequestMessage(httpMethod, new Uri(this.httpEndpoint, path));
+            var requestUri = new Uri(this.httpEndpoint, path).AddQueryParameters(queryStringParameters);
+            var request = new HttpRequestMessage(httpMethod, requestUri);
             
             request.Options.Set(new HttpRequestOptionsKey<string>(AppIdKey), appId);
             request.Options.Set(new HttpRequestOptionsKey<string>(MethodNameKey), methodName);
@@ -369,13 +395,27 @@ namespace Dapr.Client
             return request;
         }
 
-        public override HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, TRequest data)
+        /// <summary>
+        /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
+        /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
+        /// with the HTTP method specified by <paramref name="httpMethod" /> and a JSON serialized request body specified by 
+        /// <paramref name="data" />.
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the data that will be JSON serialized and provided as the request body.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod" /> to use for the invocation request.</param>
+        /// <param name="appId">The Dapr application id to invoke the method on.</param>
+        /// <param name="methodName">The name of the method to invoke.</param>
+        /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
+        /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
+        /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
+        public override HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName,
+            IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters, TRequest data)
         {
             ArgumentVerifier.ThrowIfNull(httpMethod, nameof(httpMethod));
             ArgumentVerifier.ThrowIfNullOrEmpty(appId, nameof(appId));
             ArgumentVerifier.ThrowIfNull(methodName, nameof(methodName));
 
-            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName);
+            var request = CreateInvokeMethodRequest(httpMethod, appId, methodName, queryStringParameters);
             request.Content = JsonContent.Create<TRequest>(data, options: this.JsonSerializerOptions);
             return request;
         }
@@ -409,6 +449,31 @@ namespace Dapr.Client
                     response: null);
             }
         }
+
+        /// <summary>
+        /// <para>
+        /// Creates an <see cref="HttpClient"/> that can be used to perform Dapr service invocation using <see cref="HttpRequestMessage"/>
+        /// objects.
+        /// </para>
+        /// <para>
+        /// The client will read the <see cref="HttpRequestMessage.RequestUri" /> property, and 
+        /// interpret the hostname as the destination <c>app-id</c>. The <see cref="HttpRequestMessage.RequestUri" /> 
+        /// property will be replaced with a new URI with the authority section replaced by the instance's <see cref="httpEndpoint"/> value
+        /// and the path portion of the URI rewritten to follow the format of a Dapr service invocation request.
+        /// </para>
+        /// </summary>
+        /// <param name="appId">
+        ///     An optional <c>app-id</c>. If specified, the <c>app-id</c> will be configured as the value of 
+        ///     <see cref="HttpClient.BaseAddress" /> so that relative URIs can be used. It is mandatory to set this parameter if your app-id contains at least one upper letter.
+        ///     If some requests use absolute URL with an app-id which contains at least one upper letter, it will not work, the workaround is to create one HttpClient for each app-id with the app-ip parameter set.
+        /// </param>
+        /// <returns>An <see cref="HttpClient" /> that can be used to perform service invocation requests.</returns>
+        /// <remarks>
+        /// </remarks>
+#nullable enable
+        public override HttpClient CreateInvokableHttpClient(string? appId = null) =>
+            DaprClient.CreateInvokeHttpClient(appId, this.httpEndpoint?.AbsoluteUri, this.apiTokenHeader?.Value);
+        #nullable disable
 
         public async override Task InvokeMethodAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
         {
@@ -1996,287 +2061,6 @@ namespace Dapr.Client
 
         #endregion
 
-
-        #region Workflow API
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task<StartWorkflowResponse> StartWorkflowAsync(
-            string workflowComponent,
-            string workflowName,
-            string instanceId = null,
-            object input = null,
-            IReadOnlyDictionary<string, string> workflowOptions = default,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowName, nameof(workflowName));
-            ArgumentVerifier.ThrowIfNull(input, nameof(input));
-
-            // Serialize json data. Converts input object to bytes and then bytestring inside the request.
-            byte[] jsonUtf8Bytes = null;
-            if (input is not null)
-            {
-                jsonUtf8Bytes = JsonSerializer.SerializeToUtf8Bytes(input);
-            }
-
-            var request = new Autogenerated.StartWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent,
-                WorkflowName = workflowName,
-                Input = jsonUtf8Bytes is not null ? ByteString.CopyFrom(jsonUtf8Bytes) : null,
-            };
-
-            if (workflowOptions?.Count > 0)
-            {
-                foreach (var item in workflowOptions)
-                {
-                    request.Options[item.Key] = item.Value;
-                }
-            }
-
-            try
-            {
-                var options = CreateCallOptions(headers: null, cancellationToken);
-                var response = await client.StartWorkflowAlpha1Async(request, options);
-                return new StartWorkflowResponse(response.InstanceId);
- 
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Start Workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-        }
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task<GetWorkflowResponse> GetWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-
-            var request = new Autogenerated.GetWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent
-            };
-
-            try
-            {
-                var options = CreateCallOptions(headers: null, cancellationToken);
-                var response = await client.GetWorkflowAlpha1Async(request, options);
-                if (response == null)
-                {
-                    throw new DaprException("Get workflow operation failed: the Dapr endpoint returned an empty result.");
-                }
-
-                response.CreatedAt ??= new Timestamp();
-                response.LastUpdatedAt ??= response.CreatedAt;
-
-                return new GetWorkflowResponse
-                {
-                    InstanceId = response.InstanceId,
-                    WorkflowName = response.WorkflowName,
-                    WorkflowComponentName = workflowComponent,
-                    CreatedAt = response.CreatedAt.ToDateTime(),
-                    LastUpdatedAt = response.LastUpdatedAt.ToDateTime(),
-                    RuntimeStatus = GetWorkflowRuntimeStatus(response.RuntimeStatus),
-                    Properties = response.Properties,
-                    FailureDetails = GetWorkflowFailureDetails(response, workflowComponent),
-                };
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Get workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-        }
-
-        private static WorkflowRuntimeStatus GetWorkflowRuntimeStatus(string runtimeStatus)
-        {
-            if (!System.Enum.TryParse(runtimeStatus, true /* ignoreCase */, out WorkflowRuntimeStatus status))
-            {
-                status = WorkflowRuntimeStatus.Unknown;
-            }
-
-            return status;
-        }
-
-        private static WorkflowFailureDetails GetWorkflowFailureDetails(Autogenerated.GetWorkflowResponse response, string componentName)
-        {
-            // FUTURE: Make this part of the protobuf contract instead of getting it from properties
-            // NOTE: The use of | instead of || is intentional. We want to get all the values.
-            if (response.Properties.TryGetValue($"{componentName}.workflow.failure.error_type", out string errorType) |
-                response.Properties.TryGetValue($"{componentName}.workflow.failure.error_message", out string errorMessage) |
-                response.Properties.TryGetValue($"{componentName}.workflow.failure.stack_trace", out string stackTrace))
-            {
-                return new WorkflowFailureDetails(errorMessage, errorType, stackTrace);
-            }
-
-            return null;
-        }
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task TerminateWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-
-            var request = new Autogenerated.TerminateWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent
-            };
-
-            var options = CreateCallOptions(headers: null, cancellationToken);
-
-            try
-            {
-                await client.TerminateWorkflowAlpha1Async(request, options);
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Terminate workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-
-        }
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task RaiseWorkflowEventAsync(
-            string instanceId,
-            string workflowComponent,
-            string eventName,
-            Object eventData,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-            ArgumentVerifier.ThrowIfNullOrEmpty(eventName, nameof(eventName));
-
-            byte[] jsonUtf8Bytes = new byte[0];
-            // Serialize json data. Converts eventData object to bytes and then bytestring inside the request.
-            if (eventData != null)
-            {
-                jsonUtf8Bytes = JsonSerializer.SerializeToUtf8Bytes(eventData);
-            }
-
-            var request = new Autogenerated.RaiseEventWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent,
-                EventName = eventName,
-                EventData = ByteString.CopyFrom(jsonUtf8Bytes),
-            };
-
-            var options = CreateCallOptions(headers: null, cancellationToken);
-
-            try
-            {
-                await client.RaiseEventWorkflowAlpha1Async(request, options);
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Start Workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-        }
-
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task PauseWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-
-            var request = new Autogenerated.PauseWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent
-            };
-
-            var options = CreateCallOptions(headers: null, cancellationToken);
-
-            try
-            {
-                await client.PauseWorkflowAlpha1Async(request, options);
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Pause workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-        }
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task ResumeWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-
-            var request = new Autogenerated.ResumeWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent
-            };
-
-            var options = CreateCallOptions(headers: null, cancellationToken);
-
-            try
-            {
-                await client.ResumeWorkflowAlpha1Async(request, options);
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Resume workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-
-        }
-
-        /// <inheritdoc/>
-        [Obsolete]
-        public async override Task PurgeWorkflowAsync(
-            string instanceId,
-            string workflowComponent,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(instanceId, nameof(instanceId));
-            ArgumentVerifier.ThrowIfNullOrEmpty(workflowComponent, nameof(workflowComponent));
-
-            var request = new Autogenerated.PurgeWorkflowRequest()
-            {
-                InstanceId = instanceId,
-                WorkflowComponent = workflowComponent
-            };
-
-            var options = CreateCallOptions(headers: null, cancellationToken);
-
-            try
-            {
-                await client.PurgeWorkflowAlpha1Async(request, options);
-            }
-            catch (RpcException ex)
-            {
-                throw new DaprException("Purge workflow operation failed: the Dapr endpoint indicated a failure. See InnerException for details.", ex);
-            }
-
-        }
-        #endregion
-
-
         #region Dapr Sidecar Methods
 
         /// <inheritdoc/>
@@ -2350,10 +2134,14 @@ namespace Dapr.Client
             try
             {
                 var response = await client.GetMetadataAsync(new Autogenerated.GetMetadataRequest(), options);
-                return new DaprMetadata(response.Id,
-                                        response.ActorRuntime.ActiveActors.Select(c => new DaprActorMetadata(c.Type, c.Count)).ToList(),
-                                        response.ExtendedMetadata.ToDictionary(c => c.Key, c => c.Value),
-                                        response.RegisteredComponents.Select(c => new DaprComponentsMetadata(c.Name, c.Type, c.Version, c.Capabilities.ToArray())).ToList());
+                return new DaprMetadata(response.Id ?? "",
+                    response.ActorRuntime?.ActiveActors?.Select(c => new DaprActorMetadata(c.Type, c.Count)).ToList() ??
+                    new List<DaprActorMetadata>(),
+                    response.ExtendedMetadata?.ToDictionary(c => c.Key, c => c.Value) ??
+                    new Dictionary<string, string>(),
+                    response.RegisteredComponents?.Select(c =>
+                        new DaprComponentsMetadata(c.Name, c.Type, c.Version, c.Capabilities.ToArray())).ToList() ??
+                    new List<DaprComponentsMetadata>());
             }
             catch (RpcException ex)
             {

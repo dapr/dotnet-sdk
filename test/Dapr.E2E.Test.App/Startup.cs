@@ -118,7 +118,7 @@ namespace Dapr.E2E.Test
         {
             var logger = new LoggerConfiguration().WriteTo.File("log.txt").CreateLogger();
 
-            var loggerFactory = LoggerFactory.Create(builder =>
+            LoggerFactory.Create(builder =>
             {
                 builder.AddSerilog(logger);
             });

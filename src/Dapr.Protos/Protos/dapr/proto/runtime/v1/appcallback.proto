@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright 2021 The Dapr Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@ syntax = "proto3";
 
 package dapr.proto.runtime.v1;
 
+import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "dapr/proto/common/v1/common.proto";
 import "google/protobuf/struct.proto";
@@ -57,9 +58,38 @@ service AppCallbackHealthCheck {
 // AppCallbackAlpha V1 is an optional extension to AppCallback V1 to opt
 // for Alpha RPCs.
 service AppCallbackAlpha {
-    // Subscribes bulk events from Pubsub
+  // Subscribes bulk events from Pubsub
   rpc OnBulkTopicEventAlpha1(TopicEventBulkRequest) returns (TopicEventBulkResponse) {}
+
+  // Sends job back to the app's endpoint at trigger time.
+  rpc OnJobEventAlpha1 (JobEventRequest) returns (JobEventResponse);
 }
+
+message JobEventRequest {
+  // Job name.
+  string name = 1;
+
+  // Job data to be sent back to app.
+  google.protobuf.Any data = 2;
+
+  // Required. method is a method name which will be invoked by caller.
+  string method = 3;
+
+  // The type of data content.
+  //
+  // This field is required if data delivers http request body
+  // Otherwise, this is optional.
+  string content_type = 4;
+
+  // HTTP specific fields if request conveys http-compatible request.
+  //
+  // This field is required for http-compatible request. Otherwise,
+  // this field is optional.
+  common.v1.HTTPExtension http_extension = 5;
+}
+
+// JobEventResponse is the response from the app when a job is triggered.
+message JobEventResponse {}
 
 // TopicEventRequest message is compatible with CloudEvent spec v1.0
 // https://github.com/cloudevents/spec/blob/v1.0/spec.md
@@ -155,14 +185,14 @@ message TopicEventBulkRequestEntry {
 
   // content type of the event contained.
   string content_type = 4;
-  
+
   // The metadata associated with the event.
   map<string,string> metadata = 5;
 }
 
 // TopicEventBulkRequest represents request for bulk message
 message TopicEventBulkRequest {
-    // Unique identifier for the bulk request.
+  // Unique identifier for the bulk request.
   string id = 1;
 
   // The list of items inside this bulk request.
@@ -173,10 +203,10 @@ message TopicEventBulkRequest {
 
   // The pubsub topic which publisher sent to.
   string topic = 4;
-    
+
   // The name of the pubsub the publisher sent to.
   string pubsub_name = 5;
-  
+
   // The type of event related to the originating occurrence. 
   string type = 6;
 
@@ -280,8 +310,8 @@ message TopicRoutes {
 
 message TopicRule {
   // The optional CEL expression used to match the event.
-	// If the match is not specified, then the route is considered
-	// the default.
+  // If the match is not specified, then the route is considered
+  // the default.
   string match = 1;
 
   // The path used to identify matches for this subscription.
