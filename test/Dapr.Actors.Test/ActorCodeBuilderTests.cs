@@ -32,7 +32,7 @@ namespace Dapr.Actors.Test
         [Fact]
         public void TestBuildActorProxyGenerator()
         {
-            ActorProxyGenerator proxyGenerator = ActorCodeBuilder.GetOrCreateProxyGenerator(typeof(ITestActor));
+            ActorCodeBuilder.GetOrCreateProxyGenerator(typeof(ITestActor));
         }
 
         [Fact]

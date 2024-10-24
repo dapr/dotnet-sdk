@@ -839,8 +839,7 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
 
-            var response = client.CallStateApi<string>()
-            .Build();
+            await client.CallStateApi<string>().Build();
 
             var rpcException = new RpcException(new Status(StatusCode.Internal, "Network Error"));
 
@@ -861,8 +860,8 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
 
-            var response = client.CallStateApi<string>()
-            .Build();
+            await client.CallStateApi<string>()
+                .Build();
 
             var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed saving state in state store testStore"));
             // Setup the mock client to throw an Rpc Exception with the expected details info
@@ -879,8 +878,8 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
 
-            var response = client.CallStateApi<string>()
-            .Build();
+            await client.CallStateApi<string>()
+                .Build();
 
             await FluentActions.Awaiting(async () => await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", null))
                 .Should().ThrowAsync<ArgumentException>();
@@ -907,8 +906,8 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
 
-            var response = client.CallStateApi<string>()
-            .Build();
+            await client.CallStateApi<string>()
+                .Build();
 
             var rpcException = new RpcException(new Status(StatusCode.Internal, "Network Error"));
 
@@ -929,8 +928,8 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
 
-            var response = client.CallStateApi<string>()
-            .Build();
+            await client.CallStateApi<string>()
+                .Build();
 
             await FluentActions.Awaiting(async () => await client.DaprClient.TryDeleteStateAsync("test", "test", null))
                 .Should().ThrowAsync<ArgumentException>();
@@ -957,8 +956,8 @@ namespace Dapr.Client.Test
         {
             var client = new MockClient();
 
-            var response = client.CallStateApi<string>()
-            .Build();
+            await client.CallStateApi<string>()
+                .Build();
 
             var rpcException = new RpcException(new Status(StatusCode.Aborted, $"failed deleting state with key test"));
             // Setup the mock client to throw an Rpc Exception with the expected details info
