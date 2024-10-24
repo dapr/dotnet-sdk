@@ -32,6 +32,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Protobuf Include="protos\test.proto" ProtoRoot="protos" GrpcServices="Client" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
     </ItemGroup>
 
