@@ -13,7 +13,6 @@
 
 namespace Dapr.E2E.Test
 {
-    using Dapr.E2E.Test.Actors.Reentrancy;
     using Dapr.E2E.Test.Actors.Reminders;
     using Dapr.E2E.Test.Actors.Timers;
     using Dapr.E2E.Test.Actors.State;
@@ -30,7 +29,6 @@ namespace Dapr.E2E.Test
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
     using System.Threading.Tasks;
-    using System;
     using Microsoft.Extensions.Logging;
     using Serilog;
 
@@ -120,7 +118,7 @@ namespace Dapr.E2E.Test
         {
             var logger = new LoggerConfiguration().WriteTo.File("log.txt").CreateLogger();
 
-            var loggerFactory = LoggerFactory.Create(builder =>
+            LoggerFactory.Create(builder =>
             {
                 builder.AddSerilog(logger);
             });
