@@ -13,7 +13,6 @@
 
 namespace Dapr.Actors.Test
 {
-    using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors.Builder;
     using Dapr.Actors.Communication;
