@@ -13,14 +13,7 @@ public static class DaprAiConversationBuilderExtensions
     /// Registers the necessary functionality for the Dapr AI conversation functionality.
     /// </summary>
     /// <returns></returns>
-    public static IDaprAiConversationBuilder AddDaprAiConversation(this IServiceCollection services) =>
-        AddDaprAiConversation(services, null);
-
-    /// <summary>
-    /// Registers the necessary functionality for the Dapr AI conversation functionality.
-    /// </summary>
-    /// <returns></returns>
-    public static IDaprAiConversationBuilder AddDaprAiConversation(this IServiceCollection services, Action<IServiceProvider, DaprConversationClientBuilder>? configure)
+    public static IDaprAiConversationBuilder AddDaprAiConversation(this IServiceCollection services, Action<IServiceProvider, DaprConversationClientBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
         
