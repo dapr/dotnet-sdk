@@ -13,6 +13,7 @@
 
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
+using Dapr.Common.Extensions;
 using ArgumentException = System.ArgumentException;
 using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
 
