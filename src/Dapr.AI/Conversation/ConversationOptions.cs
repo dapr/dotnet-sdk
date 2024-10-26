@@ -11,11 +11,11 @@ public sealed record ConversationOptions(string? ConversationId = null)
     /// <summary>
     /// Temperature for the LLM to optimize for creativity or predictability.
     /// </summary>
-    public double Temperature { get; init; } = 0;
+    public double Temperature { get; init; } = default;
     /// <summary>
     /// Flag that indicates whether data that comes back from the LLM should be scrubbed of PII data.
     /// </summary>
-    public bool ScrubPII { get; init; } = false;
+    public bool ScrubPII { get; init; } = default;
     /// <summary>
     /// The metadata passing to the conversation components.
     /// </summary>
