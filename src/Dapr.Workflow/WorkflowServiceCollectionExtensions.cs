@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Microsoft.Extensions.Logging;
+
 namespace Dapr.Workflow
 {
     using System;
