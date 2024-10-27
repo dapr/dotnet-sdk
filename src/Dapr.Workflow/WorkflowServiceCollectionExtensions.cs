@@ -42,6 +42,8 @@ namespace Dapr.Workflow
             serviceCollection.AddHttpClient();
 
             serviceCollection.AddHostedService<WorkflowLoggingService>();
+            
+            serviceCollection.TryAddSingleton<ILogger, ReplaySafeLogger>();
             serviceCollection.TryAddSingleton<DaprWorkflowClient>();
             serviceCollection.AddDaprClient();
             
