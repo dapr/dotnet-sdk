@@ -48,6 +48,7 @@ namespace Dapr.Workflow
             
             serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
 
+            serviceCollection.AddSingleton<DaprWorkflowClientBuilderFactory>();
             serviceCollection.AddSingleton(c =>
             {
                 var factory = c.GetRequiredService<DaprWorkflowClientBuilderFactory>();
