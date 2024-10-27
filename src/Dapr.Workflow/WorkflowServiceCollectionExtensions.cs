@@ -47,14 +47,14 @@ namespace Dapr.Workflow
             serviceCollection.AddDaprClient();
             
             serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
-
-            serviceCollection.AddSingleton<DaprWorkflowClientBuilderFactory>();
-            serviceCollection.AddSingleton(c =>
+            
+            //Register the factory and force resolution so the Durable Task client and worker can be registered
+            serviceCollection.TryAddSingleton<DaprWorkflowClientBuilderFactory>();
+            using (var scope = serviceCollection.BuildServiceProvider().CreateScope())
             {
-                var factory = c.GetRequiredService<DaprWorkflowClientBuilderFactory>();
-                factory.CreateClientBuilder(configure);
-                return new object(); //Placeholder as actual registration is performed inside factory
-            });
+                var factory = scope.ServiceProvider.GetRequiredService<DaprWorkflowClientBuilderFactory>();
+                factory.CreateClientBuilder(serviceCollection, configure);
+            }
 
             return serviceCollection;
         }

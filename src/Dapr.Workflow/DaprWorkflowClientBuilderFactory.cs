@@ -30,25 +30,23 @@ internal sealed class DaprWorkflowClientBuilderFactory
 {
     private readonly IConfiguration? _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IServiceCollection _services;
     
     /// <summary>
     /// Constructor used to inject the required types into the factory.
     /// </summary>
-    public DaprWorkflowClientBuilderFactory(IConfiguration? configuration, IHttpClientFactory httpClientFactory, IServiceCollection services)
+    public DaprWorkflowClientBuilderFactory(IConfiguration? configuration, IHttpClientFactory httpClientFactory)
     {
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
-        _services = services;
     }
     
     /// <summary>
     /// Responsible for building the client itself.
     /// </summary>
     /// <returns></returns>
-    public void CreateClientBuilder(Action<WorkflowRuntimeOptions> configure)
+    public void CreateClientBuilder(IServiceCollection services, Action<WorkflowRuntimeOptions> configure)
     {
-        _services.AddDurableTaskClient(builder =>
+        services.AddDurableTaskClient(builder =>
         {
             var apiToken = DaprDefaults.GetDefaultDaprApiToken(_configuration);
             var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(_configuration);
@@ -64,7 +62,7 @@ internal sealed class DaprWorkflowClientBuilderFactory
             builder.RegisterDirectly();
         });
 
-        _services.AddDurableTaskWorker(builder =>
+        services.AddDurableTaskWorker(builder =>
         {
             WorkflowRuntimeOptions options = new();
             configure?.Invoke(options);
