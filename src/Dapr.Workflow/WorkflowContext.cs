@@ -21,13 +21,13 @@ namespace Dapr.Workflow
     /// Context object used by workflow implementations to perform actions such as scheduling activities, durable timers, waiting for
     /// external events, and for getting basic information about the current workflow instance.
     /// </summary>
-    public abstract class WorkflowContext
+    public abstract class WorkflowContext : IWorkflowContext
     {
         /// <summary>
         /// Gets the name of the current workflow.
         /// </summary>
         public abstract string Name { get; }
-
+        
         /// <summary>
         /// Gets the instance ID of the current workflow.
         /// </summary>
