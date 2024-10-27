@@ -28,14 +28,14 @@ namespace Dapr.Workflow;
 /// </summary>
 internal sealed class DaprWorkflowClientBuilderFactory
 {
-    private readonly IConfiguration _configuration;
+    private readonly IConfiguration? _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IServiceCollection _services;
     
     /// <summary>
     /// Constructor used to inject the required types into the factory.
     /// </summary>
-    public DaprWorkflowClientBuilderFactory(IConfiguration configuration, IHttpClientFactory httpClientFactory, IServiceCollection services)
+    public DaprWorkflowClientBuilderFactory(IConfiguration? configuration, IHttpClientFactory httpClientFactory, IServiceCollection services)
     {
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
