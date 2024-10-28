@@ -40,7 +40,7 @@ namespace Dapr.Client
             };
 
             this.JsonSerializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-            this.DaprApiToken = DaprDefaults.GetDefaultDaprApiToken();
+            this.DaprApiToken = DaprDefaults.GetDefaultDaprApiToken(null);
         }
 
         // property exposed for testing purposes

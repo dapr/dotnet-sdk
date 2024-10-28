@@ -45,7 +45,7 @@ namespace Dapr.Actors.Client
         /// <summary>
         /// The Dapr Api Token that is added to the header for all requests.
         /// </summary>
-        public string DaprApiToken { get; set; } = DaprDefaults.GetDefaultDaprApiToken();
+        public string DaprApiToken { get; set; } = DaprDefaults.GetDefaultDaprApiToken(null);
 
         /// <summary>
         /// Gets or sets the HTTP endpoint URI used to communicate with the Dapr sidecar.

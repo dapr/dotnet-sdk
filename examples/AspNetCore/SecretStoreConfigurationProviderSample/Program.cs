@@ -18,7 +18,6 @@
     using Dapr.Client;
     using Dapr.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
-    using System.Collections.Generic;
     using System;
 
     /// <summary>

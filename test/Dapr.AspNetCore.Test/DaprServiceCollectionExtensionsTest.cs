@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-﻿using System;
+#nullable enable
+
+using System;
 using System.Text.Json;
 using Dapr.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,15 +45,16 @@ namespace Dapr.AspNetCore.Test
 
             var serviceProvider = services.BuildServiceProvider();
 
-            DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
+            DaprClientGrpc? daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.NotNull(daprClient);
+            Assert.True(daprClient?.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
         [Fact]
         public void AddDaprClient_RegistersUsingDependencyFromIServiceProvider()
         {
-            
+
             var services = new ServiceCollection();
             services.AddSingleton<TestConfigurationProvider>();
             services.AddDaprClient((provider, builder) =>
@@ -66,13 +69,15 @@ namespace Dapr.AspNetCore.Test
             });
 
             var serviceProvider = services.BuildServiceProvider();
-            
-            DaprClientGrpc client = serviceProvider.GetRequiredService<DaprClient>() as DaprClientGrpc;
-            
+
+            DaprClientGrpc? client = serviceProvider.GetRequiredService<DaprClient>() as DaprClientGrpc;
+
             //Registers with case-insensitive as true by default, but we set as false above
-            Assert.False(client.JsonSerializerOptions.PropertyNameCaseInsensitive);
+            Assert.NotNull(client);
+            Assert.False(client?.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
 
+        
 #if NET8_0_OR_GREATER
         [Fact]
         public void AddDaprClient_WithKeyedServices()
@@ -90,7 +95,7 @@ namespace Dapr.AspNetCore.Test
             Assert.NotNull(daprClient);
         }
 #endif
-        
+
         private class TestConfigurationProvider
         {
             public bool GetCaseSensitivity() => false;

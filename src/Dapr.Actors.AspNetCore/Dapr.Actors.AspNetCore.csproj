@@ -11,5 +11,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Actors\Dapr.Actors.csproj" />
+    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 </Project>

@@ -14,7 +14,6 @@
 namespace Microsoft.AspNetCore.Mvc
 {
     using System;
-    using System.ComponentModel;
     using Dapr;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
 

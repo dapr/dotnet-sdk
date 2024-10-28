@@ -14,20 +14,14 @@
 namespace Dapr.Workflow
 {
     using System;
-    using Grpc.Net.Client;
-    using Microsoft.DurableTask.Client;
-    using Microsoft.DurableTask.Worker;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
-    using System.Net.Http;
-    using Dapr;
 
     /// <summary>
     /// Contains extension methods for using Dapr Workflow with dependency injection.
     /// </summary>
     public static class WorkflowServiceCollectionExtensions
     {
-        
         /// <summary>
         /// Adds Dapr Workflow support to the service collection.
         /// </summary>
@@ -43,6 +37,7 @@ namespace Dapr.Workflow
             }
 
             serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
+            serviceCollection.AddHttpClient();
 
 #pragma warning disable CS0618 // Type or member is obsolete - keeping around temporarily - replaced by DaprWorkflowClient
             serviceCollection.TryAddSingleton<WorkflowEngineClient>();
@@ -50,135 +45,17 @@ namespace Dapr.Workflow
             serviceCollection.AddHostedService<WorkflowLoggingService>();
             serviceCollection.TryAddSingleton<DaprWorkflowClient>();
             serviceCollection.AddDaprClient();
-            serviceCollection.AddDaprWorkflowClient();
-
+            
             serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
 
-            serviceCollection.AddDurableTaskWorker(builder =>
+            serviceCollection.AddSingleton(c =>
             {
-                WorkflowRuntimeOptions options = new();
-                configure?.Invoke(options);
-
-                if (TryGetGrpcAddress(out string address))
-                {
-                    var daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
-                    if (!string.IsNullOrEmpty(daprApiToken))
-                    {
-                        var client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
-                        builder.UseGrpc(CreateChannel(address, client));
-                    }
-                    else
-                    {
-                        builder.UseGrpc(address);
-                    }
-
-                }
-                else
-                {
-                    builder.UseGrpc();
-                }
-
-                builder.AddTasks(registry => options.AddWorkflowsAndActivitiesToRegistry(registry));
+                var factory = c.GetRequiredService<DaprWorkflowClientBuilderFactory>();
+                factory.CreateClientBuilder(configure);
+                return new object(); //Placeholder as actual registration is performed inside factory
             });
 
             return serviceCollection;
-        }
-
-        /// <summary>
-        /// Adds Dapr Workflow client support to the service collection.
-        /// </summary>
-        /// <remarks>
-        /// Use this extension method if you want to use <see cref="DaprWorkflowClient"/> in your app
-        /// but don't wish to define any workflows or activities.
-        /// </remarks>
-        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        public static IServiceCollection AddDaprWorkflowClient(this IServiceCollection services)
-        {
-            services.TryAddSingleton<DaprWorkflowClient>();
-            services.AddDurableTaskClient(builder =>
-            {
-                if (TryGetGrpcAddress(out string address))
-                {
-                    var daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
-                    if (!string.IsNullOrEmpty(daprApiToken))
-                    {
-                        var client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("Dapr-Api-Token", daprApiToken);
-                        builder.UseGrpc(CreateChannel(address, client));
-                    }
-                    else
-                    {
-                        builder.UseGrpc(address);
-                    }
-
-                }
-                else
-                {
-                    builder.UseGrpc();
-                }
-
-                builder.RegisterDirectly();
-            });
-
-            return services;
-        }
-
-        static bool TryGetGrpcAddress(out string address)
-        {
-            // TODO: Ideally we should be using DaprDefaults.cs for this. However, there are two blockers:
-            //   1. DaprDefaults.cs uses 127.0.0.1 instead of localhost, which prevents testing with Dapr on WSL2 and the app on Windows
-            //   2. DaprDefaults.cs doesn't compile when the project has C# nullable reference types enabled.
-            // If the above issues are fixed (ensuring we don't regress anything) we should switch to using the logic in DaprDefaults.cs.
-            var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
-            if (!String.IsNullOrEmpty(daprEndpoint)) {
-                address = daprEndpoint;
-                return true;
-            }
-
-            var daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-            if (int.TryParse(daprPortStr, out int daprGrpcPort))
-            {
-                // There is a bug in the Durable Task SDK that requires us to change the format of the address
-                // depending on the version of .NET that we're targeting. For now, we work around this manually.
-#if NET6_0_OR_GREATER
-                address = $"http://localhost:{daprGrpcPort}";
-#else
-                address = $"localhost:{daprGrpcPort}";
-#endif
-                return true;
-            }
-
-            address = string.Empty;
-            return false;
-        }
-
-        static GrpcChannel CreateChannel(string address, HttpClient client)
-        {
-
-        GrpcChannelOptions options = new() { HttpClient = client};
-        var daprEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
-        if (!String.IsNullOrEmpty(daprEndpoint)) {
-            return GrpcChannel.ForAddress(daprEndpoint, options);
-        }
-            
-        var daprPortStr = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
-        if (int.TryParse(daprPortStr, out int daprGrpcPort))
-        {
-            // If there is no address passed in, we default to localhost
-            if (String.IsNullOrEmpty(address))
-            {
-                // There is a bug in the Durable Task SDK that requires us to change the format of the address
-                // depending on the version of .NET that we're targeting. For now, we work around this manually.
-        #if NET6_0_OR_GREATER
-                    address = $"http://localhost:{daprGrpcPort}";
-        #else
-                    address = $"localhost:{daprGrpcPort}";
-        #endif
-            }
-
-        }
-            return GrpcChannel.ForAddress(address, options);
         }
     }
 }

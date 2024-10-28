@@ -15,7 +15,6 @@ namespace Dapr.Actors.Test
 {
     using System;
     using System.Buffers;
-    using System.Collections.Generic;
     using System.Linq;
     using System.IO;
     using System.Text;

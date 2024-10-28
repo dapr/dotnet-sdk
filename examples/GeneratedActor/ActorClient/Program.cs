@@ -23,7 +23,7 @@ using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSec
 
 var client = new ClientActorClient(proxy);
 
-var state = await client.GetStateAsync(cancellationTokenSource.Token);
+await client.GetStateAsync(cancellationTokenSource.Token);
 
 await client.SetStateAsync(new ClientState("Hello, World!"), cancellationTokenSource.Token);
 
