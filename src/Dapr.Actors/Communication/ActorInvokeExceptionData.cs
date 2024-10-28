@@ -13,12 +13,9 @@
 
 namespace Dapr.Actors
 {
-    using System;
     using System.IO;
     using System.Runtime.Serialization;
     using System.Xml;
-    using Dapr.Actors;
-    using Microsoft.Extensions.Logging;
 
     [DataContract(Name = "ActorInvokeExceptionData", Namespace = Constants.Namespace)]
     internal class ActorInvokeExceptionData

@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json.Serialization;
@@ -142,7 +141,6 @@ namespace Dapr.Client.Test
             request.Dismiss();
 
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
-            var jsonFromRequest = envelope.Data.ToStringUtf8();
 
             envelope.PubsubName.Should().Be(TestPubsubName);
             envelope.Topic.Should().Be("test");
@@ -214,7 +212,6 @@ namespace Dapr.Client.Test
         {
             await using var client = TestClient.CreateForDaprClient();
 
-            var publishData = new PublishData() { PublishObjectParameter = "testparam" };
             var cloudEvent = new CloudEvent
             {
                 Source = new Uri("urn:testsource"),

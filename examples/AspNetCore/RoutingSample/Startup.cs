@@ -221,7 +221,6 @@ namespace RoutingSample
 
             async Task ViewErrorMessage(HttpContext context)
             {
-                var client = context.RequestServices.GetRequiredService<DaprClient>();
                 var transaction = await JsonSerializer.DeserializeAsync<Transaction>(context.Request.Body, serializerOptions);
 
                 logger.LogInformation("The amount cannot be negative: {0}", transaction.Amount);

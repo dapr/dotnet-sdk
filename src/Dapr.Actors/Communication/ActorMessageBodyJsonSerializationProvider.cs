@@ -18,7 +18,6 @@ namespace Dapr.Actors.Communication
     using System.IO;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using System.Xml;
 
     /// <summary>
     /// This is the implmentation  for <see cref="IActorMessageBodySerializationProvider"/>used by remoting service and client during
