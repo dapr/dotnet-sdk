@@ -50,9 +50,9 @@ namespace Dapr.Actors.Serialization
         {
             var id = ActorId.CreateRandom().GetId();
             var document = $@"
-{{
-    ""actor"": ""{id}""
-}}";
+            {{
+                ""actor"": ""{id}""
+            }}";
             
             var deserialized = JsonSerializer.Deserialize<ActorHolder>(document);
 
@@ -62,11 +62,10 @@ namespace Dapr.Actors.Serialization
         [Fact]
         public void CanDeserializeNullActorId()
         {
-            var id = ActorId.CreateRandom().GetId();
-            var document = $@"
-{{
-    ""actor"": null
-}}";
+            const string document = @"
+            {
+                ""actor"": null
+            }";
             
             var deserialized = JsonSerializer.Deserialize<ActorHolder>(document);
 
