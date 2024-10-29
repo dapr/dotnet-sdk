@@ -11,57 +11,55 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Dapr.Workflow
+namespace Dapr.Workflow;
+
+/// <summary>
+/// Contains extension methods for using Dapr Workflow with dependency injection.
+/// </summary>
+public static class WorkflowServiceCollectionExtensions
 {
-    using System;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.DependencyInjection.Extensions;
-
     /// <summary>
-    /// Contains extension methods for using Dapr Workflow with dependency injection.
+    /// Adds Dapr Workflow support to the service collection.
     /// </summary>
-    public static class WorkflowServiceCollectionExtensions
+    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configure">A delegate used to configure actor options and register workflow functions.</param>
+    public static IServiceCollection AddDaprWorkflow(
+        this IServiceCollection serviceCollection,
+        Action<WorkflowRuntimeOptions> configure)
     {
-        /// <summary>
-        /// Adds Dapr Workflow support to the service collection.
-        /// </summary>
-        /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-        /// <param name="configure">A delegate used to configure actor options and register workflow functions.</param>
-        public static IServiceCollection AddDaprWorkflow(
-            this IServiceCollection serviceCollection,
-            Action<WorkflowRuntimeOptions> configure)
+        if (serviceCollection == null)
         {
-            if (serviceCollection == null)
-            {
-                throw new ArgumentNullException(nameof(serviceCollection));
-            }
+            throw new ArgumentNullException(nameof(serviceCollection));
+        }
 
-            serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
-            serviceCollection.AddHttpClient();
+        serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
+        serviceCollection.AddHttpClient();
 
 #pragma warning disable CS0618 // Type or member is obsolete - keeping around temporarily - replaced by DaprWorkflowClient
-            serviceCollection.TryAddSingleton<WorkflowEngineClient>();
+        serviceCollection.TryAddSingleton<WorkflowEngineClient>();
 #pragma warning restore CS0618 // Type or member is obsolete
-            serviceCollection.AddHostedService<WorkflowLoggingService>();
-            serviceCollection.TryAddSingleton<DaprWorkflowClient>();
-            serviceCollection.AddDaprClient();
+        serviceCollection.AddHostedService<WorkflowLoggingService>();
+        serviceCollection.TryAddSingleton<DaprWorkflowClient>();
+        serviceCollection.AddDaprClient();
             
-            serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
+        serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
             
-            //Register the factory and force resolution so the Durable Task client and worker can be registered
-            using (var scope = serviceCollection.BuildServiceProvider().CreateScope())
-            {
-                var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-                var configuration = scope.ServiceProvider.GetService<IConfiguration>();
+        //Register the factory and force resolution so the Durable Task client and worker can be registered
+        using (var scope = serviceCollection.BuildServiceProvider().CreateScope())
+        {
+            var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+            var configuration = scope.ServiceProvider.GetService<IConfiguration>();
                 
-                var factory = new DaprWorkflowClientBuilderFactory(configuration, httpClientFactory);
-                factory.CreateClientBuilder(serviceCollection, configure);
-            }
-
-            return serviceCollection;
+            var factory = new DaprWorkflowClientBuilderFactory(configuration, httpClientFactory);
+            factory.CreateClientBuilder(serviceCollection, configure);
         }
+
+        return serviceCollection;
     }
 }
