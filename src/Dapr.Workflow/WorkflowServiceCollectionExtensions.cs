@@ -11,6 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Net.Http;
+using Microsoft.Extensions.Configuration;
+
 namespace Dapr.Workflow
 {
     using System;
@@ -49,10 +52,12 @@ namespace Dapr.Workflow
             serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
             
             //Register the factory and force resolution so the Durable Task client and worker can be registered
-            serviceCollection.TryAddSingleton<DaprWorkflowClientBuilderFactory>();
             using (var scope = serviceCollection.BuildServiceProvider().CreateScope())
             {
-                var factory = scope.ServiceProvider.GetRequiredService<DaprWorkflowClientBuilderFactory>();
+                var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+                var configuration = scope.ServiceProvider.GetService<IConfiguration>();
+                
+                var factory = new DaprWorkflowClientBuilderFactory(configuration, httpClientFactory);
                 factory.CreateClientBuilder(serviceCollection, configure);
             }
 
