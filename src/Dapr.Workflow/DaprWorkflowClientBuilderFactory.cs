@@ -28,16 +28,16 @@ namespace Dapr.Workflow;
 /// </summary>
 internal sealed class DaprWorkflowClientBuilderFactory
 {
-    private readonly IConfiguration? _configuration;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration? configuration;
+    private readonly IHttpClientFactory httpClientFactory;
     
     /// <summary>
     /// Constructor used to inject the required types into the factory.
     /// </summary>
     public DaprWorkflowClientBuilderFactory(IConfiguration? configuration, IHttpClientFactory httpClientFactory)
     {
-        _configuration = configuration;
-        _httpClientFactory = httpClientFactory;
+        this.configuration = configuration;
+        this.httpClientFactory = httpClientFactory;
     }
     
     /// <summary>
@@ -48,10 +48,10 @@ internal sealed class DaprWorkflowClientBuilderFactory
     {
         services.AddDurableTaskClient(builder =>
         {
-            var apiToken = DaprDefaults.GetDefaultDaprApiToken(_configuration);
-            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(_configuration);
+            var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
             
-            var httpClient = _httpClientFactory.CreateClient();
+            var httpClient = httpClientFactory.CreateClient();
 
             if (!string.IsNullOrWhiteSpace(apiToken))
             {
@@ -67,12 +67,12 @@ internal sealed class DaprWorkflowClientBuilderFactory
             WorkflowRuntimeOptions options = new();
             configure?.Invoke(options);
 
-            var apiToken = DaprDefaults.GetDefaultDaprApiToken(_configuration);
-            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(_configuration);
+            var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
 
             if (!string.IsNullOrEmpty(grpcEndpoint))
             {
-                var httpClient = _httpClientFactory.CreateClient();
+                var httpClient = httpClientFactory.CreateClient();
 
                 if (!string.IsNullOrWhiteSpace(apiToken))
                 {
