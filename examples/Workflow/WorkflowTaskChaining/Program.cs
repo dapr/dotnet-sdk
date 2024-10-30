@@ -27,11 +27,10 @@ var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowCl
 const int wfInput = 42;
 Console.WriteLine(@"Workflow Started");
 
-const string workflowName = "demo-workflow";
 var instanceId = $"demo-workflow-{Guid.NewGuid().ToString()[..8]}";
 
 //Start the workflow immediately
-await daprWorkflowClient.ScheduleNewWorkflowAsync(workflowName, instanceId, wfInput);
+await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DemoWorkflow), instanceId, wfInput);
 
 //Get the status of the workflow
 WorkflowState workflowState;
