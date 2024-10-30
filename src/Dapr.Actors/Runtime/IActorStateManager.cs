@@ -17,7 +17,6 @@ namespace Dapr.Actors.Runtime
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapr.Actors.Communication;
 
     /// <summary>
     /// Represents an interface that exposes methods to manage state of an <see cref="Dapr.Actors.Runtime.Actor" />.
