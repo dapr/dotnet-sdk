@@ -164,7 +164,7 @@ namespace Dapr.Actors.Runtime
 
             var id = ActorId.CreateRandom();
             await manager.ActivateActorAsync(id);
-            Assert.True(manager.TryGetActorAsync(id, out var actor));
+            Assert.True(manager.TryGetActorAsync(id, out _));
 
             await Assert.ThrowsAsync<InvalidTimeZoneException>(async () =>
             {

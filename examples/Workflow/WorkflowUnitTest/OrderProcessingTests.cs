@@ -64,7 +64,7 @@ namespace WorkflowUnitTest
                 .Returns(Task.FromResult(inventoryResult));
 
             // Run the workflow directly
-            OrderResult result = await new OrderProcessingWorkflow().RunAsync(mockContext.Object, order);
+            await new OrderProcessingWorkflow().RunAsync(mockContext.Object, order);
 
             // Verify that ReserveInventoryActivity was called with a specific input
             mockContext.Verify(
