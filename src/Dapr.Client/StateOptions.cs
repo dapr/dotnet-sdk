@@ -13,10 +13,6 @@
 
 namespace Dapr.Client
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Text;
-
     /// <summary>
     /// Options when perfroming state operations with Dapr.
     /// </summary>
