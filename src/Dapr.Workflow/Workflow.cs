@@ -130,8 +130,8 @@ namespace Dapr.Workflow
         /// Override to implement workflow logic.
         /// </summary>
         /// <param name="context">The workflow context.</param>
-        /// <param name="input">The deserialized workflow input.</param>
+        /// <param name="isHealthy">The deserialized workflow input.</param>
         /// <returns>The output of the workflow as a task.</returns>
-        public abstract Task<TOutput> RunAsync(WorkflowContext context, TInput input);
+        public abstract Task<TOutput> RunAsync(WorkflowContext context, TInput isHealthy);
     }
 }
