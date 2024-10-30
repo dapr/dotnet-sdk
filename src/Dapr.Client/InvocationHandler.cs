@@ -51,7 +51,7 @@ namespace Dapr.Client
         public InvocationHandler()
         {
             this.parsedEndpoint = new Uri(DaprDefaults.GetDefaultHttpEndpoint(), UriKind.Absolute);
-            this.apiToken = DaprDefaults.GetDefaultDaprApiToken();
+            this.apiToken = DaprDefaults.GetDefaultDaprApiToken(null);
         }
 
         /// <summary>

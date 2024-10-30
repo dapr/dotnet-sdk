@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System;
-using Dapr;
 using Dapr.AspNetCore;
 
 namespace Microsoft.AspNetCore.Authentication
