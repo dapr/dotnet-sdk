@@ -13,6 +13,7 @@
 
 using Dapr.AI.Conversation.Models.Request;
 using Dapr.AI.Conversation.Models.Response;
+using Dapr.Common.Extensions;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
 namespace Dapr.AI.Conversation;
@@ -74,7 +75,7 @@ public sealed class DaprConversationClient : DaprAIClient
             {
                 ScrubPII = input.ScrubPII,
                 Message = input.Message,
-                Role = input.Role
+                Role = input.Role?.GetValueFromEnumMember() ?? null
             });
         }
 

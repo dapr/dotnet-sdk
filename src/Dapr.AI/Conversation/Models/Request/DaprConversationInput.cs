@@ -18,5 +18,5 @@ namespace Dapr.AI.Conversation.Models.Request;
 /// </summary>
 /// <param name="Message">The message to send to the LLM.</param>
 /// <param name="ScrubPII">If true, scrubs the data that goes into the LLM.</param>
-/// <param name="Role">The role to set for the message.</param>
-public sealed record DaprConversationInput(string Message, bool ScrubPII = false, string? Role = null);
+/// <param name="Role">The role indicating the entity providing the message.</param>
+public sealed record DaprConversationInput(string Message, bool ScrubPII = false, DaprConversationRole? Role = null);
