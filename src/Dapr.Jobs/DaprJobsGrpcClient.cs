@@ -51,8 +51,6 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
         this.client = innerClient;
         this.httpClient = httpClient;
         this.apiTokenHeader = apiTokenHeader;
-
-        this.httpClient.DefaultRequestHeaders.UserAgent.Add(UserAgent());
     }
 
     /// <summary>
