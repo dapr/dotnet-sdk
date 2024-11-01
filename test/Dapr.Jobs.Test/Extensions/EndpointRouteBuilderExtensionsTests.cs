@@ -62,6 +62,35 @@ public class EndpointRouteBuilderExtensionsTest
     }
 
     [Fact]
+    public async Task MapDaprScheduleJobHandler_HandleMissingCancellationToken()
+    {
+        var server = CreateTestServer2();
+        var client = server.CreateClient();
+
+        var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
+        var serializedPayloadBytes = Encoding.UTF8.GetBytes(serializedPayload);
+        var jobDetails = new DaprJobDetails(new DaprJobSchedule("0 0 * * *"))
+        {
+            RepeatCount = 5,
+            DueTime = DateTimeOffset.UtcNow,
+            Ttl = DateTimeOffset.UtcNow.AddHours(1),
+            Payload = serializedPayloadBytes
+        };
+        var content = new StringContent(JsonSerializer.Serialize(jobDetails), Encoding.UTF8, "application/json");
+
+        const string jobName = "testJob";
+        var response = await client.PostAsync($"/job/{jobName}", content);
+
+        response.EnsureSuccessStatusCode();
+
+        //Validate the job name and payload
+        var validator = server.Services.GetRequiredService<Validator>();
+        Assert.Equal(jobName, validator.JobName);
+        Assert.Equal(serializedPayload, validator.SerializedPayload);
+    }
+    
+
+    [Fact]
     public async Task MapDaprScheduledJobHandler_InvalidPayload()
     {
         // Arrange
@@ -102,6 +131,36 @@ public class EndpointRouteBuilderExtensionsTest
                 app.UseEndpoints(endpoints =>
                 {
                     endpoints.MapDaprScheduledJobHandler(async (string? jobName, DaprJobDetails? jobDetails, Validator validator, CancellationToken cancellationToken) =>
+                    {
+                        if (jobName is not null)
+                            validator.JobName = jobName;
+                        if (jobDetails?.Payload is not null)
+                        {
+                            var payloadString = Encoding.UTF8.GetString(jobDetails.Payload);
+                            validator.SerializedPayload = payloadString;
+                        }
+                        await Task.CompletedTask;
+                    });
+                });
+            });
+
+        return new TestServer(builder);
+    }
+    
+    private static TestServer CreateTestServer2()
+    {
+        var builder = new WebHostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton<Validator>();
+                services.AddRouting();
+            })
+            .Configure(app =>
+            {
+                app.UseRouting();
+                app.UseEndpoints(endpoints =>
+                {
+                    endpoints.MapDaprScheduledJobHandler(async (string? jobName, Validator validator, DaprJobDetails? jobDetails) =>
                     {
                         if (jobName is not null)
                             validator.JobName = jobName;
