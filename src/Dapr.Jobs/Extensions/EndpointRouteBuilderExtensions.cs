@@ -83,7 +83,7 @@ public static class EndpointRouteBuilderExtensions
                 }
             }
             
-            var result = action.DynamicInvoke(parameters.ToArray());
+            var result = action.DynamicInvoke(invokeParameters.ToArray());
             if (result is Task task)
             {
                 await task;
