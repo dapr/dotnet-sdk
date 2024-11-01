@@ -17,7 +17,7 @@ namespace Dapr.AI.Conversation.Models.Response;
 /// The response for a conversation.
 /// </summary>
 /// <param name="Outputs">The collection of conversation results.</param>
-public record DaprConversationResponse(List<DaprConversationResult> Outputs)
+public record DaprConversationResponse(IReadOnlyList<DaprConversationResult> Outputs)
 {
     /// <summary>
     /// The identifier of an existing or newly created conversation.
