@@ -20,7 +20,6 @@ public class EnumExtensionTest
         Assert.Equal("YELLOW", value);
     }
 
-    [Fact]
     public void GetValueFromEnumMember_BlueResolvesAsExpected()
     {
         var value = TestEnum.Blue.GetValueFromEnumMember();

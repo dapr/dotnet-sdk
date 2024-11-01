@@ -30,7 +30,9 @@ internal static class EnumExtensions
 
         var memberInfo = typeof(T).GetMember(value.ToString(), BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly);
         if (memberInfo.Length <= 0)
+        {
             return value.ToString();
+        }
 
         var attributes = memberInfo[0].GetCustomAttributes(typeof(EnumMemberAttribute), false);
         return (attributes.Length > 0 ? ((EnumMemberAttribute)attributes[0]).Value : value.ToString()) ?? value.ToString();
