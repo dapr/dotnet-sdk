@@ -30,11 +30,15 @@ public sealed class Iso8601DateTimeJsonConverter : JsonConverter<DateTimeOffset?
     public override DateTimeOffset? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
+        {
             return null;
+        }
 
         var dateString = reader.GetString();
         if (DateTimeOffset.TryParse(dateString, out var dateTimeOffset))
+        {
             return dateTimeOffset;
+        }
 
         throw new JsonException($"Unable to convert \"{dateString}\" to {nameof(DateTimeOffset)}");
     }

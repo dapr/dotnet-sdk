@@ -38,16 +38,24 @@ internal static class TimeSpanExtensions
 
         //Hours is the largest unit of measure in the duration string
         if (timespan.Hours > 0)
+        {
             sb.Append($"{timespan.Hours}h");
+        }
 
         if (timespan.Minutes > 0)
+        {
             sb.Append($"{timespan.Minutes}m");
+        }
 
         if (timespan.Seconds > 0)
+        {
             sb.Append($"{timespan.Seconds}s");
+        }
 
         if (timespan.Milliseconds > 0)
+        {
             sb.Append($"{timespan.Milliseconds}ms");
+        }
 
         return sb.ToString();
     }
@@ -82,19 +90,27 @@ internal static class TimeSpanExtensions
 
         var hourMatch = hourRegex.Match(interval);
         if (hourMatch.Success)
+        {
             hours = int.Parse(hourMatch.Groups[1].Value);
+        }
 
         var minuteMatch = minuteRegex.Match(interval);
         if (minuteMatch.Success)
+        {
             minutes = int.Parse(minuteMatch.Groups[1].Value);
+        }
 
         var secondMatch = secondRegex.Match(interval);
         if (secondMatch.Success)
+        {
             seconds = int.Parse(secondMatch.Groups[1].Value);
+        }
 
         var millisecondMatch = millisecondRegex.Match(interval);
         if (millisecondMatch.Success)
+        {
             milliseconds = int.Parse(millisecondMatch.Groups[1].Value);
+        }
 
         return new TimeSpan(0, hours, minutes, seconds, milliseconds);
     }

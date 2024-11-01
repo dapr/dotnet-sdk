@@ -109,9 +109,14 @@ public sealed class CronExpressionBuilder
     public CronExpressionBuilder Through(ThroughCronPeriod period, int from, int to)
     {
         if (from > to)
+        {
             throw new ArgumentException("The date representing the From property should precede the To property");
+        }
+
         if (from == to)
+        {
             throw new ArgumentException("The From and To properties should not be equivalent");
+        }
 
         var stringValue = $"{from}-{to}";
 
@@ -145,9 +150,14 @@ public sealed class CronExpressionBuilder
     public CronExpressionBuilder Through(DayOfWeek from, DayOfWeek to)
     {
         if (from > to)
+        {
             throw new ArgumentException("The day representing the From property should precede the To property");
+        }
+
         if (from == to)
+        {
             throw new ArgumentException("The From and To properties should not be equivalent");
+        }
 
         dayOfWeek = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
         return this;
@@ -161,9 +171,14 @@ public sealed class CronExpressionBuilder
     public CronExpressionBuilder Through(MonthOfYear from, MonthOfYear to)
     {
         if (from > to)
+        {
             throw new ArgumentException("The month representing the From property should precede the To property");
+        }
+
         if (from == to)
+        {
             throw new ArgumentException("The From and To properties should not be equivalent");
+        }
 
         month = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
         return this;
@@ -210,7 +225,9 @@ public sealed class CronExpressionBuilder
     public CronExpressionBuilder Every(EveryCronPeriod period, int interval)
     {
         if (interval < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(interval));
+        }
 
         var value = $"*/{interval}";
 

@@ -67,7 +67,10 @@ public static class EndpointRouteBuilderExtensions
             parameters.Add(cancellationToken);
             
             var result = action.DynamicInvoke(parameters.ToArray());
-            if (result is Task task) await task;
+            if (result is Task task)
+            {
+                await task;
+            }
         });
 
         return endpoints;

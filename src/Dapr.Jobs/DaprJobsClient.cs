@@ -72,7 +72,9 @@ public abstract class DaprJobsClient : IDisposable
     internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)
     {
         if (string.IsNullOrWhiteSpace(apiToken))
+        {
             return null;
+        }
 
         return new KeyValuePair<string, string>("dapr-api-token", apiToken);
     }
