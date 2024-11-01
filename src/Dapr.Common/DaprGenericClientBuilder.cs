@@ -211,4 +211,3 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// </summary>
     public abstract TClientBuilder Build();
 }
-
