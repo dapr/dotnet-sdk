@@ -63,7 +63,7 @@ public static class EndpointRouteBuilderExtensions
             {
                 { typeof(string), jobName },
                 { typeof(DaprJobDetails), jobPayload },
-                { typeof(CancellationToken), cancellationToken }
+                { typeof(CancellationToken), CancellationToken.None }
             };
 
             var actionParameters = action.Method.GetParameters();
