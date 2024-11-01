@@ -44,7 +44,8 @@ public sealed class DaprConversationClient : DaprAIClient
     /// <param name="options">Optional options used to configure the conversation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The response(s) provided by the LLM provider.</returns>
-    public async Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName, List<DaprConversationInput> inputs, ConversationOptions? options = null, CancellationToken cancellationToken = default)
+    public override async Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName, IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
+        CancellationToken cancellationToken = default)
     {
         var request = new P.ConversationAlpha1Request
         {

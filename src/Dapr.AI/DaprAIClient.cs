@@ -11,6 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.AI.Conversation;
+using Dapr.AI.Conversation.Models.Request;
+using Dapr.AI.Conversation.Models.Response;
+
 namespace Dapr.AI;
 
 /// <summary>
@@ -18,4 +22,15 @@ namespace Dapr.AI;
 /// </summary>
 public abstract class DaprAIClient
 {
+    /// <summary>
+    /// Sends various inputs to the large language model via the Conversational building block on the Dapr sidecar.
+    /// </summary>
+    /// <param name="daprConversationComponentName">The name of the Dapr conversation component.</param>
+    /// <param name="inputs">The input values to send.</param>
+    /// <param name="options">Optional options used to configure the conversation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The response(s) provided by the LLM provider.</returns>
+    public abstract Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName,
+        IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
+        CancellationToken cancellationToken = default);
 }
