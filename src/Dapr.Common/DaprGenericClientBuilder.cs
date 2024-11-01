@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Text.Json;
-using System.Text.Json;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
 
