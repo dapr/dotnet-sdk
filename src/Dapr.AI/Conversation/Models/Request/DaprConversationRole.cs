@@ -7,7 +7,6 @@ namespace Dapr.AI.Conversation.Models.Request;
 /// <summary>
 /// Represents who 
 /// </summary>
-[JsonConverter(typeof(GenericEnumJsonConverter<DaprConversationRole>))]
 public enum DaprConversationRole
 {
     /// <summary>
