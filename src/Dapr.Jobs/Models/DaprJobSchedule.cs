@@ -27,11 +27,11 @@ public sealed class DaprJobSchedule
     /// <summary>
     /// A regular expression used to evaluate whether a given prefix period embodies an @every statement.
     /// </summary>
-    private readonly Regex isEveryExpression = new(@"^@every (\d+(m?s|m|h))+$", RegexOptions.Compiled);
+    private static readonly Regex isEveryExpression = new(@"^@every (\d+(m?s|m|h))+$", RegexOptions.Compiled);
     /// <summary>
     /// The various prefixed period values allowed.
     /// </summary>
-    private readonly string[] acceptablePeriodValues = { "yearly", "monthly", "weekly", "daily", "midnight", "hourly" };
+    private static readonly string[] acceptablePeriodValues = { "yearly", "monthly", "weekly", "daily", "midnight", "hourly" };
 
     /// <summary>
     /// The value of the expression represented by the schedule.
