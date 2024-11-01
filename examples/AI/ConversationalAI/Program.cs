@@ -10,7 +10,7 @@ var app = builder.Build();
 
 var conversationClient = app.Services.GetRequiredService<DaprConversationClient>();
 var response = await conversationClient.ConverseAsync("replace-with-component-name",
-    new List<DaprLlmInput> { new DaprLlmInput("Hello - anyone out there?") });
+    new List<DaprConversationInput> { new DaprConversationInput("Hello - anyone out there?") });
 
 Console.WriteLine("Received the following from the LLM:");
 foreach (var resp in response.Outputs)
