@@ -24,5 +24,5 @@ public record DaprConversationResult(string Result)
     /// <summary>
     /// Parameters for all custom fields.
     /// </summary>
-    public Dictionary<string, Any> Parameters { get; init; } = new();
+    public IReadOnlyDictionary<string, Any> Parameters { get; init; } = new Dictionary<string, Any>();
 }
