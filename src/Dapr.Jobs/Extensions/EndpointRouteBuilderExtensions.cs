@@ -59,12 +59,29 @@ public static class EndpointRouteBuilderExtensions
                 }
             }
 
-            var parameters = new List<object?> { jobName, jobPayload };
-            var actionParameters = action.Method.GetParameters().Skip(2).ToArray();
-            parameters.AddRange(actionParameters
-                .Where(parameter => parameter.ParameterType != typeof(CancellationToken))
-                .Select(parameter => context.RequestServices.GetService(parameter.ParameterType)));
-            parameters.Add(cancellationToken);
+            var parameters = new Dictionary<Type, object?>
+            {
+                { typeof(string), jobName },
+                { typeof(DaprJobDetails), jobPayload },
+                { typeof(CancellationToken), cancellationToken }
+            };
+
+            var actionParameters = action.Method.GetParameters();
+            var invokeParameters = new object?[actionParameters.Length];
+
+            for (var a = 0; a < actionParameters.Length; a++)
+            {
+                var parameterType = actionParameters[a].ParameterType;
+
+                if (parameters.TryGetValue(parameterType, out var value))
+                {
+                    invokeParameters[a] = value;
+                }
+                else
+                {
+                    invokeParameters[a] = context.RequestServices.GetService(parameterType);
+                }
+            }
             
             var result = action.DynamicInvoke(parameters.ToArray());
             if (result is Task task)
