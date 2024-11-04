@@ -123,7 +123,9 @@ namespace Dapr
             //Attempt to retrieve first from the configuration
             var configurationValue = configuration?[name];
             if (configurationValue is not null)
+            {
                 return configurationValue;
+            }
 
             //Fall back to the environment variable with the same name or default to an empty string
             return Environment.GetEnvironmentVariable(name);
