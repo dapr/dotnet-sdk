@@ -39,7 +39,7 @@ internal sealed class DaprWorkflowClientBuilderFactory
         this.configuration = configuration;
         this.httpClientFactory = httpClientFactory;
     }
-    
+
     /// <summary>
     /// Responsible for building the client itself.
     /// </summary>
@@ -48,17 +48,25 @@ internal sealed class DaprWorkflowClientBuilderFactory
     {
         services.AddDurableTaskClient(builder =>
         {
+            WorkflowRuntimeOptions options = new();
+            configure?.Invoke(options);
+
             var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
             var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
-            
-            var httpClient = httpClientFactory.CreateClient();
+
+            var httpClient = _httpClientFactory.CreateClient();
 
             if (!string.IsNullOrWhiteSpace(apiToken))
             {
-                httpClient.DefaultRequestHeaders.Add( "Dapr-Api-Token", apiToken);    
+                httpClient.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
             }
 
-            builder.UseGrpc(GrpcChannel.ForAddress(grpcEndpoint, new GrpcChannelOptions { HttpClient = httpClient }));
+            var channelOptions = options.GrpcChannelOptions ?? new GrpcChannelOptions
+            {
+                HttpClient = httpClient
+            };
+
+            builder.UseGrpc(GrpcChannel.ForAddress(grpcEndpoint, channelOptions));
             builder.RegisterDirectly();
         });
 
@@ -79,8 +87,12 @@ internal sealed class DaprWorkflowClientBuilderFactory
                     httpClient.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
                 }
 
-                builder.UseGrpc(
-                    GrpcChannel.ForAddress(grpcEndpoint, new GrpcChannelOptions { HttpClient = httpClient }));
+                var channelOptions = options.GrpcChannelOptions ?? new GrpcChannelOptions
+                {
+                    HttpClient = httpClient
+                };
+
+                builder.UseGrpc(GrpcChannel.ForAddress(grpcEndpoint, channelOptions));
             }
             else
             {
