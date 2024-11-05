@@ -48,7 +48,7 @@ public sealed class DaprConversationClient : DaprAIClient
     public override async Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName, IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var request = new P.ConversationAlpha1Request
+        var request = new P.ConversationRequest
         {
             Name = daprConversationComponentName
         };
