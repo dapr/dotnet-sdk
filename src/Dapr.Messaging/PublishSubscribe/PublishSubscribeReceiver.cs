@@ -119,7 +119,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         var fetchMessagesTask = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken);
 
         //Process the messages as they're written to either channel
-        var acknowledgementProcessorTask = ProcessAcknowledgementChannelMessagesAsync(cancellationToken);
+        var acknowledgementProcessorTask = ProcessAcknowledgementChannelMessagesAsync(stream, cancellationToken);
         var topicMessageProcessorTask = ProcessTopicChannelMessagesAsync(cancellationToken);
 
         try
@@ -176,10 +176,10 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <summary>
     /// Processes each acknowledgement from the acknowledgement channel reader as it's populated.
     /// </summary>
+    /// <param name="messageStream">The stream used to interact with the Dapr sidecar.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    private async Task ProcessAcknowledgementChannelMessagesAsync(CancellationToken cancellationToken)
+    private async Task ProcessAcknowledgementChannelMessagesAsync(AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1> messageStream, CancellationToken cancellationToken)
     {
-        var messageStream = await GetStreamAsync(cancellationToken);
         await foreach (var acknowledgement in acknowledgementsChannel.Reader.ReadAllAsync(cancellationToken))
         {    
             await messageStream.RequestStream.WriteAsync(new P.SubscribeTopicEventsRequestAlpha1
