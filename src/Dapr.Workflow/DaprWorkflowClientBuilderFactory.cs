@@ -19,8 +19,6 @@ using Microsoft.DurableTask.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-#nullable enable
-
 namespace Dapr.Workflow;
 
 /// <summary>
@@ -49,12 +47,12 @@ internal sealed class DaprWorkflowClientBuilderFactory
         services.AddDurableTaskClient(builder =>
         {
             WorkflowRuntimeOptions options = new();
-            configure?.Invoke(options);
+            configure.Invoke(options);
 
             var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
             var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
 
-            var httpClient = _httpClientFactory.CreateClient();
+            var httpClient = httpClientFactory.CreateClient();
 
             if (!string.IsNullOrWhiteSpace(apiToken))
             {
@@ -73,7 +71,7 @@ internal sealed class DaprWorkflowClientBuilderFactory
         services.AddDurableTaskWorker(builder =>
         {
             WorkflowRuntimeOptions options = new();
-            configure?.Invoke(options);
+            configure.Invoke(options);
 
             var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
             var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
