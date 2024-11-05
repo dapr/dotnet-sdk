@@ -10,7 +10,7 @@ namespace Dapr.Actors.Generators.Test;
 public class ActorRegistrationGeneratorTests
 {
     [Fact]
-    public void TestActorRegistrationGenerator()
+    public void TestActorRegistrationGenerator_WithoutTransientReference()
     {
         const string source = @"
 using Dapr.Actors.Runtime;
@@ -37,11 +37,17 @@ public static class ActorRegistrationExtensions
     /// <summary>
     /// Registers all discovered actor types with the Dapr actor runtime.
     /// </summary>
-    public static void RegisterAllActors(this IServiceCollection services)
+    /// <param name=""services"">The service collection to add the actors to.</param>
+    /// <param name=""includeTransientReferences"">Whether to include actor types from referenced assemblies.</param>
+    public static void RegisterAllActors(this IServiceCollection services, bool includeTransientReferences = false)
     {
         services.AddActors(options => 
         {
             options.Actors.RegisterActor<MyActor>();
+            if (includeTransientReferences)
+            {
+                
+            }
         });
     }
 }";
@@ -49,8 +55,68 @@ public static class ActorRegistrationExtensions
         var generatedCode = GetGeneratedCode(source);
         Assert.Equal(expectedGeneratedCode.Trim(), generatedCode.Trim());
     }
+    
+    [Fact]
+    public void TestActorRegistrationGenerator_WithTransientReference()
+    {
+        const string source = @"
+using Dapr.Actors.Runtime;
 
-    private static string GetGeneratedCode(string source)
+public class MyActor : Actor, IMyActor
+{
+    public MyActor(ActorHost host) : base(host) { } 
+}
+
+public interface IMyActor : IActor
+{
+}
+";
+        
+        const string referencedSource = @"
+using Dapr.Actors.Runtime;
+
+public class TransientActor : Actor, ITransientActor
+{
+    public TransientActor(ActorHost host) : base(host) { }
+}
+
+public interface ITransientActor : IActor
+{
+}
+";
+
+        const string expectedGeneratedCode = @"
+using Microsoft.Extensions.DependencyInjection;
+using Dapr.Actors.Runtime;
+
+/// <summary>
+/// Extension methods for registering Dapr actors.
+/// </summary>
+public static class ActorRegistrationExtensions
+{
+    /// <summary>
+    /// Registers all discovered actor types with the Dapr actor runtime.
+    /// </summary>
+    /// <param name=""services"">The service collection to add the actors to.</param>
+    /// <param name=""includeTransientReferences"">Whether to include actor types from referenced assemblies.</param>
+    public static void RegisterAllActors(this IServiceCollection services, bool includeTransientReferences = false)
+    {
+        services.AddActors(options => 
+        {
+            options.Actors.RegisterActor<MyActor>();
+            if (includeTransientReferences)
+            {
+                options.Actors.RegisterActor<TransientActor>();
+            }
+        });
+    }
+}";
+
+        var generatedCode = GetGeneratedCode(source, referencedSource);
+        Assert.Equal(expectedGeneratedCode.Trim(), generatedCode.Trim());
+    }
+
+    private static string GetGeneratedCode(string source, string? referencedSource = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(source, Encoding.UTF8));
         var references = new List<MetadataReference>
@@ -65,6 +131,17 @@ public static class ActorRegistrationExtensions
             new[] { syntaxTree },
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        if (referencedSource != null)
+        {
+            var referencedSyntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(referencedSource, Encoding.UTF8));
+            var referencedCompilation = CSharpCompilation.Create("ReferencedCompilation",
+                new[] { referencedSyntaxTree },
+                references,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+            compilation = compilation.AddReferences(referencedCompilation.ToMetadataReference());
+        }
 
         var generator = new ActorRegistrationGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
