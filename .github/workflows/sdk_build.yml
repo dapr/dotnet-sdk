@@ -73,8 +73,6 @@ jobs:
       with:
         dotnet-version: ${{ matrix.install-version }}
         dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
-    - name: Install VSTest (compatible with .NET 9 and older)
-      run: dotnet tool install --global dotnet-vstest --version 17.12.0
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
