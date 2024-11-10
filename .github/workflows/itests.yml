@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ['6.0', '7.0', '8.0']
+        dotnet-version: ['6.0', '7.0', '8.0', '9.0']
         include:
         - dotnet-version: '6.0'
           display-name: '.NET 6.0'
@@ -36,6 +36,11 @@ jobs:
           framework: 'net8'
           prefix: 'net8'
           install-version: '8.0.x'
+        - dotnet-version: '9.0'
+          display-name: '.NET 9.0'
+          framework: 'net9'
+          prefix: 'net9'
+          install-version: '9.0.x'
     env:
       NUPKG_OUTDIR: bin/Release/nugets
       GOVER: 1.20.3
@@ -109,7 +114,9 @@ jobs:
         uses: actions/setup-dotnet@v1
         if: ${{ matrix.install-version != '8.0.x' }}
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            9.0.x
       - name: Build
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
         run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
