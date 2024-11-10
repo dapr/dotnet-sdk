@@ -328,7 +328,11 @@ namespace Dapr.AspNetCore.Test
             {
                 httpContext.Request.ContentType.Should().Be(dataContentType);
                 var bytes = new byte[httpContext.Request.Body.Length];
+#if NET9_0
                 httpContext.Request.Body.ReadExactly(bytes, 0, bytes.Length);
+#else
+                httpContext.Request.Body.Read(bytes, 0, bytes.Length);
+#endif
                 bytes.Should().Equal(data);
                 return Task.CompletedTask;
             });
@@ -391,7 +395,11 @@ namespace Dapr.AspNetCore.Test
             encoding ??= Encoding.UTF8;
 
             var bytes = new byte[stream.Length];
+#if NET9_0
             stream.ReadExactly(bytes, 0, bytes.Length);
+#else
+            stream.Read(bytes, 0, bytes.Length);
+#endif
             var str = encoding.GetString(bytes);
             return str;
         }
