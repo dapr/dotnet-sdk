@@ -114,9 +114,7 @@ jobs:
         uses: actions/setup-dotnet@v1
         if: ${{ matrix.install-version != '8.0.x' }}
         with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
+          dotnet-version: 8.0.x
       - name: Build
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
         run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
