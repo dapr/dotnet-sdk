@@ -61,7 +61,7 @@ jobs:
           install-version: '8.0.x'
         - dotnet-version: '9.0'
           display-name: '.NET 9.0'
-          framework: 'net9.0'
+          framework: 'net9'
           prefix: 'net9'
           install-version: '9.0.x'
     steps:
@@ -76,6 +76,18 @@ jobs:
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+    - name: Setup .NET 8 (required)
+      uses: actions/setup-dotnet@v3
+      if: ${{ matrix.install-version != '8.0.x' }}
+      with:
+        dotnet-version: '8.0.x'
+        dotnet-quality: 'ga'
+    - name: Setup .NET 9 (required)
+      uses: actions/setup-dotnet@v3
+      if: ${{ matrix.install-version != '9.0.x' }}
+      with:
+        dotnet-version: '9.0.x'
+        dotnet-quality: 'ga'
     - name: Test
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
