@@ -328,7 +328,9 @@ namespace Dapr.AspNetCore.Test
             {
                 httpContext.Request.ContentType.Should().Be(dataContentType);
                 var bytes = new byte[httpContext.Request.Body.Length];
+#pragma error disable CA2022
                 httpContext.Request.Body.Read(bytes, 0, bytes.Length);
+#pragma error restore CA2022
                 bytes.Should().Equal(data);
                 return Task.CompletedTask;
             });
@@ -391,7 +393,9 @@ namespace Dapr.AspNetCore.Test
             encoding ??= Encoding.UTF8;
 
             var bytes = new byte[stream.Length];
+#pragma error disable CA2022
             stream.Read(bytes, 0, bytes.Length);
+#pragma error resume CA2022
             var str = encoding.GetString(bytes);
             return str;
         }
