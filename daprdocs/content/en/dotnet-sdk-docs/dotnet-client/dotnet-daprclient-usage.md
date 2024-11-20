@@ -82,6 +82,11 @@ The SDK will read the following environment variables to configure the default v
 - `DAPR_GRPC_PORT`: if `DAPR_GRPC_ENDPOINT` is not set, this is used to find the gRPC local endpoint of the Dapr sidecar
 - `DAPR_API_TOKEN`: used to set the API Token
 
+{{% alert title="Note" color="primary" %}}
+If both `DAPR_HTTP_ENDPOINT` and `DAPR_HTTP_PORT` are specified, the port value from `DAPR_HTTP_PORT` will be ignored in favor of the port
+implicitly or explicitly defined on `DAPR_HTTP_PORT`. The same is true of both `DAPR_GRPC_ENDPOINT` and `DAPR_GRPC_PORT`.
+{{% /alert %}}
+
 ### Configuring gRPC channel options
 
 Dapr's use of `CancellationToken` for cancellation relies on the configuration of the gRPC channel options. If you need to configure these options yourself, make sure to enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation).
