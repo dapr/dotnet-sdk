@@ -32,16 +32,41 @@ public static class DaprServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection" />.</param>
     /// <param name="configure"></param>
-    public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null)
+    /// <param name="lifetime">The lifetime of the registered services.</param>
+    public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
 
-        services.TryAddSingleton(serviceProvider =>
+        switch (lifetime)
         {
-            var builder = CreateDaprClientBuilder(serviceProvider);
-            configure?.Invoke(builder);
-            return builder.Build();
-        });
+
+            case ServiceLifetime.Scoped:
+                services.TryAddScoped(serviceProvider =>
+                {
+                    var builder = CreateDaprClientBuilder(serviceProvider);
+                    configure?.Invoke(builder);
+                    return builder.Build();
+                });
+                break;
+            case ServiceLifetime.Transient:
+                services.TryAddTransient(serviceProvider =>
+                {
+                    var builder = CreateDaprClientBuilder(serviceProvider);
+                    configure?.Invoke(builder);
+                    return builder.Build();
+                });
+                break;
+            case ServiceLifetime.Singleton:
+            default:
+                services.TryAddSingleton(serviceProvider =>
+                {
+                    var builder = CreateDaprClientBuilder(serviceProvider);
+                    configure?.Invoke(builder);
+                    return builder.Build();
+                });
+                break;
+        }
     }
 
     /// <summary>
@@ -50,17 +75,40 @@ public static class DaprServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection"/>.</param>
     /// <param name="configure"></param>
+    /// <param name="lifetime">The lifetime of the registered services.</param>
     public static void AddDaprClient(this IServiceCollection services,
-        Action<IServiceProvider, DaprClientBuilder> configure)
+        Action<IServiceProvider, DaprClientBuilder> configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
 
-        services.TryAddSingleton(serviceProvider =>
+        switch (lifetime)
         {
-            var builder = CreateDaprClientBuilder(serviceProvider);
-            configure?.Invoke(serviceProvider, builder);
-            return builder.Build();
-        });
+            case ServiceLifetime.Singleton:
+                services.TryAddSingleton(serviceProvider =>
+                {
+                    var builder = CreateDaprClientBuilder(serviceProvider);
+                    configure?.Invoke(serviceProvider, builder);
+                    return builder.Build();
+                });
+                break;
+            case ServiceLifetime.Scoped:
+                services.TryAddScoped(serviceProvider =>
+                {
+                    var builder = CreateDaprClientBuilder(serviceProvider);
+                    configure?.Invoke(serviceProvider, builder);
+                    return builder.Build();
+                });
+                break;
+            case ServiceLifetime.Transient:
+            default:
+                services.TryAddTransient(serviceProvider =>
+                {
+                    var builder = CreateDaprClientBuilder(serviceProvider);
+                    configure?.Invoke(serviceProvider, builder);
+                    return builder.Build();
+                });
+                break;
+        }
     }
     
     private static DaprClientBuilder CreateDaprClientBuilder(IServiceProvider serviceProvider)
