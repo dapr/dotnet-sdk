@@ -10,6 +10,48 @@ description: Essential tips and advice for using DaprClient
 
 A `DaprClient` holds access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar. `DaprClient` implements `IDisposable` to support eager cleanup of resources.
 
+### Dependency Injection
+
+The `AddDaprClient()` method will register the Dapr client with ASP.NET Core dependency injection. This method accepts an optional
+options delegate for configuring the `DaprClient` and an `ServiceLifetime` argument, allowing you to specify a different lifetime
+for the registered resources instead of the default `Singleton` value.
+
+The following example assumes all default values are acceptable and is sufficient to register the `DaprClient`.
+
+```csharp
+services.AddDaprClient();
+```
+
+The optional configuration delegates are used to configure `DaprClient` by specifying options on the provided `DaprClientBuilder`
+as in the following example:
+
+```csharp
+services.AddDaprClient(daprBuilder => {
+    daprBuilder.UseJsonSerializerOptions(new JsonSerializerOptions {
+            WriteIndented = true,
+            MaxDepth = 8
+        });
+    daprBuilder.UseTimeout(TimeSpan.FromSeconds(30));
+});
+```
+
+The another optional configuration delegate overload provides access to both the `DaprClientBuilder` as well as an `IServiceProvider`
+allowing for more advanced configurations that may require injecting services from the dependency injection container.
+
+```csharp
+services.AddSingleton<SampleService>();
+services.AddDaprClient((serviceProvider, daprBuilder) => {
+    var sampleService = serviceProvider.GetRequiredService<SampleService>();
+    var timeoutValue = sampleService.TimeoutOptions;
+    
+    daprBuilder.UseTimeout(timeoutValue);
+});
+```
+
+### Manual Instantiation
+
+Rather than using dependency injection, a `DaprClient` can also be built using the static client builder.
+
 For best performance, create a single long-lived instance of `DaprClient` and provide access to that shared instance throughout your application. `DaprClient` instances are thread-safe and intended to be shared.
 
 Avoid creating a `DaprClient` per-operation and disposing it when the operation is complete. 
