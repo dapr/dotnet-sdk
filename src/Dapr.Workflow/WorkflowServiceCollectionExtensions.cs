@@ -40,7 +40,7 @@ public static class WorkflowServiceCollectionExtensions
             throw new ArgumentNullException(nameof(serviceCollection));
         }
 
-        serviceCollection.AddDaprClient();
+        serviceCollection.AddDaprClient(lifetime: lifetime);
         serviceCollection.AddHttpClient();
         serviceCollection.AddHostedService<WorkflowLoggingService>();
         
