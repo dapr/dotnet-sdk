@@ -9,14 +9,17 @@ public class WorkflowServiceCollectionExtensionsTests
     [Fact]
     public void ConfigureDaprClient_FromWorkflowClientRegistration()
     {
-        const int maxDepth = 4;
+        const int maxDepth = 6;
         const bool writeIndented = true;
         
         var services = new ServiceCollection();
+        services.AddSingleton(_ => new MyAwesomeType { MaxDepth = maxDepth });
 
-        services.AddDaprWorkflow(options => { }, builder =>
+        services.AddDaprWorkflow(_ => { }, (serviceProvider, builder) =>
         {
-            builder.UseJsonSerializationOptions(new JsonSerializerOptions { MaxDepth = maxDepth, WriteIndented = writeIndented });
+            var myType = serviceProvider.GetRequiredService<MyAwesomeType>();
+            
+            builder.UseJsonSerializationOptions(new JsonSerializerOptions { MaxDepth = myType.MaxDepth ?? 0, WriteIndented = writeIndented });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -76,5 +79,13 @@ public class WorkflowServiceCollectionExtensionsTests
         Assert.NotNull(daprWorkflowClient1);
         Assert.NotNull(daprWorkflowClient2);
         Assert.NotSame(daprWorkflowClient1, daprWorkflowClient2);
+    }
+
+    private sealed class MyAwesomeType
+    {
+        /// <summary>
+        /// The max depth value.
+        /// </summary>
+        public int? MaxDepth { get; init; }
     }
 }

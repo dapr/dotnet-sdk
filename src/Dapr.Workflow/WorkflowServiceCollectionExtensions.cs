@@ -35,7 +35,7 @@ public static class WorkflowServiceCollectionExtensions
     public static IServiceCollection AddDaprWorkflow(
         this IServiceCollection serviceCollection,
         Action<WorkflowRuntimeOptions> configure,
-        Action<DaprClientBuilder>? configureDaprClient = null,
+        Action<IServiceProvider, DaprClientBuilder>? configureDaprClient = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         if (serviceCollection == null)
@@ -43,7 +43,16 @@ public static class WorkflowServiceCollectionExtensions
             throw new ArgumentNullException(nameof(serviceCollection));
         }
 
-        serviceCollection.AddDaprClient(configureDaprClient, lifetime: lifetime);
+
+        if (configureDaprClient is not null)
+        {
+            serviceCollection.AddDaprClient(configureDaprClient, lifetime: lifetime);
+        }
+        else
+        {
+            serviceCollection.AddDaprClient(lifetime: lifetime);
+        }
+
         serviceCollection.AddHttpClient();
         serviceCollection.AddHostedService<WorkflowLoggingService>();
         
