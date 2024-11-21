@@ -39,9 +39,10 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             ArgumentNullException.ThrowIfNull(services, nameof(services));
 
-            // Routing and health checks are required dependencies.
+            // Routing, health checks and logging are required dependencies.
             services.AddRouting();
             services.AddHealthChecks();
+            services.AddLogging();
 
             var actorRuntimeRegistration = new Func<IServiceProvider, ActorRuntime>(s =>
             {
