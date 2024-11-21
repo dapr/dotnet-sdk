@@ -17,7 +17,6 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr.Client;
-using Dapr.Actors.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
