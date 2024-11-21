@@ -13,6 +13,7 @@
 
 using System;
 using System.Net.Http;
+using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -29,10 +30,12 @@ public static class WorkflowServiceCollectionExtensions
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
     /// <param name="configure">A delegate used to configure actor options and register workflow functions.</param>
+    /// <param name="configureDaprClient">A delegate used to optionally configure the Dapr client connection.</param>
     /// <param name="lifetime">The lifetime of the registered services.</param>
     public static IServiceCollection AddDaprWorkflow(
         this IServiceCollection serviceCollection,
         Action<WorkflowRuntimeOptions> configure,
+        Action<DaprClientBuilder>? configureDaprClient = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         if (serviceCollection == null)
@@ -40,7 +43,7 @@ public static class WorkflowServiceCollectionExtensions
             throw new ArgumentNullException(nameof(serviceCollection));
         }
 
-        serviceCollection.AddDaprClient(lifetime: lifetime);
+        serviceCollection.AddDaprClient(configureDaprClient, lifetime: lifetime);
         serviceCollection.AddHttpClient();
         serviceCollection.AddHostedService<WorkflowLoggingService>();
         

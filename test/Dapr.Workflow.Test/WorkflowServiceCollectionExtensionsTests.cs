@@ -1,15 +1,37 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Text.Json;
+using Dapr.Client;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Workflow.Test;
 
 public class WorkflowServiceCollectionExtensionsTests
 {
     [Fact]
+    public void ConfigureDaprClient_FromWorkflowClientRegistration()
+    {
+        const int maxDepth = 4;
+        const bool writeIndented = true;
+        
+        var services = new ServiceCollection();
+
+        services.AddDaprWorkflow(options => { }, builder =>
+        {
+            builder.UseJsonSerializationOptions(new JsonSerializerOptions { MaxDepth = maxDepth, WriteIndented = writeIndented });
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprClient = serviceProvider.GetRequiredService<DaprClient>();
+        Assert.Equal(maxDepth, daprClient.JsonSerializerOptions.MaxDepth);
+        Assert.Equal(writeIndented, daprClient.JsonSerializerOptions.WriteIndented);
+    }
+    
+    [Fact]
     public void RegisterWorkflowClient_ShouldRegisterSingleton_WhenLifetimeIsSingleton()
     {
         var services = new ServiceCollection();
 
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Singleton);
+        services.AddDaprWorkflow(options => { }, lifetime: ServiceLifetime.Singleton);
         var serviceProvider = services.BuildServiceProvider();
 
         var daprWorkflowClient1 = serviceProvider.GetService<DaprWorkflowClient>();
@@ -26,7 +48,7 @@ public class WorkflowServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Scoped);
+        services.AddDaprWorkflow(options => { }, lifetime: ServiceLifetime.Scoped);
         var serviceProvider = services.BuildServiceProvider();
 
         await using var scope1 = serviceProvider.CreateAsyncScope();
@@ -45,7 +67,7 @@ public class WorkflowServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Transient);
+        services.AddDaprWorkflow(options => { }, lifetime: ServiceLifetime.Transient);
         var serviceProvider = services.BuildServiceProvider();
 
         var daprWorkflowClient1 = serviceProvider.GetService<DaprWorkflowClient>();
