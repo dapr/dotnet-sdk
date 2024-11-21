@@ -15,6 +15,7 @@
 
 using System;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Dapr.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -76,6 +77,58 @@ namespace Dapr.AspNetCore.Test
             Assert.NotNull(client);
             Assert.False(client?.JsonSerializerOptions.PropertyNameCaseInsensitive);
         }
+        
+    [Fact]
+    public void RegisterClient_ShouldRegisterSingleton_WhenLifetimeIsSingleton()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprClient(options => { }, ServiceLifetime.Singleton);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprWorkflowClient1 = serviceProvider.GetService<DaprClient>();
+        var daprWorkflowClient2 = serviceProvider.GetService<DaprClient>();
+
+        Assert.NotNull(daprWorkflowClient1);
+        Assert.NotNull(daprWorkflowClient2);
+        
+        Assert.Same(daprWorkflowClient1, daprWorkflowClient2);
+    }
+
+    [Fact]
+    public async Task RegisterDaprClient_ShouldRegisterScoped_WhenLifetimeIsScoped()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprClient(options => { }, ServiceLifetime.Scoped);
+        var serviceProvider = services.BuildServiceProvider();
+
+        await using var scope1 = serviceProvider.CreateAsyncScope();
+        var daprWorkflowClient1 = scope1.ServiceProvider.GetService<DaprClient>();
+
+        await using var scope2 = serviceProvider.CreateAsyncScope();
+        var daprWorkflowClient2 = scope2.ServiceProvider.GetService<DaprClient>();
+                
+        Assert.NotNull(daprWorkflowClient1);
+        Assert.NotNull(daprWorkflowClient2);
+        Assert.NotSame(daprWorkflowClient1, daprWorkflowClient2);
+    }
+
+    [Fact]
+    public void RegisterDaprClient_ShouldRegisterTransient_WhenLifetimeIsTransient()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprClient(options => { }, ServiceLifetime.Transient);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprWorkflowClient1 = serviceProvider.GetService<DaprClient>();
+        var daprWorkflowClient2 = serviceProvider.GetService<DaprClient>();
+
+        Assert.NotNull(daprWorkflowClient1);
+        Assert.NotNull(daprWorkflowClient2);
+        Assert.NotSame(daprWorkflowClient1, daprWorkflowClient2);
+    }
 
         
 #if NET8_0_OR_GREATER
