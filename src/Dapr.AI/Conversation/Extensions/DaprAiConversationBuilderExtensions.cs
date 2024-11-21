@@ -26,24 +26,58 @@ public static class DaprAiConversationBuilderExtensions
     /// Registers the necessary functionality for the Dapr AI conversation functionality.
     /// </summary>
     /// <returns></returns>
-    public static IDaprAiConversationBuilder AddDaprAiConversation(this IServiceCollection services, Action<IServiceProvider, DaprConversationClientBuilder>? configure = null)
+    public static IDaprAiConversationBuilder AddDaprAiConversation(this IServiceCollection services, Action<IServiceProvider, DaprConversationClientBuilder>? configure = null, ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
         
         services.AddHttpClient();
-        
-        services.TryAddSingleton(provider =>
+
+        switch (lifetime)
         {
-            var configuration = provider.GetService<IConfiguration>();
-            var builder = new DaprConversationClientBuilder(configuration);
-            
-            var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
-            builder.UseHttpClientFactory(httpClientFactory);
+            case ServiceLifetime.Scoped:
+                services.TryAddScoped(provider =>
+                {
+                    var configuration = provider.GetService<IConfiguration>();
+                    var builder = new DaprConversationClientBuilder(configuration);
 
-            configure?.Invoke(provider, builder);
+                    var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+                    builder.UseHttpClientFactory(httpClientFactory);
 
-            return builder.Build();
-        });
+                    configure?.Invoke(provider, builder);
+
+                    return builder.Build();
+                });
+                break;
+            case ServiceLifetime.Transient:
+                services.TryAddTransient(provider =>
+                {
+                    var configuration = provider.GetService<IConfiguration>();
+                    var builder = new DaprConversationClientBuilder(configuration);
+
+                    var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+                    builder.UseHttpClientFactory(httpClientFactory);
+
+                    configure?.Invoke(provider, builder);
+
+                    return builder.Build();
+                });
+                break;
+            case ServiceLifetime.Singleton:
+            default:
+                services.TryAddSingleton(provider =>
+                {
+                    var configuration = provider.GetService<IConfiguration>();
+                    var builder = new DaprConversationClientBuilder(configuration);
+
+                    var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+                    builder.UseHttpClientFactory(httpClientFactory);
+
+                    configure?.Invoke(provider, builder);
+
+                    return builder.Build();
+                });
+                break;
+        }
 
         return new DaprAiConversationBuilder(services);
     }
