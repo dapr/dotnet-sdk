@@ -17,8 +17,15 @@ cleanup of resources.
 The `AddDaprWorkflow()` method will register the Dapr workflow services with ASP.NET Core dependency injection. This method
 requires an options delegate that defines each of the workflows and activities you wish to register and use in your application.
 
-This method will also register a `DaprClient` instance as it's used to communicate with the Dapr sidecar and the lifetime options
-provided below will be used for that registration and its own dependencies as well.
+{{% alert title="Note" color="primary" %}} 
+
+This method will attempt to register a `DaprClient` instance, but this will only work if it hasn't already been registered with another
+lifetime. For example, an earlier call to `AddDaprClient()` with a singleton lifetime will always use a singleton regardless of the
+lifetime chose for the workflow client. The `DaprClient` instance will be used to communicate with the Dapr sidecar and if it's not
+yet registered, the lifetime provided during the `AddDaprWorkflow()` registration will be used to register the `DaprWorkflowClient`
+as well as its own dependencies.
+
+{{% /alert %}} 
 
 ### Singleton Registration
 By default, the `AddDaprWorkflow` method will register the `DaprWorkflowClient` and associated services using a singleton lifetime. This means
