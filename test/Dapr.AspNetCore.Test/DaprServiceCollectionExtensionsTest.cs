@@ -15,67 +15,120 @@
 
 using System;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Dapr.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Dapr.AspNetCore.Test
+namespace Dapr.AspNetCore.Test;
+
+public class DaprServiceCollectionExtensionsTest
 {
-    public class DaprServiceCollectionExtensionsTest
+    [Fact]
+    public void AddDaprClient_RegistersDaprClientOnlyOnce()
     {
-        [Fact]
-        public void AddDaprClient_RegistersDaprClientOnlyOnce()
-        {
-            var services = new ServiceCollection();
+        var services = new ServiceCollection();
 
-            var clientBuilder = new Action<DaprClientBuilder>(
-                builder => builder.UseJsonSerializationOptions(
-                    new JsonSerializerOptions()
-                    {
-                        PropertyNameCaseInsensitive = false
-                    }
-                )
-            );
-
-            // register with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
-            services.AddDaprClient();
-
-            // register with PropertyNameCaseInsensitive = false
-            services.AddDaprClient(clientBuilder);
-
-            var serviceProvider = services.BuildServiceProvider();
-
-            DaprClientGrpc? daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
-
-            Assert.NotNull(daprClient);
-            Assert.True(daprClient?.JsonSerializerOptions.PropertyNameCaseInsensitive);
-        }
-
-        [Fact]
-        public void AddDaprClient_RegistersUsingDependencyFromIServiceProvider()
-        {
-
-            var services = new ServiceCollection();
-            services.AddSingleton<TestConfigurationProvider>();
-            services.AddDaprClient((provider, builder) =>
-            {
-                var configProvider = provider.GetRequiredService<TestConfigurationProvider>();
-                var caseSensitivity = configProvider.GetCaseSensitivity();
-
-                builder.UseJsonSerializationOptions(new JsonSerializerOptions
+        var clientBuilder = new Action<DaprClientBuilder>(
+            builder => builder.UseJsonSerializationOptions(
+                new JsonSerializerOptions()
                 {
-                    PropertyNameCaseInsensitive = caseSensitivity
-                });
+                    PropertyNameCaseInsensitive = false
+                }
+            )
+        );
+
+        // register with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
+        services.AddDaprClient();
+
+        // register with PropertyNameCaseInsensitive = false
+        services.AddDaprClient(clientBuilder);
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        DaprClientGrpc? daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
+
+        Assert.NotNull(daprClient);
+        Assert.True(daprClient?.JsonSerializerOptions.PropertyNameCaseInsensitive);
+    }
+
+    [Fact]
+    public void AddDaprClient_RegistersUsingDependencyFromIServiceProvider()
+    {
+
+        var services = new ServiceCollection();
+        services.AddSingleton<TestConfigurationProvider>();
+        services.AddDaprClient((provider, builder) =>
+        {
+            var configProvider = provider.GetRequiredService<TestConfigurationProvider>();
+            var caseSensitivity = configProvider.GetCaseSensitivity();
+
+            builder.UseJsonSerializationOptions(new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = caseSensitivity
             });
+        });
 
-            var serviceProvider = services.BuildServiceProvider();
+        var serviceProvider = services.BuildServiceProvider();
 
-            DaprClientGrpc? client = serviceProvider.GetRequiredService<DaprClient>() as DaprClientGrpc;
+        DaprClientGrpc? client = serviceProvider.GetRequiredService<DaprClient>() as DaprClientGrpc;
 
-            //Registers with case-insensitive as true by default, but we set as false above
-            Assert.NotNull(client);
-            Assert.False(client?.JsonSerializerOptions.PropertyNameCaseInsensitive);
-        }
+        //Registers with case-insensitive as true by default, but we set as false above
+        Assert.NotNull(client);
+        Assert.False(client?.JsonSerializerOptions.PropertyNameCaseInsensitive);
+    }
+        
+    [Fact]
+    public void RegisterClient_ShouldRegisterSingleton_WhenLifetimeIsSingleton()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprClient(options => { }, ServiceLifetime.Singleton);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprClient1 = serviceProvider.GetService<DaprClient>();
+        var daprClient2 = serviceProvider.GetService<DaprClient>();
+
+        Assert.NotNull(daprClient1);
+        Assert.NotNull(daprClient2);
+        
+        Assert.Same(daprClient1, daprClient2);
+    }
+
+    [Fact]
+    public async Task RegisterDaprClient_ShouldRegisterScoped_WhenLifetimeIsScoped()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprClient(options => { }, ServiceLifetime.Scoped);
+        var serviceProvider = services.BuildServiceProvider();
+
+        await using var scope1 = serviceProvider.CreateAsyncScope();
+        var daprClient1 = scope1.ServiceProvider.GetService<DaprClient>();
+
+        await using var scope2 = serviceProvider.CreateAsyncScope();
+        var daprClient2 = scope2.ServiceProvider.GetService<DaprClient>();
+                
+        Assert.NotNull(daprClient1);
+        Assert.NotNull(daprClient2);
+        Assert.NotSame(daprClient1, daprClient2);
+    }
+
+    [Fact]
+    public void RegisterDaprClient_ShouldRegisterTransient_WhenLifetimeIsTransient()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprClient(options => { }, ServiceLifetime.Transient);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprClient1 = serviceProvider.GetService<DaprClient>();
+        var daprClient2 = serviceProvider.GetService<DaprClient>();
+
+        Assert.NotNull(daprClient1);
+        Assert.NotNull(daprClient2);
+        Assert.NotSame(daprClient1, daprClient2);
+    }
 
         
 #if NET8_0_OR_GREATER
@@ -96,9 +149,8 @@ namespace Dapr.AspNetCore.Test
         }
 #endif
 
-        private class TestConfigurationProvider
-        {
-            public bool GetCaseSensitivity() => false;
-        }
+    private class TestConfigurationProvider
+    {
+        public bool GetCaseSensitivity() => false;
     }
 }
