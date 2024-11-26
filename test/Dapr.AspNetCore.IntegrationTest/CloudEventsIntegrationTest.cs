@@ -143,47 +143,28 @@ namespace Dapr.AspNetCore.IntegrationTest
         [Fact]
         public async Task CanSendBinaryCloudEvent_WithContentType()
         {
-            var httpClient = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
+            using (var factory = new AppWebApplicationFactory())
             {
-                Content = new StringContent(
-                JsonSerializer.Serialize(
-                    new
-                    {
-                        name = "jimmy",
-                    }),
-                Encoding.UTF8)
-            };
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
             
-            var response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-            userInfo.Name.Should().Be("jimmy");
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
+                {
+                    Content = new StringContent(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            name = "jimmy",
+                        }),
+                    Encoding.UTF8)
+                };
+                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             
+                var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
             
-            // using (var factory = new AppWebApplicationFactory())
-            // {
-            //     var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-            //
-            //     var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
-            //     {
-            //         Content = new StringContent(
-            //         JsonSerializer.Serialize(
-            //             new
-            //             {
-            //                 name = "jimmy",
-            //             }),
-            //         Encoding.UTF8)
-            //     };
-            //     request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            //
-            //     var response = await httpClient.SendAsync(request);
-            //     response.EnsureSuccessStatusCode();
-            //
-            //     var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-            //     userInfo.Name.Should().Be("jimmy");
-            // }
+                var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
+                userInfo.Name.Should().Be("jimmy");
+            }
         }
     }
 }
