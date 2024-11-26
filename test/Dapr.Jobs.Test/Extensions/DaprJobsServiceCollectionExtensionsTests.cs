@@ -13,9 +13,9 @@
 
 using System;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Dapr.Jobs.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Dapr.Jobs.Test.Extensions;
 
@@ -76,6 +76,58 @@ public class DaprJobsServiceCollectionExtensionsTest
         Assert.True(client.apiTokenHeader.HasValue);
         Assert.Equal("dapr-api-token", client.apiTokenHeader.Value.Key);
         Assert.Equal("abcdef", client.apiTokenHeader.Value.Value);
+    }
+    
+    [Fact]
+    public void RegisterJobsClient_ShouldRegisterSingleton_WhenLifetimeIsSingleton()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprJobsClient(options => { }, ServiceLifetime.Singleton);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprJobsClient1 = serviceProvider.GetService<DaprJobsClient>();
+        var daprJobsClient2 = serviceProvider.GetService<DaprJobsClient>();
+
+        Assert.NotNull(daprJobsClient1);
+        Assert.NotNull(daprJobsClient2);
+        
+        Assert.Same(daprJobsClient1, daprJobsClient2);
+    }
+
+    [Fact]
+    public async Task RegisterJobsClient_ShouldRegisterScoped_WhenLifetimeIsScoped()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprJobsClient(options => { }, ServiceLifetime.Scoped);
+        var serviceProvider = services.BuildServiceProvider();
+
+        await using var scope1 = serviceProvider.CreateAsyncScope();
+        var daprJobsClient1 = scope1.ServiceProvider.GetService<DaprJobsClient>();
+
+        await using var scope2 = serviceProvider.CreateAsyncScope();
+        var daprJobsClient2 = scope2.ServiceProvider.GetService<DaprJobsClient>();
+                
+        Assert.NotNull(daprJobsClient1);
+        Assert.NotNull(daprJobsClient2);
+        Assert.NotSame(daprJobsClient1, daprJobsClient2);
+    }
+
+    [Fact]
+    public void RegisterJobsClient_ShouldRegisterTransient_WhenLifetimeIsTransient()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprJobsClient(options => { }, ServiceLifetime.Transient);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprJobsClient1 = serviceProvider.GetService<DaprJobsClient>();
+        var daprJobsClient2 = serviceProvider.GetService<DaprJobsClient>();
+
+        Assert.NotNull(daprJobsClient1);
+        Assert.NotNull(daprJobsClient2);
+        Assert.NotSame(daprJobsClient1, daprJobsClient2);
     }
 
     private class TestSecretRetriever
