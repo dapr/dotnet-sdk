@@ -251,6 +251,12 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         //Each time a message is received from the stream, push it into the topic messages channel
         await foreach (var response in stream.ResponseStream.ReadAllAsync(cancellationToken))
         {
+            //https://github.com/dapr/dotnet-sdk/issues/1412 reports that this is sometimes null
+            if (response?.EventMessage is null || response.InitialResponse is null)
+            {
+                return;
+            }
+            
             var message =
                 new TopicMessage(response.EventMessage.Id, response.EventMessage.Source, response.EventMessage.Type,
                     response.EventMessage.SpecVersion, response.EventMessage.DataContentType,
