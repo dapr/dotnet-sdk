@@ -115,20 +115,24 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 
         var stream = await GetStreamAsync(cancellationToken);
 
-        //Retrieve the messages from the sidecar and write to the messages channel
-        var fetchMessagesTask = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken);
+        //Retrieve the messages from the sidecar and write to the messages channel - start without awaiting so this isn't blocking
+        _ = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken)
+            .ContinueWith(HandleTaskCompletion, null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
 
         //Process the messages as they're written to either channel
-        var acknowledgementProcessorTask = ProcessAcknowledgementChannelMessagesAsync(stream, cancellationToken);
-        var topicMessageProcessorTask = ProcessTopicChannelMessagesAsync(cancellationToken);
+        _ = ProcessAcknowledgementChannelMessagesAsync(stream, cancellationToken).ContinueWith(HandleTaskCompletion,
+            null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        _ = ProcessTopicChannelMessagesAsync(cancellationToken).ContinueWith(HandleTaskCompletion, null,
+            cancellationToken,
+            TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+    }
 
-        try
+    private static void HandleTaskCompletion(Task task, object? state)
+    {
+        if (task.Exception != null)
         {
-            await Task.WhenAll(fetchMessagesTask, acknowledgementProcessorTask, topicMessageProcessorTask);
-        }
-        catch (OperationCanceledException)
-        {
-            // Will be cleaned up during DisposeAsync
+            throw task.Exception;
         }
     }
 
