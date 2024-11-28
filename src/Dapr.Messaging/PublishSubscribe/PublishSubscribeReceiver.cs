@@ -128,6 +128,15 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
 
+    /// <summary>
+    /// Exposed for testing purposes only.
+    /// </summary>
+    /// <param name="message">The test message to write.</param>
+    internal async Task WriteMessageToChannelAsync(TopicMessage message)
+    {
+        await topicMessagesChannel.Writer.WriteAsync(message);
+    }
+
     private static void HandleTaskCompletion(Task task, object? state)
     {
         if (task.Exception != null)
