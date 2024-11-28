@@ -60,6 +60,7 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var httpClientFactoryMock = new Mock<IHttpClientFactory>();      
         services.AddSingleton(httpClientFactoryMock.Object);
+        services.AddDaprPubSubClient();
         var serviceProvider = services.BuildServiceProvider();
       
         var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
