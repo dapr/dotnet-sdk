@@ -77,6 +77,11 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     private bool isDisposed;
 
+    // Internal property for testing purposes
+    internal Task TopicMessagesChannelCompletion => topicMessagesChannel.Reader.Completion;
+    // Internal property for testing purposes
+    internal Task AcknowledgementsChannelCompletion => acknowledgementsChannel.Reader.Completion;
+
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
     /// </summary>
@@ -135,6 +140,11 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     internal async Task WriteMessageToChannelAsync(TopicMessage message)
     {
         await topicMessagesChannel.Writer.WriteAsync(message);
+    }
+
+    internal async Task WriteAcknowledgementToChannelAsync(TopicAcknowledgement acknowledgement)
+    {
+        await acknowledgementsChannel.Writer.WriteAsync(acknowledgement);
     }
 
     private static void HandleTaskCompletion(Task task, object? state)
@@ -327,6 +337,6 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     /// <param name="MessageId">The identifier of the message.</param>
     /// <param name="Action">The action to take on the message in the acknowledgement request.</param>
-    private sealed record TopicAcknowledgement(string MessageId, TopicEventResponse.Types.TopicEventResponseStatus Action);
+    internal sealed record TopicAcknowledgement(string MessageId, TopicEventResponse.Types.TopicEventResponseStatus Action);
 }
 
