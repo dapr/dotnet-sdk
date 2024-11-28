@@ -1,6 +1,7 @@
 ﻿using Dapr.Messaging.PublishSubscribe;
 using Grpc.Core;
 using Moq;
+using NuGet.Frameworks;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
 namespace Dapr.Messaging.Test.PublishSubscribe;
@@ -18,7 +19,6 @@ public class PublishSubscribeReceiverTests
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };
         
-        //var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Drop));
         var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
         
         //Mock the daprClient
@@ -43,5 +43,25 @@ public class PublishSubscribeReceiverTests
         stopwatch.Stop();
 
         Assert.True(stopwatch.ElapsedMilliseconds < 100, "SubscribeAsync should return immediately and not block");
+    }
+
+    [Fact]
+    public void Constructor_ShouldInitializeCorrectly()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options =
+            new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+            {
+                MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
+            };
+        
+        var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
+        
+        //Mock the daprClient
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var receiver =
+            new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, mockDaprClient.Object);
+        Assert.NotNull(receiver);
     }
 }
