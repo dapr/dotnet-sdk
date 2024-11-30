@@ -278,7 +278,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             //Skip the initial response - we only want to pass along TopicMessage payloads to developers
             if (response?.EventMessage is null)
             {
-                return;
+                continue;
             }
             
             var message =
