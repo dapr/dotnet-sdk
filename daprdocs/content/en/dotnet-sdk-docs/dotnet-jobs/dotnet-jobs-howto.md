@@ -16,10 +16,17 @@ In the .NET example project:
 - The main [`Program.cs`](https://github.com/dapr/dotnet-sdk/tree/master/examples/Jobs/JobsSample/Program.cs) file comprises the entirety of this demonstration.
 
 ## Prerequisites
-- [.NET 6+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost)
-- [Dapr Jobs .NET SDK](https://github.com/dapr/dotnet-sdk)
+- [.NET 6](https://dotnet.microsoft.com/download), [.NET 8](https://dotnet.microsoft.com/download) or [.NET 9](https://dotnet.microsoft.com/download) installed
+
+{{% alert title="Note" color="primary" %}}
+
+Note that while .NET 6 is generally supported as the minimum .NET requirement across the Dapr .NET SDK packages
+and .NET 7 is the minimally supported version of .NET by Dapr.Workflows in Dapr v1.15, only .NET 8 and .NET 9 wil
+continue to be supported by Dapr in v1.16 and later.
+
+{{% /alert %}}
 
 ## Set up the environment
 Clone the [.NET SDK repo](https://github.com/dapr/dotnet-sdk).
