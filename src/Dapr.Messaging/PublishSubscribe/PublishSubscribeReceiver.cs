@@ -275,7 +275,8 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         await foreach (var response in stream.ResponseStream.ReadAllAsync(cancellationToken))
         {
             //https://github.com/dapr/dotnet-sdk/issues/1412 reports that this is sometimes null
-            if (response?.EventMessage is null || response.InitialResponse is null)
+            //Skip the initial response - we only want to pass along TopicMessage payloads to developers
+            if (response?.EventMessage is null)
             {
                 return;
             }
