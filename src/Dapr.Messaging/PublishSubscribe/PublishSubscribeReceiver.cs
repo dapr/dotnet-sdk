@@ -287,7 +287,8 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
                     response.EventMessage.Topic, response.EventMessage.PubsubName)
                 {
                     Path = response.EventMessage.Path,
-                    Extensions = response.EventMessage.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value)
+                    Extensions = response.EventMessage.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value),
+                    Data = response.EventMessage.Data.ToByteArray()
                 };
 
             try
