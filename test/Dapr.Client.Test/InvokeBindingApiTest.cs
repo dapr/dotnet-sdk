@@ -209,7 +209,7 @@ namespace Dapr.Client.Test
                 return await daprClient.InvokeBindingAsync<InvokeRequest, Widget>("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
             });
 
-            var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
+            await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
             var ex = await Assert.ThrowsAsync<DaprException>(async () => 
             {
                 await request.CompleteWithMessageAsync(response);
