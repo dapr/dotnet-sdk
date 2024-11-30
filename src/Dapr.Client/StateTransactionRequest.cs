@@ -14,8 +14,6 @@
 namespace Dapr.Client
 {
     using System.Collections.Generic;
-    using System.Threading;
-    using Dapr.Client;
 
     /// <summary>
     /// Represents a single request in in a StateTransaction.

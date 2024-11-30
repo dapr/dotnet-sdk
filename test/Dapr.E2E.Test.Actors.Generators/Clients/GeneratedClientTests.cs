@@ -100,7 +100,7 @@ public class GeneratedClientTests
 
         var client = new ClientActorClient(actorProxy);
 
-        var result = await client.GetStateAsync(cancellationTokenSource.Token);
+        await client.GetStateAsync(cancellationTokenSource.Token);
 
         await client.SetStateAsync(new ClientState("updated state"), cancellationTokenSource.Token);
     }
