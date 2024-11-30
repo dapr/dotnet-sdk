@@ -19,8 +19,6 @@ using Microsoft.DurableTask.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-#nullable enable
-
 namespace Dapr.Workflow;
 
 /// <summary>
@@ -28,61 +26,71 @@ namespace Dapr.Workflow;
 /// </summary>
 internal sealed class DaprWorkflowClientBuilderFactory
 {
-    private readonly IConfiguration _configuration;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IServiceCollection _services;
+    private readonly IConfiguration? configuration;
+    private readonly IHttpClientFactory httpClientFactory;
     
     /// <summary>
     /// Constructor used to inject the required types into the factory.
     /// </summary>
-    public DaprWorkflowClientBuilderFactory(IConfiguration configuration, IHttpClientFactory httpClientFactory, IServiceCollection services)
+    public DaprWorkflowClientBuilderFactory(IConfiguration? configuration, IHttpClientFactory httpClientFactory)
     {
-        _configuration = configuration;
-        _httpClientFactory = httpClientFactory;
-        _services = services;
+        this.configuration = configuration;
+        this.httpClientFactory = httpClientFactory;
     }
-    
+
     /// <summary>
     /// Responsible for building the client itself.
     /// </summary>
     /// <returns></returns>
-    public void CreateClientBuilder(Action<WorkflowRuntimeOptions> configure)
+    public void CreateClientBuilder(IServiceCollection services, Action<WorkflowRuntimeOptions> configure)
     {
-        _services.AddDurableTaskClient(builder =>
+        services.AddDurableTaskClient(builder =>
         {
-            var apiToken = DaprDefaults.GetDefaultDaprApiToken(_configuration);
-            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(_configuration);
-            
-            var httpClient = _httpClientFactory.CreateClient();
+            WorkflowRuntimeOptions options = new();
+            configure.Invoke(options);
+
+            var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
+
+            var httpClient = httpClientFactory.CreateClient();
 
             if (!string.IsNullOrWhiteSpace(apiToken))
             {
-                httpClient.DefaultRequestHeaders.Add( "Dapr-Api-Token", apiToken);    
+                httpClient.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
             }
 
-            builder.UseGrpc(GrpcChannel.ForAddress(grpcEndpoint, new GrpcChannelOptions { HttpClient = httpClient }));
+            var channelOptions = options.GrpcChannelOptions ?? new GrpcChannelOptions
+            {
+                HttpClient = httpClient
+            };
+
+            builder.UseGrpc(GrpcChannel.ForAddress(grpcEndpoint, channelOptions));
             builder.RegisterDirectly();
         });
 
-        _services.AddDurableTaskWorker(builder =>
+        services.AddDurableTaskWorker(builder =>
         {
             WorkflowRuntimeOptions options = new();
-            configure?.Invoke(options);
+            configure.Invoke(options);
 
-            var apiToken = DaprDefaults.GetDefaultDaprApiToken(_configuration);
-            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(_configuration);
+            var apiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+            var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
 
             if (!string.IsNullOrEmpty(grpcEndpoint))
             {
-                var httpClient = _httpClientFactory.CreateClient();
+                var httpClient = httpClientFactory.CreateClient();
 
                 if (!string.IsNullOrWhiteSpace(apiToken))
                 {
                     httpClient.DefaultRequestHeaders.Add("Dapr-Api-Token", apiToken);
                 }
 
-                builder.UseGrpc(
-                    GrpcChannel.ForAddress(grpcEndpoint, new GrpcChannelOptions { HttpClient = httpClient }));
+                var channelOptions = options.GrpcChannelOptions ?? new GrpcChannelOptions
+                {
+                    HttpClient = httpClient
+                };
+
+                builder.UseGrpc(GrpcChannel.ForAddress(grpcEndpoint, channelOptions));
             }
             else
             {
