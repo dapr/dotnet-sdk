@@ -86,6 +86,8 @@ public sealed class ActorRegistrationGenerator : IIncrementalGenerator
         return $@"
 using Microsoft.Extensions.DependencyInjection;
 using Dapr.Actors.Runtime;
+using Dapr.Actors;
+using Dapr.Actors.AspNetCore;
 
 /// <summary>
 /// Extension methods for registering Dapr actors.
