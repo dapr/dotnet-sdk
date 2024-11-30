@@ -32,16 +32,32 @@ public static class DaprServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection" />.</param>
     /// <param name="configure"></param>
-    public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null)
+    /// <param name="lifetime">The lifetime of the registered services.</param>
+    public static void AddDaprClient(this IServiceCollection services, Action<DaprClientBuilder>? configure = null,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
 
-        services.TryAddSingleton(serviceProvider =>
+        var registration = new Func<IServiceProvider, DaprClient>((serviceProvider) =>
         {
             var builder = CreateDaprClientBuilder(serviceProvider);
             configure?.Invoke(builder);
             return builder.Build();
         });
+        
+        switch (lifetime)
+        {
+            case ServiceLifetime.Scoped:
+                services.TryAddScoped(registration);
+                break;
+            case ServiceLifetime.Transient:
+                services.TryAddTransient(registration);
+                break;
+            case ServiceLifetime.Singleton:
+            default:
+                services.TryAddSingleton(registration);
+                break;
+        }
     }
 
     /// <summary>
@@ -50,17 +66,32 @@ public static class DaprServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection"/>.</param>
     /// <param name="configure"></param>
+    /// <param name="lifetime">The lifetime of the registered services.</param>
     public static void AddDaprClient(this IServiceCollection services,
-        Action<IServiceProvider, DaprClientBuilder> configure)
+        Action<IServiceProvider, DaprClientBuilder> configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
-
-        services.TryAddSingleton(serviceProvider =>
+        
+        var registration = new Func<IServiceProvider, DaprClient>((serviceProvider) =>
         {
             var builder = CreateDaprClientBuilder(serviceProvider);
             configure?.Invoke(serviceProvider, builder);
             return builder.Build();
         });
+
+        switch (lifetime)
+        {
+            case ServiceLifetime.Singleton:
+                services.TryAddSingleton(registration);
+                break;
+            case ServiceLifetime.Scoped:
+                services.TryAddScoped(registration);
+                break;
+            case ServiceLifetime.Transient:
+            default:
+                services.TryAddTransient(registration);
+                break;
+        }
     }
     
     private static DaprClientBuilder CreateDaprClientBuilder(IServiceProvider serviceProvider)

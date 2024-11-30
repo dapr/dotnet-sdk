@@ -38,7 +38,7 @@ namespace Dapr.E2E.Test
 
         public void Run()
         {
-            Console.WriteLine($"Running command: {this.Command}");
+            Console.WriteLine($@"Running command: {this.Command}");
             var escapedArgs = Command.Replace("\"", "\\\"");
             var process = new Process()
             {
