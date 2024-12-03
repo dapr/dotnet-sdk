@@ -67,9 +67,6 @@ public sealed class DaprJobSchedule
     /// <returns></returns>
     public static DaprJobSchedule FromDateTime(DateTimeOffset scheduledTime)
     {
-#if NET6_0
-        ArgumentNullException.ThrowIfNull(scheduledTime, nameof(scheduledTime));
-#endif
         return new DaprJobSchedule(scheduledTime.ToString("O"));
     }
     
@@ -91,9 +88,6 @@ public sealed class DaprJobSchedule
     /// <param name="duration">The duration interval.</param>
     public static DaprJobSchedule FromDuration(TimeSpan duration)
     {
-#if NET6_0
-        ArgumentNullException.ThrowIfNull(duration, nameof(duration));
-#endif
         return new DaprJobSchedule(duration.ToDurationString());
     }
 
