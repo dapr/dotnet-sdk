@@ -39,9 +39,10 @@ public class DaprJobsServiceCollectionExtensionsTest
 
         var app = services.BuildServiceProvider();
 
-        var jobsClient = app.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
-        Assert.NotNull(jobsClient!.apiTokenHeader);
-        Assert.Equal(apiToken, jobsClient.apiTokenHeader.Value.Value);
+        var jobsClient = app.GetRequiredService<DaprJobsClient>() as DaprJobsGrpcClient;
+        
+        Assert.NotNull(jobsClient!.DaprApiToken);
+        Assert.Equal(apiToken, jobsClient.DaprApiToken);
     }
     
     [Fact]
@@ -59,9 +60,9 @@ public class DaprJobsServiceCollectionExtensionsTest
 
         var serviceProvider = services.BuildServiceProvider();
         var daprJobClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
-
-        Assert.Null(daprJobClient!.apiTokenHeader);
-        Assert.False(daprJobClient.httpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
+        
+        Assert.NotNull(daprJobClient!.HttpClient);
+        Assert.False(daprJobClient.HttpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
     }
 
     [Fact]
@@ -88,8 +89,8 @@ public class DaprJobsServiceCollectionExtensionsTest
         services.AddDaprJobsClient((provider, builder) =>
         {
             var configProvider = provider.GetRequiredService<TestSecretRetriever>();
-            var daprApiToken = configProvider.GetApiTokenValue();
-            builder.UseDaprApiToken(daprApiToken);
+            var apiToken = TestSecretRetriever.GetApiTokenValue();
+            builder.UseDaprApiToken(apiToken);
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -97,10 +98,15 @@ public class DaprJobsServiceCollectionExtensionsTest
 
         //Validate it's set on the GrpcClient - note that it doesn't get set on the HttpClient
         Assert.NotNull(client);
-        Assert.NotNull(client.apiTokenHeader);
-        Assert.True(client.apiTokenHeader.HasValue);
-        Assert.Equal("dapr-api-token", client.apiTokenHeader.Value.Key);
-        Assert.Equal("abcdef", client.apiTokenHeader.Value.Value);
+        Assert.NotNull(client.DaprApiToken);
+        Assert.Equal("abcdef", client.DaprApiToken);
+        Assert.NotNull(client.HttpClient);
+
+        if (!client.HttpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var daprApiToken))
+        {
+            Assert.Fail();
+        }
+        Assert.Equal("abcdef", daprApiToken.FirstOrDefault());
     }
     
     [Fact]
@@ -157,6 +163,6 @@ public class DaprJobsServiceCollectionExtensionsTest
 
     private class TestSecretRetriever
     {
-        public string GetApiTokenValue() => "abcdef";
+        public static string GetApiTokenValue() => "abcdef";
     }
 }
