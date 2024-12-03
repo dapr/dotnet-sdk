@@ -32,9 +32,9 @@ public sealed record ConversationOptions(string? ConversationId = null)
     /// <summary>
     /// The metadata passing to the conversation components.
     /// </summary>
-    public Dictionary<string, string> Metadata { get; init; } = new();
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>();
     /// <summary>
     /// Parameters for all custom fields.
     /// </summary>
-    public Dictionary<string, Any> Parameters { get; init; } = new();
+    public IReadOnlyDictionary<string, Any> Parameters { get; init; } = new Dictionary<string, Any>();
 }
