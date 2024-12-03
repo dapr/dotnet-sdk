@@ -29,7 +29,7 @@ public static class DaprJobsServiceCollectionExtensions
     /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/> using injected services.</param>
     /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobsClientBuilder>? configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobsClientBuilder>? configure = null, ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 

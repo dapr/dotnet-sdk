@@ -12,9 +12,12 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Dapr.Jobs.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Jobs.Test.Extensions;
@@ -22,12 +25,34 @@ namespace Dapr.Jobs.Test.Extensions;
 public class DaprJobsServiceCollectionExtensionsTest
 {
     [Fact]
+    public void AddDaprJobsClient_FromIConfiguration()
+    {
+        const string apiToken = "abc123";
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string> { { "DAPR_API_TOKEN", apiToken } })
+            .Build();
+        
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+
+        services.AddDaprJobsClient();
+
+        var app = services.BuildServiceProvider();
+
+        var jobsClient = app.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
+        Assert.NotNull(jobsClient!.apiTokenHeader);
+        Assert.Equal(apiToken, jobsClient.apiTokenHeader.Value.Value);
+    }
+    
+    [Fact]
     public void AddDaprJobsClient_RegistersDaprClientOnlyOnce()
     {
         var services = new ServiceCollection();
 
-        var clientBuilder = new Action<DaprJobsClientBuilder>(builder =>
-            builder.UseDaprApiToken("abc"));
+        var clientBuilder = new Action<IServiceProvider, DaprJobsClientBuilder>((sp, builder) =>
+        {
+            builder.UseDaprApiToken("abc");
+        });
 
         services.AddDaprJobsClient(); //Sets a default API token value of an empty string
         services.AddDaprJobsClient(clientBuilder); //Sets the API token value
@@ -83,7 +108,7 @@ public class DaprJobsServiceCollectionExtensionsTest
     {
         var services = new ServiceCollection();
 
-        services.AddDaprJobsClient(options => { }, ServiceLifetime.Singleton);
+        services.AddDaprJobsClient((serviceProvider, options) => { }, ServiceLifetime.Singleton);
         var serviceProvider = services.BuildServiceProvider();
 
         var daprJobsClient1 = serviceProvider.GetService<DaprJobsClient>();
@@ -100,7 +125,7 @@ public class DaprJobsServiceCollectionExtensionsTest
     {
         var services = new ServiceCollection();
 
-        services.AddDaprJobsClient(options => { }, ServiceLifetime.Scoped);
+        services.AddDaprJobsClient((serviceProvider, options) => { }, ServiceLifetime.Scoped);
         var serviceProvider = services.BuildServiceProvider();
 
         await using var scope1 = serviceProvider.CreateAsyncScope();
@@ -119,7 +144,7 @@ public class DaprJobsServiceCollectionExtensionsTest
     {
         var services = new ServiceCollection();
 
-        services.AddDaprJobsClient(options => { }, ServiceLifetime.Transient);
+        services.AddDaprJobsClient((serviceProvider, options) => { }, ServiceLifetime.Transient);
         var serviceProvider = services.BuildServiceProvider();
 
         var daprJobsClient1 = serviceProvider.GetService<DaprJobsClient>();
