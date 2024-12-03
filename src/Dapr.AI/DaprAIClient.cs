@@ -12,8 +12,6 @@
 // ------------------------------------------------------------------------
 
 using Dapr.AI.Conversation;
-using Dapr.AI.Conversation.Models.Request;
-using Dapr.AI.Conversation.Models.Response;
 
 namespace Dapr.AI;
 

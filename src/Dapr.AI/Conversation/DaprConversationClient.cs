@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.AI.Conversation.Models.Request;
-using Dapr.AI.Conversation.Models.Response;
 using Dapr.Common.Extensions;
 using P = Dapr.Client.Autogen.Grpc.v1;
 

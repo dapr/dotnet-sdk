@@ -11,11 +11,18 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AI.Conversation.Models.Response;
+using Google.Protobuf.WellKnownTypes;
+
+namespace Dapr.AI.Conversation;
 
 /// <summary>
-/// The response for a conversation.
+/// The result for a single conversational input.
 /// </summary>
-/// <param name="Outputs">The collection of conversation results.</param>
-/// <param name="ConversationId">The identifier of an existing or newly created conversation.</param>
-public record DaprConversationResponse(IReadOnlyList<DaprConversationResult> Outputs, string? ConversationId = null);
+/// <param name="Result">The result for one conversation input.</param>
+public record DaprConversationResult(string Result)
+{
+    /// <summary>
+    /// Parameters for all custom fields.
+    /// </summary>
+    public IReadOnlyDictionary<string, Any> Parameters { get; init; } = new Dictionary<string, Any>();
+}

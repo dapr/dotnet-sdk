@@ -2,7 +2,7 @@
 using System.Text.Json.Serialization;
 using Dapr.Common.JsonConverters;
 
-namespace Dapr.AI.Conversation.Models.Request;
+namespace Dapr.AI.Conversation;
 
 /// <summary>
 /// Represents who 

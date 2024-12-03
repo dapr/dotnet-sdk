@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AI.Conversation.Models.Request;
+namespace Dapr.AI.Conversation;
 
 /// <summary>
 /// Represents an input for the Dapr Conversational API.
