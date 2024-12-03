@@ -24,6 +24,17 @@ namespace Dapr.Common.JsonConverters;
 /// <typeparam name="T">The enum type to convert.</typeparam>
 internal sealed class GenericEnumJsonConverter<T> : JsonConverter<T> where T : struct, Enum
 {
+    private static readonly Dictionary<string, T> enumMemberCache = new();
+
+    static GenericEnumJsonConverter()
+    {
+        foreach (var enumValue in Enum.GetValues<T>())
+        {
+            var enumMemberValue = enumValue.GetValueFromEnumMember();
+            enumMemberCache[enumMemberValue] = enumValue;
+        }
+    }
+    
     /// <summary>Reads and converts the JSON to type <typeparamref name="T" />.</summary>
     /// <param name="reader">The reader.</param>
     /// <param name="typeToConvert">The type to convert.</param>
@@ -34,19 +45,12 @@ internal sealed class GenericEnumJsonConverter<T> : JsonConverter<T> where T : s
         //Get the string value from the JSON reader
         var value = reader.GetString();
 
-        //Loop through all the enum values
-        foreach (var enumValue in Enum.GetValues<T>())
+        //Try pulling the value from the cache
+        if (value is not null && enumMemberCache.TryGetValue(value, out var enumValue))
         {
-            //Get the value from the EnumMember attribute, if any
-            var enumMemberValue = enumValue.GetValueFromEnumMember();
-
-            //If the values match, return the enum value
-            if (value == enumMemberValue)
-            {
-                return enumValue;
-            }
+            return enumValue;
         }
-
+        
         //If no match found, throw an exception
         throw new JsonException($"Invalid valid for {typeToConvert.Name}: {value}");
     }
