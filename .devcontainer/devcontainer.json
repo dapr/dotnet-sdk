@@ -10,11 +10,15 @@
 		"ghcr.io/devcontainers/features/azure-cli:1": {
 			"version": "2.38"
 		},
-		"ghcr.io/devcontainers/features/docker-from-docker:1": {
-			"version": "20.10"
+		"ghcr.io/devcontainers/features/docker-in-docker": {
+			"version": "latest"
 		},
-		"ghcr.io/devcontainers/features/dotnet:1": {
-			"version": "6.0"
+		"ghcr.io/devcontainers/features/dotnet": {
+			"version": "8.0",
+			"additionalVersions": [
+				"6.0",
+				"7.0"
+			]
 		},
 		"ghcr.io/devcontainers/features/github-cli:1": {
 			"version": "2"
@@ -32,7 +36,8 @@
 		"ms-dotnettools.csharp",
 		"ms-dotnettools.vscode-dotnet-runtime",
 		"ms-azuretools.vscode-dapr",
-		"GitHub.copilot"
+		"GitHub.copilot",
+		"ms-dotnettools.csdevkit"
 	],
 	"forwardPorts": [
 		3000,
@@ -42,10 +47,9 @@
 		5000,
 		5007
 	],
-	"postCreateCommand": ".devcontainer/localinit.sh",
+	"postCreateCommand": "chmod +x .devcontainer/localinit.sh && .devcontainer/localinit.sh",
 	"remoteUser": "vscode",
 	"hostRequirements": {
 		"memory": "8gb"
 	}
-  }
-  
+}
