@@ -142,12 +142,14 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         await topicMessagesChannel.Writer.WriteAsync(message);
     }
 
+    //Exposed for testing purposes only
     internal async Task WriteAcknowledgementToChannelAsync(TopicAcknowledgement acknowledgement)
     {
         await acknowledgementsChannel.Writer.WriteAsync(acknowledgement);
     }
 
-    private static void HandleTaskCompletion(Task task, object? state)
+    //Exposed for testing purposes only
+    internal static void HandleTaskCompletion(Task task, object? state)
     {
         if (task.Exception != null)
         {

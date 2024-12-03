@@ -191,4 +191,16 @@ public class PublishSubscribeReceiverTests
         Assert.True(receiver.TopicMessagesChannelCompletion.IsCompleted);
         Assert.True(receiver.AcknowledgementsChannelCompletion.IsCompleted);
     }
+    
+    [Fact]
+    public void HandleTaskCompletion_ShouldThrowException_WhenTaskHasException()
+    {
+        var task = Task.FromException(new InvalidOperationException("Test exception"));
+
+        var exception = Assert.Throws<AggregateException>(() => 
+            PublishSubscribeReceiver.HandleTaskCompletion(task, null));
+            
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+        Assert.Equal("Test exception", exception.InnerException.Message);
+    }
 }
