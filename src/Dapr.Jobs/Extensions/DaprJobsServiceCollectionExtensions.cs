@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -38,8 +39,9 @@ public static class DaprJobsServiceCollectionExtensions
         var registration = new Func<IServiceProvider, DaprJobsClient>(serviceProvider =>
         {
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+            var configuration = serviceProvider.GetService<IConfiguration>();
 
-            var builder = new DaprJobsClientBuilder();
+            var builder = new DaprJobsClientBuilder(configuration);
             builder.UseHttpClientFactory(httpClientFactory);
 
             configure?.Invoke(serviceProvider, builder);
