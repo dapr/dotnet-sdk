@@ -1,6 +1,5 @@
 ﻿using Dapr.AI.Conversation;
 using Dapr.AI.Conversation.Extensions;
-using Dapr.AI.Conversation.Models.Request;
 
 var builder = WebApplication.CreateBuilder(args);
 
