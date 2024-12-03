@@ -1,7 +1,7 @@
 {
   "_comment": "This policy allows the 8.0.100 SDK or patches in that family.",
   "sdk": {
-    "version": "9.0.100-rc.2",
+    "version": "9.0.100",
     "rollForward": "latestFeature"
   }
 }
