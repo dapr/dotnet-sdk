@@ -23,7 +23,7 @@ Dapr offers a variety of packages to help with the development of .NET applicati
 {{% alert title="Note" color="primary" %}}
 
 Note that while .NET 6 is generally supported as the minimum .NET requirement across the Dapr .NET SDK packages
-and .NET 7 is the minimally supported version of .NET by Dapr.Workflows in Dapr v1.15, only .NET 8 and .NET 9 wil
+and .NET 7 is the minimally supported version of .NET by Dapr.Workflows in Dapr v1.15, only .NET 8 and .NET 9 will
 continue to be supported by Dapr in v1.16 and later.
 
 {{% /alert %}}
