@@ -12,9 +12,11 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using Dapr.AI.Conversation;
 using Dapr.AI.Conversation.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.AI.Test.Conversation.Extensions;
@@ -32,7 +34,7 @@ public class DaprAiConversationBuilderExtensionsTest
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
 
-        services.AddDaprJobsClient();
+        services.AddDaprAiConversation();
 
         var app = services.BuildServiceProvider();
 
