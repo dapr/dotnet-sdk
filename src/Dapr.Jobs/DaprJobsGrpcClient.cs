@@ -116,7 +116,7 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
 
         try
         {
-            await Dapr.Client.ScheduleJobAlpha1Async(envelope, grpcCallOptions).ConfigureAwait(false);
+            await Client.ScheduleJobAlpha1Async(envelope, grpcCallOptions).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
