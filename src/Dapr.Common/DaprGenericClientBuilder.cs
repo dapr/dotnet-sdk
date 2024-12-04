@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Reflection;
 using System.Text.Json;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
@@ -183,8 +184,9 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// Builds out the inner DaprClient that provides the core shape of the
     /// runtime gRPC client used by the consuming package.
     /// </summary>
+    /// <param name="assembly">The assembly the dependencies are being built for.</param>
     /// <exception cref="InvalidOperationException"></exception>
-    protected (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint) BuildDaprClientDependencies()
+    protected (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken) BuildDaprClientDependencies(Assembly assembly)
     {
         var grpcEndpoint = new Uri(this.GrpcEndpoint);
         if (grpcEndpoint.Scheme != "http" && grpcEndpoint.Scheme != "https")
@@ -197,22 +199,48 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
             // Set correct switch to make secure gRPC service calls. This switch must be set before creating the GrpcChannel.
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
         }
-
+        
         var httpEndpoint = new Uri(this.HttpEndpoint);
         if (httpEndpoint.Scheme != "http" && httpEndpoint.Scheme != "https")
         {
             throw new InvalidOperationException("The HTTP endpoint must use http or https.");
         }
 
-        var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);
+        //Configure the HTTP client
+        var httpClient = ConfigureHttpClient(assembly);
+        this.GrpcChannelOptions.HttpClient = httpClient;
+        
+        var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);        
+        return (channel, httpClient, httpEndpoint, this.DaprApiToken);
+    }
 
+    /// <summary>
+    /// Configures the HTTP client.
+    /// </summary>
+    /// <param name="assembly">The assembly the user agent is built from.</param>
+    /// <returns>The HTTP client to interact with the Dapr runtime with.</returns>
+    private HttpClient ConfigureHttpClient(Assembly assembly)
+    {
         var httpClient = HttpClientFactory is not null ? HttpClientFactory() : new HttpClient();
+        
+        //Set the timeout as necessary
         if (this.Timeout > TimeSpan.Zero)
         {
             httpClient.Timeout = this.Timeout;
         }
+        
+        //Set the user agent
+        var userAgent = DaprClientUtilities.GetUserAgent(assembly);
+        httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent.ToString());
+        
+        //Set the API token
+        var apiTokenHeader = DaprClientUtilities.GetDaprApiTokenHeader(this.DaprApiToken);
+        if (apiTokenHeader is not null)
+        {
+            httpClient.DefaultRequestHeaders.Add(apiTokenHeader.Value.Key, apiTokenHeader.Value.Value);
+        }
 
-        return (channel, httpClient, httpEndpoint);
+        return httpClient;
     }
 
     /// <summary>

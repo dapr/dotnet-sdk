@@ -22,6 +22,27 @@ namespace Dapr.AI.Test.Conversation.Extensions;
 public class DaprAiConversationBuilderExtensionsTest
 {
     [Fact]
+    public void AddDaprConversationClient_FromIConfiguration()
+    {
+        const string apiToken = "abc123";
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string> { { "DAPR_API_TOKEN", apiToken } })
+            .Build();
+        
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+
+        services.AddDaprJobsClient();
+
+        var app = services.BuildServiceProvider();
+
+        var conversationClient = app.GetRequiredService<DaprConversationClient>() as DaprConversationClient;
+        
+        Assert.NotNull(conversationClient!.DaprApiToken);
+        Assert.Equal(apiToken, conversationClient.DaprApiToken);
+    }
+    
+    [Fact]
     public void AddDaprAiConversation_WithoutConfigure_ShouldAddServices()
     {
         var services = new ServiceCollection();
