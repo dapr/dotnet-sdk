@@ -13,7 +13,7 @@
 
 using Dapr.Actors.Generators;
 
-namespace ActorClient
+namespace GeneratedActor
 {
     [GenerateActorClient]
     internal interface IGenericClientActor<TGenericType1, TGenericType2>
