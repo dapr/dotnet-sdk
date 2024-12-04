@@ -40,14 +40,16 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <remarks>
     /// Property exposed for testing purposes.
     /// </remarks>
-    private readonly P.DaprClient daprClient;
+    private readonly P.DaprClient Client;
 
     /// <summary>
     /// Creates a new instance of a <see cref="DaprPublishSubscribeGrpcClient"/>
     /// </summary>
-    public DaprPublishSubscribeGrpcClient(P.DaprClient client)
+    public DaprPublishSubscribeGrpcClient(P.DaprClient client, HttpClient httpClient, string? daprApiToken)
     {
-        daprClient = client;
+        Client = client;
+        this.HttpClient = httpClient;
+        this.DaprApiToken = daprApiToken;
     }
 
     /// <summary>
@@ -61,7 +63,7 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <returns></returns>
     public override async Task<IAsyncDisposable> SubscribeAsync(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken = default)
     {
-        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, daprClient);
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, Client);
         await receiver.SubscribeAsync(cancellationToken);
         return receiver;
     }
