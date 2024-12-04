@@ -13,21 +13,25 @@
 
 namespace Dapr.Workflow
 {
+    using System;
     using Microsoft.DurableTask;
 
     /// <summary>
     /// Defines properties and methods for task activity context objects.
     /// </summary>
-    public abstract class WorkflowActivityContext
+    public class DaprWorkflowActivityContext : WorkflowActivityContext
     {
-        /// <summary>
-        /// Gets the name of the activity.
-        /// </summary>
-        public abstract TaskName Name { get; }
+        readonly TaskActivityContext innerContext;
 
-        /// <summary>
-        /// Gets the unique ID of the current workflow instance.
-        /// </summary>
-        public abstract string InstanceId {  get; }
+        internal DaprWorkflowActivityContext(TaskActivityContext innerContext)
+        {
+            this.innerContext = innerContext ?? throw new ArgumentNullException(nameof(innerContext));
+        }
+
+        /// <inheritdoc/>
+        public override TaskName Name => this.innerContext.Name;
+
+        /// <inheritdoc/>
+        public override string InstanceId => this.innerContext.InstanceId;
     }
 }
