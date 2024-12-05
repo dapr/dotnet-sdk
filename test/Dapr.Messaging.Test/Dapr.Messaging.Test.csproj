@@ -25,6 +25,7 @@
         <PackageReference Include="Grpc.Net.Client" />
         <PackageReference Include="protobuf-net.Grpc.AspNetCore" />
         <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     </ItemGroup>
 
     <ItemGroup>
