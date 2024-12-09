@@ -97,7 +97,7 @@ public sealed class DaprConversationClient : DaprAIClient
             {
                 ScrubPII = input.ScrubPII,
                 Message = input.Message,
-                Role = input.Role?.GetValueFromEnumMember() ?? null
+                Role = input.Role.GetValueFromEnumMember()
             });
         }
 
