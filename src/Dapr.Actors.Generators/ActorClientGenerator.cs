@@ -161,12 +161,23 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 .Append(SyntaxKind.SealedKeyword)
                 .Select(sk => SyntaxFactory.Token(sk));
 
-            var actorClientClassDeclaration = SyntaxFactory.ClassDeclaration(descriptor.ClientTypeName)
-                .WithModifiers(SyntaxFactory.TokenList(actorClientClassModifiers))
-                .WithMembers(SyntaxFactory.List(actorMembers))
-                .WithBaseList(SyntaxFactory.BaseList(
-                    SyntaxFactory.Token(SyntaxKind.ColonToken),
-                    SyntaxFactory.SeparatedList<BaseTypeSyntax>(new[] { actorClientBaseInterface })));
+            var actorClientClassTypeParameters = descriptor.InterfaceType.TypeParameters
+                .Select(x => SyntaxFactory.TypeParameter(x.ToString()));
+
+            var actorClientClassDeclaration = (actorClientClassTypeParameters.Count() == 0)
+                ? SyntaxFactory.ClassDeclaration(descriptor.ClientTypeName)
+                    .WithModifiers(SyntaxFactory.TokenList(actorClientClassModifiers))
+                    .WithMembers(SyntaxFactory.List(actorMembers))
+                    .WithBaseList(SyntaxFactory.BaseList(
+                        SyntaxFactory.Token(SyntaxKind.ColonToken),
+                        SyntaxFactory.SeparatedList<BaseTypeSyntax>(new[] { actorClientBaseInterface })))
+                : SyntaxFactory.ClassDeclaration(descriptor.ClientTypeName)
+                    .WithModifiers(SyntaxFactory.TokenList(actorClientClassModifiers))
+                    .WithTypeParameterList(SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(actorClientClassTypeParameters)))
+                    .WithMembers(SyntaxFactory.List(actorMembers))
+                    .WithBaseList(SyntaxFactory.BaseList(
+                        SyntaxFactory.Token(SyntaxKind.ColonToken),
+                        SyntaxFactory.SeparatedList<BaseTypeSyntax>(new[] { actorClientBaseInterface })));
 
             var namespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(descriptor.NamespaceName))
                 .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(new[] { actorClientClassDeclaration }))
