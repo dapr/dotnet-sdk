@@ -850,6 +850,80 @@ namespace Dapr.Client
             IReadOnlyDictionary<string, string> metadata = default,
             CancellationToken cancellationToken = default);
 
+
+        /// <summary>
+        /// Saves the provided <paramref name="binaryValue" /> associated with the provided <paramref name="key" /> to the Dapr state
+        /// store
+        /// </summary>
+        /// <param name="storeName">The name of the state store.</param>
+        /// <param name="key">The state key.</param>
+        /// <param name="binaryValue">The binary data that will be stored in the state store.</param>        
+        /// <param name="stateOptions">Options for performing save state operation.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task SaveByteStateAsync(
+                       string storeName,
+                       string key,
+                       ReadOnlyMemory<byte> binaryValue,
+                       StateOptions stateOptions = default,
+                       IReadOnlyDictionary<string, string> metadata = default,
+                       CancellationToken cancellationToken = default);
+
+        /// <summary>
+        ///Saves the provided <paramref name="binaryValue" /> associated with the provided <paramref name="key" /> using the 
+        /// <paramref name="etag"/> to the Dapr state. State store implementation will allow the update only if the attached ETag matches with the latest ETag in the state store.
+        /// </summary>
+        /// <param name="storeName">The name of the state store.</param>
+        /// <param name="key">The state key.</param>
+        /// <param name="binaryValue">The binary data that will be stored in the state store.</param> 
+        /// <param name="etag">An ETag.</param>
+        /// <param name="stateOptions">Options for performing save state operation.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+        public abstract Task<bool> TrySaveByteStateAsync(
+                string storeName,
+                string key,
+                ReadOnlyMemory<byte> binaryValue,
+                string etag,
+                StateOptions stateOptions = default,
+                IReadOnlyDictionary<string, string> metadata = default,
+                CancellationToken cancellationToken = default);
+
+
+        /// <summary>
+        /// Gets the current binary value associated with the <paramref name="key" /> from the Dapr state store.
+        /// </summary>
+        /// <param name="storeName">The name of state store to read from.</param>
+        /// <param name="key">The state key.</param>
+        /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+        public abstract Task<ReadOnlyMemory<byte>> GetByteStateAsync(
+                string storeName,
+                string key,
+                ConsistencyMode? consistencyMode = default,
+                IReadOnlyDictionary<string, string> metadata = default,
+                CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets the current binary value associated with the <paramref name="key" /> from the Dapr state store and an ETag.
+        /// </summary>
+        /// <param name="storeName">The name of the state store.</param>
+        /// <param name="key">The state key.</param>
+        /// <param name="consistencyMode">The consistency mode <see cref="ConsistencyMode" />.</param>
+        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the state store. The valid metadata keys and values are determined by the type of state store used.</param>
+        /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+        /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.  This wraps the read value and an ETag.</returns>
+        public abstract Task<(ReadOnlyMemory<byte>, string etag)> GetByteStateAndETagAsync(
+            string storeName, 
+            string key, 
+            ConsistencyMode? consistencyMode = default, 
+            IReadOnlyDictionary<string, string> metadata = default, 
+            CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Tries to save the state <paramref name="value" /> associated with the provided <paramref name="key" /> using the 
         /// <paramref name="etag"/> to the Dapr state. State store implementation will allow the update only if the attached ETag matches with the latest ETag in the state store.
