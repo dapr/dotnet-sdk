@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Common;
+
 namespace Dapr.Client.Test
 {
     using System;
