@@ -112,7 +112,7 @@ The SDK will read the following environment variables to configure the default v
 
 {{% alert title="Note" color="primary" %}}
 If both `DAPR_HTTP_ENDPOINT` and `DAPR_HTTP_PORT` are specified, the port value from `DAPR_HTTP_PORT` will be ignored in favor of the port
-implicitly or explicitly defined on `DAPR_HTTP_PORT`. The same is true of both `DAPR_GRPC_ENDPOINT` and `DAPR_GRPC_PORT`.
+implicitly or explicitly defined on `DAPR_HTTP_ENDPOINT`. The same is true of both `DAPR_GRPC_ENDPOINT` and `DAPR_GRPC_PORT`.
 {{% /alert %}}
 
 ### Configuring gRPC channel options
