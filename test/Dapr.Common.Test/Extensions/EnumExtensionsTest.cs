@@ -12,14 +12,14 @@ public class EnumExtensionTest
         var value = TestEnum.Red.GetValueFromEnumMember();
         Assert.Equal("red", value);
     }
-    
+
     [Fact]
     public void GetValueFromEnumMember_YellowResolvesAsExpected()
     {
         var value = TestEnum.Yellow.GetValueFromEnumMember();
         Assert.Equal("YELLOW", value);
     }
-    
+
     [Fact]
     public void GetValueFromEnumMember_BlueResolvesAsExpected()
     {
@@ -27,6 +27,7 @@ public class EnumExtensionTest
         Assert.Equal("Blue", value);
     }
 }
+
 public enum TestEnum
 {
     [EnumMember(Value = "red")]
@@ -35,4 +36,3 @@ public enum TestEnum
     Yellow,
     Blue
 }
-
