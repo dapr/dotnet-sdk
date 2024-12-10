@@ -102,6 +102,79 @@ builder.Services.AddDaprJobsClient((serviceProvider, daprJobsClientBuilder) =>
 var app = builder.Build();
 ```
 
+## Use the Dapr Jobs client using IConfiguration
+It's possible to configure the Dapr Jobs client using the values in your registered `IConfiguration` as well without
+explicitly specifying each of the value overrides using the `DaprJobsClientBuilder` as demonstrated in the previous
+section. Rather, by populating an `IConfiguration` made available through dependency injection the `AddDaprJobsClient()`
+registration will automatically use these values over their respective defaults.
+
+Start by populating the values in your configuration. This can be done in several different ways as demonstrated below.
+
+### Configuration via `ConfigurationBuilder`
+Application settings can be configured without using a configuration source and by instead populating the value in-memory
+using a `ConfigurationBuilder` instance:
+
+```csharp
+var builder = WebApplication.CreateBuilder();
+
+//Create the configuration
+var configuration = new ConfigurationBuilder()
+    .AddInMemoryCollection(new Dictionary<string, string> {
+            { "DAPR_HTTP_ENDPOINT", "http://localhost:54321" },
+            { "DAPR_API_TOKEN", "abc123" }
+        })
+    .Build();
+
+builder.Configuration.AddConfiguration(configuration);
+builder.Services.AddDaprJobsClient(); //This will automatically populate the HTTP endpoint and API token values from the IConfiguration
+```
+
+### Configuration via Environment Variables
+Application settings can be accessed from environment variables available to your application.
+
+The following environment variables will be used to populate both the HTTP endpoint and API token used to register the
+Dapr Jobs client.
+
+| Key | Value |
+| --- | --- |
+| DAPR_HTTP_ENDPOINT | http://localhost:54321 |
+| DAPR_API_TOKEN | abc123 |
+
+```csharp
+var builder = WebApplication.CreateBuilder();
+
+builder.Configuration.AddEnvironmentVariables();
+builder.Services.AddDaprJobsClient();
+```
+
+The Dapr Jobs client will be configured to use both the HTTP endpoint `http://localhost:54321` and populate all outbound
+requests with the API token header `abc123`.
+
+### Configuration via prefixed Environment Variables
+
+However, in shared-host scenarios where there are multiple applications all running on the same machine without using
+containers or in development environments, it's not uncommon to prefix environment variables. The following example
+assumes that both the HTTP endpoint and the API token will be pulled from environment variables prefixed with the
+value "myapp_". The two environment variables used in this scenario are as follows:
+
+| Key | Value |
+| --- | --- |
+| myapp_DAPR_HTTP_ENDPOINT | http://localhost:54321 |
+| myapp_DAPR_API_TOKEN | abc123 |
+
+These environment variables will be loaded into the registered configuration in the following example and made available
+without the prefix attached.
+
+```csharp
+var builder = WebApplication.CreateBuilder();
+
+builder.Configuration.AddEnvironmentVariables(prefix: "myapp_");
+builder.Services.AddDaprJobsClient();
+```
+
+The Dapr Jobs client will be configured to use both the HTTP endpoint `http://localhost:54321` and populate all outbound
+requests with the API token header `abc123`.
+
 ## Use the Dapr Jobs client without relying on dependency injection
 While the use of dependency injection simplifies the use of complex types in .NET and makes it easier to
 deal with complicated configurations, you're not required to register the `DaprJobsClient` in this way. Rather, you can also elect to create an instance of it from a `DaprJobsClientBuilder` instance as demonstrated below:
