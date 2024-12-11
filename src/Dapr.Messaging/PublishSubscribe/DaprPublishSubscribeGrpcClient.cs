@@ -47,7 +47,7 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// </summary>
     public DaprPublishSubscribeGrpcClient(P.DaprClient client, HttpClient httpClient, string? daprApiToken)
     {
-        Client = client;
+        this.Client = client;
         this.HttpClient = httpClient;
         this.DaprApiToken = daprApiToken;
     }
@@ -63,7 +63,7 @@ internal sealed class DaprPublishSubscribeGrpcClient : DaprPublishSubscribeClien
     /// <returns></returns>
     public override async Task<IAsyncDisposable> SubscribeAsync(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler messageHandler, CancellationToken cancellationToken = default)
     {
-        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, Client);
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, this.Client);
         await receiver.SubscribeAsync(cancellationToken);
         return receiver;
     }
