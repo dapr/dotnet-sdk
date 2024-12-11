@@ -8,11 +8,19 @@ description: Essential tips and advice for using DaprJobsClient
 
 ## Lifetime management
 
-A `DaprJobsClient` is a version of the Dapr client that is dedicated to interacting with the Dapr Jobs API. It can be registered alongside a `DaprClient` without issue.
+A `DaprJobsClient` is a version of the Dapr client that is dedicated to interacting with the Dapr Jobs API. It can be 
+registered alongside a `DaprClient` without issue.
 
-It maintains access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar and implements `IDisposable` to support the eager cleanup of resources.
+It maintains access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar and 
+implements `IDisposable` to support the eager cleanup of resources.
 
-For best performance, create a single long-lived instance of `DaprJobsClient` and provide access to that shared instance throughout your application. `DaprJobsClient` instances are thread-safe and intended to be shared.
+For best performance, create a single long-lived instance of `DaprJobsClient` and provide access to that shared instance 
+throughout your application. `DaprJobsClient` instances are thread-safe and intended to be shared.
+
+This can be aided by utilizing the dependency injection functionality. The registration method supports registration using
+as a singleton, a scoped instance or as transient (meaning it's recreated every time it's injected), but also enables
+registration to utilize values from an `IConfiguration` or other injected service in a way that's impractical when
+creating the client from scratch in each of your classes.
 
 Avoid creating a `DaprJobsClient` for each operation and disposing it when the operation is complete.
 
