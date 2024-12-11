@@ -13,6 +13,7 @@
 
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.PublishSubscribe.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
@@ -20,6 +21,31 @@ namespace Dapr.Messaging.Test.Extensions;
 
 public sealed class PublishSubscribeServiceCollectionExtensionsTests
 {
+    [Fact]
+    public void AddDaprMessagingClient_FromIConfiguration()
+    {
+        const string apiToken = "abc123";
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                {"DAPR_API_TOKEN", apiToken }
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+
+        services.AddSingleton<IConfiguration>(configuration);
+
+        services.AddDaprPubSubClient();
+
+        var app = services.BuildServiceProvider();
+
+        var pubSubClient = app.GetRequiredService<DaprPublishSubscribeClient>() as DaprPublishSubscribeGrpcClient;
+
+        Assert.NotNull(pubSubClient!);
+        Assert.Equal(apiToken, pubSubClient.DaprApiToken);
+    }
+    
     [Fact]
     public void AddDaprPubSubClient_RegistersIHttpClientFactory()
     {
