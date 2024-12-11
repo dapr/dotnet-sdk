@@ -199,8 +199,8 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
             // Set correct switch to make secure gRPC service calls. This switch must be set before creating the GrpcChannel.
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
         }
-        
-        var httpEndpoint = new Uri(this.HttpEndpoint);
+
+      var httpEndpoint = new Uri(this.HttpEndpoint);
         if (httpEndpoint.Scheme != "http" && httpEndpoint.Scheme != "https")
         {
             throw new InvalidOperationException("The HTTP endpoint must use http or https.");
