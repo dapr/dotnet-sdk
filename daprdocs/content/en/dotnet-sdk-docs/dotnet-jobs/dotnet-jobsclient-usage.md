@@ -101,7 +101,7 @@ the necessary options.
 ```cs
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDaprJobsClient(daprJobsClientBuilder => {
+builder.Services.AddDaprJobsClient((_, daprJobsClientBuilder) => {
    //Set the API token
    daprJobsClientBuilder.UseDaprApiToken("abc123");
    //Specify a non-standard HTTP endpoint
