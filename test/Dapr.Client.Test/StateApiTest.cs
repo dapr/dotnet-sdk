@@ -28,7 +28,6 @@ namespace Dapr.Client.Test
     using Xunit;
     using System.Threading;
     using System.Net.Http;
-    using System.Text;
 
     public class StateApiTest
     {
