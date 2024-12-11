@@ -9,7 +9,7 @@ description: Essential tips and advice for using DaprPublishSubscribeClient
 ## Lifetime management
 
 A `DaprPublishSubscribeClient` is a version of the Dapr client that is dedicated to interacting with the Dapr Messaging API. 
-It can be registered alongside a `DaprClient` without issue.
+It can be registered alongside a `DaprClient` and other Dapr clients without issue.
 
 It maintains access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar and implements
 `IAsyncDisposable` to support the eager cleanup of resources.
