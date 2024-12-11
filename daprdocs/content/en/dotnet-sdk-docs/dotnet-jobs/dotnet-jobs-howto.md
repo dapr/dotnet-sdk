@@ -54,7 +54,9 @@ We'll run a command that starts both the Dapr sidecar and the .NET program at th
 ```sh
 dapr run --app-id jobsapp --dapr-grpc-port 4001 --dapr-http-port 3500 -- dotnet run
 ```
+
 > Dapr listens for HTTP requests at `http://localhost:3500` and internal Jobs gRPC requests at `http://localhost:4001`.
+
 ## Register the Dapr Jobs client with dependency injection
 The Dapr Jobs SDK provides an extension method to simplify the registration of the Dapr Jobs client. Before completing the dependency injection registration in `Program.cs`, add the following line:
 
