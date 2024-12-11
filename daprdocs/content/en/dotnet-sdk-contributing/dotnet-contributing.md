@@ -20,7 +20,7 @@ There are many ways to contribute to Dapr:
 - Improve the documentation in either the [larger Dapr project](https://github.com/dapr/docs) or the [Dapr .NET SDK specifically](https://github.com/dapr/dotnet-sdk/tree/master/daprdocs) 
 - Add new or improve existing [components](https://github.com/dapr/components-contrib/) that implement the various building blocks
 - Augment the [.NET pluggable component SDK capabilities](https://github.com/dapr-sandbox/components-dotnet-sdk)
-- Improve the .NET SDK code base and/or fix a bug (detailed below)
+- Improve the Dapr .NET SDK code base and/or fix a bug (detailed below)
 
 If you're new to the code base, please feel encouraged to ask in the #dotnet-sdk channel in Discord about how
 to implement changes or generally ask questions. You are not required to seek permission to work on anything, but do
