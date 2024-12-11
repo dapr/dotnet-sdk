@@ -35,8 +35,6 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
     public void AddDaprPubSubClient_CallsConfigureAction()
     {
         var services = new ServiceCollection();
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
-        services.AddSingleton(httpClientFactoryMock.Object);
 
         var configureCalled = false;
 
@@ -58,8 +56,6 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
     public void AddDaprPubSubClient_RegistersServicesCorrectly()
     {
         var services = new ServiceCollection();
-        var httpClientFactoryMock = new Mock<IHttpClientFactory>();      
-        services.AddSingleton(httpClientFactoryMock.Object);
         services.AddDaprPubSubClient();
         var serviceProvider = services.BuildServiceProvider();
       
