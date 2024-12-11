@@ -10,7 +10,7 @@ Let's create an endpoint that will be invoked by Dapr Jobs when it triggers, the
 you will:
 
 - Deploy a .NET Web API application ([JobsSample](https://github.com/dapr/dotnet-sdk/tree/master/examples/Jobs/JobsSample))
-- Utilize the .NET Jobs SDK to schedule a job invocation and set up the endpoint to be triggered
+- Utilize the Dapr .NET Jobs SDK to schedule a job invocation and set up the endpoint to be triggered
 
 In the .NET example project:
 - The main [`Program.cs`](https://github.com/dapr/dotnet-sdk/tree/master/examples/Jobs/JobsSample/Program.cs) file comprises the entirety of this demonstration.
