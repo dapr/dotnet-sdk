@@ -25,6 +25,7 @@ namespace Dapr.Jobs.Test.Extensions;
 public class DaprJobsServiceCollectionExtensionsTest
 {
     [Fact]
+
     public void AddDaprJobsClient_FromIConfiguration()
     {
         const string apiToken = "abc123";
@@ -49,6 +50,7 @@ public class DaprJobsServiceCollectionExtensionsTest
     public void AddDaprJobsClient_RegistersDaprClientOnlyOnce()
     {
         var services = new ServiceCollection();
+
 
         var clientBuilder = new Action<IServiceProvider, DaprJobsClientBuilder>((sp, builder) =>
         {
