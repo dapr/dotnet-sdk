@@ -134,10 +134,10 @@ Application settings can be accessed from environment variables available to you
 The following environment variables will be used to populate both the HTTP endpoint and API token used to register the
 Dapr PubSub client.
 
-| Key | Value |
-| --- | --- |
+| Key                | Value                  |
+|--------------------|------------------------|
 | DAPR_HTTP_ENDPOINT | http://localhost:54321 |
-| DAPR_API_TOKEN | abc123 |
+| DAPR_API_TOKEN     | abc123                 |
 
 ```csharp
 var builder = WebApplication.CreateBuilder();
@@ -155,10 +155,10 @@ containers or in development environments, it's not uncommon to prefix environme
 assumes that both the HTTP endpoint and the API token will be pulled from environment variables prefixed with the
 value "myapp_". The two environment variables used in this scenario are as follows:
 
-| Key | Value |
-| --- | --- |
+| Key                      | Value                  |
+|--------------------------|------------------------|
 | myapp_DAPR_HTTP_ENDPOINT | http://localhost:54321 |
-| myapp_DAPR_API_TOKEN | abc123 |
+| myapp_DAPR_API_TOKEN     | abc123                 |
 
 These environment variables will be loaded into the registered configuration in the following example and made available
 without the prefix attached.
@@ -241,14 +241,15 @@ the default `MessageHandlingPolicy` which consists of a per-event timeout and th
 that timeout occurs.
 
 Other options are as follows:
-| Property Name | Description |
-| --- | --- |
-| Metadata | Additional subscription metadata |
-| DeadLetterTopic | The optional name of the dead-letter topic to send dropped messages to. |
-| MaximumQueuedMessages | By default, there is no maximum boundary enforced for the internal queue, but setting this 
-property would impose an upper limit. |
-| MaximumCleanupTimeout | When the subscription is disposed of or the token flags a cancellation request, this specifies
-the maximum amount of time available to process the remaining messages in the internal queue. |
+
+| Property Name                                                                                 | Description                                                                                    |
+|-----------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| Metadata                                                                                      | Additional subscription metadata                                                               |
+| DeadLetterTopic                                                                               | The optional name of the dead-letter topic to send dropped messages to.                        |
+| MaximumQueuedMessages                                                                         | By default, there is no maximum boundary enforced for the internal queue, but setting this     |
+| property would impose an upper limit.                                                         |                                                                                                |
+| MaximumCleanupTimeout                                                                         | When the subscription is disposed of or the token flags a cancellation request, this specifies |
+| the maximum amount of time available to process the remaining messages in the internal queue. |                                                                                                |
 
 Subscription is then configured as in the following example:
 ```csharp
