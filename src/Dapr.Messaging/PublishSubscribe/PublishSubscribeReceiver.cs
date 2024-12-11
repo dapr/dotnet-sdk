@@ -77,6 +77,11 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     private bool isDisposed;
 
+    // Internal property for testing purposes
+    internal Task TopicMessagesChannelCompletion => topicMessagesChannel.Reader.Completion;
+    // Internal property for testing purposes
+    internal Task AcknowledgementsChannelCompletion => acknowledgementsChannel.Reader.Completion;
+
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
     /// </summary>
@@ -115,20 +120,40 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 
         var stream = await GetStreamAsync(cancellationToken);
 
-        //Retrieve the messages from the sidecar and write to the messages channel
-        var fetchMessagesTask = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken);
+        //Retrieve the messages from the sidecar and write to the messages channel - start without awaiting so this isn't blocking
+        _ = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken)
+            .ContinueWith(HandleTaskCompletion, null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
 
         //Process the messages as they're written to either channel
-        var acknowledgementProcessorTask = ProcessAcknowledgementChannelMessagesAsync(stream, cancellationToken);
-        var topicMessageProcessorTask = ProcessTopicChannelMessagesAsync(cancellationToken);
+        _ = ProcessAcknowledgementChannelMessagesAsync(stream, cancellationToken).ContinueWith(HandleTaskCompletion,
+            null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        _ = ProcessTopicChannelMessagesAsync(cancellationToken).ContinueWith(HandleTaskCompletion, null,
+            cancellationToken,
+            TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+    }
 
-        try
+    /// <summary>
+    /// Exposed for testing purposes only.
+    /// </summary>
+    /// <param name="message">The test message to write.</param>
+    internal async Task WriteMessageToChannelAsync(TopicMessage message)
+    {
+        await topicMessagesChannel.Writer.WriteAsync(message);
+    }
+
+    //Exposed for testing purposes only
+    internal async Task WriteAcknowledgementToChannelAsync(TopicAcknowledgement acknowledgement)
+    {
+        await acknowledgementsChannel.Writer.WriteAsync(acknowledgement);
+    }
+
+    //Exposed for testing purposes only
+    internal static void HandleTaskCompletion(Task task, object? state)
+    {
+        if (task.Exception != null)
         {
-            await Task.WhenAll(fetchMessagesTask, acknowledgementProcessorTask, topicMessageProcessorTask);
-        }
-        catch (OperationCanceledException)
-        {
-            // Will be cleaned up during DisposeAsync
+            throw task.Exception;
         }
     }
 
@@ -251,13 +276,21 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         //Each time a message is received from the stream, push it into the topic messages channel
         await foreach (var response in stream.ResponseStream.ReadAllAsync(cancellationToken))
         {
+            //https://github.com/dapr/dotnet-sdk/issues/1412 reports that this is sometimes null
+            //Skip the initial response - we only want to pass along TopicMessage payloads to developers
+            if (response?.EventMessage is null)
+            {
+                continue;
+            }
+            
             var message =
                 new TopicMessage(response.EventMessage.Id, response.EventMessage.Source, response.EventMessage.Type,
                     response.EventMessage.SpecVersion, response.EventMessage.DataContentType,
                     response.EventMessage.Topic, response.EventMessage.PubsubName)
                 {
                     Path = response.EventMessage.Path,
-                    Extensions = response.EventMessage.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value)
+                    Extensions = response.EventMessage.Extensions.Fields.ToDictionary(f => f.Key, kvp => kvp.Value),
+                    Data = response.EventMessage.Data.ToByteArray()
                 };
 
             try
@@ -308,6 +341,6 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     /// <param name="MessageId">The identifier of the message.</param>
     /// <param name="Action">The action to take on the message in the acknowledgement request.</param>
-    private sealed record TopicAcknowledgement(string MessageId, TopicEventResponse.Types.TopicEventResponseStatus Action);
+    internal sealed record TopicAcknowledgement(string MessageId, TopicEventResponse.Types.TopicEventResponseStatus Action);
 }
 
