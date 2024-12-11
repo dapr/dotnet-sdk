@@ -146,7 +146,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             using (var factory = new AppWebApplicationFactory())
             {
                 var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-
+            
                 var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
                 {
                     Content = new StringContent(
@@ -158,10 +158,10 @@ namespace Dapr.AspNetCore.IntegrationTest
                     Encoding.UTF8)
                 };
                 request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
+            
                 var response = await httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
-
+            
                 var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
                 userInfo.Name.Should().Be("jimmy");
             }

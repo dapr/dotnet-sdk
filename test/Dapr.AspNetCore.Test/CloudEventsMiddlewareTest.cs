@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Dapr.AspNetCore.Test
 {
     using System.IO;
@@ -33,7 +35,10 @@ namespace Dapr.AspNetCore.Test
         [InlineData("application/cloudevents-batch+json")] // we don't support batch
         public async Task InvokeAsync_IgnoresOtherContentTypes(string contentType)
         {
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents();
 
             // Do verification in the scope of the middleware
@@ -46,9 +51,10 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = contentType;
-            context.Request.Body = MakeBody("Hello, world!");
+            var context = new DefaultHttpContext
+            {
+                Request = { ContentType = contentType, Body = MakeBody("Hello, world!") }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -62,7 +68,10 @@ namespace Dapr.AspNetCore.Test
         public async Task InvokeAsync_ReplacesBodyJson(string dataContentType, string charSet)
         {
             var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents();
 
             // Do verification in the scope of the middleware
@@ -75,11 +84,17 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
-            context.Request.Body = dataContentType == null ?
-                MakeBody("{ \"data\": { \"name\":\"jimmy\" } }", encoding) :
-                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType =
+                        charSet == null
+                            ? "application/cloudevents+json"
+                            : $"application/cloudevents+json;charset={charSet}",
+                    Body = dataContentType == null ?
+                        MakeBody("{ \"data\": { \"name\":\"jimmy\" } }", encoding) :
+                        MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding)
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -93,7 +108,10 @@ namespace Dapr.AspNetCore.Test
         public async Task InvokeAsync_ReplacesPascalCasedBodyJson(string dataContentType, string charSet)
         {
             var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents();
 
             // Do verification in the scope of the middleware
@@ -106,11 +124,17 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
-            context.Request.Body = dataContentType == null ?
-                MakeBody("{ \"Data\": { \"name\":\"jimmy\" } }", encoding) :
-                MakeBody($"{{ \"DataContentType\": \"{dataContentType}\", \"Data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType =
+                        charSet == null
+                            ? "application/cloudevents+json"
+                            : $"application/cloudevents+json;charset={charSet}",
+                    Body = dataContentType == null ?
+                        MakeBody("{ \"Data\": { \"name\":\"jimmy\" } }", encoding) :
+                        MakeBody($"{{ \"DataContentType\": \"{dataContentType}\", \"Data\": {{ \"name\":\"jimmy\" }} }}", encoding)
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -124,7 +148,10 @@ namespace Dapr.AspNetCore.Test
         public async Task InvokeAsync_ForwardsJsonPropertiesAsHeaders(string dataContentType, string charSet)
         {
             var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents(new CloudEventsMiddlewareOptions
             {
                 ForwardCloudEventPropertiesAsHeaders = true
@@ -143,11 +170,17 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
-            context.Request.Body = dataContentType == null ?
-                MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
-                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType =
+                        charSet == null
+                            ? "application/cloudevents+json"
+                            : $"application/cloudevents+json;charset={charSet}",
+                    Body = dataContentType == null ?
+                        MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
+                        MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding)
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -161,7 +194,10 @@ namespace Dapr.AspNetCore.Test
         public async Task InvokeAsync_ForwardsIncludedJsonPropertiesAsHeaders(string dataContentType, string charSet)
         {
             var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents(new CloudEventsMiddlewareOptions
             {
                 ForwardCloudEventPropertiesAsHeaders = true,
@@ -181,11 +217,17 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
-            context.Request.Body = dataContentType == null ?
-                MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
-                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType =
+                        charSet == null
+                            ? "application/cloudevents+json"
+                            : $"application/cloudevents+json;charset={charSet}",
+                    Body = dataContentType == null ?
+                        MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
+                        MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding)
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -199,7 +241,10 @@ namespace Dapr.AspNetCore.Test
         public async Task InvokeAsync_DoesNotForwardExcludedJsonPropertiesAsHeaders(string dataContentType, string charSet)
         {
             var encoding = charSet == null ? null : Encoding.GetEncoding(charSet);
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents(new CloudEventsMiddlewareOptions
             {
                 ForwardCloudEventPropertiesAsHeaders = true,
@@ -219,11 +264,17 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = charSet == null ? "application/cloudevents+json" : $"application/cloudevents+json;charset={charSet}";
-            context.Request.Body = dataContentType == null ?
-                MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
-                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType =
+                        charSet == null
+                            ? "application/cloudevents+json"
+                            : $"application/cloudevents+json;charset={charSet}",
+                    Body = dataContentType == null ?
+                        MakeBody("{ \"type\": \"Test.Type\", \"subject\": \"Test.Subject\", \"data\": { \"name\":\"jimmy\" } }", encoding) :
+                        MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"type\":\"Test.Type\", \"subject\": \"Test.Subject\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding)
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -234,10 +285,13 @@ namespace Dapr.AspNetCore.Test
             // Our logic is based on the content-type, not the content.
             // Since this is for text-plain content, we're going to encode it as a JSON string
             // and store it in the data attribute - the middleware should JSON-decode it.
-            var input = "{ \"message\": \"hello, world\"}";
+            const string input = "{ \"message\": \"hello, world\"}";
             var expected = input;
 
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents();
 
             // Do verification in the scope of the middleware
@@ -251,9 +305,12 @@ namespace Dapr.AspNetCore.Test
             
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = "application/cloudevents+json";
-            context.Request.Body = MakeBody($"{{ \"datacontenttype\": \"text/plain\", \"data\": {JsonSerializer.Serialize(input)} }}");
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType = "application/cloudevents+json", 
+                    Body = MakeBody($"{{ \"datacontenttype\": \"text/plain\", \"data\": {JsonSerializer.Serialize(input)} }}")
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -262,10 +319,13 @@ namespace Dapr.AspNetCore.Test
         public async Task InvokeAsync_ReplacesBodyNonJsonData_ExceptWhenSuppressed()
         {
             // Our logic is based on the content-type, not the content. This test tests the old bad behavior.
-            var input = "{ \"message\": \"hello, world\"}";
+            const string input = "{ \"message\": \"hello, world\"}";
             var expected = JsonSerializer.Serialize(input);
 
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents(new CloudEventsMiddlewareOptions() { SuppressJsonDecodingOfTextPayloads = true, });
 
             // Do verification in the scope of the middleware
@@ -279,9 +339,12 @@ namespace Dapr.AspNetCore.Test
             
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = "application/cloudevents+json";
-            context.Request.Body = MakeBody($"{{ \"datacontenttype\": \"text/plain\", \"data\": {JsonSerializer.Serialize(input)} }}");
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType = "application/cloudevents+json", 
+                    Body = MakeBody($"{{ \"datacontenttype\": \"text/plain\", \"data\": {JsonSerializer.Serialize(input)} }}")
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -291,10 +354,13 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task InvokeAsync_ReplacesBodyJson_NormalizesPayloadCharset()
         {
-            var dataContentType = "application/person+json;charset=UTF-16";
-            var charSet = "UTF-16";
+            const string dataContentType = "application/person+json;charset=UTF-16";
+            const string charSet = "UTF-16";
             var encoding = Encoding.GetEncoding(charSet);
-            var app = new ApplicationBuilder(null);
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents();
 
             // Do verification in the scope of the middleware
@@ -307,10 +373,11 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = $"application/cloudevents+json;charset={charSet}";
-            context.Request.Body =
-                MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding);
+            var context = new DefaultHttpContext { Request =
+                {
+                    ContentType = $"application/cloudevents+json;charset={charSet}", Body = MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data\": {{ \"name\":\"jimmy\" }} }}", encoding)
+                }
+            };
 
             await pipeline.Invoke(context);
         }
@@ -318,8 +385,11 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task InvokeAsync_ReadsBinaryData()
         {
-            var dataContentType = "application/octet-stream";
-            var app = new ApplicationBuilder(null);
+            const string dataContentType = "application/octet-stream";
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents();
             var data = new byte[] { 1, 2, 3 };
 
@@ -328,15 +398,18 @@ namespace Dapr.AspNetCore.Test
             {
                 httpContext.Request.ContentType.Should().Be(dataContentType);
                 var bytes = new byte[httpContext.Request.Body.Length];
+#if NET9_0
+                httpContext.Request.Body.ReadExactly(bytes, 0, bytes.Length);
+#else
                 httpContext.Request.Body.Read(bytes, 0, bytes.Length);
+#endif
                 bytes.Should().Equal(data);
                 return Task.CompletedTask;
             });
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = "application/cloudevents+json";
+            var context = new DefaultHttpContext { Request = { ContentType = "application/cloudevents+json" } };
             var base64Str = System.Convert.ToBase64String(data);
 
             context.Request.Body =
@@ -348,10 +421,13 @@ namespace Dapr.AspNetCore.Test
         [Fact]
         public async Task InvokeAsync_DataAndData64Set_ReturnsBadRequest()
         {
-            var dataContentType = "application/octet-stream";
-            var app = new ApplicationBuilder(null);
+            const string dataContentType = "application/octet-stream";
+            var serviceCollection = new ServiceCollection();
+            var provider = serviceCollection.BuildServiceProvider();
+            
+            var app = new ApplicationBuilder(provider);
             app.UseCloudEvents();
-            var data = "{\"id\": \"1\"}";
+            const string data = "{\"id\": \"1\"}";
 
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
@@ -364,8 +440,7 @@ namespace Dapr.AspNetCore.Test
 
             var pipeline = app.Build();
 
-            var context = new DefaultHttpContext();
-            context.Request.ContentType = "application/cloudevents+json";
+            var context = new DefaultHttpContext { Request = { ContentType = "application/cloudevents+json" } };
             var bytes = Encoding.UTF8.GetBytes(data);
             var base64Str = System.Convert.ToBase64String(bytes);
             context.Request.Body =
@@ -391,7 +466,11 @@ namespace Dapr.AspNetCore.Test
             encoding ??= Encoding.UTF8;
 
             var bytes = new byte[stream.Length];
+#if NET9_0
+            stream.ReadExactly(bytes, 0, bytes.Length);
+#else
             stream.Read(bytes, 0, bytes.Length);
+#endif
             var str = encoding.GetString(bytes);
             return str;
         }

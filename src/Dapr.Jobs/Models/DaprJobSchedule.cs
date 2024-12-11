@@ -67,7 +67,6 @@ public sealed class DaprJobSchedule
     /// <returns></returns>
     public static DaprJobSchedule FromDateTime(DateTimeOffset scheduledTime)
     {
-        ArgumentNullException.ThrowIfNull(scheduledTime, nameof(scheduledTime));
         return new DaprJobSchedule(scheduledTime.ToString("O"));
     }
     
@@ -77,7 +76,9 @@ public sealed class DaprJobSchedule
     /// <param name="expression">The systemd Cron-like expression indicating when the job should be triggered.</param>
     public static DaprJobSchedule FromExpression(string expression)
     {
+#if NET6_0
         ArgumentNullException.ThrowIfNull(expression, nameof(expression));
+#endif
         return new DaprJobSchedule(expression);
     }
 
@@ -87,7 +88,6 @@ public sealed class DaprJobSchedule
     /// <param name="duration">The duration interval.</param>
     public static DaprJobSchedule FromDuration(TimeSpan duration)
     {
-        ArgumentNullException.ThrowIfNull(duration, nameof(duration));
         return new DaprJobSchedule(duration.ToDurationString());
     }
 

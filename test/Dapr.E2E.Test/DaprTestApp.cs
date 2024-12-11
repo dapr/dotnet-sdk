@@ -139,6 +139,7 @@ namespace Dapr.E2E.Test
                 ".NETCoreApp,Version=v6.0" => "net6",
                 ".NETCoreApp,Version=v7.0" => "net7",
                 ".NETCoreApp,Version=v8.0" => "net8",
+                ".NETCoreApp,Version=v9.0" => "net9",
                 _ => throw new InvalidOperationException($"Unsupported target framework: {targetFrameworkName}")
             };
         }
