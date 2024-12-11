@@ -90,7 +90,7 @@ default settings.
 ```cs
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDaprAiConversation(); //Registers the `DaprConversationClient` to be injected as needed
+builder.Services.AddDaprConversationClient(); //Registers the `DaprConversationClient` to be injected as needed
 var app = builder.Build();
 ```
 
@@ -101,7 +101,7 @@ the necessary options.
 ```cs
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDaprAiConversation((_, daprConversationClientBuilder) => {
+builder.Services.AddDaprConversationClient((_, daprConversationClientBuilder) => {
    //Set the API token
    daprConversationClientBuilder.UseDaprApiToken("abc123");
    //Specify a non-standard HTTP endpoint
@@ -122,7 +122,7 @@ var builder = WebApplication.CreateBuilder(args);
 //Register a fictional service that retrieves secrets from somewhere
 builder.Services.AddSingleton<SecretService>();
 
-builder.Services.AddDaprAiConversation((serviceProvider, daprConversationClientBuilder) => {
+builder.Services.AddDaprConversationClient((serviceProvider, daprConversationClientBuilder) => {
     //Retrieve an instance of the `SecretService` from the service provider
     var secretService = serviceProvider.GetRequiredService<SecretService>();
     var daprApiToken = secretService.GetSecret("DaprApiToken").Value;
