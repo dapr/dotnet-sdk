@@ -19,6 +19,7 @@ In the .NET example project:
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost)
 - [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0), [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) installed
+- [Dapr.Jobs](https://www.nuget.org/packages/Dapr.Jobs) NuGet package installed to your project
 
 {{% alert title="Note" color="primary" %}}
 
