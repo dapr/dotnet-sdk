@@ -3,7 +3,7 @@ using Dapr.AI.Conversation.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDaprAiConversation();
+builder.Services.AddDaprConversationClient();
 
 var app = builder.Build();
 

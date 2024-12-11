@@ -13,7 +13,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Dapr.AI.Conversation;
 using Dapr.AI.Conversation.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -34,7 +36,7 @@ public class DaprAiConversationBuilderExtensionsTest
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
 
-        services.AddDaprAiConversation();
+        services.AddDaprConversationClient();
 
         var app = services.BuildServiceProvider();
 
@@ -45,18 +47,66 @@ public class DaprAiConversationBuilderExtensionsTest
     }
     
     [Fact]
-    public void AddDaprAiConversation_WithoutConfigure_ShouldAddServices()
+    public void AddDaprConversationClient_RegistersDaprClientOnlyOnce()
     {
         var services = new ServiceCollection();
-        var builder = services.AddDaprAiConversation();
+
+        var clientBuilder = new Action<IServiceProvider, DaprConversationClientBuilder>((sp, builder) =>
+        {
+            builder.UseDaprApiToken("abc");
+        });
+
+        services.AddDaprConversationClient(); //Sets a default API token value of an empty string
+        services.AddDaprConversationClient(clientBuilder); //Sets the API token value
+
+        var serviceProvider = services.BuildServiceProvider();
+        var daprConversationClient = serviceProvider.GetService<DaprConversationClient>();
+        
+        Assert.NotNull(daprConversationClient!.HttpClient);
+        Assert.False(daprConversationClient.HttpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
+    }
+    
+    [Fact]
+    public void AddDaprConversationClient_RegistersUsingDependencyFromIServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<TestSecretRetriever>();
+        services.AddDaprConversationClient((provider, builder) =>
+        {
+            var configProvider = provider.GetRequiredService<TestSecretRetriever>();
+            var apiToken = configProvider.GetApiTokenValue();
+            builder.UseDaprApiToken(apiToken);
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var client = serviceProvider.GetRequiredService<DaprConversationClient>();
+
+        //Validate it's set on the GrpcClient - note that it doesn't get set on the HttpClient
+        Assert.NotNull(client);
+        Assert.NotNull(client.DaprApiToken);
+        Assert.Equal("abcdef", client.DaprApiToken);
+        Assert.NotNull(client.HttpClient);
+
+        if (!client.HttpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var daprApiToken))
+        {
+            Assert.Fail();
+        }
+        Assert.Equal("abcdef", daprApiToken.FirstOrDefault());
+    }
+    
+    [Fact]
+    public void AddDaprConversationClient_WithoutConfigure_ShouldAddServices()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddDaprConversationClient();
         Assert.NotNull(builder);
     }
 
     [Fact]
-    public void AddDaprAiConversation_RegistersIHttpClientFactory()
+    public void AddDaprConversationClient_RegistersIHttpClientFactory()
     {
         var services = new ServiceCollection();
-        services.AddDaprAiConversation();
+        services.AddDaprConversationClient();
         var serviceProvider = services.BuildServiceProvider();
 
         var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
@@ -67,9 +117,66 @@ public class DaprAiConversationBuilderExtensionsTest
     }
 
     [Fact]
-    public void AddDaprAiConversation_NullServices_ShouldThrowException()
+    public void AddDaprConversationClient_NullServices_ShouldThrowException()
     {
         IServiceCollection services = null;
-        Assert.Throws<ArgumentNullException>(() => services.AddDaprAiConversation());
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprConversationClient());
+    }
+    
+    [Fact]
+    public void AddDaprConversationClient_ShouldRegisterSingleton_WhenLifetimeIsSingleton()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprConversationClient((_, _) => { }, ServiceLifetime.Singleton);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprConversationClient1 = serviceProvider.GetService<DaprConversationClient>();
+        var daprConversationClient2 = serviceProvider.GetService<DaprConversationClient>();
+
+        Assert.NotNull(daprConversationClient1);
+        Assert.NotNull(daprConversationClient2);
+        
+        Assert.Same(daprConversationClient1, daprConversationClient2);
+    }
+
+    [Fact]
+    public async Task AddDaprConversationClient_ShouldRegisterScoped_WhenLifetimeIsScoped()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprConversationClient((_, _) => { }, ServiceLifetime.Scoped);
+        var serviceProvider = services.BuildServiceProvider();
+
+        await using var scope1 = serviceProvider.CreateAsyncScope();
+        var daprConversationClient1 = scope1.ServiceProvider.GetService<DaprConversationClient>();
+
+        await using var scope2 = serviceProvider.CreateAsyncScope();
+        var daprConversationClient2 = scope2.ServiceProvider.GetService<DaprConversationClient>();
+                
+        Assert.NotNull(daprConversationClient1);
+        Assert.NotNull(daprConversationClient2);
+        Assert.NotSame(daprConversationClient1, daprConversationClient2);
+    }
+
+    [Fact]
+    public void AddDaprConversationClient_ShouldRegisterTransient_WhenLifetimeIsTransient()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprConversationClient((_, _) => { }, ServiceLifetime.Transient);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var daprConversationClient1 = serviceProvider.GetService<DaprConversationClient>();
+        var daprConversationClient2 = serviceProvider.GetService<DaprConversationClient>();
+
+        Assert.NotNull(daprConversationClient1);
+        Assert.NotNull(daprConversationClient2);
+        Assert.NotSame(daprConversationClient1, daprConversationClient2);
+    }
+    
+    private class TestSecretRetriever
+    {
+        public string GetApiTokenValue() => "abcdef";
     }
 }
