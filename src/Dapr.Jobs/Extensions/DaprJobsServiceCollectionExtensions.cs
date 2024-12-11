@@ -30,6 +30,7 @@ public static class DaprJobsServiceCollectionExtensions
     /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns></returns>
     public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobsClientBuilder>? configure = null, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
@@ -62,7 +63,7 @@ public static class DaprJobsServiceCollectionExtensions
                 serviceCollection.TryAddSingleton(registration);
                 break;
         }
-
+        
         return serviceCollection;
     }
 }
