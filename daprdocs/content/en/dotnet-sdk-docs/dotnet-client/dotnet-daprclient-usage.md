@@ -10,6 +10,48 @@ description: Essential tips and advice for using DaprClient
 
 A `DaprClient` holds access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar. `DaprClient` implements `IDisposable` to support eager cleanup of resources.
 
+### Dependency Injection
+
+The `AddDaprClient()` method will register the Dapr client with ASP.NET Core dependency injection. This method accepts an optional
+options delegate for configuring the `DaprClient` and an `ServiceLifetime` argument, allowing you to specify a different lifetime
+for the registered resources instead of the default `Singleton` value.
+
+The following example assumes all default values are acceptable and is sufficient to register the `DaprClient`.
+
+```csharp
+services.AddDaprClient();
+```
+
+The optional configuration delegates are used to configure `DaprClient` by specifying options on the provided `DaprClientBuilder`
+as in the following example:
+
+```csharp
+services.AddDaprClient(daprBuilder => {
+    daprBuilder.UseJsonSerializerOptions(new JsonSerializerOptions {
+            WriteIndented = true,
+            MaxDepth = 8
+        });
+    daprBuilder.UseTimeout(TimeSpan.FromSeconds(30));
+});
+```
+
+The another optional configuration delegate overload provides access to both the `DaprClientBuilder` as well as an `IServiceProvider`
+allowing for more advanced configurations that may require injecting services from the dependency injection container.
+
+```csharp
+services.AddSingleton<SampleService>();
+services.AddDaprClient((serviceProvider, daprBuilder) => {
+    var sampleService = serviceProvider.GetRequiredService<SampleService>();
+    var timeoutValue = sampleService.TimeoutOptions;
+    
+    daprBuilder.UseTimeout(timeoutValue);
+});
+```
+
+### Manual Instantiation
+
+Rather than using dependency injection, a `DaprClient` can also be built using the static client builder.
+
 For best performance, create a single long-lived instance of `DaprClient` and provide access to that shared instance throughout your application. `DaprClient` instances are thread-safe and intended to be shared.
 
 Avoid creating a `DaprClient` per-operation and disposing it when the operation is complete. 
@@ -24,13 +66,41 @@ var daprClient = new DaprClientBuilder()
     .Build();
 ```
 
-The `DaprClientBuilder` contains settings for:
+By default, the `DaprClientBuilder` will prioritize the following locations, in the following order, to source the configuration
+values:
 
-- The HTTP endpoint of the Dapr sidecar
-- The gRPC endpoint of the Dapr sidecar
-- The `JsonSerializerOptions` object used to configure JSON serialization
-- The `GrpcChannelOptions` object used to configure gRPC
-- The API Token used to authenticate requests to the sidecar
+- The value provided to a method on the `DaprClientBuilder` (e.g. `UseTimeout(TimeSpan.FromSeconds(30))`)
+- The value pulled from an optionally injected `IConfiguration` matching the name expected in the associated environment variable
+- The value pulled from the associated environment variable
+- Default values
+
+### Configuring on `DaprClientBuilder`
+
+The `DaprClientBuilder` contains the following methods to set configuration options:
+
+- `UseHttpEndpoint(string)`: The HTTP endpoint of the Dapr sidecar
+- `UseGrpcEndpoint(string)`: Sets the gRPC endpoint of the Dapr sidecar
+- `UseGrpcChannelOptions(GrpcChannelOptions)`: Sets the gRPC channel options used to connect to the Dapr sidecar
+- `UseHttpClientFactory(IHttpClientFactory)`: Configures the DaprClient to use a registered `IHttpClientFactory` when building `HttpClient` instances
+- `UseJsonSerializationOptions(JsonSerializerOptions)`: Used to configure JSON serialization
+- `UseDaprApiToken(string)`: Adds the provided token to every request to authenticate to the Dapr sidecar
+- `UseTimeout(TimeSpan)`: Specifies a timeout value used by the `HttpClient` when communicating with the Dapr sidecar
+
+### Configuring From `IConfiguration`
+Rather than rely on sourcing configuration values directly from environment variables or because the values are sourced 
+from dependency injected services, another options is to make these values available on `IConfiguration`.
+
+For example, you might be registering your application in a multi-tenant environment and need to prefix the environment 
+variables used. The following example shows how these values can be sourced from the environment variables to your
+`IConfiguration` when their keys are prefixed with `test_`;
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables("test_"); //Retrieves all environment variables that start with "test_" and removes the prefix when sourced from IConfiguration
+builder.Services.AddDaprClient();
+```
+
+### Configuring From Environment Variables
 
 The SDK will read the following environment variables to configure the default values:
 
@@ -40,9 +110,14 @@ The SDK will read the following environment variables to configure the default v
 - `DAPR_GRPC_PORT`: if `DAPR_GRPC_ENDPOINT` is not set, this is used to find the gRPC local endpoint of the Dapr sidecar
 - `DAPR_API_TOKEN`: used to set the API Token
 
+{{% alert title="Note" color="primary" %}}
+If both `DAPR_HTTP_ENDPOINT` and `DAPR_HTTP_PORT` are specified, the port value from `DAPR_HTTP_PORT` will be ignored in favor of the port
+implicitly or explicitly defined on `DAPR_HTTP_ENDPOINT`. The same is true of both `DAPR_GRPC_ENDPOINT` and `DAPR_GRPC_PORT`.
+{{% /alert %}}
+
 ### Configuring gRPC channel options
 
-Dapr's use of `CancellationToken` for cancellation relies on the configuration of the gRPC channel options. If you need to configure these options yourself, make sure to enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation).
+Dapr's use of `CancellationToken` for cancellation relies on the configuration of the gRPC channel options and this is enabled by default. If you need to configure these options yourself, make sure to enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation).
 
 ```C#
 var daprClient = new DaprClientBuilder()
