@@ -2,7 +2,7 @@
 type: docs
 title: "How to: Author and manage Dapr Jobs in the .NET SDK"
 linkTitle: "How to: Author & manage jobs"
-weight: 10000
+weight: 51000
 description: Learn how to author and manage Dapr Jobs using the .NET SDK
 ---
 

@@ -2,7 +2,7 @@
 type: docs
 title: "DaprJobsClient usage"
 linkTitle: "DaprJobsClient usage"
-weight: 5000
+weight: 59000
 description: Essential tips and advice for using DaprJobsClient
 ---
 
