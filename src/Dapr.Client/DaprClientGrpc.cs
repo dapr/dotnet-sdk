@@ -1548,12 +1548,12 @@ namespace Dapr.Client
 
             //Run both operations at the same time, but return the output of the streaming values coming from the operation
             var receiveResult = Task.FromResult(RetrieveEncryptedStreamAsync(duplexStream, cancellationToken));
-            return await Task.WhenAll(
-                //Stream the plaintext data to the sidecar in chunks
-                SendPlaintextStreamAsync(plaintextStream, encryptionOptions.StreamingBlockSizeInBytes,
-                    duplexStream, encryptRequestOptions, cancellationToken),
-                //At the same time, retrieve the encrypted response from the sidecar
-                receiveResult).ContinueWith(_ => receiveResult.Result, cancellationToken);
+
+            // do not await the send as it will block the call if send is not completed before receive is returned
+            _ = SendPlaintextStreamAsync(plaintextStream, encryptionOptions.StreamingBlockSizeInBytes,
+                duplexStream, encryptRequestOptions, cancellationToken);
+            
+            return await receiveResult;
         }
 
         /// <summary>
@@ -1631,14 +1631,12 @@ namespace Dapr.Client
 
             //Run both operations at the same time, but return the output of the streaming values coming from the operation
             var receiveResult = Task.FromResult(RetrieveDecryptedStreamAsync(duplexStream, cancellationToken));
-            return await Task.WhenAll(
-                //Stream the ciphertext data to the sidecar in chunks
-                SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes,
-                    duplexStream, decryptRequestOptions, cancellationToken),
-                //At the same time, retrieve the decrypted response from the sidecar
-                receiveResult)
-                //Return only the result of the `RetrieveEncryptedStreamAsync` method
-            .ContinueWith(t => receiveResult.Result, cancellationToken);
+
+            // do not await the send as it will block the call if send is not completed before receive is returned
+            _ = SendCiphertextStreamAsync(ciphertextStream, decryptionOptions.StreamingBlockSizeInBytes,
+                duplexStream, decryptRequestOptions, cancellationToken);
+            
+            return await receiveResult;
         }
 
         /// <inheritdoc />
