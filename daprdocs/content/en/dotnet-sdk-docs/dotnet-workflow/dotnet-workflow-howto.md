@@ -18,11 +18,16 @@ In the .NET example project:
 
 ## Prerequisites
 
-- [.NET 6+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
-- [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
+- [.NET 7](https://dotnet.microsoft.com/download/dotnet/7.0), [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) installed
 
+{{% alert title="Note" color="primary" %}}
+
+Dapr.Workflows supports .NET 7 or newer in v1.15. However, following the release of Dapr v1.16, only
+.NET 8 and .NET 9 will be supported.
+
+{{% /alert %}}
 
 ## Set up the environment
 
@@ -83,7 +88,7 @@ Run the following command to start a workflow.
 {{% codetab %}}
 
 ```bash
-curl -i -X POST http://localhost:3500/v1.0-beta1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 \
+curl -i -X POST http://localhost:3500/v1.0/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 \
   -H "Content-Type: application/json" \
   -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
@@ -93,7 +98,7 @@ curl -i -X POST http://localhost:3500/v1.0-beta1/workflows/dapr/OrderProcessingW
 {{% codetab %}}
 
 ```powershell
-curl -i -X POST http://localhost:3500/v1.0-beta1/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 `
+curl -i -X POST http://localhost:3500/v1.0/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 `
   -H "Content-Type: application/json" `
   -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
@@ -111,7 +116,7 @@ If successful, you should see a response like the following:
 Send an HTTP request to get the status of the workflow that was started:
 
 ```bash
-curl -i -X GET http://localhost:3500/v1.0-beta1/workflows/dapr/12345678
+curl -i -X GET http://localhost:3500/v1.0/workflows/dapr/12345678
 ```
 
 The workflow is designed to take several seconds to complete. If the workflow hasn't completed when you issue the HTTP request, you'll see the following JSON response (formatted for readability) with workflow status as `RUNNING`:
