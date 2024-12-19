@@ -35,10 +35,7 @@ public static class WorkflowServiceCollectionExtensions
         Action<WorkflowRuntimeOptions> configure,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
-        if (serviceCollection == null)
-        {
-            throw new ArgumentNullException(nameof(serviceCollection));
-        }
+        ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
         serviceCollection.AddDaprClient(lifetime: lifetime);
         serviceCollection.AddHttpClient();
