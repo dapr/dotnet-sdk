@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
-
 namespace Dapr.Workflow
 {
     using System;
@@ -43,7 +41,6 @@ namespace Dapr.Workflow
 
             serviceCollection.AddHostedService<WorkflowLoggingService>();
             
-            serviceCollection.TryAddSingleton<ILogger, ReplaySafeLogger>();
             serviceCollection.TryAddSingleton<DaprWorkflowClient>();
             serviceCollection.AddDaprClient();
             
