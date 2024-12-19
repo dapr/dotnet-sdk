@@ -11,8 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License at
+// https://github.com/microsoft/durabletask-dotnet/blob/main/LICENSE
 
 using System;
 using Microsoft.Extensions.Logging;
@@ -24,13 +25,17 @@ internal class ReplaySafeLogger : ILogger
     private readonly IWorkflowContext context;
     private readonly ILogger logger;
 
-    public ReplaySafeLogger(ILogger logger, IWorkflowContext context)
+    public ReplaySafeLogger(IWorkflowContext context, ILogger logger)
     {
-        this.context = context;
-        this.logger = logger;
+        this.context = context ?? throw new ArgumentNullException(nameof(context));
+        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public IDisposable BeginScope<TState>(TState state) => this.logger.BeginScope(state);
+    IDisposable ILogger.BeginScope<TState>(TState state)
+    {
+        ArgumentNullException.ThrowIfNull(state, nameof(state));
+        return this.logger.BeginScope<TState>(state)!;
+    }
 
     public bool IsEnabled(LogLevel logLevel) => this.logger.IsEnabled(logLevel);
 
@@ -39,7 +44,7 @@ internal class ReplaySafeLogger : ILogger
     {
         if (!this.context.IsReplaying)
         {
-            this.logger.Log<TState>(logLevel, eventId, state, exception, formatter);
+            this.logger.Log(logLevel, eventId, state, exception, formatter);
         }
     }
 }
