@@ -230,7 +230,18 @@ namespace Dapr.Actors.Resources {
                 return ResourceManager.GetString("ErrorNotAnActor", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an Actor Interface. An actor type must derive from &apos;{1}&apos;..
+        /// </summary>
+        internal static string ErrorNotAnActorInterface
+        {
+            get
+            {
+                return ResourceManager.GetString("ErrorNotAnActorInterface", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to The type &apos;{0}&apos; is not an actor interface as it does not derive from the interface &apos;{1}&apos;..
         /// </summary>
