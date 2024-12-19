@@ -273,7 +273,7 @@ namespace Dapr.Workflow
         {
             return this.CallChildWorkflowAsync<object>(workflowName, input, options);
         }
-
+        
         /// <summary>
         /// Returns an instance of <see cref="ILogger"/> that is replay-safe, meaning that the logger only
         /// writes logs when the orchestrator is not replaying previous history.
