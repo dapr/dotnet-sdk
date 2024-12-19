@@ -82,6 +82,22 @@ public static class WorkflowServiceCollectionExtensions
             var factory = new DaprWorkflowClientBuilderFactory(configuration, httpClientFactory);
             factory.CreateClientBuilder(serviceCollection, configure);
         }
+            serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
+            serviceCollection.AddHttpClient();
+
+            serviceCollection.AddHostedService<WorkflowLoggingService>();
+            
+            serviceCollection.TryAddSingleton<DaprWorkflowClient>();
+            serviceCollection.AddDaprClient();
+            
+            serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
+
+            serviceCollection.AddSingleton(c =>
+            {
+                var factory = c.GetRequiredService<DaprWorkflowClientBuilderFactory>();
+                factory.CreateClientBuilder(configure);
+                return new object(); //Placeholder as actual registration is performed inside factory
+            });
 
         return serviceCollection;
     }
