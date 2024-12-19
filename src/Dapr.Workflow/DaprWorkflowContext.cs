@@ -96,24 +96,24 @@ namespace Dapr.Workflow
         {
             return this.innerContext.NewGuid();
         }
-
+        
         /// <summary>
         /// Returns an instance of <see cref="ILogger"/> that is replay-safe, meaning that the logger only
         /// writes logs when the orchestrator is not replaying previous history.
         /// </summary>
         /// <param name="categoryName">The logger's category name.</param>
         /// <returns>An instance of <see cref="ILogger"/> that is replay-safe.</returns>
-        public virtual ILogger CreateReplaySafeLogger(string categoryName) =>
+        public override ILogger CreateReplaySafeLogger(string categoryName) =>
             new ReplaySafeLogger(this, this.innerContext.CreateReplaySafeLogger(categoryName));
-
+        
         /// <inheritdoc cref="CreateReplaySafeLogger(string)" />
         /// <param name="type">The type to derive the category name from.</param>
-        public virtual ILogger CreateReplaySafeLogger(Type type) =>
+        public override ILogger CreateReplaySafeLogger(Type type) =>
             new ReplaySafeLogger(this, this.innerContext.CreateReplaySafeLogger(type));
-
+        
         /// <inheritdoc cref="CreateReplaySafeLogger(string)" />
         /// <typeparam name="T">The type to derive category name from.</typeparam>
-        public virtual ILogger CreateReplaySafeLogger<T>() =>
+        public override ILogger CreateReplaySafeLogger<T>() =>
             new ReplaySafeLogger(this, this.innerContext.CreateReplaySafeLogger<T>());
 
         static async Task WrapExceptions(Task task)
