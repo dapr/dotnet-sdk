@@ -35,50 +35,38 @@ public static class WorkflowServiceCollectionExtensions
         Action<WorkflowRuntimeOptions> configure,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
-        if (serviceCollection == null)
-        {
-            throw new ArgumentNullException(nameof(serviceCollection));
-        }
+        ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
         serviceCollection.AddDaprClient(lifetime: lifetime);
         serviceCollection.AddHttpClient();
         serviceCollection.AddHostedService<WorkflowLoggingService>();
-        
+
         switch (lifetime)
         {
             case ServiceLifetime.Singleton:
-#pragma warning disable CS0618 // Type or member is obsolete - keeping around temporarily - replaced by DaprWorkflowClient
-                serviceCollection.TryAddSingleton<WorkflowEngineClient>();
-#pragma warning restore CS0618 // Type or member is obsolete
                 serviceCollection.TryAddSingleton<DaprWorkflowClient>();
                 serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
                 break;
             case ServiceLifetime.Scoped:
-#pragma warning disable CS0618 // Type or member is obsolete - keeping around temporarily - replaced by DaprWorkflowClient
-                serviceCollection.TryAddScoped<WorkflowEngineClient>();
-#pragma warning restore CS0618 // Type or member is obsolete
                 serviceCollection.TryAddScoped<DaprWorkflowClient>();
                 serviceCollection.TryAddScoped<WorkflowRuntimeOptions>();
                 break;
             case ServiceLifetime.Transient:
-#pragma warning disable CS0618 // Type or member is obsolete - keeping around temporarily - replaced by DaprWorkflowClient
-                serviceCollection.TryAddTransient<WorkflowEngineClient>();
-#pragma warning restore CS0618 // Type or member is obsolete
                 serviceCollection.TryAddTransient<DaprWorkflowClient>();
                 serviceCollection.TryAddTransient<WorkflowRuntimeOptions>();
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
         }
-        
+
         serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
-            
+
         //Register the factory and force resolution so the Durable Task client and worker can be registered
         using (var scope = serviceCollection.BuildServiceProvider().CreateScope())
         {
             var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
             var configuration = scope.ServiceProvider.GetService<IConfiguration>();
-                
+
             var factory = new DaprWorkflowClientBuilderFactory(configuration, httpClientFactory);
             factory.CreateClientBuilder(serviceCollection, configure);
         }
