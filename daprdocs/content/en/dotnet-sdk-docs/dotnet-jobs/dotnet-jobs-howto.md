@@ -64,11 +64,13 @@ the dependency injection registration in `Program.cs`, add the following line:
 var builder = WebApplication.CreateBuilder(args);
 
 //Add anywhere between these two
+builder.Services.AddDaprJobsClient(); //That's it
 
 var app = builder.Build();
 ```
 
 > Note that in today's implementation of the Jobs API, the app that schedules the job will also be the app that receives the trigger notification. In other words, you cannot schedule a trigger to run in another application. As a result, while you don't explicitly need the Dapr Jobs client to be registered in your application to schedule a trigger invocation endpoint, your endpoint will never be invoked without the same app also scheduling the job somehow (whether via this Dapr Jobs .NET SDK or an HTTP call to the sidecar).
+
 It's possible that you may want to provide some configuration options to the Dapr Jobs client that
 should be present with each call to the sidecar such as a Dapr API token, or you want to use a non-standard
 HTTP or gRPC endpoint. This is possible through use of an overload of the registration method that allows configuration of a 
