@@ -75,3 +75,60 @@ builder.Services.AddDaprWorkflow(options => {
 var app = builder.Build();
 await app.RunAsync();
 ```
+
+## Injecting Services into Workflow Activities
+Workflow activities support the same dependency injection that developers have come to expect of modern C# applications. Assuming a proper
+registration at startup, any such type can be injected into the constructor of the workflow activity and available to utilize during
+the execution of the workflow. This makes it simple to add logging via an injected `ILogger` or access to other Dapr 
+building blocks by injecting `DaprClient` or `DaprJobsClient`, for example.
+
+```csharp
+internal sealed class SquareNumberActivity : WorkflowActivity<int, int>
+{
+    private readonly ILogger _logger;
+    
+    public MyActivity(ILogger logger)
+    {
+        this._logger = logger;
+    }
+    
+    public override Task<int> RunAsync(WorkflowActivityContext context, int input) 
+    {
+        this._logger.LogInformation("Squaring the value {number}", input);
+        var result = input * input;
+        this._logger.LogInformation("Got a result of {squareResult}", result);
+        
+        return Task.FromResult(result);
+    }
+}
+```
+
+### Using ILogger in Workflow
+Because workflows must be deterministic, it is not possible to inject arbitrary services into them. For example, 
+if you were able to inject a standard `ILogger` into a workflow and it needed to be replayed because of an error,
+subsequent replay from the event source log would result in the log recording additional operations that didn't actually
+take place a second or third time because their results were sourced from the log. This has the potential to introduce 
+a significant amount of confusion. Rather, a replay-safe logger is made available for use within workflows. It will only 
+log events the first time the workflow runs and will not log anything whenever the workflow is being replaced.
+
+This logger can be retrieved from a method present on the `WorkflowContext` available on your workflow instance and
+otherwise used precisely as you might otherwise use an `ILogger` instance.
+
+An end-to-end sample demonstrating this can be seen in the 
+[.NET SDK repository](https://github.com/dapr/dotnet-sdk/blob/master/examples/Workflow/WorkflowConsoleApp/Workflows/OrderProcessingWorkflow.cs)
+but a brief extraction of this sample is available below.
+
+```csharp
+public class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
+{
+    public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)
+    {
+        string orderId = context.InstanceId;
+        var logger = context.CreateReplaySafeLogger<OrderProcessingWorkflow>(); //Use this method to access the logger instance
+
+        logger.LogInformation("Received order {orderId} for {quantity} {name} at ${totalCost}", orderId, order.Quantity, order.Name, order.TotalCost);
+        
+        //...
+    }
+}
+```
