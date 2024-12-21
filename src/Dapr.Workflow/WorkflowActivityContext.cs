@@ -26,7 +26,7 @@ namespace Dapr.Workflow
         public abstract TaskName Name { get; }
 
         /// <summary>
-        /// Gets the unique ID of the current workflow instance.
+        /// Gets the unique ID of thcurrent workflow instance.
         /// </summary>
         public abstract string InstanceId {  get; }
     }

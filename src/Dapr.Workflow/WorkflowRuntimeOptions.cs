@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Grpc.Net.Client;
+
 namespace Dapr.Workflow
 {
     using System;
@@ -29,6 +31,11 @@ namespace Dapr.Workflow
         /// </summary>
         readonly Dictionary<string, Action<DurableTaskRegistry>> factories = new();
 
+        /// <summary>
+        /// Override GrpcChannelOptions.
+        /// </summary>
+        internal GrpcChannelOptions? GrpcChannelOptions { get; private set; }
+        
         /// <summary>
         /// Initializes a new instance of the <see cref="WorkflowRuntimeOptions"/> class.
         /// </summary>
@@ -116,6 +123,15 @@ namespace Dapr.Workflow
                 });
                 WorkflowLoggingService.LogActivityName(name);
             });
+        }
+        
+        /// <summary>
+        /// Uses the provided <paramref name="grpcChannelOptions" /> for creating the <see cref="GrpcChannel" />.
+        /// </summary>
+        /// <param name="grpcChannelOptions">The <see cref="GrpcChannelOptions" /> to use for creating the <see cref="GrpcChannel" />.</param>
+        public void UseGrpcChannelOptions(GrpcChannelOptions grpcChannelOptions)
+        {
+            this.GrpcChannelOptions = grpcChannelOptions;
         }
 
         /// <summary>

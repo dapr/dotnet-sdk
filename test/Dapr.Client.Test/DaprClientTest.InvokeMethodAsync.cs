@@ -11,10 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http.Headers;
+
 namespace Dapr.Client.Test
 {
     using System;
-    using System.Collections.Generic;
     using System.Net;
     using System.Net.Http;
     using System.Net.Http.Json;
@@ -23,7 +26,6 @@ namespace Dapr.Client.Test
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client;
-    using FluentAssertions;
     using Xunit;
 
     // Most of the InvokeMethodAsync functionality on DaprClient is non-abstract methods that
@@ -654,8 +656,34 @@ namespace Dapr.Client.Test
             var actual = await content.ReadFromJsonAsync<Widget>(this.jsonSerializerOptions);
             Assert.Equal(data.Color, actual.Color);
         }
+        
+        [Fact]
+        public async Task InvokeMethodWithoutResponse_WithExtraneousHeaders()
+        {
+            await using var client = TestClient.CreateForDaprClient(c =>
+            {
+                c.UseGrpcEndpoint("http://localhost").UseHttpEndpoint("https://test-endpoint:3501").UseJsonSerializationOptions(this.jsonSerializerOptions);
+            });
 
+            var req = await client.CaptureHttpRequestAsync(async DaprClient =>
+            {
+                var request = client.InnerClient.CreateInvokeMethodRequest(HttpMethod.Get, "test-app", "mymethod");
+                request.Headers.Add("test-api-key", "test");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "abc123");
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
+                await DaprClient.InvokeMethodAsync(request);
+            });
+
+            req.Dismiss();
+            
+            Assert.NotNull(req);
+            Assert.True(req.Request.Headers.Contains("test-api-key"));
+            Assert.Equal("test", req.Request.Headers.GetValues("test-api-key").First());
+            Assert.True(req.Request.Headers.Contains("Authorization"));
+            Assert.Equal("Bearer abc123", req.Request.Headers.GetValues("Authorization").First());
+            Assert.Equal("application/json", req.Request.Headers.GetValues("Accept").First());
+        }
 
         [Fact]
         public async Task InvokeMethodWithResponseAsync_ReturnsMessageWithoutCheckingStatus()

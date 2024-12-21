@@ -11,6 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+
+using Dapr;
+using Dapr.AspNetCore;
+
+
 namespace ControllerSample
 {
     using Microsoft.AspNetCore.Builder;
@@ -61,7 +66,10 @@ namespace ControllerSample
 
             app.UseRouting();
 
-            app.UseCloudEvents();
+            app.UseCloudEvents(new CloudEventsMiddlewareOptions
+            {
+                ForwardCloudEventPropertiesAsHeaders = true
+            });
 
             app.UseAuthorization();
 

@@ -88,8 +88,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response =
-                client.Call<InvokeResponse>()
+            await client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
 
@@ -153,8 +152,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response =
-                client.Call<InvokeResponse>()
+            await client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
 
@@ -197,7 +195,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Returns(response);
 
-            FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request)).Should().NotThrow();
+            FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request)).Should().NotThrowAsync();
         }
 
         [Fact]
@@ -210,8 +208,7 @@ namespace Dapr.Client.Test
                 Data = Any.Pack(data),
             };
 
-            var response =
-                client.Call<InvokeResponse>()
+            await client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
 
@@ -294,7 +291,7 @@ namespace Dapr.Client.Test
 
             // Validate Response
             var invokedResponse = await request.CompleteWithMessageAsync(response);
-            invokeResponse.Name.Should().Be(invokeResponse.Name);
+            invokedResponse.Name.Should().Be(invokeResponse.Name);
         }
 
         [Fact]

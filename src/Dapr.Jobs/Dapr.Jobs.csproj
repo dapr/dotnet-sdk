@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.Jobs</PackageId>
+        <Title>Dapr Jobs Authoring SDK</Title>
+        <Description>Dapr Jobs SDK for scheduling jobs and tasks with Dapr</Description>
+        <VersionSuffix>alpha</VersionSuffix>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+      <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+    </ItemGroup>
+
+</Project>

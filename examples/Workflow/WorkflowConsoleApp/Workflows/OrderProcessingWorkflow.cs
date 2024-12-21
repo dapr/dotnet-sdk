@@ -1,6 +1,6 @@
 ﻿using Dapr.Workflow;
+using Microsoft.Extensions.Logging;
 using WorkflowConsoleApp.Activities;
-using WorkflowConsoleApp.Models;
 
 namespace WorkflowConsoleApp.Workflows
 {
@@ -17,7 +17,10 @@ namespace WorkflowConsoleApp.Workflows
         public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)
         {
             string orderId = context.InstanceId;
+            var logger = context.CreateReplaySafeLogger<OrderProcessingWorkflow>();
 
+            logger.LogInformation("Received order {orderId} for {quantity} {name} at ${totalCost}", orderId, order.Quantity, order.Name, order.TotalCost);
+            
             // Notify the user that an order has come through
             await context.CallActivityAsync(
                 nameof(NotifyActivity),
@@ -32,6 +35,8 @@ namespace WorkflowConsoleApp.Workflows
             // If there is insufficient inventory, fail and let the user know 
             if (!result.Success)
             {
+                logger.LogError("Insufficient inventory for {orderName}", order.Name);
+                
                 // End the workflow here since we don't have sufficient inventory
                 await context.CallActivityAsync(
                     nameof(NotifyActivity),
@@ -40,8 +45,10 @@ namespace WorkflowConsoleApp.Workflows
             }
 
             // Require orders over a certain threshold to be approved
-            if (order.TotalCost > 50000)
+            const int threshold = 50000;
+            if (order.TotalCost > threshold)
             {
+                logger.LogInformation("Requesting manager approval since total cost {totalCost} exceeds threshold {threshold}", order.TotalCost, threshold);
                 // Request manager approval for the order
                 await context.CallActivityAsync(nameof(RequestApprovalActivity), order);
 
@@ -52,9 +59,13 @@ namespace WorkflowConsoleApp.Workflows
                     ApprovalResult approvalResult = await context.WaitForExternalEventAsync<ApprovalResult>(
                         eventName: "ManagerApproval",
                         timeout: TimeSpan.FromSeconds(30));
+                    
+                    logger.LogInformation("Approval result: {approvalResult}", approvalResult);
                     context.SetCustomStatus($"Approval result: {approvalResult}");
                     if (approvalResult == ApprovalResult.Rejected)
                     {
+                        logger.LogWarning("Order was rejected by approver");
+                        
                         // The order was rejected, end the workflow here
                         await context.CallActivityAsync(
                             nameof(NotifyActivity),
@@ -64,6 +75,8 @@ namespace WorkflowConsoleApp.Workflows
                 }
                 catch (TaskCanceledException)
                 {
+                    logger.LogError("Cancelling order because it didn't receive an approval");
+                    
                     // An approval timeout results in automatic order cancellation
                     await context.CallActivityAsync(
                         nameof(NotifyActivity),
@@ -73,6 +86,7 @@ namespace WorkflowConsoleApp.Workflows
             }
 
             // There is enough inventory available so the user can purchase the item(s). Process their payment
+            logger.LogInformation("Processing payment as sufficient inventory is available");
             await context.CallActivityAsync(
                 nameof(ProcessPaymentActivity),
                 new PaymentRequest(RequestId: orderId, order.Name, order.Quantity, order.TotalCost),
@@ -89,6 +103,7 @@ namespace WorkflowConsoleApp.Workflows
             catch (WorkflowTaskFailedException e)
             {
                 // Let them know their payment processing failed
+                logger.LogError("Order {orderId} failed! Details: {errorMessage}", orderId, e.FailureDetails.ErrorMessage);
                 await context.CallActivityAsync(
                     nameof(NotifyActivity),
                     new Notification($"Order {orderId} Failed! Details: {e.FailureDetails.ErrorMessage}"));
@@ -96,6 +111,7 @@ namespace WorkflowConsoleApp.Workflows
             }
 
             // Let them know their payment was processed
+            logger.LogError("Order {orderId} has completed!", orderId);
             await context.CallActivityAsync(
                 nameof(NotifyActivity),
                 new Notification($"Order {orderId} has completed!"));

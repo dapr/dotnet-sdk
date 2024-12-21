@@ -13,7 +13,6 @@
 
 namespace Dapr.Workflow
 {
-    using System;
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
@@ -30,10 +29,9 @@ namespace Dapr.Workflow
         private static readonly HashSet<string> registeredWorkflows = new();
         private static readonly HashSet<string> registeredActivities = new();
 
-        public WorkflowLoggingService(ILogger<WorkflowLoggingService> logger, IConfiguration configuration)
+        public WorkflowLoggingService(ILogger<WorkflowLoggingService> logger)
         {
             this.logger = logger;
-            
         }
         public Task StartAsync(CancellationToken cancellationToken)
         {

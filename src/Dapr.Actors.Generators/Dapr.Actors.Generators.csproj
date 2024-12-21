@@ -1,45 +1,55 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsRoslynComponent>true</IsRoslynComponent>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-  </PropertyGroup>
+    <PropertyGroup>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
-  <!--
+    <!--
     Source generators are built and packaged as analyzers and not "normal" NuGet libraries.
   -->
 
-  <PropertyGroup>
-    <!-- Generators must target netstandard2.0. -->
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <TargetFrameworks></TargetFrameworks>
+    <PropertyGroup>
+        <!-- Generators must target netstandard2.0. -->
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks></TargetFrameworks>
 
-    <!-- Do not include the generator as a lib dependency -->
-    <IncludeBuildOutput>false</IncludeBuildOutput>
+        <!-- Do not include the generator as a lib dependency -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
 
-    <!-- Suppress false-positive error NU5128 when packing analyzers with no lib/ref files. -->
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <!-- Suppress false-positive error NU5128 when packing analyzers with no lib/ref files. -->
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 
-    <!-- Suppress generation of symbol package (.snupkg). -->
-    <IncludeSymbols>false</IncludeSymbols>
+        <!-- Suppress generation of symbol package (.snupkg). -->
+        <IncludeSymbols>false</IncludeSymbols>
 
-    <!-- Additional NuGet package properties. -->
-    <Description>This package contains source generators for interacting with Actor services using Dapr.</Description>
-    <PackageTags>$(PackageTags);Actors</PackageTags>
-  </PropertyGroup>
+        <!-- Additional NuGet package properties. -->
+        <Description>This package contains source generators for interacting with Actor services using Dapr.</Description>
+        <PackageTags>$(PackageTags);Actors</PackageTags>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <!-- Package the generator in the analyzer directory of the NuGet package -->
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-  </ItemGroup>
+    <ItemGroup>
+        <!-- Package the generator in the analyzer directory of the NuGet package -->
+        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+        <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="$(AssemblyName).Test, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b1f597635c44597fcecb493e2b1327033b29b1a98ac956a1a538664b68f87d45fbaada0438a15a6265e62864947cc067d8da3a7d93c5eb2fcbb850e396c8684dba74ea477d82a1bbb18932c0efb30b64ff1677f85ae833818707ac8b49ad8062ca01d2c89d8ab1843ae73e8ba9649cd28666b539444dcdee3639f95e2a099bb2"/>
+    </ItemGroup>
 
 </Project>

@@ -16,6 +16,7 @@ namespace Dapr.Workflow.Test
     using Moq;
     using System.Threading.Tasks;
     using Xunit;
+    using Xunit.Sdk;
 
     /// <summary>
     /// Contains tests for WorkflowActivityContext.
@@ -26,15 +27,18 @@ namespace Dapr.Workflow.Test
 
         private Mock<WorkflowActivityContext> workflowActivityContextMock;
 
-        [Fact]
-        public async Task RunAsync_ShouldReturnCorrectContextInstanceId()
+        public WorkflowActivityTest()
         {
             this.workflowActivity = new TestDaprWorkflowActivity();
             this.workflowActivityContextMock = new Mock<WorkflowActivityContext>();
+        }
 
+        [Fact]
+        public async Task RunAsync_ShouldReturnCorrectContextInstanceId()
+        {
             this.workflowActivityContextMock.Setup((x) => x.InstanceId).Returns("instanceId");
 
-            string result = (string) await this.workflowActivity.RunAsync(this.workflowActivityContextMock.Object, "input");
+            string result = (string) (await this.workflowActivity.RunAsync(this.workflowActivityContextMock.Object, "input"))!;
 
             Assert.Equal("instanceId", result);
         }

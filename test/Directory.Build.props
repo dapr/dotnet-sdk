@@ -1,9 +1,9 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
 
-  <PropertyGroup>
-    <TargetFrameworks>net6;net7;net8</TargetFrameworks>
-
+  <PropertyGroup>  
+    <TargetFrameworks>net6;net7;net8;net9</TargetFrameworks>
+      
     <!-- Set Output Path for tests-->
     <OutputPath>$(RepoRoot)bin\$(Configuration)\test\$(MSBuildProjectName)\</OutputPath>
 
@@ -12,6 +12,6 @@
 
   <!-- Used to annotate PR with test failures: https://github.com/Tyrrrz/GitHubActionsTestLogger -->
   <ItemGroup>
-    <PackageReference Include="GitHubActionsTestLogger" Version="1.1.2" />
+    <PackageReference Include="GitHubActionsTestLogger" />
   </ItemGroup>
 </Project>

@@ -18,7 +18,6 @@ namespace Dapr.Actors.Communication
     using System.IO;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using System.Xml;
 
     /// <summary>
     /// This is the implmentation  for <see cref="IActorMessageBodySerializationProvider"/>used by remoting service and client during
@@ -104,7 +103,10 @@ namespace Dapr.Actors.Communication
             {
                 var _methodRequestParameterTypes = new List<Type>(methodRequestParameterTypes);
                 var _wrappedRequestMessageTypes = new List<Type>(wrappedRequestMessageTypes);
-
+                if(_wrappedRequestMessageTypes.Count > 1){
+                    throw new NotSupportedException("JSON serialisation should always provide the actor method (or nothing), that was called" +
+                        " to support (de)serialisation. This is a Dapr SDK error, open an issue on GitHub.");
+                }
                 this.serializerOptions = new(serializerOptions)
                 {
                     // Workaround since WrappedMessageBody creates an object

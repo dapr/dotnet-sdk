@@ -1,7 +1,5 @@
-﻿using Dapr.Client;
-using Dapr.Workflow;
+﻿using Dapr.Workflow;
 using Microsoft.Extensions.Logging;
-using WorkflowConsoleApp.Models;
 
 namespace WorkflowConsoleApp.Activities
 {

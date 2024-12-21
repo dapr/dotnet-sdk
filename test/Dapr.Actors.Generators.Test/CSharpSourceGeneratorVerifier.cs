@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,26 +16,27 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 
 /// <remarks>
 /// From Roslyn Source Generators Cookbook: https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 /// </remarks>
 internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
-    where TSourceGenerator : ISourceGenerator, new()
+    where TSourceGenerator : IIncrementalGenerator, new()
 {
-    public class Test : CSharpSourceGeneratorTest<TSourceGenerator, XUnitVerifier>
+    public class Test : CSharpSourceGeneratorTest<TSourceGenerator, DefaultVerifier>
     {
         public Test()
         {
             int frameworkVersion =
-            #if NET6_0
+#if NET6_0
                 6;
-            #elif NET7_0
+#elif NET7_0
                 7;
-            #elif NET8_0
+#elif NET8_0
                 8;
-            #endif
+#elif NET9_0
+                9;
+#endif
 
             //
             // NOTE: Ordinarily we'd use the following:
@@ -56,10 +57,10 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
 
         protected override CompilationOptions CreateCompilationOptions()
         {
-           var compilationOptions = base.CreateCompilationOptions();
+            var compilationOptions = base.CreateCompilationOptions();
 
-           return compilationOptions
-            .WithSpecificDiagnosticOptions(compilationOptions.SpecificDiagnosticOptions.SetItems(GetNullableWarningsFromCompiler()));
+            return compilationOptions
+             .WithSpecificDiagnosticOptions(compilationOptions.SpecificDiagnosticOptions.SetItems(GetNullableWarningsFromCompiler()));
         }
 
         public LanguageVersion LanguageVersion { get; set; } = LanguageVersion.Default;

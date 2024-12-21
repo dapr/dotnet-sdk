@@ -106,8 +106,8 @@ namespace Dapr.Actors.Runtime
             var interfaceId = actorMessageHeader.InterfaceId;
 
             // Get the deserialized Body.
-            var msgBodySerializer = this.serializersManager.GetRequestMessageBodySerializer(actorMessageHeader.InterfaceId);
-
+            var msgBodySerializer = this.serializersManager.GetRequestMessageBodySerializer(actorMessageHeader.InterfaceId, actorMethodContext.MethodName);
+            
             IActorRequestMessageBody actorMessageBody;
             using (var stream = new MemoryStream())
             {
@@ -130,7 +130,7 @@ namespace Dapr.Actors.Runtime
                     this.messageBodyFactory,
                     ct);
 
-                return this.CreateResponseMessage(responseMsgBody, interfaceId);
+                return this.CreateResponseMessage(responseMsgBody, interfaceId, actorMethodContext.MethodName);
             }
 
             return await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
@@ -229,7 +229,6 @@ namespace Dapr.Actors.Runtime
             // Create a Func to be invoked by common method.
             async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
             {
-                var actorTypeName = actor.Host.ActorTypeInfo.ActorTypeName;
                 var actorType = actor.Host.ActorTypeInfo.ImplementationType;
                 var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
 
@@ -241,7 +240,7 @@ namespace Dapr.Actors.Runtime
                 return default;
             }
 
-            var result = await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
+            await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
         }
 
         internal async Task ActivateActorAsync(ActorId actorId)
@@ -387,12 +386,12 @@ namespace Dapr.Actors.Runtime
             return retval;
         }
 
-        private Tuple<string, byte[]> CreateResponseMessage(IActorResponseMessageBody msgBody, int interfaceId)
+        private Tuple<string, byte[]> CreateResponseMessage(IActorResponseMessageBody msgBody, int interfaceId, string methodName)
         {
             var responseMsgBodyBytes = Array.Empty<byte>();
             if (msgBody != null)
             {
-                var responseSerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId);
+                var responseSerializer = this.serializersManager.GetResponseMessageBodySerializer(interfaceId, methodName);
                 responseMsgBodyBytes = responseSerializer.Serialize(msgBody);
             }
 

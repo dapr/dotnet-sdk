@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+
 using System;
 using System.Text.Json;
 
@@ -34,7 +36,7 @@ namespace Dapr.Actors.Runtime
         };
         private bool useJsonSerialization = false;
         private JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
-        private string daprApiToken = DaprDefaults.GetDefaultDaprApiToken();
+        private string daprApiToken = string.Empty;
         private int? remindersStoragePartitions = null;
 
         /// <summary>
@@ -180,19 +182,14 @@ namespace Dapr.Actors.Runtime
 
             set
             {
-                if (value is null)
-                {
-                    throw new ArgumentNullException(nameof(JsonSerializerOptions), $"{nameof(ActorRuntimeOptions)}.{nameof(JsonSerializerOptions)} cannot be null");
-                }
-
-                this.jsonSerializerOptions = value;
+                this.jsonSerializerOptions = value ?? throw new ArgumentNullException(nameof(JsonSerializerOptions), $"{nameof(ActorRuntimeOptions)}.{nameof(JsonSerializerOptions)} cannot be null");
             }
         }
 
         /// <summary>
         /// The <see cref="DaprApiToken"/> to add to the headers in requests to Dapr runtime
         /// </summary>
-        public string DaprApiToken
+        public string? DaprApiToken
         {
             get
             {
@@ -201,12 +198,7 @@ namespace Dapr.Actors.Runtime
 
             set
             {
-                if (value is null)
-                {
-                    throw new ArgumentNullException(nameof(DaprApiToken), $"{nameof(ActorRuntimeOptions)}.{nameof(DaprApiToken)} cannot be null");
-                }
-
-                this.daprApiToken = value;
+                this.daprApiToken = value ?? throw new ArgumentNullException(nameof(DaprApiToken), $"{nameof(ActorRuntimeOptions)}.{nameof(DaprApiToken)} cannot be null");
             }
         }
 
@@ -241,6 +233,6 @@ namespace Dapr.Actors.Runtime
         /// corresponding environment variables. 
         /// </remarks>
         /// <value></value>
-        public string HttpEndpoint { get; set; } = DaprDefaults.GetDefaultHttpEndpoint();
+        public string? HttpEndpoint { get; set; }
     }
 }
