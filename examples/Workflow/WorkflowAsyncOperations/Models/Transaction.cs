@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2024 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,24 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
-{
-    using System;
-    using Microsoft.DurableTask.Client;
+namespace WorkflowAsyncOperations.Models;
 
-    /// <summary>
-    /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-    /// </summary>
-    [Obsolete($"Deprecated. Use {nameof(DaprWorkflowClient)} instead.")]
-    public sealed class WorkflowEngineClient : DaprWorkflowClient
-    {
-        /// <summary>
-        /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-        /// </summary>
-        /// <inheritdoc cref="DaprWorkflowClient(DurableTaskClient)"/>
-        public WorkflowEngineClient(DurableTaskClient innerClient)
-            : base(innerClient)
-        {
-        }
-    }
+internal sealed record Transaction(decimal Value)
+{
+    public Guid CustomerId { get; init; } = Guid.NewGuid();
 }

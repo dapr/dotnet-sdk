@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -25,54 +26,44 @@ public static class DaprJobsServiceCollectionExtensions
     /// Adds Dapr Jobs client support to the service collection.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/>.</param>
-    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<DaprJobsClientBuilder>? configure = null)
-    {
-        ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
-
-        //Register the IHttpClientFactory implementation
-        serviceCollection.AddHttpClient();
-
-        serviceCollection.TryAddSingleton(serviceProvider =>
-        {
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-
-            var builder = new DaprJobsClientBuilder();
-            builder.UseHttpClientFactory(httpClientFactory);
-            
-            configure?.Invoke(builder);
-
-            return builder.Build();
-        });
-
-        return serviceCollection;
-    }
-
-    /// <summary>
-    /// Adds Dapr Jobs client support to the service collection.
-    /// </summary>
-    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
     /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/> using injected services.</param>
+    /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobsClientBuilder>? configure)
+    public static IServiceCollection AddDaprJobsClient(this IServiceCollection serviceCollection, Action<IServiceProvider, DaprJobsClientBuilder>? configure = null, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+
     {
         ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
 
         //Register the IHttpClientFactory implementation
         serviceCollection.AddHttpClient();
-
-        serviceCollection.TryAddSingleton(serviceProvider =>
+        
+        var registration = new Func<IServiceProvider, DaprJobsClient>(serviceProvider =>
         {
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            
-            var builder = new DaprJobsClientBuilder();
+            var configuration = serviceProvider.GetService<IConfiguration>();
+
+            var builder = new DaprJobsClientBuilder(configuration);
             builder.UseHttpClientFactory(httpClientFactory);
 
             configure?.Invoke(serviceProvider, builder);
 
             return builder.Build();
         });
-
+        
+        switch (lifetime)
+        {
+            case ServiceLifetime.Scoped:
+                serviceCollection.TryAddScoped(registration);
+                break;
+            case ServiceLifetime.Transient:
+                serviceCollection.TryAddTransient(registration);
+                break;
+            case ServiceLifetime.Singleton:
+            default:
+                serviceCollection.TryAddSingleton(registration);
+                break;
+        }
+        
         return serviceCollection;
     }
 }
