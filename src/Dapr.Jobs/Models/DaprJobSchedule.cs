@@ -76,9 +76,6 @@ public sealed class DaprJobSchedule
     /// <param name="expression">The systemd Cron-like expression indicating when the job should be triggered.</param>
     public static DaprJobSchedule FromExpression(string expression)
     {
-#if NET6_0
-        ArgumentNullException.ThrowIfNull(expression, nameof(expression));
-#endif
         return new DaprJobSchedule(expression);
     }
 
