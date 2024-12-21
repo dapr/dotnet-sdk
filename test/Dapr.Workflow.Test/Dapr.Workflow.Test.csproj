@@ -13,6 +13,7 @@
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.extensibility.core" />
         <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="Moq" />
     </ItemGroup>
 
     <ItemGroup>
