@@ -44,18 +44,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['6.0', '7.0', '8.0', '9.0']
+        dotnet-version: ['8.0', '9.0']
         include:
-        - dotnet-version: '6.0'
-          display-name: '.NET 6.0'
-          framework: 'net6'
-          prefix: 'net6'
-          install-version: '6.0.x'
-        - dotnet-version: '7.0'
-          display-name: '.NET 7.0'
-          framework: 'net7'
-          prefix: 'net7'
-          install-version: '7.0.x'
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
           framework: 'net8'
@@ -70,11 +60,6 @@ jobs:
     - uses: actions/checkout@v1
     - name: Parse release version
       run: python ./.github/scripts/get_release_version.py
-    - name: Setup ${{ matrix.display-name }}
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: ${{ matrix.install-version }}
-        dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
     - name: Setup .NET 8 (required)
       uses: actions/setup-dotnet@v3
       if: ${{ matrix.install-version != '8.0.x' }}
