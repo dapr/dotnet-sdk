@@ -8,14 +8,14 @@
     /// <summary>
     /// An unrecognized detail.
     /// </summary>
-    /// <param name="TypeUrl">Type Url</param>
+    /// <param name="TypeUrl">Type Url.</param>
     public sealed record DaprUnrecognizedDetail(string TypeUrl) : DaprExtendedErrorDetail(DaprExtendedErrorType.Unrecognized);
 
     /// <summary>
     /// A Debug Info detail.
     /// </summary>
     /// <param name="StackEntries">Stack Entries.</param>
-    /// <param name="Detail">Detail</param>
+    /// <param name="Detail">Detail.</param>
     public sealed record DaprDebugInfoDetail(string[] StackEntries, string Detail) : DaprExtendedErrorDetail(DaprExtendedErrorType.DebugInfo);
 
     /// <summary>

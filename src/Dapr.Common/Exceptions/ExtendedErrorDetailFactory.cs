@@ -29,7 +29,7 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Create a new <see cref="DaprExtendedErrorDetail"/> from an instance of <see cref="Any"/>.
         /// </summary>
-        /// <param name="metadata">The <see cref="Any"/> to create <see cref="DaprExtendedErrorDetail"/> from.</param>
+        /// <param name="metadata">The message to create the error detail from.</param>
         /// <returns>A new instance of <see cref="DaprExtendedErrorDetail"/></returns>
         internal static DaprExtendedErrorDetail CreateErrorDetail(Any metadata)
         {
@@ -94,7 +94,8 @@ namespace Dapr.Common.Exceptions
             var badRequest = BadRequest.Parser.ParseFrom(data);
             return new()
             {
-                FieldViolations = badRequest.FieldViolations.Select(fieldViolation => new DaprBadRequestDetailFieldViolation(fieldViolation.Field, fieldViolation.Description)).ToArray()
+                FieldViolations = badRequest.FieldViolations.Select(
+                    fieldViolation => new DaprBadRequestDetailFieldViolation(Field: fieldViolation.Field, Description: fieldViolation.Description)).ToArray()
             };
         }
 
@@ -109,7 +110,7 @@ namespace Dapr.Common.Exceptions
             var helpInfo = Help.Parser.ParseFrom(data);
             return new()
             {
-                Links = helpInfo.Links.Select(link => new DaprHelpDetailLink(link.Url, link.Description)).ToArray()
+                Links = helpInfo.Links.Select(link => new DaprHelpDetailLink(Url: link.Url, Description: link.Description)).ToArray()
             };
         }
     }

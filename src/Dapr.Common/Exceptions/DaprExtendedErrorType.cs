@@ -1,7 +1,7 @@
 ﻿namespace Dapr.Common.Exceptions
 {
     /// <summary>
-    /// Extended Error Detail Types
+    /// Extended Error Detail Types.
     /// </summary>
     public enum DaprExtendedErrorType
     {

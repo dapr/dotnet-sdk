@@ -4,7 +4,7 @@ using Grpc.Core;
 namespace Dapr.Common.Exceptions
 {
     /// <summary>
-    /// Provides help extension methods for <see cref="DaprException"/>
+    /// Provides extension methods for <see cref="DaprException"/>
     /// </summary>
     public static class DaprExceptionExtensions
     {
