@@ -16,7 +16,7 @@ namespace Dapr.Common.Test
         private static string GrpcDetails = "grpc-status-details-bin";
 
         [Fact]
-        public void DaprExendedErrorInfo_ThrowsRpcDaprException_ExtendedErrorInfoNotNull()
+        public void DaprExendedErrorInfo_ThrowsRpcDaprException_ExtendedErrorInfoReturnsTrueAndNotNull()
         {
             // Arrange
             DaprExtendedErrorInfo result = null;
@@ -52,7 +52,7 @@ namespace Dapr.Common.Test
         }
 
         [Fact]
-        public void DaprExendedErrorInfo_ThrowsNonRpcDaprException_ExtendedErrorInfoIsNull()
+        public void DaprExendedErrorInfo_ThrowsNonRpcDaprException_ExtendedErrorInfoReturnsFalseAndIsNull()
         {
             // Arrange
             DaprExtendedErrorInfo result = null;
@@ -649,7 +649,11 @@ namespace Dapr.Common.Test
                 Message = statusMessage,
             };
 
-            List<System.Type> expectedDetailTypes = new() { typeof(DaprResourceInfoDetail), typeof(DaprRequestInfoDetail) };
+            List<System.Type> expectedDetailTypes = new()
+            {
+                typeof(DaprResourceInfoDetail),
+                typeof(DaprRequestInfoDetail),
+            };
 
             RequestInfo requestInfo = new();
 

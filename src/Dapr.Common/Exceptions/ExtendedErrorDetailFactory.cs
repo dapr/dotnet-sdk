@@ -29,7 +29,7 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Create a new <see cref="DaprExtendedErrorDetail"/> from an instance of <see cref="Any"/>.
         /// </summary>
-        /// <param name="metadata">The message to create the error detail from.</param>
+        /// <param name="metadata">The detail metadata to create the error detail from.</param>
         /// <returns>A new instance of <see cref="DaprExtendedErrorDetail"/></returns>
         internal static DaprExtendedErrorDetail CreateErrorDetail(Any metadata)
         {

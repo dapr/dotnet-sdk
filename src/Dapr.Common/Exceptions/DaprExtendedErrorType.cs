@@ -1,62 +1,89 @@
-﻿namespace Dapr.Common.Exceptions
+﻿// ------------------------------------------------------------------------
+// Copyright 2024 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+namespace Dapr.Common.Exceptions
 {
     /// <summary>
-    /// Extended Error Detail Types.
+    /// Extended error detail types.
+    /// This is based on the Richer Error Model (see <see href="https://google.aip.dev/193#error_model"/> and
+    /// <see href="https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto"/>)
+    /// and is implemented by the Dapr runtime (see <see href="https://github.com/dapr/dapr/blob/master/pkg/api/errors/README.md)."/>).
     /// </summary>
     public enum DaprExtendedErrorType
     {
         /// <summary>
-        /// Unrecognized Extended Error Type.
+        /// Unrecognized extended error type.
+        /// Implemented by <see cref="DaprUnrecognizedDetail"/>.
         /// </summary>
         Unrecognized,
 
         /// <summary>
-        /// Retry Info Detail Type.
+        /// Retry info detail type.
+        /// See <see cref="DaprRetryInfoDetail"/>.
         /// </summary>
         RetryInfo,
 
         /// <summary>
-        /// Debug Info Detail Type.
+        /// Debug info detail type.
+        /// See <see cref="DaprDebugInfoDetail"/>.
         /// </summary>
         DebugInfo,
 
         /// <summary>
-        /// Quote Failure Detail Type.
+        /// Quote failure detail type.
+        /// See <see cref="DaprQuotaFailureDetail"/>.
         /// </summary>
         QuotaFailure,
 
         /// <summary>
-        /// Precondition Failure Detail Type.
+        /// Precondition failure detail type.
+        /// See <see cref="DaprPreconditionFailureDetail"/>.
         /// </summary>
         PreconditionFailure,
 
         /// <summary>
-        /// Request Info Detail Type.
+        /// Request info detail type.
+        /// See <see cref="DaprRequestInfoDetail"/>.
         /// </summary>
         RequestInfo,
 
         /// <summary>
-        /// Localized Message Detail Type.
+        /// Localized message detail type.
+        /// See <see cref="DaprLocalizedMessageDetail"/>.
         /// </summary>
         LocalizedMessage,
 
         /// <summary>
-        /// Bad Request Detail Type.
+        /// Bad request detail type.
+        /// See <see cref="DaprBadRequestDetail"/>.
         /// </summary>
         BadRequest,
 
         /// <summary>
-        /// Error Info Detail Type.
+        /// Error info detail type.
+        /// See <see cref="DaprErrorInfoDetail"/>.
         /// </summary>
         ErrorInfo,
 
         /// <summary>
-        /// Help Detail Type.
+        /// Help detail type.
+        /// See <see cref="DaprHelpDetail"/>.
         /// </summary>
         Help,
 
         /// <summary>
-        /// Resource Info Detail Type.
+        /// Resource info detail type.
+        /// See <see cref="DaprResourceInfoDetail"/>.
         /// </summary>
         ResourceInfo
     }
