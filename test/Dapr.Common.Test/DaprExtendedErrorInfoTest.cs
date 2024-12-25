@@ -13,8 +13,6 @@ namespace Dapr.Common.Test
         private static int statusCode = 1;
         private static string statusMessage = "Status Message";
 
-        private static string GrpcDetails = "grpc-status-details-bin";
-
         [Fact]
         public void DaprExendedErrorInfo_ThrowsRpcDaprException_ExtendedErrorInfoReturnsTrueAndNotNull()
         {
@@ -32,7 +30,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "BadRequest"), trailers: trailers);
@@ -119,7 +117,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "BadRequest"), trailers: trailers);
@@ -171,7 +169,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "BadRequest"), trailers: trailers);
@@ -220,7 +218,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.FailedPrecondition, "RetryInfo"), trailers: trailers);
@@ -267,7 +265,7 @@ namespace Dapr.Common.Test
 
             Grpc.Core.Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(Grpc.Core.StatusCode.FailedPrecondition, "DebugInfo"), trailers: trailers);
@@ -323,7 +321,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(Grpc.Core.StatusCode.FailedPrecondition, "PrecondtionFailure"), trailers: trailers);
@@ -379,7 +377,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "Help"), trailers: trailers);
@@ -438,7 +436,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "ResourceInfo"), trailers: trailers);
@@ -494,7 +492,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "QuotaFailure"), trailers: trailers);
@@ -556,7 +554,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "ErrorInfo"), trailers: trailers);
@@ -612,7 +610,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "RequestInfo"), trailers: trailers);
@@ -665,7 +663,7 @@ namespace Dapr.Common.Test
 
             Metadata trailers = new()
             {
-                { GrpcDetails, metadataEntry.ToByteArray() }
+                { DaprExtendedErrorConstants.GrpcDetails, metadataEntry.ToByteArray() }
             };
 
             var rpcEx = new RpcException(status: new Grpc.Core.Status(StatusCode.Aborted, "RequestInfo"), trailers: trailers);

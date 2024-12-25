@@ -9,7 +9,7 @@ namespace Dapr.Common.Exceptions
     /// </summary>
     internal static class ExtendedErrorDetailFactory
     {
-        private const string DaprErrorTypeUrl = "type.googleapis.com/";
+        private const string DaprErrorTypeUrl = DaprExtendedErrorConstants.DaprErrorDetailTypeUrl;
 
         private static Dictionary<string, Func<ByteString, DaprExtendedErrorDetail>> extendedErrorTypeMapping =
             new()
@@ -35,7 +35,7 @@ namespace Dapr.Common.Exceptions
         {
             if (!extendedErrorTypeMapping.TryGetValue(metadata.TypeUrl, out var create))
             {
-                return new DaprUnrecognizedDetail(metadata.TypeUrl);
+                return new DaprUnknownDetail(metadata.TypeUrl);
             }
 
             return create.Invoke(metadata.Value);

@@ -22,7 +22,7 @@ namespace Dapr.Common.Exceptions
     /// Detail when the type url is unrecognized.
     /// </summary>
     /// <param name="TypeUrl">The unrecognized type url.</param>
-    public sealed record DaprUnrecognizedDetail(string TypeUrl) : DaprExtendedErrorDetail(DaprExtendedErrorType.Unrecognized);
+    public sealed record DaprUnknownDetail(string TypeUrl) : DaprExtendedErrorDetail(DaprExtendedErrorType.Unknown);
 
     /// <summary>
     /// Detail proving debugging information.
@@ -76,7 +76,7 @@ namespace Dapr.Common.Exceptions
     public sealed record DaprQuotaFailureViolation(string Subject, string Description);
 
     /// <summary>
-    /// Detail relating to a quota failure e.g reaching an API limit.
+    /// Detail relating to a quota failure e.g reaching API limit.
     /// </summary>
     public sealed record DaprQuotaFailureDetail() : DaprExtendedErrorDetail(DaprExtendedErrorType.QuotaFailure)
     {

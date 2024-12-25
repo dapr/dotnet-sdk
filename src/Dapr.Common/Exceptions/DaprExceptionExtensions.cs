@@ -21,8 +21,6 @@ namespace Dapr.Common.Exceptions
     /// </summary>
     public static class DaprExceptionExtensions
     {
-        private static string GrpcDetails = "grpc-status-details-bin";
-
         /// <summary>
         /// Attempt to retrieve <see cref="DaprExtendedErrorInfo"/> from <see cref="DaprException"/>.
         /// </summary>
@@ -37,7 +35,7 @@ namespace Dapr.Common.Exceptions
                 return false;
             }
 
-            var metadata = rpcException.Trailers.Get(GrpcDetails);
+            var metadata = rpcException.Trailers.Get(DaprExtendedErrorConstants.GrpcDetails);
 
             if (metadata is null)
             {

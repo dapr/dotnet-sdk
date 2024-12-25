@@ -17,15 +17,15 @@ namespace Dapr.Common.Exceptions
     /// Extended error detail types.
     /// This is based on the Richer Error Model (see <see href="https://google.aip.dev/193#error_model"/> and
     /// <see href="https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto"/>)
-    /// and is implemented by the Dapr runtime (see <see href="https://github.com/dapr/dapr/blob/master/pkg/api/errors/README.md)."/>).
+    /// and is implemented by the Dapr runtime (see <see href="https://github.com/dapr/dapr/blob/master/pkg/api/errors/README.md"/>).
     /// </summary>
     public enum DaprExtendedErrorType
     {
         /// <summary>
-        /// Unrecognized extended error type.
-        /// Implemented by <see cref="DaprUnrecognizedDetail"/>.
+        /// Unknown extended error type.
+        /// Implemented by <see cref="DaprUnknownDetail"/>.
         /// </summary>
-        Unrecognized,
+        Unknown,
 
         /// <summary>
         /// Retry info detail type.
