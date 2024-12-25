@@ -133,7 +133,9 @@
     /// <summary>
     /// Dapr error info details.
     /// </summary>
-    /// <param name="Reason">Reason</param>
-    /// <param name="Domain">Domain</param>
-    public sealed record DaprErrorInfoDetail(string Reason, string Domain) : DaprExtendedErrorDetail(DaprExtendedErrorType.ErrorInfo);
-}
+    /// <param name="Reason">Reason.</param>
+    /// <param name="Domain">Domain.</param>
+    /// <param name="Metadata">Metadata.</param>
+    public sealed record DaprErrorInfoDetail(string Reason, string Domain, IDictionary<string, string>? Metadata) : DaprExtendedErrorDetail(DaprExtendedErrorType.ErrorInfo);
+
+}   

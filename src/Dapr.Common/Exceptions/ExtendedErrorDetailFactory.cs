@@ -102,7 +102,7 @@ namespace Dapr.Common.Exceptions
         private static DaprErrorInfoDetail ToDaprErrorInfoDetail(ByteString data)
         {
             var errorInfo = ErrorInfo.Parser.ParseFrom(data);
-            return new(Reason: errorInfo.Reason, Domain: errorInfo.Domain);
+            return new(Reason: errorInfo.Reason, Domain: errorInfo.Domain, Metadata: errorInfo.Metadata);
         }
 
         private static DaprHelpDetail ToDaprHelpDetail(ByteString data)
