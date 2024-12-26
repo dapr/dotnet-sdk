@@ -1,7 +1,7 @@
 ﻿---
 type: docs
-title: "Error Handling .NET SDK"
+title: "Error Handling in the Dapr .NET SDK"
 linkTitle: "Error handling"
 weight: 50000
-description: Learn about Dapr error handling in the .NET SDK.
+description: Learn about error handling in the Dapr.NET SDK.
 ---

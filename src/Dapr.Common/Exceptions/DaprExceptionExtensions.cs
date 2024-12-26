@@ -24,7 +24,7 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Attempt to retrieve <see cref="DaprExtendedErrorInfo"/> from <see cref="DaprException"/>.
         /// </summary>
-        /// <param name="exception">A Dapr exception.<see cref="DaprException"/>.</param>
+        /// <param name="exception">A Dapr exception. <see cref="DaprException"/>.</param>
         /// <param name="daprExtendedErrorInfo"><see cref="DaprExtendedErrorInfo"/> out if parsable from inner exception, null otherwise.</param>
         /// <returns>True if extended info is available, false otherwise.</returns>
         public static bool TryGetExtendedErrorInfo(this DaprException exception, [NotNullWhen(true)] out DaprExtendedErrorInfo? daprExtendedErrorInfo)

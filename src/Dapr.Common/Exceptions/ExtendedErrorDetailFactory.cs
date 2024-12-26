@@ -5,11 +5,11 @@ using Google.Rpc;
 namespace Dapr.Common.Exceptions
 {
     /// <summary>
-    /// <see cref="DaprExtendedErrorDetail"/> factory class.
+    /// <see cref="DaprExtendedErrorDetail"/> factory.
     /// </summary>
     internal static class ExtendedErrorDetailFactory
     {
-        private const string DaprErrorTypeUrl = DaprExtendedErrorConstants.DaprErrorDetailTypeUrl;
+        private const string DaprErrorTypeUrl = DaprExtendedErrorConstants.ErrorDetailTypeUrl;
 
         private static Dictionary<string, Func<ByteString, DaprExtendedErrorDetail>> extendedErrorTypeMapping =
             new()
@@ -29,16 +29,16 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Create a new <see cref="DaprExtendedErrorDetail"/> from an instance of <see cref="Any"/>.
         /// </summary>
-        /// <param name="metadata">The detail metadata to create the error detail from.</param>
+        /// <param name="message">The serialized detail message to create the error detail from.</param>
         /// <returns>A new instance of <see cref="DaprExtendedErrorDetail"/></returns>
-        internal static DaprExtendedErrorDetail CreateErrorDetail(Any metadata)
+        internal static DaprExtendedErrorDetail CreateErrorDetail(Any message)
         {
-            if (!extendedErrorTypeMapping.TryGetValue(metadata.TypeUrl, out var create))
+            if (!extendedErrorTypeMapping.TryGetValue(message.TypeUrl, out var create))
             {
-                return new DaprUnknownDetail(metadata.TypeUrl);
+                return new DaprUnknownDetail(message.TypeUrl);
             }
 
-            return create.Invoke(metadata.Value);
+            return create.Invoke(message.Value);
         }
 
         private static DaprRetryInfoDetail ToDaprRetryInfoDetail(ByteString data)
