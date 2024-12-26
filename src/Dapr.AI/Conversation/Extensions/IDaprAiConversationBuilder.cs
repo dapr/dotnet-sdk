@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2024 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,24 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
-{
-    using System;
-    using Microsoft.DurableTask.Client;
+using Dapr.AI.Extensions;
 
-    /// <summary>
-    /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-    /// </summary>
-    [Obsolete($"Deprecated. Use {nameof(DaprWorkflowClient)} instead.")]
-    public sealed class WorkflowEngineClient : DaprWorkflowClient
-    {
-        /// <summary>
-        /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-        /// </summary>
-        /// <inheritdoc cref="DaprWorkflowClient(DurableTaskClient)"/>
-        public WorkflowEngineClient(DurableTaskClient innerClient)
-            : base(innerClient)
-        {
-        }
-    }
+namespace Dapr.AI.Conversation.Extensions;
+
+/// <summary>
+/// Provides a root builder for the Dapr AI conversational functionality facilitating a more fluent-style registration.
+/// </summary>
+public interface IDaprAiConversationBuilder : IDaprAiServiceBuilder
+{
 }
