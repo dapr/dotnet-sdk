@@ -1,4 +1,17 @@
-﻿using Google.Protobuf;
+﻿// ------------------------------------------------------------------------
+// Copyright 2024 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Google.Rpc;
 
@@ -9,23 +22,6 @@ namespace Dapr.Common.Exceptions
     /// </summary>
     internal static class ExtendedErrorDetailFactory
     {
-        private const string DaprErrorTypeUrl = DaprExtendedErrorConstants.ErrorDetailTypeUrl;
-
-        private static Dictionary<string, Func<ByteString, DaprExtendedErrorDetail>> extendedErrorTypeMapping =
-            new()
-            {
-                { $"{DaprErrorTypeUrl}Google.rpc.ErrorInfo", ToDaprErrorInfoDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.RetryInfo", ToDaprRetryInfoDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.DebugInfo", ToDaprDebugInfoDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.QuotaFailure", ToDaprQuotaFailureDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.PreconditionFailure", ToDaprPreconditionFailureDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.BadRequest", ToDaprBadRequestDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.RequestInfo", ToDaprRequestInfoDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.ResourceInfo", ToDaprResourceInfoDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.Help", ToDaprHelpDetail },
-                { $"{DaprErrorTypeUrl}Google.rpc.LocalizedMessage", ToDaprLocalizedMessageDetail },
-            };
-
         /// <summary>
         /// Create a new <see cref="DaprExtendedErrorDetail"/> from an instance of <see cref="Any"/>.
         /// </summary>
@@ -33,12 +29,21 @@ namespace Dapr.Common.Exceptions
         /// <returns>A new instance of <see cref="DaprExtendedErrorDetail"/></returns>
         internal static DaprExtendedErrorDetail CreateErrorDetail(Any message)
         {
-            if (!extendedErrorTypeMapping.TryGetValue(message.TypeUrl, out var create))
+            var data = message.Value;
+            return message.TypeUrl switch
             {
-                return new DaprUnknownDetail(message.TypeUrl);
-            }
-
-            return create.Invoke(message.Value);
+                DaprExtendedErrorConstants.RetryInfo => ToDaprRetryInfoDetail(data),
+                DaprExtendedErrorConstants.ErrorInfo => ToDaprErrorInfoDetail(data),
+                DaprExtendedErrorConstants.DebugInfo => ToDaprDebugInfoDetail(data),
+                DaprExtendedErrorConstants.QuotaFailure => ToDaprQuotaFailureDetail(data),
+                DaprExtendedErrorConstants.PreconditionFailure => ToDaprPreconditionFailureDetail(data),
+                DaprExtendedErrorConstants.BadRequest => ToDaprBadRequestDetail(data),
+                DaprExtendedErrorConstants.RequestInfo => ToDaprRequestInfoDetail(data),
+                DaprExtendedErrorConstants.ResourceInfo => ToDaprResourceInfoDetail(data),
+                DaprExtendedErrorConstants.Help => ToDaprHelpDetail(data),
+                DaprExtendedErrorConstants.LocalizedMessage => ToDaprLocalizedMessageDetail(data),
+                _ => new DaprUnknownDetail(message.TypeUrl)
+            };
         }
 
         private static DaprRetryInfoDetail ToDaprRetryInfoDetail(ByteString data)

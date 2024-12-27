@@ -35,6 +35,8 @@ catch (DaprException daprEx)
                 case ExtendedErrorType.ErrorInfo:
                     Console.WriteLine(detail.Reason);
                     Console.WriteLine(detail.Domain);
+                default:
+                    Console.WriteLine(detail.TypeUrl);
         }
     }
 }
@@ -83,7 +85,7 @@ Debugging information offered by the server. Contains `StackEntries` (a collecti
 
 ## QuotaFailure 
 
-Information relating to some quota that may have been reach, such as a daily usage limit on an API. It has one property `Violations`, 
+Information relating to some quota that may have been reached, such as a daily usage limit on an API. It has one property `Violations`, 
 a collection of `DaprQuotaFailureViolation`, which each contain a `Subject` (the subject of the request) and `Description` (further information regarding the failure).
 
 ## PreconditionFailure

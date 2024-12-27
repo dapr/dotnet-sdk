@@ -29,7 +29,7 @@ namespace Dapr.Common.Exceptions
     /// </summary>
     /// <param name="StackEntries">Stack trace entries relating to error.</param>
     /// <param name="Detail">Further related debugging information.</param>
-    public sealed record DaprDebugInfoDetail(string[] StackEntries, string Detail) : DaprExtendedErrorDetail(DaprExtendedErrorType.DebugInfo);
+    public sealed record DaprDebugInfoDetail(IReadOnlyCollection<string> StackEntries, string Detail) : DaprExtendedErrorDetail(DaprExtendedErrorType.DebugInfo);
 
     /// <summary>
     /// A precondtion violation.
@@ -47,7 +47,7 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Collection of <see cref="DaprBadRequestDetailFieldViolation"/>.
         /// </summary>
-        public DaprPreconditionFailureViolation[] Violations { get; init; } = Array.Empty<DaprPreconditionFailureViolation>();
+        public IReadOnlyCollection<DaprPreconditionFailureViolation> Violations { get; init; } = Array.Empty<DaprPreconditionFailureViolation>();
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Collection of <see cref="DaprQuotaFailureViolation"/>.
         /// </summary>
-        public DaprQuotaFailureViolation[] Violations { get; init; } = Array.Empty<DaprQuotaFailureViolation>();
+        public IReadOnlyCollection<DaprQuotaFailureViolation> Violations { get; init; } = Array.Empty<DaprQuotaFailureViolation>();
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Collection of <see cref="DaprBadRequestDetailFieldViolation"/>.
         /// </summary>
-        public DaprBadRequestDetailFieldViolation[] FieldViolations { get; init; } = Array.Empty<DaprBadRequestDetailFieldViolation>();
+        public IReadOnlyCollection<DaprBadRequestDetailFieldViolation> FieldViolations { get; init; } = Array.Empty<DaprBadRequestDetailFieldViolation>();
     }
 
     /// <summary>
@@ -134,7 +134,7 @@ namespace Dapr.Common.Exceptions
         /// <summary>
         /// Collection of <see cref="DaprHelpDetailLink"/>.
         /// </summary>
-        public DaprHelpDetailLink[] Links { get; init; } = Array.Empty<DaprHelpDetailLink>();
+        public IReadOnlyCollection<DaprHelpDetailLink> Links { get; init; } = Array.Empty<DaprHelpDetailLink>();
     }
 
     /// <summary>
