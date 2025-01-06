@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Dapr.Messaging.PublishSubscribe.Extensions;
@@ -25,8 +26,9 @@ public static class PublishSubscribeServiceCollectionExtensions
         var registration = new Func<IServiceProvider, DaprPublishSubscribeClient>(serviceProvider =>
         {
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+            var configuration = serviceProvider.GetService<IConfiguration>();
 
-            var builder = new DaprPublishSubscribeClientBuilder();
+            var builder = new DaprPublishSubscribeClientBuilder(configuration);
             builder.UseHttpClientFactory(httpClientFactory);
 
             configure?.Invoke(serviceProvider, builder);

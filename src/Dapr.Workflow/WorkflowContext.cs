@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Microsoft.Extensions.Logging;
+
 namespace Dapr.Workflow
 {
     using System;
@@ -21,13 +23,13 @@ namespace Dapr.Workflow
     /// Context object used by workflow implementations to perform actions such as scheduling activities, durable timers, waiting for
     /// external events, and for getting basic information about the current workflow instance.
     /// </summary>
-    public abstract class WorkflowContext
+    public abstract class WorkflowContext : IWorkflowContext
     {
         /// <summary>
         /// Gets the name of the current workflow.
         /// </summary>
         public abstract string Name { get; }
-
+        
         /// <summary>
         /// Gets the instance ID of the current workflow.
         /// </summary>
@@ -271,6 +273,22 @@ namespace Dapr.Workflow
         {
             return this.CallChildWorkflowAsync<object>(workflowName, input, options);
         }
+        
+        /// <summary>
+        /// Returns an instance of <see cref="ILogger"/> that is replay-safe, meaning that the logger only
+        /// writes logs when the orchestrator is not replaying previous history.
+        /// </summary>
+        /// <param name="categoryName">The logger's category name.</param>
+        /// <returns>An instance of <see cref="ILogger"/> that is replay-safe.</returns>
+        public abstract ILogger CreateReplaySafeLogger(string categoryName);
+
+        /// <inheritdoc cref="CreateReplaySafeLogger(string)" />
+        /// <param name="type">The type to derive the category name from.</param>
+        public abstract ILogger CreateReplaySafeLogger(Type type);
+
+        /// <inheritdoc cref="CreateReplaySafeLogger(string)" />
+        /// <typeparam name="T">The type to derive category name from.</typeparam>
+        public abstract ILogger CreateReplaySafeLogger<T>();
 
         /// <summary>
         /// Restarts the workflow with a new input and clears its history.

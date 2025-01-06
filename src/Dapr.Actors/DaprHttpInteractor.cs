@@ -116,7 +116,7 @@ namespace Dapr.Actors
             var serializedHeader = serializersManager.GetHeaderSerializer()
                 .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
 
-            var msgBodySeriaizer = serializersManager.GetRequestMessageBodySerializer(interfaceId);
+            var msgBodySeriaizer = serializersManager.GetRequestMessageBodySerializer(interfaceId, methodName);
             var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
 
             // Send Request
@@ -170,7 +170,7 @@ namespace Dapr.Actors
 
                 // Deserialize Actor Response Message Body
                 // Deserialize to ActorInvokeException when there is response header otherwise normal path
-                var responseBodySerializer = serializersManager.GetResponseMessageBodySerializer(interfaceId);
+                var responseBodySerializer = serializersManager.GetResponseMessageBodySerializer(interfaceId, methodName);
 
                 // actorResponseMessageHeader is not null, it means there is remote exception
                 if (actorResponseMessageHeader != null)
