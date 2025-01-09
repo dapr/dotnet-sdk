@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
@@ -12,12 +13,6 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <TargetFrameworks></TargetFrameworks>
-
-    <!-- Do not include the generator as a lib dependency -->
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-
     <!-- Suppress false-positive error NU5128 when packing analyzers with no lib/ref files. -->
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 

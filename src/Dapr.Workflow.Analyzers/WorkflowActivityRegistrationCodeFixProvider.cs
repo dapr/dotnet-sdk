@@ -93,7 +93,7 @@ public class WorkflowActivityRegistrationCodeFixProvider : CodeFixProvider
             .FirstOrDefault();
 
         // Extract the parameter name from the lambda expression
-        var parameterName = optionsLambda.Parameter.Identifier.Text;
+        var parameterName = optionsLambda?.Parameter.Identifier.Text;
 
         // Create the new workflow registration statement
         var registerWorkflowStatement = SyntaxFactory.ParseStatement($"{parameterName}.RegisterActivity<{workflowActivityType}>();");
