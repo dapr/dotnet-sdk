@@ -1,12 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
-using System.Collections.Immutable;
-using System.Reflection;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 
 namespace Dapr.Workflow.Analyzers.Test;
 
-internal static class Verify
+internal static class VerifyAnalyzer
 {
     public static DiagnosticResult Diagnostic(string diagnosticId, DiagnosticSeverity diagnosticSeverity) 
     { 
@@ -20,15 +18,25 @@ internal static class Verify
 
     public static async Task VerifyAnalyzerAsync(string source, string? program, params DiagnosticResult[] expected)
     {
-        var test = new Test { TestCode = source, ReferenceAssemblies = ReferenceAssemblies.Net.Net60 };
+        var test = new Test { TestCode = source };
+
+#if NET6_0
+        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net60;
+#elif NET7_0
+        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net70;
+#elif NET8_0
+        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net80;
+#elif NET9_0
+        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
+#endif
 
         if (program != null)
         {
             test.TestState.Sources.Add(("Program.cs", program));
         }
 
-        var metadataReferences = GetAllReferencesNeededForType(typeof(WorkflowActivityAnalyzer)).ToList();
-        metadataReferences.AddRange(GetAllReferencesNeededForType(typeof(Workflow<,>)));
+        var metadataReferences = Utilities.GetAllReferencesNeededForType(typeof(WorkflowRegistrationAnalyzer)).ToList();
+        metadataReferences.AddRange(Utilities.GetAllReferencesNeededForType(typeof(Workflow<,>)));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
         foreach (var reference in metadataReferences)
@@ -40,7 +48,7 @@ internal static class Verify
         await test.RunAsync(CancellationToken.None);
     }
 
-    private class Test : CSharpAnalyzerTest<WorkflowActivityAnalyzer, DefaultVerifier>
+    private class Test : CSharpAnalyzerTest<WorkflowRegistrationAnalyzer, DefaultVerifier>
     { 
         public Test() 
         { 
@@ -51,21 +59,5 @@ internal static class Verify
                 return solution;
             }); 
         } 
-    }
-
-    private static MetadataReference[] GetAllReferencesNeededForType(Type type)
-    {
-        var files = GetAllAssemblyFilesNeededForType(type);
-
-        return files.Select(x => MetadataReference.CreateFromFile(x)).Cast<MetadataReference>().ToArray();
-    }
-
-    private static ImmutableArray<string> GetAllAssemblyFilesNeededForType(Type type)
-    {
-        return type.Assembly.GetReferencedAssemblies()
-            .Select(x => Assembly.Load(x.FullName))
-            .Append(type.Assembly)
-            .Select(x => x.Location)
-            .ToImmutableArray();
     }
 }
