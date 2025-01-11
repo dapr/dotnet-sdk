@@ -19,6 +19,9 @@
     <!-- Suppress generation of symbol package (.snupkg). -->
     <IncludeSymbols>false</IncludeSymbols>
 
+    <!-- Do not include the generator as a lib dependency -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+
     <!-- Additional NuGet package properties. -->
     <Description>This package contains analyzers for interacting with Dapr workflows.</Description>
     <PackageTags>$(PackageTags)</PackageTags>
