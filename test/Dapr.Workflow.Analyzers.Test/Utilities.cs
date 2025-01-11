@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System.Collections.Immutable;
@@ -16,7 +17,8 @@ internal static class Utilities
         var project = workspace.AddProject("TestProject", LanguageNames.CSharp)
             .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
             .AddMetadataReference(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
-            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(Workflow<,>)));
+            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(Workflow<,>)))
+            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(WebApplication)));
 
         // Add the document to the project
         var document = project.AddDocument("TestDocument.cs", code);
