@@ -37,7 +37,7 @@ internal static class VerifyAnalyzer
             test.TestState.Sources.Add(("Program.cs", program));
         }
 
-        var metadataReferences = Utilities.GetAllReferencesNeededForType(typeof(ActorRegistrationAnalyzer)).ToList();
+        var metadataReferences = Utilities.GetAllReferencesNeededForType(typeof(ActorAnalyzer)).ToList();
         metadataReferences.AddRange(Utilities.GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
@@ -50,7 +50,7 @@ internal static class VerifyAnalyzer
         await test.RunAsync(CancellationToken.None);
     }
 
-    private class Test : CSharpAnalyzerTest<ActorRegistrationAnalyzer, DefaultVerifier>
+    private class Test : CSharpAnalyzerTest<ActorAnalyzer, DefaultVerifier>
     {
         public Test()
         {

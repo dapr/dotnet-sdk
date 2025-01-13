@@ -32,7 +32,7 @@ internal static class Utilities
 
         var compilationWithAnalyzer = compilation.WithAnalyzers(
                 ImmutableArray.Create<DiagnosticAnalyzer>(
-                    new ActorRegistrationAnalyzer()));
+                    new ActorAnalyzer()));
 
         // Get diagnostics from the compilation
         var diagnostics = await compilationWithAnalyzer.GetAllDiagnosticsAsync();

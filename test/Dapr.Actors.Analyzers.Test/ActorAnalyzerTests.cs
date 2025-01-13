@@ -2,7 +2,7 @@
 
 namespace Dapr.Actors.Analyzers.Test;
 
-public class ActorRegistrationAnalyzerTests
+public class ActorAnalyzerTests
 {
     public class ActorNotRegistered
     {
@@ -89,8 +89,9 @@ public class ActorRegistrationAnalyzerTests
                     public static void AddApplicationServices(this IServiceCollection services)
                     {
                         services.AddActors(options =>
-                        {
+                        {                
                             options.Actors.RegisterActor<TestActor>();
+                            options.UseJsonSerialization = true;
                         });
                     }
                 }
@@ -126,6 +127,7 @@ public class ActorRegistrationAnalyzerTests
                         services.AddActors(options =>
                         {
                             options.Actors.RegisterActor<TestNamespace.TestActor>();
+                            options.UseJsonSerialization = true;
                         });
                     }
                 }
@@ -162,6 +164,7 @@ public class ActorRegistrationAnalyzerTests
                         services.AddActors(options =>
                         {
                             options.Actors.RegisterActor<alias.TestActor>();
+                            options.UseJsonSerialization = true;
                         });
                     }
                 }
@@ -171,4 +174,68 @@ public class ActorRegistrationAnalyzerTests
         }
     }
     
+    public class JsonSerialization
+    {
+        [Fact]
+        public async Task ReportDiagnostic()
+        {
+            var testCode = @"
+                using Dapr.Actors.Runtime;
+                using Microsoft.Extensions.DependencyInjection;
+
+                internal static class Extensions
+                {
+                    public static void AddApplicationServices(this IServiceCollection services)
+                    {
+                        services.AddActors(options =>
+                        {
+                            options.Actors.RegisterActor<TestActor>();
+                        });
+                    }
+                }
+                
+                class TestActor : Actor
+                {
+                    public TestActor(ActorHost host) : base(host)
+                    {
+                    }
+                }
+                ";
+
+            var expected = VerifyAnalyzer.Diagnostic("DAPR0002", DiagnosticSeverity.Warning)
+                .WithSpan(9, 25, 12, 27).WithMessage("Add options.UseJsonSerialization to support interoperability with non-.NET actors");
+
+            await VerifyAnalyzer.VerifyAnalyzerAsync(testCode, expected);
+        }
+
+        [Fact]
+        public async Task ReportNoDiagnostic()
+        {
+            var testCode = @"
+                using Dapr.Actors.Runtime;
+                using Microsoft.Extensions.DependencyInjection;
+
+                internal static class Extensions
+                {
+                    public static void AddApplicationServices(this IServiceCollection services)
+                    {
+                        services.AddActors(options =>
+                        {
+                            options.Actors.RegisterActor<TestActor>();
+                            options.UseJsonSerialization = true;
+                        });
+                    }
+                }
+                
+                class TestActor : Actor
+                {
+                    public TestActor(ActorHost host) : base(host)
+                    {
+                    }
+                }
+                ";
+
+            await VerifyAnalyzer.VerifyAnalyzerAsync(testCode);
+        }
+    }
 }

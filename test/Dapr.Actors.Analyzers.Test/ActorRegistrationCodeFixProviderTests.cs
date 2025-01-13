@@ -16,6 +16,7 @@ public class ActorRegistrationCodeFixProviderTests
                     var services = new ServiceCollection();
                     services.AddActors(options =>
                     {
+                        options.UseJsonSerialization = true;
                     });
                 }
             }
@@ -39,6 +40,7 @@ public class ActorRegistrationCodeFixProviderTests
                     var services = new ServiceCollection();
                     services.AddActors(options =>
                     {
+                        options.UseJsonSerialization = true;
                         options.Actors.RegisterActor<TestActor>();
                     });
                 }

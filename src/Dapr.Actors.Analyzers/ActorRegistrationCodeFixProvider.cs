@@ -38,14 +38,7 @@ public class ActorRegistrationCodeFixProvider : CodeFixProvider
             context.Diagnostics);
         return Task.CompletedTask;
     }
-
-    /// <summary>
-    /// Registers the actor in the specified document.
-    /// </summary>
-    /// <param name="document">The document to update.</param>
-    /// <param name="diagnostic">The diagnostic to fix.</param>
-    /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>The updated document.</returns>
+    
     private async Task<Document> RegisterActorAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
@@ -137,12 +130,12 @@ public class ActorRegistrationCodeFixProvider : CodeFixProvider
 
         foreach (var syntaxTree in compilation!.SyntaxTrees)
         {
-            var syntaxRoot = await syntaxTree.GetRootAsync(cancellationToken).ConfigureAwait(false);
+            var syntaxRoot = await syntaxTree.GetRootAsync(cancellationToken);
 
             var addActorsInvocation = syntaxRoot.DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
                 .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                                              memberAccess.Name.Identifier.Text == "AddActors");            
+                                              memberAccess.Name.Identifier.Text == "AddActors");
 
             if (addActorsInvocation != null)
             {
