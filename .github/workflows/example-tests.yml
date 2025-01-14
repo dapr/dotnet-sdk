@@ -16,7 +16,6 @@ on:
 jobs:
   build-and-test:
     name: run example-based integration tests
-    runs-on: ${{ matrix.os }}
     
     strategy:
       fail-fast: false
@@ -34,6 +33,8 @@ jobs:
           framework: 'net9'
           prefix: 'net9'
           install-version: '9.0.x'
+          
+    runs-on: ${{ matrix.os }}
           
     env:
       NUPKG_OUTDIR: bin/Release/nugets
