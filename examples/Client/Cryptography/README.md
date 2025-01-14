@@ -60,6 +60,11 @@ into the project directory and then running the following command:
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out keys/rsa-private-key.pem
 ```
 
+> **WARNING: This RSA key is included in this project strictly for demonstration and testing purposes.**
+> - Do **NOT** use this key in any production environment or for any real-world applications.
+> - This key is publicly available and should be considered compromised.
+> - Generating and using your own secure keys is essential for maintaining security in your projects.
+
 ## Running the example
 
 To run the sample locally, run this command in the DaprClient directory:
