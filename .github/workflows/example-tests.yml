@@ -136,11 +136,7 @@ jobs:
         
       - name: Build & test projects
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-        run: |          
-          # Debug: Validate the JSON file
-          echo "Validating JSON file with jq:"
-          jq . ./.github/workflows/example-e2e-tests.json
-          
+        run: |
           # Parse the projects
           projects=$(jq -c '.projects[]' ./.github/workflows/example-e2e-tests.json)
           echo "Parsed projects:"
@@ -148,18 +144,26 @@ jobs:
           
           for project in $projects; do
             project_name=$(echo $project | jq -r '.project')
+            echo "Project name:"
+            echo "$project_name"
           
             # Find the .csproj file in the ./examples directory
             csproj_path=$(find ./examples -name '$project_name')
+            echo "csproj path:"
+            echo "$csproj_path"
             
             tests=$(echo $project | jq -c '.tests[]')
             for test in $tests; do
               test_name=$(echo $test | jq -r '.name')
+              echo "test name:"
+              echo "$test_name"
               args=$(echo $test | jq -r '.arguments')
+              echo 'args:'
+              echo '$args'
               expectedOutputs=$(echo $test | jq -r '.expected_stdout_output[]')
               expectation_type=$(echo $test | jq -r '.expectation_type')
                         
-              echo "Building and testing $project with .NET ${{matrix.dotnet-version}}"
+              echo "Building and testing $project with .NET ${{ matrix.dotnet-version }}"
               dotnet build $csproj_path --configuration Release /p:GITHUB_ACTIONS=false
               output=$(dotnet run --project $csproj_path -- $args)
           
