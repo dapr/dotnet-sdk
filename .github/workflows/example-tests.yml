@@ -150,7 +150,7 @@ jobs:
                         
               echo "Building and testing $project with .NET ${{ matrix.dotnet-version }}"
               dotnet build $csproj_path --configuration Release /p:GITHUB_ACTIONS=false
-              output=$(dotnet run --project $csproj_path -- $args)
+              output=$(dotnet run --project $csproj_path -- $arguments)
           
               for expected in $expectedOutputs; do
                 if [[ "$expectation_type" == "startswith" ]]; then
