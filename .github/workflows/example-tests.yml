@@ -145,7 +145,7 @@ jobs:
               expectation_type=$(echo $test | jq -r '.expectation_type')
                         
               echo "Building and testing $project_name with .NET ${{ matrix.dotnet-version }}"
-              dotnet build $csproj_path --configuration Release /p:GITHUB_ACTIONS=false
+              dotnet build $csproj_path --framework ${{ matrix.framework }} --configuration Release /p:GITHUB_ACTIONS=false
               output=$(dotnet run --project $csproj_path --framework ${{ matrix.framework }} -- $arguments)
           
               for expected in $expectedOutputs; do
