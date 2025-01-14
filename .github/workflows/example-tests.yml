@@ -34,7 +34,7 @@ jobs:
           prefix: 'net9'
           install-version: '9.0.x'
           
-    runs-on: ${{ matrix.os }}
+    runs-on: 'ubuntu-latest'
           
     env:
       NUPKG_OUTDIR: bin/Release/nugets
