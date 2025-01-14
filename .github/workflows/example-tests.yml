@@ -148,7 +148,7 @@ jobs:
             echo "Project name: $project_name"
           
             # Find the .csproj file in the ./examples directory
-            csproj_path=$(find ./examples -name '$project_name')
+            csproj_path=$(find ./examples/ -name $project_name)
             echo "csproj path: $csproj_path"
             
             tests=$(echo $project | jq -c '.tests[]')
