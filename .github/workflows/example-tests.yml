@@ -128,14 +128,15 @@ jobs:
           fi
           # Find all .csproj files in the ./examples directory
           all_projects=$(find ./examples -name '*.csproj' -exec basename {} \; | sed 's/.csproj//')
-          # Get the list of projects from the 'example-e2e-tests.json' file
-          tested_projects=$(jq -r '.projects[].project' example-e2e-tests.json | sed s/.csproj//')
+          # Get the list of projects from example-e2e-tests.json
+          tested_projects=$(jq -r '.projects[].project' example-e2e-tests.json | sed 's/.csproj//')
           # Compare the lists and find projects without tests
           for project in $all_projects; do
             if ! echo "$tested_projects" | grep -q "$project"; then
-              echo "Project $project does not have any tests in example-e2e-test.json"
+              echo "Project $project does not have any tests in example-e2e-tests.json"
             fi
           done
+        
       - name: Build & test projects
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
         run: |
@@ -177,7 +178,3 @@ jobs:
               done
             done
           done
-            
-            
-      
-        
