@@ -45,7 +45,7 @@ namespace Dapr.Client
             var client = DaprClient.CreateInvokeHttpClient(daprEndpoint: "http://localhost:3500");
             Assert.Null(client.BaseAddress);
         }
-
+        
         [Fact]
         public void CreateInvokeHttpClient_InvalidDaprEndpoint_InvalidFormat()
         {

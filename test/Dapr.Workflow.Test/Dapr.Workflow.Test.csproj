@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
@@ -14,8 +13,8 @@
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.extensibility.core" />
         <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="Moq" />
     </ItemGroup>
-
     <ItemGroup>
         <Using Include="Xunit"/>
     </ItemGroup>
@@ -23,5 +22,4 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
     </ItemGroup>
-
 </Project>

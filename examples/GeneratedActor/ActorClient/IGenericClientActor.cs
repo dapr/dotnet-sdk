@@ -11,24 +11,17 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
-{
-    using System;
-    using Microsoft.DurableTask.Client;
+using Dapr.Actors.Generators;
 
-    /// <summary>
-    /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-    /// </summary>
-    [Obsolete($"Deprecated. Use {nameof(DaprWorkflowClient)} instead.")]
-    public sealed class WorkflowEngineClient : DaprWorkflowClient
+namespace GeneratedActor
+{
+    [GenerateActorClient]
+    internal interface IGenericClientActor<TGenericType1, TGenericType2>
     {
-        /// <summary>
-        /// Deprecated. Use <see cref="DaprWorkflowClient"/> instead.
-        /// </summary>
-        /// <inheritdoc cref="DaprWorkflowClient(DurableTaskClient)"/>
-        public WorkflowEngineClient(DurableTaskClient innerClient)
-            : base(innerClient)
-        {
-        }
+        [ActorMethod(Name = "GetState")]
+        Task<TGenericType1> GetStateAsync(CancellationToken cancellationToken = default);
+
+        [ActorMethod(Name = "SetState")]
+        Task SetStateAsync(TGenericType2 state, CancellationToken cancellationToken = default);
     }
 }
