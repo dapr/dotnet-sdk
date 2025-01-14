@@ -14,12 +14,14 @@ on:
       - release-*
 
 jobs:
-  build:
+  build-and-test:
     name: run example-based integration tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         dotnet-version: ['8.0', '9.0']
         include:
         - dotnet-version: '8.0'
@@ -32,6 +34,7 @@ jobs:
           framework: 'net9'
           prefix: 'net9'
           install-version: '9.0.x'
+          
     env:
       NUPKG_OUTDIR: bin/Release/nugets
       GOVER: 1.20.0
@@ -116,13 +119,65 @@ jobs:
           dotnet-quality: 'ga'
       - name: Install dependencies
         run: dotnet restore
+      - name: Check test coverage
+        run: |
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            sudo apt-get install jq
+          else
+            choco install jq
+          fi
+          # Find all .csproj files in the ./examples directory
+          all_projects=$(find ./examples -name '*.csproj' -exec basename {} \; | sed 's/.csproj//')
+          # Get the list of projects from the 'example-e2e-tests.json' file
+          tested_projects=$(jq -r '.projects[].project' example-e2e-tests.json | sed s/.csproj//')
+          # Compare the lists and find projects without tests
+          for project in $all_projects; do
+            if ! echo "$tested_projects" | grep -q "$project"; then
+              echo "Project $project does not have any tests in example-e2e-test.json"
+            fi
+          done
       - name: Build & test projects
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
         run: |
-          for project in $(find . -name '*.csproj'); do
-            echo "Building and testing $project with .NET ${{matrix.dotnet-version}}"
-            dotnet build $project --configuration Release /p:GITHUB_ACTIONS=false
-            dotnet run --project $project -- 0
+          projects=$(jq -c '.projects[]' example-e2e-tests.json)
+          for project in $projects; do
+            project_name=$(echo $project | jq -r '.project')
+          
+            # Find the .csproj file in the ./examples directory
+            csproj_path=$(find ./examples -name "$project_name")
+            
+            tests=$(echo $project | jq -c '.tests[]')
+            for test in $tests; do
+              test_name=$(echo $test | jq -r '.name')
+              args=$(echo $test | jq -r '.arguments')
+              expectedOutputs=$(echo $test | jq -r '.expected_std_output[]')
+              expectation_type=$(echo $test | jq -r '.expectation_type')
+                        
+              echo "Building and testing $project with .NET ${{matrix.dotnet-version}}"
+              dotnet build $csproj_path --configuration Release /p:GITHUB_ACTIONS=false
+              output=$(dotnet run --project $csproj_path -- $args)
+          
+              for expected in $expectedOutputs; do
+                if [[ "$expectation_type" == "startswith" ]]; then
+                  if [[ "$output" != "$expected"* ]]; then 
+                    echo "Test failed for $csproj_path with .NET ${{ matrix.dotnet-version }}: Expected '$expected' not found in output"
+                    exit 1
+                  fi
+                elif [[ "$expectation_type" == "equals" ]]; then
+                  if [[ "$output" != "$expected" ]]; then
+                    echo "Test failed for $csproj_path with .NET ${{matrix.dotnet-version }}: Expected '$expected' not found in output"
+                    exit 1
+                  fi
+                else
+                  if [[ "$output" != *"$expected"* ]]; then
+                    echo "Test failed for $csproj_path with .NET ${{ matrix.dotnet-version }}: Expected '$expected' not found in output"
+                    exit 1
+                  fi
+                fi
+              done
+            done
+          done
+            
             
       
         

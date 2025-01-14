@@ -2,16 +2,88 @@
   "projects":[
     {
       "project": "Cryptography.csproj",
-      "tests": {
-        "name": "Encrypt & Decrypt String",
-        "arguments": "0",
-        "expected_std_output": [
-          "== APP == Original string value: 'This is the value we're going to encrypt today'",
-          "== APP == Encrypted bytes: '",
-          "== APP == Decrypted string: 'This is the value we're going to encrypt today'"
-        ],
-        "expectation_type": "startswith"
-      }
+      "tests": [
+        {
+          "name": "Encrypt & Decrypt String",
+          "arguments": "0",
+          "expected_std_output": [
+            "== APP == Original string value: 'This is the value we're going to encrypt today'",
+            "== APP == Encrypted bytes: '",
+            "== APP == Decrypted string: 'This is the value we're going to encrypt today'"
+          ],
+          "expectation_type": "startswith"
+        },
+        {
+          "name": "Encrypt & Decrypt Small File Stream",
+          "arguments": "1",
+          "expected_std_output": [
+            "== APP == Original file contents:",
+            "== APP == # The Road Not Taken",
+            "== APP == ## By Robert Lee Frost",
+            "== APP == ",
+            "== APP == Two roads diverged in a yellow wood,",
+            "== APP == And sorry I could not travel both",
+            "== APP == And be one traveler, long I stood",
+            "== APP == And looked down one as far as I could",
+            "== APP == To where it bent in the undergrowth;",
+            "== APP == ",
+            "== APP == Then took the other, as just as fair",
+            "== APP == And having perhaps the better claim,",
+            "== APP == Because it was grassy and wanted wear;",
+            "== APP == Though as for that, the passing there",
+            "== APP == Had worn them really about the same,",
+            "== APP == ",
+            "== APP == And both that morning equally lay",
+            "== APP == In leaves no step had trodden black",
+            "== APP == Oh, I kept the first for another day!",
+            "== APP == Yet knowing how way leads on to way,",
+            "== APP == I doubted if I should ever come back.",
+            "== APP == ",
+            "== APP == I shall be telling this with a sigh",
+            "== APP == Somewhere ages and ages hence:",
+            "== APP == Two roads diverged in a wood, and I,",
+            "== APP == I took the one less traveled by,",
+            "== APP == And that has made all the difference.",
+            "== APP == ",
+            "== APP == Encrypted bytes: ZGFwci5pby9lbmMvdjEKeyJrdyI6NSwid2ZrIjoiVHRRUnNneVkyMDlQZGxaZkNxcW11UC9OQlRra1plajZ2c2tGbG1nN21uSUFtZlZ3R3YxYVhVajlyMGdCb1Q4UWh3SWZJNzNUdVc0WkFjQmlhK2V1QStPelBQQkdYbWpZYmhFQlZLandTTkNRa3l1TFVWZ0d4ZUJwbm03cDA2bHFFUkV6MGpRL0NiNnFPN0ZKc1Z0ZVh6dmF4dDFBK0dtSEVEd0ZLYmtydGZOaU",
+            "1aeHF2bS85Y0pOTVBpNm9Zcms1eGJkK1kwcmc5bU9vZ1hmL1RidW5IUWRvc3lhSGpzc082U0l3TVUzdVdIMEdIZEFzNU95ZEhCRDdhd0kvSFFXdzEya3c4ZGNOQzd4enFPd0RGSUh1NXc3cmx1aGZmZHZCeVBoWDNwMEdBQzR6eWtvY2dUOWdBcGF0VjV4ekFjRXBGVGdycUxGdXhDSWI1dG9veUZxZ25ESnVYYktLWWxSU2hkclhBeGJnbFVBOVQxVmFMUC9hakhGaEYwTEFwajhYM2dYUXo2RDhhSUE",
+            "zRlM4VEJPYTUrSDR5cXkyQzk4dzhZMUFFcS9vSzI4dVB3NFROUEttUUxwb0xUeFE3VzRya3drbDRLcy9ZdExXYnRpU2pUSUN1ODNYaXB4T1JsU0w4SmQwQjU0MG14dDlqTDJOZlBJK09QV0l0VzdtWTJVcWh1bGxWWGNoODNscCs0V01OZ2tVRjJraElGRVFlSkhEakpkdTJRZGRGQXdZVDd5S3RPem5MdktYRHFQRXgwMk5mODU3NlpNS0VCb0ZXdDZuU084ZGxXSEFPMCtsbFZEbUZrRnIyRTVUMVpl",
+            "UlppSGJMd21zanpzNlU5SkoxTENDaUg3VWk4WGNkN1gzZEgzaDV0LzJTWWRCSStWUENiZW42dDFJYlJxVVNMOXc9IiwiY3BoIjoxLCJucCI6Ik9NUTFRcHJHUHc9PSJ9Cnh0YzBGalluaEdRMmo2eXJLVTI3aEtBbTJtTkJaZCtwb1hUZTUwLzRiYW89CkIYDF5TkccFoiifujAE/TTDwaJCj3s1HQv2uaGpvg2+8xUwIgvfBD4C+Qxk6UObPNkGFSgUx+jhQcNt7zaBoAGw+x2bUmNHrxy0HjIk/nPKa",
+            "LasVRWyoNvNaqAHrn2yaxRzG7TggigJP6IenC1p40CvIZRPnr7RpjxoZrTeD5DKzrYB7IjCNF3PJ7lye3sw7F65/1HzF0nCGjZPZAfZUIItd8Q5jblh2y5RSrdCxZyLIMgsoHKDSSa+G1WHI9V4oYnduHFGt9c+uAsl103+/Q1JrPzZiMtvI1AVYl364CuhflUaqw/SQ4wrpfnjIZNNVhfItFAQcuNUxsQWz4rGyJDLwagLReCyP9dFJWCsUjuNK/9y+c+W2oK0xhmn0EOw7aMGpslsTb2jL+bClJAzme",
+            "/mVRpM294B97AabFhydlPUGV1ZTmQOo8q1ApuKfzIyG8ucMTYnssTbjW0V6038QTCIPpP97H1BGON3JjYBCtOQNI6FUhEHLfyrBcx0eWZ/QhxB0tywD7d+DWtnSx3Y4OBE7KjvLrEyaOQAlOspk4rhZBpub/g+yjc7T1q+HY+mBR6sHfSuLrFmyMEcOqgxBVaJPD0dWizhB/dTW6cVLVmXWWi9jJglMDF92wUi68c/5spEyNRJRabv1sEq4VJ2OJtRJlCvzWFfqrrw9ZjJSEoaLMqZjiLU9HyXB2VFTLM",
+            "PrzJFSdZO3ajViWbnrSqNZy/CBTEnKmGsr1E8LRSfXm/PpGrvo0OL3VZC+P8IxuCK43Qug1Qoymkc1K0i6UbzeLvyMuv3J11KKhQCss9+/O8GKqkRCWa/D2TCJ6RiG20+N/bBdv0T6AQK0RcAMj6RQt3WJlnFQ4OtrVTHKNnZCoQZbBid0u0UvccFWAbkm/Tk0IVUbMcEv5pFS64h7ePkbHo5ZEaoobXwpmzXrx6a+P41OkNokIcE28A06RIqMmRUpE4uA9vje+M0xv5fpB64qoUqSW0DXFwDCVDW21O12kl1PJcU4aLdc9FOk7T5cA/PdYLJSjAo6P4J5VEIRv8xakH5X4a8hYz+BWcfH3pdcfZRLnZsU9UGMIcaiLZsB/I=",
+            "== APP == ",
+            "== APP == Decrypted value: ",
+            "== APP == # The Road Not Taken",
+            "== APP == ## By Robert Lee Frost",
+            "== APP == ",
+            "== APP == Two roads diverged in a yellow wood,",
+            "== APP == And sorry I could not travel both",
+            "== APP == And be one traveler, long I stood",
+            "== APP == And looked down one as far as I could",
+            "== APP == To where it bent in the undergrowth;",
+            "== APP == ",
+            "== APP == Then took the other, as just as fair",
+            "== APP == And having perhaps the better claim,",
+            "== APP == Because it was grassy and wanted wear;",
+            "== APP == Though as for that, the passing there",
+            "== APP == Had worn them really about the same,",
+            "== APP == ",
+            "== APP == And both that morning equally lay",
+            "== APP == In leaves no step had trodden black",
+            "== APP == Oh, I kept the first for another day!",
+            "== APP == Yet knowing how way leads on to way,",
+            "== APP == I doubted if I should ever come back.",
+            "== APP == ",
+            "== APP == I shall be telling this with a sigh",
+            "== APP == Somewhere ages and ages hence:",
+            "== APP == Two roads diverged in a wood, and I,",
+            "== APP == I took the one less traveled by,",
+            "== APP == And that has made all the difference."
+          ],
+          "expectation_type": "startswith"
+        }
+      ]
     }
   ]
 }
