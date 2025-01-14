@@ -122,11 +122,12 @@ jobs:
         run: dotnet restore
       - name: Check test coverage
         run: |
-          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            sudo apt-get install jq
-          else
-            choco install jq
-          fi
+               
+#          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          sudo apt-get install jq
+#          else
+#            choco install jq
+#          fi
           # Find all .csproj files in the ./examples directory
           all_projects=$(find ./examples -name '*.csproj' -exec basename {} \; | sed 's/.csproj//')
           # Get the list of projects from example-e2e-tests.json
