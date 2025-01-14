@@ -144,7 +144,7 @@ jobs:
           # Parse the projects
           projects=$(jq -c '.projects[]' ./.github/workflows/example-e2e-tests.json)
           echo "Parsed projects:"
-          echo "$projects".
+          echo "$projects" | jq -r '.project'
           
           for project in $projects; do
             project_name=$(echo $project | jq -r '.project')
