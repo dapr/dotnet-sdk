@@ -17,17 +17,13 @@ using Dapr.Client;
 
 namespace Cryptography.Examples
 {
-    internal class EncryptDecryptStringExample : Example
+    internal class EncryptDecryptStringExample(string componentName, string keyName) : Example
     {
         public override string DisplayName => "Using Cryptography to encrypt and decrypt a string";
 
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
             using var client = new DaprClientBuilder().Build();
-
-            const string componentName = "azurekeyvault"; //Change this to match the name of the component containing your vault
-            const string keyName = "myKey"; //Change this to match the name of the key in your Vault
-            
             
             const string plaintextStr = "This is the value we're going to encrypt today";
             Console.WriteLine($"Original string value: '{plaintextStr}'");
@@ -40,7 +36,7 @@ namespace Cryptography.Examples
             Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult.Span)}'");
 
             //Decrypt the string
-            var decryptedBytes = await client.DecryptAsync(componentName, encryptedBytesResult, keyName, new DecryptionOptions(), cancellationToken);
+            var decryptedBytes = await client.DecryptAsync(componentName, encryptedBytesResult, keyName, cancellationToken);
             Console.WriteLine($"Decrypted string: '{Encoding.UTF8.GetString(decryptedBytes.ToArray())}'");
         }
     }
