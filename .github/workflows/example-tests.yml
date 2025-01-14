@@ -150,7 +150,7 @@ jobs:
             for test in $tests; do
               test_name=$(echo $test | jq -r '.name')
               args=$(echo $test | jq -r '.arguments')
-              expectedOutputs=$(echo $test | jq -r '.expected_std_output[]')
+              expectedOutputs=$(echo $test | jq -r '.expected_stdout_output[]')
               expectation_type=$(echo $test | jq -r '.expectation_type')
                         
               echo "Building and testing $project with .NET ${{matrix.dotnet-version}}"

@@ -6,7 +6,7 @@
         {
           "name": "Encrypt & Decrypt String",
           "arguments": "0",
-          "expected_std_output": [
+          "expected_stdout_output": [
             "== APP == Original string value: 'This is the value we're going to encrypt today'",
             "== APP == Encrypted bytes: '",
             "== APP == Decrypted string: 'This is the value we're going to encrypt today'"
@@ -16,7 +16,7 @@
         {
           "name": "Encrypt & Decrypt Small File Stream",
           "arguments": "1",
-          "expected_std_output": [
+          "expected_stdout_output": [
             "== APP == Original file contents:",
             "== APP == # The Road Not Taken",
             "== APP == ## By Robert Lee Frost",
