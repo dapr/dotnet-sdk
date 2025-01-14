@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2022 The Dapr Authors
+// Copyright 2024 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,23 +11,18 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+namespace Dapr.Common.Exceptions
 {
-    using Microsoft.DurableTask;
-
     /// <summary>
-    /// Defines properties and methods for task activity context objects.
+    /// Dapr implementation of the richer error model.
     /// </summary>
-    public abstract class WorkflowActivityContext
+    /// <param name="Code">A status code.</param>
+    /// <param name="Message">A message.</param>
+    public sealed record DaprExtendedErrorInfo(int Code, string Message)
     {
         /// <summary>
-        /// Gets the name of the activity.
+        /// A collection of details that provide more information on the error.
         /// </summary>
-        public abstract TaskName Name { get; }
-
-        /// <summary>
-        /// Gets the unique ID of the current workflow instance.
-        /// </summary>
-        public abstract string InstanceId {  get; }
+        public DaprExtendedErrorDetail[] Details { get; init; } = Array.Empty<DaprExtendedErrorDetail>();
     }
 }
