@@ -17,15 +17,12 @@ using Dapr.Client;
 
 namespace Cryptography.Examples
 {
-    internal class EncryptDecryptFileStreamExample : Example
+    internal class EncryptDecryptFileStreamExample(string componentName, string keyName) : Example
     {
         public override string DisplayName => "Use Cryptography to encrypt and decrypt a file";
         public override async Task RunAsync(CancellationToken cancellationToken)
         {
             using var client = new DaprClientBuilder().Build();
-
-            const string componentName = "azurekeyvault"; // Change this to match the name of the component containing your vault
-            const string keyName = "myKey";
 
             // The name of the file we're using as an example
             const string fileName = "file.txt";
@@ -35,7 +32,6 @@ namespace Cryptography.Examples
             {
                 Console.WriteLine(line);
             }
-            Console.WriteLine();
 
             //Encrypt from a file stream and buffer the resulting bytes to an in-memory buffer
             await using var encryptFs = new FileStream(fileName, FileMode.Open);
@@ -48,8 +44,8 @@ namespace Cryptography.Examples
                 bufferedEncryptedBytes.Write(bytes.Span);
             }
 
-            Console.WriteLine($"Encrypted bytes: {Convert.ToBase64String(bufferedEncryptedBytes.GetSpan())}");
-            Console.WriteLine();
+            Console.WriteLine("Encrypted bytes:");
+            Console.WriteLine(Convert.ToBase64String(bufferedEncryptedBytes.WrittenMemory.ToArray()));
             
             //We'll write to a temporary file via a FileStream
             var tempDecryptedFile = Path.GetTempFileName();
@@ -67,7 +63,7 @@ namespace Cryptography.Examples
             
             //Let's confirm the value as written to the file
             var decryptedValue = await File.ReadAllTextAsync(tempDecryptedFile, cancellationToken);
-            Console.WriteLine($"Decrypted value: ");
+            Console.WriteLine("Decrypted value: ");
             Console.WriteLine(decryptedValue);
             
             //And some cleanup to delete our temp file
