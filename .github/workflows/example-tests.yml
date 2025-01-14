@@ -139,27 +139,24 @@ jobs:
         run: |
           # Parse the projects
           projects=$(jq -c '.projects[]' ./.github/workflows/example-e2e-tests.json)
-          echo "Parsed projects:"
+          echo "Parsed project names:"
           echo "$projects" | jq -r '.project'
           
-          for project in $projects; do
+          # Iterate over the projects
+          echo "$projects" | while read project; do
             project_name=$(echo $project | jq -r '.project')
-            echo "Project name:"
-            echo "$project_name"
+            echo "Project name: $project_name"
           
             # Find the .csproj file in the ./examples directory
             csproj_path=$(find ./examples -name '$project_name')
-            echo "csproj path:"
-            echo "$csproj_path"
+            echo "csproj path: $csproj_path"
             
             tests=$(echo $project | jq -c '.tests[]')
-            for test in $tests; do
+            echo "$tests" | while read test; do
               test_name=$(echo $test | jq -r '.name')
-              echo "test name:"
-              echo "$test_name"
+              echo "test name: $test_name"
               args=$(echo $test | jq -r '.arguments')
-              echo 'args:'
-              echo '$args'
+              echo 'args: $args'
               expectedOutputs=$(echo $test | jq -r '.expected_stdout_output[]')
               expectation_type=$(echo $test | jq -r '.expectation_type')
                         
