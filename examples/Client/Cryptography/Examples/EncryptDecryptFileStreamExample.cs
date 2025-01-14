@@ -48,7 +48,7 @@ namespace Cryptography.Examples
                 bufferedEncryptedBytes.Write(bytes.Span);
             }
 
-            Console.WriteLine($"Encrypted bytes: {Convert.ToBase64String(bufferedEncryptedBytes.GetSpan())}");
+            Console.WriteLine($"Encrypted bytes: {Convert.ToBase64String(bufferedEncryptedBytes.WrittenMemory.ToArray())}");
             Console.WriteLine();
             
             //We'll write to a temporary file via a FileStream
