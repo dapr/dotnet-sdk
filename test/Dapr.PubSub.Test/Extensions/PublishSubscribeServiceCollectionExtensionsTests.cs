@@ -11,13 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Messaging.PublishSubscribe;
-using Dapr.Messaging.PublishSubscribe.Extensions;
+using Dapr.PubSub.PublishSubscribe;
+using Dapr.PubSub.PublishSubscribe.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
-namespace Dapr.Messaging.Test.Extensions;
+namespace Dapr.PubSub.Test.Extensions;
 
 public sealed class PublishSubscribeServiceCollectionExtensionsTests
 {

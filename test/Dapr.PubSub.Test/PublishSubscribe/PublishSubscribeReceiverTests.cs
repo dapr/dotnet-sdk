@@ -13,12 +13,12 @@
 
 using System.Threading.Channels;
 using Dapr.AppCallback.Autogen.Grpc.v1;
-using Dapr.Messaging.PublishSubscribe;
+using Dapr.PubSub.PublishSubscribe;
 using Grpc.Core;
 using Moq;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
-namespace Dapr.Messaging.Test.PublishSubscribe;
+namespace Dapr.PubSub.Test.PublishSubscribe;
 
 public class PublishSubscribeReceiverTests
 {

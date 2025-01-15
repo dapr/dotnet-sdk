@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.PubSub.PublishSubscribe;
 
 /// <summary>
 /// Options used to configure the dynamic Dapr subscription.

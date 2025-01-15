@@ -37,7 +37,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
+      <ProjectReference Include="..\..\src\Dapr.PubSub\Dapr.PubSub.csproj" />
     </ItemGroup>
 
 </Project>

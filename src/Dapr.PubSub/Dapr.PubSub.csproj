@@ -1,12 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Description>This package contains the reference assemblies for developing messaging services using Dapr.</Description>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <PackageId>Dapr.Messaging</PackageId>
-        <Title>Dapr Messaging SDK</Title>
-        <Description>Dapr Messaging SDK for building applications that utilize messaging components.</Description>
+        <PackageId>Dapr.PubSub</PackageId>
+        <Title>Dapr PubSub SDK</Title>
+        <Description>Dapr PubSub SDK for building applications that utilize PubSub capabilities.</Description>
         <VersionSuffix>alpha</VersionSuffix>
     </PropertyGroup>
 

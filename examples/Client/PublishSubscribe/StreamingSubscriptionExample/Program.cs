@@ -1,6 +1,6 @@
 ﻿using System.Text;
-using Dapr.Messaging.PublishSubscribe;
-using Dapr.Messaging.PublishSubscribe.Extensions;
+using Dapr.PubSub.PublishSubscribe;
+using Dapr.PubSub.PublishSubscribe.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDaprPubSubClient();

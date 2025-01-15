@@ -11,24 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+using System.Runtime.CompilerServices;
 
-/// <summary>
-/// Describes the various actions that can be taken on a topic message.
-/// </summary>
-public enum TopicResponseAction
-{
-    /// <summary>
-    /// Indicates the message was processed successfully and should be deleted from the pub/sub topic.
-    /// </summary>
-    Success,
-    /// <summary>
-    /// Indicates a failure while processing the message and that the message should be resent for a retry.
-    /// </summary>
-    Retry,
-    /// <summary>
-    /// Indicates a failure while processing the message and that the message should be dropped or sent to the
-    /// dead-letter topic if specified.
-    /// </summary>
-    Drop
-}
+[assembly: InternalsVisibleTo("Dapr.PubSub.Test, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b1f597635c44597fcecb493e2b1327033b29b1a98ac956a1a538664b68f87d45fbaada0438a15a6265e62864947cc067d8da3a7d93c5eb2fcbb850e396c8684dba74ea477d82a1bbb18932c0efb30b64ff1677f85ae833818707ac8b49ad8062ca01d2c89d8ab1843ae73e8ba9649cd28666b539444dcdee3639f95e2a099bb2")]
+
+

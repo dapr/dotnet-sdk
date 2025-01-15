@@ -13,7 +13,7 @@
 
 using P = Dapr.Client.Autogen.Grpc.v1.Dapr;
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.PubSub.PublishSubscribe;
 
 /// <summary>
 /// A client for interacting with the Dapr endpoints.

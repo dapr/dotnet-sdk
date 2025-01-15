@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.PubSub.PublishSubscribe;
 
 /// <summary>
 /// The base implementation of a Dapr pub/sub client.

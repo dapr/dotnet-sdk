@@ -11,9 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Messaging.PublishSubscribe;
+using Dapr.PubSub.PublishSubscribe;
 
-namespace Dapr.Messaging.Test.PublishSubscribe
+namespace Dapr.PubSub.Test.PublishSubscribe
 {
     public class MessageHandlingPolicyTest
     {

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Description>Provides cryptographic capabilities for building application utilizing Dapr.</Description>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.Cryptography</PackageId>
+        <Title>Dapr Cryptography SDK</Title>
+        <VersionSuffix>alpha</VersionSuffix>        
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+      <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Extensions\" />
+      <Folder Include="Models\" />
+    </ItemGroup>
+
+</Project>

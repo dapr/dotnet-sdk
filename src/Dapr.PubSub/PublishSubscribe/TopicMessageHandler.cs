@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.PubSub.PublishSubscribe;
 
 /// <summary>
 /// The handler delegate responsible for processing the topic message.

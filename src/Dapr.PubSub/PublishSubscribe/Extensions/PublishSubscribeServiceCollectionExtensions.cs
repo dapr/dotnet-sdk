@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Dapr.Messaging.PublishSubscribe.Extensions;
+namespace Dapr.PubSub.PublishSubscribe.Extensions;
 
 /// <summary>
 /// Contains extension methods for using Dapr Publish/Subscribe with dependency injection.
