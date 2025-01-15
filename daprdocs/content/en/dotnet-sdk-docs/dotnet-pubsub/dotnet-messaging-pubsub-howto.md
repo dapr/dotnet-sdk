@@ -12,13 +12,13 @@ for the following demonstration and walk through it as an explainer of how you c
 runtime and which do not require an endpoint to be pre-configured. In this guide, you will:
 
 - Deploy a .NET Web API application ([StreamingSubscriptionExample](https://github.com/dapr/dotnet-sdk/tree/master/examples/Client/PublishSubscribe/StreamingSubscriptionExample))
-- Utilize the Dapr .NET Messaging SDK to subscribe dynamically to a pub/sub topic.
+- Utilize the Dapr .NET PubSub SDK to subscribe dynamically to a pub/sub topic.
 
 ## Prerequisites
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost)
 - [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0), [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) installed
-- [Dapr.Messaging](https://www.nuget.org/packages/Dapr.Messaging) NuGet package installed to your project
+- [Dapr.PubSub](https://www.nuget.org/packages/Dapr.PubSub) NuGet package installed to your project
 
 {{% alert title="Note" color="primary" %}}
 
@@ -55,8 +55,8 @@ dapr run --app-id pubsubapp --dapr-grpc-port 4001 --dapr-http-port 3500 -- dotne
 > Dapr listens for HTTP requests at `http://localhost:3500` and internal Jobs gRPC requests at `http://localhost:4001`.
 
 ## Register the Dapr PubSub client with dependency injection
-The Dapr Messaging SDK provides an extension method to simplify the registration of the Dapr PubSub client. Before 
-completing the dependency injection registration in `Program.cs`, add the following line:
+The Dapr PubSub SDK provides an extension method to simplify the registration of the Dapr PubSub client, called `DaprPublishSubscribeClient`. 
+Before completing the dependency injection registration in `Program.cs`, add the following line:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -253,11 +253,11 @@ Other options are as follows:
 
 Subscription is then configured as in the following example:
 ```csharp
-var messagingClient = app.Services.GetRequiredService<DaprPublishSubscribeClient>();
+var pubsubClient = app.Services.GetRequiredService<DaprPublishSubscribeClient>();
 
 var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)); //Override the default of 30 seconds
 var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Retry));
-var subscription = await messagingClient.SubscribeAsync("pubsub", "mytopic", options, HandleMessageAsync, cancellationTokenSource.Token);
+var subscription = await pubsubClient.SubscribeAsync("pubsub", "mytopic", options, HandleMessageAsync, cancellationTokenSource.Token);
 ```
 
 ## Terminate and clean up subscription
