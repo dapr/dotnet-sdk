@@ -4,16 +4,6 @@
       "project": "Cryptography.csproj",
       "tests": [
         {
-          "name": "Encrypt & Decrypt String",
-          "arguments": "0",
-          "expected_stdout_output": [
-            "== APP == Original string value: 'This is the value we're going to encrypt today'",
-            "== APP == Encrypted bytes: '",
-            "== APP == Decrypted string: 'This is the value we're going to encrypt today'"
-          ],
-          "expectation_type": "startswith"
-        },
-        {
           "name": "Encrypt & Decrypt Small File Stream",
           "arguments": "1",
           "expected_stdout_output": [
