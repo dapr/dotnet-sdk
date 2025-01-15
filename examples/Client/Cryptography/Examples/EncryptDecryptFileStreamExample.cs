@@ -24,17 +24,17 @@ namespace Cryptography.Examples
         {
             using var client = new DaprClientBuilder().Build();
 
-            // The name of the file we're using as an example
-            const string fileName = "./smallfile.txt";
+            //Create the small data file
+            var tempSmallFile = await CreateSmallFileAsync();
 
             Console.WriteLine("Original file contents:");
-            foreach (var line in await File.ReadAllLinesAsync(fileName, cancellationToken))
+            foreach (var line in await File.ReadAllLinesAsync(tempSmallFile, cancellationToken))
             {
                 Console.WriteLine(line);
             }
 
             //Encrypt from a file stream and buffer the resulting bytes to an in-memory buffer
-            await using var encryptFs = new FileStream(fileName, FileMode.Open);
+            await using var encryptFs = new FileStream(tempSmallFile, FileMode.Open);
 
             var bufferedEncryptedBytes = new ArrayBufferWriter<byte>();
             await foreach (var bytes in (await client.EncryptAsync(componentName, encryptFs, keyName,
@@ -66,8 +66,45 @@ namespace Cryptography.Examples
             Console.WriteLine("Decrypted value: ");
             Console.WriteLine(decryptedValue);
             
-            //And some cleanup to delete our temp file
+            //And some cleanup to delete our temp files
+            File.Delete(tempSmallFile);
             File.Delete(tempDecryptedFile);
+        }
+        
+        private static async Task<string> CreateSmallFileAsync()
+        {
+            const string fileData = """
+                                    # The Road Not Taken
+                                    ## By Robert Lee Frost
+
+                                    Two roads diverged in a yellow wood,
+                                    And sorry I could not travel both
+                                    And be one traveler, long I stood
+                                    And looked down one as far as I could
+                                    To where it bent in the undergrowth;
+
+                                    Then took the other, as just as fair
+                                    And having perhaps the better claim,
+                                    Because it was grassy and wanted wear;
+                                    Though as for that, the passing there
+                                    Had worn them really about the same,
+
+                                    And both that morning equally lay
+                                    In leaves no step had trodden black
+                                    Oh, I kept the first for another day!
+                                    Yet knowing how way leads on to way,
+                                    I doubted if I should ever come back.
+
+                                    I shall be telling this with a sigh
+                                    Somewhere ages and ages hence:
+                                    Two roads diverged in a wood, and I,
+                                    I took the one less traveled by,
+                                    And that has made all the difference.
+                                    """;
+
+            var tempFileName = Path.GetTempFileName();
+            await File.WriteAllTextAsync(tempFileName, fileData);
+            return tempFileName;
         }
     }
 }

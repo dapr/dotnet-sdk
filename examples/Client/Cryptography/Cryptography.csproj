@@ -16,10 +16,4 @@
       <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <None Update="smallfile.txt">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-    </ItemGroup>
-
 </Project>
