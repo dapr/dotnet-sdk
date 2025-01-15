@@ -25,7 +25,7 @@ namespace Cryptography.Examples
             using var client = new DaprClientBuilder().Build();
 
             // The name of the file we're using as an example
-            const string fileName = "file.txt";
+            const string fileName = "./smallfile.txt";
 
             Console.WriteLine("Original file contents:");
             foreach (var line in await File.ReadAllLinesAsync(fileName, cancellationToken))
