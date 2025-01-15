@@ -139,14 +139,14 @@ jobs:
             echo "$tests" | while read test; do
               test_name=$(echo $test | jq -r '.name')
               echo "test name: $test_name"
-              arguments=$(echo $test | jq -r '.arguments')
-              echo 'args: $arguments'
+              test_arguments=$(echo $test | jq -r '.arguments')
+              echo 'args: $test_arguments'
               expectedOutputs=$(echo $test | jq -r '.expected_stdout_output[]')
               expectation_type=$(echo $test | jq -r '.expectation_type')
                         
               echo "Building and testing $project_name with .NET ${{ matrix.dotnet-version }}"
               dotnet build $csproj_path --framework ${{ matrix.framework }} --configuration Release /p:GITHUB_ACTIONS=false
-              output=$(dotnet run --project $csproj_path --framework ${{ matrix.framework }} -- $arguments)
+              output=$(dotnet run --project $csproj_path --framework ${{ matrix.framework }} -- $test_arguments)
           
               for expected in $expectedOutputs; do
                 if [[ "$expectation_type" == "startswith" ]]; then
