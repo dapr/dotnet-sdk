@@ -1670,9 +1670,7 @@ internal class DaprClientGrpc : DaprClient
         ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
         CancellationToken cancellationToken = default)
     {
-        var memoryStream = new MemoryStream();
-        await memoryStream.WriteAsync(plaintextBytes, cancellationToken);
-        memoryStream.Position = 0;
+        var memoryStream = plaintextBytes.CreateMemoryStream(true);
 
         var encryptionResult =
             await EncryptAsync(vaultResourceName, memoryStream, keyName, encryptionOptions, cancellationToken);
@@ -1891,9 +1889,7 @@ internal class DaprClientGrpc : DaprClient
         ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions decryptionOptions,
         CancellationToken cancellationToken = default)
     {
-        using var memoryStream = new MemoryStream();
-        await memoryStream.WriteAsync(ciphertextBytes, cancellationToken);
-        memoryStream.Position = 0;
+        using var memoryStream = ciphertextBytes.CreateMemoryStream(true);
 
         var decryptionResult =
             await DecryptAsync(vaultResourceName, memoryStream, keyName, decryptionOptions, cancellationToken);
