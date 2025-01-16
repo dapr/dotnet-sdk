@@ -219,6 +219,12 @@ internal class DaprClientGrpc : DaprClient
                         : Constants.ContentTypeApplicationJson,
                 Metadata = { },
             };
+
+            if (metadata != null)
+            {
+                entry.Metadata.Add(metadata);
+            }
+
             envelope.Entries.Add(entry);
             entryMap.Add(counter.ToString(), new BulkPublishEntry<TValue>(
                 entry.EntryId, events[counter], entry.ContentType, entry.Metadata));
