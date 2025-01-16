@@ -58,87 +58,68 @@ public class MapActorsHandlersCodeFixProvider : CodeFixProvider
         var root = await document.GetSyntaxRootAsync(cancellationToken);
         var invocationExpressions = root!.DescendantNodes().OfType<InvocationExpressionSyntax>();
 
-        if (invocationExpressions.Any())
-        {
-            var createBuilderInvocation = invocationExpressions
-                .FirstOrDefault(invocation =>
-                {
-                    return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                           memberAccess.Name.Identifier.Text == "CreateBuilder" &&
-                           memberAccess.Expression is IdentifierNameSyntax identifier &&
-                           identifier.Identifier.Text == "WebApplication";
-                });
-
-            if (createBuilderInvocation != null)
+        var createBuilderInvocation = invocationExpressions
+            .FirstOrDefault(invocation =>
             {
-                var variableDeclarator = createBuilderInvocation
-                    .AncestorsAndSelf()
-                    .OfType<VariableDeclaratorSyntax>()
-                    .FirstOrDefault();
+                return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                        memberAccess.Name.Identifier.Text == "CreateBuilder" &&
+                        memberAccess.Expression is IdentifierNameSyntax identifier &&
+                        identifier.Identifier.Text == "WebApplication";
+            });
 
-                if (variableDeclarator != null)
-                {
-                    var variableName = variableDeclarator.Identifier.Text;
+        var variableDeclarator = createBuilderInvocation
+            .AncestorsAndSelf()
+            .OfType<VariableDeclaratorSyntax>()
+            .FirstOrDefault();
 
-                    var buildInvocation = invocationExpressions
-                        .FirstOrDefault(invocation =>
-                        {
-                            return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                                   memberAccess.Name.Identifier.Text == "Build" &&
-                                   memberAccess.Expression is IdentifierNameSyntax identifier &&
-                                   identifier.Identifier.Text == variableName;
-                        });
+        var variableName = variableDeclarator.Identifier.Text;
 
-                    if (buildInvocation != null)
-                    {
-                        var buildVariableDeclarator = buildInvocation
-                            .AncestorsAndSelf()
-                            .OfType<VariableDeclaratorSyntax>()
-                            .FirstOrDefault();
+        var buildInvocation = invocationExpressions
+            .FirstOrDefault(invocation =>
+            {
+                return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                       memberAccess.Name.Identifier.Text == "Build" &&
+                       memberAccess.Expression is IdentifierNameSyntax identifier &&
+                       identifier.Identifier.Text == variableName;
+            });
 
-                        if (buildVariableDeclarator != null)
-                        {
-                            var buildVariableName = buildVariableDeclarator.Identifier.Text;
+        var buildVariableDeclarator = buildInvocation
+            .AncestorsAndSelf()
+            .OfType<VariableDeclaratorSyntax>()
+            .FirstOrDefault();
 
-                            var mapActorsHandlersInvocation = SyntaxFactory.ExpressionStatement(
-                                SyntaxFactory.InvocationExpression(
-                                    SyntaxFactory.MemberAccessExpression(
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        SyntaxFactory.IdentifierName(buildVariableName),
-                                        SyntaxFactory.IdentifierName("MapActorsHandlers"))));
+        var buildVariableName = buildVariableDeclarator.Identifier.Text;
 
-                            if (buildInvocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is SyntaxNode parentBlock)
-                            {
-                                var localDeclaration = buildInvocation
-                                    .AncestorsAndSelf()
-                                    .OfType<LocalDeclarationStatementSyntax>()
-                                    .FirstOrDefault();
+        var mapActorsHandlersInvocation = SyntaxFactory.ExpressionStatement(
+            SyntaxFactory.InvocationExpression(
+                SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    SyntaxFactory.IdentifierName(buildVariableName),
+                    SyntaxFactory.IdentifierName("MapActorsHandlers"))));
 
-                                var newParentBlock = parentBlock.InsertNodesAfter(localDeclaration, new[] { mapActorsHandlersInvocation });
-                                root = root.ReplaceNode(parentBlock, newParentBlock);
-                            }
-                            else
-                            {
-                                var buildInvocationGlobalStatement = buildInvocation
-                                    .AncestorsAndSelf()
-                                    .OfType<GlobalStatementSyntax>()
-                                    .FirstOrDefault();
+        if (buildInvocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is SyntaxNode parentBlock)
+        {
+            var localDeclaration = buildInvocation
+                .AncestorsAndSelf()
+                .OfType<LocalDeclarationStatementSyntax>()
+                .FirstOrDefault();
 
-                                var compilationUnitSyntax = createBuilderInvocation.Ancestors().OfType<CompilationUnitSyntax>().FirstOrDefault();
-                                var newCompilationUnitSyntax = compilationUnitSyntax.InsertNodesAfter(buildInvocationGlobalStatement,
-                                    new[] { SyntaxFactory.GlobalStatement(mapActorsHandlersInvocation) });
-                                root = root.ReplaceNode(compilationUnitSyntax, newCompilationUnitSyntax);
-                            }
+            var newParentBlock = parentBlock.InsertNodesAfter(localDeclaration, new[] { mapActorsHandlersInvocation });
+            root = root.ReplaceNode(parentBlock, newParentBlock);
+        }
+        else
+        {
+            var buildInvocationGlobalStatement = buildInvocation
+                .AncestorsAndSelf()
+                .OfType<GlobalStatementSyntax>()
+                .FirstOrDefault();
 
-                                return document.WithSyntaxRoot(root);
-                        }
-                    }
-                }
-            }
-
-            return document;
+            var compilationUnitSyntax = createBuilderInvocation.Ancestors().OfType<CompilationUnitSyntax>().FirstOrDefault();
+            var newCompilationUnitSyntax = compilationUnitSyntax.InsertNodesAfter(buildInvocationGlobalStatement,
+                new[] { SyntaxFactory.GlobalStatement(mapActorsHandlersInvocation) });
+            root = root.ReplaceNode(compilationUnitSyntax, newCompilationUnitSyntax);
         }
 
-        return document;
+        return document.WithSyntaxRoot(root);
     }
 }
