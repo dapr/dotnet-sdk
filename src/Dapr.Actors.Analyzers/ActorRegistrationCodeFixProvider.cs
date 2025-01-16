@@ -41,7 +41,7 @@ public class ActorRegistrationCodeFixProvider : CodeFixProvider
     
     private async Task<Document> RegisterActorAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        var root = await document.GetSyntaxRootAsync(cancellationToken);
         var diagnosticSpan = diagnostic.Location.SourceSpan;
 
         var classDeclaration = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<ClassDeclarationSyntax>().First();

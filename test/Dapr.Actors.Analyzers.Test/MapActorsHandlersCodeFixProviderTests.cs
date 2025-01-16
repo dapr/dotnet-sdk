@@ -1,6 +1,6 @@
 ﻿namespace Dapr.Actors.Analyzers.Test;
 
-public class ActorRegistrationCodeFixProviderTests
+public class MapActorsHandlersCodeFixProviderTests
 {
     [Fact]
     public async Task RegisterActor()
@@ -18,12 +18,11 @@ public class ActorRegistrationCodeFixProviderTests
                         
                     builder.Services.AddActors(options =>
                     {                        
+                        options.Actors.RegisterActor<TestActor>();
                         options.UseJsonSerialization = true;
                     });
 
                     var app = builder.Build();
-
-                    app.MapActorsHandlers();
                 }
             }
 
@@ -48,8 +47,8 @@ public class ActorRegistrationCodeFixProviderTests
                         
                     builder.Services.AddActors(options =>
                     {                        
-                        options.UseJsonSerialization = true;
                         options.Actors.RegisterActor<TestActor>();
+                        options.UseJsonSerialization = true;
                     });
 
                     var app = builder.Build();
@@ -66,110 +65,60 @@ public class ActorRegistrationCodeFixProviderTests
             }
             ";
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
+        await VerifyCodeFix.RunTest<MapActorsHandlersCodeFixProvider>(code, expectedChangedCode);
     }
 
     [Fact]
-    public async Task RegisterActor_WhenAddActorsIsNotFound()
+    public async Task RegisterActor_TopLevelStatements()
     {
         var code = @"
             using Dapr.Actors.Runtime;
             using Microsoft.AspNetCore.Builder;
-            
-            public static class Program
-            {
-                public static void Main()
-                {
-                    var builder = WebApplication.CreateBuilder();
-
-                    var app = builder.Build();
-                }
-            }
-
-            class TestActor : Actor
-            { 
-                public TestActor(ActorHost host) : base(host)
-                {
-                }
-            }
-            ";
-
-        var expectedChangedCode = @"
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
-            
-            public static class Program
-            {
-                public static void Main()
-                {
-                    var builder = WebApplication.CreateBuilder();
-                    
-                    builder.Services.AddActors(options =>
-                    {
-                        options.Actors.RegisterActor<TestActor>();
-                    });
-
-                    var app = builder.Build();
-                }
-            }
-
-            class TestActor : Actor
-            { 
-                public TestActor(ActorHost host) : base(host)
-                {
-                }
-            }
-            ";
-
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
-    }
-
-    [Fact]
-    public async Task RegisterActor_WhenAddActorsIsNotFound_TopLevelStatements()
-    {
-        var code = @"            
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
-
-            var builder = WebApplication.CreateBuilder();
-                
-            var app = builder.Build();
-
-            namespace TestNamespace
-            {
-                class TestActor : Actor
-                {
-                    public TestActor(ActorHost host) : base(host)
-                    {
-                    }
-                }
-            }
-            ";
-
-        var expectedChangedCode = @"
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
+            using Microsoft.Extensions.DependencyInjection;
             
             var builder = WebApplication.CreateBuilder();
-                    
+                        
             builder.Services.AddActors(options =>
-            {
-                options.Actors.RegisterActor<TestNamespace.TestActor>();
+            {                        
+                options.Actors.RegisterActor<TestActor>();
+                options.UseJsonSerialization = true;
             });
 
             var app = builder.Build();
 
-            namespace TestNamespace
-            {
-                class TestActor : Actor
+            class TestActor : Actor
+            { 
+                public TestActor(ActorHost host) : base(host)
                 {
-                    public TestActor(ActorHost host) : base(host)
-                    {
-                    }
                 }
             }
             ";
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
+        var expectedChangedCode = @"
+            using Dapr.Actors.Runtime;
+            using Microsoft.AspNetCore.Builder;
+            using Microsoft.Extensions.DependencyInjection;
+            
+            var builder = WebApplication.CreateBuilder();
+                        
+            builder.Services.AddActors(options =>
+            {                        
+                options.Actors.RegisterActor<TestActor>();
+                options.UseJsonSerialization = true;
+            });
+
+            var app = builder.Build();
+
+            app.MapActorsHandlers();
+
+            class TestActor : Actor
+            { 
+                public TestActor(ActorHost host) : base(host)
+                {
+                }
+            }
+            ";
+
+        await VerifyCodeFix.RunTest<MapActorsHandlersCodeFixProvider>(code, expectedChangedCode);
     }
 }

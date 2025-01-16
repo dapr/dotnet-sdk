@@ -28,11 +28,21 @@ public class ActorAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor DiagnosticDescriptorMapActorsHandlers = new(
+        "DAPR0003",
+        "Call MapActorsHandlers",
+        "Call app.MapActorsHandlers to map endpoints for Dapr actors",
+        "Usage",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
     /// <summary>
     /// Gets the supported diagnostics for this analyzer.
     /// </summary>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
-        DiagnosticDescriptorActorRegistration, DiagnosticDescriptorJsonSerialization);
+        DiagnosticDescriptorActorRegistration,
+        DiagnosticDescriptorJsonSerialization,
+        DiagnosticDescriptorMapActorsHandlers);
 
     /// <summary>
     /// Initializes the analyzer.
@@ -44,12 +54,13 @@ public class ActorAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
         context.RegisterSyntaxNodeAction(AnalyzeActorRegistration, SyntaxKind.ClassDeclaration);
         context.RegisterSyntaxNodeAction(AnalyzeSerialization, SyntaxKind.CompilationUnit);
+        context.RegisterSyntaxNodeAction(AnalyzeMapActorsHandlers, SyntaxKind.CompilationUnit);
     }
-    
+
     private void AnalyzeActorRegistration(SyntaxNodeAnalysisContext context)
     {
         var classDeclaration = (ClassDeclarationSyntax)context.Node;
-        
+
         if (classDeclaration.BaseList != null)
         {
             var baseTypeSyntax = classDeclaration.BaseList.Types[0].Type;
@@ -57,7 +68,7 @@ public class ActorAnalyzer : DiagnosticAnalyzer
             if (context.SemanticModel.GetSymbolInfo(baseTypeSyntax).Symbol is INamedTypeSymbol baseTypeSymbol)
             {
                 var baseTypeName = baseTypeSymbol.ToDisplayString();
-    
+
                 {
                     var actorTypeName = classDeclaration.Identifier.Text;
                     bool isRegistered = CheckIfActorIsRegistered(actorTypeName, context.SemanticModel);
@@ -70,7 +81,7 @@ public class ActorAnalyzer : DiagnosticAnalyzer
             }
         }
     }
-    
+
     private static bool CheckIfActorIsRegistered(string actorTypeName, SemanticModel semanticModel)
     {
         var methodInvocations = new List<InvocationExpressionSyntax>();
@@ -114,81 +125,82 @@ public class ActorAnalyzer : DiagnosticAnalyzer
     }
 
     private void AnalyzeSerialization(SyntaxNodeAnalysisContext context)
-    {        
-        var actorTypes = GetActorDerivedClasses(context);
-        InvocationExpressionSyntax? addActorsInvocation = null;
+    {
+        var addActorsInvocation = FindInvocation(context, "AddActors");
 
-        if (actorTypes.Any())
+        if (addActorsInvocation != null)
         {
-            foreach (var syntaxTree in context.SemanticModel.Compilation.SyntaxTrees)
+            var optionsLambda = addActorsInvocation.ArgumentList.Arguments
+                .Select(arg => arg.Expression)
+                .OfType<SimpleLambdaExpressionSyntax>()
+                .FirstOrDefault();
+
+            if (optionsLambda != null)
             {
-                var root = syntaxTree.GetRoot();
-                addActorsInvocation = root.DescendantNodes().OfType<InvocationExpressionSyntax>()
-                    .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                        memberAccess.Name.Identifier.Text == "AddActors");
+                var lambdaBody = optionsLambda.Body;
+                var assignments = lambdaBody.DescendantNodes().OfType<AssignmentExpressionSyntax>();
 
-                if (addActorsInvocation != null)
+                var useJsonSerialization = assignments.Any(assignment =>
+                    assignment.Left is MemberAccessExpressionSyntax memberAccess &&
+                    memberAccess.Name is IdentifierNameSyntax identifier &&
+                    identifier.Identifier.Text == "UseJsonSerialization" &&
+                    assignment.Right is LiteralExpressionSyntax literal &&
+                    literal.Token.ValueText == "true");
+
+                if (!useJsonSerialization)
                 {
-                    break;
-                }
-            }
-
-            if (addActorsInvocation != null)
-            {
-                var optionsLambda = addActorsInvocation.ArgumentList.Arguments
-                    .Select(arg => arg.Expression)
-                    .OfType<SimpleLambdaExpressionSyntax>()
-                    .FirstOrDefault();
-
-                if (optionsLambda != null)
-                {
-                    var lambdaBody = optionsLambda.Body;
-                    var assignments = lambdaBody.DescendantNodes().OfType<AssignmentExpressionSyntax>();
-
-                    var useJsonSerialization = assignments.Any(assignment =>
-                        assignment.Left is MemberAccessExpressionSyntax memberAccess &&
-                        memberAccess.Name is IdentifierNameSyntax identifier &&
-                        identifier.Identifier.Text == "UseJsonSerialization" &&
-                        assignment.Right is LiteralExpressionSyntax literal &&
-                        literal.Token.ValueText == "true");
-
-                    if (!useJsonSerialization)
-                    {
-                        var diagnostic = Diagnostic.Create(DiagnosticDescriptorJsonSerialization, addActorsInvocation.GetLocation());
-                        context.ReportDiagnostic(diagnostic);
-                    }
+                    var diagnostic = Diagnostic.Create(DiagnosticDescriptorJsonSerialization, addActorsInvocation.GetLocation());
+                    context.ReportDiagnostic(diagnostic);
                 }
             }
         }
     }
 
-    private static IEnumerable<ClassDeclarationSyntax> GetActorDerivedClasses(SyntaxNodeAnalysisContext context)
+    private InvocationExpressionSyntax? FindInvocation(SyntaxNodeAnalysisContext context, string methodName)
     {
-        var compilation = context.SemanticModel.Compilation;
-        var actorDerivedClasses = new List<ClassDeclarationSyntax>();
-
-        foreach (var syntaxTree in compilation.SyntaxTrees)
+        foreach (var syntaxTree in context.SemanticModel.Compilation.SyntaxTrees)
         {
             var root = syntaxTree.GetRoot();
-            var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
+            var invocation = root.DescendantNodes().OfType<InvocationExpressionSyntax>()
+                .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                    memberAccess.Name.Identifier.Text == methodName);
 
-            foreach (var classDeclaration in classDeclarations)
+            if (invocation != null)
             {
-                if (classDeclaration.BaseList != null)
-                {
-                    var baseTypeSyntax = classDeclaration.BaseList.Types[0].Type;
-
-                    if (baseTypeSyntax is IdentifierNameSyntax identifier)
-                    {
-                        if (identifier.Identifier.Text == "Dapr.Actors.Runtime.Actor" || identifier.Identifier.Text == "Actor")
-                        {
-                            actorDerivedClasses.Add(classDeclaration);
-                        }
-                    }
-                }
+                return invocation;
             }
         }
 
-        return actorDerivedClasses;
+        return null;
+    }
+
+    private void AnalyzeMapActorsHandlers(SyntaxNodeAnalysisContext context)
+    {
+        var addActorsInvocation = FindInvocation(context, "AddActors");
+
+        if (addActorsInvocation != null)
+        {            
+            bool invokedByWebApplication = false;
+            var mapActorsHandlersInvocation = FindInvocation(context, "MapActorsHandlers");
+
+            if (mapActorsHandlersInvocation?.Expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                var symbolInfo = context.SemanticModel.GetSymbolInfo(memberAccess.Expression);
+                if (symbolInfo.Symbol is ILocalSymbol localSymbol)
+                {
+                    var type = localSymbol.Type;
+                    if (type.ToDisplayString() == "Microsoft.AspNetCore.Builder.WebApplication")
+                    {
+                        invokedByWebApplication = true;
+                    }
+                }
+            }
+
+            if (mapActorsHandlersInvocation == null || !invokedByWebApplication)
+            {
+                var diagnostic = Diagnostic.Create(DiagnosticDescriptorMapActorsHandlers, addActorsInvocation.GetLocation());
+                context.ReportDiagnostic(diagnostic);
+            }
+        }
     }
 }

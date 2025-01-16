@@ -1,8 +1,9 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis;
-using Dapr.Actors.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
 
 namespace Dapr.Actors.Analyzers.Test;
 
@@ -40,6 +41,8 @@ internal static class VerifyAnalyzer
         var metadataReferences = Utilities.GetAllReferencesNeededForType(typeof(ActorAnalyzer)).ToList();
         metadataReferences.AddRange(Utilities.GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(WebApplication).Assembly.Location));
+        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
 
         foreach (var reference in metadataReferences)
         {

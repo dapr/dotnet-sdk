@@ -6,34 +6,46 @@ public class ActorJsonSerializationCodeFixProviderTests
     public async Task UseJsonSerialization()
     {
         var code = @"
-            using Dapr.Actors.Runtime;
+            //using Dapr.Actors.Runtime;
+            using Microsoft.AspNetCore.Builder;
             using Microsoft.Extensions.DependencyInjection;
             
             public static class Program
             {
                 public static void Main()
                 {
-                    var services = new ServiceCollection();
-                    services.AddActors(options =>
+                    var builder = WebApplication.CreateBuilder();
+                        
+                    builder.Services.AddActors(options =>
                     {                        
                     });
+
+                    var app = builder.Build();
+
+                    app.MapActorsHandlers();
                 }
             }
             ";
 
         var expectedChangedCode = @"
-            using Dapr.Actors.Runtime;
+            //using Dapr.Actors.Runtime;
+            using Microsoft.AspNetCore.Builder;
             using Microsoft.Extensions.DependencyInjection;
-            
+
             public static class Program
             {
                 public static void Main()
                 {
-                    var services = new ServiceCollection();
-                    services.AddActors(options =>
+                    var builder = WebApplication.CreateBuilder();
+
+                    builder.Services.AddActors(options =>
                     {
                         options.UseJsonSerialization = true;
                     });
+
+                    var app = builder.Build();
+
+                    app.MapActorsHandlers();
                 }
             }
             ";

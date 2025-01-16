@@ -4,7 +4,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.CodeAnalysis.Testing;
 
 namespace Dapr.Actors.Analyzers.Test;
 
@@ -14,12 +16,29 @@ internal static class Utilities
     {
         var workspace = new AdhocWorkspace();
 
+#if NET6_0
+        var referenceAssemblies = ReferenceAssemblies.Net.Net60;
+#elif NET7_0
+        var referenceAssemblies = ReferenceAssemblies.Net.Net70;
+#elif NET8_0
+        var referenceAssemblies = ReferenceAssemblies.Net.Net80;
+#elif NET9_0
+        var referenceAssemblies = ReferenceAssemblies.Net.Net90;
+#endif
+
         // Create a new project with necessary references
         var project = workspace.AddProject("TestProject", LanguageNames.CSharp)
-            .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+            .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.ConsoleApplication)
+                .WithSpecificDiagnosticOptions(new Dictionary<string, ReportDiagnostic>
+                {
+                    { "CS1701", ReportDiagnostic.Suppress }
+                }))
+            .AddMetadataReferences(await referenceAssemblies.ResolveAsync(LanguageNames.CSharp, default))
             .AddMetadataReference(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
-            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)))
-            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(WebApplication)));            
+            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(WebApplication)))
+            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(IHost)))
+            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(ActorsEndpointRouteBuilderExtensions)))
+            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
 
         // Add the document to the project
         var document = project.AddDocument("TestDocument.cs", code);
@@ -28,7 +47,8 @@ internal static class Utilities
         var syntaxTree = await document.GetSyntaxTreeAsync() ?? throw new InvalidOperationException("Syntax tree is null");
         var compilation = CSharpCompilation.Create("TestCompilation")
             .AddSyntaxTrees(syntaxTree)
-            .AddReferences(project.MetadataReferences);
+            .AddReferences(project.MetadataReferences)
+            .WithOptions(project.CompilationOptions!);
 
         var compilationWithAnalyzer = compilation.WithAnalyzers(
                 ImmutableArray.Create<DiagnosticAnalyzer>(
