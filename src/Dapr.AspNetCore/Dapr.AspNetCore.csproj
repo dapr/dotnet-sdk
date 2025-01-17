@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    <ProjectReference Include="..\Dapr.Pubsub.Analyzers\Dapr.Pubsub.Analyzers.csproj" />
   </ItemGroup>
 
 </Project>
