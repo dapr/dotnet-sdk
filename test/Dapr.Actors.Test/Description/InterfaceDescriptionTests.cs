@@ -11,10 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-﻿using System;
+using System;
 using System.Threading.Tasks;
-using FluentAssertions;
-using FluentAssertions.Execution;
+using Shouldly;
 using Xunit;
 
 namespace Dapr.Actors.Description
@@ -31,13 +30,12 @@ namespace Dapr.Actors.Description
             TestDescription description = new(type);
 
             // Assert
-            description.Should().NotBeNull();
+            description.ShouldNotBeNull();
 
-            using var _ = new AssertionScope();
-            description.InterfaceType.Should().Be(type);
-            description.Id.Should().NotBe(0);
-            description.V1Id.Should().Be(0);
-            description.Methods.Should().BeEmpty();
+            description.InterfaceType.ShouldBe(type);
+            description.Id.ShouldNotBe(0);
+            description.V1Id.ShouldBe(0);
+            description.Methods.ShouldBeEmpty();
         }
 
         [Fact]
@@ -50,9 +48,8 @@ namespace Dapr.Actors.Description
             TestDescription description = new(type, useCRCIdGeneration: true);
 
             // Assert
-            using var _ = new AssertionScope();
-            description.Id.Should().Be(-934188464);
-            description.V1Id.Should().NotBe(0);
+            description.Id.ShouldBe(-934188464);
+            description.V1Id.ShouldNotBe(0);
         }
 
         [Fact]
@@ -65,9 +62,9 @@ namespace Dapr.Actors.Description
             Action action = () => { TestDescription _ = new(type); };
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("The actor interface '*+IGenericActor`1' is using generics. Generic interfaces cannot be remoted.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldBe("The actor interface '*+IGenericActor`1' is using generics. Generic interfaces cannot be remoted.*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         [Fact]
@@ -80,9 +77,9 @@ namespace Dapr.Actors.Description
             Action action = () => { TestDescription _ = new(type); };
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("The actor interface '*+IGenericActor`1[*IActor*]' is using generics. Generic interfaces cannot be remoted.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldBe("The actor interface '*+IGenericActor`1[*IActor*]' is using generics. Generic interfaces cannot be remoted.*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         [Fact]
@@ -95,10 +92,9 @@ namespace Dapr.Actors.Description
             TestDescription description = new(type);
 
             // Assert
-            using var _ = new AssertionScope();
-            description.Methods.Should().NotContainNulls();
-            description.Methods.Should().AllBeOfType<MethodDescription>();
-            description.Methods.Should().BeEquivalentTo(
+            description.Methods.ShouldNotBeNull();
+            description.Methods.ShouldBeOfType<MethodDescription>();
+            description.Methods.ShouldBeEquivalentTo(
                 new { Name = "GetInt" }
             );
         }
@@ -113,12 +109,9 @@ namespace Dapr.Actors.Description
             TestDescription description = new(type, methodReturnCheck: MethodReturnCheck.EnsureReturnsVoid);
 
             // Assert
-            using var _ = new AssertionScope();
-            description.Methods.Should().NotContainNulls();
-            description.Methods.Should().AllBeOfType<MethodDescription>();
-            description.Methods.Should().BeEquivalentTo(
-                new { Name = "GetString" },
-                new { Name = "MethodWithArguments" });
+            description.Methods.ShouldNotBeNull();
+            description.Methods.ShouldBeOfType<MethodDescription>();
+            description.Methods.ShouldBeEquivalentTo(new[] { new { Name = "GetString" }, new { Name = "MethodWithArguments" } });
         }
 
         [Fact]
@@ -128,12 +121,16 @@ namespace Dapr.Actors.Description
             Type type = typeof(IVoidActor);
 
             // Act
-            Action action = () => { TestDescription _ = new(type); };
+            Action action = () =>
+            {
+                TestDescription _ = new(type);
+            };
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Method 'GetString' of actor interface '*+IVoidActor' does not return Task or Task<>. The actor interface methods must be async and must return either Task or Task<>.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldBe(
+                "Method 'GetString' of actor interface '*+IVoidActor' does not return Task or Task<>. The actor interface methods must be async and must return either Task or Task<>.*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         [Fact]
@@ -146,9 +143,9 @@ namespace Dapr.Actors.Description
             Action action = () => { TestDescription _ = new(type, methodReturnCheck: MethodReturnCheck.EnsureReturnsVoid); };
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Method 'GetString' of actor interface '*+IMethodActor' returns '*.Task`1[*System.String*]'*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldBe("Method 'GetString' of actor interface '*+IMethodActor' returns '*.Task`1[*System.String*]'*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         [Fact]
@@ -161,9 +158,9 @@ namespace Dapr.Actors.Description
             Action action = () => { TestDescription _ = new(type); };
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Method 'GetString' of actor interface '*+IOverloadedMethodActor' is overloaded. The actor interface methods cannot be overloaded.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldBe("Method 'GetString' of actor interface '*+IOverloadedMethodActor' is overloaded. The actor interface methods cannot be overloaded.*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         [Fact]
@@ -176,9 +173,9 @@ namespace Dapr.Actors.Description
             Action action = () => { TestDescription _ = new(type); };
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Method 'Get' of actor interface '*+IGenericMethodActor' is using generics. The actor interface methods cannot use generics.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldBe("Method 'Get' of actor interface '*+IGenericMethodActor' is using generics. The actor interface methods cannot use generics.*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         [Fact]
@@ -191,9 +188,9 @@ namespace Dapr.Actors.Description
             Action action = () => { TestDescription _ = new(type); };
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Method 'MethodWithVarArgs' of actor interface '*+IVariableActor' is using a variable argument list. The actor interface methods cannot have a variable argument list.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldBe("Method 'MethodWithVarArgs' of actor interface '*+IVariableActor' is using a variable argument list. The actor interface methods cannot have a variable argument list.*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         internal interface ITestActor : IActor

@@ -21,7 +21,7 @@ namespace Dapr.Actors.Test
     using System.Security.Authentication;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using FluentAssertions;
+    using Shouldly;
     using Xunit;
 
     /// <summary>
@@ -48,8 +48,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Get);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Get);
         }
 
         [Fact]
@@ -71,8 +71,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -95,8 +95,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -119,8 +119,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -142,8 +142,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Delete);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Delete);
         }
 
         [Fact]
@@ -166,8 +166,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -189,8 +189,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Delete);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Delete);
         }
 
         [Fact]
@@ -210,8 +210,8 @@ namespace Dapr.Actors.Test
             request.Dismiss();
 
             request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
-            headerValues.Count().Should().Be(1);
-            headerValues.First().Should().Be("test_token");
+            headerValues.Count().ShouldBe(1);
+            headerValues.First().ShouldBe("test_token");
         }
 
         [Fact]
@@ -231,7 +231,7 @@ namespace Dapr.Actors.Test
             request.Dismiss();
 
             request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
-            headerValues.Should().BeNull();
+            headerValues.ShouldBeNull();
         }
 
         [Fact]
