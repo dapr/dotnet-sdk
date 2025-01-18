@@ -164,9 +164,9 @@ namespace Dapr.AspNetCore.Test
                 ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
 
                 httpContext.Request.Headers.ShouldContainKey("Cloudevent.type");
-                httpContext.Request.Headers["Cloudevent.type"].ShouldBeEquivalentTo("Test.Type");
+                httpContext.Request.Headers["Cloudevent.type"].ToString().ShouldBe("Test.Type");
                 httpContext.Request.Headers.ShouldContainKey("Cloudevent.subject");
-                httpContext.Request.Headers["Cloudevent.subject"].ShouldBeEquivalentTo("Test.Subject");
+                httpContext.Request.Headers["Cloudevent.subject"].ToString().ShouldBe("Test.Subject");
                 return Task.CompletedTask;
             });
 
@@ -213,7 +213,7 @@ namespace Dapr.AspNetCore.Test
                 ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
 
                 httpContext.Request.Headers.ShouldContainKey("Cloudevent.type");
-                httpContext.Request.Headers["Cloudevent.type"].ShouldBeEquivalentTo("Test.Type");
+                httpContext.Request.Headers["Cloudevent.type"].ToString().ShouldBe("Test.Type");
                 httpContext.Request.Headers.ShouldNotContainKey("Cloudevent.subject");
                 return Task.CompletedTask;
             });
@@ -262,7 +262,7 @@ namespace Dapr.AspNetCore.Test
 
                 httpContext.Request.Headers.ShouldNotContainKey("Cloudevent.type");
                 httpContext.Request.Headers.ShouldContainKey("Cloudevent.subject");
-                httpContext.Request.Headers["Cloudevent.subject"].ShouldBeEquivalentTo("Test.Subject");
+                httpContext.Request.Headers["Cloudevent.subject"].ToString().ShouldBe("Test.Subject");
                 return Task.CompletedTask;
             });
 
