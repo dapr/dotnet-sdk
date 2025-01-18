@@ -42,6 +42,7 @@
     <PackageVersion Include="Serilog.AspNetCore" Version="6.1.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="4.1.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageVersion Include="Shouldly" Version="4.2.1" />
     <PackageVersion Include="System.Formats.Asn1" Version="6.0.1" />
     <PackageVersion Include="System.Text.Json" Version="6.0.10" />
     <PackageVersion Include="xunit" Version="2.9.2" />
