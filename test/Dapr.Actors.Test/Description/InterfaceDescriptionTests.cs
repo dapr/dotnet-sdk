@@ -63,7 +63,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The actor interface '*+IGenericActor`1' is using generics. Generic interfaces cannot be remoted.*");
+            exception.Message.ShouldMatch(@"The actor interface '.*\+IGenericActor`1' is using generics. Generic interfaces cannot be remoted.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -78,7 +78,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The actor interface '*+IGenericActor`1[*IActor*]' is using generics. Generic interfaces cannot be remoted.*");
+            exception.Message.ShouldMatch(@"The actor interface '.*\+IGenericActor`1\[.*IActor.*\]' is using generics. Generic interfaces cannot be remoted.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -93,7 +93,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             description.Methods.ShouldNotBeNull();
-            description.Methods.ShouldBeOfType<MethodDescription>();
+            description.Methods.ShouldBeOfType<MethodDescription[]>();
             description.Methods.ShouldBeEquivalentTo(
                 new { Name = "GetInt" }
             );
@@ -110,7 +110,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             description.Methods.ShouldNotBeNull();
-            description.Methods.ShouldBeOfType<MethodDescription>();
+            description.Methods.ShouldBeOfType<MethodDescription[]>();
             description.Methods.ShouldBeEquivalentTo(new[] { new { Name = "GetString" }, new { Name = "MethodWithArguments" } });
         }
 
@@ -128,8 +128,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe(
-                "Method 'GetString' of actor interface '*+IVoidActor' does not return Task or Task<>. The actor interface methods must be async and must return either Task or Task<>.*");
+            exception.Message.ShouldMatch(@"Method 'GetString' of actor interface '.*\+IVoidActor' does not return Task or Task<>. The actor interface methods must be async and must return either Task or Task<>.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -144,7 +143,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'GetString' of actor interface '*+IMethodActor' returns '*.Task`1[*System.String*]'*");
+            exception.Message.ShouldMatch(@"Method 'GetString' of actor interface '.*\+IMethodActor' returns '.*\.Task`1\[.*System.String.*\]'.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -159,7 +158,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'GetString' of actor interface '*+IOverloadedMethodActor' is overloaded. The actor interface methods cannot be overloaded.*");
+            exception.Message.ShouldMatch(@"Method 'GetString' of actor interface '.*\+IOverloadedMethodActor' is overloaded. The actor interface methods cannot be overloaded.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -174,7 +173,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'Get' of actor interface '*+IGenericMethodActor' is using generics. The actor interface methods cannot use generics.*");
+            exception.Message.ShouldMatch(@"Method 'Get' of actor interface '.*\+IGenericMethodActor' is using generics. The actor interface methods cannot use generics.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -189,7 +188,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'MethodWithVarArgs' of actor interface '*+IVariableActor' is using a variable argument list. The actor interface methods cannot have a variable argument list.*");
+            exception.Message.ShouldMatch(@"Method 'MethodWithVarArgs' of actor interface '.*\+IVariableActor' is using a variable argument list. The actor interface methods cannot have a variable argument list.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 

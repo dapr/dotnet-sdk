@@ -49,7 +49,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The type 'System.Object' is not an Actor interface as it is not an interface.*");
+            exception.Message.ShouldMatch(@"The type 'System.Object' is not an Actor interface as it is not an interface.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -64,7 +64,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
+            exception.Message.ShouldMatch(@"The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -79,7 +79,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The type '*+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
+            exception.Message.ShouldMatch(@"The type '.*\+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -112,7 +112,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The type 'System.Object' is not an Actor interface as it is not an interface.*");
+            exception.Message.ShouldMatch(@"The type 'System.Object' is not an Actor interface as it is not an interface.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -127,7 +127,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
+            exception.Message.ShouldMatch(@"The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -142,7 +142,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("The type '*+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
+            exception.Message.ShouldMatch(@"The type '.*\+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
