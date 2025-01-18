@@ -15,7 +15,6 @@ using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.PublishSubscribe.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
 
 namespace Dapr.Messaging.Test.Extensions;
 
