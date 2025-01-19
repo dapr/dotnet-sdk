@@ -5,7 +5,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="Grpc.Core.Testing" />
     <PackageReference Include="Grpc.Net.Client" />
@@ -14,6 +13,7 @@
     <PackageReference Include="moq" />
     <PackageReference Include="protobuf-net.Grpc.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Shouldly"/>
     <PackageReference Include="xunit"  />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>

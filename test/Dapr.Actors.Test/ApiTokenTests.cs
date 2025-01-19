@@ -15,7 +15,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Client;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Dapr.Actors.Test
@@ -43,7 +43,7 @@ namespace Dapr.Actors.Test
             request.Dismiss();
 
             var headerValues = request.Request.Headers.GetValues("dapr-api-token");
-            headerValues.Should().Contain("test_token");
+            headerValues.ShouldContain("test_token");
         }
 
         [Fact(Skip = "https://github.com/dapr/dotnet-sdk/issues/596")]
@@ -89,7 +89,7 @@ namespace Dapr.Actors.Test
             request.Dismiss();
 
             var headerValues = request.Request.Headers.GetValues("dapr-api-token");
-            headerValues.Should().Contain("test_token");
+            headerValues.ShouldContain("test_token");
         }
 
         [Fact]

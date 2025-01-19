@@ -19,7 +19,7 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Net.Http;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using FluentAssertions;
+    using Shouldly;
     using Xunit;
 
     public class SubscribeEndpointTest
@@ -39,8 +39,8 @@ namespace Dapr.AspNetCore.IntegrationTest
                 {
                     var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
-                    json.ValueKind.Should().Be(JsonValueKind.Array);
-                    json.GetArrayLength().Should().Be(18);
+                    json.ValueKind.ShouldBe(JsonValueKind.Array);
+                    json.GetArrayLength().ShouldBe(18);
 
                     var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, 
                         string match, string metadata, string DeadLetterTopic, string bulkSubscribeMetadata)>();
@@ -109,34 +109,34 @@ namespace Dapr.AspNetCore.IntegrationTest
                         }
                     }
 
-                    subscriptions.Should().Contain(("testpubsub", "A", "topic-a", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("testpubsub", "A.1", "topic-a", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "B", "B", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("custom-pubsub", "custom-C", "C", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "register-user", "register-user", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "register-user-plaintext", "register-user-plaintext", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "D", "D", "true", string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "E", "E", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "E", "E-Critical", string.Empty, "event.type == \"critical\"", string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "E", "E-Important", string.Empty, "event.type == \"important\"", string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "F", "multiTopicAttr", string.Empty, string.Empty, string.Empty, string.Empty, 
+                    subscriptions.ShouldContain(("testpubsub", "A", "topic-a", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("testpubsub", "A.1", "topic-a", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "B", "B", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("custom-pubsub", "custom-C", "C", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "register-user", "register-user", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "register-user-plaintext", "register-user-plaintext", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "D", "D", "true", string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "E", "E", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "E", "E-Critical", string.Empty, "event.type == \"critical\"", string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "E", "E-Important", string.Empty, "event.type == \"important\"", string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "F", "multiTopicAttr", string.Empty, string.Empty, string.Empty, string.Empty, 
                         "{\"enabled\":true,\"maxMessagesCount\":100,\"maxAwaitDurationMs\":1000}"));
-                    subscriptions.Should().Contain(("pubsub", "F.1", "multiTopicAttr", "true", string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "G", "G", string.Empty, string.Empty, string.Empty, "deadLetterTopicName", 
+                    subscriptions.ShouldContain(("pubsub", "F.1", "multiTopicAttr", "true", string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "G", "G", string.Empty, string.Empty, string.Empty, "deadLetterTopicName", 
                         "{\"enabled\":true,\"maxMessagesCount\":300,\"maxAwaitDurationMs\":1000}"));
-                    subscriptions.Should().Contain(("pubsub", "splitTopicBuilder", "splitTopics", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "splitTopicAttr", "splitTopics", "true", string.Empty, string.Empty, string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "metadata", "multiMetadataTopicAttr", string.Empty, string.Empty, "n1=v1;n2=v2,v3", string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "metadata.1", "multiMetadataTopicAttr", "true", string.Empty, "n1=v1", string.Empty, 
+                    subscriptions.ShouldContain(("pubsub", "splitTopicBuilder", "splitTopics", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "splitTopicAttr", "splitTopics", "true", string.Empty, string.Empty, string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "metadata", "multiMetadataTopicAttr", string.Empty, string.Empty, "n1=v1;n2=v2,v3", string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "metadata.1", "multiMetadataTopicAttr", "true", string.Empty, "n1=v1", string.Empty, 
                         "{\"enabled\":true,\"maxMessagesCount\":500,\"maxAwaitDurationMs\":2000}"));
-                    subscriptions.Should().Contain(("pubsub", "splitMetadataTopicBuilder", "splitMetadataTopics", string.Empty, string.Empty, "n1=v1;n2=v1", string.Empty, String.Empty));
-                    subscriptions.Should().Contain(("pubsub", "metadataseparatorbyemptytring", "topicmetadataseparatorattrbyemptytring", string.Empty, string.Empty, "n1=v1,", string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "splitMetadataTopicBuilder", "splitMetadataTopics", string.Empty, string.Empty, "n1=v1;n2=v1", string.Empty, String.Empty));
+                    subscriptions.ShouldContain(("pubsub", "metadataseparatorbyemptytring", "topicmetadataseparatorattrbyemptytring", string.Empty, string.Empty, "n1=v1,", string.Empty, String.Empty));
                     // Test priority route sorting
                     var eTopic = subscriptions.FindAll(e => e.Topic == "E");
-                    eTopic.Count.Should().Be(3);
-                    eTopic[0].Route.Should().Be("E-Critical");
-                    eTopic[1].Route.Should().Be("E-Important");
-                    eTopic[2].Route.Should().Be("E");
+                    eTopic.Count.ShouldBe(3);
+                    eTopic[0].Route.ShouldBe("E-Critical");
+                    eTopic[1].Route.ShouldBe("E-Important");
+                    eTopic[2].Route.ShouldBe("E");
                 }
             }
         }

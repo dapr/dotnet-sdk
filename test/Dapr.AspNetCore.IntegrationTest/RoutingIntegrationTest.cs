@@ -16,7 +16,7 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Net.Http;
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
-    using FluentAssertions;
+    using Shouldly;
     using Xunit;
 
     public class RoutingIntegrationTest
@@ -36,7 +36,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
 
                 var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
-                widget.Count.Should().Be(18);
+                widget.Count.ShouldBe(18);
             }
         }
     }

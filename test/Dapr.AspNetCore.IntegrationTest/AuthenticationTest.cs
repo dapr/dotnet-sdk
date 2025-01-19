@@ -16,7 +16,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Dapr.AspNetCore.IntegrationTest.App;
-using FluentAssertions;
+using Shouldly;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -43,7 +43,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var responseUserInfo = JsonConvert.DeserializeObject<UserInfo>(responseContent);
-                responseUserInfo.Name.Should().Be(userInfo.Name);
+                responseUserInfo.Name.ShouldBe(userInfo.Name);
             }
         }
 
@@ -64,7 +64,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 request.Headers.Add("Dapr-Api-Token", "asdfgh");
                 var response = await httpClient.SendAsync(request);
 
-                response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+                response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
             }
         }
     }

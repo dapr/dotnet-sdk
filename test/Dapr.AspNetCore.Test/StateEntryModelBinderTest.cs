@@ -18,7 +18,7 @@ namespace Dapr.AspNetCore.Test
     using System.Threading.Tasks;
     using Dapr.Client;
     using Dapr.Client.Autogen.Grpc.v1;
-    using FluentAssertions;
+    using Shouldly;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -38,9 +38,9 @@ namespace Dapr.AspNetCore.Test
 
             await binder.BindModelAsync(context);
 
-            context.Result.IsModelSet.Should().BeFalse();
-            context.ModelState.ErrorCount.Should().Be(1);
-            context.ModelState["testParameter"].Errors.Count.Should().Be(1);
+            context.Result.IsModelSet.ShouldBeFalse();
+            context.ModelState.ErrorCount.ShouldBe(1);
+            context.ModelState["testParameter"].Errors.Count.ShouldBe(1);
 
             // No request to state store, validated by disposing client
         }
@@ -66,12 +66,12 @@ namespace Dapr.AspNetCore.Test
             await SendResponseWithState(state, request);
 
             // Get response and validate
-            context.Result.IsModelSet.Should().BeTrue();
-            context.Result.Model.As<Widget>().Size.Should().Be("small");
-            context.Result.Model.As<Widget>().Color.Should().Be("yellow");
+            context.Result.IsModelSet.ShouldBeTrue();
+            ((Widget)context.Result.Model).Size.ShouldBe("small");
+            ((Widget)context.Result.Model).Color.ShouldBe("yellow");
 
-            context.ValidationState.Count.Should().Be(1);
-            context.ValidationState[context.Result.Model].SuppressValidation.Should().BeTrue();
+            context.ValidationState.Count.ShouldBe(1);
+            context.ValidationState[context.Result.Model].SuppressValidation.ShouldBeTrue();
         }
 
         [Fact]
@@ -95,13 +95,13 @@ namespace Dapr.AspNetCore.Test
             await SendResponseWithState(state, request);
 
             // Get response and validate
-            context.Result.IsModelSet.Should().BeTrue();
-            context.Result.Model.As<StateEntry<Widget>>().Key.Should().Be("test");
-            context.Result.Model.As<StateEntry<Widget>>().Value.Size.Should().Be("small");
-            context.Result.Model.As<StateEntry<Widget>>().Value.Color.Should().Be("yellow");
+            context.Result.IsModelSet.ShouldBeTrue();
+            ((StateEntry<Widget>)context.Result.Model).Key.ShouldBe("test");
+            ((StateEntry<Widget>)context.Result.Model).Value.Size.ShouldBe("small");
+            ((StateEntry<Widget>)context.Result.Model).Value.Color.ShouldBe("yellow");
 
-            context.ValidationState.Count.Should().Be(1);
-            context.ValidationState[context.Result.Model].SuppressValidation.Should().BeTrue();
+            context.ValidationState.Count.ShouldBe(1);
+            context.ValidationState[context.Result.Model].SuppressValidation.ShouldBeTrue();
         }
 
         [Fact]
@@ -122,9 +122,9 @@ namespace Dapr.AspNetCore.Test
 
             await SendResponseWithState<string>(null, request);
 
-            context.ModelState.IsValid.Should().BeTrue();
-            context.Result.IsModelSet.Should().BeFalse();
-            context.Result.Should().Be(ModelBindingResult.Failed());
+            context.ModelState.IsValid.ShouldBeTrue();
+            context.Result.IsModelSet.ShouldBeFalse();
+            context.Result.ShouldBe(ModelBindingResult.Failed());
         }
 
         [Fact]
@@ -145,9 +145,9 @@ namespace Dapr.AspNetCore.Test
 
             await SendResponseWithState<string>(null, request);
 
-            context.ModelState.IsValid.Should().BeTrue();
-            context.Result.IsModelSet.Should().BeTrue();
-            ((StateEntry<Widget>)context.Result.Model).Value.Should().BeNull();
+            context.ModelState.IsValid.ShouldBeTrue();
+            context.Result.IsModelSet.ShouldBeTrue();
+            ((StateEntry<Widget>)context.Result.Model).Value.ShouldBeNull();
         }
 
         private static ModelBindingContext CreateContext(IServiceProvider services)

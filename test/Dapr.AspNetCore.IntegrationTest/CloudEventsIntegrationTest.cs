@@ -19,7 +19,7 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Text.Json;
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
-    using FluentAssertions;
+    using Shouldly;
     using Xunit;
 
     public class CloudEventsIntegrationTest
@@ -48,6 +48,7 @@ namespace Dapr.AspNetCore.IntegrationTest
             }
         }
 
+
         [Fact]
         public async Task CanSendStructuredCloudEvent()
         {
@@ -74,7 +75,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
 
                 var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-                userInfo.Name.Should().Be("jimmy");
+                userInfo.Name.ShouldBe("jimmy");
             }
         }
 
@@ -105,7 +106,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
 
                 var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-                userInfo.Name.Should().Be("jimmy");
+                userInfo.Name.ShouldBe("jimmy");
             }
         }
 
@@ -133,7 +134,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
 
                 var user = await response.Content.ReadAsStringAsync();
-                user.Should().Be("jimmy \"the cool guy\" smith");
+                user.ShouldBe("jimmy \"the cool guy\" smith");
             }
         }
 
@@ -163,7 +164,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
             
                 var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-                userInfo.Name.Should().Be("jimmy");
+                userInfo.Name.ShouldBe("jimmy");
             }
         }
     }

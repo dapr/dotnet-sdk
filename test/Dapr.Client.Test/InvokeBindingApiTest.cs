@@ -20,7 +20,7 @@ namespace Dapr.Client.Test
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
-    using FluentAssertions;
+    using Shouldly;
     using Google.Protobuf;
     using Grpc.Core;
     using Moq;
@@ -43,11 +43,11 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
-            envelope.Name.Should().Be("test");
-            envelope.Metadata.Count.Should().Be(0);
+            envelope.Name.ShouldBe("test");
+            envelope.Metadata.Count.ShouldBe(0);
             var json = envelope.Data.ToStringUtf8();
             var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
-            typeFromRequest.RequestParameter.Should().Be("Hello ");
+            typeFromRequest.RequestParameter.ShouldBe("Hello ");
         }
 
         [Fact]
@@ -70,15 +70,15 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
-            envelope.Name.Should().Be("test");
-            envelope.Metadata.Count.Should().Be(2);
-            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
-            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
-            envelope.Metadata["key1"].Should().Be("value1");
-            envelope.Metadata["key2"].Should().Be("value2");
+            envelope.Name.ShouldBe("test");
+            envelope.Metadata.Count.ShouldBe(2);
+            envelope.Metadata.Keys.Contains("key1").ShouldBeTrue();
+            envelope.Metadata.Keys.Contains("key2").ShouldBeTrue();
+            envelope.Metadata["key1"].ShouldBe("value1");
+            envelope.Metadata["key2"].ShouldBe("value2");
             var json = envelope.Data.ToStringUtf8();
             var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
-            typeFromRequest.RequestParameter.Should().Be("Hello ");
+            typeFromRequest.RequestParameter.ShouldBe("Hello ");
         }
 
         [Fact]
@@ -95,8 +95,8 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
-            envelope.Name.Should().Be("test");
-            envelope.Metadata.Count.Should().Be(0);
+            envelope.Name.ShouldBe("test");
+            envelope.Metadata.Count.ShouldBe(0);
             var json = envelope.Data.ToStringUtf8();
             Assert.Equal("null", json);
         }
@@ -133,16 +133,16 @@ namespace Dapr.Client.Test
             var response = await request.CompleteWithMessageAsync(gRpcResponse);
 
             var envelope = await request.GetRequestEnvelopeAsync<InvokeBindingRequest>();
-            envelope.Name.Should().Be("test");
-            envelope.Metadata.Count.Should().Be(2);
-            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
-            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
-            envelope.Metadata["key1"].Should().Be("value1");
-            envelope.Metadata["key2"].Should().Be("value2");
+            envelope.Name.ShouldBe("test");
+            envelope.Metadata.Count.ShouldBe(2);
+            envelope.Metadata.Keys.Contains("key1").ShouldBeTrue();
+            envelope.Metadata.Keys.Contains("key2").ShouldBeTrue();
+            envelope.Metadata["key1"].ShouldBe("value1");
+            envelope.Metadata["key2"].ShouldBe("value2");
 
             var json = envelope.Data.ToStringUtf8();
             var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
-            typeFromRequest.RequestParameter.Should().Be("Hello ");
+            typeFromRequest.RequestParameter.ShouldBe("Hello ");
 
             Assert.Same(bindingRequest, response.Request);
             Assert.Equal("red", JsonSerializer.Deserialize<Widget>(response.Data.Span, client.InnerClient.JsonSerializerOptions).Color);
@@ -239,15 +239,15 @@ namespace Dapr.Client.Test
             var response = await req.CompleteWithMessageAsync(resp);
 
             var envelope = await req.GetRequestEnvelopeAsync<InvokeBindingRequest>();
-            envelope.Name.Should().Be("binding");
-            envelope.Operation.Should().Be("operation");
-            envelope.Metadata.Count.Should().Be(1);
-            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
-            envelope.Metadata["key1"].Should().Be("value1");
+            envelope.Name.ShouldBe("binding");
+            envelope.Operation.ShouldBe("operation");
+            envelope.Metadata.Count.ShouldBe(1);
+            envelope.Metadata.Keys.Contains("key1").ShouldBeTrue();
+            envelope.Metadata["key1"].ShouldBe("value1");
 
             var json = envelope.Data.ToStringUtf8();
             var typeFromRequest = JsonSerializer.Deserialize<InvokeRequest>(json, client.InnerClient.JsonSerializerOptions);
-            typeFromRequest.RequestParameter.Should().Be("Test");
+            typeFromRequest.RequestParameter.ShouldBe("Test");
 
             Assert.Equal("red", response.Color);
         }
@@ -269,8 +269,8 @@ namespace Dapr.Client.Test
             var response = await req.CompleteWithMessageAsync(resp);
 
             var envelope = await req.GetRequestEnvelopeAsync<InvokeBindingRequest>();
-            envelope.Name.Should().Be("binding");
-            envelope.Operation.Should().Be("operation");
+            envelope.Name.ShouldBe("binding");
+            envelope.Operation.ShouldBe("operation");
 
             Assert.Equal("red", response.Color);
         }
