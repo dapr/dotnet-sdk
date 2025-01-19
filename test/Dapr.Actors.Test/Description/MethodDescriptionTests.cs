@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,7 +37,7 @@ namespace Dapr.Actors.Description
 
             description.MethodInfo.ShouldBeSameAs(methodInfo);
             description.Name.ShouldBe("GetString");
-            description.ReturnType.ShouldBeOfType<Task<string>>();
+            description.ReturnType.ShouldBe(typeof(Task<string>));
             description.Id.ShouldNotBe(0);
             description.Arguments.ShouldBeEmpty();
             description.HasCancellationToken.ShouldBeFalse();
@@ -66,11 +67,8 @@ namespace Dapr.Actors.Description
 
             // Assert
             description.Arguments.ShouldNotBeNull();
-            description.Arguments.ShouldBeOfType<MethodArgumentDescription>();
-            description.Arguments.ShouldBeEquivalentTo(new[]
-            {
-                new { Name = "number" }, new { Name = "choice" }, new { Name = "information" }
-            });
+            description.Arguments.ShouldBeOfType<MethodArgumentDescription[]>();
+            description.Arguments.Select(m => new {m.Name}).ShouldBe(new[] {new {Name = "number"}, new {Name = "choice"}, new {Name = "information"}});
         }
 
         [Fact]
@@ -98,7 +96,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'MethodWithTokenNotLast' of actor interface '*+ITestActor' has a '*.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '*.CancellationToken' parameter, it must be the last parameter.*");
+            exception.Message.ShouldMatch(@"Method 'MethodWithTokenNotLast' of actor interface '.*\+ITestActor' has a '.*\.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '.*\.CancellationToken' parameter, it must be the last parameter\..*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
