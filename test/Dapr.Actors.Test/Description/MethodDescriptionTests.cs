@@ -114,7 +114,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'MethodWithMultipleTokens' of actor interface '*+ITestActor' has a '*.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '*.CancellationToken' parameter, it must be the last parameter.*");
+            exception.Message.ShouldMatch(@"Method 'MethodWithMultipleTokens' of actor interface '.*\+ITestActor' has a '.*\.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '.*\.CancellationToken' parameter, it must be the last parameter.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
