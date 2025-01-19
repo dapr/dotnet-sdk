@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
@@ -94,9 +95,7 @@ namespace Dapr.Actors.Description
             // Assert
             description.Methods.ShouldNotBeNull();
             description.Methods.ShouldBeOfType<MethodDescription[]>();
-            description.Methods.ShouldBeEquivalentTo(
-                new { Name = "GetInt" }
-            );
+            description.Methods.Select(m => new {m.Name}).ShouldBe(new[] {new {Name = "GetInt"}});
         }
 
         [Fact]
@@ -111,7 +110,7 @@ namespace Dapr.Actors.Description
             // Assert
             description.Methods.ShouldNotBeNull();
             description.Methods.ShouldBeOfType<MethodDescription[]>();
-            description.Methods.ShouldBeEquivalentTo(new[] { new { Name = "GetString" }, new { Name = "MethodWithArguments" } });
+            description.Methods.Select(m => new {m.Name}).ShouldBe(new[] {new {Name = "GetString"}, new {Name="MethodWithArguments"}});
         }
 
         [Fact]
