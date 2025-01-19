@@ -35,7 +35,7 @@ namespace Dapr.Actors.Description
             description.ShouldNotBeNull();
 
             description.Name.ShouldBe("number");
-            description.ArgumentType.ShouldBeOfType<int>();
+            description.ArgumentType.ShouldBe(typeof(int));
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'MethodWithParams' of actor interface '*ITestActor' has variable length parameter 'values'. The actor interface methods must not have variable length parameters.*");
+            exception.Message.ShouldMatch(@"Method 'MethodWithParams' of actor interface '.*\+ITestActor' has variable length parameter 'values'. The actor interface methods must not have variable length parameters.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -68,7 +68,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'MethodWithIn' of actor interface '*ITestActor' has out/ref/optional parameter 'value'. The actor interface methods must not have out, ref or optional parameters.*");
+            exception.Message.ShouldMatch(@"Method 'MethodWithIn' of actor interface '.*\+ITestActor' has out/ref/optional parameter 'value'. The actor interface methods must not have out, ref or optional parameters.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -85,7 +85,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'MethodWithOut' of actor interface '*ITestActor' has out/ref/optional parameter 'value'. The actor interface methods must not have out, ref or optional parameters.*");
+            exception.Message.ShouldMatch(@"Method 'MethodWithOut' of actor interface '.*\+ITestActor' has out/ref/optional parameter 'value'. The actor interface methods must not have out, ref or optional parameters.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
@@ -102,7 +102,7 @@ namespace Dapr.Actors.Description
 
             // Assert
             var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldBe("Method 'MethodWithOptional' of actor interface '*ITestActor' has out/ref/optional parameter 'value'. The actor interface methods must not have out, ref or optional parameters.*");
+            exception.Message.ShouldMatch(@"Method 'MethodWithOptional' of actor interface '.*\+ITestActor' has out/ref/optional parameter 'value'. The actor interface methods must not have out, ref or optional parameters.*");
             exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
