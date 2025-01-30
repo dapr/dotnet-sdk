@@ -16,7 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client.Autogen.Grpc.v1;
 using Dapr.Client.Autogen.Test.Grpc.v1;
-using FluentAssertions;
+using Shouldly;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -62,9 +62,9 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
+            envelope.Id.ShouldBe("test");
+            envelope.Message.Method.ShouldBe("test");
+            envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -75,7 +75,7 @@ namespace Dapr.Client.Test
 
             // Validate Response
             var invokedResponse = await request.CompleteWithMessageAsync(response);
-            invokedResponse.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.Name.ShouldBe("Look, I was invoked!");
         }
 
         [Fact]
@@ -126,9 +126,9 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(string.Empty);
+            envelope.Id.ShouldBe("test");
+            envelope.Message.Method.ShouldBe("test");
+            envelope.Message.ContentType.ShouldBe(string.Empty);
 
             // Create Response & Respond
             var data = new Response() { Name = "Look, I was invoked!" };
@@ -139,7 +139,7 @@ namespace Dapr.Client.Test
 
             // Validate Response
             var invokedResponse = await request.CompleteWithMessageAsync(response);
-            invokedResponse.Name.Should().Be("Look, I was invoked!");
+            invokedResponse.Name.ShouldBe("Look, I was invoked!");
         }
 
         [Fact]
@@ -176,7 +176,7 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public void InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData()
+        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData()
         {
             var request = new Request() { RequestParameter = "Hello " };
             var client = new MockClient();
@@ -195,7 +195,7 @@ namespace Dapr.Client.Test
                 .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
                 .Returns(response);
 
-            FluentActions.Awaiting(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request)).Should().NotThrowAsync();
+            await Should.NotThrowAsync(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request));
         }
 
         [Fact]
@@ -250,9 +250,9 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
+            envelope.Id.ShouldBe("test");
+            envelope.Message.Method.ShouldBe("test");
+            envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
 
             var actual = envelope.Message.Data.Unpack<Request>();
             Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
@@ -275,9 +275,9 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.Should().Be("test");
-            envelope.Message.Method.Should().Be("test");
-            envelope.Message.ContentType.Should().Be(Constants.ContentTypeApplicationGrpc);
+            envelope.Id.ShouldBe("test");
+            envelope.Message.Method.ShouldBe("test");
+            envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
 
             var actual = envelope.Message.Data.Unpack<Request>();
             Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
@@ -291,7 +291,7 @@ namespace Dapr.Client.Test
 
             // Validate Response
             var invokedResponse = await request.CompleteWithMessageAsync(response);
-            invokedResponse.Name.Should().Be(invokeResponse.Name);
+            invokedResponse.Name.ShouldBe(invokeResponse.Name);
         }
 
         [Fact]
@@ -308,7 +308,7 @@ namespace Dapr.Client.Test
 
             var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "SayHello", request);
 
-            response.Name.Should().Be("Hello Look, I was invoked!");
+            response.Name.ShouldBe("Hello Look, I was invoked!");
         }
 
         [Fact]
@@ -328,10 +328,10 @@ namespace Dapr.Client.Test
 
             var response = await daprClient.InvokeMethodGrpcAsync<TestRun, TestRun>("test", "TestRun", testRun);
 
-            response.Tests.Count.Should().Be(3);
-            response.Tests[0].Name.Should().Be("test1");
-            response.Tests[1].Name.Should().Be("test2");
-            response.Tests[2].Name.Should().Be("test3");
+            response.Tests.Count.ShouldBe(3);
+            response.Tests[0].Name.ShouldBe("test1");
+            response.Tests[1].Name.ShouldBe("test2");
+            response.Tests[2].Name.ShouldBe("test3");
         }
 
         [Fact]
@@ -348,7 +348,7 @@ namespace Dapr.Client.Test
 
             var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "not-existing", request);
 
-            response.Name.Should().Be("unexpected");
+            response.Name.ShouldBe("unexpected");
         }
 
 
@@ -401,10 +401,10 @@ namespace Dapr.Client.Test
 
             // Validate Response
             var metadata = await request.CompleteWithMessageAsync(response);
-            metadata.Id.Should().Be("testId");
-            metadata.Extended.Should().Contain(new System.Collections.Generic.KeyValuePair<string, string>("e1", "v1"));
-            metadata.Actors.Should().Contain(actors => actors.Count == 1 && actors.Type == "testType");
-            metadata.Components.Should().Contain(components => components.Name == "testName" && components.Type == "testType" && components.Version == "V1" && components.Capabilities.Length == 0);
+            metadata.Id.ShouldBe("testId");
+            metadata.Extended.ShouldContain(new System.Collections.Generic.KeyValuePair<string, string>("e1", "v1"));
+            metadata.Actors.ShouldContain(actors => actors.Count == 1 && actors.Type == "testType");
+            metadata.Components.ShouldContain(components => components.Name == "testName" && components.Type == "testType" && components.Version == "V1" && components.Capabilities.Length == 0);
         }
 
         [Fact]
@@ -445,8 +445,8 @@ namespace Dapr.Client.Test
 
             // Get Request and validate
             var envelope = await request.GetRequestEnvelopeAsync<SetMetadataRequest>();
-            envelope.Key.Should().Be("test");
-            envelope.Value.Should().Be("testv");
+            envelope.Key.ShouldBe("test");
+            envelope.Value.ShouldBe("testv");
 
             await request.CompleteWithMessageAsync(new Empty());
 

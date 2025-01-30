@@ -7,7 +7,6 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
     <PackageVersion Include="coverlet.msbuild" Version="6.0.2" />
-    <PackageVersion Include="FluentAssertions" Version="5.9.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="1.1.2" />
     <PackageVersion Include="Google.Api.CommonProtos" Version="2.2.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.28.2" />
@@ -43,6 +42,7 @@
     <PackageVersion Include="Serilog.AspNetCore" Version="6.1.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="4.1.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageVersion Include="Shouldly" Version="4.2.1" />
     <PackageVersion Include="System.Formats.Asn1" Version="6.0.1" />
     <PackageVersion Include="System.Text.Json" Version="6.0.10" />
     <PackageVersion Include="xunit" Version="2.9.2" />

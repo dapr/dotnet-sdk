@@ -20,7 +20,7 @@ namespace Dapr.AspNetCore.Test
     using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using FluentAssertions;
+    using Shouldly;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Http;
     using Xunit;
@@ -44,8 +44,8 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be(contentType);
-                ReadBody(httpContext.Request.Body).Should().Be("Hello, world!");
+                httpContext.Request.ContentType.ShouldBe(contentType);
+                ReadBody(httpContext.Request.Body).ShouldBe("Hello, world!");
                 return Task.CompletedTask;
             });
 
@@ -77,8 +77,8 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be(dataContentType ?? "application/json");
-                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+                httpContext.Request.ContentType.ShouldBe(dataContentType ?? "application/json");
+                ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
                 return Task.CompletedTask;
             });
 
@@ -117,8 +117,8 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be(dataContentType ?? "application/json");
-                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+                httpContext.Request.ContentType.ShouldBe(dataContentType ?? "application/json");
+                ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
                 return Task.CompletedTask;
             });
 
@@ -160,11 +160,13 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be(dataContentType ?? "application/json");
-                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+                httpContext.Request.ContentType.ShouldBe(dataContentType ?? "application/json");
+                ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
 
-                httpContext.Request.Headers.Should().ContainKey("Cloudevent.type").WhichValue.Should().BeEquivalentTo("Test.Type");
-                httpContext.Request.Headers.Should().ContainKey("Cloudevent.subject").WhichValue.Should().BeEquivalentTo("Test.Subject");
+                httpContext.Request.Headers.ShouldContainKey("Cloudevent.type");
+                httpContext.Request.Headers["Cloudevent.type"].ToString().ShouldBe("Test.Type");
+                httpContext.Request.Headers.ShouldContainKey("Cloudevent.subject");
+                httpContext.Request.Headers["Cloudevent.subject"].ToString().ShouldBe("Test.Subject");
                 return Task.CompletedTask;
             });
 
@@ -207,11 +209,12 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be(dataContentType ?? "application/json");
-                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+                httpContext.Request.ContentType.ShouldBe(dataContentType ?? "application/json");
+                ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
 
-                httpContext.Request.Headers.Should().ContainKey("Cloudevent.type").WhichValue.Should().BeEquivalentTo("Test.Type");
-                httpContext.Request.Headers.Should().NotContainKey("Cloudevent.subject");
+                httpContext.Request.Headers.ShouldContainKey("Cloudevent.type");
+                httpContext.Request.Headers["Cloudevent.type"].ToString().ShouldBe("Test.Type");
+                httpContext.Request.Headers.ShouldNotContainKey("Cloudevent.subject");
                 return Task.CompletedTask;
             });
 
@@ -254,11 +257,12 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be(dataContentType ?? "application/json");
-                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+                httpContext.Request.ContentType.ShouldBe(dataContentType ?? "application/json");
+                ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
 
-                httpContext.Request.Headers.Should().NotContainKey("Cloudevent.type");
-                httpContext.Request.Headers.Should().ContainKey("Cloudevent.subject").WhichValue.Should().BeEquivalentTo("Test.Subject");
+                httpContext.Request.Headers.ShouldNotContainKey("Cloudevent.type");
+                httpContext.Request.Headers.ShouldContainKey("Cloudevent.subject");
+                httpContext.Request.Headers["Cloudevent.subject"].ToString().ShouldBe("Test.Subject");
                 return Task.CompletedTask;
             });
 
@@ -297,8 +301,8 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be("text/plain");
-                ReadBody(httpContext.Request.Body).Should().Be(expected);
+                httpContext.Request.ContentType.ShouldBe("text/plain");
+                ReadBody(httpContext.Request.Body).ShouldBe(expected);
                 return Task.CompletedTask;
             });
 
@@ -331,8 +335,8 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be("text/plain");
-                ReadBody(httpContext.Request.Body).Should().Be(expected);
+                httpContext.Request.ContentType.ShouldBe("text/plain");
+                ReadBody(httpContext.Request.Body).ShouldBe(expected);
                 return Task.CompletedTask;
             });
 
@@ -366,8 +370,8 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be("application/person+json");
-                ReadBody(httpContext.Request.Body).Should().Be("{\"name\":\"jimmy\"}");
+                httpContext.Request.ContentType.ShouldBe("application/person+json");
+                ReadBody(httpContext.Request.Body).ShouldBe("{\"name\":\"jimmy\"}");
                 return Task.CompletedTask;
             });
 
@@ -396,14 +400,14 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be(dataContentType);
+                httpContext.Request.ContentType.ShouldBe(dataContentType);
                 var bytes = new byte[httpContext.Request.Body.Length];
 #if NET9_0
                 httpContext.Request.Body.ReadExactly(bytes, 0, bytes.Length);
 #else
                 httpContext.Request.Body.Read(bytes, 0, bytes.Length);
 #endif
-                bytes.Should().Equal(data);
+                bytes.ShouldBe(data);
                 return Task.CompletedTask;
             });
 
@@ -432,9 +436,9 @@ namespace Dapr.AspNetCore.Test
             // Do verification in the scope of the middleware
             app.Run(httpContext =>
             {
-                httpContext.Request.ContentType.Should().Be("application/json");
+                httpContext.Request.ContentType.ShouldBe("application/json");
                 var body = ReadBody(httpContext.Request.Body);
-                body.Should().Equals(data);
+                body.ShouldBe(data);
                 return Task.CompletedTask;
             });
 
@@ -447,7 +451,7 @@ namespace Dapr.AspNetCore.Test
                 MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data_base64\": \"{base64Str}\", \"data\": {data} }}");
 
             await pipeline.Invoke(context);
-            context.Response.StatusCode.Should().Be((int)HttpStatusCode.BadRequest);
+            context.Response.StatusCode.ShouldBe((int)HttpStatusCode.BadRequest);
         }
 
         private static Stream MakeBody(string text, Encoding encoding = null)
