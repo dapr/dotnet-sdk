@@ -17,7 +17,7 @@ namespace Dapr.Actors.Test.Runtime
     using Moq;
     using Xunit;
     using System;
-    using FluentAssertions;
+    using Shouldly;
 
     public sealed class ActorRuntimeOptionsTests
     {
@@ -59,7 +59,7 @@ namespace Dapr.Actors.Test.Runtime
             var options = new ActorRuntimeOptions();
             Action action = () => options.ActorIdleTimeout = TimeSpan.FromSeconds(-1);
 
-            action.Should().Throw<ArgumentOutOfRangeException>();
+            action.ShouldThrow<ArgumentOutOfRangeException>();
         }
 
 
@@ -78,7 +78,7 @@ namespace Dapr.Actors.Test.Runtime
             var options = new ActorRuntimeOptions();
             Action action = () => options.ActorScanInterval = TimeSpan.FromSeconds(-1);
 
-            action.Should().Throw<ArgumentOutOfRangeException>();
+            action.ShouldThrow<ArgumentOutOfRangeException>();
         }
 
         [Fact]
@@ -96,7 +96,7 @@ namespace Dapr.Actors.Test.Runtime
             var options = new ActorRuntimeOptions();
             Action action = () => options.DrainOngoingCallTimeout = TimeSpan.FromSeconds(-1);
 
-            action.Should().Throw<ArgumentOutOfRangeException>();
+            action.ShouldThrow<ArgumentOutOfRangeException>();
         }
 
         [Fact]
@@ -115,7 +115,7 @@ namespace Dapr.Actors.Test.Runtime
             var options = new ActorRuntimeOptions();
             Action action = () => options.JsonSerializerOptions = null;
 
-            action.Should().Throw<ArgumentNullException>();
+            action.ShouldThrow<ArgumentNullException>();
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace Dapr.Actors.Test.Runtime
             var options = new ActorRuntimeOptions();
             Action action = () => options.RemindersStoragePartitions = -1;
 
-            action.Should().Throw<ArgumentOutOfRangeException>();
+            action.ShouldThrow<ArgumentOutOfRangeException>();
         }
 
         [Fact]

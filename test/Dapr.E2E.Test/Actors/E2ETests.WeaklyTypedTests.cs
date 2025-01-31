@@ -17,7 +17,7 @@ namespace Dapr.E2E.Test
     using System.Threading.Tasks;
     using Dapr.Actors;
     using Dapr.E2E.Test.Actors.WeaklyTypedTesting;
-    using FluentAssertions;
+    using Shouldly;
     using Xunit;
 
     public partial class E2ETests : IAsyncLifetime
@@ -34,7 +34,7 @@ namespace Dapr.E2E.Test
 
             var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse));
 
-            result.Should().BeOfType<DerivedResponse>().Which.DerivedProperty.Should().NotBeNullOrWhiteSpace();
+            result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
         }
 #else
         [Fact]
@@ -48,7 +48,7 @@ namespace Dapr.E2E.Test
 
             var result = await proxy.InvokeMethodAsync<DerivedResponse>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse));
 
-            result.Should().BeOfType<DerivedResponse>().Which.DerivedProperty.Should().NotBeNullOrWhiteSpace();
+            result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
         }
 #endif
         [Fact]
@@ -62,7 +62,7 @@ namespace Dapr.E2E.Test
 
             var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetNullResponse));
 
-            result.Should().BeNull();
+            result.ShouldBeNull();
         }
     }
 }

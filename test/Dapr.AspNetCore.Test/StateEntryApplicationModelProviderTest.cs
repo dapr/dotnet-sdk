@@ -18,7 +18,7 @@ namespace Dapr.AspNetCore.Test
     using System.Linq;
     using System.Reflection;
     using Dapr.AspNetCore.Resources;
-    using FluentAssertions;
+    using Shouldly;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.ApplicationModels;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -34,9 +34,7 @@ namespace Dapr.AspNetCore.Test
 
             Action action = () => provider.OnProvidersExecuted(context);
 
-            action
-                .Should()
-                .NotThrow<NullReferenceException>();
+            action.ShouldNotThrow();
         }
 
         [Fact]
@@ -48,8 +46,7 @@ namespace Dapr.AspNetCore.Test
             Action action = () => provider.OnProvidersExecuted(context);
 
             action
-                .Should()
-                .Throw<InvalidOperationException>(SR.ErrorStateStoreNameNotProvidedForStateEntry);
+                .ShouldThrow<InvalidOperationException>(SR.ErrorStateStoreNameNotProvidedForStateEntry);
         }
 
         private ApplicationModelProviderContext CreateContext(string methodName)
