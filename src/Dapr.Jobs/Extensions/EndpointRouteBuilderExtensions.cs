@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Text.Json;
 using Dapr.Jobs.Models.Responses;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -40,29 +39,26 @@ public static class EndpointRouteBuilderExtensions
 
         endpoints.MapPost("/job/{jobName}", async context =>
         {
-            var jobName = (string?)context.Request.RouteValues["jobName"];
-            DaprJobDetails? jobPayload = null;
-
-            if (context.Request.ContentLength is > 0)
+            //Retrieve the name of the job from the request path
+            var jobName = string.Empty;
+            if (context.Request.RouteValues.TryGetValue("jobName", out var capturedJobName))
             {
-                using var reader = new StreamReader(context.Request.Body);
-                var body = await reader.ReadToEndAsync();
-
-                try
-                {
-                    var deserializedJobPayload = JsonSerializer.Deserialize<DeserializableDaprJobDetails>(body);
-                    jobPayload = deserializedJobPayload?.ToType() ?? null;
-                }
-                catch (JsonException)
-                {
-                    jobPayload = null;
-                }
+                jobName = (string)capturedJobName!;
             }
 
-            var parameters = new Dictionary<Type, object?>
+            //Retrieve the job payload from the request body
+            ReadOnlyMemory<byte> payload = new();
+            if (context.Request.ContentLength is > 0)
+            {
+                using var memoryStream = new MemoryStream();
+                await context.Request.Body.CopyToAsync(memoryStream, cancellationToken);
+                payload = memoryStream.ToArray();
+            }
+
+            var parameters = new Dictionary<Type, object>
             {
                 { typeof(string), jobName },
-                { typeof(DaprJobDetails), jobPayload },
+                { typeof(ReadOnlyMemory<byte>), payload },
                 { typeof(CancellationToken), CancellationToken.None }
             };
 
