@@ -63,8 +63,8 @@ the dependency injection registration in `Program.cs`, add the following line:
 ```cs
 var builder = WebApplication.CreateBuilder(args);
 
-//Add anywhere between these two
-builder.Services.AddDaprJobsClient(); //That's it
+//Add anywhere between these two lines
+builder.Services.AddDaprJobsClient();
 
 var app = builder.Build();
 ```
@@ -203,7 +203,8 @@ public class MySampleClass
 It's easy to set up a jobs endpoint if you're at all familiar with [minimal APIs in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/overview) as the syntax is the same between the two.
 
 Once dependency injection registration has been completed, configure the application the same way you would to handle mapping an HTTP request via the minimal API functionality in ASP.NET Core. Implemented as an extension method,
-pass the name of the job it should be responsive to and a delegate. Services can be injected into the delegate's arguments as you wish and you can optionally pass a `JobDetails` to get information about the job that has been triggered (e.g. access its scheduling setup or payload).
+pass the name of the job it should be responsive to and a delegate. Services can be injected into the delegate's arguments as you wish and the job payload can be accessed from the `ReadOnlyMemory<byte>` originally provided to the 
+job registration.
 
 There are two delegates you can use here. One provides an `IServiceProvider` in case you need to inject other services into the handler:
 
@@ -216,7 +217,7 @@ builder.Services.AddDaprJobsClient();
 var app = builder.Build();
 
 //Add our endpoint registration
-app.MapDaprScheduledJob("myJob", (IServiceProvider serviceProvider, string? jobName, JobDetails? jobDetails) => {
+app.MapDaprScheduledJob("myJob", (IServiceProvider serviceProvider, string jobName, ReadOnlyMemory<byte> jobPayload) => {
     var logger = serviceProvider.GetService<ILogger>();
     logger?.LogInformation("Received trigger invocation for '{jobName}'", "myJob");
 
@@ -237,7 +238,7 @@ builder.Services.AddDaprJobsClient();
 var app = builder.Build();
 
 //Add our endpoint registration
-app.MapDaprScheduledJob("myJob", (string? jobName, JobDetails? jobDetails) => {
+app.MapDaprScheduledJob("myJob", (string jobName, ReadOnlyMemory<byte> jobPayload) => {
     //Do something...
 });
 

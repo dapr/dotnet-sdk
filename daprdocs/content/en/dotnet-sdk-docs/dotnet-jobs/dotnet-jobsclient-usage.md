@@ -165,31 +165,18 @@ var oneWeekFromNow = now.AddDays(7);
 await daprJobsClient.ScheduleOneTimeJobWithPayloadAsync("myOtherJob", oneWeekFromNow, "This is a test!");
 ```
 
-The `JobDetails` type returns the data as a `ReadOnlyMemory<byte>?` so the developer has the freedom to deserialize 
+The delegate handling the job invocation expects at least two arguments to be present:
+- A `string` that is populated with the `jobName`, providing the name of the invoked job
+- A `ReadOnlyMemory<byte>` that is populated with the bytes originally provided during the job registration.
+
+Because the payload is stored as a `ReadOnlyMemory<byte>`, the developer has the freedom to serialize and deserialize 
 as they wish, but there are again two helper extensions included that can deserialize this to either a JSON-compatible 
 type or a string. Both methods assume that the developer encoded the originally scheduled job (perhaps using the 
 helper serialization methods) as these methods will not force the bytes to represent something they're not.
 
 To deserialize the bytes to a string, the following helper method can be used:
 ```cs
-if (jobDetails.Payload is not null)
-{
-    string payloadAsString = jobDetails.Payload.DeserializeToString(); //If successful, returns a string value with the value
-}
-```
-
-To deserialize JSON-encoded UTF-8 bytes to the corresponding type, the following helper method can be used. An 
-overload argument is available that permits the developer to pass in their own `JsonSerializerOptions` to be applied 
-during deserialization.
-
-```cs
-public sealed record Doodad (string Name, int Value);
-
-//...
-if (jobDetails.Payload is not null)
-{
-    var deserializedDoodad = jobDetails.Payload.DeserializeFromJsonBytes<Doodad>();
-}
+var payloadAsString = Encoding.UTF8.GetString(jobPayload.Span); //If successful, returns a string with the value
 ```
 
 ## Error handling
