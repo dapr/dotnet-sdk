@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Jobs.Models.Responses;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 
@@ -28,8 +27,8 @@ public static class EndpointRouteBuilderExtensions
     /// </summary>
     /// <param name="endpoints">The <see cref="IEndpointRouteBuilder"/> to add the route to.</param>
     /// <param name="action">The asynchronous action provided by the developer that handles any inbound requests. The first two
-    /// parameters must be a nullable <see cref="string"/> for the jobName and a nullable <see cref="DaprJobDetails"/> with the
-    /// payload details, but otherwise can be populated with additional services to be injected into the delegate.</param>
+    /// parameters must be a <see cref="string"/> for the jobName and the originally registered ReadOnlyMemory&lt;byte&gt; with the
+    /// payload value, but otherwise can be populated with additional services to be injected into the delegate.</param>
     /// <param name="cancellationToken">Cancellation token that will be passed in as the last parameter to the delegate action.</param>
     public static IEndpointRouteBuilder MapDaprScheduledJobHandler(this IEndpointRouteBuilder endpoints,
         Delegate action, CancellationToken cancellationToken = default)
