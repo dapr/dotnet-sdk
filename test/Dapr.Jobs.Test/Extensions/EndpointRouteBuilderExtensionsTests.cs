@@ -40,15 +40,7 @@ public class EndpointRouteBuilderExtensionsTest
         var client = server.CreateClient();
 
         var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
-        var serializedPayloadBytes = Encoding.UTF8.GetBytes(serializedPayload);
-        var jobDetails = new DaprJobDetails(new DaprJobSchedule("0 0 * * *"))
-        {
-            RepeatCount = 5,
-            DueTime = DateTimeOffset.UtcNow,
-            Ttl = DateTimeOffset.UtcNow.AddHours(1),
-            Payload = serializedPayloadBytes
-        };
-        var content = new StringContent(JsonSerializer.Serialize(jobDetails), Encoding.UTF8, "application/json");
+        var content = new StringContent(serializedPayload, Encoding.UTF8, "application/json");
 
         const string jobName = "testJob";
         var response = await client.PostAsync($"/job/{jobName}", content);
@@ -68,15 +60,7 @@ public class EndpointRouteBuilderExtensionsTest
         var client = server.CreateClient();
 
         var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
-        var serializedPayloadBytes = Encoding.UTF8.GetBytes(serializedPayload);
-        var jobDetails = new DaprJobDetails(new DaprJobSchedule("0 0 * * *"))
-        {
-            RepeatCount = 5,
-            DueTime = DateTimeOffset.UtcNow,
-            Ttl = DateTimeOffset.UtcNow.AddHours(1),
-            Payload = serializedPayloadBytes
-        };
-        var content = new StringContent(JsonSerializer.Serialize(jobDetails), Encoding.UTF8, "application/json");
+        var content = new StringContent(serializedPayload, Encoding.UTF8, "application/json");
 
         const string jobName = "testJob";
         var response = await client.PostAsync($"/job/{jobName}", content);
@@ -89,31 +73,11 @@ public class EndpointRouteBuilderExtensionsTest
         Assert.Equal(serializedPayload, validator.SerializedPayload);
     }
     
-
-    [Fact]
-    public async Task MapDaprScheduledJobHandler_InvalidPayload()
-    {
-        // Arrange
-        var server = CreateTestServer();
-        var client = server.CreateClient();
-
-        var content = new StringContent("", Encoding.UTF8, "application/json");
-
-        // Act
-        const string jobName = "testJob";
-        var response = await client.PostAsync($"/job/{jobName}", content);
-
-        var validator = server.Services.GetRequiredService<Validator>();
-        Assert.Equal(jobName, validator.JobName);
-        Assert.Null(validator.SerializedPayload);
-    }
-
     private sealed record SamplePayload(string Name, int Count);
 
     public sealed class Validator
     {
         public string? JobName { get; set; }
-
         public string? SerializedPayload { get; set; }
     }
 
@@ -130,15 +94,10 @@ public class EndpointRouteBuilderExtensionsTest
                 app.UseRouting();
                 app.UseEndpoints(endpoints =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (string? jobName, DaprJobDetails? jobDetails, Validator validator, CancellationToken cancellationToken) =>
+                    endpoints.MapDaprScheduledJobHandler(async (string jobName, ReadOnlyMemory<byte> jobPayload, Validator validator, CancellationToken cancellationToken) =>
                     {
-                        if (jobName is not null)
-                            validator.JobName = jobName;
-                        if (jobDetails?.Payload is not null)
-                        {
-                            var payloadString = Encoding.UTF8.GetString(jobDetails.Payload);
-                            validator.SerializedPayload = payloadString;
-                        }
+                        validator.JobName = jobName;
+                        validator.SerializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
                         await Task.CompletedTask;
                     });
                 });
@@ -160,15 +119,12 @@ public class EndpointRouteBuilderExtensionsTest
                 app.UseRouting();
                 app.UseEndpoints(endpoints =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (string? jobName, Validator validator, DaprJobDetails? jobDetails) =>
+                    endpoints.MapDaprScheduledJobHandler(async (string jobName, Validator validator, ReadOnlyMemory<byte> payload) =>
                     {
-                        if (jobName is not null)
-                            validator.JobName = jobName;
-                        if (jobDetails?.Payload is not null)
-                        {
-                            var payloadString = Encoding.UTF8.GetString(jobDetails.Payload);
-                            validator.SerializedPayload = payloadString;
-                        }
+                        validator.JobName = jobName;
+                        
+                        var payloadString = Encoding.UTF8.GetString(payload.Span);
+                        validator.SerializedPayload = payloadString;
                         await Task.CompletedTask;
                     });
                 });
