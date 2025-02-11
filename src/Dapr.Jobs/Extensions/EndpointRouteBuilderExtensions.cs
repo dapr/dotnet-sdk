@@ -49,9 +49,8 @@ public static class EndpointRouteBuilderExtensions
             ReadOnlyMemory<byte> payload = new();
             if (context.Request.ContentLength is > 0)
             {
-                using var memoryStream = new MemoryStream();
-                await context.Request.Body.CopyToAsync(memoryStream, cancellationToken);
-                payload = memoryStream.ToArray();
+                using var streamContent = new StreamContent(context.Request.Body);
+                payload = await streamContent.ReadAsByteArrayAsync(cancellationToken);
             }
 
             var parameters = new Dictionary<Type, object>
