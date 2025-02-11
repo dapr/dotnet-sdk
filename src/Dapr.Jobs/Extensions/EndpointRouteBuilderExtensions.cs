@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Text.Json;
-using Dapr.Jobs.Models.Responses;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 
@@ -29,8 +27,8 @@ public static class EndpointRouteBuilderExtensions
     /// </summary>
     /// <param name="endpoints">The <see cref="IEndpointRouteBuilder"/> to add the route to.</param>
     /// <param name="action">The asynchronous action provided by the developer that handles any inbound requests. The first two
-    /// parameters must be a nullable <see cref="string"/> for the jobName and a nullable <see cref="DaprJobDetails"/> with the
-    /// payload details, but otherwise can be populated with additional services to be injected into the delegate.</param>
+    /// parameters must be a <see cref="string"/> for the jobName and the originally registered ReadOnlyMemory&lt;byte&gt; with the
+    /// payload value, but otherwise can be populated with additional services to be injected into the delegate.</param>
     /// <param name="cancellationToken">Cancellation token that will be passed in as the last parameter to the delegate action.</param>
     public static IEndpointRouteBuilder MapDaprScheduledJobHandler(this IEndpointRouteBuilder endpoints,
         Delegate action, CancellationToken cancellationToken = default)
@@ -40,29 +38,25 @@ public static class EndpointRouteBuilderExtensions
 
         endpoints.MapPost("/job/{jobName}", async context =>
         {
-            var jobName = (string?)context.Request.RouteValues["jobName"];
-            DaprJobDetails? jobPayload = null;
-
-            if (context.Request.ContentLength is > 0)
+            //Retrieve the name of the job from the request path
+            var jobName = string.Empty;
+            if (context.Request.RouteValues.TryGetValue("jobName", out var capturedJobName))
             {
-                using var reader = new StreamReader(context.Request.Body);
-                var body = await reader.ReadToEndAsync();
-
-                try
-                {
-                    var deserializedJobPayload = JsonSerializer.Deserialize<DeserializableDaprJobDetails>(body);
-                    jobPayload = deserializedJobPayload?.ToType() ?? null;
-                }
-                catch (JsonException)
-                {
-                    jobPayload = null;
-                }
+                jobName = (string)capturedJobName!;
             }
 
-            var parameters = new Dictionary<Type, object?>
+            //Retrieve the job payload from the request body
+            ReadOnlyMemory<byte> payload = new();
+            if (context.Request.ContentLength is > 0)
+            {
+                using var streamContent = new StreamContent(context.Request.Body);
+                payload = await streamContent.ReadAsByteArrayAsync(cancellationToken);
+            }
+
+            var parameters = new Dictionary<Type, object>
             {
                 { typeof(string), jobName },
-                { typeof(DaprJobDetails), jobPayload },
+                { typeof(ReadOnlyMemory<byte>), payload },
                 { typeof(CancellationToken), CancellationToken.None }
             };
 
