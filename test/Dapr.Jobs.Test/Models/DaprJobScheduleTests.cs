@@ -27,6 +27,15 @@ public sealed class DaprJobScheduleTests
     }
 
     [Fact]
+    public void FromExpression_Duration()
+    {
+        var every5Seconds = new TimeSpan(0, 0, 0, 5);
+        var schedule = DaprJobSchedule.FromDuration(every5Seconds);
+
+        Assert.Equal("@every 5s", schedule.ExpressionValue);
+    }
+
+    [Fact]
     public void FromExpression_Cron()
     {
         const string cronExpression = "*/5 1-5 * * JAN,FEB WED-SAT";
