@@ -84,11 +84,12 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
         {
             job.DueTime = schedule.ExpressionValue;
         }
-        else if (schedule.IsCronExpression || schedule.IsDurationExpression || schedule.IsPrefixedPeriodExpression)
+        else if (schedule.IsCronExpression || schedule.IsPrefixedPeriodExpression || schedule.IsDurationExpression)
         {
             job.Schedule = schedule.ExpressionValue;
         }
-        else if (startingFrom is not null)
+        
+        if (startingFrom is not null)
         {
             job.DueTime = ((DateTimeOffset)startingFrom).ToString("O");
         }
