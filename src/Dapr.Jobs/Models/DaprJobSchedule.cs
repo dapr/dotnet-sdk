@@ -98,7 +98,7 @@ public sealed class DaprJobSchedule
     /// <summary>
     /// Specifies a schedule in which the job is triggered weekly.
     /// </summary>
-    public static DaprJobSchedule Weekly { get; } =new DaprJobSchedule("@weekly");
+    public static DaprJobSchedule Weekly { get; } = new DaprJobSchedule("@weekly");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered daily.
