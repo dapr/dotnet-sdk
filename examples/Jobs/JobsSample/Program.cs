@@ -18,6 +18,7 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDaprJobsClient();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
