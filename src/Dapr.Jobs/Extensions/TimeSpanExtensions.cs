@@ -67,7 +67,7 @@ internal static class TimeSpanExtensions
     /// <returns>True if the string represents a parseable interval duration; false if not.</returns>
     public static bool IsDurationString(this string interval)
     {
-        interval = interval.Replace("ms", "q");
+        interval = interval.Replace("ms", "q").Replace("@every ", string.Empty);
         return hourRegex.Match(interval).Success || 
                minuteRegex.Match(interval).Success ||
                secondRegex.Match(interval).Success ||

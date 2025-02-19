@@ -23,7 +23,7 @@ public sealed class DaprJobScheduleTests
     public void FromDuration_Validate()
     {
         var schedule = DaprJobSchedule.FromDuration(new TimeSpan(12, 8, 16));
-        Assert.Equal("12h8m16s", schedule.ExpressionValue);
+        Assert.Equal("@every 12h8m16s", schedule.ExpressionValue);
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public sealed class DaprJobScheduleTests
         Assert.True(schedule.IsDurationExpression);
         Assert.False(schedule.IsPointInTimeExpression);
         Assert.False(schedule.IsCronExpression);
-        Assert.False(schedule.IsPrefixedPeriodExpression);
+        Assert.True(schedule.IsPrefixedPeriodExpression); //A duration expression _is_ a prefixed period with @every
     }
 
     [Fact]
