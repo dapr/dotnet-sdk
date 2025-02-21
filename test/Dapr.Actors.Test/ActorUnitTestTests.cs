@@ -120,6 +120,22 @@ namespace Dapr.Actors
             Assert.Empty(reminders);
         }
 
+        [Fact]
+        public async Task ReminderReturnsNullIfNotAvailable()
+        {
+            var timerManager = new Mock<ActorTimerManager>(MockBehavior.Strict);
+            timerManager
+                .Setup(tm => tm.GetReminderAsync(It.IsAny<ActorReminderToken>()))
+                .Returns(() => Task.FromResult<IActorReminder>(null));
+            
+            var host = ActorHost.CreateForTest<CoolTestActor>(new ActorTestOptions() { TimerManager = timerManager.Object, });
+            var actor = new CoolTestActor(host);
+            
+            //There is no starting reminder, so this should always return null
+            var retrievedReminder = await actor.GetReminderAsync();
+            Assert.Null(retrievedReminder);
+        }
+
         public interface ICoolTestActor : IActor
         {
         }
