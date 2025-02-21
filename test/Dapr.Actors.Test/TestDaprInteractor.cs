@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Communication;
@@ -107,7 +108,7 @@ public class TestDaprInteractor : IDaprInteractor
     /// <param name="reminderName">Name of reminder to unregister.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-    public Task<Stream> GetReminderAsync(string actorType, string actorId, string reminderName,
+    public Task<HttpResponseMessage> GetReminderAsync(string actorType, string actorId, string reminderName,
         CancellationToken cancellationToken = default)
     {
         throw new System.NotImplementedException();
