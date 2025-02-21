@@ -69,7 +69,7 @@ namespace Dapr.Actors
         }
 
         [Fact]
-        public async Task CanTestStartingAndStoppinReminder()
+        public async Task CanTestStartingAndStoppingReminder()
         {
             var reminders = new List<ActorReminder>();
             IActorReminder getReminder = null;
