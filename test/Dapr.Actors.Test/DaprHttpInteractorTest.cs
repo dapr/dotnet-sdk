@@ -34,9 +34,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var keyName = "StateKey_Test";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string keyName = "StateKey_Test";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -57,9 +57,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var data = "StateData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string data = "StateData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -80,10 +80,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var methodName = "MethodName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string methodName = "MethodName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -104,10 +104,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var reminderName = "ReminderName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string reminderName = "ReminderName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -128,9 +128,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var reminderName = "ReminderName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string reminderName = "ReminderName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -175,10 +175,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -222,9 +222,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator(apiToken: "test_token");
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -243,9 +243,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -263,9 +263,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -296,9 +296,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -318,9 +318,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -340,10 +340,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var methodName = "MethodName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string methodName = "MethodName";
+            const string payload = "JsonData";
 
             ActorReentrancyContextAccessor.ReentrancyContext = "1";
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
@@ -361,10 +361,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var methodName = "MethodName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string methodName = "MethodName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -380,9 +380,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var keyName = "StateKey_Test";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string keyName = "StateKey_Test";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -409,9 +409,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var keyName = "StateKey_Test";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string keyName = "StateKey_Test";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
