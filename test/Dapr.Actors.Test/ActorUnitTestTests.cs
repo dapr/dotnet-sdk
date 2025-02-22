@@ -136,6 +136,77 @@ namespace Dapr.Actors
             Assert.Null(retrievedReminder);
         }
 
+        [Fact]
+        public async Task TryGetReminderReturnsTrueIfAvailable()
+        {
+            var reminders = new List<ActorReminder>();
+            IActorReminder getReminder = null;
+
+            var timerManager = new Mock<ActorTimerManager>(MockBehavior.Strict);
+            timerManager
+                .Setup(tm => tm.RegisterReminderAsync(It.IsAny<ActorReminder>()))
+                .Callback<ActorReminder>(reminder => reminders.Add(reminder))
+                .Returns(Task.CompletedTask);
+            timerManager
+                .Setup(tm => tm.UnregisterReminderAsync(It.IsAny<ActorReminderToken>()))
+                .Callback<ActorReminderToken>(reminder => reminders.RemoveAll(t => t.Name == reminder.Name))
+                .Returns(Task.CompletedTask);
+            timerManager
+                .Setup(tm => tm.GetReminderAsync(It.IsAny<ActorReminderToken>()))
+                .Returns(() => Task.FromResult(getReminder));
+
+            var host = ActorHost.CreateForTest<CoolTestActor>(new ActorTestOptions(){ TimerManager = timerManager.Object, });
+            var actor = new CoolTestActor(host);
+
+            // Start the reminder
+            var message = new Message()
+            { 
+                Text = "Remind me to tape the hockey game tonite.",
+            };
+            await actor.StartReminderAsync(message);
+            
+            var reminder = Assert.Single(reminders);
+            Assert.Equal("record", reminder.Name);
+            Assert.Equal(TimeSpan.FromSeconds(5), reminder.Period);
+            Assert.Equal(TimeSpan.Zero, reminder.DueTime);
+            
+            var state = JsonSerializer.Deserialize<Message>(reminder.State);
+            Assert.Equal(message.Text, state.Text);
+
+            // Simulate invoking the reminder interface
+            for (var i = 0; i < 10; i++)
+            {
+                await actor.ReceiveReminderAsync(reminder.Name, reminder.State, reminder.DueTime, reminder.Period);
+            }
+
+            getReminder = reminder;
+            var reminderFromGet = await actor.TryGetReminderAsync();
+            Assert.True(reminderFromGet.HasValue);
+            Assert.Equal(reminder, reminderFromGet.Value);
+
+            // Stop the reminder
+            await actor.StopReminderAsync();
+            Assert.Empty(reminders);
+        }
+
+        [Fact]
+        public async Task TryGetReminderReturnsFalseIfNotAvailable()
+        {
+            var timerManager = new Mock<ActorTimerManager>(MockBehavior.Strict);
+            timerManager
+                .Setup(tm => tm.GetReminderAsync(It.IsAny<ActorReminderToken>()))
+                .Returns(() => Task.FromResult<IActorReminder>(null));
+            
+            var host = ActorHost.CreateForTest<CoolTestActor>(new ActorTestOptions() { TimerManager = timerManager.Object, });
+            var actor = new CoolTestActor(host);
+            
+            //There is no starting reminder, so this should always return null
+            var retrievedReminder = await actor.TryGetReminderAsync();
+
+            Assert.False(retrievedReminder.HasValue);
+            Assert.Null(retrievedReminder.Value);
+        }
+
         public interface ICoolTestActor : IActor
         {
         }
@@ -173,6 +244,14 @@ namespace Dapr.Actors
             public async Task<IActorReminder> GetReminderAsync()
             {
                 return await this.GetReminderAsync("record");
+            }
+
+            public async Task<ConditionalValue<IActorReminder>> TryGetReminderAsync()
+            {
+                var reminder = await this.GetReminderAsync("record");
+                return reminder == null
+                    ? new ConditionalValue<IActorReminder>()
+                    : new ConditionalValue<IActorReminder>(true, reminder);
             }
 
             public async Task StopReminderAsync()
