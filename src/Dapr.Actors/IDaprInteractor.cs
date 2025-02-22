@@ -47,22 +47,6 @@ namespace Dapr.Actors
         Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Saves a state to Dapr.
-        /// </summary>
-        /// <param name="actorType">Type of actor.</param>
-        /// <param name="actorId">ActorId.</param>
-        /// <param name="keyName">Name of key to get value for.</param>
-        /// <param name="data">The data to persist to state.</param>
-        /// <param name="cancellationToken">Cancels the operation.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SaveStateAsync(
-            string actorType,
-            string actorId,
-            string keyName,
-            string data,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets a state from Dapr.
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
@@ -71,12 +55,6 @@ namespace Dapr.Actors
         /// <param name="cancellationToken">Cancels the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
         Task<ActorStateResponse<string>> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default);
-
-        Task<ActorStateResponse<List<string>>> GetListStateAsync(
-            string actorType,
-            string actorId,
-            string keyName,
-            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Invokes Actor method.
