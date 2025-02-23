@@ -75,11 +75,16 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             return addedToState;
         }
 
-        if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
+        var containsStateResult = await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName,
+            this.actor.Id.ToString(), stateName, cancellationToken);
+        if (containsStateResult)
         {
+            //Return false because we shouldn't add a value already present in the provider
             return false;
         }
 
+        //Add to the cache
+        cache.Set(stateName, ActorStateCache.StateMetadata.Create(value, StateChangeKind.Add));
         return addedToState;
     }
 
@@ -101,6 +106,8 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             return false;
         }
 
+        //Add to the cache
+        cache.Set(stateName, ActorStateCache.StateMetadata.Create(value, StateChangeKind.Add, ttl));
         return addedToState;
     }
 
