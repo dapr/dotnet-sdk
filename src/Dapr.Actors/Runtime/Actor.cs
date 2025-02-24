@@ -398,6 +398,17 @@ namespace Dapr.Actors.Runtime
         }
 
         /// <summary>
+        /// Attempts to get a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)"/>.
+        /// </summary>
+        /// <param name="reminderName">The name of the reminder to attempt to get.</param>
+        /// <returns>A <see cref="ConditionalValue{TValue}"/> that reflects whether the reminder could be returned or not in the <c>HasValue</c> property, and if it does, the value in the <c>HasValue</c> property.</returns>
+        protected async Task<ConditionalValue<IActorReminder>> TryGetReminderAsync(string reminderName)
+        {
+            var reminder = await this.GetReminderAsync(reminderName);
+            return reminder == null ? new ConditionalValue<IActorReminder>() : new ConditionalValue<IActorReminder>(true, reminder);
+        }
+
+        /// <summary>
         /// Unregisters a reminder previously registered using <see cref="Dapr.Actors.Runtime.Actor.RegisterReminderAsync(ActorReminderOptions)" />.
         /// </summary>
         /// <param name="reminder">The actor reminder to unregister.</param>
