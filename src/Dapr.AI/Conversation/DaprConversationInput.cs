@@ -16,7 +16,7 @@ namespace Dapr.AI.Conversation;
 /// <summary>
 /// Represents an input for the Dapr Conversational API.
 /// </summary>
-/// <param name="Message">The message to send to the LLM.</param>
+/// <param name="Content">The content to send to the LLM.</param>
 /// <param name="Role">The role indicating the entity providing the message.</param>
 /// <param name="ScrubPII">If true, scrubs the data that goes into the LLM.</param>
-public sealed record DaprConversationInput(string Message, DaprConversationRole Role, bool ScrubPII = false);
+public sealed record DaprConversationInput(string Content, DaprConversationRole Role, bool ScrubPII = false);
