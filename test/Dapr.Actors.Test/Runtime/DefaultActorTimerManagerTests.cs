@@ -4,9 +4,14 @@
 // ------------------------------------------------------------
 
 using System;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Actors.Serialization;
 using Moq;
 using Xunit;
 using JsonSerializer = System.Text.Json.JsonSerializer;
@@ -83,6 +88,67 @@ namespace Dapr.Actors.Runtime
             
             Assert.Equal("R10/PT1M", period.GetString());
             Assert.Equal("0h1m0s0ms", dueTime.GetString());
+        }
+
+        /// <summary>
+        /// Get the GetReminder method is called without a registered reminder, it should return null.
+        /// </summary>
+        [Fact]
+        public async Task GetReminderAsync_ReturnsNullWhenUnavailable()
+        {
+            const string actorId = "123";
+            const string actorType = "abc";
+            const string reminderName = "reminderName";
+            var interactor = new Mock<TestDaprInteractor>();
+            interactor
+                .Setup(d => d.GetReminderAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            var defaultActorTimerManager = new DefaultActorTimerManager(interactor.Object);
+
+            var reminderResult = await defaultActorTimerManager.GetReminderAsync(new ActorReminderToken(actorType, new ActorId(actorId), reminderName));
+            Assert.Null(reminderResult);
+        }
+
+        [Fact]
+        public async Task GetReminderAsync_ReturnsResultWhenAvailable()
+        {
+            const string actorId = "123";
+            const string actorType = "abc";
+            const string reminderName = "reminderName";
+            var interactor = new Mock<TestDaprInteractor>();
+            
+            //Create the reminder we'll return
+            var state = Array.Empty<byte>();
+            var dueTime = TimeSpan.FromMinutes(1);
+            var period = TimeSpan.FromMinutes(1);
+            var actorReminder = new ActorReminder(actorType, new ActorId(actorId), "remindername", state, dueTime, period, 10);
+            
+            //Serialize and create the response value
+            var actorReminderInfo = new ReminderInfo(actorReminder.State, actorReminder.DueTime, actorReminder.Period,
+                actorReminder.Repetitions, actorReminder.Ttl);
+            var serializedActorReminderInfo = await actorReminderInfo.SerializeAsync();
+            var reminderResponse = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(serializedActorReminderInfo)
+            };
+            
+            //Register the response
+            var actualData = string.Empty;
+            interactor
+                .Setup(d => d.GetReminderAsync(actorType, actorId, reminderName, It.IsAny<CancellationToken>()))
+                .Callback<string, string, string, CancellationToken>((type, id, name, token) => {
+                })
+                .Returns(Task.FromResult(reminderResponse));
+            var defaultActorTimerManager = new DefaultActorTimerManager(interactor.Object);
+            
+            var reminderResult = await defaultActorTimerManager.GetReminderAsync(new ActorReminderToken(actorType, new ActorId(actorId), reminderName));
+            Assert.NotNull(reminderResult);
+            
+            Assert.Equal(period, reminderResult.Period);
+            Assert.Equal(state, reminderResult.State);
+            Assert.Equal(period, reminderResult.Period);
+            Assert.Equal(reminderName, reminderResult.Name);
         }
     }
 }

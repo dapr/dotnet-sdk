@@ -15,6 +15,7 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.IO;
+using Grpc.Core;
 
 namespace Dapr.Actors.Runtime
 {
@@ -45,9 +46,14 @@ namespace Dapr.Actors.Runtime
                 throw new ArgumentNullException(nameof(token));
             }
             
-            var responseStream = await this.interactor.GetReminderAsync(token.ActorType, token.ActorId.ToString(), token.Name);
-            var reminder = await DeserializeReminderAsync(responseStream, token);
-            return reminder;
+            var response = await this.interactor.GetReminderAsync(token.ActorType, token.ActorId.ToString(), token.Name);
+            if ((int)response.StatusCode == 500)
+            {
+                return null;
+            }
+
+            var responseStream = await response.Content.ReadAsStreamAsync();
+            return await DeserializeReminderAsync(responseStream, token);
         }
 
         public override async Task UnregisterReminderAsync(ActorReminderToken reminder)
