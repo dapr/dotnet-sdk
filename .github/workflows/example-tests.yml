@@ -1,0 +1,171 @@
+name: example-integration-test
+
+on:
+  push:
+    branches:
+      - master
+      - release-*
+    tags:
+      - v*
+
+  pull_request:
+    branches:
+      - master
+      - release-*
+
+jobs:
+  build-and-test:
+    name: run example-based integration tests
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-latest']
+        dotnet-version: ['8.0'] #, '9.0']
+        include:
+        - dotnet-version: '8.0'
+          display-name: '.NET 8.0'
+          framework: 'net8.0'
+          install-version: '8.0.x'
+        - dotnet-version: '9.0'
+          display-name: '.NET 9.0'
+          framework: 'net9.0'
+          install-version: '9.0.x'
+          
+    runs-on: 'ubuntu-latest'
+          
+    env:
+      NUPKG_OUTDIR: bin/Release/nugets
+      GOVER: 1.20.0
+      GOOS: linux
+      GOARCH: amd64
+      GOPROXY: https://proxy.golang.org
+      DAPR_CLI_VER: 1.14.0
+      DAPR_RUNTIME_VER: 1.14.0
+      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/release-1.14/install/install.sh
+      DAPR_CLI_REF: ''
+    steps:
+      - name: Set up Dapr CLI
+        run: wget -q ${{ env.DAPR_INSTALL_URL }} -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
+      - name: Checkout Dapr CLI repo to override dapr command.
+        uses: actions/checkout@v2
+        if: env.DAPR_CLI_REF != ''
+        with:
+          repository: dapr/cli
+          ref: ${{ env.DAPR_CLI_REF }}
+          path: cli
+      - name: Checkout Dapr repo to override daprd.
+        uses: actions/checkout@v2
+        if: env.DAPR_REF != ''
+        with:
+          repository: dapr/dapr
+          ref: ${{ env.DAPR_REF }}
+          path: dapr
+      - name: Set up Go from dapr/go.mod
+        if: env.DAPR_REF != ''
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "dapr/go.mod"
+      - name: Set up Go from cli/go.mod
+        if: env.DAPR_REF == '' && env.DAPR_CLI_REF != ''
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "cli/go.mod"
+      - name: Build and override dapr cli with referenced commit.
+        if: env.DAPR_CLI_REF != ''
+        run: |
+          cd cli
+          make
+          sudo cp dist/linux_amd64/release/dapr /usr/local/bin/dapr
+          cd ..
+      - name: Initialize Dapr runtime ${{ env.DAPR_RUNTIME_VER }}
+        run: |
+          dapr uninstall --all
+          dapr init --runtime-version ${{ env.DAPR_RUNTIME_VER }}
+      - name: Build and override daprd with referenced commit.
+        if: env.DAPR_REF != ''
+        run: |
+          cd dapr
+          make
+          mkdir -p $HOME/.dapr/bin/
+          cp dist/linux_amd64/release/daprd $HOME/.dapr/bin/daprd
+          cd ..
+      - name: Override placement service.
+        if: env.DAPR_REF != ''
+        run: |
+          docker stop dapr_placement
+          cd dapr
+          ./dist/linux_amd64/release/placement &
+      - uses: actions/checkout@v1
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup ${{ matrix.display-name }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ matrix.install-version }}
+          dotnet-quality: 'ga'  # Prefer a GA release, but use the RC if not available
+      - name: Check test coverage
+        run: |
+          sudo apt-get install jq
+          # Find all .csproj files in the ./examples directory
+          all_projects=$(find ./examples -name '*.csproj' -exec basename {} \; | sed 's/.csproj//')
+          # Get the list of projects from example-e2e-tests.json
+          tested_projects=$(jq -r '.projects[].project' ./.github/workflows/example-e2e-tests.json | sed 's/.csproj//')
+          # Compare the lists and find projects without tests
+          for project in $all_projects; do
+            if ! echo "$tested_projects" | grep -q "$project"; then
+              echo "Project $project does not have any tests in example-e2e-tests.json"
+            fi
+          done
+        
+      - name: Build & test projects
+        # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+        run: |
+          # Parse the projects
+          projects=$(jq -c '.projects[]' ./.github/workflows/example-e2e-tests.json)
+          echo "Parsed project names:"
+          echo "$projects" | jq -r '.project'
+          
+          # Iterate over the projects
+          echo "$projects" | while read project; do
+            project_name=$(echo $project | jq -r '.project')
+            echo "Project name: $project_name"
+          
+            # Find the .csproj file in the ./examples directory
+            csproj_path=$(find ./examples/ -name $project_name)
+            echo "csproj path: $csproj_path"
+            
+            tests=$(echo $project | jq -c '.tests[]')
+            echo "$tests" | while read test; do
+              test_name=$(echo $test | jq -r '.name')
+              echo "test name: $test_name"
+              test_arguments=$(echo $test | jq -r '.arguments')
+              echo "args: $test_arguments"
+              expectedOutputs=$(echo $test | jq -r '.expected_stdout_output[]')
+              expectation_type=$(echo $test | jq -r '.expectation_type')
+              echo "expectation_type: $expectation_type"
+                        
+              echo "Building and testing $project_name with .NET ${{ matrix.dotnet-version }}"
+              dotnet build $csproj_path --framework ${{ matrix.framework }} --configuration Release /p:GITHUB_ACTIONS=false
+              output=$(dotnet run --project $csproj_path --framework ${{ matrix.framework }} -- $test_arguments)
+          
+              for expected in $expectedOutputs; do
+                if [[ "$expectation_type" == "startswith" ]]; then
+                  if [[ "$output" != "$expected"* ]]; then 
+                    echo "Test failed for $csproj_path with .NET ${{ matrix.dotnet-version }}: Expected '$expected' not found in output"
+                    exit 1
+                  fi
+                elif [[ "$expectation_type" == "equals" ]]; then
+                  if [[ "$output" != "$expected" ]]; then
+                    echo "Test failed for $csproj_path with .NET ${{matrix.dotnet-version }}: Expected '$expected' not found in output"
+                    exit 1
+                  fi
+                else
+                  if [[ "$output" != *"$expected"* ]]; then
+                    echo "Test failed for $csproj_path with .NET ${{ matrix.dotnet-version }}: Expected '$expected' not found in output"
+                    exit 1
+                  fi
+                fi
+              done
+            done
+          done
