@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Communication;
@@ -58,7 +59,7 @@ public class TestDaprInteractor : IDaprInteractor
     {
         throw new System.NotImplementedException();
     }
-
+    
     /// <summary>
     /// Saves state batch to Dapr.
     /// </summary>
@@ -79,11 +80,39 @@ public class TestDaprInteractor : IDaprInteractor
     /// <param name="actorType">Type of actor.</param>
     /// <param name="actorId">ActorId.</param>
     /// <param name="keyName">Name of key to get value for.</param>
+    /// <param name="data">The data to persist to state.</param>
+    /// <param name="cancellationToken">Cancels the operation.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public virtual async Task SaveStateAsync(
+        string actorType,
+        string actorId,
+        string keyName,
+        string data,
+        CancellationToken cancellationToken = default)
+    {
+        await _testDaprInteractor.SaveStateAsync(actorType, actorId, keyName, data, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets a state from Dapr.
+    /// </summary>
+    /// <param name="actorType">Type of actor.</param>
+    /// <param name="actorId">ActorId.</param>
+    /// <param name="keyName">Name of key to get value for.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public virtual async Task<ActorStateResponse<string>> GetStateAsync(string actorType, string actorId, string keyName, CancellationToken cancellationToken = default)
     {
-        return await _testDaprInteractor.GetStateAsync(actorType, actorId, keyName);
+        return await _testDaprInteractor.GetStateAsync(actorType, actorId, keyName, cancellationToken);
+    }
+
+    public virtual async Task<ActorStateResponse<List<string>>> GetListStateAsync(
+        string actorType,
+        string actorId,
+        string keyName,
+        CancellationToken cancellationToken = default)
+    {
+        return await _testDaprInteractor.GetListStateAsync(actorType, actorId, keyName, cancellationToken);
     }
 
     /// <summary>

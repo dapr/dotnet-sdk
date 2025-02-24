@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.Generic;
+
 namespace Dapr.Actors
 {
     using System.IO;
@@ -45,7 +47,7 @@ namespace Dapr.Actors
         Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Saves a state to Dapr.
+        /// Gets a state from Dapr.
         /// </summary>
         /// <param name="actorType">Type of actor.</param>
         /// <param name="actorId">ActorId.</param>
