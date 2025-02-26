@@ -90,24 +90,26 @@ namespace Dapr.Actors.Runtime
             await this.interactor.UnregisterTimerAsync(timer.ActorType, timer.ActorId.ToString(), timer.Name);
         }
 
-        private async ValueTask<string> SerializeReminderAsync(ActorReminder reminder)
+        private static async ValueTask<string> SerializeReminderAsync(ActorReminder reminder)
         {
             var info = new ReminderInfo(reminder.State, reminder.DueTime, reminder.Period, reminder.Repetitions, 
                 reminder.Ttl);
             return await info.SerializeAsync();
         }
 
-        private async ValueTask<ActorReminder> DeserializeReminderAsync(Stream stream, ActorReminderToken token)
+        private static async ValueTask<ActorReminder> DeserializeReminderAsync(Stream stream, ActorReminderToken token)
         {
             if (stream == null)
             {
                 throw new ArgumentNullException(nameof(stream));
             }
+            
             var info = await ReminderInfo.DeserializeAsync(stream);
-            if(info == null)
+            if (info == null)
             {
                 return null;
             }
+            
             var reminder = new ActorReminder(token.ActorType, token.ActorId, token.Name, info.Data, info.DueTime, 
                 info.Period);
             return reminder;
