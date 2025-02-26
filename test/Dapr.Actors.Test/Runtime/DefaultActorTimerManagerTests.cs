@@ -145,7 +145,7 @@ namespace Dapr.Actors.Runtime
             var reminderResult = await defaultActorTimerManager.GetReminderAsync(new ActorReminderToken(actorType, new ActorId(actorId), reminderName));
             Assert.NotNull(reminderResult);
             
-            Assert.Equal(period, reminderResult.Period);
+            Assert.Equal(dueTime, reminderResult.DueTime);
             Assert.Equal(state, reminderResult.State);
             Assert.Equal(period, reminderResult.Period);
             Assert.Equal(reminderName, reminderResult.Name);
