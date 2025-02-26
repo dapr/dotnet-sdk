@@ -41,7 +41,7 @@ public sealed class DefaultActorTimerManagerTests
         var actorType = "abc";
         var interactor = new Mock<TestDaprInteractor>();
         var defaultActorTimerManager = new DefaultActorTimerManager(interactor.Object);
-        var actorReminder = new ActorReminder(actorType, new ActorId(actorId), "remindername", new byte[] { }, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        var actorReminder = new ActorReminder(actorType, new ActorId(actorId), "remindername", Array.Empty<byte>(), TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         var actualData = string.Empty;
             
         interactor
@@ -144,7 +144,6 @@ public sealed class DefaultActorTimerManagerTests
         };
             
         //Register the response
-        var actualData = string.Empty;
         interactor
             .Setup(d => d.GetReminderAsync(actorType, actorId, reminderName, It.IsAny<CancellationToken>()))
             .Callback<string, string, string, CancellationToken>((type, id, name, token) => {
