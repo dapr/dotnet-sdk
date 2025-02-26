@@ -25,7 +25,6 @@ builder.Logging.AddConsole();
 var app = builder.Build();
 
 //Set a handler to deal with incoming jobs
-var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 app.MapDaprScheduledJobHandler(async (string jobName, ReadOnlyMemory<byte> jobPayload, ILogger? logger, CancellationToken cancellationToken) =>
 {
     logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
@@ -33,18 +32,18 @@ app.MapDaprScheduledJobHandler(async (string jobName, ReadOnlyMemory<byte> jobPa
     var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
     logger?.LogInformation("Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
         jobName, deserializedPayload);
-    await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
     
     return Task.CompletedTask;
-}, cancellationTokenSource.Token);
+}, TimeSpan.FromSeconds(5));
 
 using var scope = app.Services.CreateScope();
 var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
 
 logger.LogInformation("Scheduling one-time job 'myJob' to execute 10 seconds from now");
-await daprJobsClient.ScheduleJobAsync("myJob", DaprJobSchedule.FromDateTime(DateTime.UtcNow.AddSeconds(10)),
-    Encoding.UTF8.GetBytes("This is a test"));
+await daprJobsClient.ScheduleJobAsync("myJob", DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
+    Encoding.UTF8.GetBytes("This is a test"), repeats: 10);
 logger.LogInformation("Scheduled one-time job 'myJob'");
 
 app.Run();
