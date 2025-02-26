@@ -119,6 +119,25 @@ public sealed class DefaultActorTimerManagerTests
         var reminderResult = await defaultActorTimerManager.GetReminderAsync(new ActorReminderToken(actorType, new ActorId(actorId), reminderName));
         Assert.Null(reminderResult);
     }
+        
+    [Fact]
+    public async Task GetReminderAsync_ReturnsNullWhenDeserialziationFails()
+    {
+        const string actorId = "123";
+        const string actorType = "abc";
+        const string reminderName = "reminderName";
+        var interactor = new Mock<TestDaprInteractor>();
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+            
+        interactor
+            .Setup(d => d.GetReminderAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+        var defaultActorTimerManager = new DefaultActorTimerManager(interactor.Object);
+
+        var reminderResult = await defaultActorTimerManager.GetReminderAsync(new ActorReminderToken(actorType, new ActorId(actorId), reminderName));
+        Assert.Null(reminderResult);
+    }
 
     [Fact]
     public async Task GetReminderAsync_ReturnsResultWhenAvailable()
