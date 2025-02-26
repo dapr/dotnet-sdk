@@ -14,6 +14,9 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -25,8 +28,11 @@ using Dapr.Jobs.Models.Responses;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace Dapr.Jobs.Test.Extensions;
@@ -71,6 +77,111 @@ public class EndpointRouteBuilderExtensionsTest
         var validator = server.Services.GetRequiredService<Validator>();
         Assert.Equal(jobName, validator.JobName);
         Assert.Equal(serializedPayload, validator.SerializedPayload);
+    }
+
+    [Fact]
+    public async Task MapDaprScheduledJobHandler_HandlesTimeoutCorrectly()
+    {
+        // Arrange
+        var timeout = TimeSpan.FromSeconds(5);
+        const string testJobName = "testJob";
+        var testJobPayload = Encoding.UTF8.GetBytes("testPayload");
+
+        var builder = new WebHostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddLogging();
+                services.AddRouting();
+            })
+            .Configure(app =>
+            {
+                app.UseRouting();
+                app.UseEndpoints(endpoints =>
+                {
+                    endpoints.MapDaprScheduledJobHandler(async (
+                        string jobName,
+                        ReadOnlyMemory<byte> jobPayload,
+                        ILogger? logger,
+                        CancellationToken cancellationToken) =>
+                    {
+                        logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
+
+                        var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
+                        logger?.LogInformation(
+                            "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
+                            jobName, deserializedPayload);
+                        await Task.Delay(TimeSpan.FromSeconds(1),
+                            cancellationToken);  //Less than the timeout, so this should work without throwing
+
+                        return Task.CompletedTask;
+                    }, timeout);
+                });
+            });
+
+        var testServer = new TestServer(builder);
+        var client = testServer.CreateClient();
+
+        var requestContent = new ByteArrayContent(testJobPayload);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/job/{testJobName}")
+        {
+            Content = requestContent
+        };
+
+        // Act & Assert
+        var response = await client.SendAsync(request);
+        Assert.True(response.IsSuccessStatusCode);
+    }
+    
+    [Fact]
+    public async Task MapDaprScheduledJobHandler_AppliesTimeoutCorrectly()
+    {
+        // Arrange
+        var timeout = TimeSpan.FromSeconds(1);
+        const string testJobName = "testJob";
+        var testJobPayload = Encoding.UTF8.GetBytes("testPayload");
+
+        var builder = new WebHostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddLogging();
+                services.AddRouting();
+            })
+            .Configure(app =>
+            {
+                app.UseRouting();
+                app.UseEndpoints(endpoints =>
+                {
+                    endpoints.MapDaprScheduledJobHandler(async (
+                        string jobName,
+                        ReadOnlyMemory<byte> jobPayload,
+                        ILogger? logger,
+                        CancellationToken cancellationToken) =>
+                    {
+                        logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
+
+                        var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
+                        logger?.LogInformation(
+                            "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
+                            jobName, deserializedPayload);
+                        await Task.Delay(timeout.Add(TimeSpan.FromSeconds(3)),
+                            cancellationToken); //Intentionally delay longer than the timeout allows
+
+                        return Task.CompletedTask;
+                    }, timeout);
+                });
+            });
+
+        var testServer = new TestServer(builder);
+        var client = testServer.CreateClient();
+
+        var requestContent = new ByteArrayContent(testJobPayload);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/job/{testJobName}")
+        {
+            Content = requestContent
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await client.SendAsync(request));
     }
     
     private sealed record SamplePayload(string Name, int Count);
