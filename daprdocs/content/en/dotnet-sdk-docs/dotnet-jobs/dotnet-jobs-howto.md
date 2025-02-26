@@ -245,6 +245,27 @@ app.MapDaprScheduledJob("myJob", (string jobName, ReadOnlyMemory<byte> jobPayloa
 app.Run();
 ```
 
+## Support cancellation tokens when processing mapped invocations
+You may want to ensure that timeouts are handled on job invocations so that they don't indefinitely hang and use system resources. When setting up the job mapping, there's an optional `TimeSpan` parameter that can be 
+provided as the last argument to specify a timeout for the request. Every time the job mapping invocation is triggered, a new `CancellationTokenSource` will be created using this timeout parameter and a `CancellationToken`
+will be created from it to put an upper bound on the processing of the request. If a timeout isn't provided, this defaults to `CancellationToken.None` and a timeout will not be automatically applied to the mapping.
+
+```cs
+//We have this from the example above
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDaprJobsClient();
+
+var app = builder.Build();
+
+//Add our endpoint registration
+app.MapDaprScheduledJob("myJob", (string jobName, ReadOnlyMemory<byte> jobPayload) => {
+    //Do something...
+}, TimeSpan.FromSeconds(15)); //Assigns a maximum timeout of 15 seconds for handling the invocation request
+
+app.Run();
+```
+
 ## Register the job
 
 Finally, we have to register the job we want scheduled. Note that from here, all SDK methods have cancellation token support and use a default token if not otherwise set.
