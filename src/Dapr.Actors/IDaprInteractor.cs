@@ -18,7 +18,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Communication;
-using System.Collections.Generic;
 
 /// <summary>
 /// Interface for interacting with Dapr runtime.
