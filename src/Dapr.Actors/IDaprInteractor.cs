@@ -11,14 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Generic;
-
 namespace Dapr.Actors
 {
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Actors.Communication;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Interface for interacting with Dapr runtime.
@@ -83,8 +82,8 @@ namespace Dapr.Actors
         /// <param name="actorId">ActorId.</param>
         /// <param name="reminderName">Name of reminder to unregister.</param>
         /// <param name="cancellationToken">Cancels the operation.</param>
-        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task<Stream> GetReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default);
+        /// <returns>A <see cref="Task"/> containing the response of the asynchronous HTTP operation.</returns>
+        Task<HttpResponseMessage> GetReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Unregisters a reminder.
