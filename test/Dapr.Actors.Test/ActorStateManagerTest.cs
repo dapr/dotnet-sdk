@@ -210,16 +210,4 @@ public sealed class ActorStateManagerTest
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key2", token));
     }
-
-    // [Fact]
-    // public async Task AddStateAsync_NoTTL()
-    // {
-    //     var interactor = new Mock<TestDaprInteractor>();
-    //     var host = ActorHost.CreateForTest<TestActor>();
-    //     host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
-    //     var mngr = new ActorStateManager(new TestActor(host));
-    //     var cts = new CancellationTokenSource();
-    //  
-    //     
-    // }
 }
