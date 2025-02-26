@@ -36,7 +36,7 @@ public sealed class DefaultActorTimerManagerTests
             
         interactor
             .Setup(d => d.RegisterReminderAsync(actorType, actorId, "remindername", It.Is<string>(data => !string.IsNullOrEmpty(data)), It.IsAny<CancellationToken>()))
-            .Callback<string, string, string, string, CancellationToken>((actorType, actorID, reminderName, data, token) => {
+            .Callback<string, string, string, string, CancellationToken>((innerType, innerId, reminderName, data, token) => {
                 actualData = data;
             })
             .Returns(Task.CompletedTask);
@@ -62,8 +62,8 @@ public sealed class DefaultActorTimerManagerTests
     [Fact]
     public async Task RegisterReminderAsync_WithRepetition_CallsInteractor_WithCorrectData()
     {
-        var actorId = "123";
-        var actorType = "abc";
+        const string actorId = "123";
+        const string actorType = "abc";
         var interactor = new Mock<TestDaprInteractor>();
         var defaultActorTimerManager = new DefaultActorTimerManager(interactor.Object);
         var actorReminder = new ActorReminder(actorType, new ActorId(actorId), "remindername", new byte[] { }, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), 10);
@@ -71,7 +71,7 @@ public sealed class DefaultActorTimerManagerTests
 
         interactor
             .Setup(d => d.RegisterReminderAsync(actorType, actorId, "remindername", It.Is<string>(data => !string.IsNullOrEmpty(data)), It.IsAny<CancellationToken>()))
-            .Callback<string, string, string, string, CancellationToken>((actorType, actorID, reminderName, data, token) => {
+            .Callback<string, string, string, string, CancellationToken>((innerType, innerActorId, reminderName, data, token) => {
                 actualData = data;
             })
             .Returns(Task.CompletedTask);
