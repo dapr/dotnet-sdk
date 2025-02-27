@@ -2,13 +2,13 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks></TargetFrameworks>
         <IsPackable>false</IsPackable>
-
-        <!-- Avoid ID conflicts with the package project. -->
-        <PackageId>*$(MSBuildProjectFile)*</PackageId>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     </PropertyGroup>
-
+    
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
     </ItemGroup>
@@ -20,16 +20,8 @@
         <!-- Suppress generation of symbol package (.snupkg). -->
         <IncludeSymbols>false</IncludeSymbols>
 
-        <!-- Do not include the generator as a lib dependency -->
-        <IncludeBuildOutput>false</IncludeBuildOutput>
-
         <!-- Additional NuGet package properties. -->
-        <Description>This package contains Roslyn analyzers for actors.</Description>
+        <Description>This package contains Roslyn analyzers for jobs.</Description>
         <PackageTags>$(PackageTags)</PackageTags>
     </PropertyGroup>
-    
-    <ItemGroup>
-        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    </ItemGroup>
-
 </Project>
