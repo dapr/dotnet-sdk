@@ -22,6 +22,12 @@ namespace Dapr.Jobs.Analyzer
             isEnabledByDefault: true
         );
 
+        private static readonly string DaprJobsNameSpace = "Dapr.Jobs";
+        private static readonly string DaprJobScheduleJobAsyncMethod = "ScheduleJobAsync";
+        private static readonly string EndpointNameSpace = "Microsoft.AspNetCore.Builder";
+        private static readonly string MapPostMethod = "MapPost";
+        private static readonly string DaprJobInvocatoinUrlResource = "job";
+
         /// <inheritdoc/>
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(DaprJobHandlerRule); } }
 
@@ -38,11 +44,15 @@ namespace Dapr.Jobs.Analyzer
         {
             var invocationExpression = (InvocationExpressionSyntax)context.Node;
 
-            var memberAccess = invocationExpression.Expression as MemberAccessExpressionSyntax;
-            if (memberAccess?.Name.ToString() == "ScheduleJobAsync")
+            if (invocationExpression.Expression is not MemberAccessExpressionSyntax memberAccess)
+            {
+                return;
+            }
+
+            if (IsNamespaceAndMethodNameEqual(context, invocationExpression, DaprJobsNameSpace, DaprJobScheduleJobAsyncMethod))
             {
                 var arguments = invocationExpression.ArgumentList.Arguments;
-                if (arguments.Count == 1 && arguments[0].Expression is LiteralExpressionSyntax literal)
+                if (arguments.Count > 0 && arguments[0].Expression is LiteralExpressionSyntax literal)
                 {
                     string jobName = literal.Token.ValueText;
 
@@ -59,29 +69,50 @@ namespace Dapr.Jobs.Analyzer
             // Search for MapPost with the corresponding route
             var endpointMappings = root.DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
-                .Where(invocation => invocation.Expression.ToString().Contains("MapPost"))
+                .Where(invocation => IsNamespaceAndMethodNameEqual(context, invocation, EndpointNameSpace, MapPostMethod))
                 .ToList();
 
             foreach (var mapping in endpointMappings)
             {
                 // Look for route patterns like "/job/{jobname}"
-                var argument = mapping.ArgumentList.Arguments.FirstOrDefault()?.ToString();
-
-                if (argument != null)
+                var argumentExpression = mapping.ArgumentList.Arguments.FirstOrDefault()?.Expression;
+                string argument = string.Empty;
+                if (argumentExpression is LiteralExpressionSyntax literal)
                 {
-                    string[] endpointSplit = argument.Split('/');
-                    if (endpointSplit.Length == 3 
-                        && endpointSplit[1].Equals("job") 
-                        && (endpointSplit[2].Equals(jobName) || ((endpointSplit[2].StartsWith("{") && endpointSplit[2].EndsWith("}")))))
-                    {
-                        return;
-                    }
+                    argument = literal.Token.ValueText; // This extracts the string without quotes
+                }
+
+                // route patterns like "/job/{jobname} or /job/myJob"
+                string[] endpointSplit = argument.Split('/');
+                if (endpointSplit.Length == 3
+                    && endpointSplit[1].Equals(DaprJobInvocatoinUrlResource)
+                    && (endpointSplit[2].Equals(jobName) || ((endpointSplit[2].StartsWith("{") && endpointSplit[2].EndsWith("}")))))
+                {
+                    return;
                 }
             }
 
             // If no matching route was found, report a diagnostic
-            var diagnostic = Diagnostic.Create(DaprJobHandlerRule, context.Node.GetLocation(), jobName);
+            var diagnostic = Diagnostic.Create(DaprJobHandlerRule, default, jobName);
             context.ReportDiagnostic(diagnostic);
+        }
+
+        private static bool IsNamespaceAndMethodNameEqual(SyntaxNodeAnalysisContext context, InvocationExpressionSyntax invocation, string symbolNamespace, string methodName)
+        {
+            var symbolInfo = context.SemanticModel.GetSymbolInfo(invocation.Expression);
+            if (symbolInfo.Symbol is not IMethodSymbol methodSymbol)
+            {
+                return false;
+            }
+
+            // Check if the receiver is of type DaprJobsClient
+            if (methodSymbol?.Name == methodName &&
+                methodSymbol.ContainingNamespace.ToDisplayString() == symbolNamespace)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

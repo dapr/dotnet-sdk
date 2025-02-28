@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "ConversationalAI": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:56624;http://localhost:56625"
+    }
+  }
+}
