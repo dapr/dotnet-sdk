@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -8,15 +7,15 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Dapr.Jobs.Analyzer
 {
     /// <summary>
-    /// DaprJobsAnalyzerAnalyzer.
+    /// DaprJobsAnalyzer.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class DaprJobsAnalyzerAnalyzer : DiagnosticAnalyzer
+    public sealed class MapDaprScheduledJobHandlerAnalyzer : DiagnosticAnalyzer
     {
         private static readonly DiagnosticDescriptor DaprJobHandlerRule = new DiagnosticDescriptor(
             id: "DAPRJOBS0001",
             title: "Ensure Post Mapper handler is present for all the Scheduled Jobs",
-            messageFormat: "There should be a mapping post endpoint for each scheduled job to make sure app receives notifications for all the scheduled jobs",
+            messageFormat: "Job invocations require the MapDaprScheduledJobHandler be set and configured for each anticipated job on IEndpointRouteBuilder",
             category: "Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true
@@ -24,9 +23,8 @@ namespace Dapr.Jobs.Analyzer
 
         private static readonly string DaprJobsNameSpace = "Dapr.Jobs";
         private static readonly string DaprJobScheduleJobAsyncMethod = "ScheduleJobAsync";
-        private static readonly string EndpointNameSpace = "Microsoft.AspNetCore.Builder";
-        private static readonly string MapPostMethod = "MapPost";
-        private static readonly string DaprJobInvocatoinUrlResource = "job";
+        private static readonly string MethodNameSpace = "Dapr.Jobs.Extensions";
+        private static readonly string MapDaprScheduledJobHandlerMethod = "MapDaprScheduledJobHandler";
 
         /// <inheritdoc/>
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(DaprJobHandlerRule); } }
@@ -67,29 +65,14 @@ namespace Dapr.Jobs.Analyzer
             var root = context.SemanticModel.SyntaxTree.GetRoot();
 
             // Search for MapPost with the corresponding route
-            var endpointMappings = root.DescendantNodes()
+            int mapDaprScheduledJobHandlersCount = root.DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
-                .Where(invocation => IsNamespaceAndMethodNameEqual(context, invocation, EndpointNameSpace, MapPostMethod))
-                .ToList();
+                .Where(invocation => IsNamespaceAndMethodNameEqual(context, invocation, MethodNameSpace, MapDaprScheduledJobHandlerMethod))
+                .Count();
 
-            foreach (var mapping in endpointMappings)
+            if (mapDaprScheduledJobHandlersCount > 0)
             {
-                // Look for route patterns like "/job/{jobname}"
-                var argumentExpression = mapping.ArgumentList.Arguments.FirstOrDefault()?.Expression;
-                string argument = string.Empty;
-                if (argumentExpression is LiteralExpressionSyntax literal)
-                {
-                    argument = literal.Token.ValueText; // This extracts the string without quotes
-                }
-
-                // route patterns like "/job/{jobname} or /job/myJob"
-                string[] endpointSplit = argument.Split('/');
-                if (endpointSplit.Length == 3
-                    && endpointSplit[1].Equals(DaprJobInvocatoinUrlResource)
-                    && (endpointSplit[2].Equals(jobName) || ((endpointSplit[2].StartsWith("{") && endpointSplit[2].EndsWith("}")))))
-                {
-                    return;
-                }
+                return;
             }
 
             // If no matching route was found, report a diagnostic
@@ -97,6 +80,20 @@ namespace Dapr.Jobs.Analyzer
             context.ReportDiagnostic(diagnostic);
         }
 
+        /// <summary>
+        /// Determines whether a given method invocation matches a specified method name 
+        /// within a given namespace.
+        /// 
+        /// For eg: MapDaprScheduledJobHandler (methodname) from the "Dapr.Jobs.Extension" (symbolNamespace) is being called.
+        /// </summary>
+        /// <param name="context">The syntax analysis context providing semantic information.</param>
+        /// <param name="invocation">The invocation expression to analyze.</param>
+        /// <param name="symbolNamespace">The expected namespace of the method.</param>
+        /// <param name="methodName">The expected method name.</param>
+        /// <returns>
+        /// <c>true</c> if the method belongs to the specified namespace and has the expected name;
+        /// otherwise, <c>false</c>.
+        /// </returns>
         private static bool IsNamespaceAndMethodNameEqual(SyntaxNodeAnalysisContext context, InvocationExpressionSyntax invocation, string symbolNamespace, string methodName)
         {
             var symbolInfo = context.SemanticModel.GetSymbolInfo(invocation.Expression);

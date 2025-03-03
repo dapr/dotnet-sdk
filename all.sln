@@ -155,9 +155,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobsSample", "examples\Jobs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Test", "test\Dapr.Workflow.Test\Dapr.Workflow.Test.csproj", "{E90114C6-86FC-43B8-AE5C-D9273CF21FE4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzer", "src\Dapr.Jobs.Analyzer\Dapr.Jobs.Analyzer.csproj", "{28B87C37-4B52-400F-B84D-64F134931BDC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzers", "src\Dapr.Jobs.Analyzer\Dapr.Jobs.Analyzers.csproj", "{28B87C37-4B52-400F-B84D-64F134931BDC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzer.Test", "test\Dapr.Jobs.Analyzer.Test\Dapr.Jobs.Analyzer.Test.csproj", "{CADEAE45-8981-4723-B641-9C28251C7D3B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzer.Tests", "test\Dapr.Jobs.Analyzer.Test\Dapr.Jobs.Analyzer.Tests.csproj", "{CADEAE45-8981-4723-B641-9C28251C7D3B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
