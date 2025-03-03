@@ -30,19 +30,25 @@ public static class EndpointRouteBuilderExtensions
     /// parameters must be a <see cref="string"/> for the jobName and the originally registered ReadOnlyMemory&lt;byte&gt; with the
     /// payload value, but otherwise can be populated with additional services to be injected into the delegate.</param>
     /// <param name="timeout">Optional timeout to apply to a per-request cancellation token.</param>
+    /// <param name="jobName">Name of the job that needs to be mapped to the action.</param>
     public static IEndpointRouteBuilder MapDaprScheduledJobHandler(this IEndpointRouteBuilder endpoints,
-        Delegate action, TimeSpan? timeout = null)
+        Delegate action, TimeSpan? timeout = null, string? jobName = null)
     {
         ArgumentNullException.ThrowIfNull(endpoints, nameof(endpoints));
         ArgumentNullException.ThrowIfNull(action, nameof(action));
 
-        endpoints.MapPost("/job/{jobName}", async context =>
+        string endpoint = jobName == null ? "/job/{jobName}" : $"/job/{jobName}";
+        endpoints.MapPost(endpoint, async context =>
         {
             //Retrieve the name of the job from the request path
-            var jobName = string.Empty;
+            var jobNameFromRoute = string.Empty;
             if (context.Request.RouteValues.TryGetValue("jobName", out var capturedJobName))
             {
-                jobName = (string)capturedJobName!;
+                jobNameFromRoute = (string)capturedJobName!;
+            }
+            else
+            {
+                jobNameFromRoute = jobName!;
             }
 
             //Retrieve the job payload from the request body
@@ -59,7 +65,7 @@ public static class EndpointRouteBuilderExtensions
             
             var parameters = new Dictionary<Type, object>
             {
-                { typeof(string), jobName },
+                { typeof(string), jobNameFromRoute },
                 { typeof(ReadOnlyMemory<byte>), payload },
                 { typeof(CancellationToken), cts.Token }
             };

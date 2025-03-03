@@ -60,6 +60,26 @@ public class EndpointRouteBuilderExtensionsTest
     }
 
     [Fact]
+    public async Task MapDaprScheduledJobHandler_ValidRequestWhenJobSpecificHandlerIsProvided_ExecutesAction()
+    {
+        var server = CreateTestServer("testJob");
+        var client = server.CreateClient();
+
+        var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
+        var content = new StringContent(serializedPayload, Encoding.UTF8, "application/json");
+
+        const string jobName = "testJob";
+        var response = await client.PostAsync($"/job/{jobName}", content);
+
+        response.EnsureSuccessStatusCode();
+
+        //Validate the job name and payload
+        var validator = server.Services.GetRequiredService<Validator>();
+        Assert.Equal(jobName, validator.JobName);
+        Assert.Equal(serializedPayload, validator.SerializedPayload);
+    }
+
+    [Fact]
     public async Task MapDaprScheduleJobHandler_HandleMissingCancellationToken()
     {
         var server = CreateTestServer2();
@@ -192,7 +212,7 @@ public class EndpointRouteBuilderExtensionsTest
         public string? SerializedPayload { get; set; }
     }
 
-    private static TestServer CreateTestServer()
+    private static TestServer CreateTestServer(string? jobName = null)
     {
         var builder = new WebHostBuilder()
             .ConfigureServices(services =>
@@ -210,7 +230,7 @@ public class EndpointRouteBuilderExtensionsTest
                         validator.JobName = jobName;
                         validator.SerializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
                         await Task.CompletedTask;
-                    });
+                    }, default, jobName);
                 });
             });
 
