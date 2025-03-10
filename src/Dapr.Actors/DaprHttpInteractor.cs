@@ -265,7 +265,7 @@ namespace Dapr.Actors
             return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
-        public async Task<Stream> GetReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
+        public async Task<HttpResponseMessage> GetReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
         {
             var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
 
@@ -278,8 +278,7 @@ namespace Dapr.Actors
                 return request;
             }
 
-            var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
-            return await response.Content.ReadAsStreamAsync();
+            return await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
         }
 
         public Task UnregisterReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
