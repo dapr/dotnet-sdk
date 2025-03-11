@@ -28,8 +28,10 @@ jobs:
         with:
           dotnet-version: 9.0.x
           dotnet-quality: 'ga'
+      - name: Restore dependencies
+        run: dotnet restore
       - name: Build
-        run: dotnet build --configuration release
+        run: dotnet build --configuration release --no-restore
       - name: Generate Packages
         run: dotnet pack --configuration release
       - name: Upload packages
