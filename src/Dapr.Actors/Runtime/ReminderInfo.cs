@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 #nullable enable
+
 namespace Dapr.Actors.Runtime;
 
 using System;
