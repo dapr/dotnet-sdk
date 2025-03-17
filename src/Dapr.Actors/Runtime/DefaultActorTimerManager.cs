@@ -15,6 +15,7 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.IO;
+using Grpc.Core;
 
 namespace Dapr.Actors.Runtime
 {
@@ -45,9 +46,14 @@ namespace Dapr.Actors.Runtime
                 throw new ArgumentNullException(nameof(token));
             }
             
-            var responseStream = await this.interactor.GetReminderAsync(token.ActorType, token.ActorId.ToString(), token.Name);
-            var reminder = await DeserializeReminderAsync(responseStream, token);
-            return reminder;
+            var response = await this.interactor.GetReminderAsync(token.ActorType, token.ActorId.ToString(), token.Name);
+            if ((int)response.StatusCode == 500)
+            {
+                return null;
+            }
+
+            var responseStream = await response.Content.ReadAsStreamAsync();
+            return await DeserializeReminderAsync(responseStream, token);
         }
 
         public override async Task UnregisterReminderAsync(ActorReminderToken reminder)
@@ -84,24 +90,26 @@ namespace Dapr.Actors.Runtime
             await this.interactor.UnregisterTimerAsync(timer.ActorType, timer.ActorId.ToString(), timer.Name);
         }
 
-        private async ValueTask<string> SerializeReminderAsync(ActorReminder reminder)
+        private static async ValueTask<string> SerializeReminderAsync(ActorReminder reminder)
         {
             var info = new ReminderInfo(reminder.State, reminder.DueTime, reminder.Period, reminder.Repetitions, 
                 reminder.Ttl);
             return await info.SerializeAsync();
         }
 
-        private async ValueTask<ActorReminder> DeserializeReminderAsync(Stream stream, ActorReminderToken token)
+        private static async ValueTask<ActorReminder> DeserializeReminderAsync(Stream stream, ActorReminderToken token)
         {
             if (stream == null)
             {
                 throw new ArgumentNullException(nameof(stream));
             }
+            
             var info = await ReminderInfo.DeserializeAsync(stream);
-            if(info == null)
+            if (info == null)
             {
                 return null;
             }
+            
             var reminder = new ActorReminder(token.ActorType, token.ActorId, token.Name, info.Data, info.DueTime, 
                 info.Period);
             return reminder;
