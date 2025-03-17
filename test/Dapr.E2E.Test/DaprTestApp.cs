@@ -58,7 +58,7 @@ namespace Dapr.E2E.Test
                 "--resources-path", resourcesPath,
                 "--config", configPath,
                 "--log-level", "debug",
-                "--max-body-size", "32"
+                "--max-body-size", "8Mi"
             };
 
             if (configuration.UseAppPort)
