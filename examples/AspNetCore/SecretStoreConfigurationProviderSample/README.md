@@ -20,7 +20,7 @@ To load secrets into configuration call the _AddDaprSecretStore_ extension metho
 Use Dapr to run the application:
 
 ```shell
-dapr run --app-id SecretStoreConfigurationProviderSample --components-path ./components/ -- dotnet run
+dapr run --app-id SecretStoreConfigurationProviderSample --resources-path ./components/ -- dotnet run
 ```
 
 ### 2. Test the application
