@@ -147,7 +147,7 @@ cd examples/Client/ConfigurationApi
 To run the `ConfigurationExample`, execute the following command:
 
 ```bash
-dapr run --app-id configexample --components-path ./Components -- dotnet run
+dapr run --app-id configexample --resources-path ./Components -- dotnet run
 ```
 
 ### Get Configuration

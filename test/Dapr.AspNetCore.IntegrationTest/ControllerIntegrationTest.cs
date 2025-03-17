@@ -16,7 +16,7 @@ namespace Dapr.AspNetCore.IntegrationTest
     using System.Net.Http;
     using System.Threading.Tasks;
     using Dapr.AspNetCore.IntegrationTest.App;
-    using FluentAssertions;
+    using Shouldly;
     using Newtonsoft.Json;
     using Xunit;
 
@@ -37,7 +37,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
 
                 var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
-                widget.Count.Should().Be(18);
+                widget.Count.ShouldBe(18);
             }
         }
 
@@ -56,8 +56,8 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
-                responseWidget.Size.Should().Be(widget.Size);
-                responseWidget.Count.Should().Be(widget.Count);
+                responseWidget.Size.ShouldBe(widget.Size);
+                responseWidget.Count.ShouldBe(widget.Count);
             }
         }
 
@@ -92,7 +92,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
 
                 var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
-                widget.Count.Should().Be(18);
+                widget.Count.ShouldBe(18);
             }
         }
 
@@ -111,7 +111,7 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
 
                 var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
-                widget.Count.Should().Be(18);
+                widget.Count.ShouldBe(18);
             }
         }
 
@@ -130,8 +130,8 @@ namespace Dapr.AspNetCore.IntegrationTest
                 response.EnsureSuccessStatusCode();
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
-                responseWidget.Size.Should().Be(widget.Size);
-                responseWidget.Count.Should().Be(widget.Count);
+                responseWidget.Size.ShouldBe(widget.Size);
+                responseWidget.Count.ShouldBe(widget.Count);
             }
         }
 

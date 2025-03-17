@@ -24,7 +24,7 @@ namespace Dapr.Client.Test
     using System.Threading;
     using System.Threading.Tasks;
     using Dapr.Client.Autogen.Grpc.v1;
-    using FluentAssertions;
+    using Shouldly;
     using Grpc.Core;
     using Moq;
     using Xunit;
@@ -49,11 +49,11 @@ namespace Dapr.Client.Test
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
             var jsonFromRequest = envelope.Data.ToStringUtf8();
 
-            envelope.DataContentType.Should().Be("application/json");
-            envelope.PubsubName.Should().Be(TestPubsubName);
-            envelope.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
-            envelope.Metadata.Count.Should().Be(0);
+            envelope.DataContentType.ShouldBe("application/json");
+            envelope.PubsubName.ShouldBe(TestPubsubName);
+            envelope.Topic.ShouldBe("test");
+            jsonFromRequest.ShouldBe(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
+            envelope.Metadata.Count.ShouldBe(0);
         }
 
         [Fact]
@@ -75,9 +75,8 @@ namespace Dapr.Client.Test
             var client = new TestClient<DaprClient>(clientBuilder.Build(), handler);
             
             //Ensure that the JsonStringEnumConverter is registered
-            client.InnerClient.JsonSerializerOptions.Converters.Count.Should().Be(1);
-            client.InnerClient.JsonSerializerOptions.Converters.First().GetType().Name.Should()
-                .Match(nameof(JsonStringEnumConverter));
+            client.InnerClient.JsonSerializerOptions.Converters.Count.ShouldBe(1);
+            client.InnerClient.JsonSerializerOptions.Converters.First().GetType().Name.ShouldMatch(nameof(JsonStringEnumConverter));
 
             var publishData = new Widget {Size = "Large", Color = WidgetColor.Red};
             var request = await client.CaptureGrpcRequestAsync(async daprClient =>
@@ -89,9 +88,8 @@ namespace Dapr.Client.Test
 
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
             var jsonFromRequest = envelope.Data.ToStringUtf8();
-            jsonFromRequest.Should()
-                .Be(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
-            jsonFromRequest.Should().Match("{\"Size\":\"Large\",\"Color\":\"Red\"}");
+            jsonFromRequest.ShouldBe(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
+            jsonFromRequest.ShouldMatch("{\"Size\":\"Large\",\"Color\":\"Red\"}");
         }
 
         [Fact]
@@ -116,16 +114,16 @@ namespace Dapr.Client.Test
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
             var jsonFromRequest = envelope.Data.ToStringUtf8();
 
-            envelope.DataContentType.Should().Be("application/json");
-            envelope.PubsubName.Should().Be(TestPubsubName);
-            envelope.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
+            envelope.DataContentType.ShouldBe("application/json");
+            envelope.PubsubName.ShouldBe(TestPubsubName);
+            envelope.Topic.ShouldBe("test");
+            jsonFromRequest.ShouldBe(JsonSerializer.Serialize(publishData, client.InnerClient.JsonSerializerOptions));
 
-            envelope.Metadata.Count.Should().Be(2);
-            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
-            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
-            envelope.Metadata["key1"].Should().Be("value1");
-            envelope.Metadata["key2"].Should().Be("value2");
+            envelope.Metadata.Count.ShouldBe(2);
+            envelope.Metadata.Keys.Contains("key1").ShouldBeTrue();
+            envelope.Metadata.Keys.Contains("key2").ShouldBeTrue();
+            envelope.Metadata["key1"].ShouldBe("value1");
+            envelope.Metadata["key2"].ShouldBe("value2");
         }
 
         [Fact]
@@ -142,10 +140,10 @@ namespace Dapr.Client.Test
 
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
 
-            envelope.PubsubName.Should().Be(TestPubsubName);
-            envelope.Topic.Should().Be("test");
-            envelope.Data.Length.Should().Be(0);
-            envelope.Metadata.Count.Should().Be(0);
+            envelope.PubsubName.ShouldBe(TestPubsubName);
+            envelope.Topic.ShouldBe("test");
+            envelope.Data.Length.ShouldBe(0);
+            envelope.Metadata.Count.ShouldBe(0);
         }
 
         [Fact]
@@ -167,15 +165,15 @@ namespace Dapr.Client.Test
             request.Dismiss();
 
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
-            envelope.PubsubName.Should().Be(TestPubsubName);
-            envelope.Topic.Should().Be("test");
-            envelope.Data.Length.Should().Be(0);
+            envelope.PubsubName.ShouldBe(TestPubsubName);
+            envelope.Topic.ShouldBe("test");
+            envelope.Data.Length.ShouldBe(0);
 
-            envelope.Metadata.Count.Should().Be(2);
-            envelope.Metadata.Keys.Contains("key1").Should().BeTrue();
-            envelope.Metadata.Keys.Contains("key2").Should().BeTrue();
-            envelope.Metadata["key1"].Should().Be("value1");
-            envelope.Metadata["key2"].Should().Be("value2");
+            envelope.Metadata.Count.ShouldBe(2);
+            envelope.Metadata.Keys.Contains("key1").ShouldBeTrue();
+            envelope.Metadata.Keys.Contains("key2").ShouldBeTrue();
+            envelope.Metadata["key1"].ShouldBe("value1");
+            envelope.Metadata["key2"].ShouldBe("value2");
         }
 
         [Fact]
@@ -200,11 +198,11 @@ namespace Dapr.Client.Test
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
             var jsonFromRequest = envelope.Data.ToStringUtf8();
 
-            envelope.DataContentType.Should().Be("application/cloudevents+json");
-            envelope.PubsubName.Should().Be(TestPubsubName);
-            envelope.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(cloudEvent, client.InnerClient.JsonSerializerOptions));
-            envelope.Metadata.Count.Should().Be(0);
+            envelope.DataContentType.ShouldBe("application/cloudevents+json");
+            envelope.PubsubName.ShouldBe(TestPubsubName);
+            envelope.Topic.ShouldBe("test");
+            jsonFromRequest.ShouldBe(JsonSerializer.Serialize(cloudEvent, client.InnerClient.JsonSerializerOptions));
+            envelope.Metadata.Count.ShouldBe(0);
         }
 
         [Fact]
@@ -228,11 +226,11 @@ namespace Dapr.Client.Test
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
             var jsonFromRequest = envelope.Data.ToStringUtf8();
 
-            envelope.DataContentType.Should().Be("application/cloudevents+json");
-            envelope.PubsubName.Should().Be(TestPubsubName);
-            envelope.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(cloudEvent, client.InnerClient.JsonSerializerOptions));
-            envelope.Metadata.Count.Should().Be(0);
+            envelope.DataContentType.ShouldBe("application/cloudevents+json");
+            envelope.PubsubName.ShouldBe(TestPubsubName);
+            envelope.Topic.ShouldBe("test");
+            jsonFromRequest.ShouldBe(JsonSerializer.Serialize(cloudEvent, client.InnerClient.JsonSerializerOptions));
+            envelope.Metadata.Count.ShouldBe(0);
         }
 
         [Fact]
@@ -287,13 +285,13 @@ namespace Dapr.Client.Test
             var envelope = await request.GetRequestEnvelopeAsync<PublishEventRequest>();
             var jsonFromRequest = envelope.Data.ToStringUtf8();
 
-            envelope.DataContentType.Should().Be("application/json");
-            envelope.PubsubName.Should().Be(TestPubsubName);
-            envelope.Topic.Should().Be("test");
-            jsonFromRequest.Should().Be(JsonSerializer.Serialize(publishData));
+            envelope.DataContentType.ShouldBe("application/json");
+            envelope.PubsubName.ShouldBe(TestPubsubName);
+            envelope.Topic.ShouldBe("test");
+            jsonFromRequest.ShouldBe(JsonSerializer.Serialize(publishData));
             // The default serializer forces camel case, so this should be different from our serialization above.
-            jsonFromRequest.Should().NotBe(JsonSerializer.Serialize(publishBytes, client.InnerClient.JsonSerializerOptions));
-            envelope.Metadata.Count.Should().Be(0);
+            jsonFromRequest.ShouldNotBe(JsonSerializer.Serialize(publishBytes, client.InnerClient.JsonSerializerOptions));
+            envelope.Metadata.Count.ShouldBe(0);
         }
 
         private class PublishData

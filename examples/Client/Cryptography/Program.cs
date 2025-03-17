@@ -17,10 +17,13 @@ namespace Cryptography
 {
     class Program
     {
+        private const string ComponentName = "localstorage";
+        private const string KeyName = "rsa-private-key.pem"; //This should match the name of your generated key - this sample expects an RSA symmetrical key.
+        
         private static readonly Example[] Examples = new Example[]
         {
-            new EncryptDecryptStringExample(),
-            new EncryptDecryptFileStreamExample()
+            new EncryptDecryptStringExample(ComponentName, KeyName),
+            new EncryptDecryptFileStreamExample(ComponentName, KeyName)
         };
 
         static async Task<int> Main(string[] args)
@@ -34,7 +37,7 @@ namespace Cryptography
                 return 0;
             }
 
-            Console.WriteLine("Hello, please choose a sample to run:");
+            Console.WriteLine("Hello, please choose a sample to run by passing your selection's number into the arguments, e.g. 'dotnet run 0':");
             for (var i = 0; i < Examples.Length; i++)
             {
                 Console.WriteLine($"{i}: {Examples[i].DisplayName}");

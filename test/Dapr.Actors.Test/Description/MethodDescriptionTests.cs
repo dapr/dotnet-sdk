@@ -12,11 +12,11 @@
 // ------------------------------------------------------------------------
 
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
-using FluentAssertions.Execution;
+using Shouldly;
 using Xunit;
 
 namespace Dapr.Actors.Description
@@ -33,15 +33,14 @@ namespace Dapr.Actors.Description
             var description = MethodDescription.Create("actor", methodInfo, false);
 
             // Assert
-            description.Should().NotBeNull();
+            description.ShouldNotBeNull();
 
-            using var _ = new AssertionScope();
-            description.MethodInfo.Should().BeSameAs(methodInfo);
-            description.Name.Should().Be("GetString");
-            description.ReturnType.Should().Be<Task<string>>();
-            description.Id.Should().NotBe(0);
-            description.Arguments.Should().BeEmpty();
-            description.HasCancellationToken.Should().BeFalse();
+            description.MethodInfo.ShouldBeSameAs(methodInfo);
+            description.Name.ShouldBe("GetString");
+            description.ReturnType.ShouldBe(typeof(Task<string>));
+            description.Id.ShouldNotBe(0);
+            description.Arguments.ShouldBeEmpty();
+            description.HasCancellationToken.ShouldBeFalse();
         }
 
         [Fact]
@@ -54,7 +53,7 @@ namespace Dapr.Actors.Description
             var description = MethodDescription.Create("actor", methodInfo, true);
 
             // Assert
-            description.Id.Should().Be(70257263);
+            description.Id.ShouldBe(70257263);
         }
 
         [Fact]
@@ -67,13 +66,9 @@ namespace Dapr.Actors.Description
             var description = MethodDescription.Create("actor", methodInfo, false);
 
             // Assert
-            using var _ = new AssertionScope();
-            description.Arguments.Should().NotContainNulls();
-            description.Arguments.Should().AllBeOfType<MethodArgumentDescription>();
-            description.Arguments.Should().BeEquivalentTo(
-                new { Name = "number" },
-                new { Name = "choice" },
-                new { Name = "information" });
+            description.Arguments.ShouldNotBeNull();
+            description.Arguments.ShouldBeOfType<MethodArgumentDescription[]>();
+            description.Arguments.Select(m => new {m.Name}).ShouldBe(new[] {new {Name = "number"}, new {Name = "choice"}, new {Name = "information"}});
         }
 
         [Fact]
@@ -86,7 +81,7 @@ namespace Dapr.Actors.Description
             var description = MethodDescription.Create("actor", methodInfo, false);
 
             // Assert
-            description.HasCancellationToken.Should().BeTrue();
+            description.HasCancellationToken.ShouldBeTrue();
         }
 
         [Fact]
@@ -100,9 +95,9 @@ namespace Dapr.Actors.Description
             Action action = () => MethodDescription.Create("actor", methodInfo, false);
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Method 'MethodWithTokenNotLast' of actor interface '*+ITestActor' has a '*.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '*.CancellationToken' parameter, it must be the last parameter.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldMatch(@"Method 'MethodWithTokenNotLast' of actor interface '.*\+ITestActor' has a '.*\.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '.*\.CancellationToken' parameter, it must be the last parameter\..*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         [Fact]
@@ -116,9 +111,9 @@ namespace Dapr.Actors.Description
             Action action = () => MethodDescription.Create("actor", methodInfo, false);
 
             // Assert
-            action.Should().ThrowExactly<ArgumentException>()
-                .WithMessage("Method 'MethodWithMultipleTokens' of actor interface '*+ITestActor' has a '*.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '*.CancellationToken' parameter, it must be the last parameter.*")
-                .And.ParamName.Should().Be("actorInterfaceType");
+            var exception = Should.Throw<ArgumentException>(action);
+            exception.Message.ShouldMatch(@"Method 'MethodWithMultipleTokens' of actor interface '.*\+ITestActor' has a '.*\.CancellationToken' parameter that is not the last parameter. If an actor method accepts a '.*\.CancellationToken' parameter, it must be the last parameter.*");
+            exception.ParamName.ShouldBe("actorInterfaceType");
         }
 
         internal interface ITestActor : IActor

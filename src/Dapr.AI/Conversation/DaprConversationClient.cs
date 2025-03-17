@@ -77,7 +77,11 @@ public sealed class DaprConversationClient : DaprAIClient
 
         if (options is not null)
         {
-            request.ContextID = options.ConversationId;
+            if (options.ConversationId is not null)
+            {
+                request.ContextID = options.ConversationId;
+            }
+
             request.ScrubPII = options.ScrubPII;
 
             foreach (var (key, value) in options.Metadata)
@@ -96,7 +100,7 @@ public sealed class DaprConversationClient : DaprAIClient
             request.Inputs.Add(new P.ConversationInput
             {
                 ScrubPII = input.ScrubPII,
-                Message = input.Message,
+                Content = input.Content,
                 Role = input.Role.GetValueFromEnumMember()
             });
         }

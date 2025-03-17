@@ -1670,24 +1670,18 @@ internal class DaprClientGrpc : DaprClient
         ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
         CancellationToken cancellationToken = default)
     {
-        if (MemoryMarshal.TryGetArray(plaintextBytes, out var plaintextSegment) && plaintextSegment.Array != null)
+        using var memoryStream = plaintextBytes.CreateMemoryStream(true);
+
+        var encryptionResult =
+            await EncryptAsync(vaultResourceName, memoryStream, keyName, encryptionOptions, cancellationToken);
+
+        var bufferedResult = new ArrayBufferWriter<byte>();
+        await foreach (var item in encryptionResult.WithCancellation(cancellationToken))
         {
-            var encryptionResult = await EncryptAsync(vaultResourceName, new MemoryStream(plaintextSegment.Array),
-                keyName, encryptionOptions,
-                cancellationToken);
-
-            var bufferedResult = new ArrayBufferWriter<byte>();
-
-            await foreach (var item in encryptionResult.WithCancellation(cancellationToken))
-            {
-                bufferedResult.Write(item.Span);
-            }
-
-            return bufferedResult.WrittenMemory;
+            bufferedResult.Write(item.Span);
         }
 
-        throw new ArgumentException("The input instance doesn't have a valid underlying data store.",
-            nameof(plaintextBytes));
+        return bufferedResult.WrittenMemory;
     }
 
     /// <inheritdoc />
@@ -1895,22 +1889,18 @@ internal class DaprClientGrpc : DaprClient
         ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions decryptionOptions,
         CancellationToken cancellationToken = default)
     {
-        if (MemoryMarshal.TryGetArray(ciphertextBytes, out var ciphertextSegment) && ciphertextSegment.Array != null)
+        using var memoryStream = ciphertextBytes.CreateMemoryStream(true);
+
+        var decryptionResult =
+            await DecryptAsync(vaultResourceName, memoryStream, keyName, decryptionOptions, cancellationToken);
+        
+        var bufferedResult = new ArrayBufferWriter<byte>();
+        await foreach (var item in decryptionResult.WithCancellation(cancellationToken))
         {
-            var decryptionResult = await DecryptAsync(vaultResourceName, new MemoryStream(ciphertextSegment.Array),
-                keyName, decryptionOptions, cancellationToken);
-
-            var bufferedResult = new ArrayBufferWriter<byte>();
-            await foreach (var item in decryptionResult.WithCancellation(cancellationToken))
-            {
-                bufferedResult.Write(item.Span);
-            }
-
-            return bufferedResult.WrittenMemory;
+            bufferedResult.Write(item.Span);
         }
 
-        throw new ArgumentException("The input instance doesn't have a valid underlying data store",
-            nameof(ciphertextBytes));
+        return bufferedResult.WrittenMemory;
     }
 
     /// <inheritdoc />
