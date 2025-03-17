@@ -13,7 +13,7 @@ namespace Dapr.Jobs.Analyzer
     public sealed class MapDaprScheduledJobHandlerAnalyzer : DiagnosticAnalyzer
     {
         private static readonly DiagnosticDescriptor DaprJobHandlerRule = new DiagnosticDescriptor(
-            id: "DAPRJOBS0001",
+            id: "DAPR3001",
             title: "Ensure Post Mapper handler is present for all the Scheduled Jobs",
             messageFormat: "Job invocations require the MapDaprScheduledJobHandler be set and configured for each anticipated job on IEndpointRouteBuilder",
             category: "Usage",
@@ -65,7 +65,7 @@ namespace Dapr.Jobs.Analyzer
             var root = context.SemanticModel.SyntaxTree.GetRoot();
 
             // Search for MapPost with the corresponding route
-            int mapDaprScheduledJobHandlersCount = root.DescendantNodes()
+            var mapDaprScheduledJobHandlersCount = root.DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
                 .Where(invocation => IsNamespaceAndMethodNameEqual(context, invocation, MethodNameSpace, MapDaprScheduledJobHandlerMethod))
                 .Count();

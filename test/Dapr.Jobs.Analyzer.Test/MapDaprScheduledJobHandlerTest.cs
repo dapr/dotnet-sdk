@@ -50,7 +50,7 @@
                     }
                 }";
 
-            var expectedDiagnostic = new DiagnosticResult("DAPRJOBS0001", DiagnosticSeverity.Warning);
+            var expectedDiagnostic = new DiagnosticResult("DAPR3001", DiagnosticSeverity.Warning);
 
             await VerifyAnalyzerAsync(testCode, expectedDiagnostic);
         }
@@ -81,7 +81,7 @@
                     }
                 }";
 
-            var expectedDiagnostic = new DiagnosticResult("DAPRJOBS0001", DiagnosticSeverity.Warning);
+            var expectedDiagnostic = new DiagnosticResult("DAPR3001", DiagnosticSeverity.Warning);
 
             await VerifyAnalyzerAsync(testCode);
         }
@@ -117,7 +117,7 @@
                     }
                 }";
 
-            var expectedDiagnostic = new DiagnosticResult("DAPRJOBS0001", DiagnosticSeverity.Warning);
+            var expectedDiagnostic = new DiagnosticResult("DAPR3001", DiagnosticSeverity.Warning);
 
             await VerifyAnalyzerAsync(testCode, expectedDiagnostic, expectedDiagnostic);
         }

@@ -4,4 +4,4 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|--------------------
-DAPRJOBS0001| Usage    | Warning  | Job invocations require the MapDaprScheduledJobHandler be set and configured for each anticipated job on IEndpointRouteBuilder
+DAPR3001| Usage    | Warning  | Job invocations require the MapDaprScheduledJobHandler be set and configured for each anticipated job on IEndpointRouteBuilder
