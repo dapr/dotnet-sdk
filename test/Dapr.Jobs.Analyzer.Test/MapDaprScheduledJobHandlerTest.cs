@@ -11,11 +11,7 @@
     public class DaprJobsAnalyzerAnalyzerTests
     {
 
-#if NET6_0
-        private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net60;
-#elif NET7_0
-        private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net70;
-#elif NET8_0
+#if  NET8_0
         private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net80;
 #elif NET9_0
         private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net90;
