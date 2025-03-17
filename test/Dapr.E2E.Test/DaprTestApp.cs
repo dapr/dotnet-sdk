@@ -45,7 +45,7 @@ namespace Dapr.E2E.Test
         {
             var (appPort, httpPort, grpcPort, metricsPort) = GetFreePorts();
 
-            var componentsPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
+            var resourcesPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
             var configPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "configuration", "featureconfig.yaml");
             var arguments = new List<string>()
             {
@@ -55,11 +55,10 @@ namespace Dapr.E2E.Test
                 "--dapr-http-port", httpPort.ToString(CultureInfo.InvariantCulture),
                 "--dapr-grpc-port", grpcPort.ToString(CultureInfo.InvariantCulture),
                 "--metrics-port", metricsPort.ToString(CultureInfo.InvariantCulture),
-                "--components-path", componentsPath,
+                "--resources-path", resourcesPath,
                 "--config", configPath,
                 "--log-level", "debug",
-                "--dapr-http-max-request-size", "32",
-
+                "--max-body-size", "8Mi"
             };
 
             if (configuration.UseAppPort)
