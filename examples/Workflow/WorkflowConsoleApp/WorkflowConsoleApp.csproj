@@ -6,7 +6,6 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <NoWarn>612,618</NoWarn>
   </PropertyGroup>

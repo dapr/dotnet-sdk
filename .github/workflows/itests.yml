@@ -20,18 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['6.0', '7.0', '8.0', '9.0']
+        dotnet-version: ['8.0', '9.0']
         include:
-        - dotnet-version: '6.0'
-          display-name: '.NET 6.0'
-          framework: 'net6'
-          prefix: 'net6'
-          install-version: '6.0.x'
-        - dotnet-version: '7.0'
-          display-name: '.NET 7.0'
-          framework: 'net7'
-          prefix: 'net7'
-          install-version: '7.0.x'
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
           framework: 'net8'
@@ -50,7 +40,7 @@ jobs:
       GOPROXY: https://proxy.golang.org
       DAPR_CLI_VER: 1.15.0
       DAPR_RUNTIME_VER: 1.15.3
-      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/release-1.14/install/install.sh
+      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/release-1.15/install/install.sh
       DAPR_CLI_REF: ''
     steps:
       - name: Set up Dapr CLI
@@ -124,9 +114,11 @@ jobs:
         with:
           dotnet-version: '9.0.x'
           dotnet-quality: 'ga'
+      - name: Restore dependencies
+        run: dotnet restore
       - name: Build
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-        run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+        run: dotnet build --configuration release --no-restore /p:GITHUB_ACTIONS=false
       - name: Run General Tests
         id: tests
         continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
