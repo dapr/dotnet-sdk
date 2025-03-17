@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr;
@@ -25,7 +27,7 @@ namespace DistributedLock.Controllers
         }
 
         [HttpPost("cronbinding")]
-        [Obsolete]
+        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         public async Task<IActionResult> HandleBindingEvent()
         {
             logger.LogInformation($"Received binding event on {appId}, scanning for work.");
@@ -47,8 +49,7 @@ namespace DistributedLock.Controllers
             return Ok();
         }
 
-
-        [Obsolete]
+        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
         private async Task AttemptToProcessFile(string fileName)
         {
             // Locks are Disposable and will automatically unlock at the end of a 'using' statement.

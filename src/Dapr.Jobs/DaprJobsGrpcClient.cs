@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Runtime.Versioning;
 using Dapr.Common;
 using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
@@ -68,7 +69,7 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public override async Task ScheduleJobAsync(string jobName, DaprJobSchedule schedule,
         ReadOnlyMemory<byte>? payload = null, DateTimeOffset? startingFrom = null, int? repeats = null,
         DateTimeOffset? ttl = null,
@@ -150,7 +151,7 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="jobName">The name of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The details comprising the job.</returns>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public override async Task<DaprJobDetails> GetJobAsync(string jobName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jobName))
@@ -198,7 +199,7 @@ internal sealed class DaprJobsGrpcClient : DaprJobsClient
     /// <param name="jobName">The name of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public override async Task DeleteJobAsync(string jobName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(jobName))

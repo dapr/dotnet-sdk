@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
 
 namespace Dapr.Client
@@ -19,7 +20,7 @@ namespace Dapr.Client
     /// <summary>
     /// Class representing the response from a Lock API call.
     /// </summary>
-    [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public sealed class TryLockResponse :  IAsyncDisposable
     {
         /// <summary>

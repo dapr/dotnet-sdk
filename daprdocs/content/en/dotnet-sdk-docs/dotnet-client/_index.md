@@ -236,7 +236,7 @@ namespace LockService
 {
     class Program
     {
-        [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
+        [Experimental("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
         static async Task Main(string[] args)
         {
             var daprLockName = "lockstore";
