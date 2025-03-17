@@ -1661,7 +1661,7 @@ internal class DaprClientGrpc : DaprClient
     #region Cryptography
 
     /// <inheritdoc />
-    [Obsolete("Use `EncryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` in v1.17")]
+    [Obsolete("Use `EncryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` with the release of v1.17")]
     public override async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName,
         ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
         CancellationToken cancellationToken = default)
@@ -1681,7 +1681,7 @@ internal class DaprClientGrpc : DaprClient
     }
 
     /// <inheritdoc />
-    [Obsolete("Use `EncryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` in v1.17")]
+    [Obsolete("Use `EncryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` with the release of v1.17")]
     public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(
         string vaultResourceName,
         Stream plaintextStream,
@@ -1792,7 +1792,7 @@ internal class DaprClientGrpc : DaprClient
     }
 
     /// <inheritdoc />
-    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` in v1.17")]
+    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` with the release of v1.17")]
     public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(
         string vaultResourceName,
         Stream ciphertextStream,
@@ -1825,7 +1825,7 @@ internal class DaprClientGrpc : DaprClient
     }
 
     /// <inheritdoc />
-    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` in v1.17")]
+    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` with the release of v1.17")]
     public override Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName,
         Stream ciphertextStream, string keyName, CancellationToken cancellationToken = default) =>
         DecryptAsync(vaultResourceName, ciphertextStream, keyName, new DecryptionOptions(),
@@ -1898,7 +1898,7 @@ internal class DaprClientGrpc : DaprClient
     }
 
     /// <inheritdoc />
-    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` in v1.17")]
+    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` with the release of v1.17")]
     public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions decryptionOptions,
         CancellationToken cancellationToken = default)
@@ -1918,7 +1918,7 @@ internal class DaprClientGrpc : DaprClient
     }
 
     /// <inheritdoc />
-    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` in v1.17")]
+    [Obsolete("Use `DecryptAsync` from the `Dapr.Configuration` NuGet package instead as this method will be removed from `Dapr.Client` with the release of v1.17")]
     public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default) =>
         await DecryptAsync(vaultResourceName, ciphertextBytes, keyName,
