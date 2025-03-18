@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -1091,7 +1092,7 @@ namespace Dapr.Client
         /// <param name="encryptionOptions">Options informing how the encryption operation should be configured.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of encrypted bytes.</returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName,
             ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
             CancellationToken cancellationToken = default);
@@ -1105,7 +1106,7 @@ namespace Dapr.Client
         /// <param name="encryptionOptions">Options informing how the encryption operation should be configured.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of encrypted bytes.</returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
             EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default);
 
@@ -1118,7 +1119,7 @@ namespace Dapr.Client
         /// <param name="options">Options informing how the decryption operation should be configured.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of decrypted bytes.</returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions options,
             CancellationToken cancellationToken = default);
 
@@ -1130,7 +1131,7 @@ namespace Dapr.Client
         /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of decrypted bytes.</returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
             ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default);
 
@@ -1143,7 +1144,7 @@ namespace Dapr.Client
         /// <param name="options">Options informing how the decryption operation should be configured.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
             string keyName, DecryptionOptions options, CancellationToken cancellationToken = default);
 
@@ -1155,7 +1156,7 @@ namespace Dapr.Client
         /// <param name="keyName">The name of the key to use from the Vault for the decryption operation.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
             string keyName, CancellationToken cancellationToken = default);
 
@@ -1171,7 +1172,7 @@ namespace Dapr.Client
         ///// <param name="keyFormat">The format to use for the key result.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The name (and possibly version as name/version) of the key and its public key.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public abstract Task<(string Name, string PublicKey)> GetKeyAsync(string vaultResourceName, string keyName, SubtleGetKeyRequest.Types.KeyFormat keyFormat,
         //    CancellationToken cancellationToken = default);
 
@@ -1186,7 +1187,7 @@ namespace Dapr.Client
         ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The array of encrypted bytes.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public abstract Task<(byte[] CipherTextBytes, byte[] AuthenticationTag)> EncryptAsync(
         //    string vaultResourceName,
         //    byte[] plainTextBytes,
@@ -1206,7 +1207,7 @@ namespace Dapr.Client
         ///// <param name="nonce">The bytes comprising the nonce.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The array of encrypted bytes.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public async Task<(byte[] CipherTextBytes, byte[] AuthenticationTag)> EncryptAsync(
         //    string vaultResourceName,
         //    byte[] plainTextBytes,
@@ -1229,7 +1230,7 @@ namespace Dapr.Client
         ///// <param name="tag"></param>
         ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
         ///// <returns>The array of plaintext bytes.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public abstract Task<byte[]> DecryptAsync(string vaultResourceName, byte[] cipherTextBytes,
         //    string algorithm, string keyName, byte[] nonce, byte[] tag, byte[] associatedData,
         //    CancellationToken cancellationToken = default);
@@ -1245,7 +1246,7 @@ namespace Dapr.Client
         ///// <param name="nonce">The nonce value used.</param>
         ///// <param name="tag"></param>
         ///// <returns>The array of plaintext bytes.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public async Task<byte[]> DecryptAsync(string vaultResourceName, byte[] cipherTextBytes,
         //    string algorithm, string keyName, byte[] nonce, byte[] tag, CancellationToken cancellationToken = default) =>
         //    await DecryptAsync(vaultResourceName, cipherTextBytes, algorithm, keyName, nonce, tag, Array.Empty<byte>(), cancellationToken);
@@ -1261,7 +1262,7 @@ namespace Dapr.Client
         ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The bytes comprising the wrapped plain-text key and the authentication tag, if applicable.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public abstract Task<(byte[] WrappedKey, byte[] AuthenticationTag)> WrapKeyAsync(string vaultResourceName, byte[] plainTextKey, string keyName, string algorithm, byte[] nonce, byte[] associatedData,
         //    CancellationToken cancellationToken = default);
 
@@ -1275,7 +1276,7 @@ namespace Dapr.Client
         ///// <param name="nonce">The none used.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The bytes comprising the unwrapped key and the authentication tag, if applicable.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public async Task<(byte[] WrappedKey, byte[] AuthenticationTag)> WrapKeyAsync(string vaultResourceName, byte[] plainTextKey, string keyName, string algorithm,
         //    byte[] nonce, CancellationToken cancellationToken = default) => await WrapKeyAsync(vaultResourceName, plainTextKey,
         //    keyName, algorithm, nonce, Array.Empty<byte>(), cancellationToken);
@@ -1292,7 +1293,7 @@ namespace Dapr.Client
         ///// <param name="associatedData">Any associated data when using AEAD ciphers.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The bytes comprising the unwrapped key.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public abstract Task<byte[]> UnwrapKeyAsync(string vaultResourceName, byte[] wrappedKey, string algorithm, string keyName, byte[] nonce, byte[] tag, byte[] associatedData,
         //    CancellationToken cancellationToken = default);
 
@@ -1307,7 +1308,7 @@ namespace Dapr.Client
         ///// <param name="tag">The bytes comprising the authentication tag.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The bytes comprising the unwrapped key.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public async Task<byte[]> UnwrapKeyAsync(string vaultResourceName, byte[] wrappedKey, string algorithm, string keyName,
         //    byte[] nonce, byte[] tag,
         //    CancellationToken cancellationToken = default) => await UnwrapKeyAsync(vaultResourceName,
@@ -1323,7 +1324,7 @@ namespace Dapr.Client
         ///// <param name="nonce">The nonce value.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The bytes comprising the unwrapped key.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public async Task<byte[]> UnwrapKeyAsync(string vaultResourceName, byte[] wrappedKey, string algorithm, string keyName,
         //    byte[] nonce, CancellationToken cancellationToken = default) => await UnwrapKeyAsync(vaultResourceName,
         //    wrappedKey, algorithm, keyName, nonce, Array.Empty<byte>(), Array.Empty<byte>(), cancellationToken);
@@ -1337,7 +1338,7 @@ namespace Dapr.Client
         ///// <param name="keyName">The name of the key used.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns>The bytes comprising the signature.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public abstract Task<byte[]> SignAsync(string vaultResourceName, byte[] digest, string algorithm, string keyName,
         //    CancellationToken cancellationToken = default);
 
@@ -1351,7 +1352,7 @@ namespace Dapr.Client
         ///// <param name="keyName">The name of the key used.</param>
         ///// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         ///// <returns><c>True</c> if the signature verification is successful; otherwise <c>false</c>.</returns>
-        //[RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        //[Experimental("DAPR10001")]
         //public abstract Task<bool> VerifyAsync(string vaultResourceName, byte[] digest, byte[] signature, string algorithm, string keyName,
         //    CancellationToken cancellationToken = default);
 
@@ -1366,7 +1367,7 @@ namespace Dapr.Client
         /// <param name="expiryInSeconds">The time after which the lock gets expired.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="TryLockResponse"/></returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<TryLockResponse> Lock(
             string storeName,
             string resourceId,
@@ -1383,7 +1384,7 @@ namespace Dapr.Client
         /// <param name="lockOwner">Indicates the identifier of lock owner.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
         /// <returns>A <see cref="Task"/> containing a <see cref="UnlockResponse"/></returns>
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public abstract Task<UnlockResponse> Unlock(
             string storeName,
             string resourceId,

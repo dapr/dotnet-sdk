@@ -26,8 +26,7 @@ namespace DistributedLock.Controllers
             this.appId = Environment.GetEnvironmentVariable("APP_ID");
         }
 
-        [HttpPost("cronbinding")]
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         public async Task<IActionResult> HandleBindingEvent()
         {
             logger.LogInformation($"Received binding event on {appId}, scanning for work.");
@@ -49,7 +48,7 @@ namespace DistributedLock.Controllers
             return Ok();
         }
 
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental("DAPR10001")]
         private async Task AttemptToProcessFile(string fileName)
         {
             // Locks are Disposable and will automatically unlock at the end of a 'using' statement.
