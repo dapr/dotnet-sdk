@@ -11,15 +11,16 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using System.ComponentModel;
 using System.Security.Cryptography;
 using Dapr.Cryptography.Encryption;
+#pragma warning disable CS0618 // Type or member is obsolete
 
 namespace CryptographySample;
 
-public sealed class EncryptionOperation(DaprEncryptionClient encryptionClient) : IHostedService
+public sealed class EncryptionOperation(ILogger<EncryptionOperation> logger, DaprEncryptionClient encryptionClient) : IHostedService
 {
     private const string VaultComponentName = "myvault";
+    private const string KeyName = "samplekey";
     
     /// <summary>
     /// Triggered when the application host is ready to start the service.
@@ -30,17 +31,61 @@ public sealed class EncryptionOperation(DaprEncryptionClient encryptionClient) :
     {
         //Download a medium file to use for this demonstration
         var (filePath, checksum) = await DownloadMediumFileAsync();
+        logger.LogInformation("Original checksum: {checksum}", checksum);
         
-        //Encrypt the file
-        var encryptedBytes =  await encryptionClient.EncryptAsync()
-        
+        //Load and encrypt the file
+        var encryptedFilePath = await EncryptFileAsync(filePath, cancellationToken);
+
         //Get the checksum of the encrypted file
-        
+        var encryptedChecksum = await CalculateChecksum(encryptedFilePath);
+        logger.LogInformation("Encrypted checksum: {checksum}", encryptedChecksum);
+
         //Decrypt the file
-        
+        var decryptedFilePath = await DecryptFileAsync(encryptedFilePath, cancellationToken);
+
         //Get the decrypted file's checksum
+        var decryptedChecksum = await CalculateChecksum(decryptedFilePath);
+        logger.LogInformation("Decrypted checksum: {checksum}", decryptedChecksum);
+
+        logger.LogInformation("Original and decrypted checksums {evaluationResult} a match!",
+            (string.Equals(checksum, decryptedChecksum) ? "are" : "are NOT"));
+    }
+
+    private async Task<string> EncryptFileAsync(string filePath, CancellationToken cancellationToken)
+    {
+        await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.None);
+        var encryptedBytes = await encryptionClient.EncryptAsync(VaultComponentName, fileStream, KeyName,
+            new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken);
         
-        
+        //Write the encrypted file to the file system
+        const string encryptedFileName = "enc.file";
+        await using var encryptedFileStream = new FileStream(encryptedFileName, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 1024 * 4, useAsync: true);
+        await foreach (var memory in encryptedBytes)
+        {
+            await encryptedFileStream.WriteAsync(memory, cancellationToken);
+        }
+
+        return encryptedFileStream.Name;
+    }
+    
+    private async Task<string> DecryptFileAsync(
+        string filePath,
+        CancellationToken cancellationToken)
+    {
+        await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.None);
+        var decryptedBytes = await encryptionClient.DecryptAsync(VaultComponentName, fileStream, KeyName,
+            cancellationToken: cancellationToken);
+
+        //Write the decrypted file to the file system
+        const string decryptedFileName = "dec.file";
+        await using var decryptedFileStream = new FileStream(decryptedFileName, FileMode.Create, FileAccess.Write,
+            FileShare.None, bufferSize: 1024 * 4, useAsync: true);
+        await foreach (var memory in decryptedBytes)
+        {
+            await decryptedFileStream.WriteAsync(memory, cancellationToken);
+        }
+
+        return decryptedFileStream.Name;
     }
 
     /// <summary>
