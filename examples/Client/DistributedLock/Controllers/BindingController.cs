@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -24,8 +25,7 @@ namespace DistributedLock.Controllers
             this.appId = Environment.GetEnvironmentVariable("APP_ID");
         }
 
-        [HttpPost("cronbinding")]
-        [Obsolete]
+        [Experimental("DAPR10001")]
         public async Task<IActionResult> HandleBindingEvent()
         {
             logger.LogInformation($"Received binding event on {appId}, scanning for work.");
@@ -47,8 +47,7 @@ namespace DistributedLock.Controllers
             return Ok();
         }
 
-
-        [Obsolete]
+        [Experimental("DAPR10001")]
         private async Task AttemptToProcessFile(string fileName)
         {
             // Locks are Disposable and will automatically unlock at the end of a 'using' statement.
