@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.Versioning;
 using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 

@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json;
 using Dapr.Jobs.Models;

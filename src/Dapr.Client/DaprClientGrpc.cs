@@ -11,20 +11,17 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.Versioning;
-
 namespace Dapr.Client;
 
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
