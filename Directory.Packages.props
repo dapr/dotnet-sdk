@@ -44,6 +44,7 @@
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageVersion Include="Shouldly" Version="4.2.1" />
     <PackageVersion Include="System.Formats.Asn1" Version="6.0.1" />
+    <PackageVersion Include="System.IO.Pipelines" Version="9.0.3" />
     <PackageVersion Include="System.Text.Json" Version="6.0.10" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.extensibility.core" Version="2.9.2" />

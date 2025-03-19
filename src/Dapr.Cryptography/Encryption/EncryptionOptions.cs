@@ -32,7 +32,7 @@ public class EncryptionOptions
     /// </summary>
     public KeyWrapAlgorithm KeyWrapAlgorithm { get; set; }
 
-    private int streamingBlockSizeInBytes = 4 * 1024; // 4 KB
+    private int streamingBlockSizeInBytes = 32 * 1024; // 32 KB
     /// <summary>
     /// The size of the block in bytes used to send data to the sidecar for cryptography operations.
     /// </summary>
@@ -56,7 +56,7 @@ public class EncryptionOptions
     /// <summary>
     /// The optional name (and optionally a version) of the key specified to use during decryption.
     /// </summary>
-    public string? DecryptionKeyName { get; set; } = null;
+    public string DecryptionKeyName { get; set; } = string.Empty;
 
     /// <summary>
     /// The name of the cipher to use for the encryption operation.

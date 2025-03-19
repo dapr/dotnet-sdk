@@ -47,7 +47,7 @@ public interface IDaprEncryptionClient
     /// <returns>An array of encrypted bytes.</returns>
     [Obsolete(
         "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(
         string vaultResourceName,
         Stream plaintextStream,
         string keyName,
@@ -83,7 +83,7 @@ public interface IDaprEncryptionClient
     /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
     [Obsolete(
         "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(
         string vaultResourceName,
         Stream ciphertextStream,
         string keyName,
