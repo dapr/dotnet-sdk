@@ -65,11 +65,8 @@ public sealed class DaprJobSchedule
     /// </summary>
     /// <param name="scheduledTime">The date and time when the job should be triggered.</param>
     /// <returns></returns>
-    public static DaprJobSchedule FromDateTime(DateTimeOffset scheduledTime)
-    {
-        return new DaprJobSchedule(scheduledTime.ToString("O"));
-    }
-    
+    public static DaprJobSchedule FromDateTime(DateTimeOffset scheduledTime) => new(scheduledTime.ToString("O"));
+
     /// <summary>
     /// Specifies a schedule using a Cron-like expression or '@' prefixed period strings.
     /// </summary>
@@ -86,10 +83,7 @@ public sealed class DaprJobSchedule
     /// Specifies a schedule using a duration interval articulated via a <see cref="TimeSpan"/>.
     /// </summary>
     /// <param name="duration">The duration interval.</param>
-    public static DaprJobSchedule FromDuration(TimeSpan duration)
-    {
-        return new DaprJobSchedule(duration.ToDurationString());
-    }
+    public static DaprJobSchedule FromDuration(TimeSpan duration) => new($"@every {duration.ToDurationString()}");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered to run once a year.
@@ -104,7 +98,7 @@ public sealed class DaprJobSchedule
     /// <summary>
     /// Specifies a schedule in which the job is triggered weekly.
     /// </summary>
-    public static DaprJobSchedule Weekly { get; } =new DaprJobSchedule("@weekly");
+    public static DaprJobSchedule Weekly { get; } = new DaprJobSchedule("@weekly");
 
     /// <summary>
     /// Specifies a schedule in which the job is triggered daily.

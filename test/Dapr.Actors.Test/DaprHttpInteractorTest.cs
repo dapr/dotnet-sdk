@@ -21,7 +21,7 @@ namespace Dapr.Actors.Test
     using System.Security.Authentication;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using FluentAssertions;
+    using Shouldly;
     using Xunit;
 
     /// <summary>
@@ -34,9 +34,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var keyName = "StateKey_Test";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string keyName = "StateKey_Test";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -48,8 +48,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Get);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Get);
         }
 
         [Fact]
@@ -57,9 +57,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var data = "StateData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string data = "StateData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -71,8 +71,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -80,10 +80,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var methodName = "MethodName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string methodName = "MethodName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -95,8 +95,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -104,10 +104,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var reminderName = "ReminderName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string reminderName = "ReminderName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -119,8 +119,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -128,9 +128,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var reminderName = "ReminderName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string reminderName = "ReminderName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -142,8 +142,32 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Delete);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Delete);
+        }
+
+        [Fact]
+        public async Task GetReminder_ValidateRequest()
+        {
+            await using var client = TestClient.CreateForDaprHttpInterator();
+            
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string reminderName = "ReminderName";
+
+            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+            {
+                await httpInteractor.GetReminderAsync(actorType, actorId, reminderName);
+            });
+
+            request.Dismiss();
+
+            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat,
+                actorType, actorId, reminderName);
+
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Get);
         }
 
         [Fact]
@@ -151,10 +175,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -166,8 +190,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Put);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Put);
         }
 
         [Fact]
@@ -189,8 +213,8 @@ namespace Dapr.Actors.Test
             var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
             var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
 
-            actualPath.Should().Be(expectedPath);
-            request.Request.Method.Should().Be(HttpMethod.Delete);
+            actualPath.ShouldBe(expectedPath);
+            request.Request.Method.ShouldBe(HttpMethod.Delete);
         }
 
         [Fact]
@@ -198,9 +222,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator(apiToken: "test_token");
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -210,8 +234,8 @@ namespace Dapr.Actors.Test
             request.Dismiss();
 
             request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
-            headerValues.Count().Should().Be(1);
-            headerValues.First().Should().Be("test_token");
+            headerValues.Count().ShouldBe(1);
+            headerValues.First().ShouldBe("test_token");
         }
 
         [Fact]
@@ -219,9 +243,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -231,7 +255,7 @@ namespace Dapr.Actors.Test
             request.Dismiss();
 
             request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
-            headerValues.Should().BeNull();
+            headerValues.ShouldBeNull();
         }
 
         [Fact]
@@ -239,9 +263,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -272,9 +296,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -294,9 +318,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string timerName = "TimerName";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -316,10 +340,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var methodName = "MethodName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string methodName = "MethodName";
+            const string payload = "JsonData";
 
             ActorReentrancyContextAccessor.ReentrancyContext = "1";
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
@@ -337,10 +361,10 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var methodName = "MethodName";
-            var payload = "JsonData";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string methodName = "MethodName";
+            const string payload = "JsonData";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -356,9 +380,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var keyName = "StateKey_Test";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string keyName = "StateKey_Test";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {
@@ -385,9 +409,9 @@ namespace Dapr.Actors.Test
         {
             await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var keyName = "StateKey_Test";
+            const string actorType = "ActorType_Test";
+            const string actorId = "ActorId_Test";
+            const string keyName = "StateKey_Test";
 
             var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
             {

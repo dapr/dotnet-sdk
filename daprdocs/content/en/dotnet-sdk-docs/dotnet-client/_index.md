@@ -282,26 +282,6 @@ namespace LockService
 }
 ```
 
-### Manage workflow instances (Alpha)
-
-```csharp
-var daprClient = new DaprClientBuilder().Build();
-
-string instanceId = "MyWorkflowInstance1";
-string workflowComponentName = "dapr"; // alternatively, this could be the name of a workflow component defined in yaml
-string workflowName = "MyWorkflowDefinition";
-var input = new { name = "Billy", age = 30 }; // Any JSON-serializable value is OK
-
-// Start workflow
-var startResponse = await daprClient.StartWorkflowAsync(instanceId, workflowComponentName, workflowName, input);
-
-// Terminate workflow
-await daprClient.TerminateWorkflowAsync(instanceId, workflowComponentName);
-
-// Get workflow metadata
-var getResponse = await daprClient.GetWorkflowAsync(instanceId, workflowComponentName, workflowName);
-```
-
 ## Sidecar APIs
 ### Sidecar Health
 The .NET SDK provides a way to poll for the sidecar health, as well as a convenience method to wait for the sidecar to be ready.
