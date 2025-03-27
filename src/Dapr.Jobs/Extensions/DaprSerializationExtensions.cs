@@ -14,6 +14,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
+using Dapr.Common;
 using Dapr.Jobs.Models;
 
 namespace Dapr.Jobs.Extensions;
@@ -40,7 +41,7 @@ public static class DaprJobsSerializationExtensions
     /// <param name="jsonSerializerOptions">Optional JSON serialization options.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Experimental("DAPR10001")]
+    [Experimental(DaprExperimentalConstants.JobsIdentifier)]
     public static async Task ScheduleJobWithPayloadAsync(this DaprJobsClient client, string jobName, DaprJobSchedule schedule,
         object payload, DateTime? startingFrom = null, int? repeats = null, JsonSerializerOptions? jsonSerializerOptions = null, DateTimeOffset? ttl = null,
         CancellationToken cancellationToken = default)
@@ -65,7 +66,7 @@ public static class DaprJobsSerializationExtensions
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Experimental("DAPR10001")]
+    [Experimental(DaprExperimentalConstants.JobsIdentifier)]
     public static async Task ScheduleJobWithPayloadAsync(this DaprJobsClient client, string jobName, DaprJobSchedule schedule,
         string payload, DateTime? startingFrom = null, int? repeats = null, DateTimeOffset? ttl = null,
         CancellationToken cancellationToken = default)

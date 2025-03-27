@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr;
 using Dapr.Client;
+using Dapr.Common;
 using DistributedLock.Model;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ namespace DistributedLock.Controllers
             this.appId = Environment.GetEnvironmentVariable("APP_ID");
         }
 
-        [Experimental("DAPR10001")]
+        [Experimental(DaprExperimentalConstants.BindingIdentifier)]
         public async Task<IActionResult> HandleBindingEvent()
         {
             logger.LogInformation($"Received binding event on {appId}, scanning for work.");
@@ -47,7 +48,7 @@ namespace DistributedLock.Controllers
             return Ok();
         }
 
-        [Experimental("DAPR10001")]
+        [Experimental(DaprExperimentalConstants.BindingIdentifier)]
         private async Task AttemptToProcessFile(string fileName)
         {
             // Locks are Disposable and will automatically unlock at the end of a 'using' statement.

@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Diagnostics.CodeAnalysis;
+using Dapr.Common;
 using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 
@@ -46,7 +47,7 @@ public abstract class DaprJobsClient : IDisposable
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Experimental("DAPR10001")]
+    [Experimental(DaprExperimentalConstants.JobsIdentifier)]
     public abstract Task ScheduleJobAsync(string jobName, DaprJobSchedule schedule,
         ReadOnlyMemory<byte>? payload = null, DateTimeOffset? startingFrom = null, int? repeats = null,
         DateTimeOffset? ttl = null,
@@ -58,7 +59,7 @@ public abstract class DaprJobsClient : IDisposable
     /// <param name="jobName">The jobName of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The details comprising the job.</returns>
-    [Experimental("DAPR10001")]
+    [Experimental(DaprExperimentalConstants.JobsIdentifier)]
     public abstract Task<DaprJobDetails> GetJobAsync(string jobName, CancellationToken cancellationToken = default);
     
     /// <summary>
@@ -66,7 +67,7 @@ public abstract class DaprJobsClient : IDisposable
     /// </summary>
     /// <param name="jobName">The jobName of the job.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Experimental("DAPR10001")]
+    [Experimental(DaprExperimentalConstants.JobsIdentifier)]
     public abstract Task DeleteJobAsync(string jobName, CancellationToken cancellationToken = default);
     
     internal static KeyValuePair<string, string>? GetDaprApiTokenHeader(string apiToken)

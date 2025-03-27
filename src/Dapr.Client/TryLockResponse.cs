@@ -14,13 +14,14 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
+using Dapr.Common;
 
 namespace Dapr.Client
 {
     /// <summary>
     /// Class representing the response from a Lock API call.
     /// </summary>
-    [Experimental("DAPR10001")]
+    [Experimental(DaprExperimentalConstants.LockIdentifier)]
     public sealed class TryLockResponse :  IAsyncDisposable
     {
         /// <summary>
