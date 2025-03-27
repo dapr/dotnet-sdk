@@ -232,12 +232,13 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 using System;
 using System.Runtime.Versioning;
 using Dapr.Client;
+using Dapr.Common;
 
 namespace LockService
 {
     class Program
     {
-        [RequiresPreviewFeatures("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        [Experimental(DaprExperimentalConstants.LockIdentifier)]
         static async Task Main(string[] args)
         {
             var daprLockName = "lockstore";
