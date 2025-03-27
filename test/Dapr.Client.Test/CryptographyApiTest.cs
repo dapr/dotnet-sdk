@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+#pragma warning disable DAPR_CRYPTO_0001
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace Dapr.Client.Test

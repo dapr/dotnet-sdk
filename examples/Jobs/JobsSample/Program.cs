@@ -16,6 +16,7 @@ using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
+#pragma warning disable DAPR_JOBS_0001
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDaprJobsClient();

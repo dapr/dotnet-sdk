@@ -16,6 +16,7 @@ using System.Net.Http;
 using Dapr.Jobs.Models;
 using Moq;
 using Xunit;
+#pragma warning disable DAPR_JOBS_0001
 
 namespace Dapr.Jobs.Test;
 

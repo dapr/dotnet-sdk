@@ -13,6 +13,7 @@
 
 using System.Buffers;
 using Dapr.Client;
+#pragma warning disable DAPR_CRYPTO_0001
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace Cryptography.Examples
