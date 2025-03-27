@@ -12,14 +12,16 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
+using Dapr.Common;
 
 namespace Dapr.Client
 {
     /// <summary>
     /// Class representing the response from a Lock API call.
     /// </summary>
-    [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+    [Experimental(DaprExperimentalConstants.LockIdentifier)]
     public sealed class TryLockResponse :  IAsyncDisposable
     {
         /// <summary>

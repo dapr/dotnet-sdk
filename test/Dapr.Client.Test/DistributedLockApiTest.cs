@@ -17,9 +17,11 @@ using Xunit;
 using Shouldly;
 using System;
 
+#pragma warning disable DAPR_LOCK_0001
+
 namespace Dapr.Client.Test
 {
-    [System.Obsolete]
+    [Obsolete]
     public class DistributedLockApiTest
     {
         [Fact]

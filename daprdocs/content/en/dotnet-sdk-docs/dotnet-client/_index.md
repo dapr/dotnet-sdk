@@ -230,13 +230,15 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 
 ```csharp
 using System;
+using System.Runtime.Versioning;
 using Dapr.Client;
+using Dapr.Common;
 
 namespace LockService
 {
     class Program
     {
-        [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
+        [Experimental(DaprExperimentalConstants.LockIdentifier)]
         static async Task Main(string[] args)
         {
             var daprLockName = "lockstore";
