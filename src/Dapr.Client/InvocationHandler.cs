@@ -42,17 +42,8 @@ namespace Dapr.Client;
 /// </remarks>
 public class InvocationHandler : DelegatingHandler
 {
-    private Uri parsedEndpoint;
-    private string? apiToken;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="InvocationHandler" />.
-    /// </summary>
-    public InvocationHandler()
-    {
-        this.parsedEndpoint = new Uri(DaprDefaults.GetDefaultHttpEndpoint(), UriKind.Absolute);
-        this.apiToken = DaprDefaults.GetDefaultDaprApiToken(null);
-    }
+    private Uri parsedEndpoint = new(DaprDefaults.GetDefaultHttpEndpoint(), UriKind.Absolute);
+    private string? apiToken = DaprDefaults.GetDefaultDaprApiToken(null);
 
     /// <summary>
     /// Gets or the sets the URI of the Dapr HTTP endpoint used for service invocation.
@@ -60,10 +51,7 @@ public class InvocationHandler : DelegatingHandler
     /// <returns>The URI of the Dapr HTTP endpoint used for service invocation.</returns>
     public string DaprEndpoint
     {
-        get
-        {
-            return this.parsedEndpoint.OriginalString;
-        }
+        get => this.parsedEndpoint.OriginalString;
         set
         {
             if (value == null)
@@ -106,11 +94,16 @@ public class InvocationHandler : DelegatingHandler
 
         try
         {
-            var apiTokenHeader = DaprClient.GetDaprApiTokenHeader(this.apiToken);
-            if (apiTokenHeader is not null)
+            var token = this.apiToken;
+            if (token != null)
             {
-                request.Headers.Add(apiTokenHeader.Value.Key, apiTokenHeader.Value.Value);
+                var apiTokenHeader = DaprClient.GetDaprApiTokenHeader(token);
+                if (apiTokenHeader is not null)
+                {
+                    request.Headers.Add(apiTokenHeader.Value.Key, apiTokenHeader.Value.Value);
+                }
             }
+
             request.RequestUri = rewritten;
 
             return await base.SendAsync(request, cancellationToken);

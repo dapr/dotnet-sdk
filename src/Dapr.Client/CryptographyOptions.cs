@@ -6,21 +6,13 @@ namespace Dapr.Client;
 /// <summary>
 /// A collection of options used to configure how encryption cryptographic operations are performed.
 /// </summary>
-public class EncryptionOptions
+/// <param name="keyWrapAlgorithm"></param>
+public class EncryptionOptions(KeyWrapAlgorithm keyWrapAlgorithm)
 {
-    /// <summary>
-    /// Creates a new instance of the <see cref="EncryptionOptions"/>.
-    /// </summary>
-    /// <param name="keyWrapAlgorithm"></param>
-    public EncryptionOptions(KeyWrapAlgorithm keyWrapAlgorithm)
-    {
-        KeyWrapAlgorithm = keyWrapAlgorithm;
-    }
-
     /// <summary>
     /// The name of the algorithm used to wrap the encryption key.
     /// </summary>
-    public KeyWrapAlgorithm KeyWrapAlgorithm { get; set; }
+    public KeyWrapAlgorithm KeyWrapAlgorithm { get; set; } = keyWrapAlgorithm;
 
     private int streamingBlockSizeInBytes = 4 * 1024; // 4 KB
     /// <summary>
@@ -34,11 +26,7 @@ public class EncryptionOptions
         get => streamingBlockSizeInBytes;
         set
         {
-            if (value <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value));
-            }
-                
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
             streamingBlockSizeInBytes = value;
         }
     }
@@ -68,11 +56,7 @@ public class DecryptionOptions
         get => streamingBlockSizeInBytes;
         set
         {
-            if (value <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value));
-            }
-                
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
             streamingBlockSizeInBytes = value;
         }
     }

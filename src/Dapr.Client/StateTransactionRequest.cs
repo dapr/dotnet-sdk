@@ -11,6 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+using System;
+
 namespace Dapr.Client;
 
 using System.Collections.Generic;
@@ -18,58 +21,41 @@ using System.Collections.Generic;
 /// <summary>
 /// Represents a single request in in a StateTransaction.
 /// </summary>
-public sealed class StateTransactionRequest
+/// <param name="key">The state key.</param>
+/// <param name="value">The serialized state value.</param>
+/// <param name="operationType">The operation type.</param>
+/// <param name="etag">The etag (optional).</param>
+/// <param name="metadata">Additional key value pairs for the state (optional).</param>
+/// <param name="options">State options (optional).</param>
+public sealed class StateTransactionRequest(string key, byte[] value, StateOperationType operationType, string? etag = null, IReadOnlyDictionary<string, string>? metadata = null, StateOptions? options = null)
 {
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="StateTransactionRequest"/> class.
-    /// </summary>
-    /// <param name="key">The state key.</param>
-    /// <param name="value">The serialized state value.</param>
-    /// <param name="operationType">The operation type.</param>
-    /// <param name="etag">The etag (optional).</param>
-    /// <param name="metadata">Additional key value pairs for the state (optional).</param>
-    /// <param name="options">State options (optional).</param>
-    public StateTransactionRequest(string key, byte[] value, StateOperationType operationType, string etag = default, IReadOnlyDictionary<string, string> metadata = default, StateOptions options = default)
-    {
-        ArgumentVerifier.ThrowIfNull(key, nameof(key));
-
-        this.Key = key;
-        this.Value = value;
-        this.OperationType = operationType;
-        this.ETag = etag;
-        this.Metadata = metadata;
-        this.Options = options;
-    }
-
-
     /// <summary>
     /// Gets the state key.
     /// </summary>
-    public string Key { get; }
+    public string Key { get; } = key ?? throw new ArgumentNullException(nameof(key));
 
     /// <summary>
     /// Gets or sets the value locally.
     /// </summary>
-    public byte[] Value { get; set; }
+    public byte[] Value { get; set; } = value;
 
     /// <summary>
     /// The Operation type.
     /// </summary>
-    public StateOperationType OperationType { get; set; }
+    public StateOperationType? OperationType { get; set; } = operationType;
 
     /// <summary>
     /// The ETag (optional).
     /// </summary>
-    public string ETag { get; set; }
+    public string? ETag { get; set; } = etag;
 
     /// <summary>
     /// Additional key-value pairs to be passed to the state store (optional).
     /// </summary>
-    public IReadOnlyDictionary<string, string> Metadata { get; set; }
+    public IReadOnlyDictionary<string, string>? Metadata { get; set; } = metadata;
 
     /// <summary>
     /// State Options (optional).
     /// </summary>
-    public StateOptions Options;
+    public StateOptions? Options = options;
 }

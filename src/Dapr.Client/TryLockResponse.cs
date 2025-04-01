@@ -50,11 +50,11 @@ public sealed class TryLockResponse :  IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync() {
-        using (var client = new DaprClientBuilder().Build()) {
-            if(this.Success) {
-                await client.Unlock(StoreName, ResourceId, LockOwner);
-            }
+    public async ValueTask DisposeAsync()
+    {
+        using var client = new DaprClientBuilder().Build();
+        if(this.Success) {
+            await client.Unlock(StoreName, ResourceId, LockOwner);
         }
     }
 }

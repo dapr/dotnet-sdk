@@ -3,26 +3,17 @@
 /// <summary>
 /// Response from an Unsubscribe Configuration call.
 /// </summary>
-public class UnsubscribeConfigurationResponse
+/// <param name="ok">Boolean indicating success.</param>
+/// <param name="message">Message from the Configuration API.</param>
+public class UnsubscribeConfigurationResponse(bool ok, string message)
 {
     /// <summary>
     /// Boolean representing if the request was successful or not.
     /// </summary>
-    public bool Ok { get; }
+    public bool Ok { get; } = ok;
 
     /// <summary>
     /// The message from the Configuration API.
     /// </summary>
-    public string Message { get; }
-
-    /// <summary>
-    /// Constructor.
-    /// </summary>
-    /// <param name="ok">Boolean indicating success.</param>
-    /// <param name="message">Message from the Configuration API.</param>
-    public UnsubscribeConfigurationResponse(bool ok, string message)
-    {
-        Ok = ok;
-        Message = message;
-    }
+    public string Message { get; } = message;
 }

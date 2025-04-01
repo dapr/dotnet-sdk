@@ -19,22 +19,10 @@ namespace Dapr.Client;
 /// <summary>
 /// gRPC interceptor which adds the required headers for Dapr gRPC proxying.
 /// </summary>
-public class InvocationInterceptor : Interceptor
+/// <param name="appId">The Id of the Dapr Application.</param>
+/// <param name="daprApiToken">The api token used for authentication, can be null.</param>
+public class InvocationInterceptor(string appId, string daprApiToken) : Interceptor
 {
-    private string appId;
-    private string daprApiToken;
-
-    /// <summary>
-    /// Constructor.
-    /// <param name="appId">The Id of the Dapr Application.</param>
-    /// <param name="daprApiToken">The api token used for authentication, can be null.</param>
-    /// </summary>
-    public InvocationInterceptor(string appId, string daprApiToken)
-    {
-        this.appId = appId;
-        this.daprApiToken = daprApiToken;
-    }
-
     /// <summary>
     /// Intercept and add headers to a BlockingUnaryCall.
     /// </summary>
@@ -121,7 +109,7 @@ public class InvocationInterceptor : Interceptor
         // Need to create a new context with headers for the call.
         if (headers == null)
         {
-            headers = new Metadata();
+            headers = [];
             var options = context.Options.WithHeaders(headers);
             context = new ClientInterceptorContext<TRequest, TResponse>(context.Method, context.Host, options);
         }

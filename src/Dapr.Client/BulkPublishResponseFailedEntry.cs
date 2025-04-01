@@ -16,26 +16,17 @@ namespace Dapr.Client;
 /// <summary>
 /// Class representing the status of each event that was published using BulkPublishRequest.
 /// </summary>
-public class BulkPublishResponseFailedEntry<TValue>
+/// <param name="entry">The entry that failed to be published.</param>
+/// <param name="errorMessage">Error message as to why the entry failed to publish.</param>
+public class BulkPublishResponseFailedEntry<TValue>(BulkPublishEntry<TValue> entry, string errorMessage)
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="BulkPublishResponseFailedEntry{TValue}"/> class.
-    /// </summary>
-    /// <param name="entry">The entry that failed to be published.</param>
-    /// <param name="errorMessage">Error message as to why the entry failed to publish.</param>
-    public BulkPublishResponseFailedEntry(BulkPublishEntry<TValue> entry, string errorMessage)
-    {
-        this.Entry = entry;
-        this.ErrorMessage = errorMessage;
-    }
-        
     /// <summary>
     /// The entry that has failed.
     /// </summary>
-    public BulkPublishEntry<TValue> Entry { get; }
+    public BulkPublishEntry<TValue> Entry { get; } = entry;
 
     /// <summary>
     /// Error message as to why the entry failed to publish.
     /// </summary>
-    public string ErrorMessage { get; }
+    public string ErrorMessage { get; } = errorMessage;
 }

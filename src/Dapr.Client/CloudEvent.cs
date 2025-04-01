@@ -44,20 +44,12 @@ public class CloudEvent
 /// <summary>
 /// Represents a CloudEvent with typed data.
 /// </summary>
-public class CloudEvent<TData> : CloudEvent
+public class CloudEvent<TData>(TData data) : CloudEvent
 {
-    /// <summary>
-    /// Initialize a new instance of the <see cref="CloudEvent{TData}"/> class.
-    /// </summary>
-    public CloudEvent(TData data)
-    {
-        Data = data;
-    }
-
     /// <summary>
     /// CloudEvent 'data' content.
     /// </summary>
-    public TData Data { get; }
+    public TData Data { get; } = data;
 
     /// <summary>
     /// Gets event data.

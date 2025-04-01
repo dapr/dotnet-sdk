@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
 using System.Collections.Generic;
 
 namespace Dapr.Client;
@@ -18,47 +19,35 @@ namespace Dapr.Client;
 /// <summary>
 /// Represents a state object used for bulk delete state operation
 /// </summary>
-public readonly struct SaveStateItem<TValue>
+/// <param name="key">The state key.</param>
+/// <param name="value">The state value.</param>
+/// <param name="etag">The ETag.</param>
+/// <param name="stateOptions">The stateOptions.</param>
+/// <param name="metadata">The metadata.</param>
+public readonly struct SaveStateItem<TValue>(string key, TValue value, string etag, StateOptions? stateOptions = null, IReadOnlyDictionary<string, string>? metadata = null)
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SaveStateItem{TValue}"/> class.
-    /// </summary>
-    /// <param name="key">The state key.</param>
-    /// <param name="value">The state value.</param>
-    /// <param name="etag">The ETag.</param>
-    /// <param name="stateOptions">The stateOptions.</param>
-    /// <param name="metadata">The metadata.</param>
-    public SaveStateItem(string key, TValue value, string etag, StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default)
-    {
-        this.Key = key;
-        this.Value = value;
-        this.ETag = etag;
-        this.StateOptions = stateOptions;
-        this.Metadata = metadata;
-    }
-
     /// <summary>
     /// Gets the state key.
     /// </summary>
-    public string Key { get; }
-        
+    public string Key { get; } = key;
+
     /// <summary>
     /// Gets the state value.
     /// </summary>
-    public TValue Value { get; }
+    public TValue Value { get; } = value;
 
     /// <summary>
     /// Get the ETag.
     /// </summary>
-    public string ETag { get; }
+    public string ETag { get; } = etag;
 
     /// <summary>
     /// Gets the StateOptions.
     /// </summary>
-    public StateOptions StateOptions { get; }
+    public StateOptions? StateOptions { get; } = stateOptions;
 
     /// <summary>
     /// Gets the Metadata.
     /// </summary>
-    public IReadOnlyDictionary<string, string> Metadata { get; }
+    public IReadOnlyDictionary<string, string>? Metadata { get; } = metadata;
 }

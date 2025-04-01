@@ -11,6 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
+using System;
+
 namespace Dapr;
 
 using System.Collections.Generic;
@@ -22,56 +25,37 @@ using Dapr.Client;
 /// Represents a value in the Dapr state store.
 /// </summary>
 /// <typeparam name="TValue">The data type of the value.</typeparam>
-public sealed class StateEntry<TValue>
+/// <param name="client">The <see cref="DaprClient" /> instance used to retrieve the value.</param>
+/// <param name="storeName">The name of the state store.</param>
+/// <param name="key">The state key.</param>
+/// <param name="value">The value.</param>
+/// <param name="etag">The ETag.</param>
+/// <remarks>
+/// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use  
+/// <see cref="DaprClient.GetStateEntryAsync{TValue}(string, string, ConsistencyMode?, IReadOnlyDictionary{string, string}, CancellationToken)" /> to access
+/// state entries.
+/// </remarks>
+public sealed class StateEntry<TValue>(DaprClient client, string storeName, string key, TValue value, string etag)
 {
-    private readonly DaprClient client;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="StateEntry{TValue}"/> class.
-    /// </summary>
-    /// <param name="client">The <see cref="DaprClient" /> instance used to retrieve the value.</param>
-    /// <param name="storeName">The name of the state store.</param>
-    /// <param name="key">The state key.</param>
-    /// <param name="value">The value.</param>
-    /// <param name="etag">The ETag.</param>
-    /// <remarks>
-    /// Application code should not need to create instances of <see cref="StateEntry{T}" />. Use  
-    /// <see cref="DaprClient.GetStateEntryAsync{TValue}(string, string, ConsistencyMode?, IReadOnlyDictionary{string, string}, CancellationToken)" /> to access
-    /// state entries.
-    /// </remarks>
-    public StateEntry(DaprClient client, string storeName, string key, TValue value, string etag)
-    {
-        ArgumentVerifier.ThrowIfNull(client, nameof(client));
-        ArgumentVerifier.ThrowIfNullOrEmpty(storeName, nameof(storeName));
-        ArgumentVerifier.ThrowIfNullOrEmpty(key, nameof(key));
-
-        this.StoreName = storeName;
-        this.Key = key;
-        this.Value = value;
-        this.client = client;
-
-        this.ETag = etag;
-    }
-
     /// <summary>
     /// Gets the State Store Name.
     /// </summary>
-    public string StoreName { get; }
+    public string StoreName { get; } = storeName ?? throw new ArgumentNullException(nameof(storeName));
 
     /// <summary>
     /// Gets the state key.
     /// </summary>
-    public string Key { get; }
+    public string Key { get; } = key ?? throw new ArgumentNullException(nameof(key));
 
     /// <summary>
     /// Gets or sets the value locally.  This is not sent to the state store until an API (e.g. <see cref="DeleteAsync(StateOptions, IReadOnlyDictionary{string, string}, CancellationToken)"/> is called.
     /// </summary>
-    public TValue Value { get; set; }
+    public TValue Value { get; set; } = value;
 
     /// <summary>
     /// The ETag.
     /// </summary>
-    public string ETag { get; }
+    public string ETag { get; } = etag;
 
     /// <summary>
     /// Deletes the entry associated with <see cref="Key" /> in the state store.
@@ -80,10 +64,10 @@ public sealed class StateEntry<TValue>
     /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-    public Task DeleteAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+    public Task DeleteAsync(StateOptions? stateOptions = null, IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default)
     {
         // ETag is intentionally not specified
-        return this.client.DeleteStateAsync(this.StoreName, this.Key, stateOptions, metadata, cancellationToken);
+        return client.DeleteStateAsync(this.StoreName, this.Key, stateOptions, metadata, cancellationToken);
     }
 
     /// <summary>
@@ -93,10 +77,10 @@ public sealed class StateEntry<TValue>
     /// <param name="metadata">An key/value pair that may be consumed by the state store.  This is dependent on the type of state store used.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-    public Task SaveAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+    public Task SaveAsync(StateOptions? stateOptions = null, IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default)
     {
         // ETag is intentionally not specified
-        return this.client.SaveStateAsync(
+        return client.SaveStateAsync(
             storeName: this.StoreName,
             key: this.Key,
             value: this.Value,
@@ -112,9 +96,9 @@ public sealed class StateEntry<TValue>
     /// <param name="stateOptions">Options for Save state operation.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
-    public Task<bool> TrySaveAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+    public Task<bool> TrySaveAsync(StateOptions? stateOptions = null, IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default)
     {
-        return this.client.TrySaveStateAsync(
+        return client.TrySaveStateAsync(
             this.StoreName,
             this.Key,
             this.Value,
@@ -132,9 +116,9 @@ public sealed class StateEntry<TValue>
     /// <param name="metadata">An key/value pair that may be consumed by the state store.  This depends on the state store used.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will complete when the operation has completed.  If the wrapped value is true the operation suceeded.</returns>
-    public Task<bool> TryDeleteAsync(StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)
+    public Task<bool> TryDeleteAsync(StateOptions? stateOptions = null, IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default)
     {
-        return this.client.TryDeleteStateAsync(
+        return client.TryDeleteStateAsync(
             this.StoreName,
             this.Key,
             this.ETag,

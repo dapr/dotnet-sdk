@@ -48,12 +48,7 @@ internal static class TypeConverters
 
     public static T FromJsonByteString<T>(ByteString bytes, JsonSerializerOptions options)
     {
-        if (bytes.Length == 0)
-        {
-            return default;
-        }
-            
-        return JsonSerializer.Deserialize<T>(bytes.Span, options);
+        return bytes.Length == 0 ? default : JsonSerializer.Deserialize<T>(bytes.Span, options);
     }
 
     public static T FromJsonAny<T>(Any any, JsonSerializerOptions options)
