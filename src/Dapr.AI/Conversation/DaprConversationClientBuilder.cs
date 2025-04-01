@@ -25,18 +25,9 @@ public sealed class DaprConversationClientBuilder : DaprGenericClientBuilder<Dap
     /// <summary>
     /// Used to initialize a new instance of the <see cref="DaprConversationClient"/>.
     /// </summary>
-    /// <param name="configuration"></param>
-    public DaprConversationClientBuilder(IConfiguration? configuration) : base(configuration)
+    /// <param name="configuration">An optional <see cref="IConfiguration"/> to configure the client with.</param>
+    public DaprConversationClientBuilder(IConfiguration? configuration = null) : base(configuration)
     {
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <exception cref="NotImplementedException"></exception>
-    public DaprConversationClientBuilder() : base(null)
-    {
-        throw new NotImplementedException();
     }
 
     /// <summary>

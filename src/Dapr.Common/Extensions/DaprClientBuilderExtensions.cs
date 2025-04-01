@@ -39,7 +39,7 @@ internal static class DaprClientBuilderExtensions
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
         where TBuilderInterface : class, IDaprServiceBuilder
         where TClient : class, IDaprClient
-        where TClientBuilder : DaprGenericClientBuilder<TClient>, new()
+        where TClientBuilder : DaprGenericClientBuilder<TClient>
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
 
