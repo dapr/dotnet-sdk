@@ -28,5 +28,5 @@ public static class DaprAiConversationBuilderExtensions
         this IServiceCollection services,
         Action<IServiceProvider, DaprConversationClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) => services
-        .AddDaprClient<DaprConversationClient, DaprConversationGrpcClient, IDaprAiConversationBuilder, DaprConversationClientBuilder>(configure, lifetime);
+        .AddDaprClient<DaprConversationClient, DaprConversationGrpcClient, DaprAiConversationBuilder, DaprConversationClientBuilder>(configure, lifetime);
 }
