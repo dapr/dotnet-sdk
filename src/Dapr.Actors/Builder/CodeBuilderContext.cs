@@ -11,37 +11,36 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
+namespace Dapr.Actors.Builder;
+
+using System.Reflection.Emit;
+
+internal class CodeBuilderContext
 {
-    using System.Reflection.Emit;
+    private readonly bool enableDebugging;
 
-    internal class CodeBuilderContext
+    public CodeBuilderContext(string assemblyName, string assemblyNamespace, bool enableDebugging = false)
     {
-        private readonly bool enableDebugging;
+        this.AssemblyNamespace = assemblyNamespace;
+        this.enableDebugging = enableDebugging;
 
-        public CodeBuilderContext(string assemblyName, string assemblyNamespace, bool enableDebugging = false)
+        this.AssemblyBuilder = CodeBuilderUtils.CreateAssemblyBuilder(assemblyName);
+        this.ModuleBuilder = CodeBuilderUtils.CreateModuleBuilder(this.AssemblyBuilder, assemblyName);
+    }
+
+    public AssemblyBuilder AssemblyBuilder { get; }
+
+    public ModuleBuilder ModuleBuilder { get; }
+
+    public string AssemblyNamespace { get; }
+
+    public void Complete()
+    {
+        if (this.enableDebugging)
         {
-            this.AssemblyNamespace = assemblyNamespace;
-            this.enableDebugging = enableDebugging;
-
-            this.AssemblyBuilder = CodeBuilderUtils.CreateAssemblyBuilder(assemblyName);
-            this.ModuleBuilder = CodeBuilderUtils.CreateModuleBuilder(this.AssemblyBuilder, assemblyName);
-        }
-
-        public AssemblyBuilder AssemblyBuilder { get; }
-
-        public ModuleBuilder ModuleBuilder { get; }
-
-        public string AssemblyNamespace { get; }
-
-        public void Complete()
-        {
-            if (this.enableDebugging)
-            {
 #if !DotNetCoreClr
                 this.assemblyBuilder.Save(this.assemblyBuilder.GetName().Name + ".dll");
 #endif
-            }
         }
     }
 }

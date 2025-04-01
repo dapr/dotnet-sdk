@@ -19,245 +19,244 @@ using System.Threading.Tasks;
 using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 
-namespace Dapr.Extensions.Configuration.DaprSecretStore
+namespace Dapr.Extensions.Configuration.DaprSecretStore;
+
+/// <summary>
+/// A Dapr Secret Store based <see cref="ConfigurationProvider"/>.
+/// </summary>
+internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
 {
+    internal static readonly TimeSpan DefaultSidecarWaitTimeout = TimeSpan.FromSeconds(5);
+
+    private readonly string store;
+
+    private readonly bool normalizeKey;
+
+    private readonly IList<string>? keyDelimiters;
+
+    private readonly IEnumerable<DaprSecretDescriptor>? secretDescriptors;
+
+    private readonly IReadOnlyDictionary<string, string>? metadata;
+
+    private readonly DaprClient client;
+
+    private readonly TimeSpan sidecarWaitTimeout;
+
     /// <summary>
-    /// A Dapr Secret Store based <see cref="ConfigurationProvider"/>.
+    /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
     /// </summary>
-    internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
+    /// <param name="store">Dapr Secret Store name.</param>
+    /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+    /// <param name="secretDescriptors">The secrets to retrieve.</param>
+    /// <param name="client">Dapr client used to retrieve Secrets</param>
+    public DaprSecretStoreConfigurationProvider(
+        string store,
+        bool normalizeKey,
+        IEnumerable<DaprSecretDescriptor> secretDescriptors,
+        DaprClient client) : this(store, normalizeKey, null, secretDescriptors, client, DefaultSidecarWaitTimeout)
     {
-        internal static readonly TimeSpan DefaultSidecarWaitTimeout = TimeSpan.FromSeconds(5);
+    }
 
-        private readonly string store;
+    /// <summary>
+    /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
+    /// </summary>
+    /// <param name="store">Dapr Secret Store name.</param>
+    /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+    /// <param name="secretDescriptors">The secrets to retrieve.</param>
+    /// <param name="client">Dapr client used to retrieve Secrets</param>
+    public DaprSecretStoreConfigurationProvider(
+        string store,
+        bool normalizeKey,
+        IList<string>? keyDelimiters,
+        IEnumerable<DaprSecretDescriptor> secretDescriptors,
+        DaprClient client) : this(store, normalizeKey, keyDelimiters, secretDescriptors, client, DefaultSidecarWaitTimeout)
+    {
+    }
 
-        private readonly bool normalizeKey;
+    /// <summary>
+    /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
+    /// </summary>
+    /// <param name="store">Dapr Secret Store name.</param>
+    /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+    /// <param name="secretDescriptors">The secrets to retrieve.</param>
+    /// <param name="client">Dapr client used to retrieve Secrets</param>
+    /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    public DaprSecretStoreConfigurationProvider(
+        string store,
+        bool normalizeKey,
+        IList<string>? keyDelimiters,
+        IEnumerable<DaprSecretDescriptor> secretDescriptors,
+        DaprClient client,
+        TimeSpan sidecarWaitTimeout)
+    {
+        ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+        ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
+        ArgumentVerifier.ThrowIfNull(client, nameof(client));
 
-        private readonly IList<string>? keyDelimiters;
-
-        private readonly IEnumerable<DaprSecretDescriptor>? secretDescriptors;
-
-        private readonly IReadOnlyDictionary<string, string>? metadata;
-
-        private readonly DaprClient client;
-
-        private readonly TimeSpan sidecarWaitTimeout;
-
-        /// <summary>
-        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
-        /// </summary>
-        /// <param name="store">Dapr Secret Store name.</param>
-        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
-        /// <param name="secretDescriptors">The secrets to retrieve.</param>
-        /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(
-            string store,
-            bool normalizeKey,
-            IEnumerable<DaprSecretDescriptor> secretDescriptors,
-            DaprClient client) : this(store, normalizeKey, null, secretDescriptors, client, DefaultSidecarWaitTimeout)
+        if (secretDescriptors.Count() == 0)
         {
+            throw new ArgumentException("No secret descriptor was provided", nameof(secretDescriptors));
         }
 
-        /// <summary>
-        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
-        /// </summary>
-        /// <param name="store">Dapr Secret Store name.</param>
-        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
-        /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
-        /// <param name="secretDescriptors">The secrets to retrieve.</param>
-        /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(
-            string store,
-            bool normalizeKey,
-            IList<string>? keyDelimiters,
-            IEnumerable<DaprSecretDescriptor> secretDescriptors,
-            DaprClient client) : this(store, normalizeKey, keyDelimiters, secretDescriptors, client, DefaultSidecarWaitTimeout)
-        {
-        }
+        this.store = store;
+        this.normalizeKey = normalizeKey;
+        this.keyDelimiters = keyDelimiters;
+        this.secretDescriptors = secretDescriptors;
+        this.client = client;
+        this.sidecarWaitTimeout = sidecarWaitTimeout;
+    }
 
-        /// <summary>
-        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
-        /// </summary>
-        /// <param name="store">Dapr Secret Store name.</param>
-        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
-        /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
-        /// <param name="secretDescriptors">The secrets to retrieve.</param>
-        /// <param name="client">Dapr client used to retrieve Secrets</param>
-        /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
-        public DaprSecretStoreConfigurationProvider(
-            string store,
-            bool normalizeKey,
-            IList<string>? keyDelimiters,
-            IEnumerable<DaprSecretDescriptor> secretDescriptors,
-            DaprClient client,
-            TimeSpan sidecarWaitTimeout)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
-            ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
-            ArgumentVerifier.ThrowIfNull(client, nameof(client));
+    /// <summary>
+    /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
+    /// </summary>
+    /// <param name="store">Dapr Secret Store name.</param>
+    /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+    /// <param name="client">Dapr client used to retrieve Secrets</param>
+    public DaprSecretStoreConfigurationProvider(
+        string store,
+        bool normalizeKey,
+        IReadOnlyDictionary<string, string>? metadata,
+        DaprClient client) : this(store, normalizeKey, null, metadata, client, DefaultSidecarWaitTimeout)
+    {
+    }
 
-            if (secretDescriptors.Count() == 0)
+    /// <summary>
+    /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
+    /// </summary>
+    /// <param name="store">Dapr Secret Store name.</param>
+    /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+    /// <param name="client">Dapr client used to retrieve Secrets</param>
+    public DaprSecretStoreConfigurationProvider(
+        string store,
+        bool normalizeKey,
+        IList<string>? keyDelimiters,
+        IReadOnlyDictionary<string, string>? metadata,
+        DaprClient client) : this(store, normalizeKey, keyDelimiters, metadata, client, DefaultSidecarWaitTimeout)
+    {
+    }
+
+    /// <summary>
+    /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
+    /// </summary>
+    /// <param name="store">Dapr Secret Store name.</param>
+    /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
+    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+    /// <param name="client">Dapr client used to retrieve Secrets</param>
+    /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    public DaprSecretStoreConfigurationProvider(
+        string store,
+        bool normalizeKey,
+        IList<string>? keyDelimiters,
+        IReadOnlyDictionary<string, string>? metadata,
+        DaprClient client,
+        TimeSpan sidecarWaitTimeout)
+    {
+        ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+        ArgumentVerifier.ThrowIfNull(client, nameof(client));
+
+        this.store = store;
+        this.normalizeKey = normalizeKey;
+        this.keyDelimiters = keyDelimiters;
+        this.metadata = metadata;
+        this.client = client;
+        this.sidecarWaitTimeout = sidecarWaitTimeout;
+    }
+
+    private string NormalizeKey(string key)
+    {
+        if (this.keyDelimiters?.Count > 0)
+        {
+            foreach (var keyDelimiter in this.keyDelimiters)
             {
-                throw new ArgumentException("No secret descriptor was provided", nameof(secretDescriptors));
+                key = key.Replace(keyDelimiter, ConfigurationPath.KeyDelimiter);
             }
-
-            this.store = store;
-            this.normalizeKey = normalizeKey;
-            this.keyDelimiters = keyDelimiters;
-            this.secretDescriptors = secretDescriptors;
-            this.client = client;
-            this.sidecarWaitTimeout = sidecarWaitTimeout;
         }
 
-        /// <summary>
-        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
-        /// </summary>
-        /// <param name="store">Dapr Secret Store name.</param>
-        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
-        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
-        /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(
-            string store,
-            bool normalizeKey,
-            IReadOnlyDictionary<string, string>? metadata,
-            DaprClient client) : this(store, normalizeKey, null, metadata, client, DefaultSidecarWaitTimeout)
+        return key;
+    }
+
+    /// <summary>
+    /// Loads the configuration by calling the asynchronous LoadAsync method and blocking the calling
+    /// thread until the operation is completed.
+    /// </summary>
+    public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+
+    private async Task LoadAsync()
+    {
+        var data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+
+        // Wait for the Dapr Sidecar to report healthy before attempting to fetch secrets.
+        using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
         {
+            await client.WaitForSidecarAsync(tokenSource.Token);
         }
 
-        /// <summary>
-        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
-        /// </summary>
-        /// <param name="store">Dapr Secret Store name.</param>
-        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
-        /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
-        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
-        /// <param name="client">Dapr client used to retrieve Secrets</param>
-        public DaprSecretStoreConfigurationProvider(
-            string store,
-            bool normalizeKey,
-            IList<string>? keyDelimiters,
-            IReadOnlyDictionary<string, string>? metadata,
-            DaprClient client) : this(store, normalizeKey, keyDelimiters, metadata, client, DefaultSidecarWaitTimeout)
+        if (secretDescriptors != null)
         {
-        }
-
-        /// <summary>
-        /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
-        /// </summary>
-        /// <param name="store">Dapr Secret Store name.</param>
-        /// <param name="normalizeKey">Indicates whether any key delimiters should be replaced with the delimiter ":".</param>
-        /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
-        /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
-        /// <param name="client">Dapr client used to retrieve Secrets</param>
-        /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
-        public DaprSecretStoreConfigurationProvider(
-            string store,
-            bool normalizeKey,
-            IList<string>? keyDelimiters,
-            IReadOnlyDictionary<string, string>? metadata,
-            DaprClient client,
-            TimeSpan sidecarWaitTimeout)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
-            ArgumentVerifier.ThrowIfNull(client, nameof(client));
-
-            this.store = store;
-            this.normalizeKey = normalizeKey;
-            this.keyDelimiters = keyDelimiters;
-            this.metadata = metadata;
-            this.client = client;
-            this.sidecarWaitTimeout = sidecarWaitTimeout;
-        }
-
-        private string NormalizeKey(string key)
-        {
-            if (this.keyDelimiters?.Count > 0)
+            foreach (var secretDescriptor in secretDescriptors)
             {
-                foreach (var keyDelimiter in this.keyDelimiters)
+
+                Dictionary<string, string> result;
+
+                try
                 {
-                    key = key.Replace(keyDelimiter, ConfigurationPath.KeyDelimiter);
+                    result = await client
+                        .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata)
+                        .ConfigureAwait(false);
                 }
-            }
-
-            return key;
-        }
-
-        /// <summary>
-        /// Loads the configuration by calling the asynchronous LoadAsync method and blocking the calling
-        /// thread until the operation is completed.
-        /// </summary>
-        public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-
-        private async Task LoadAsync()
-        {
-            var data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-
-            // Wait for the Dapr Sidecar to report healthy before attempting to fetch secrets.
-            using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
-            {
-                await client.WaitForSidecarAsync(tokenSource.Token);
-            }
-
-            if (secretDescriptors != null)
-            {
-                foreach (var secretDescriptor in secretDescriptors)
+                catch (DaprException)
                 {
-
-                    Dictionary<string, string> result;
-
-                    try
+                    if (secretDescriptor.IsRequired)
                     {
-                        result = await client
-                            .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata)
-                            .ConfigureAwait(false);
+                        throw;
                     }
-                    catch (DaprException)
-                    {
-                        if (secretDescriptor.IsRequired)
-                        {
-                            throw;
-                        }
-                        result = new Dictionary<string, string>();
-                    }
-
-                    foreach (var key in result.Keys)
-                    {
-                        if (data.ContainsKey(key))
-                        {
-                            throw new InvalidOperationException(
-                                $"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
-                        }
-
-                        // The name of the key "as desired" by the user based on the descriptor.
-                        //
-                        // NOTE: This should vary only if a single secret of the same name is returned.
-                        string desiredKey = StringComparer.Ordinal.Equals(key, secretDescriptor.SecretKey) ? secretDescriptor.SecretName : key;
-
-                        // The name of the key normalized based on the configured delimiters.
-                        string normalizedKey = normalizeKey ? NormalizeKey(desiredKey) : desiredKey;
-
-                        data.Add(normalizedKey, result[key]);
-                    }
+                    result = new Dictionary<string, string>();
                 }
 
-                Data = data;
-            }
-            else
-            {
-                var result = await client.GetBulkSecretAsync(store, metadata).ConfigureAwait(false);
                 foreach (var key in result.Keys)
                 {
-                    foreach (var secret in result[key])
+                    if (data.ContainsKey(key))
                     {
-                        if (data.ContainsKey(secret.Key))
-                        {
-                            throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
-                        }
-
-                        data.Add(normalizeKey ? NormalizeKey(secret.Key) : secret.Key, secret.Value);
+                        throw new InvalidOperationException(
+                            $"A duplicate key '{key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                     }
+
+                    // The name of the key "as desired" by the user based on the descriptor.
+                    //
+                    // NOTE: This should vary only if a single secret of the same name is returned.
+                    string desiredKey = StringComparer.Ordinal.Equals(key, secretDescriptor.SecretKey) ? secretDescriptor.SecretName : key;
+
+                    // The name of the key normalized based on the configured delimiters.
+                    string normalizedKey = normalizeKey ? NormalizeKey(desiredKey) : desiredKey;
+
+                    data.Add(normalizedKey, result[key]);
                 }
-                Data = data;
             }
+
+            Data = data;
+        }
+        else
+        {
+            var result = await client.GetBulkSecretAsync(store, metadata).ConfigureAwait(false);
+            foreach (var key in result.Keys)
+            {
+                foreach (var secret in result[key])
+                {
+                    if (data.ContainsKey(secret.Key))
+                    {
+                        throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
+                    }
+
+                    data.Add(normalizeKey ? NormalizeKey(secret.Key) : secret.Key, secret.Value);
+                }
+            }
+            Data = data;
         }
     }
 }

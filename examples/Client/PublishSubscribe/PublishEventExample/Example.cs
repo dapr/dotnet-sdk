@@ -14,14 +14,13 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Samples.Client
+namespace Samples.Client;
+
+public abstract class Example
 {
-    public abstract class Example
-    {
-        protected static readonly string pubsubName = "pubsub";
+    protected static readonly string pubsubName = "pubsub";
 
-        public abstract string DisplayName { get; }
+    public abstract string DisplayName { get; }
 
-        public abstract Task RunAsync(CancellationToken cancellationToken);
-    }
+    public abstract Task RunAsync(CancellationToken cancellationToken);
 }

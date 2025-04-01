@@ -11,44 +11,43 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client.Test
+namespace Dapr.Client.Test;
+
+using System;
+using Xunit;
+
+public class ArgumentVerifierTest
 {
-    using System;
-    using Xunit;
-
-    public class ArgumentVerifierTest
+    [Fact]
+    public void ThrowIfNull_RespectsArgumentName()
     {
-        [Fact]
-        public void ThrowIfNull_RespectsArgumentName()
+        var ex = Assert.Throws<ArgumentNullException>(() =>
         {
-            var ex = Assert.Throws<ArgumentNullException>(() =>
-                {
-                    ArgumentVerifier.ThrowIfNull(null, "args");
-                });
+            ArgumentVerifier.ThrowIfNull(null, "args");
+        });
 
-            Assert.Contains("args", ex.Message);
-        }
+        Assert.Contains("args", ex.Message);
+    }
 
-        [Fact]
-        public void ThrowIfNullOrEmpty_RespectsArgumentName_WhenValueIsNull()
+    [Fact]
+    public void ThrowIfNullOrEmpty_RespectsArgumentName_WhenValueIsNull()
+    {
+        var ex = Assert.Throws<ArgumentNullException>(() =>
         {
-            var ex = Assert.Throws<ArgumentNullException>(() =>
-                {
-                    ArgumentVerifier.ThrowIfNullOrEmpty(null, "args");
-                });
+            ArgumentVerifier.ThrowIfNullOrEmpty(null, "args");
+        });
 
-            Assert.Contains("args", ex.Message);
-        }
+        Assert.Contains("args", ex.Message);
+    }
 
-        [Fact]
-        public void ThrowIfNullOrEmpty_RespectsArgumentName_WhenValueIsEmpty()
+    [Fact]
+    public void ThrowIfNullOrEmpty_RespectsArgumentName_WhenValueIsEmpty()
+    {
+        var ex = Assert.Throws<ArgumentException>(() =>
         {
-            var ex = Assert.Throws<ArgumentException>(() =>
-                {
-                    ArgumentVerifier.ThrowIfNullOrEmpty(string.Empty, "args");
-                });
+            ArgumentVerifier.ThrowIfNullOrEmpty(string.Empty, "args");
+        });
 
-            Assert.Contains("args", ex.Message);
-        }
+        Assert.Contains("args", ex.Message);
     }
 }

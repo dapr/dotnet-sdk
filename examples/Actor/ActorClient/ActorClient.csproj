@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
-    <ProjectReference Include="..\IDemoActor\IDemoActor.csproj" />
+    <ProjectReference Include="..\DemoActor.Interfaces\DemoActor.Interfaces.csproj" />
   </ItemGroup>
 
 </Project>

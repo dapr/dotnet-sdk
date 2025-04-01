@@ -26,467 +26,466 @@ using Xunit;
 using Request = Dapr.Client.Autogen.Test.Grpc.v1.Request;
 using Response = Dapr.Client.Autogen.Test.Grpc.v1.Response;
 
-namespace Dapr.Client.Test
+namespace Dapr.Client.Test;
+
+public partial class DaprClientTest
 {
-    public partial class DaprClientTest
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_WithCancelledToken()
     {
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_WithCancelledToken()
+        await using var client = TestClient.CreateForDaprClient(c =>
         {
-            await using var client = TestClient.CreateForDaprClient(c =>
-            {
-                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
-            });
+            c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+        });
 
-            var cts = new CancellationTokenSource();
-            cts.Cancel();
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            {
-                await client.InnerClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " }, cancellationToken: cts.Token);
-            });
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData()
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
         {
-            await using var client = TestClient.CreateForDaprClient(c =>
-            {
-                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
-            });
+            await client.InnerClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " }, cancellationToken: cts.Token);
+        });
+    }
 
-            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
-            {
-                return await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
-            });
-
-            // Get Request and validate
-            var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.ShouldBe("test");
-            envelope.Message.Method.ShouldBe("test");
-            envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
-
-            // Create Response & Respond
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var response = new Autogen.Grpc.v1.InvokeResponse()
-            {
-                Data = Any.Pack(data),
-            };
-
-            // Validate Response
-            var invokedResponse = await request.CompleteWithMessageAsync(response);
-            invokedResponse.Name.ShouldBe("Look, I was invoked!");
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData_ThrowsExceptionForNonSuccess()
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData()
+    {
+        await using var client = TestClient.CreateForDaprClient(c =>
         {
-            var client = new MockClient();
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse
-            {
-                Data = Any.Pack(data),
-            };
+            c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+        });
 
-            await client.Call<InvokeResponse>()
+        var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+        {
+            return await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
+        });
+
+        // Get Request and validate
+        var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
+        envelope.Id.ShouldBe("test");
+        envelope.Message.Method.ShouldBe("test");
+        envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
+
+        // Create Response & Respond
+        var data = new Response() { Name = "Look, I was invoked!" };
+        var response = new Autogen.Grpc.v1.InvokeResponse()
+        {
+            Data = Any.Pack(data),
+        };
+
+        // Validate Response
+        var invokedResponse = await request.CompleteWithMessageAsync(response);
+        invokedResponse.Name.ShouldBe("Look, I was invoked!");
+    }
+
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData_ThrowsExceptionForNonSuccess()
+    {
+        var client = new MockClient();
+        var data = new Response() { Name = "Look, I was invoked!" };
+        var invokeResponse = new InvokeResponse
+        {
+            Data = Any.Pack(data),
+        };
+
+        await client.Call<InvokeResponse>()
+            .SetResponse(invokeResponse)
+            .Build();
+
+        const string rpcExceptionMessage = "RPC exception";
+        const StatusCode rpcStatusCode = StatusCode.Unavailable;
+        const string rpcStatusDetail = "Non success";
+
+        var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+        var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+        // Setup the mock client to throw an Rpc Exception with the expected details info
+        client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Throws(rpcException);
+
+        var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
+        {
+            await client.DaprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
+        });
+        Assert.Same(rpcException, ex.InnerException);
+    }
+
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData()
+    {
+        await using var client = TestClient.CreateForDaprClient(c =>
+        {
+            c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+        });
+
+        var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+        {
+            return await daprClient.InvokeMethodGrpcAsync<Response>("test", "test");
+        });
+
+        // Get Request and validate
+        var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
+        envelope.Id.ShouldBe("test");
+        envelope.Message.Method.ShouldBe("test");
+        envelope.Message.ContentType.ShouldBe(string.Empty);
+
+        // Create Response & Respond
+        var data = new Response() { Name = "Look, I was invoked!" };
+        var response = new Autogen.Grpc.v1.InvokeResponse()
+        {
+            Data = Any.Pack(data),
+        };
+
+        // Validate Response
+        var invokedResponse = await request.CompleteWithMessageAsync(response);
+        invokedResponse.Name.ShouldBe("Look, I was invoked!");
+    }
+
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData_ThrowsExceptionNonSuccess()
+    {
+        var client = new MockClient();
+        var data = new Response() { Name = "Look, I was invoked!" };
+        var invokeResponse = new InvokeResponse
+        {
+            Data = Any.Pack(data),
+        };
+
+        await client.Call<InvokeResponse>()
+            .SetResponse(invokeResponse)
+            .Build();
+
+
+        const string rpcExceptionMessage = "RPC exception";
+        const StatusCode rpcStatusCode = StatusCode.Unavailable;
+        const string rpcStatusDetail = "Non success";
+
+        var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+        var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+        client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Throws(rpcException);
+
+        var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
+        {
+            await client.DaprClient.InvokeMethodGrpcAsync<Response>("test", "test");
+        });
+        Assert.Same(rpcException, ex.InnerException);
+    }
+
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData()
+    {
+        var request = new Request() { RequestParameter = "Hello " };
+        var client = new MockClient();
+        var data = new Response() { Name = "Look, I was invoked!" };
+        var invokeResponse = new InvokeResponse
+        {
+            Data = Any.Pack(data),
+        };
+
+        var response =
+            client.Call<InvokeResponse>()
                 .SetResponse(invokeResponse)
                 .Build();
 
-            const string rpcExceptionMessage = "RPC exception";
-            const StatusCode rpcStatusCode = StatusCode.Unavailable;
-            const string rpcStatusDetail = "Non success";
+        client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(response);
 
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+        await Should.NotThrowAsync(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request));
+    }
 
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
-
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
-            {
-                await client.DaprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
-            });
-            Assert.Same(rpcException, ex.InnerException);
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData()
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData_ThrowsErrorNonSuccess()
+    {
+        var client = new MockClient();
+        var data = new Response() { Name = "Look, I was invoked!" };
+        var invokeResponse = new InvokeResponse
         {
-            await using var client = TestClient.CreateForDaprClient(c =>
-            {
-                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
-            });
+            Data = Any.Pack(data),
+        };
 
-            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
-            {
-                return await daprClient.InvokeMethodGrpcAsync<Response>("test", "test");
-            });
+        await client.Call<InvokeResponse>()
+            .SetResponse(invokeResponse)
+            .Build();
 
-            // Get Request and validate
-            var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.ShouldBe("test");
-            envelope.Message.Method.ShouldBe("test");
-            envelope.Message.ContentType.ShouldBe(string.Empty);
 
-            // Create Response & Respond
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var response = new Autogen.Grpc.v1.InvokeResponse()
-            {
-                Data = Any.Pack(data),
-            };
+        const string rpcExceptionMessage = "RPC exception";
+        const StatusCode rpcStatusCode = StatusCode.Unavailable;
+        const string rpcStatusDetail = "Non success";
 
-            // Validate Response
-            var invokedResponse = await request.CompleteWithMessageAsync(response);
-            invokedResponse.Name.ShouldBe("Look, I was invoked!");
-        }
+        var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+        var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
 
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData_ThrowsExceptionNonSuccess()
+        // Setup the mock client to throw an Rpc Exception with the expected details info
+        client.Mock
+            .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
+            .Throws(rpcException);
+
+        var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
         {
-            var client = new MockClient();
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse
-            {
-                Data = Any.Pack(data),
-            };
+            await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " });
+        });
+        Assert.Same(rpcException, ex.InnerException);
+    }
 
-            await client.Call<InvokeResponse>()
-                .SetResponse(invokeResponse)
-                .Build();
-
-
-            const string rpcExceptionMessage = "RPC exception";
-            const StatusCode rpcStatusCode = StatusCode.Unavailable;
-            const string rpcStatusDetail = "Non success";
-
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
-
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
-            {
-                await client.DaprClient.InvokeMethodGrpcAsync<Response>("test", "test");
-            });
-            Assert.Same(rpcException, ex.InnerException);
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData()
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_WithNoReturnTypeAndData()
+    {
+        await using var client = TestClient.CreateForDaprClient(c =>
         {
-            var request = new Request() { RequestParameter = "Hello " };
-            var client = new MockClient();
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse
-            {
-                Data = Any.Pack(data),
-            };
+            c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+        });
 
-            var response =
-                client.Call<InvokeResponse>()
-                .SetResponse(invokeResponse)
-                .Build();
-
-            client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
-                .Returns(response);
-
-            await Should.NotThrowAsync(async () => await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", request));
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData_ThrowsErrorNonSuccess()
+        var invokeRequest = new Request() { RequestParameter = "Hello" };
+        var request = await client.CaptureGrpcRequestAsync(async daprClient =>
         {
-            var client = new MockClient();
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var invokeResponse = new InvokeResponse
-            {
-                Data = Any.Pack(data),
-            };
+            return await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", invokeRequest);
+        });
 
-            await client.Call<InvokeResponse>()
-                .SetResponse(invokeResponse)
-                .Build();
+        request.Dismiss();
 
+        // Get Request and validate
+        var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
+        envelope.Id.ShouldBe("test");
+        envelope.Message.Method.ShouldBe("test");
+        envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
 
-            const string rpcExceptionMessage = "RPC exception";
-            const StatusCode rpcStatusCode = StatusCode.Unavailable;
-            const string rpcStatusDetail = "Non success";
+        var actual = envelope.Message.Data.Unpack<Request>();
+        Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
+    }
 
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            // Setup the mock client to throw an Rpc Exception with the expected details info
-            client.Mock
-                .Setup(m => m.InvokeServiceAsync(It.IsAny<Autogen.Grpc.v1.InvokeServiceRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
-
-            var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
-            {
-                await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " });
-            });
-            Assert.Same(rpcException, ex.InnerException);
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_WithNoReturnTypeAndData()
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_WithReturnTypeAndData()
+    {
+        await using var client = TestClient.CreateForDaprClient(c =>
         {
-            await using var client = TestClient.CreateForDaprClient(c =>
-            {
-                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
-            });
+            c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+        });
 
-            var invokeRequest = new Request() { RequestParameter = "Hello" };
-            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
-            {
-                return await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", invokeRequest);
-            });
-
-            request.Dismiss();
-
-            // Get Request and validate
-            var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.ShouldBe("test");
-            envelope.Message.Method.ShouldBe("test");
-            envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
-
-            var actual = envelope.Message.Data.Unpack<Request>();
-            Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_WithReturnTypeAndData()
+        var invokeRequest = new Request() { RequestParameter = "Hello " };
+        var invokeResponse = new Response { Name = "Look, I was invoked!" };
+        var request = await client.CaptureGrpcRequestAsync(async daprClient =>
         {
-            await using var client = TestClient.CreateForDaprClient(c =>
-            {
-                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
-            });
+            return await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", invokeRequest);
+        });
 
-            var invokeRequest = new Request() { RequestParameter = "Hello " };
-            var invokeResponse = new Response { Name = "Look, I was invoked!" };
-            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
-            {
-                return await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", invokeRequest);
-            });
+        // Get Request and validate
+        var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
+        envelope.Id.ShouldBe("test");
+        envelope.Message.Method.ShouldBe("test");
+        envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
 
-            // Get Request and validate
-            var envelope = await request.GetRequestEnvelopeAsync<InvokeServiceRequest>();
-            envelope.Id.ShouldBe("test");
-            envelope.Message.Method.ShouldBe("test");
-            envelope.Message.ContentType.ShouldBe(Constants.ContentTypeApplicationGrpc);
+        var actual = envelope.Message.Data.Unpack<Request>();
+        Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
 
-            var actual = envelope.Message.Data.Unpack<Request>();
-            Assert.Equal(invokeRequest.RequestParameter, actual.RequestParameter);
-
-            // Create Response & Respond
-            var data = new Response() { Name = "Look, I was invoked!" };
-            var response = new Autogen.Grpc.v1.InvokeResponse()
-            {
-                Data = Any.Pack(data),
-            };
-
-            // Validate Response
-            var invokedResponse = await request.CompleteWithMessageAsync(response);
-            invokedResponse.Name.ShouldBe(invokeResponse.Name);
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_AppCallback_SayHello()
+        // Create Response & Respond
+        var data = new Response() { Name = "Look, I was invoked!" };
+        var response = new Autogen.Grpc.v1.InvokeResponse()
         {
-            // Configure Client
-            var httpClient = new AppCallbackClient(new DaprAppCallbackService());
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
-                .UseJsonSerializationOptions(this.jsonSerializerOptions)
-                .Build();
+            Data = Any.Pack(data),
+        };
 
-            var request = new Request() { RequestParameter = "Look, I was invoked!" };
+        // Validate Response
+        var invokedResponse = await request.CompleteWithMessageAsync(response);
+        invokedResponse.Name.ShouldBe(invokeResponse.Name);
+    }
 
-            var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "SayHello", request);
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_AppCallback_SayHello()
+    {
+        // Configure Client
+        var httpClient = new AppCallbackClient(new DaprAppCallbackService());
+        var daprClient = new DaprClientBuilder()
+            .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
+            .UseJsonSerializationOptions(this.jsonSerializerOptions)
+            .Build();
 
-            response.Name.ShouldBe("Hello Look, I was invoked!");
-        }
+        var request = new Request() { RequestParameter = "Look, I was invoked!" };
 
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_AppCallback_RepeatedField()
+        var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "SayHello", request);
+
+        response.Name.ShouldBe("Hello Look, I was invoked!");
+    }
+
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_AppCallback_RepeatedField()
+    {
+        // Configure Client
+        var httpClient = new AppCallbackClient(new DaprAppCallbackService());
+        var daprClient = new DaprClientBuilder()
+            .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
+            .UseJsonSerializationOptions(this.jsonSerializerOptions)
+            .Build();
+
+        var testRun = new TestRun();
+        testRun.Tests.Add(new TestCase() { Name = "test1" });
+        testRun.Tests.Add(new TestCase() { Name = "test2" });
+        testRun.Tests.Add(new TestCase() { Name = "test3" });
+
+        var response = await daprClient.InvokeMethodGrpcAsync<TestRun, TestRun>("test", "TestRun", testRun);
+
+        response.Tests.Count.ShouldBe(3);
+        response.Tests[0].Name.ShouldBe("test1");
+        response.Tests[1].Name.ShouldBe("test2");
+        response.Tests[2].Name.ShouldBe("test3");
+    }
+
+    [Fact]
+    public async Task InvokeMethodGrpcAsync_AppCallback_UnexpectedMethod()
+    {
+        // Configure Client
+        var httpClient = new AppCallbackClient(new DaprAppCallbackService());
+        var daprClient = new DaprClientBuilder()
+            .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
+            .UseJsonSerializationOptions(this.jsonSerializerOptions)
+            .Build();
+
+        var request = new Request() { RequestParameter = "Look, I was invoked!" };
+
+        var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "not-existing", request);
+
+        response.Name.ShouldBe("unexpected");
+    }
+
+
+    [Fact]
+    public async Task GetMetadataAsync_WrapsRpcException()
+    {
+        var client = new MockClient();
+
+        const string rpcExceptionMessage = "RPC exception";
+        const StatusCode rpcStatusCode = StatusCode.Unavailable;
+        const string rpcStatusDetail = "Non success";
+
+        var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+        var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
+
+        client.Mock
+            .Setup(m => m.GetMetadataAsync(It.IsAny<GetMetadataRequest>(), It.IsAny<CallOptions>()))
+            .Throws(rpcException);
+
+        var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            // Configure Client
-            var httpClient = new AppCallbackClient(new DaprAppCallbackService());
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
-                .UseJsonSerializationOptions(this.jsonSerializerOptions)
-                .Build();
+            await client.DaprClient.GetMetadataAsync(default);
+        });
+        Assert.Same(rpcException, ex.InnerException);
+    }
 
-            var testRun = new TestRun();
-            testRun.Tests.Add(new TestCase() { Name = "test1" });
-            testRun.Tests.Add(new TestCase() { Name = "test2" });
-            testRun.Tests.Add(new TestCase() { Name = "test3" });
-
-            var response = await daprClient.InvokeMethodGrpcAsync<TestRun, TestRun>("test", "TestRun", testRun);
-
-            response.Tests.Count.ShouldBe(3);
-            response.Tests[0].Name.ShouldBe("test1");
-            response.Tests[1].Name.ShouldBe("test2");
-            response.Tests[2].Name.ShouldBe("test3");
-        }
-
-        [Fact]
-        public async Task InvokeMethodGrpcAsync_AppCallback_UnexpectedMethod()
+    [Fact]
+    public async Task GetMetadataAsync_WithReturnTypeAndData()
+    {
+        await using var client = TestClient.CreateForDaprClient(c =>
         {
-            // Configure Client
-            var httpClient = new AppCallbackClient(new DaprAppCallbackService());
-            var daprClient = new DaprClientBuilder()
-                .UseGrpcChannelOptions(new GrpcChannelOptions() { HttpClient = httpClient, })
-                .UseJsonSerializationOptions(this.jsonSerializerOptions)
-                .Build();
+            c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+        });
 
-            var request = new Request() { RequestParameter = "Look, I was invoked!" };
-
-            var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "not-existing", request);
-
-            response.Name.ShouldBe("unexpected");
-        }
-
-
-        [Fact]
-        public async Task GetMetadataAsync_WrapsRpcException()
+        var request = await client.CaptureGrpcRequestAsync(async daprClient =>
         {
-            var client = new MockClient();
+            return await daprClient.GetMetadataAsync(default);
+        });
 
-            const string rpcExceptionMessage = "RPC exception";
-            const StatusCode rpcStatusCode = StatusCode.Unavailable;
-            const string rpcStatusDetail = "Non success";
 
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            client.Mock
-                .Setup(m => m.GetMetadataAsync(It.IsAny<GetMetadataRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
-            {
-                await client.DaprClient.GetMetadataAsync(default);
-            });
-            Assert.Same(rpcException, ex.InnerException);
-        }
-
-        [Fact]
-        public async Task GetMetadataAsync_WithReturnTypeAndData()
+        // Create Response & Respond
+        var response = new Autogen.Grpc.v1.GetMetadataResponse()
         {
-            await using var client = TestClient.CreateForDaprClient(c =>
-            {
-                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
-            });
+            ActorRuntime = new(),
+            Id = "testId",
+        };
+        response.ActorRuntime.ActiveActors.Add(new ActiveActorsCount { Type = "testType", Count = 1 });
+        response.RegisteredComponents.Add(new RegisteredComponents { Name = "testName", Type = "testType", Version = "V1" });
+        response.ExtendedMetadata.Add("e1", "v1");
 
-            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
-            {
-                return await daprClient.GetMetadataAsync(default);
-            });
+        // Validate Response
+        var metadata = await request.CompleteWithMessageAsync(response);
+        metadata.Id.ShouldBe("testId");
+        metadata.Extended.ShouldContain(new System.Collections.Generic.KeyValuePair<string, string>("e1", "v1"));
+        metadata.Actors.ShouldContain(actors => actors.Count == 1 && actors.Type == "testType");
+        metadata.Components.ShouldContain(components => components.Name == "testName" && components.Type == "testType" && components.Version == "V1" && components.Capabilities.Length == 0);
+    }
 
+    [Fact]
+    public async Task SetMetadataAsync_WrapsRpcException()
+    {
+        var client = new MockClient();
 
-            // Create Response & Respond
-            var response = new Autogen.Grpc.v1.GetMetadataResponse()
-            {
-                ActorRuntime = new(),
-                Id = "testId",
-            };
-            response.ActorRuntime.ActiveActors.Add(new ActiveActorsCount { Type = "testType", Count = 1 });
-            response.RegisteredComponents.Add(new RegisteredComponents { Name = "testName", Type = "testType", Version = "V1" });
-            response.ExtendedMetadata.Add("e1", "v1");
+        const string rpcExceptionMessage = "RPC exception";
+        const StatusCode rpcStatusCode = StatusCode.Unavailable;
+        const string rpcStatusDetail = "Non success";
 
-            // Validate Response
-            var metadata = await request.CompleteWithMessageAsync(response);
-            metadata.Id.ShouldBe("testId");
-            metadata.Extended.ShouldContain(new System.Collections.Generic.KeyValuePair<string, string>("e1", "v1"));
-            metadata.Actors.ShouldContain(actors => actors.Count == 1 && actors.Type == "testType");
-            metadata.Components.ShouldContain(components => components.Name == "testName" && components.Type == "testType" && components.Version == "V1" && components.Capabilities.Length == 0);
-        }
+        var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
+        var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
 
-        [Fact]
-        public async Task SetMetadataAsync_WrapsRpcException()
+        client.Mock
+            .Setup(m => m.SetMetadataAsync(It.IsAny<SetMetadataRequest>(), It.IsAny<CallOptions>()))
+            .Throws(rpcException);
+
+        var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            var client = new MockClient();
+            await client.DaprClient.SetMetadataAsync("testName", "", default);
+        });
+        Assert.Same(rpcException, ex.InnerException);
+    }
 
-            const string rpcExceptionMessage = "RPC exception";
-            const StatusCode rpcStatusCode = StatusCode.Unavailable;
-            const string rpcStatusDetail = "Non success";
-
-            var rpcStatus = new Status(rpcStatusCode, rpcStatusDetail);
-            var rpcException = new RpcException(rpcStatus, new Metadata(), rpcExceptionMessage);
-
-            client.Mock
-                .Setup(m => m.SetMetadataAsync(It.IsAny<SetMetadataRequest>(), It.IsAny<CallOptions>()))
-                .Throws(rpcException);
-
-            var ex = await Assert.ThrowsAsync<DaprException>(async () =>
-            {
-                await client.DaprClient.SetMetadataAsync("testName", "", default);
-            });
-            Assert.Same(rpcException, ex.InnerException);
-        }
-
-        [Fact]
-        public async Task SetMetadataAsync_WithReturnTypeAndData()
+    [Fact]
+    public async Task SetMetadataAsync_WithReturnTypeAndData()
+    {
+        await using var client = TestClient.CreateForDaprClient(c =>
         {
-            await using var client = TestClient.CreateForDaprClient(c =>
-            {
-                c.UseJsonSerializationOptions(this.jsonSerializerOptions);
-            });
+            c.UseJsonSerializationOptions(this.jsonSerializerOptions);
+        });
 
-            var request = await client.CaptureGrpcRequestAsync(daprClient =>
-            {
-                return daprClient.SetMetadataAsync("test", "testv", default);
-            });
-
-            // Get Request and validate
-            var envelope = await request.GetRequestEnvelopeAsync<SetMetadataRequest>();
-            envelope.Key.ShouldBe("test");
-            envelope.Value.ShouldBe("testv");
-
-            await request.CompleteWithMessageAsync(new Empty());
-
-        }
-
-        // Test implementation of the AppCallback.AppCallbackBase service
-        private class DaprAppCallbackService : AppCallback.Autogen.Grpc.v1.AppCallback.AppCallbackBase
+        var request = await client.CaptureGrpcRequestAsync(daprClient =>
         {
-            public override Task<InvokeResponse> OnInvoke(InvokeRequest request, ServerCallContext context)
+            return daprClient.SetMetadataAsync("test", "testv", default);
+        });
+
+        // Get Request and validate
+        var envelope = await request.GetRequestEnvelopeAsync<SetMetadataRequest>();
+        envelope.Key.ShouldBe("test");
+        envelope.Value.ShouldBe("testv");
+
+        await request.CompleteWithMessageAsync(new Empty());
+
+    }
+
+    // Test implementation of the AppCallback.AppCallbackBase service
+    private class DaprAppCallbackService : AppCallback.Autogen.Grpc.v1.AppCallback.AppCallbackBase
+    {
+        public override Task<InvokeResponse> OnInvoke(InvokeRequest request, ServerCallContext context)
+        {
+            return request.Method switch
             {
-                return request.Method switch
+                "SayHello" => SayHello(request),
+                "TestRun" => TestRun(request),
+                _ => Task.FromResult(new InvokeResponse()
                 {
-                    "SayHello" => SayHello(request),
-                    "TestRun" => TestRun(request),
-                    _ => Task.FromResult(new InvokeResponse()
-                    {
-                        Data = Any.Pack(new Response() { Name = $"unexpected" }),
-                    }),
-                };
-            }
+                    Data = Any.Pack(new Response() { Name = $"unexpected" }),
+                }),
+            };
+        }
 
-            private Task<InvokeResponse> SayHello(InvokeRequest request)
+        private Task<InvokeResponse> SayHello(InvokeRequest request)
+        {
+            var helloRequest = request.Data.Unpack<Request>();
+            var helloResponse = new Response() { Name = $"Hello {helloRequest.RequestParameter}" };
+
+            return Task.FromResult(new InvokeResponse()
             {
-                var helloRequest = request.Data.Unpack<Request>();
-                var helloResponse = new Response() { Name = $"Hello {helloRequest.RequestParameter}" };
+                Data = Any.Pack(helloResponse),
+            });
+        }
 
-                return Task.FromResult(new InvokeResponse()
-                {
-                    Data = Any.Pack(helloResponse),
-                });
-            }
-
-            private Task<InvokeResponse> TestRun(InvokeRequest request)
+        private Task<InvokeResponse> TestRun(InvokeRequest request)
+        {
+            var echoRequest = request.Data.Unpack<TestRun>();
+            return Task.FromResult(new InvokeResponse()
             {
-                var echoRequest = request.Data.Unpack<TestRun>();
-                return Task.FromResult(new InvokeResponse()
-                {
-                    Data = Any.Pack(echoRequest),
-                });
-            }
+                Data = Any.Pack(echoRequest),
+            });
         }
     }
 }

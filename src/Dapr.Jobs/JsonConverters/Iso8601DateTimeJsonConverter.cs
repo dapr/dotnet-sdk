@@ -17,8 +17,7 @@ using System.Text.Json;
 namespace Dapr.Jobs.JsonConverters;
 
 /// <summary>
-/// Converts from an ISO 8601 DateTime to a string and back. This is primarily used to serialize
-/// dates for use with CosmosDB.
+/// Converts from an ISO 8601 DateTime to a string and back.
 /// </summary>
 public sealed class Iso8601DateTimeJsonConverter : JsonConverter<DateTimeOffset?>
 {

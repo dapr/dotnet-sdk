@@ -14,34 +14,33 @@
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
-namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting
+namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting;
+
+public class WeaklyTypedTestingActor : Actor, IWeaklyTypedTestingActor
 {
-    public class WeaklyTypedTestingActor : Actor, IWeaklyTypedTestingActor
+    public WeaklyTypedTestingActor(ActorHost host)
+        : base(host)
     {
-        public WeaklyTypedTestingActor(ActorHost host)
-            : base(host)
-        {
-        }
+    }
 
-        public Task<ResponseBase> GetNullResponse()
-        {
-            return Task.FromResult<ResponseBase>(null);
-        }
+    public Task<ResponseBase> GetNullResponse()
+    {
+        return Task.FromResult<ResponseBase>(null);
+    }
 
-        public Task<ResponseBase> GetPolymorphicResponse()
+    public Task<ResponseBase> GetPolymorphicResponse()
+    {
+        var response = new DerivedResponse
         {
-            var response = new DerivedResponse
-            {
-                BasePropeprty = "Base property value",
-                DerivedProperty = "Derived property value"
-            };
+            BasePropeprty = "Base property value",
+            DerivedProperty = "Derived property value"
+        };
 
-            return Task.FromResult<ResponseBase>(response);
-        }
+        return Task.FromResult<ResponseBase>(response);
+    }
 
-        public Task Ping()
-        {
-            return Task.CompletedTask;
-        }
+    public Task Ping()
+    {
+        return Task.CompletedTask;
     }
 }

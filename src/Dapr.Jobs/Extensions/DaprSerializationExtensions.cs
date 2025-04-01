@@ -25,7 +25,7 @@ public static class DaprJobsSerializationExtensions
     /// <summary>
     /// Default JSON serializer options.
     /// </summary>
-    private static readonly JsonSerializerOptions defaultOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions defaultOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Schedules a job with Dapr.
