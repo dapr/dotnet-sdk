@@ -24,9 +24,9 @@ public static class DaprAiConversationBuilderExtensions
     /// <summary>
     /// Registers the necessary functionality for the Dapr AI Conversation functionality.
     /// </summary>
-    public static IDaprAiConversationBuilder AddDaprAiConversationClient(
+    public static IDaprAiConversationBuilder AddDaprConversationClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprConversationClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) => services
-        .AddDaprClient<DaprConversationClient, IDaprAiConversationBuilder, DaprConversationClientBuilder>(configure, lifetime);
+        .AddDaprClient<DaprConversationClient, DaprConversationGrpcClient, IDaprAiConversationBuilder, DaprConversationClientBuilder>(configure, lifetime);
 }
