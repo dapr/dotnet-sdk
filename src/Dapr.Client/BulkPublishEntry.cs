@@ -13,49 +13,48 @@
 
 using System.Collections.Generic;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Class representing an entry in the BulkPublishRequest.
+/// </summary>
+/// <typeparam name="TValue">The data type of the value.</typeparam>
+public class BulkPublishEntry<TValue>
 {
     /// <summary>
-    /// Class representing an entry in the BulkPublishRequest.
+    /// Initializes a new instance of the <see cref="BulkPublishEntry{TValue}"/> class.
     /// </summary>
-    /// <typeparam name="TValue">The data type of the value.</typeparam>
-    public class BulkPublishEntry<TValue>
+    /// <param name="entryId">A request scoped ID uniquely identifying this entry in the BulkPublishRequest.</param>
+    /// <param name="eventData">Event to be published.</param>
+    /// <param name="contentType">Content Type of the event to be published.</param>
+    /// <param name="metadata">Metadata for the event.</param>
+    public BulkPublishEntry(string entryId, TValue eventData, string contentType, IReadOnlyDictionary<string, string> metadata = default)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkPublishEntry{TValue}"/> class.
-        /// </summary>
-        /// <param name="entryId">A request scoped ID uniquely identifying this entry in the BulkPublishRequest.</param>
-        /// <param name="eventData">Event to be published.</param>
-        /// <param name="contentType">Content Type of the event to be published.</param>
-        /// <param name="metadata">Metadata for the event.</param>
-        public BulkPublishEntry(string entryId, TValue eventData, string contentType, IReadOnlyDictionary<string, string> metadata = default)
-        {
-            this.EntryId = entryId;
-            this.EventData = eventData;
-            this.ContentType = contentType;
-            this.Metadata = metadata;
-        }
-
-        /// <summary>
-        /// The ID uniquely identifying this particular request entry across the request and scoped for this request only.
-        /// </summary>
-        public string EntryId { get; }
-
-        /// <summary>
-        /// The event to be published.
-        /// </summary>
-        public TValue EventData { get; }
-        
-        /// <summary>
-        /// The content type of the event to be published.
-        /// </summary>
-        public string ContentType { get; }
-        
-        /// <summary>
-        /// The metadata set for this particular event.
-        /// Any particular values in this metadata overrides the request metadata present in BulkPublishRequest.
-        /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; }
-
+        this.EntryId = entryId;
+        this.EventData = eventData;
+        this.ContentType = contentType;
+        this.Metadata = metadata;
     }
+
+    /// <summary>
+    /// The ID uniquely identifying this particular request entry across the request and scoped for this request only.
+    /// </summary>
+    public string EntryId { get; }
+
+    /// <summary>
+    /// The event to be published.
+    /// </summary>
+    public TValue EventData { get; }
+        
+    /// <summary>
+    /// The content type of the event to be published.
+    /// </summary>
+    public string ContentType { get; }
+        
+    /// <summary>
+    /// The metadata set for this particular event.
+    /// Any particular values in this metadata overrides the request metadata present in BulkPublishRequest.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Metadata { get; }
+
 }

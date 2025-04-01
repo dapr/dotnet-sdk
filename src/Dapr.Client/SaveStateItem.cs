@@ -13,53 +13,52 @@
 
 using System.Collections.Generic;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Represents a state object used for bulk delete state operation
+/// </summary>
+public readonly struct SaveStateItem<TValue>
 {
     /// <summary>
-    /// Represents a state object used for bulk delete state operation
+    /// Initializes a new instance of the <see cref="SaveStateItem{TValue}"/> class.
     /// </summary>
-    public readonly struct SaveStateItem<TValue>
+    /// <param name="key">The state key.</param>
+    /// <param name="value">The state value.</param>
+    /// <param name="etag">The ETag.</param>
+    /// <param name="stateOptions">The stateOptions.</param>
+    /// <param name="metadata">The metadata.</param>
+    public SaveStateItem(string key, TValue value, string etag, StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SaveStateItem{TValue}"/> class.
-        /// </summary>
-        /// <param name="key">The state key.</param>
-        /// <param name="value">The state value.</param>
-        /// <param name="etag">The ETag.</param>
-        /// <param name="stateOptions">The stateOptions.</param>
-        /// <param name="metadata">The metadata.</param>
-        public SaveStateItem(string key, TValue value, string etag, StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default)
-        {
-            this.Key = key;
-            this.Value = value;
-            this.ETag = etag;
-            this.StateOptions = stateOptions;
-            this.Metadata = metadata;
-        }
-
-        /// <summary>
-        /// Gets the state key.
-        /// </summary>
-        public string Key { get; }
-        
-        /// <summary>
-        /// Gets the state value.
-        /// </summary>
-        public TValue Value { get; }
-
-        /// <summary>
-        /// Get the ETag.
-        /// </summary>
-        public string ETag { get; }
-
-        /// <summary>
-        /// Gets the StateOptions.
-        /// </summary>
-        public StateOptions StateOptions { get; }
-
-        /// <summary>
-        /// Gets the Metadata.
-        /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; }
+        this.Key = key;
+        this.Value = value;
+        this.ETag = etag;
+        this.StateOptions = stateOptions;
+        this.Metadata = metadata;
     }
+
+    /// <summary>
+    /// Gets the state key.
+    /// </summary>
+    public string Key { get; }
+        
+    /// <summary>
+    /// Gets the state value.
+    /// </summary>
+    public TValue Value { get; }
+
+    /// <summary>
+    /// Get the ETag.
+    /// </summary>
+    public string ETag { get; }
+
+    /// <summary>
+    /// Gets the StateOptions.
+    /// </summary>
+    public StateOptions StateOptions { get; }
+
+    /// <summary>
+    /// Gets the Metadata.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Metadata { get; }
 }

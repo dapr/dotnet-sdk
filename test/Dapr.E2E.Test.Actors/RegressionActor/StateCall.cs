@@ -11,12 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.E2E.Test.Actors.ErrorTesting
+namespace Dapr.E2E.Test.Actors.ErrorTesting;
+
+public class StateCall
 {
-    public class StateCall
-    {
-        public string Key { get; set; }
-        public string Value { get; set; }
-        public string Operation { get; set; }
-    }
+    public string Key { get; set; }
+    public string Value { get; set; }
+    public string Operation { get; set; }
 }

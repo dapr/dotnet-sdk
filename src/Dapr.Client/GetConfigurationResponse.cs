@@ -13,33 +13,32 @@
 
 using System.Collections.Generic;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Class representing the response from a GetConfiguration API call.
+/// </summary>
+public class GetConfigurationResponse
 {
+    private readonly IReadOnlyDictionary<string, ConfigurationItem> configMap;
+
     /// <summary>
-    /// Class representing the response from a GetConfiguration API call.
+    /// Constructor for a GetConfigurationResponse.
     /// </summary>
-    public class GetConfigurationResponse
+    /// <param name="configMap">The map of keys to items that was returned in the GetConfiguration call.</param>
+    public GetConfigurationResponse(IReadOnlyDictionary<string, ConfigurationItem> configMap)
     {
-        private readonly IReadOnlyDictionary<string, ConfigurationItem> configMap;
+        this.configMap = configMap;
+    }
 
-        /// <summary>
-        /// Constructor for a GetConfigurationResponse.
-        /// </summary>
-        /// <param name="configMap">The map of keys to items that was returned in the GetConfiguration call.</param>
-        public GetConfigurationResponse(IReadOnlyDictionary<string, ConfigurationItem> configMap)
+    /// <summary>
+    /// The map of key to items returned in a GetConfiguration call. <see cref="ConfigurationItem"/>
+    /// </summary>
+    public IReadOnlyDictionary<string, ConfigurationItem> Items
+    {
+        get
         {
-            this.configMap = configMap;
-        }
-
-        /// <summary>
-        /// The map of key to items returned in a GetConfiguration call. <see cref="ConfigurationItem"/>
-        /// </summary>
-        public IReadOnlyDictionary<string, ConfigurationItem> Items
-        {
-            get
-            {
-                return configMap;
-            }
+            return configMap;
         }
     }
 }
