@@ -11,12 +11,18 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using Dapr.Common;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Dapr.Jobs;
+namespace Dapr.Jobs.Extensions;
 
 /// <summary>
-/// Responsible for registering Dapr Jobs service functionality.
+/// Used by the fluent registration builder to configure a Dapr Jobs client.
 /// </summary>
-public interface IDaprJobsBuilder : IDaprServiceBuilder;
+/// <param name="services"></param>
+public sealed class DaprJobsBuilder(IServiceCollection services) : IDaprJobsBuilder
+{
+    /// <summary>
+    /// The registered services on the builder.
+    /// </summary>
+    public IServiceCollection Services { get; } = services;
+}
