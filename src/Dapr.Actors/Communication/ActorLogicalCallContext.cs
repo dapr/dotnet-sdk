@@ -11,33 +11,32 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System.Threading;
+
+internal static class ActorLogicalCallContext
 {
-    using System.Threading;
+    private static readonly AsyncLocal<string> fabActAsyncLocal = new AsyncLocal<string>();
 
-    internal static class ActorLogicalCallContext
+    public static bool IsPresent()
     {
-        private static readonly AsyncLocal<string> fabActAsyncLocal = new AsyncLocal<string>();
+        return (fabActAsyncLocal.Value != null);
+    }
 
-        public static bool IsPresent()
-        {
-            return (fabActAsyncLocal.Value != null);
-        }
+    public static bool TryGet(out string callContextValue)
+    {
+        callContextValue = fabActAsyncLocal.Value;
+        return (callContextValue != null);
+    }
 
-        public static bool TryGet(out string callContextValue)
-        {
-            callContextValue = fabActAsyncLocal.Value;
-            return (callContextValue != null);
-        }
+    public static void Set(string callContextValue)
+    {
+        fabActAsyncLocal.Value = callContextValue;
+    }
 
-        public static void Set(string callContextValue)
-        {
-            fabActAsyncLocal.Value = callContextValue;
-        }
-
-        public static void Clear()
-        {
-            fabActAsyncLocal.Value = null;
-        }
+    public static void Clear()
+    {
+        fabActAsyncLocal.Value = null;
     }
 }

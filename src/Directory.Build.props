@@ -3,7 +3,7 @@
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_nuget.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net6;net8;net9</TargetFrameworks>
+    <TargetFrameworks>net8;net9</TargetFrameworks>
     <OutputPath>$(RepoRoot)bin\$(Configuration)\prod\$(MSBuildProjectName)\</OutputPath>
 
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>

@@ -11,28 +11,27 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
+namespace Dapr.Actors.Builder;
+
+using System;
+using Dapr.Actors.Client;
+
+internal class ActorProxyGenerator
 {
-    using System;
-    using Dapr.Actors.Client;
+    private readonly IProxyActivator proxyActivator;
 
-    internal class ActorProxyGenerator
+    public ActorProxyGenerator(
+        Type proxyInterfaceType,
+        IProxyActivator proxyActivator)
     {
-        private readonly IProxyActivator proxyActivator;
+        this.proxyActivator = proxyActivator;
+        this.ProxyInterfaceType = proxyInterfaceType;
+    }
 
-        public ActorProxyGenerator(
-            Type proxyInterfaceType,
-            IProxyActivator proxyActivator)
-        {
-            this.proxyActivator = proxyActivator;
-            this.ProxyInterfaceType = proxyInterfaceType;
-        }
+    public Type ProxyInterfaceType { get; }
 
-        public Type ProxyInterfaceType { get; }
-
-        public ActorProxy CreateActorProxy()
-        {
-            return (ActorProxy)this.proxyActivator.CreateInstance();
-        }
+    public ActorProxy CreateActorProxy()
+    {
+        return (ActorProxy)this.proxyActivator.CreateInstance();
     }
 }

@@ -14,48 +14,47 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Class representing the response from a Lock API call.
+/// </summary>
+[Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+public sealed class TryLockResponse :  IAsyncDisposable
 {
     /// <summary>
-    /// Class representing the response from a Lock API call.
+    /// The success value of the tryLock API call
     /// </summary>
-    [Obsolete("This API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public sealed class TryLockResponse :  IAsyncDisposable
+    public bool Success { get; init; }
+
+    /// <summary>
+    /// The resourceId required to unlock the lock
+    /// </summary>
+    public string ResourceId { get; init; }
+
+    /// <summary>
+    /// The LockOwner required to unlock the lock
+    /// </summary>
+    public string LockOwner { get; init; }
+
+    /// <summary>
+    /// The StoreName required to unlock the lock
+    /// </summary>
+    public string StoreName { get; init; }
+
+    /// <summary>
+    /// Constructor for a TryLockResponse.
+    /// </summary>
+    public TryLockResponse()
     {
-        /// <summary>
-        /// The success value of the tryLock API call
-        /// </summary>
-        public bool Success { get; init; }
+    }
 
-        /// <summary>
-        /// The resourceId required to unlock the lock
-        /// </summary>
-        public string ResourceId { get; init; }
-
-         /// <summary>
-        /// The LockOwner required to unlock the lock
-        /// </summary>
-        public string LockOwner { get; init; }
-
-         /// <summary>
-        /// The StoreName required to unlock the lock
-        /// </summary>
-        public string StoreName { get; init; }
-
-        /// <summary>
-        /// Constructor for a TryLockResponse.
-        /// </summary>
-        public TryLockResponse()
-        {
-        }
-
-        /// <inheritdoc />
-        public async ValueTask DisposeAsync() {
-            using (var client = new DaprClientBuilder().Build()) {
-                if(this.Success) {
-                    await client.Unlock(StoreName, ResourceId, LockOwner);
-                }
-            }
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        using var client = new DaprClientBuilder().Build();
+        if(this.Success) {
+            await client.Unlock(StoreName, ResourceId, LockOwner);
         }
     }
 }

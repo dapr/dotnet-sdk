@@ -11,12 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Cryptography
-{
-    internal abstract class Example
-    {
-        public abstract string DisplayName { get; }
+namespace Cryptography;
 
-        public abstract Task RunAsync(CancellationToken cancellationToken);
-    }
+internal abstract class Example
+{
+    public abstract string DisplayName { get; }
+
+    public abstract Task RunAsync(CancellationToken cancellationToken);
 }

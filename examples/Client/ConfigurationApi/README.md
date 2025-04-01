@@ -9,7 +9,7 @@ It demonstrates the following APIs:
 
 ## Prerequisites
 
-- [.NET 6+](https://dotnet.microsoft.com/download) installed
+- [.NET 8+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
@@ -147,7 +147,7 @@ cd examples/Client/ConfigurationApi
 To run the `ConfigurationExample`, execute the following command:
 
 ```bash
-dapr run --app-id configexample --components-path ./Components -- dotnet run
+dapr run --app-id configexample --resources-path ./Components -- dotnet run
 ```
 
 ### Get Configuration

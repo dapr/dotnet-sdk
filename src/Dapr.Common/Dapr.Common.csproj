@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net6;net7;net8;net9</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
         <PackageReference Include="Google.Api.CommonProtos" />
         <PackageReference Include="Grpc.Net.Client" />
         <PackageReference Include="Microsoft.Extensions.Http" />

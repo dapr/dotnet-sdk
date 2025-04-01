@@ -11,52 +11,51 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr;
+
+using System;
+
+/// <summary>
+/// IOriginalTopicMetadata that describes subscribe endpoint to a topic original metadata.
+/// </summary>
+[AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
+public class TopicMetadataAttribute : Attribute, IOriginalTopicMetadata
 {
-    using System;
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TopicMetadataAttribute" /> class.
+    /// </summary>
+    /// <param name="name">The metadata name.</param>
+    /// <param name="value">The metadata value.</param>
+    public TopicMetadataAttribute(string name, string value)
+    {
+        ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
+        ArgumentVerifier.ThrowIfNull(value, nameof(value));
+        Name = name;
+        Value = value;
+    }
 
     /// <summary>
-    /// IOriginalTopicMetadata that describes subscribe endpoint to a topic original metadata.
+    /// Initializes a new instance of the <see cref="TopicMetadataAttribute" /> class.
     /// </summary>
-    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
-    public class TopicMetadataAttribute : Attribute, IOriginalTopicMetadata
+    /// <param name="id">The metadata id.</param>
+    /// <param name="name">The metadata name.</param>
+    /// <param name="value">The metadata value.</param>
+    public TopicMetadataAttribute(string id, string name, string value)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TopicMetadataAttribute" /> class.
-        /// </summary>
-        /// <param name="name">The metadata name.</param>
-        /// <param name="value">The metadata value.</param>
-        public TopicMetadataAttribute(string name, string value)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
-            ArgumentVerifier.ThrowIfNull(value, nameof(value));
-            Name = name;
-            Value = value;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TopicMetadataAttribute" /> class.
-        /// </summary>
-        /// <param name="id">The metadata id.</param>
-        /// <param name="name">The metadata name.</param>
-        /// <param name="value">The metadata value.</param>
-        public TopicMetadataAttribute(string id, string name, string value)
-        {
-            ArgumentVerifier.ThrowIfNullOrEmpty(id, nameof(name));
-            ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
-            ArgumentVerifier.ThrowIfNull(value, nameof(value));
-            Id = id;
-            Name = name;
-            Value = value;
-        }
-
-        /// <inheritdoc/>
-        public string Id { get; }
-
-        /// <inheritdoc/>
-        public string Name { get; }
-
-        /// <inheritdoc/>
-        public string Value { get; }
+        ArgumentVerifier.ThrowIfNullOrEmpty(id, nameof(name));
+        ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
+        ArgumentVerifier.ThrowIfNull(value, nameof(value));
+        Id = id;
+        Name = name;
+        Value = value;
     }
+
+    /// <inheritdoc/>
+    public string Id { get; }
+
+    /// <inheritdoc/>
+    public string Name { get; }
+
+    /// <inheritdoc/>
+    public string Value { get; }
 }

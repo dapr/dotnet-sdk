@@ -28,8 +28,10 @@ jobs:
         with:
           dotnet-version: 9.0.x
           dotnet-quality: 'ga'
+      - name: Restore dependencies
+        run: dotnet restore
       - name: Build
-        run: dotnet build --configuration release
+        run: dotnet build --configuration release --no-restore
       - name: Generate Packages
         run: dotnet pack --configuration release
       - name: Upload packages
@@ -44,18 +46,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['6.0', '7.0', '8.0', '9.0']
+        dotnet-version: ['8.0', '9.0']
         include:
-        - dotnet-version: '6.0'
-          display-name: '.NET 6.0'
-          framework: 'net6'
-          prefix: 'net6'
-          install-version: '6.0.x'
-        - dotnet-version: '7.0'
-          display-name: '.NET 7.0'
-          framework: 'net7'
-          prefix: 'net7'
-          install-version: '7.0.x'
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
           framework: 'net8'

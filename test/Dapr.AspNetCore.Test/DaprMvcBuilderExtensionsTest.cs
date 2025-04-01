@@ -17,90 +17,89 @@ using Dapr.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Dapr.AspNetCore.Test
+namespace Dapr.AspNetCore.Test;
+
+public class DaprMvcBuilderExtensionsTest
 {
-    public class DaprMvcBuilderExtensionsTest
+    [Fact]
+    public void AddDapr_UsesSpecifiedDaprClientBuilderConfig()
     {
-        [Fact]
-        public void AddDapr_UsesSpecifiedDaprClientBuilderConfig()
-        {
-            var services = new ServiceCollection();
+        var services = new ServiceCollection();
 
-            var clientBuilder = new Action<DaprClientBuilder>(
-                builder => builder.UseJsonSerializationOptions(
-                    new JsonSerializerOptions()
-                    {
-                        PropertyNameCaseInsensitive = false
-                    }
-                )
-            );
+        var clientBuilder = new Action<DaprClientBuilder>(
+            builder => builder.UseJsonSerializationOptions(
+                new JsonSerializerOptions()
+                {
+                    PropertyNameCaseInsensitive = false
+                }
+            )
+        );
 
-            services.AddControllers().AddDapr(clientBuilder);
+        services.AddControllers().AddDapr(clientBuilder);
 
-            var serviceProvider = services.BuildServiceProvider();
+        var serviceProvider = services.BuildServiceProvider();
 
-            DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
+        DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.False(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
-        }
+        Assert.False(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+    }
 
-        [Fact]
-        public void AddDapr_UsesDefaultDaprClientBuilderConfig()
-        {
-            var services = new ServiceCollection();
+    [Fact]
+    public void AddDapr_UsesDefaultDaprClientBuilderConfig()
+    {
+        var services = new ServiceCollection();
 
-            services.AddControllers().AddDapr();
+        services.AddControllers().AddDapr();
 
-            var serviceProvider = services.BuildServiceProvider();
+        var serviceProvider = services.BuildServiceProvider();
 
-            DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
+        DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
-        }
+        Assert.True(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+    }
 
-        [Fact]
-        public void AddDapr_RegistersDaprOnlyOnce()
-        {
-            var services = new ServiceCollection();
+    [Fact]
+    public void AddDapr_RegistersDaprOnlyOnce()
+    {
+        var services = new ServiceCollection();
 
-            var clientBuilder = new Action<DaprClientBuilder>(
-                builder => builder.UseJsonSerializationOptions(
-                    new JsonSerializerOptions()
-                    {
-                        PropertyNameCaseInsensitive = false
-                    }
-                )
-            );
+        var clientBuilder = new Action<DaprClientBuilder>(
+            builder => builder.UseJsonSerializationOptions(
+                new JsonSerializerOptions()
+                {
+                    PropertyNameCaseInsensitive = false
+                }
+            )
+        );
 
-            // register with JsonSerializerOptions.PropertyNameCaseInsensitive = false
-            services.AddControllers().AddDapr(clientBuilder);
+        // register with JsonSerializerOptions.PropertyNameCaseInsensitive = false
+        services.AddControllers().AddDapr(clientBuilder);
 
-            // register with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
-            services.AddControllers().AddDapr();
+        // register with JsonSerializerOptions.PropertyNameCaseInsensitive = true (default)
+        services.AddControllers().AddDapr();
 
-            var serviceProvider = services.BuildServiceProvider();
+        var serviceProvider = services.BuildServiceProvider();
 
-            DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
+        DaprClientGrpc daprClient = serviceProvider.GetService<DaprClient>() as DaprClientGrpc;
 
-            Assert.False(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
-        }
+        Assert.False(daprClient.JsonSerializerOptions.PropertyNameCaseInsensitive);
+    }
 
 #if NET8_0_OR_GREATER
-        [Fact]
-        public void AddDapr_WithKeyedServices()
-        {
-            var services = new ServiceCollection();
+    [Fact]
+    public void AddDapr_WithKeyedServices()
+    {
+        var services = new ServiceCollection();
 
-            services.AddKeyedSingleton("key1", new Object());
+        services.AddKeyedSingleton("key1", new Object());
 
-            services.AddControllers().AddDapr();
+        services.AddControllers().AddDapr();
 
-            var serviceProvider = services.BuildServiceProvider();
+        var serviceProvider = services.BuildServiceProvider();
 
-            var daprClient = serviceProvider.GetService<DaprClient>();
+        var daprClient = serviceProvider.GetService<DaprClient>();
 
-            Assert.NotNull(daprClient);
-        }
-#endif
+        Assert.NotNull(daprClient);
     }
+#endif
 }

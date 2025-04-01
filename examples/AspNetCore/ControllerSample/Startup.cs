@@ -16,68 +16,67 @@ using Dapr;
 using Dapr.AspNetCore;
 
 
-namespace ControllerSample
+namespace ControllerSample;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+/// <summary>
+/// Startup class.
+/// </summary>
+public class Startup
 {
-    using Microsoft.AspNetCore.Builder;
-    using Microsoft.AspNetCore.Hosting;
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Hosting;
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Startup"/> class.
+    /// </summary>
+    /// <param name="configuration">Configuration.</param>
+    public Startup(IConfiguration configuration)
+    {
+        this.Configuration = configuration;
+    }
 
     /// <summary>
-    /// Startup class.
+    /// Gets the configuration.
     /// </summary>
-    public class Startup
+    public IConfiguration Configuration { get; }
+
+    /// <summary>
+    /// Configures Services.
+    /// </summary>
+    /// <param name="services">Service Collection.</param>
+    public void ConfigureServices(IServiceCollection services)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Startup"/> class.
-        /// </summary>
-        /// <param name="configuration">Configuration.</param>
-        public Startup(IConfiguration configuration)
+        services.AddControllers().AddDapr();
+    }
+
+    /// <summary>
+    /// Configures Application Builder and WebHost environment.
+    /// </summary>
+    /// <param name="app">Application builder.</param>
+    /// <param name="env">Webhost environment.</param>
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
         {
-            this.Configuration = configuration;
+            app.UseDeveloperExceptionPage();
         }
 
-        /// <summary>
-        /// Gets the configuration.
-        /// </summary>
-        public IConfiguration Configuration { get; }
+        app.UseRouting();
 
-        /// <summary>
-        /// Configures Services.
-        /// </summary>
-        /// <param name="services">Service Collection.</param>
-        public void ConfigureServices(IServiceCollection services)
+        app.UseCloudEvents(new CloudEventsMiddlewareOptions
         {
-            services.AddControllers().AddDapr();
-        }
+            ForwardCloudEventPropertiesAsHeaders = true
+        });
 
-        /// <summary>
-        /// Configures Application Builder and WebHost environment.
-        /// </summary>
-        /// <param name="app">Application builder.</param>
-        /// <param name="env">Webhost environment.</param>
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        app.UseAuthorization();
+
+        app.UseEndpoints(endpoints =>
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseRouting();
-
-            app.UseCloudEvents(new CloudEventsMiddlewareOptions
-            {
-                ForwardCloudEventPropertiesAsHeaders = true
-            });
-
-            app.UseAuthorization();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapSubscribeHandler();
-                endpoints.MapControllers();
-            });
-        }
+            endpoints.MapSubscribeHandler();
+            endpoints.MapControllers();
+        });
     }
 }

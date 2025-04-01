@@ -7,16 +7,9 @@ description: Learn how to create and use the Dapr Conversational AI client using
 ---
 
 ## Prerequisites
-- [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0), [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0), or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) installed
+- [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0), or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost)
-
-{{% alert title="Note" color="primary" %}}
-
-.NET 6 is supported as the minimum required for the Dapr .NET SDK packages in this release. Only .NET 8 and .NET 9
-will be supported in Dapr v1.16 and later releases.
-
-{{% /alert %}}
 
 ## Installation
 
