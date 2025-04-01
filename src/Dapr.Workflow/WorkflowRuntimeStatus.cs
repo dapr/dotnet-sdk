@@ -11,46 +11,45 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+namespace Dapr.Workflow;
+
+/// <summary>
+/// Enum describing the runtime status of a workflow.
+/// </summary>
+public enum WorkflowRuntimeStatus
 {
     /// <summary>
-    /// Enum describing the runtime status of a workflow.
+    /// The status of the workflow is unknown.
     /// </summary>
-    public enum WorkflowRuntimeStatus
-    {
-        /// <summary>
-        /// The status of the workflow is unknown.
-        /// </summary>
-        Unknown = -1,
+    Unknown = -1,
 
-        /// <summary>
-        /// The workflow started running.
-        /// </summary>
-        Running,
+    /// <summary>
+    /// The workflow started running.
+    /// </summary>
+    Running,
 
-        /// <summary>
-        /// The workflow completed normally.
-        /// </summary>
-        Completed,
+    /// <summary>
+    /// The workflow completed normally.
+    /// </summary>
+    Completed,
 
-        /// <summary>
-        /// The workflow completed with an unhandled exception.
-        /// </summary>
-        Failed,
+    /// <summary>
+    /// The workflow completed with an unhandled exception.
+    /// </summary>
+    Failed,
 
-        /// <summary>
-        /// The workflow was abruptly terminated via a management API call.
-        /// </summary>
-        Terminated,
+    /// <summary>
+    /// The workflow was abruptly terminated via a management API call.
+    /// </summary>
+    Terminated,
 
-        /// <summary>
-        /// The workflow was scheduled but hasn't started running.
-        /// </summary>
-        Pending,
+    /// <summary>
+    /// The workflow was scheduled but hasn't started running.
+    /// </summary>
+    Pending,
 
-        /// <summary>
-        /// The workflow was suspended.
-        /// </summary>
-        Suspended,
-    }
+    /// <summary>
+    /// The workflow was suspended.
+    /// </summary>
+    Suspended,
 }

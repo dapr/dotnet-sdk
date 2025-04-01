@@ -13,62 +13,61 @@
 
 using System;
 
-namespace Dapr.AspNetCore
+namespace Dapr.AspNetCore;
+
+/// <summary>
+/// BulkSubscribeAttribute describes options for a bulk subscriber with respect to a topic.
+/// It needs to be paired with at least one [Topic] depending on the use case.
+/// </summary>
+[AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
+public class BulkSubscribeAttribute : Attribute, IBulkSubscribeMetadata
 {
     /// <summary>
-    /// BulkSubscribeAttribute describes options for a bulk subscriber with respect to a topic.
-    /// It needs to be paired with at least one [Topic] depending on the use case.
+    /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
     /// </summary>
-    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
-    public class BulkSubscribeAttribute : Attribute, IBulkSubscribeMetadata
+    /// <param name="topicName">The name of topic.</param>
+    /// <param name="maxMessagesCount">The name of the pubsub component to use.</param>
+    /// <param name="maxAwaitDurationMs">The topic name.</param>
+    public BulkSubscribeAttribute(string topicName, int maxMessagesCount, int maxAwaitDurationMs)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
-        /// </summary>
-        /// <param name="topicName">The name of topic.</param>
-        /// <param name="maxMessagesCount">The name of the pubsub component to use.</param>
-        /// <param name="maxAwaitDurationMs">The topic name.</param>
-        public BulkSubscribeAttribute(string topicName, int maxMessagesCount, int maxAwaitDurationMs)
-        {
-            this.TopicName = topicName;
-            this.MaxMessagesCount = maxMessagesCount;
-            this.MaxAwaitDurationMs = maxAwaitDurationMs;
-        }
-        
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
-        /// </summary>
-        /// <param name="topicName">The name of topic.</param>
-        /// <param name="maxMessagesCount">The name of the pubsub component to use.</param>
-        public BulkSubscribeAttribute(string topicName, int maxMessagesCount)
-        {
-            this.TopicName = topicName;
-            this.MaxMessagesCount = maxMessagesCount;
-        }
-        
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
-        /// </summary>
-        /// <param name="topicName">The name of topic.</param>
-        public BulkSubscribeAttribute(string topicName)
-        {
-            this.TopicName = topicName;
-        }
-
-        /// <summary>
-        /// Maximum number of messages in a bulk message from the message bus.
-        /// </summary>
-        public int MaxMessagesCount { get; } = 100;
-
-        /// <summary>
-        /// Maximum duration to wait for maxBulkSubCount messages by the message bus
-        /// before sending the messages to Dapr.
-        /// </summary>
-        public int MaxAwaitDurationMs { get; } = 1000;
-        
-        /// <summary>
-        /// The name of the topic to be bulk subscribed.
-        /// </summary>
-        public string TopicName { get; }
+        this.TopicName = topicName;
+        this.MaxMessagesCount = maxMessagesCount;
+        this.MaxAwaitDurationMs = maxAwaitDurationMs;
     }
+        
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
+    /// </summary>
+    /// <param name="topicName">The name of topic.</param>
+    /// <param name="maxMessagesCount">The name of the pubsub component to use.</param>
+    public BulkSubscribeAttribute(string topicName, int maxMessagesCount)
+    {
+        this.TopicName = topicName;
+        this.MaxMessagesCount = maxMessagesCount;
+    }
+        
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
+    /// </summary>
+    /// <param name="topicName">The name of topic.</param>
+    public BulkSubscribeAttribute(string topicName)
+    {
+        this.TopicName = topicName;
+    }
+
+    /// <summary>
+    /// Maximum number of messages in a bulk message from the message bus.
+    /// </summary>
+    public int MaxMessagesCount { get; } = 100;
+
+    /// <summary>
+    /// Maximum duration to wait for maxBulkSubCount messages by the message bus
+    /// before sending the messages to Dapr.
+    /// </summary>
+    public int MaxAwaitDurationMs { get; } = 1000;
+        
+    /// <summary>
+    /// The name of the topic to be bulk subscribed.
+    /// </summary>
+    public string TopicName { get; }
 }

@@ -11,31 +11,30 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr;
+
+/// <summary>
+/// ITopicMetadata that describes an endpoint as a subscriber to a topic.
+/// </summary>
+public interface ITopicMetadata
 {
     /// <summary>
-    /// ITopicMetadata that describes an endpoint as a subscriber to a topic.
+    /// Gets the topic name.
     /// </summary>
-    public interface ITopicMetadata
-    {
-        /// <summary>
-        /// Gets the topic name.
-        /// </summary>
-        string Name { get; }
+    string Name { get; }
 
-        /// <summary>
-        /// Gets the pubsub component name name.
-        /// </summary>
-        string PubsubName { get; }
+    /// <summary>
+    /// Gets the pubsub component name name.
+    /// </summary>
+    string PubsubName { get; }
 
-        /// <summary>
-        /// The CEL expression to use to match events for this handler.
-        /// </summary>
-        string Match { get; }
+    /// <summary>
+    /// The CEL expression to use to match events for this handler.
+    /// </summary>
+    string Match { get; }
 
-        /// <summary>
-        /// The priority in which this rule should be evaluated (lower to higher).
-        /// </summary>
-        int Priority { get; }
-    }
+    /// <summary>
+    /// The priority in which this rule should be evaluated (lower to higher).
+    /// </summary>
+    int Priority { get; }
 }

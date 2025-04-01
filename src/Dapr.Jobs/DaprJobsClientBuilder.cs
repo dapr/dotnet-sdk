@@ -20,16 +20,9 @@ namespace Dapr.Jobs;
 /// <summary>
 /// Builds a <see cref="DaprJobsClient"/>.
 /// </summary>
-public sealed class DaprJobsClientBuilder : DaprGenericClientBuilder<DaprJobsClient>
+/// <param name="configuration">An optional instance of <see cref="IConfiguration"/>.</param>
+public sealed class DaprJobsClientBuilder(IConfiguration? configuration = null) : DaprGenericClientBuilder<DaprJobsClient>(configuration)
 {
-    /// <summary>
-    /// Used to initialize a new instance of <see cref="IConfiguration"/>.
-    /// </summary>
-    /// <param name="configuration">An optional instance of <see cref="IConfiguration"/>.</param>
-    public DaprJobsClientBuilder(IConfiguration? configuration = null) : base(configuration)
-    {
-    }
-    
     /// <summary>
     /// Builds the client instance from the properties of the builder.
     /// </summary>

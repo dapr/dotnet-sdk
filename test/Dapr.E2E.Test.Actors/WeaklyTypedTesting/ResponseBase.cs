@@ -13,13 +13,11 @@
 
 using System.Text.Json.Serialization;
 
-namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting
-{
+namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting;
 #if NET7_0_OR_GREATER
-    [JsonDerivedType(typeof(DerivedResponse), typeDiscriminator: nameof(DerivedResponse))]
+[JsonDerivedType(typeof(DerivedResponse), typeDiscriminator: nameof(DerivedResponse))]
 #endif
-    public class ResponseBase
-    {
-        public string BasePropeprty { get; set; }
-    }
+public class ResponseBase
+{
+    public string BasePropeprty { get; set; }
 }
