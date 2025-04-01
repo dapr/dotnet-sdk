@@ -10,4 +10,4 @@ With the Dapr Job package, you can interact with the Dapr Job APIs from a .NET a
 to run according to a predefined schedule with an optional payload.
 
 To get started, walk through the [Dapr Jobs]({{< ref dotnet-jobs-howto.md >}}) how-to guide and refer to
-[best practices documentation]({{< ref dotnet-jobs-usage.md >}}) for additional guidance.
+[best practices documentation]({{< ref dotnet-jobsclient-usage.md >}}) for additional guidance.

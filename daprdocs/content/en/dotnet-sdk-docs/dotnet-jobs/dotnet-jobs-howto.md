@@ -63,8 +63,8 @@ the dependency injection registration in `Program.cs`, add the following line:
 ```cs
 var builder = WebApplication.CreateBuilder(args);
 
-//Add anywhere between these two
-builder.Services.AddDaprJobsClient(); //That's it
+//Add anywhere between these two lines
+builder.Services.AddDaprJobsClient();
 
 var app = builder.Build();
 ```
@@ -203,7 +203,8 @@ public class MySampleClass
 It's easy to set up a jobs endpoint if you're at all familiar with [minimal APIs in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/overview) as the syntax is the same between the two.
 
 Once dependency injection registration has been completed, configure the application the same way you would to handle mapping an HTTP request via the minimal API functionality in ASP.NET Core. Implemented as an extension method,
-pass the name of the job it should be responsive to and a delegate. Services can be injected into the delegate's arguments as you wish and you can optionally pass a `JobDetails` to get information about the job that has been triggered (e.g. access its scheduling setup or payload).
+pass the name of the job it should be responsive to and a delegate. Services can be injected into the delegate's arguments as you wish and the job payload can be accessed from the `ReadOnlyMemory<byte>` originally provided to the 
+job registration.
 
 There are two delegates you can use here. One provides an `IServiceProvider` in case you need to inject other services into the handler:
 
@@ -216,7 +217,7 @@ builder.Services.AddDaprJobsClient();
 var app = builder.Build();
 
 //Add our endpoint registration
-app.MapDaprScheduledJob("myJob", (IServiceProvider serviceProvider, string? jobName, JobDetails? jobDetails) => {
+app.MapDaprScheduledJob("myJob", (IServiceProvider serviceProvider, string jobName, ReadOnlyMemory<byte> jobPayload) => {
     var logger = serviceProvider.GetService<ILogger>();
     logger?.LogInformation("Received trigger invocation for '{jobName}'", "myJob");
 
@@ -237,9 +238,30 @@ builder.Services.AddDaprJobsClient();
 var app = builder.Build();
 
 //Add our endpoint registration
-app.MapDaprScheduledJob("myJob", (string? jobName, JobDetails? jobDetails) => {
+app.MapDaprScheduledJob("myJob", (string jobName, ReadOnlyMemory<byte> jobPayload) => {
     //Do something...
 });
+
+app.Run();
+```
+
+## Support cancellation tokens when processing mapped invocations
+You may want to ensure that timeouts are handled on job invocations so that they don't indefinitely hang and use system resources. When setting up the job mapping, there's an optional `TimeSpan` parameter that can be 
+provided as the last argument to specify a timeout for the request. Every time the job mapping invocation is triggered, a new `CancellationTokenSource` will be created using this timeout parameter and a `CancellationToken`
+will be created from it to put an upper bound on the processing of the request. If a timeout isn't provided, this defaults to `CancellationToken.None` and a timeout will not be automatically applied to the mapping.
+
+```cs
+//We have this from the example above
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDaprJobsClient();
+
+var app = builder.Build();
+
+//Add our endpoint registration
+app.MapDaprScheduledJob("myJob", (string jobName, ReadOnlyMemory<byte> jobPayload) => {
+    //Do something...
+}, TimeSpan.FromSeconds(15)); //Assigns a maximum timeout of 15 seconds for handling the invocation request
 
 app.Run();
 ```

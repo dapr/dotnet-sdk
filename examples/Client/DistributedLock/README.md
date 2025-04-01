@@ -24,7 +24,7 @@ cd examples/Client/DistributedLock
 In order to run the application that generates data for the workers to process, simply run the following command:
 
 ```bash
-dapr run --components-path ./Components --app-id generator -- dotnet run
+dapr run --resources-path ./Components --app-id generator -- dotnet run
 ```
 
 This application will create a new file to process once every 10 seconds. The files are stored in `DistributedLock/tmp`.
@@ -33,8 +33,8 @@ This application will create a new file to process once every 10 seconds. The fi
 In order to properly demonstrate locking, this application will be run more than once with the same App ID. However, the applications do need different ports in order to properly receive bindings. Run them with the command below:
 
 ```bash
-dapr run --components-path ./Components --app-id worker --app-port 5000 -- dotnet run
-dapr run --components-path ./Components --app-id worker --app-port 5001 -- dotnet run
+dapr run --resources-path ./Components --app-id worker --app-port 5000 -- dotnet run
+dapr run --resources-path ./Components --app-id worker --app-port 5001 -- dotnet run
 ```
 
 After running the applications, they will attempt to process files. You should see output such as:

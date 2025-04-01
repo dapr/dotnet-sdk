@@ -97,7 +97,7 @@ namespace Dapr.E2E.Test
         /// <see cref="ISerializationActor"/>. (it's defined in the base of it.)
         /// That why <see cref="ISerializationActor.AnotherMethod(DateTime)"/> was created,
         /// so there are now more then one method.
-        /// </remark>
+        /// </remarks>
         [Fact]
         public async Task ActorCanSupportCustomSerializerAndCallMoreThenOneDefinedMethod()
         {
