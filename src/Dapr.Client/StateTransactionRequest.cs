@@ -27,7 +27,7 @@ using System.Collections.Generic;
 /// <param name="etag">The etag (optional).</param>
 /// <param name="metadata">Additional key value pairs for the state (optional).</param>
 /// <param name="options">State options (optional).</param>
-public sealed class StateTransactionRequest(string key, byte[] value, StateOperationType operationType, string? etag = null, IReadOnlyDictionary<string, string>? metadata = null, StateOptions? options = null)
+public sealed class StateTransactionRequest(string key, byte[]? value, StateOperationType operationType, string? etag = null, IReadOnlyDictionary<string, string>? metadata = null, StateOptions? options = null)
 {
     /// <summary>
     /// Gets the state key.
@@ -37,7 +37,7 @@ public sealed class StateTransactionRequest(string key, byte[] value, StateOpera
     /// <summary>
     /// Gets or sets the value locally.
     /// </summary>
-    public byte[] Value { get; set; } = value;
+    public byte[]? Value { get; set; } = value;
 
     /// <summary>
     /// The Operation type.
