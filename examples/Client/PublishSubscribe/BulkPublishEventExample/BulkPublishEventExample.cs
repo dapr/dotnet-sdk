@@ -19,7 +19,7 @@ using Dapr.Client;
 
 namespace Samples.Client;
 
-public class BulkPublishEventExample : Example
+public sealed class BulkPublishEventExample : Example
 {
     private const string PubsubName = "pubsub";
     private const string TopicName = "deposit";
@@ -37,7 +37,7 @@ public class BulkPublishEventExample : Example
         using var client = new DaprClientBuilder().Build();
 
         var res = await client.BulkPublishEventAsync(PubsubName, TopicName, 
-            BulkPublishData);
+            BulkPublishData, cancellationToken: cancellationToken);
 
         if (res != null) {
             if (res.FailedEntries.Count > 0)
