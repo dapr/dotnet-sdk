@@ -47,21 +47,19 @@ public class DaprJobsServiceCollectionExtensionsTest
     }
     
     [Fact]
-    public void AddDaprJobsClient_RegistersDaprClientOnlyOnce()
+    public void AddDaprJobsClient_DaprClientRegistration_UseMostRecentVersion()
     {
         var services = new ServiceCollection();
 
-
-        var clientBuilder = new Action<IServiceProvider, DaprJobsClientBuilder>((sp, builder) =>
+        services.AddDaprJobsClient((_, builder) =>
         {
-            builder.UseDaprApiToken("abc");
-        });
-
+            //Sets the API token value
+            builder.UseDaprApiToken("abcd1234");
+        }); 
         services.AddDaprJobsClient(); //Sets a default API token value of an empty string
-        services.AddDaprJobsClient(clientBuilder); //Sets the API token value
-
+        
         var serviceProvider = services.BuildServiceProvider();
-        var daprJobClient = serviceProvider.GetService<DaprJobsClient>() as DaprJobsGrpcClient;
+        var daprJobClient = serviceProvider.GetRequiredService<DaprJobsClient>() as DaprJobsGrpcClient;
         
         Assert.NotNull(daprJobClient!.HttpClient);
         Assert.False(daprJobClient.HttpClient.DefaultRequestHeaders.TryGetValues("dapr-api-token", out var _));
