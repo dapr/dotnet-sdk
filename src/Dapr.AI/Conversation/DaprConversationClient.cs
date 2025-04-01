@@ -11,16 +11,26 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Common;
-using Dapr.Common.Extensions;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
 namespace Dapr.AI.Conversation;
 
 /// <summary>
+/// <para>
 /// Used to interact with the Dapr conversation building block.
+/// Use <see cref="DaprConversationClientBuilder"/> to create a <see cref="DaprConversationClient"/> or register
+/// for use with dependency injection via
+/// <see><cref>DaprJobsServiceCollectionExtensions.AddDaprJobsClient</cref></see>.
+/// </para>
+/// <para>
+/// Implementations of <see cref="DaprConversationClient"/> implement <see cref="IDisposable"/> because the
+/// client accesses network resources. For best performance, create a single long-lived client instance
+/// and share it for the lifetime of the application. This is done for you if created via the DI extensions. Avoid
+/// creating a disposing a client instance for each operation that the application performs - this can lead to socket
+/// exhaustion and other problems.
+/// </para>
 /// </summary>
-public sealed class DaprConversationClient : DaprAIClient
+public abstract class DaprConversationClient : DaprAIClient
 {
     /// <summary>
     /// The HTTP client used by the client for calling the Dapr runtime.
@@ -67,63 +77,7 @@ public sealed class DaprConversationClient : DaprAIClient
     /// <param name="options">Optional options used to configure the conversation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The response(s) provided by the LLM provider.</returns>
-    public override async Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName, IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
-        CancellationToken cancellationToken = default)
-    {
-        var request = new P.ConversationRequest
-        {
-            Name = daprConversationComponentName
-        };
-
-        if (options is not null)
-        {
-            if (options.ConversationId is not null)
-            {
-                request.ContextID = options.ConversationId;
-            }
-
-            request.ScrubPII = options.ScrubPII;
-
-            foreach (var (key, value) in options.Metadata)
-            {
-                request.Metadata.Add(key, value);
-            }
-
-            foreach (var (key, value) in options.Parameters)
-            {
-                request.Parameters.Add(key, value);
-            }
-        }
-
-        foreach (var input in inputs)
-        {
-            request.Inputs.Add(new P.ConversationInput
-            {
-                ScrubPII = input.ScrubPII,
-                Content = input.Content,
-                Role = input.Role.GetValueFromEnumMember()
-            });
-        }
-
-        var grpCCallOptions =
-            DaprClientUtilities.ConfigureGrpcCallOptions(typeof(DaprConversationClient).Assembly, this.DaprApiToken,
-                cancellationToken);
-
-        var result = await Client.ConverseAlpha1Async(request, grpCCallOptions).ConfigureAwait(false);
-        var outputs = result.Outputs.Select(output => new DaprConversationResult(output.Result)
-        {
-            Parameters = output.Parameters.ToDictionary(kvp => kvp.Key, parameter => parameter.Value)
-        }).ToList();
-
-        return new DaprConversationResponse(outputs);
-    }
-
-    /// <inheritdoc />
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            this.HttpClient.Dispose();
-        }
-    }
+    public abstract Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName,
+        IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
+        CancellationToken cancellationToken = default);
 }
