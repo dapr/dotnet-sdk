@@ -13,7 +13,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.Client;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 
@@ -26,19 +25,11 @@ namespace Dapr.Workflow;
 /// This is an alternative to the general purpose Dapr client. It uses a gRPC connection to send
 /// commands directly to the workflow engine, bypassing the Dapr API layer.
 /// </remarks>
-public class DaprWorkflowClient : IAsyncDisposable
+/// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
+/// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
+public class DaprWorkflowClient(DurableTaskClient innerClient) : IAsyncDisposable
 {
-    readonly DurableTaskClient innerClient;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DaprWorkflowClient"/> class.
-    /// </summary>
-    /// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
-    public DaprWorkflowClient(DurableTaskClient innerClient)
-    {
-        this.innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
-    }
+    readonly DurableTaskClient innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
 
     /// <summary>
     /// Schedules a new workflow instance for execution.

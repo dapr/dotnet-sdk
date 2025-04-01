@@ -23,30 +23,25 @@ using Microsoft.Extensions.Configuration;
 /// <summary>
 /// Defines runtime options for workflows.
 /// </summary>
-internal sealed class WorkflowLoggingService : IHostedService
+internal sealed class WorkflowLoggingService(ILogger<WorkflowLoggingService> logger) : IHostedService
 {
-    private readonly ILogger<WorkflowLoggingService> logger;
-    private static readonly HashSet<string> registeredWorkflows = new();
-    private static readonly HashSet<string> registeredActivities = new();
+    private static readonly HashSet<string> registeredWorkflows = [];
+    private static readonly HashSet<string> registeredActivities = [];
 
-    public WorkflowLoggingService(ILogger<WorkflowLoggingService> logger)
-    {
-        this.logger = logger;
-    }
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        this.logger.Log(LogLevel.Information, "WorkflowLoggingService started");
+        logger.Log(LogLevel.Information, "WorkflowLoggingService started");
 
-        this.logger.Log(LogLevel.Information, "List of registered workflows");
+        logger.Log(LogLevel.Information, "List of registered workflows");
         foreach (string item in registeredWorkflows)
         {
-            this.logger.Log(LogLevel.Information, item);
+            logger.Log(LogLevel.Information, item);
         }
 
-        this.logger.Log(LogLevel.Information, "List of registered activities:");
+        logger.Log(LogLevel.Information, "List of registered activities:");
         foreach (string item in registeredActivities)
         {
-            this.logger.Log(LogLevel.Information, item);
+            logger.Log(LogLevel.Information, item);
         }
 
         return Task.CompletedTask;
@@ -54,7 +49,7 @@ internal sealed class WorkflowLoggingService : IHostedService
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        this.logger.Log(LogLevel.Information, "WorkflowLoggingService stopped");
+        logger.Log(LogLevel.Information, "WorkflowLoggingService stopped");
     
         return Task.CompletedTask;
     }

@@ -36,24 +36,10 @@ public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null)
 /// <summary>
 /// Options for controlling the behavior of child workflow execution.
 /// </summary>
-public record ChildWorkflowTaskOptions : WorkflowTaskOptions
+/// <param name="InstanceId">The instance ID to use for the child workflow.</param>
+/// <param name="RetryPolicy">The child workflow's retry policy.</param>
+public record ChildWorkflowTaskOptions(string? InstanceId = null, WorkflowRetryPolicy? RetryPolicy = null) : WorkflowTaskOptions(RetryPolicy)
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ChildWorkflowTaskOptions"/> record.
-    /// </summary>
-    /// <param name="instanceId">The instance ID to use for the child workflow.</param>
-    /// <param name="retryPolicy">The child workflow's retry policy.</param>
-    public ChildWorkflowTaskOptions(string? instanceId = null, WorkflowRetryPolicy ? retryPolicy = null)
-        : base(retryPolicy)
-    {
-        this.InstanceId = instanceId;
-    }
-
-    /// <summary>
-    /// Gets the instance ID to use when creating a child workflow.
-    /// </summary>
-    public string? InstanceId { get; init; }
-
     internal new SubOrchestrationOptions ToDurableTaskOptions()
     {
         TaskRetryOptions? retryOptions = null;

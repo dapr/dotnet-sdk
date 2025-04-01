@@ -40,7 +40,7 @@ public sealed class WorkflowRuntimeOptions
     /// Initializes a new instance of the <see cref="WorkflowRuntimeOptions"/> class.
     /// </summary>
     /// <remarks>
-    /// Instances of this type are expected to be instanciated from a dependency injection container.
+    /// Instances of this type are expected to be instantiated from a dependency injection container.
     /// </remarks>
     public WorkflowRuntimeOptions()
     {
