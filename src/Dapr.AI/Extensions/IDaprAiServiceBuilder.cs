@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Common;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.AI.Extensions;
@@ -18,7 +19,7 @@ namespace Dapr.AI.Extensions;
 /// <summary>
 /// Responsible for registering Dapr AI service functionality.
 /// </summary>
-public interface IDaprAiServiceBuilder
+public interface IDaprAiServiceBuilder : IDaprServiceBuilder
 {
     /// <summary>
     /// The registered services on the builder.

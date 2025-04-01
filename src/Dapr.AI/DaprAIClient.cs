@@ -12,13 +12,14 @@
 // ------------------------------------------------------------------------
 
 using Dapr.AI.Conversation;
+using Dapr.Common;
 
 namespace Dapr.AI;
 
 /// <summary>
 /// The base implementation of a Dapr AI client.
 /// </summary>
-public abstract class DaprAIClient
+public abstract class DaprAIClient : IDaprClient
 {
     /// <summary>
     /// Sends various inputs to the large language model via the Conversational building block on the Dapr sidecar.
