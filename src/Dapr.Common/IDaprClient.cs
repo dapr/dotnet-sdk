@@ -16,4 +16,4 @@ namespace Dapr.Common;
 /// <summary>
 /// Base interface for any of the specific Dapr clients.
 /// </summary>
-public interface IDaprClient;
+public interface IDaprClient : IDisposable;
