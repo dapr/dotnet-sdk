@@ -19,10 +19,4 @@ namespace Dapr.AI.Extensions;
 /// <summary>
 /// Responsible for registering Dapr AI service functionality.
 /// </summary>
-public interface IDaprAiServiceBuilder : IDaprServiceBuilder
-{
-    /// <summary>
-    /// The registered services on the builder.
-    /// </summary>
-    public IServiceCollection Services { get; }
-}
+public interface IDaprAiServiceBuilder : IDaprServiceBuilder;

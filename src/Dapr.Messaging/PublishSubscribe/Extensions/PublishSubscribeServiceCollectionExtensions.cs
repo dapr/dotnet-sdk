@@ -19,6 +19,6 @@ public static class PublishSubscribeServiceCollectionExtensions
         this IServiceCollection services,
         Action<IServiceProvider, DaprPublishSubscribeClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
-        services.AddDaprClient<DaprPublishSubscribeClient, IDaprPubSubBuilder, DaprPublishSubscribeClientBuilder>(
+        services.AddDaprClient<DaprPublishSubscribeClient, DaprPublishSubscribeGrpcClient, IDaprPubSubBuilder, DaprPublishSubscribeClientBuilder>(
             configure, lifetime);
 }
