@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Common;
 using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 
@@ -31,7 +32,7 @@ namespace Dapr.Jobs;
 /// exhaustion and other problems.
 /// </para>
 /// </summary>
-public abstract class DaprJobsClient : IDisposable
+public abstract class DaprJobsClient : IDaprClient
 {
     private bool disposed;
 
