@@ -98,9 +98,8 @@ public interface IDemoActor : IActor
     /// <summary>
     /// Gets the registered reminder.
     /// </summary>
-    /// <param name="reminderName">The name of the reminder.</param>
     /// <returns>A task that returns the reminder after completion.</returns>
-    Task<ActorReminderData> GetReminder();
+    Task<ActorReminderData?> GetReminder();
 
     /// <summary>
     /// Unregisters the registered timer.
@@ -112,37 +111,19 @@ public interface IDemoActor : IActor
 /// <summary>
 /// Data Used by the Sample Actor.
 /// </summary>
-public class MyData
+public sealed record MyData(string? PropertyA, string? PropertyB)
 {
-    /// <summary>
-    /// Gets or sets the value for PropertyA.
-    /// </summary>
-    public string PropertyA { get; set; }
-
-    /// <summary>
-    /// Gets or sets the value for PropertyB.
-    /// </summary>
-    public string PropertyB { get; set; }
-
     /// <inheritdoc/>
-    public override string ToString()
-    {
-        var propAValue = this.PropertyA ?? "null";
-        var propBValue = this.PropertyB ?? "null";
-        return $"PropertyA: {propAValue}, PropertyB: {propBValue}";
-    }
+    public override string ToString() => $"PropertyA: {PropertyA ?? "null"}, PropertyB: {PropertyB ?? "null"}";
 }
 
 public class ActorReminderData
 {
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
     public TimeSpan DueTime { get; set; }
 
     public TimeSpan Period { get; set; }
 
-    public override string ToString()
-    {
-        return $"Name: {this.Name}, DueTime: {this.DueTime}, Period: {this.Period}";
-    }
+    public override string ToString() => $"Name: {this.Name}, DueTime: {this.DueTime}, Period: {this.Period}";
 }

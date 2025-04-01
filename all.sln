@@ -54,7 +54,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ControllerSample", "example
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Actor", "Actor", "{02374BD0-BF0B-40F8-A04A-C4C4D61D4992}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IDemoActor", "examples\Actor\IDemoActor\IDemoActor.csproj", "{7957E852-1291-4FAA-9034-FB66CE817FF1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DemoActor.Interfaces", "examples\Actor\DemoActor.Interfaces\DemoActor.Interfaces.csproj", "{7957E852-1291-4FAA-9034-FB66CE817FF1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DemoActor", "examples\Actor\DemoActor\DemoActor.csproj", "{626D74DD-4F37-4F74-87A3-5A6888684F5E}"
 EndProject

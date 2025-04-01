@@ -22,31 +22,21 @@ namespace DemoActor;
 // The following example showcases a few features of Actors
 //
 // Every actor should inherit from the Actor type, and must implement one or more actor interfaces.
-// In this case the actor interfaces are IDemoActor and IBankActor.
+// In this case the actor interfaces are DemoActor.Interfaces and IBankActor.
 // 
 // For Actors to use Reminders, it must derive from IRemindable.
 // If you don't intend to use Reminder feature, you can skip implementing IRemindable and reminder 
 // specific methods which are shown in the code below.
-public class DemoActor : Actor, IDemoActor.IDemoActor, IBankActor, IRemindable
+public class DemoActor(ActorHost host, BankService bank) : Actor(host), IDemoActor.IDemoActor, IBankActor, IRemindable
 {
     private const string StateName = "my_data";
-
-    private readonly BankService bank;
-
-    public DemoActor(ActorHost host, BankService bank)
-        : base(host)
-    {
-        // BankService is provided by dependency injection.
-        // See Program.cs
-        this.bank = bank;
-    }
 
     public async Task SaveData(MyData data, TimeSpan ttl)
     {
         Console.WriteLine($"This is Actor id {this.Id} with data {data}.");
 
         // Set State using StateManager, state is saved after the method execution.
-        await this.StateManager.SetStateAsync<MyData>(StateName, data, ttl);
+        await this.StateManager.SetStateAsync(StateName, data, ttl);
     }
 
     public Task<MyData> GetData()
@@ -85,7 +75,7 @@ public class DemoActor : Actor, IDemoActor.IDemoActor, IBankActor, IRemindable
         await this.RegisterReminderAsync("TestReminder", null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1), repetitions, ttl);
     }
 
-    public async Task<ActorReminderData> GetReminder()
+    public async Task<ActorReminderData?> GetReminder()
     {
         var reminder = await this.GetReminderAsync("TestReminder");
 
@@ -108,14 +98,17 @@ public class DemoActor : Actor, IDemoActor.IDemoActor, IBankActor, IRemindable
     {
         // This method is invoked when an actor reminder is fired.
         var actorState = await this.StateManager.GetStateAsync<MyData>(StateName);
-        actorState.PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}'";
-        await this.StateManager.SetStateAsync<MyData>(StateName, actorState, ttl: TimeSpan.FromMinutes(5));
+        var updatedActorState = actorState with
+        {
+            PropertyB = $"Reminder triggered at '{DateTime.Now:yyyy-MM-ddTHH:mm:ss}'"
+        };
+        await this.StateManager.SetStateAsync<MyData>(StateName, updatedActorState, ttl: TimeSpan.FromMinutes(5));
     }
 
     class TimerParams
     {
         public int IntParam { get; set; }
-        public string StringParam { get; set; }
+        public string? StringParam { get; set; }
     }
 
     /// <inheritdoc/>
@@ -172,20 +165,19 @@ public class DemoActor : Actor, IDemoActor.IDemoActor, IBankActor, IRemindable
     public async Task TimerCallback(byte[] data)
     {
         var state = await this.StateManager.GetStateAsync<MyData>(StateName);
-        state.PropertyA = $"Timer triggered at '{DateTime.Now:yyyyy-MM-ddTHH:mm:s}'";
-        await this.StateManager.SetStateAsync<MyData>(StateName, state, ttl: TimeSpan.FromMinutes(5));
+        var updatedState = state with { PropertyA = $"Timer triggered at '{DateTime.Now:yyyyy-MM-ddTHH:mm:s}'" };
+        await this.StateManager.SetStateAsync<MyData>(StateName, updatedState, ttl: TimeSpan.FromMinutes(5));
         var timerParams = JsonSerializer.Deserialize<TimerParams>(data);
-        Console.WriteLine("Timer parameter1: " + timerParams.IntParam);
-        Console.WriteLine("Timer parameter2: " + timerParams.StringParam);
+        if (timerParams != null)
+        {
+            Console.WriteLine($"Timer parameter1: {timerParams.IntParam}");
+            Console.WriteLine($"Timer parameter2: {timerParams.StringParam ?? ""}");
+        }
     }
 
     public async Task<AccountBalance> GetAccountBalance()
     {
-        var starting = new AccountBalance()
-        {
-            AccountId = this.Id.GetId(),
-            Balance = 100m, // Start new accounts with 100, we're pretty generous.
-        };
+        var starting = new AccountBalance(this.Id.GetId(), 100m); // Start new accounts with 100 million; we're pretty generous
 
         var balance = await this.StateManager.GetOrAddStateAsync<AccountBalance>("balance", starting);
         return balance;
@@ -193,18 +185,14 @@ public class DemoActor : Actor, IDemoActor.IDemoActor, IBankActor, IRemindable
 
     public async Task Withdraw(WithdrawRequest withdraw)
     {
-        var starting = new AccountBalance()
-        {
-            AccountId = this.Id.GetId(),
-            Balance = 100m, // Start new accounts with 100, we're pretty generous.
-        };
+        var starting = new AccountBalance(this.Id.GetId(), 100m); // Start new accounts with 100 million; we're pretty generous.
 
         var balance = await this.StateManager.GetOrAddStateAsync<AccountBalance>("balance", starting);
 
         // Throws Overdraft exception if the account doesn't have enough money.
-        var updated = this.bank.Withdraw(balance.Balance, withdraw.Amount);
+        var updated = bank.Withdraw(balance.Balance, withdraw.Amount);
 
-        balance.Balance = updated;
+        balance = balance with { Balance = updated };
         await this.StateManager.SetStateAsync("balance", balance);
     }
 }

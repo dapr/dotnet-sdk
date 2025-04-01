@@ -15,10 +15,10 @@ using IDemoActor;
 
 namespace DemoActor;
 
-public class BankService
+public sealed class BankService
 {
     // Allow overdraft of up to 50 (of whatever currency).
-    private readonly decimal OverdraftThreshold = -50m;
+    private const decimal OverdraftThreshold = -50m;
 
     public decimal Withdraw(decimal balance, decimal amount)
     {

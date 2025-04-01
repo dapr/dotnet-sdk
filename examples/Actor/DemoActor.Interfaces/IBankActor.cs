@@ -24,22 +24,9 @@ public interface IBankActor : IActor
     Task Withdraw(WithdrawRequest withdraw);
 }
 
-public class AccountBalance
-{
-    public string AccountId { get; set; }
+public sealed record AccountBalance(string AccountId, decimal Balance);
 
-    public decimal Balance { get; set; }
-}
+public sealed record WithdrawRequest(decimal Amount);
 
-public class WithdrawRequest
-{
-    public decimal Amount { get; set; }
-}
-
-public class OverdraftException : Exception
-{
-    public OverdraftException(decimal balance, decimal amount)
-        : base($"Your current balance is {balance:c} - that's not enough to withdraw {amount:c}.")
-    {
-    }
-}
+public class OverdraftException(decimal balance, decimal amount)
+    : Exception($"Your current balance is {balance:c} - that's not enough to withdraw {amount:c}.");
