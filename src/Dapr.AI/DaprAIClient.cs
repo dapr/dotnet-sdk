@@ -21,6 +21,8 @@ namespace Dapr.AI;
 /// </summary>
 public abstract class DaprAIClient : IDaprClient
 {
+    private bool disposed;
+    
     /// <summary>
     /// Sends various inputs to the large language model via the Conversational building block on the Dapr sidecar.
     /// </summary>
@@ -32,4 +34,22 @@ public abstract class DaprAIClient : IDaprClient
     public abstract Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName,
         IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
         CancellationToken cancellationToken = default);
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (!this.disposed)
+        {
+            Dispose(disposing: true);
+            this.disposed = true;
+        }
+    }
+
+    /// <summary>
+    /// Disposes the resources associated with the object.
+    /// </summary>
+    /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+    }
 }

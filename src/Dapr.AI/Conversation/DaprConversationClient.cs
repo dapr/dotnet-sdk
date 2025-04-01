@@ -117,4 +117,13 @@ public sealed class DaprConversationClient : DaprAIClient
 
         return new DaprConversationResponse(outputs);
     }
+
+    /// <inheritdoc />
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            this.HttpClient.Dispose();
+        }
+    }
 }
