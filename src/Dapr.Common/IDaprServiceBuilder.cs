@@ -11,9 +11,17 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Dapr.Common;
 
 /// <summary>
 /// Responsible for registering Dapr services with dependency injection.
 /// </summary>
-public interface IDaprServiceBuilder;
+public interface IDaprServiceBuilder
+{
+    /// <summary>
+    /// The registered services on the builder.
+    /// </summary>
+    public IServiceCollection Services { get; }
+}
