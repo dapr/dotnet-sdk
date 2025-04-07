@@ -19,14 +19,13 @@ using Dapr.Actors;
 ///
 /// https://github.com/dapr/dotnet-sdk/issues/762
 /// </summary>
-namespace Dapr.E2E.Test.Actors.ErrorTesting
+namespace Dapr.E2E.Test.Actors.ErrorTesting;
+
+public interface IRegression762Actor : IPingActor, IActor
 {
-    public interface IRegression762Actor : IPingActor, IActor
-    {
-        Task<string> GetState(string id);
+    Task<string> GetState(string id);
 
-        Task SaveState(StateCall call);
+    Task SaveState(StateCall call);
 
-        Task RemoveState(string id);
-    }
+    Task RemoveState(string id);
 }

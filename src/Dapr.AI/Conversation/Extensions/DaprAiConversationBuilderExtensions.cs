@@ -11,9 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Microsoft.Extensions.Configuration;
+using Dapr.Common.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Dapr.AI.Conversation.Extensions;
 
@@ -23,42 +22,11 @@ namespace Dapr.AI.Conversation.Extensions;
 public static class DaprAiConversationBuilderExtensions
 {
     /// <summary>
-    /// Registers the necessary functionality for the Dapr AI conversation functionality.
+    /// Registers the necessary functionality for the Dapr AI Conversation functionality.
     /// </summary>
-    /// <returns></returns>
-    public static IDaprAiConversationBuilder AddDaprConversationClient(this IServiceCollection services, Action<IServiceProvider, DaprConversationClientBuilder>? configure = null, ServiceLifetime lifetime = ServiceLifetime.Singleton)
-    {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
-        
-        services.AddHttpClient();
-
-        var registration = new Func<IServiceProvider, DaprConversationClient>(provider =>
-        {
-            var configuration = provider.GetService<IConfiguration>();
-            var builder = new DaprConversationClientBuilder(configuration);
-
-            var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
-            builder.UseHttpClientFactory(httpClientFactory);
-
-            configure?.Invoke(provider, builder);
-
-            return builder.Build();
-        });
-
-        switch (lifetime)
-        {
-            case ServiceLifetime.Scoped:
-                services.TryAddScoped(registration);
-                break;
-            case ServiceLifetime.Transient:
-                services.TryAddTransient(registration);
-                break;
-            case ServiceLifetime.Singleton:
-            default:
-                services.TryAddSingleton(registration);
-                break;
-        }
-
-        return new DaprAiConversationBuilder(services);
-    }
+    public static IDaprAiConversationBuilder AddDaprConversationClient(
+        this IServiceCollection services,
+        Action<IServiceProvider, DaprConversationClientBuilder>? configure = null,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton) => services
+        .AddDaprClient<DaprConversationClient, DaprConversationGrpcClient, DaprAiConversationBuilder, DaprConversationClientBuilder>(configure, lifetime);
 }

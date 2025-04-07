@@ -11,33 +11,32 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest
+namespace Dapr.AspNetCore.IntegrationTest;
+
+using System.Net.Http;
+using System.Threading.Tasks;
+using Dapr.AspNetCore.IntegrationTest.App;
+using Shouldly;
+using Xunit;
+
+public class RoutingIntegrationTest
 {
-    using System.Net.Http;
-    using System.Threading.Tasks;
-    using Dapr.AspNetCore.IntegrationTest.App;
-    using Shouldly;
-    using Xunit;
-
-    public class RoutingIntegrationTest
+    [Fact]
+    public async Task StateClient_CanBindFromState()
     {
-        [Fact]
-        public async Task StateClient_CanBindFromState()
+        using (var factory = new AppWebApplicationFactory())
         {
-            using (var factory = new AppWebApplicationFactory())
-            {
-                var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-                var daprClient = factory.DaprClient;
+            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+            var daprClient = factory.DaprClient;
 
-                await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
+            await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
 
-                var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/routingwithstateentry/test");
-                var response = await httpClient.SendAsync(request);
-                response.EnsureSuccessStatusCode();
+            var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/routingwithstateentry/test");
+            var response = await httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
 
-                var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
-                widget.Count.ShouldBe(18);
-            }
+            var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
+            widget.Count.ShouldBe(18);
         }
     }
 }

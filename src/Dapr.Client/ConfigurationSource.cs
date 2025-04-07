@@ -14,19 +14,18 @@
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Abstraction around a configuration source.
+/// </summary>
+public abstract class ConfigurationSource : IAsyncEnumerable<IDictionary<string, ConfigurationItem>>
 {
     /// <summary>
-    /// Abstraction around a configuration source.
+    /// The Id associated with this configuration source.
     /// </summary>
-    public abstract class ConfigurationSource : IAsyncEnumerable<IDictionary<string, ConfigurationItem>>
-    {
-        /// <summary>
-        /// The Id associated with this configuration source.
-        /// </summary>
-        public abstract string Id { get; }
+    public abstract string Id { get; }
 
-        /// <inheritdoc/>
-        public abstract IAsyncEnumerator<IDictionary<string, ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
-    }
+    /// <inheritdoc/>
+    public abstract IAsyncEnumerator<IDictionary<string, ConfigurationItem>> GetAsyncEnumerator(CancellationToken cancellationToken = default);
 }

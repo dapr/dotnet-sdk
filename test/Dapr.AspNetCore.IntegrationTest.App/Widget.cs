@@ -11,12 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest.App
-{
-    public class Widget
-    {
-        public string Size { get; set; }
+namespace Dapr.AspNetCore.IntegrationTest.App;
 
-        public int Count { get; set; }
-    }
+public class Widget
+{
+    public string Size { get; set; }
+
+    public int Count { get; set; }
 }
