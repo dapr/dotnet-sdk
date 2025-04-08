@@ -297,7 +297,7 @@ namespace Dapr.Actors.Runtime
 
             return new TimerInfo(callback, data, dueTime, period, ttl);
         }
-#pragma warning enable 0618
+#pragma warning restore 0618
 
         internal async Task ActivateActorAsync(ActorId actorId)
         {
