@@ -103,7 +103,7 @@ internal static class ConverterUtils
             builder.Append($"{value.Days}D");
         }
 
-        builder.Append("T");
+        builder.Append('T');
 
         if(value.Hours > 0)
         {
