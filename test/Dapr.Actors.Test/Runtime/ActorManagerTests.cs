@@ -332,6 +332,161 @@ public sealed class ActorManagerTests
     }
     
     private interface ITestActor : IActor { }
+        [Fact]
+        public async Task DeserializeTimer_Period_Iso8601_Time()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"0h0m7s10ms\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromSeconds(7).Add(TimeSpan.FromMilliseconds(10)), result.Period);
+        }
+
+        [Fact]
+        public async Task DeserializeTimer_Period_DaprFormat_Every()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@every 15s\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromSeconds(15), result.Period);
+        }
+        
+        [Fact]
+        public async Task DeserializeTimer_Period_DaprFormat_Every2()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@every 3h2m15s\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromHours(3).Add(TimeSpan.FromMinutes(2)).Add(TimeSpan.FromSeconds(15)), result.Period);
+        }
+        
+        [Fact]
+        public async Task DeserializeTimer_Period_DaprFormat_Monthly()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@monthly\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromDays(30), result.Period);
+        }
+        
+        [Fact]
+        public async Task DeserializeTimer_Period_DaprFormat_Weekly()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@weekly\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromDays(7), result.Period);
+        }
+        
+        [Fact]
+        public async Task DeserializeTimer_Period_DaprFormat_Daily()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@daily\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromDays(1), result.Period);
+        }
+        
+        [Fact]
+        public async Task DeserializeTimer_Period_DaprFormat_Hourly()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@hourly\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromHours(1), result.Period);
+        }
+
+        [Fact]
+        public async Task DeserializeTimer_DueTime_DaprFormat_Hourly()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"dueTime\": \"@hourly\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.FromHours(1), result.DueTime);
+            Assert.Equal(TimeSpan.Zero, result.Period);
+        }
+
+        [Fact]
+        public async Task DeserializeTimer_DueTime_Iso8601Times()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"dueTime\": \"0h0m7s10ms\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.Period);
+            Assert.Equal(TimeSpan.FromSeconds(7).Add(TimeSpan.FromMilliseconds(10)), result.DueTime);
+        }
+        
+        [Fact]
+        public async Task DeserializeTimer_Ttl_DaprFormat_Hourly()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"ttl\": \"@hourly\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.Zero, result.Period);
+            Assert.Equal(TimeSpan.FromHours(1), result.Ttl);
+        }
+
+        [Fact]
+        public async Task DeserializeTimer_Ttl_Iso8601Times()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"ttl\": \"0h0m7s10ms\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.Zero, result.Period);
+            Assert.Equal(TimeSpan.FromSeconds(7).Add(TimeSpan.FromMilliseconds(10)), result.Ttl);
+        }
+        
+        private interface ITestActor : IActor { }
 
     private class TestActor : Actor, ITestActor, IDisposable
     {
