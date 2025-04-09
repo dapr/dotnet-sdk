@@ -11,14 +11,13 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Dapr.Actors.Analyzers.Tests;
 
-public class TimerMethodPresentAnalyzerTests
+public class TimerCallbackMethodPresentAnalyzerTests
 {
     #if NET8_0
     private static readonly ReferenceAssemblies assemblies = ReferenceAssemblies.Net.Net80;
@@ -29,7 +28,7 @@ public class TimerMethodPresentAnalyzerTests
     [Fact]
     public async Task TestActor_TimerRegistration_NotPresent()
     {
-        var context = new CSharpAnalyzerTest<TimerMethodPresentAnalyzer, DefaultVerifier>();
+        var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
             new ("Dapr.Actors", "1.15.3")
         ]);
@@ -54,7 +53,7 @@ public class TimerMethodPresentAnalyzerTests
     [Fact]
     public async Task TestActor_TimerRegistration_NameOfCallbackPresent()
     {
-        var context = new CSharpAnalyzerTest<TimerMethodPresentAnalyzer, DefaultVerifier>();
+        var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
             new ("Dapr.Actors", "1.15.3")
         ]);
@@ -85,7 +84,7 @@ public class TimerMethodPresentAnalyzerTests
     [Fact]
     public async Task TestActor_TimerRegistration_LiteralCallbackPresent()
     {
-        var context = new CSharpAnalyzerTest<TimerMethodPresentAnalyzer, DefaultVerifier>();
+        var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
             new ("Dapr.Actors", "1.15.3")
         ]);
@@ -116,7 +115,7 @@ public class TimerMethodPresentAnalyzerTests
     [Fact]
     public async Task TestActor_TimerRegistration_CallbackNotPresent()
     {
-        var context = new CSharpAnalyzerTest<TimerMethodPresentAnalyzer, DefaultVerifier>();
+        var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
             new ("Dapr.Actors", "1.15.3")
         ]);
@@ -134,7 +133,7 @@ public class TimerMethodPresentAnalyzerTests
                            }
                            """;
 
-        context.ExpectedDiagnostics.Add(new DiagnosticResult(TimerMethodPresentAnalyzer.DaprTimerCallbackMethodRule)
+        context.ExpectedDiagnostics.Add(new DiagnosticResult(TimerCallbackMethodPresentAnalyzer.DaprTimerCallbackMethodRule)
             .WithSpan(8, 45, 8, 60)
             .WithArguments("TimerCallback", "TestActorTimerRegistrationTimerCallbackNotPresent"));
         await context.RunAsync();

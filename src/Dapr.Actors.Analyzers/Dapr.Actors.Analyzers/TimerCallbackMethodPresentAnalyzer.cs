@@ -12,7 +12,6 @@
 //  ------------------------------------------------------------------------
 
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -25,12 +24,9 @@ namespace Dapr.Actors.Analyzers;
 /// as the callback should actually exist on the type.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class TimerMethodPresentAnalyzer : DiagnosticAnalyzer
+public sealed class TimerCallbackMethodPresentAnalyzer : DiagnosticAnalyzer
 {
-    /// <summary>
-    /// The rule validated by the analyzer.
-    /// </summary>
-    public static readonly DiagnosticDescriptor DaprTimerCallbackMethodRule = new(
+    internal static readonly DiagnosticDescriptor DaprTimerCallbackMethodRule = new(
         id: "DAPR4001",
         title: new LocalizableResourceString(nameof(Resources.DAPR4001Title), Resources.ResourceManager, typeof(Resources)),
         messageFormat: new LocalizableResourceString(nameof(Resources.DAPR4001MessageFormat), Resources.ResourceManager, typeof(Resources)),

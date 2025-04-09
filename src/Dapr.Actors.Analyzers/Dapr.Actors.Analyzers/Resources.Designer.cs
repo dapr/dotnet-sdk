@@ -76,5 +76,59 @@ namespace Dapr.Actors.Analyzers {
                 return ResourceManager.GetString("DAPR4001Title", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The actor type &apos;{0}&apos; is not registered with dependency injection.
+        /// </summary>
+        internal static string DAPR4002MessageFormat {
+            get {
+                return ResourceManager.GetString("DAPR4002MessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The actor type is not registered with dependency injection.
+        /// </summary>
+        internal static string DAPR4002Title {
+            get {
+                return ResourceManager.GetString("DAPR4002Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set options.UseJsonSerialization to true to support interoperability with non-.NET actors.
+        /// </summary>
+        internal static string DAPR4003MessageFormat {
+            get {
+                return ResourceManager.GetString("DAPR4003MessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set options.UseJsonSerialization to true to support interoperability with non-.NET actors.
+        /// </summary>
+        internal static string DAPR4003Title {
+            get {
+                return ResourceManager.GetString("DAPR4003Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Call app.MapActorsHandlers to map endpoints for Dapr actors.
+        /// </summary>
+        internal static string DAPR4004MessageFormat {
+            get {
+                return ResourceManager.GetString("DAPR4004MessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Call app.MapActorsHandlers to map endpoints for Dapr actors.
+        /// </summary>
+        internal static string DAPR4004Title {
+            get {
+                return ResourceManager.GetString("DAPR4004Title", resourceCulture);
+            }
+        }
     }
 }
