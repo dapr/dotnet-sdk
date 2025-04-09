@@ -28,8 +28,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\Dapr.Actors\Dapr.Actors.csproj" />
-        <ProjectReference Include="..\Dapr.Actors.Analyzers\Dapr.Actors.Analyzers.csproj"/>
+        <ProjectReference Include="..\..\src\Dapr.Actors.Analyzers\Dapr.Actors.Analyzers\Dapr.Actors.Analyzers.csproj" />
+        <ProjectReference Include="..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
     </ItemGroup>
 
 </Project>
