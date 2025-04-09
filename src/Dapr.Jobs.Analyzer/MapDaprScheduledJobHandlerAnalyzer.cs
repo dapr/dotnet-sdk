@@ -1,10 +1,11 @@
 ﻿using System.Collections.Immutable;
+using System.Resources;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Dapr.Jobs.Analyzer
+namespace Dapr.Jobs.Analyzers
 {
     /// <summary>
     /// DaprJobsAnalyzer.
@@ -12,22 +13,22 @@ namespace Dapr.Jobs.Analyzer
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class MapDaprScheduledJobHandlerAnalyzer : DiagnosticAnalyzer
     {
-        private static readonly DiagnosticDescriptor DaprJobHandlerRule = new DiagnosticDescriptor(
+        internal static readonly DiagnosticDescriptor DaprJobHandlerRule = new (
             id: "DAPR3001",
-            title: "Ensure Post Mapper handler is present for all the Scheduled Jobs",
-            messageFormat: "Job invocations require the MapDaprScheduledJobHandler be set and configured for each anticipated job on IEndpointRouteBuilder",
+            title: new LocalizableResourceString(nameof(Resources.DAPR3001Title), Resources.ResourceManager, typeof(Resources)),
+            messageFormat: new LocalizableResourceString(nameof(Resources.DAPR3001MessageFormat), Resources.ResourceManager, typeof(Resources)),
             category: "Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true
         );
 
-        private static readonly string DaprJobsNameSpace = "Dapr.Jobs";
-        private static readonly string DaprJobScheduleJobAsyncMethod = "ScheduleJobAsync";
-        private static readonly string MethodNameSpace = "Dapr.Jobs.Extensions";
-        private static readonly string MapDaprScheduledJobHandlerMethod = "MapDaprScheduledJobHandler";
+        private const string DaprJobsNameSpace = "Dapr.Jobs";
+        private const string DaprJobScheduleJobAsyncMethod = "ScheduleJobAsync";
+        private const string MethodNameSpace = "Dapr.Jobs.Extensions";
+        private const string MapDaprScheduledJobHandlerMethod = "MapDaprScheduledJobHandler";
 
         /// <inheritdoc/>
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(DaprJobHandlerRule); } }
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [DaprJobHandlerRule];
 
         /// <inheritdoc/>
         public override void Initialize(AnalysisContext context)
@@ -42,33 +43,31 @@ namespace Dapr.Jobs.Analyzer
         {
             var invocationExpression = (InvocationExpressionSyntax)context.Node;
 
-            if (invocationExpression.Expression is not MemberAccessExpressionSyntax memberAccess)
+            if (!IsNamespaceAndMethodNameEqual(context, invocationExpression, DaprJobsNameSpace, DaprJobScheduleJobAsyncMethod))
             {
                 return;
             }
 
-            if (IsNamespaceAndMethodNameEqual(context, invocationExpression, DaprJobsNameSpace, DaprJobScheduleJobAsyncMethod))
+            var arguments = invocationExpression.ArgumentList.Arguments;
+            if (arguments.Count > 0 && arguments[0].Expression is LiteralExpressionSyntax literal)
             {
-                var arguments = invocationExpression.ArgumentList.Arguments;
-                if (arguments.Count > 0 && arguments[0].Expression is LiteralExpressionSyntax literal)
-                {
-                    string jobName = literal.Token.ValueText;
+                string jobName = literal.Token.ValueText;
 
-                    // Now, we will check for a corresponding endpoint route.
-                    CheckForEndpointRoute(context, jobName);
-                }
+                // Now, we will check for a corresponding endpoint route.
+                var jobNameLocation = invocationExpression.GetLocation();
+                CheckForEndpointRoute(context, jobName, jobNameLocation);
             }
         }
 
-        private static void CheckForEndpointRoute(SyntaxNodeAnalysisContext context, string jobName)
+        private static void CheckForEndpointRoute(SyntaxNodeAnalysisContext context, string jobName, Location jobNameLocation)
         {
             var root = context.SemanticModel.SyntaxTree.GetRoot();
 
             // Search for MapPost with the corresponding route
-            var mapDaprScheduledJobHandlersCount = root.DescendantNodes()
+            var mapDaprScheduledJobHandlersCount = root
+                .DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
-                .Where(invocation => IsNamespaceAndMethodNameEqual(context, invocation, MethodNameSpace, MapDaprScheduledJobHandlerMethod))
-                .Count();
+                .Count(invocation => IsNamespaceAndMethodNameEqual(context, invocation, MethodNameSpace, MapDaprScheduledJobHandlerMethod));
 
             if (mapDaprScheduledJobHandlersCount > 0)
             {
@@ -76,7 +75,7 @@ namespace Dapr.Jobs.Analyzer
             }
 
             // If no matching route was found, report a diagnostic
-            var diagnostic = Diagnostic.Create(DaprJobHandlerRule, default, jobName);
+            var diagnostic = Diagnostic.Create(DaprJobHandlerRule, jobNameLocation, jobName);
             context.ReportDiagnostic(diagnostic);
         }
 
@@ -103,13 +102,8 @@ namespace Dapr.Jobs.Analyzer
             }
 
             // Check if the receiver is of type DaprJobsClient
-            if (methodSymbol?.Name == methodName &&
-                methodSymbol.ContainingNamespace.ToDisplayString() == symbolNamespace)
-            {
-                return true;
-            }
-
-            return false;
+            return methodSymbol.Name == methodName &&
+                   methodSymbol.ContainingNamespace.ToDisplayString() == symbolNamespace;
         }
     }
 }
