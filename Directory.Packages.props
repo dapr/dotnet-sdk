@@ -7,7 +7,7 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
     <PackageVersion Include="coverlet.msbuild" Version="6.0.2" />
-    <PackageVersion Include="GitHubActionsTestLogger" Version="1.1.2" />
+    <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="Google.Api.CommonProtos" Version="2.2.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.28.2" />
     <PackageVersion Include="Grpc.AspNetCore" Version="2.66.0" />
