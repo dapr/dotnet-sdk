@@ -25,6 +25,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" Version="1.1.2" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit" Version="1.1.2" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.13.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.13.0" />
     <PackageVersion Include="Microsoft.DurableTask.Client.Grpc" Version="1.5.0" />
     <PackageVersion Include="Microsoft.DurableTask.Worker.Grpc" Version="1.5.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
