@@ -157,7 +157,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Test", "test\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Analyzers", "src\Dapr.Actors.Analyzers\Dapr.Actors.Analyzers\Dapr.Actors.Analyzers.csproj", "{E49C822C-E921-48DF-897B-3E603CA596D2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Analyzers.Tests", "src\Dapr.Actors.Analyzers\Dapr.Actors.Analyzers.Tests\Dapr.Actors.Analyzers.Tests.csproj", "{A2C0F203-11FF-4B7F-A94F-B9FD873573FE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Analyzers.Tests", "test\Dapr.Actors.Analyzers.Tests\Dapr.Actors.Analyzers.Tests.csproj", "{A2C0F203-11FF-4B7F-A94F-B9FD873573FE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
