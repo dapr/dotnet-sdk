@@ -1,33 +1,42 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.DependencyInjection;
+﻿// ------------------------------------------------------------------------
+//  Copyright 2025 The Dapr Authors
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//      http://www.apache.org/licenses/LICENSE-2.0
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//  ------------------------------------------------------------------------
+
 using Microsoft.AspNetCore.Builder;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Testing;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Dapr.Actors.Analyzers.Test;
+namespace Dapr.Actors.Analyzers.Tests;
 
 internal static class VerifyAnalyzer
 {
-    public static DiagnosticResult Diagnostic(string diagnosticId, DiagnosticSeverity diagnosticSeverity)
+    public static DiagnosticResult Diagnostic(DiagnosticDescriptor descriptor) => new(descriptor);
+
+    public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source, params DiagnosticResult[] expected)
+    where TAnalyzer : DiagnosticAnalyzer, new()
     {
-        return new DiagnosticResult(diagnosticId, diagnosticSeverity);
+        await VerifyAnalyzerAsync<TAnalyzer>(source, null, expected);
     }
 
-    public static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
+    public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source, string? program, params DiagnosticResult[] expected)
+    where TAnalyzer : DiagnosticAnalyzer, new()
     {
-        await VerifyAnalyzerAsync(source, null, expected);
-    }
+        var test = new Test<TAnalyzer> { TestCode = source };
 
-    public static async Task VerifyAnalyzerAsync(string source, string? program, params DiagnosticResult[] expected)
-    {
-        var test = new Test { TestCode = source };
-
-#if NET6_0
-        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net60;
-#elif NET7_0
-        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net70;
-#elif NET8_0
+#if NET8_0
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net80;
 #elif NET9_0
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
@@ -38,8 +47,11 @@ internal static class VerifyAnalyzer
             test.TestState.Sources.Add(("Program.cs", program));
         }
 
-        var metadataReferences = Utilities.GetAllReferencesNeededForType(typeof(ActorAnalyzer)).ToList();
-        metadataReferences.AddRange(Utilities.GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
+        var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(ActorRegistrationAnalyzer)).ToList();
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(MappedActorHandlersAnalyzer)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(PreferActorJsonSerializationAnalyzer)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(TimerCallbackMethodPresentAnalyzer)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(WebApplication).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
@@ -53,7 +65,10 @@ internal static class VerifyAnalyzer
         await test.RunAsync(CancellationToken.None);
     }
 
-    private class Test : CSharpAnalyzerTest<ActorAnalyzer, DefaultVerifier>
+    
+    
+    private sealed class Test<TAnalyzer> : CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
+    where TAnalyzer : DiagnosticAnalyzer, new()
     {
         public Test()
         {
