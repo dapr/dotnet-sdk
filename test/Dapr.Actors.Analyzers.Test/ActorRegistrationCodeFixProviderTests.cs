@@ -1,70 +1,81 @@
-﻿namespace Dapr.Actors.Analyzers.Test;
+﻿// ------------------------------------------------------------------------
+//  Copyright 2025 The Dapr Authors
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//      http://www.apache.org/licenses/LICENSE-2.0
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//  ------------------------------------------------------------------------
+
+namespace Dapr.Actors.Analyzers.Tests;
 
 public class ActorRegistrationCodeFixProviderTests
 {
     [Fact]
     public async Task RegisterActor()
     {
-        var code = @"
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
-            using Microsoft.Extensions.DependencyInjection;
-            
-            public static class Program
-            {
-                public static void Main()
-                {
-                    var builder = WebApplication.CreateBuilder();
-                        
-                    builder.Services.AddActors(options =>
-                    {                        
-                        options.UseJsonSerialization = true;
-                    });
+        const string code = """
+                            
+                                        using Dapr.Actors.Runtime;
+                                        using Microsoft.AspNetCore.Builder;
+                                        using Microsoft.Extensions.DependencyInjection;
+                                        
+                                        public static class Program
+                                        {
+                                            public static void Main()
+                                            {
+                                                var builder = WebApplication.CreateBuilder();
+                                                    
+                                                builder.Services.AddActors(options =>
+                                                {                        
+                                                    options.UseJsonSerialization = true;
+                                                });
+                                                var app = builder.Build();
+                                                app.MapActorsHandlers();
+                                            }
+                                        }
+                                        class TestActor : Actor
+                                        { 
+                                            public TestActor(ActorHost host) : base(host)
+                                            {
+                                            }
+                                        }
+                                        
+                            """;
 
-                    var app = builder.Build();
-
-                    app.MapActorsHandlers();
-                }
-            }
-
-            class TestActor : Actor
-            { 
-                public TestActor(ActorHost host) : base(host)
-                {
-                }
-            }
-            ";
-
-        var expectedChangedCode = @"
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
-            using Microsoft.Extensions.DependencyInjection;
-            
-            public static class Program
-            {
-                public static void Main()
-                {
-                    var builder = WebApplication.CreateBuilder();
-                        
-                    builder.Services.AddActors(options =>
-                    {                        
-                        options.UseJsonSerialization = true;
-                        options.Actors.RegisterActor<TestActor>();
-                    });
-
-                    var app = builder.Build();
-
-                    app.MapActorsHandlers();
-                }
-            }
-
-            class TestActor : Actor
-            { 
-                public TestActor(ActorHost host) : base(host)
-                {
-                }
-            }
-            ";
+        const string expectedChangedCode = """
+                                           
+                                                       using Dapr.Actors.Runtime;
+                                                       using Microsoft.AspNetCore.Builder;
+                                                       using Microsoft.Extensions.DependencyInjection;
+                                                       
+                                                       public static class Program
+                                                       {
+                                                           public static void Main()
+                                                           {
+                                                               var builder = WebApplication.CreateBuilder();
+                                                                   
+                                                               builder.Services.AddActors(options =>
+                                                               {                        
+                                                                   options.UseJsonSerialization = true;
+                                                                   options.Actors.RegisterActor<TestActor>();
+                                                               });
+                                                               var app = builder.Build();
+                                                               app.MapActorsHandlers();
+                                                           }
+                                                       }
+                                                       class TestActor : Actor
+                                                       { 
+                                                           public TestActor(ActorHost host) : base(host)
+                                                           {
+                                                           }
+                                                       }
+                                                       
+                                           """;
 
         await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
     }
@@ -72,54 +83,54 @@ public class ActorRegistrationCodeFixProviderTests
     [Fact]
     public async Task RegisterActor_WhenAddActorsIsNotFound()
     {
-        var code = @"
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
-            
-            public static class Program
-            {
-                public static void Main()
-                {
-                    var builder = WebApplication.CreateBuilder();
+        const string code = """
+                            
+                                        using Dapr.Actors.Runtime;
+                                        using Microsoft.AspNetCore.Builder;
+                                        
+                                        public static class Program
+                                        {
+                                            public static void Main()
+                                            {
+                                                var builder = WebApplication.CreateBuilder();
+                                                var app = builder.Build();
+                                            }
+                                        }
+                                        class TestActor : Actor
+                                        { 
+                                            public TestActor(ActorHost host) : base(host)
+                                            {
+                                            }
+                                        }
+                                        
+                            """;
 
-                    var app = builder.Build();
-                }
-            }
-
-            class TestActor : Actor
-            { 
-                public TestActor(ActorHost host) : base(host)
-                {
-                }
-            }
-            ";
-
-        var expectedChangedCode = @"
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
-            
-            public static class Program
-            {
-                public static void Main()
-                {
-                    var builder = WebApplication.CreateBuilder();
-                    
-                    builder.Services.AddActors(options =>
-                    {
-                        options.Actors.RegisterActor<TestActor>();
-                    });
-
-                    var app = builder.Build();
-                }
-            }
-
-            class TestActor : Actor
-            { 
-                public TestActor(ActorHost host) : base(host)
-                {
-                }
-            }
-            ";
+        const string expectedChangedCode = """
+                                           
+                                                       using Dapr.Actors.Runtime;
+                                                       using Microsoft.AspNetCore.Builder;
+                                                       
+                                                       public static class Program
+                                                       {
+                                                           public static void Main()
+                                                           {
+                                                               var builder = WebApplication.CreateBuilder();
+                                                               
+                                                               builder.Services.AddActors(options =>
+                                                               {
+                                                                   options.Actors.RegisterActor<TestActor>();
+                                                               });
+                                                               var app = builder.Build();
+                                                           }
+                                                       }
+                                                       class TestActor : Actor
+                                                       { 
+                                                           public TestActor(ActorHost host) : base(host)
+                                                           {
+                                                           }
+                                                       }
+                                                       
+                                           """;
 
         await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
     }
@@ -127,48 +138,48 @@ public class ActorRegistrationCodeFixProviderTests
     [Fact]
     public async Task RegisterActor_WhenAddActorsIsNotFound_TopLevelStatements()
     {
-        var code = @"            
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
+        const string code = """
+                                        
+                                        using Dapr.Actors.Runtime;
+                                        using Microsoft.AspNetCore.Builder;
+                                        var builder = WebApplication.CreateBuilder();
+                                            
+                                        var app = builder.Build();
+                                        namespace TestNamespace
+                                        {
+                                            class TestActor : Actor
+                                            {
+                                                public TestActor(ActorHost host) : base(host)
+                                                {
+                                                }
+                                            }
+                                        }
+                                        
+                            """;
 
-            var builder = WebApplication.CreateBuilder();
-                
-            var app = builder.Build();
-
-            namespace TestNamespace
-            {
-                class TestActor : Actor
-                {
-                    public TestActor(ActorHost host) : base(host)
-                    {
-                    }
-                }
-            }
-            ";
-
-        var expectedChangedCode = @"
-            using Dapr.Actors.Runtime;
-            using Microsoft.AspNetCore.Builder;
-            
-            var builder = WebApplication.CreateBuilder();
-                    
-            builder.Services.AddActors(options =>
-            {
-                options.Actors.RegisterActor<TestNamespace.TestActor>();
-            });
-
-            var app = builder.Build();
-
-            namespace TestNamespace
-            {
-                class TestActor : Actor
-                {
-                    public TestActor(ActorHost host) : base(host)
-                    {
-                    }
-                }
-            }
-            ";
+        const string expectedChangedCode = """
+                                           
+                                                       using Dapr.Actors.Runtime;
+                                                       using Microsoft.AspNetCore.Builder;
+                                                       
+                                                       var builder = WebApplication.CreateBuilder();
+                                                               
+                                                       builder.Services.AddActors(options =>
+                                                       {
+                                                           options.Actors.RegisterActor<TestNamespace.TestActor>();
+                                                       });
+                                                       var app = builder.Build();
+                                                       namespace TestNamespace
+                                                       {
+                                                           class TestActor : Actor
+                                                           {
+                                                               public TestActor(ActorHost host) : base(host)
+                                                               {
+                                                               }
+                                                           }
+                                                       }
+                                                       
+                                           """;
 
         await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
     }
