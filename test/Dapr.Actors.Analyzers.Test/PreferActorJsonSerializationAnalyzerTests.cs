@@ -11,6 +11,9 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Dapr.Actors.Analyzers.Test;
+using Dapr.Analyzers.Common;
+
 namespace Dapr.Actors.Analyzers.Tests;
 
 public class PreferActorJsonSerializationAnalyzerTests
@@ -42,7 +45,8 @@ public class PreferActorJsonSerializationAnalyzerTests
             .WithSpan(10, 25, 12, 27)
             .WithMessage("Set options.UseJsonSerialization to true to support interoperability with non-.NET actors");
 
-        await VerifyAnalyzer.VerifyAnalyzerAsync<PreferActorJsonSerializationAnalyzer>(testCode, expected);
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<PreferActorJsonSerializationAnalyzer>(testCode, expected);
     }
 
     [Fact]
@@ -68,6 +72,7 @@ public class PreferActorJsonSerializationAnalyzerTests
                                                 }
                                 """;
 
-        await VerifyAnalyzer.VerifyAnalyzerAsync<PreferActorJsonSerializationAnalyzer>(testCode);
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<PreferActorJsonSerializationAnalyzer>(testCode);
     }
 }

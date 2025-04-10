@@ -11,6 +11,9 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Dapr.Actors.Analyzers.Test;
+using Dapr.Analyzers.Common;
+
 namespace Dapr.Actors.Analyzers.Tests;
 
 public class ActorRegistrationCodeFixProviderTests
@@ -77,7 +80,8 @@ public class ActorRegistrationCodeFixProviderTests
                                                        
                                            """;
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
+        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode,
+            typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 
     [Fact]
@@ -132,7 +136,8 @@ public class ActorRegistrationCodeFixProviderTests
                                                        
                                            """;
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
+        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode,
+            typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 
     [Fact]
@@ -181,6 +186,7 @@ public class ActorRegistrationCodeFixProviderTests
                                                        
                                            """;
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode);
+        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode,
+            typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 }

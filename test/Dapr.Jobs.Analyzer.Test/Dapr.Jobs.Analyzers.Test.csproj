@@ -26,6 +26,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapr.Jobs\Dapr.Jobs.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Jobs.Analyzer\Dapr.Jobs.Analyzers.csproj" />
+        <ProjectReference Include="..\Dapr.Analyzers.Common\Dapr.Analyzers.Common.csproj" />
     </ItemGroup>
 
     <ItemGroup>
