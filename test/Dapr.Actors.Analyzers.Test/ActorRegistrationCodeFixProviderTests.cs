@@ -79,7 +79,8 @@ public class ActorRegistrationCodeFixProviderTests
                                                        
                                            """;
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode, Utilities.GetReferences(), Utilities.GetAnalyzers());
+        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode,
+            typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 
     [Fact]
@@ -134,7 +135,8 @@ public class ActorRegistrationCodeFixProviderTests
                                                        
                                            """;
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode, Utilities.GetReferences(), Utilities.GetAnalyzers());
+        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode,
+            typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 
     [Fact]
@@ -183,6 +185,7 @@ public class ActorRegistrationCodeFixProviderTests
                                                        
                                            """;
 
-        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode, Utilities.GetReferences(), Utilities.GetAnalyzers());
+        await VerifyCodeFix.RunTest<ActorRegistrationCodeFixProvider>(code, expectedChangedCode,
+            typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 }

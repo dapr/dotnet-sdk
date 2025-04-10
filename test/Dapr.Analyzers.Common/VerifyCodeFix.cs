@@ -22,9 +22,15 @@ namespace Dapr.Analyzers.Common;
 
 internal static class VerifyCodeFix
 {
-    public static async Task RunTest<T>(string code, string expectedChangedCode, IReadOnlyList<MetadataReference> metadataReferences, ImmutableArray<DiagnosticAnalyzer> analyzers) where T : CodeFixProvider, new()
+    public static async Task RunTest<T>(
+        string code,
+        string expectedChangedCode,
+        string assemblyLocation,
+        IReadOnlyList<MetadataReference> metadataReferences,
+        ImmutableArray<DiagnosticAnalyzer> analyzers) where T : CodeFixProvider, new()
     {
-        var (diagnostics, document, workspace) = await TestUtilities.GetDiagnosticsAdvanced(code, metadataReferences, analyzers);
+        var (diagnostics, document, workspace) =
+            await TestUtilities.GetDiagnosticsAdvanced(code, assemblyLocation, metadataReferences, analyzers);
 
         Assert.Single(diagnostics);
 
@@ -55,7 +61,8 @@ internal static class VerifyCodeFix
             operation.Apply(workspace, CancellationToken.None);
         }
 
-        var updatedDocument = workspace.CurrentSolution.GetDocument(document.Id) ?? throw new Exception("Updated document is null");
+        var updatedDocument = workspace.CurrentSolution.GetDocument(document.Id) ??
+                              throw new Exception("Updated document is null");
         var newCode = (await updatedDocument.GetTextAsync()).ToString();
 
         var normalizedExpectedCode = NormalizeWhitespace(expectedChangedCode);
@@ -67,7 +74,7 @@ internal static class VerifyCodeFix
         // Normalize whitespace
         string NormalizeWhitespace(string input)
         {
-            var separator = new[] { ' ', '\r', '\n' };
+            char[] separator = [' ', '\r', '\n'];
             return string.Join(" ", input.Split(separator, StringSplitOptions.RemoveEmptyEntries));
         }
     }

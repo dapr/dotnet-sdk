@@ -59,6 +59,7 @@ public class PreferActorJsonSerializationCodeFixProviderTests
                                                        }
                                            """;
 
-        await VerifyCodeFix.RunTest<PreferActorJsonSerializationCodeFixProvider>(code, expectedChangedCode, Utilities.GetReferences(), Utilities.GetAnalyzers());
+        await VerifyCodeFix.RunTest<PreferActorJsonSerializationCodeFixProvider>(code, expectedChangedCode,
+            typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 }

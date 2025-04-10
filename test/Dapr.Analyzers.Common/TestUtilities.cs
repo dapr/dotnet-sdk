@@ -25,6 +25,7 @@ internal static class TestUtilities
     internal static async Task<(ImmutableArray<Diagnostic> diagnostics, Document document, Workspace workspace)>
         GetDiagnosticsAdvanced(
             string code,
+            string assemblyLocation,
             IReadOnlyList<MetadataReference> additionalMetadataReferences,
             ImmutableArray<DiagnosticAnalyzer> analyzers)
     {
@@ -44,7 +45,7 @@ internal static class TestUtilities
                     { "CS1701", ReportDiagnostic.Suppress }
                 }))
             .AddMetadataReferences(await referenceAssemblies.ResolveAsync(LanguageNames.CSharp, CancellationToken.None))
-            .AddMetadataReference(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
+            .AddMetadataReference(MetadataReference.CreateFromFile(assemblyLocation))
             .AddMetadataReferences(additionalMetadataReferences);
 
         // Add the document to the project
