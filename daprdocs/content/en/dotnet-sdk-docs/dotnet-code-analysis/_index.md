@@ -33,6 +33,7 @@ is subject to change in the future as more analyzers are developed.
 The following packages will be available via NuGet following the v1.16 Dapr release:
 - Dapr.Actors.Analyzers
 - Dapr.Jobs.Analyzers
+- Dapr.Workflow.Analyzers
 
 Install each NuGet package on every project where you want the analyzers to run. The package will be installed as a
 project dependency and analyzers will run as you write your code or as part of a CI/CD build. The analyzers will flag
@@ -56,13 +57,15 @@ the `EnableNETAnalyzers` property to `false` in your csproj file.
 
 ## Available Analyzers
 
-| Diagnostic ID | Dapr Package | Category         | Severity | Version Added | Description | Code Fix Available |
-| -- | -- |------------------| -- | -- | -- | -- |
-| DAPR1401 | Dapr.Actors | Usage            | Warning | 1.16 | Actor timer method invocations require the named callback method to exist on type | No                 |
-| DAPR1402 | Dapr.Actors | Usage            | Warning | The actor type is not registered with dependency injection | Yes |
-| DAPR1403 | Dapr.Actors | Interoperability | Info | Set options.UseJsonSerialization to true to support interoperability with non-.NET actors | Yes |
-| DAPR1404 | Dapr.Actors | Usage            | Warning | Call app.MapActorsHandlers to map endpoints for Dapr actors | Yes |
-| DAPR1501 | Dapr.Jobs | Usage            | Warning | Job invocations require the MapDaprScheduledJobHandler to be set and configured for each anticipated job on IEndpointRouteBuilder | No |
+| Diagnostic ID | Dapr Package | Category         | Severity     | Version Added                                                                                                                     | Description                                                                         | Code Fix Available |
+| -- | -- |------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------| -- |
+| DAPR1301 | Dapr.Workflow | Usage | Warning      | 1.16                                                                                                                              | The workflow type is not registered with the dependency injection provider          | Yes |
+| DAPR1302 | Dapr.Workflow | Usage | Warning | 1.16                                                                                                                              | The workflow activity type is not registered with the dependency injection provider | Yes | 
+| DAPR1401 | Dapr.Actors | Usage            | Warning      | 1.16                                                                                                                              | Actor timer method invocations require the named callback method to exist on type   | No                 |
+| DAPR1402 | Dapr.Actors | Usage            | Warning      | The actor type is not registered with dependency injection                                                                        | Yes                                                                                 |
+| DAPR1403 | Dapr.Actors | Interoperability | Info         | Set options.UseJsonSerialization to true to support interoperability with non-.NET actors                                         | Yes                                                                                 |
+| DAPR1404 | Dapr.Actors | Usage            | Warning      | Call app.MapActorsHandlers to map endpoints for Dapr actors                                                                       | Yes                                                                                 |
+| DAPR1501 | Dapr.Jobs | Usage            | Warning      | Job invocations require the MapDaprScheduledJobHandler to be set and configured for each anticipated job on IEndpointRouteBuilder | No                                                                                  |
 
 ## Analyzer Categories
 The following are each of the eligible categories that an analyzer can be assigned to and are modeled after the 
