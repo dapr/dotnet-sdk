@@ -249,7 +249,6 @@ public class DaprJobsAnalyzerAnalyzerTests
                                 """;
 
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
-        
         await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode);
     }
 }

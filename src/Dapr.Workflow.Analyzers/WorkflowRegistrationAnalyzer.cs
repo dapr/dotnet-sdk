@@ -12,27 +12,18 @@ namespace Dapr.Workflow.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
 {
-    private static readonly DiagnosticDescriptor WorkflowDiagnosticDescriptor = new(
-        "DAPR1001",
-        "Workflow not registered",
-        "The workflow class '{0}' is not registered",
-        "Usage",
+    internal static readonly DiagnosticDescriptor WorkflowDiagnosticDescriptor = new(
+        id: "DAPR1301",
+         title: new LocalizableResourceString(nameof(Resources.DAPR1301Title), Resources.ResourceManager, typeof(Resources)),
+        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1301MessageFormat), Resources.ResourceManager, typeof(Resources)),
+        category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
-
-    private static readonly DiagnosticDescriptor WorkflowActivityDiagnosticDescriptor = new(
-        "DAPR1002",
-        "Workflow activity not registered",
-        "The workflow activity class '{0}' is not registered",
-        "Usage",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
-
 
     /// <summary>
     /// Gets the supported diagnostics for this analyzer.
     /// </summary>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(WorkflowDiagnosticDescriptor, WorkflowActivityDiagnosticDescriptor);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [WorkflowDiagnosticDescriptor];
 
     /// <summary>
     /// Initializes the analyzer.
@@ -43,67 +34,48 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
         context.RegisterSyntaxNodeAction(AnalyzeWorkflowRegistration, SyntaxKind.InvocationExpression);
-        context.RegisterSyntaxNodeAction(AnalyzeWorkflowActivityRegistration, SyntaxKind.InvocationExpression);
     }
 
-    private void AnalyzeWorkflowRegistration(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeWorkflowRegistration(SyntaxNodeAnalysisContext context)
     {
         var invocationExpr = (InvocationExpressionSyntax)context.Node;
 
         if (invocationExpr.Expression is not MemberAccessExpressionSyntax memberAccessExpr)
+        {
             return;
+        }
 
         if (memberAccessExpr.Name.Identifier.Text != "ScheduleNewWorkflowAsync")
+        {
             return;
+        }
 
         var argumentList = invocationExpr.ArgumentList.Arguments;
         if (argumentList.Count == 0)
-            return;
-
-        var firstArgument = argumentList[0].Expression;
-        if (firstArgument is InvocationExpressionSyntax nameofInvocation)
         {
-            var workflowName = nameofInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression.ToString().Trim('"');
-            if (workflowName != null)
-            {
-                bool isRegistered = CheckIfWorkflowIsRegistered(workflowName, context.SemanticModel);
-                if (!isRegistered)
-                {
-                    var diagnostic = Diagnostic.Create(WorkflowDiagnosticDescriptor, firstArgument.GetLocation(), workflowName);
-                    context.ReportDiagnostic(diagnostic);
-                }
-            }
+            return;
         }
-    }
-
-    private void AnalyzeWorkflowActivityRegistration(SyntaxNodeAnalysisContext context)
-    {
-        var invocationExpr = (InvocationExpressionSyntax)context.Node;
-
-        if (invocationExpr.Expression is not MemberAccessExpressionSyntax memberAccessExpr)
-            return;
-
-        if (memberAccessExpr.Name.Identifier.Text != "CallActivityAsync") 
-            return; 
-        
-        var argumentList = invocationExpr.ArgumentList.Arguments; 
-        if (argumentList.Count == 0) 
-            return;
 
         var firstArgument = argumentList[0].Expression;
-        if (firstArgument is InvocationExpressionSyntax nameofInvocation)
-        { 
-            var activityName = nameofInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression.ToString().Trim('"');
-            if (activityName != null) 
-            { 
-                bool isRegistered = CheckIfActivityIsRegistered(activityName, context.SemanticModel); 
-                if (!isRegistered) 
-                {
-                    var diagnostic = Diagnostic.Create(WorkflowActivityDiagnosticDescriptor, firstArgument.GetLocation(), activityName);
-                    context.ReportDiagnostic(diagnostic);
-                } 
-            } 
+        if (firstArgument is not InvocationExpressionSyntax nameofInvocation)
+        {
+            return;
         }
+
+        var workflowName = nameofInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression.ToString().Trim('"');
+        if (workflowName == null)
+        {
+            return;
+        }
+
+        bool isRegistered = CheckIfWorkflowIsRegistered(workflowName, context.SemanticModel);
+        if (isRegistered)
+        {
+            return;
+        }
+
+        var diagnostic = Diagnostic.Create(WorkflowDiagnosticDescriptor, firstArgument.GetLocation(), workflowName);
+        context.ReportDiagnostic(diagnostic);
     }
 
     private static bool CheckIfWorkflowIsRegistered(string workflowName, SemanticModel semanticModel)
@@ -123,53 +95,25 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
             }
 
             var methodName = memberAccess.Name.Identifier.Text;
-            if (methodName == "RegisterWorkflow")
-            {
-                if (memberAccess.Name is GenericNameSyntax typeArgumentList && typeArgumentList.TypeArgumentList.Arguments.Count > 0)
-                {
-                    if (typeArgumentList.TypeArgumentList.Arguments[0] is IdentifierNameSyntax typeArgument)
-                    {
-                        if (typeArgument.Identifier.Text == workflowName)
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool CheckIfActivityIsRegistered(string activityName, SemanticModel semanticModel)
-    {
-        var methodInvocations = new List<InvocationExpressionSyntax>();
-        foreach (var syntaxTree in semanticModel.Compilation.SyntaxTrees)
-        {
-            var root = syntaxTree.GetRoot();
-            methodInvocations.AddRange(root.DescendantNodes().OfType<InvocationExpressionSyntax>());
-        }
-
-        foreach (var invocation in methodInvocations)
-        {
-            if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+            if (methodName != "RegisterWorkflow")
             {
                 continue;
             }
 
-            var methodName = memberAccess.Name.Identifier.Text;
-            if (methodName == "RegisterActivity")
+            if (memberAccess.Name is not GenericNameSyntax typeArgumentList ||
+                typeArgumentList.TypeArgumentList.Arguments.Count <= 0)
             {
-                if (memberAccess.Name is GenericNameSyntax typeArgumentList && typeArgumentList.TypeArgumentList.Arguments.Count > 0)
-                {
-                    if (typeArgumentList.TypeArgumentList.Arguments[0] is IdentifierNameSyntax typeArgument)
-                    {                        
-                        if (typeArgument.Identifier.Text == activityName)
-                        {
-                            return true;
-                        }
-                    }
-                }
+                continue;
+            }
+
+            if (typeArgumentList.TypeArgumentList.Arguments[0] is not IdentifierNameSyntax typeArgument)
+            {
+                continue;
+            }
+
+            if (typeArgument.Identifier.Text == workflowName)
+            {
+                return true;
             }
         }
 

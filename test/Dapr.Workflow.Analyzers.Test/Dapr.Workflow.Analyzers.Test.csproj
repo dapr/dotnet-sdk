@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj" />
     <ProjectReference Include="..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
+    <ProjectReference Include="..\Dapr.Analyzers.Common\Dapr.Analyzers.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>
