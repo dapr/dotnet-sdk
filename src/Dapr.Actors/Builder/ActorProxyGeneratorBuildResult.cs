@@ -11,21 +11,20 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
+namespace Dapr.Actors.Builder;
+
+using System;
+
+internal class ActorProxyGeneratorBuildResult : BuildResult
 {
-    using System;
-
-    internal class ActorProxyGeneratorBuildResult : BuildResult
+    public ActorProxyGeneratorBuildResult(CodeBuilderContext buildContext)
+        : base(buildContext)
     {
-        public ActorProxyGeneratorBuildResult(CodeBuilderContext buildContext)
-            : base(buildContext)
-        {
-        }
-
-        public Type ProxyType { get; set; }
-
-        public Type ProxyActivatorType { get; set; }
-
-        public ActorProxyGenerator ProxyGenerator { get; set; }
     }
+
+    public Type ProxyType { get; set; }
+
+    public Type ProxyActivatorType { get; set; }
+
+    public ActorProxyGenerator ProxyGenerator { get; set; }
 }

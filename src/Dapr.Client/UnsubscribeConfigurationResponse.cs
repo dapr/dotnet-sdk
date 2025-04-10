@@ -1,29 +1,19 @@
-﻿namespace Dapr.Client
+﻿namespace Dapr.Client;
+
+/// <summary>
+/// Response from an Unsubscribe Configuration call.
+/// </summary>
+/// <param name="ok">Boolean indicating success.</param>
+/// <param name="message">Message from the Configuration API.</param>
+public class UnsubscribeConfigurationResponse(bool ok, string message)
 {
     /// <summary>
-    /// Response from an Unsubscribe Configuration call.
+    /// Boolean representing if the request was successful or not.
     /// </summary>
-    public class UnsubscribeConfigurationResponse
-    {
-        /// <summary>
-        /// Boolean representing if the request was successful or not.
-        /// </summary>
-        public bool Ok { get; }
+    public bool Ok { get; } = ok;
 
-        /// <summary>
-        /// The message from the Configuration API.
-        /// </summary>
-        public string Message { get; }
-
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="ok">Boolean indicating success.</param>
-        /// <param name="message">Message from the Configuration API.</param>
-        public UnsubscribeConfigurationResponse(bool ok, string message)
-        {
-            Ok = ok;
-            Message = message;
-        }
-    }
+    /// <summary>
+    /// The message from the Configuration API.
+    /// </summary>
+    public string Message { get; } = message;
 }

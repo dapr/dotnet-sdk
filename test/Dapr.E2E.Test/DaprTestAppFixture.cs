@@ -14,103 +14,102 @@ using System;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
 
-namespace Dapr.E2E.Test
+namespace Dapr.E2E.Test;
+
+// Guarantees we run the app a single time for the whole test class.
+public class DaprTestAppFixture : IDisposable
 {
-    // Guarantees we run the app a single time for the whole test class.
-    public class DaprTestAppFixture : IDisposable
+    private readonly object @lock = new object();
+    private Task<State> task;
+
+    public void Dispose()
     {
-        private readonly object @lock = new object();
-        private Task<State> task;
-
-        public void Dispose()
+        Task<State> task;
+        lock (@lock)
         {
-            Task<State> task;
-            lock (@lock)
+            if (this.task is null)
             {
-                if (this.task is null)
-                {
-                    // App didn't start, do nothing.
-                    return;
-                }
-
-                task = this.task;
-            }
-
-            State state;
-            try
-            {
-                state = this.task.GetAwaiter().GetResult();
-            }
-            catch
-            {
-                // App failed during start, do nothing.
+                // App didn't start, do nothing.
                 return;
             }
 
+            task = this.task;
+        }
+
+        State state;
+        try
+        {
+            state = this.task.GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // App failed during start, do nothing.
+            return;
+        }
+
+        try
+        {
+            state.App?.Stop();
+        }
+        catch (Exception ex)
+        {
             try
             {
-                state.App?.Stop();
+                // see: https://github.com/xunit/xunit/issues/2146
+                state.Output.WriteLine("Failed to shut down app: " + ex);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException)
             {
-                try
-                {
-                    // see: https://github.com/xunit/xunit/issues/2146
-                    state.Output.WriteLine("Failed to shut down app: " + ex);
-                }
-                catch (InvalidOperationException)
-                {
-                }
             }
         }
+    }
 
-        public Task<State> StartAsync(ITestOutputHelper output, DaprRunConfiguration configuration)
+    public Task<State> StartAsync(ITestOutputHelper output, DaprRunConfiguration configuration)
+    {
+        lock (@lock)
         {
-            lock (@lock)
+            if (this.task is null)
             {
-                if (this.task is null)
-                {
-                    this.task = Task.Run(() => Launch(output, configuration));
-                }
-
-                return this.task;
+                this.task = Task.Run(() => Launch(output, configuration));
             }
-        }
 
-        private State Launch(ITestOutputHelper output, DaprRunConfiguration configuration)
+            return this.task;
+        }
+    }
+
+    private State Launch(ITestOutputHelper output, DaprRunConfiguration configuration)
+    {
+        var app = new DaprTestApp(output, configuration.AppId);
+        try
         {
-            var app = new DaprTestApp(output, configuration.AppId);
+            var (httpEndpoint, grpcEndpoint) = app.Start(configuration);
+            return new State()
+            {
+                App = app,
+                HttpEndpoint = httpEndpoint,
+                GrpcEndpoint = grpcEndpoint,
+                Output = output,
+            };
+        }
+        catch (Exception startException)
+        {
             try
             {
-                var (httpEndpoint, grpcEndpoint) = app.Start(configuration);
-                return new State()
-                {
-                    App = app,
-                    HttpEndpoint = httpEndpoint,
-                    GrpcEndpoint = grpcEndpoint,
-                    Output = output,
-                };
+                app.Stop();
+                throw;
             }
-            catch (Exception startException)
+            catch (Exception stopException)
             {
-                try
-                {
-                    app.Stop();
-                    throw;
-                }
-                catch (Exception stopException)
-                {
-                    throw new AggregateException(startException, stopException);
-                }
+                throw new AggregateException(startException, stopException);
             }
         }
+    }
 
-        public class State
-        {
-            public string HttpEndpoint;
-            public string GrpcEndpoint;
-            public DaprTestApp App;
-            public ITestOutputHelper Output;
-        }
+    public class State
+    {
+        public string HttpEndpoint;
+        public string GrpcEndpoint;
+        public DaprTestApp App;
+        public ITestOutputHelper Output;
     }
 }

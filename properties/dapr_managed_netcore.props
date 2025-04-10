@@ -3,7 +3,7 @@
   <Import Project="dapr_common.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <LangVersion>10.0</LangVersion>
+    <LangVersion>12.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
     <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>

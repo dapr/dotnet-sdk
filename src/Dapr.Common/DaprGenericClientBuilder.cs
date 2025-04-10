@@ -21,7 +21,7 @@ namespace Dapr.Common;
 /// <summary>
 /// Builder for building a generic Dapr client.
 /// </summary>
-public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuilder : class
+public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuilder : class, IDaprClient
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprGenericClientBuilder{TClientBuilder}"/> class.
@@ -186,7 +186,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// </summary>
     /// <param name="assembly">The assembly the dependencies are being built for.</param>
     /// <exception cref="InvalidOperationException"></exception>
-    protected (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken) BuildDaprClientDependencies(Assembly assembly)
+    protected internal (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken) BuildDaprClientDependencies(Assembly assembly)
     {
         var grpcEndpoint = new Uri(this.GrpcEndpoint);
         if (grpcEndpoint.Scheme != "http" && grpcEndpoint.Scheme != "https")

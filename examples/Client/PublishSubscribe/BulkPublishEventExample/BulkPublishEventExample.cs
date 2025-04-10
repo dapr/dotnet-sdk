@@ -17,46 +17,45 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
 
-namespace Samples.Client
+namespace Samples.Client;
+
+public sealed class BulkPublishEventExample : Example
 {
-    public class BulkPublishEventExample : Example
-    {
-        private const string PubsubName = "pubsub";
-        private const string TopicName = "deposit";
+    private const string PubsubName = "pubsub";
+    private const string TopicName = "deposit";
         
-        IReadOnlyList<object> BulkPublishData = new List<object>() {
-            new { Id = "17", Amount = 10m },
-            new { Id = "18", Amount = 20m },
-            new { Id = "19", Amount = 30m }
-        };
+    IReadOnlyList<object> BulkPublishData = new List<object>() {
+        new { Id = "17", Amount = 10m },
+        new { Id = "18", Amount = 20m },
+        new { Id = "19", Amount = 30m }
+    };
 
-        public override string DisplayName => "Bulk Publishing Events";
+    public override string DisplayName => "Bulk Publishing Events";
 
-        public override async Task RunAsync(CancellationToken cancellationToken)
-        {
-            using var client = new DaprClientBuilder().Build();
+    public override async Task RunAsync(CancellationToken cancellationToken)
+    {
+        using var client = new DaprClientBuilder().Build();
 
-            var res = await client.BulkPublishEventAsync(PubsubName, TopicName, 
-                BulkPublishData);
+        var res = await client.BulkPublishEventAsync(PubsubName, TopicName, 
+            BulkPublishData, cancellationToken: cancellationToken);
 
-            if (res != null) {
-                if (res.FailedEntries.Count > 0)
-                {
-                    Console.WriteLine("Some events failed to be published!");
+        if (res != null) {
+            if (res.FailedEntries.Count > 0)
+            {
+                Console.WriteLine("Some events failed to be published!");
                     
-                    foreach (var failedEntry in res.FailedEntries)
-                    {
-                        Console.WriteLine("EntryId : " + failedEntry.Entry.EntryId + " Error message : " + 
-                                          failedEntry.ErrorMessage);
-                    }
-                }
-                else
+                foreach (var failedEntry in res.FailedEntries)
                 {
-                    Console.WriteLine("Published multiple deposit events!");    
+                    Console.WriteLine("EntryId : " + failedEntry.Entry.EntryId + " Error message : " + 
+                                      failedEntry.ErrorMessage);
                 }
-            } else {
-                throw new Exception("null response from dapr");
             }
+            else
+            {
+                Console.WriteLine("Published multiple deposit events!");    
+            }
+        } else {
+            throw new Exception("null response from dapr");
         }
     }
 }

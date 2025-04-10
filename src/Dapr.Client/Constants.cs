@@ -13,12 +13,11 @@
 
 using System.Net.Mime;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+internal class Constants
 {
-    internal class Constants
-    {
-        public const string ContentTypeApplicationJson = MediaTypeNames.Application.Json;
-        public const string ContentTypeApplicationGrpc = "application/grpc";
-        public const string ContentTypeCloudEvent = "application/cloudevents+json";
-    }
+    public const string ContentTypeApplicationJson = MediaTypeNames.Application.Json;
+    public const string ContentTypeApplicationGrpc = "application/grpc";
+    public const string ContentTypeCloudEvent = "application/cloudevents+json";
 }
