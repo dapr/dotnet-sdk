@@ -62,18 +62,18 @@ namespace Dapr.Jobs.Analyzers {
         /// <summary>
         ///   Looks up a localized string similar to Job invocations require the MapDaprScheduledJobHandler be set and configured for job name &apos;{0}&apos; on IEndpointRouteBuilder.
         /// </summary>
-        internal static string DAPR3001MessageFormat {
+        internal static string DAPR1501MessageFormat {
             get {
-                return ResourceManager.GetString("DAPR3001MessageFormat", resourceCulture);
+                return ResourceManager.GetString("DAPR1501MessageFormat", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Ensure handler endpoint is present for all scheduled Jobs.
         /// </summary>
-        internal static string DAPR3001Title {
+        internal static string DAPR1501Title {
             get {
-                return ResourceManager.GetString("DAPR3001Title", resourceCulture);
+                return ResourceManager.GetString("DAPR1501Title", resourceCulture);
             }
         }
     }

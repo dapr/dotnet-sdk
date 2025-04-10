@@ -14,9 +14,9 @@ namespace Dapr.Jobs.Analyzers
     public sealed class MapDaprScheduledJobHandlerAnalyzer : DiagnosticAnalyzer
     {
         internal static readonly DiagnosticDescriptor DaprJobHandlerRule = new (
-            id: "DAPR3001",
-            title: new LocalizableResourceString(nameof(Resources.DAPR3001Title), Resources.ResourceManager, typeof(Resources)),
-            messageFormat: new LocalizableResourceString(nameof(Resources.DAPR3001MessageFormat), Resources.ResourceManager, typeof(Resources)),
+            id: "DAPR1501",
+            title: new LocalizableResourceString(nameof(Resources.DAPR1501Title), Resources.ResourceManager, typeof(Resources)),
+            messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1501MessageFormat), Resources.ResourceManager, typeof(Resources)),
             category: "Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true
