@@ -33,6 +33,7 @@ is subject to change in the future as more analyzers are developed.
 The following packages will be available via NuGet following the v1.16 Dapr release:
 - Dapr.Actors.Analyzers
 - Dapr.Jobs.Analyzers
+- Dapr.PubSub.Analyzers
 - Dapr.Workflow.Analyzers
 
 Install each NuGet package on every project where you want the analyzers to run. The package will be installed as a
@@ -59,6 +60,7 @@ the `EnableNETAnalyzers` property to `false` in your csproj file.
 
 | Diagnostic ID | Dapr Package | Category         | Severity     | Version Added                                                                                                                     | Description                                                                         | Code Fix Available |
 | -- | -- |------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------| -- |
+| DAPR1201 | Dapr.PubSub | Usage | Warning | 1.16 | Call app.MapSubscribeHandler to map endpoint for Dapr PubSub subscriptions          | Yes |
 | DAPR1301 | Dapr.Workflow | Usage | Warning      | 1.16                                                                                                                              | The workflow type is not registered with the dependency injection provider          | Yes |
 | DAPR1302 | Dapr.Workflow | Usage | Warning | 1.16                                                                                                                              | The workflow activity type is not registered with the dependency injection provider | Yes | 
 | DAPR1401 | Dapr.Actors | Usage            | Warning      | 1.16                                                                                                                              | Actor timer method invocations require the named callback method to exist on type   | No                 |

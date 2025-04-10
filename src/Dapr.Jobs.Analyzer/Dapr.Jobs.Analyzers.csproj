@@ -19,6 +19,17 @@
         </PackageReference>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
     </ItemGroup>
+
+    <PropertyGroup>
+        <!-- Suppress false-positive error NU5128 when packing analyzers with no lib/ref files. -->
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+
+        <!-- Suppress generation of symbol package (.snupkg). -->
+        <IncludeSymbols>false</IncludeSymbols>
+
+        <!-- Do not include the generator as a lib dependency -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+    </PropertyGroup>
     
     <ItemGroup>
       <EmbeddedResource Update="Resources.resx">
