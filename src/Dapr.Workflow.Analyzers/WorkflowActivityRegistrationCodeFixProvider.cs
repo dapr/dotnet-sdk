@@ -13,20 +13,19 @@ namespace Dapr.Workflow.Analyzers;
 /// Provides code fixes for DAPR1002 diagnostic.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(WorkflowActivityRegistrationCodeFixProvider))]
-[Shared]
-public class WorkflowActivityRegistrationCodeFixProvider : CodeFixProvider
+public sealed class WorkflowActivityRegistrationCodeFixProvider : CodeFixProvider
 {
     /// <summary>
     /// Gets the diagnostic IDs that this provider can fix.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("DAPR1002");
+    public override ImmutableArray<string> FixableDiagnosticIds => ["DAPR1002"];
 
     /// <summary>
     /// Registers the code fix for the diagnostic.
     /// </summary>
     public override Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var title = "Register workflow activity";
+        const string title = "Register Dapr workflow activity";
         context.RegisterCodeFix(
             CodeAction.Create(
                 title,
@@ -36,30 +35,33 @@ public class WorkflowActivityRegistrationCodeFixProvider : CodeFixProvider
         return Task.CompletedTask;
     }
 
-    private async Task<Document> RegisterWorkflowActivityAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
+    private static async Task<Document> RegisterWorkflowActivityAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         var diagnosticSpan = diagnostic.Location.SourceSpan;
 
         var oldInvocation = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().First();
 
-        if (oldInvocation is null)
+        if (oldInvocation == null)
+        {
             return document;
-
-        if (root == null || oldInvocation == null)
-            return document;
+        }
 
         // Extract the workflow activity type name
         var workflowActivityType = oldInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression.ToString();
 
         if (string.IsNullOrEmpty(workflowActivityType))
+        {
             return document;
+        }
 
         // Get the compilation
         var compilation = await document.Project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
 
         if (compilation == null)
+        {
             return document;
+        }
 
         InvocationExpressionSyntax? addDaprWorkflowInvocation = null;
         SyntaxNode? targetRoot = null;
@@ -98,8 +100,10 @@ public class WorkflowActivityRegistrationCodeFixProvider : CodeFixProvider
         // Create the new workflow registration statement
         var registerWorkflowStatement = SyntaxFactory.ParseStatement($"{parameterName}.RegisterActivity<{workflowActivityType}>();");
 
-        if (optionsLambda == null || optionsLambda.Body is not BlockSyntax optionsBlock)
+        if (optionsLambda is not { Body: BlockSyntax optionsBlock })
+        {
             return document;
+        }
 
         // Add the new registration statement to the options block
         var newOptionsBlock = optionsBlock.AddStatements(registerWorkflowStatement);

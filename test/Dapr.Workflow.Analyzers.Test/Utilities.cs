@@ -20,12 +20,14 @@ internal static class Utilities
     internal static IReadOnlyList<MetadataReference> GetReferences()
     {
         var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowActivityRegistrationAnalyzer)).ToList();
-        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(WorkflowRegistrationAnalyzer).Assembly.Location));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowRegistrationAnalyzer)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(TimeSpan)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(Workflow<,>)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowActivity<,>)));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(Task).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(WebApplication).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(DaprWorkflowClient).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.ServiceCollection).Assembly.Location));
-        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(Workflow<,>).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IApplicationBuilder).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
         return metadataReferences;

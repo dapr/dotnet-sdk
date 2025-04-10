@@ -11,6 +11,7 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Dapr.Actors.Analyzers.Test;
 using Dapr.Analyzers.Common;
 
 namespace Dapr.Actors.Analyzers.Tests;

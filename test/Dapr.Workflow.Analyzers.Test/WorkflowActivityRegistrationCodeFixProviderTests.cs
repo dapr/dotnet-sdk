@@ -9,6 +9,7 @@ public sealed class WorkflowActivityRegistrationCodeFixProviderTests
     {
         const string code = """
                                         using Dapr.Workflow;
+                                        using System;
                                         using Microsoft.Extensions.DependencyInjection;
                                         using System.Threading.Tasks;
                             
@@ -33,14 +34,22 @@ public sealed class WorkflowActivityRegistrationCodeFixProviderTests
                                             }
                                         }
                             
-                                        record OrderPayload { }
-                                        record OrderResult(string message) { }
-                                        record Notification { public Notification(string message) { } }
-                                        class NotifyActivity { }
+                                        record OrderPayload;
+                                        record OrderResult(string Message) { };
+                                        record Notification { public Notification(string message) { } };
+                                        internal sealed class NotifyActivity : WorkflowActivity<string, bool> 
+                                        {
+                                             public override async Task<bool> RunAsync(WorkflowActivityContext context, string input) 
+                                             {
+                                                 await Task.Delay(TimeSpan.FromSeconds(15));
+                                                 return true;
+                                             }
+                                        }
                             """;
 
         const string expectedChangedCode = """
                                                        using Dapr.Workflow;
+                                                       using System;
                                                        using Microsoft.Extensions.DependencyInjection;
                                                        using System.Threading.Tasks;
                                            
@@ -66,10 +75,17 @@ public sealed class WorkflowActivityRegistrationCodeFixProviderTests
                                                            }
                                                        }
                                            
-                                                       record OrderPayload { }
-                                                       record OrderResult(string message) { }
-                                                       record Notification { public Notification(string message) { } }
-                                                       class NotifyActivity { }
+                                                       record OrderPayload;
+                                                       record OrderResult(string Message) { };
+                                                       record Notification { public Notification(string message) { } };
+                                                       internal sealed class NotifyActivity : WorkflowActivity<string, bool> 
+                                                       {
+                                                            public override async Task<bool> RunAsync(WorkflowActivityContext context, string input) 
+                                                            {
+                                                                await Task.Delay(TimeSpan.FromSeconds(15));
+                                                                return true;
+                                                            }
+                                                       }
                                            """;
 
         await VerifyCodeFix.RunTest<WorkflowActivityRegistrationCodeFixProvider>(code, expectedChangedCode, typeof(object).Assembly.Location, Utilities.GetReferences(), Utilities.GetAnalyzers());

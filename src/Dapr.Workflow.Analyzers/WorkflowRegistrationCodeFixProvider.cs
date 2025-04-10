@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Composition;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -13,20 +12,19 @@ namespace Dapr.Workflow.Analyzers;
 /// Provides code fixes for DAPR1001 diagnostic.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(WorkflowRegistrationCodeFixProvider))]
-[Shared]
-public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
+public sealed class WorkflowRegistrationCodeFixProvider : CodeFixProvider
 {
     /// <summary>
     /// Gets the diagnostic IDs that this provider can fix.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("DAPR1001");
+    public override ImmutableArray<string> FixableDiagnosticIds => ["DAPR1001"];
 
     /// <summary>
     /// Registers the code fix for the diagnostic.
     /// </summary>
     public override Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var title = "Register workflow";
+        const string title = "Register Dapr workflow";
         context.RegisterCodeFix(
             CodeAction.Create(
                 title,
@@ -43,11 +41,10 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
 
         var oldInvocation = root?.FindToken(diagnosticSpan.Start).Parent?.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().First();
 
-        if (oldInvocation is null)
+        if (oldInvocation is null || root is null)
+        {
             return document;
-
-        if (root == null || oldInvocation == null)
-            return document;
+        }
 
         // Get the semantic model
         var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
@@ -56,26 +53,35 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
         var workflowTypeSyntax = oldInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
 
         if (workflowTypeSyntax == null)
+        {
             return document;
+        }
 
         // Get the symbol for the workflow type
-        if (semanticModel.GetSymbolInfo(workflowTypeSyntax, cancellationToken).Symbol is not INamedTypeSymbol workflowTypeSymbol)
+        if (semanticModel.GetSymbolInfo(workflowTypeSyntax, cancellationToken).Symbol is not INamedTypeSymbol
+            workflowTypeSymbol)
+        {
             return document;
+        }
 
         // Get the fully qualified name
         var workflowType = workflowTypeSymbol.ToDisplayString(new SymbolDisplayFormat(
             typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces));
 
         if (string.IsNullOrEmpty(workflowType))
+        {
             return document;
+        }
 
         // Get the compilation
         var compilation = await document.Project.GetCompilationAsync(cancellationToken);
 
         if (compilation == null)
+        {
             return document;
+        }
 
-        (var targetDocument, var addDaprWorkflowInvocation) = await FindAddDaprWorkflowInvocationAsync(document.Project, cancellationToken);
+        var (targetDocument, addDaprWorkflowInvocation) = await FindAddDaprWorkflowInvocationAsync(document.Project, cancellationToken);
 
         if (addDaprWorkflowInvocation == null)
         {
@@ -83,7 +89,9 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
         }
 
         if (addDaprWorkflowInvocation == null)
+        {
             return document;
+        }
 
         var targetRoot = await addDaprWorkflowInvocation.SyntaxTree.GetRootAsync(cancellationToken);
 
@@ -96,7 +104,7 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
             .OfType<SimpleLambdaExpressionSyntax>()
             .FirstOrDefault();
 
-        if (optionsLambda == null || optionsLambda.Body is not BlockSyntax optionsBlock)
+        if (optionsLambda is not { Body: BlockSyntax optionsBlock })
             return document;
 
         // Extract the parameter name from the lambda expression
@@ -126,7 +134,7 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
         return WellKnownFixAllProviders.BatchFixer;
     }
 
-    private async Task<(Document?, InvocationExpressionSyntax?)> FindAddDaprWorkflowInvocationAsync(Project project, CancellationToken cancellationToken)
+    private static async Task<(Document?, InvocationExpressionSyntax?)> FindAddDaprWorkflowInvocationAsync(Project project, CancellationToken cancellationToken)
     {
         var compilation = await project.GetCompilationAsync(cancellationToken);
 
@@ -139,11 +147,13 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
                 .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
                                               memberAccess.Name.Identifier.Text == "AddDaprWorkflow");
 
-            if (addDaprWorkflowInvocation != null)
+            if (addDaprWorkflowInvocation == null)
             {
-                var document = project.GetDocument(addDaprWorkflowInvocation.SyntaxTree);
-                return (document, addDaprWorkflowInvocation);
+                continue;
             }
+
+            var document = project.GetDocument(addDaprWorkflowInvocation.SyntaxTree);
+            return (document, addDaprWorkflowInvocation);
         }
 
         return (null, null);
@@ -159,43 +169,49 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
 
         var builderVariable = variableDeclarator?.Identifier.Text;
 
-        if (createBuilderInvocation != null)
+        if (createBuilderInvocation == null)
         {
-            var targetRoot = await createBuilderInvocation.SyntaxTree.GetRootAsync(cancellationToken);
-            var document = project.GetDocument(createBuilderInvocation.SyntaxTree);
+            return (null, null);
+        }
 
-            if (createBuilderInvocation.Expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax builderIdentifier })
+        var targetRoot = await createBuilderInvocation.SyntaxTree.GetRootAsync(cancellationToken);
+        var document = project.GetDocument(createBuilderInvocation.SyntaxTree);
+
+        if (createBuilderInvocation.Expression is not MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax })
+        {
+            return (null, null);
+        }
+
+        var addDaprWorkflowStatement = SyntaxFactory.ParseStatement($"{builderVariable}.Services.AddDaprWorkflow(options => {{ }});");
+
+        if (createBuilderInvocation.Ancestors().OfType<BlockSyntax>().FirstOrDefault() is SyntaxNode parentBlock)
+        {
+            var firstChild = parentBlock.ChildNodes().FirstOrDefault(node => node is not UsingDirectiveSyntax);
+            var newParentBlock = parentBlock.InsertNodesAfter(firstChild, new[] { addDaprWorkflowStatement });
+            targetRoot = targetRoot.ReplaceNode(parentBlock, newParentBlock);
+        }
+        else
+        {
+            var compilationUnitSyntax = createBuilderInvocation.Ancestors().OfType<CompilationUnitSyntax>().FirstOrDefault();
+            if (compilationUnitSyntax != null)
             {
-                var addDaprWorkflowStatement = SyntaxFactory.ParseStatement($"{builderVariable}.Services.AddDaprWorkflow(options => {{ }});");
-
-                if (createBuilderInvocation.Ancestors().OfType<BlockSyntax>().FirstOrDefault() is SyntaxNode parentBlock)
-                {
-                    var firstChild = parentBlock.ChildNodes().FirstOrDefault(node => node is not UsingDirectiveSyntax);
-                    var newParentBlock = parentBlock.InsertNodesAfter(firstChild, new[] { addDaprWorkflowStatement });
-                    targetRoot = targetRoot.ReplaceNode(parentBlock, newParentBlock);
-                }
-                else
-                {
-                    var compilationUnitSyntax = createBuilderInvocation.Ancestors().OfType<CompilationUnitSyntax>().FirstOrDefault();
-                    var firstChild = compilationUnitSyntax.ChildNodes().FirstOrDefault(node => node is not UsingDirectiveSyntax);
-                    var globalStatement = SyntaxFactory.GlobalStatement(addDaprWorkflowStatement);
-                    var newCompilationUnitSyntax = compilationUnitSyntax.InsertNodesAfter(firstChild, new[] { globalStatement });
-                    targetRoot = targetRoot.ReplaceNode(compilationUnitSyntax, newCompilationUnitSyntax);
-                }
-
-                var addDaprWorkflowInvocation = targetRoot?.DescendantNodes()
-                    .OfType<InvocationExpressionSyntax>()
-                    .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                        memberAccess.Name.Identifier.Text == "AddDaprWorkflow");
-
-                return (document, addDaprWorkflowInvocation);
+                var firstChild = compilationUnitSyntax.ChildNodes().FirstOrDefault(node => node is not UsingDirectiveSyntax);
+                var globalStatement = SyntaxFactory.GlobalStatement(addDaprWorkflowStatement);
+                var newCompilationUnitSyntax = compilationUnitSyntax.InsertNodesAfter(firstChild, [globalStatement]);
+                targetRoot = targetRoot.ReplaceNode(compilationUnitSyntax, newCompilationUnitSyntax);
             }
         }
 
-        return (null, null);
+        var addDaprWorkflowInvocation = targetRoot?.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                                          memberAccess.Name.Identifier.Text == "AddDaprWorkflow");
+
+        return (document, addDaprWorkflowInvocation);
+
     }
 
-    private async Task<InvocationExpressionSyntax?> FindCreateBuilderInvocationAsync(Project project, CancellationToken cancellationToken)
+    private static async Task<InvocationExpressionSyntax?> FindCreateBuilderInvocationAsync(Project project, CancellationToken cancellationToken)
     {
         var compilation = await project.GetCompilationAsync(cancellationToken);
 
@@ -206,10 +222,14 @@ public class WorkflowRegistrationCodeFixProvider : CodeFixProvider
             // Find the invocation expression for WebApplication.CreateBuilder()
             var createBuilderInvocation = syntaxRoot.DescendantNodes()
                 .OfType<InvocationExpressionSyntax>()
-                .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                                              memberAccess.Expression is IdentifierNameSyntax identifier &&
-                                              identifier.Identifier.Text == "WebApplication" &&
-                                              memberAccess.Name.Identifier.Text == "CreateBuilder");
+                .FirstOrDefault(invocation => invocation.Expression is MemberAccessExpressionSyntax
+                {
+                    Expression: IdentifierNameSyntax
+                    {
+                        Identifier.Text: "WebApplication"
+                    },
+                    Name.Identifier.Text: "CreateBuilder"
+                });
 
             if (createBuilderInvocation != null)
             {

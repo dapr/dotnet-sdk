@@ -19,7 +19,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Dapr.Actors.Analyzers.Tests;
+namespace Dapr.Actors.Analyzers.Test;
 
 internal static class Utilities
 {

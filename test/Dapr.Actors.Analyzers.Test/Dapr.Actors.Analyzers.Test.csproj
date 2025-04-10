@@ -5,7 +5,6 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-        <RootNamespace>Dapr.Actors.Analyzers.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
