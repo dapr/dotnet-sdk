@@ -29,7 +29,7 @@ public class ActorRegistrationAnalyzerTests
                                 """;
 
         var expected = VerifyAnalyzer.Diagnostic(ActorRegistrationAnalyzer.DiagnosticDescriptorActorRegistration)
-            .WithSpan(2, 7, 2, 16).WithMessage("The actor type 'TestActor' is not registered with dependency injection");
+            .WithSpan(2, 7, 2, 16).WithMessage("The actor type 'TestActor' is not registered with the dependency injection provider");
 
         await VerifyAnalyzer.VerifyAnalyzerAsync<ActorRegistrationAnalyzer>(testCode, expected);
     }
@@ -47,7 +47,7 @@ public class ActorRegistrationAnalyzerTests
                                 """;
 
         var expected = VerifyAnalyzer.Diagnostic(ActorRegistrationAnalyzer.DiagnosticDescriptorActorRegistration)
-            .WithSpan(1, 7, 1, 16).WithMessage("The actor type 'TestActor' is not registered with dependency injection");
+            .WithSpan(1, 7, 1, 16).WithMessage("The actor type 'TestActor' is not registered with the dependency injection provider");
 
         await VerifyAnalyzer.VerifyAnalyzerAsync<ActorRegistrationAnalyzer>(testCode, expected);
     }
@@ -67,7 +67,7 @@ public class ActorRegistrationAnalyzerTests
                                 """;
 
         var expected = VerifyAnalyzer.Diagnostic(ActorRegistrationAnalyzer.DiagnosticDescriptorActorRegistration)
-            .WithSpan(2, 15, 2, 24).WithMessage("The actor type 'TestActor' is not registered with dependency injection");
+            .WithSpan(2, 15, 2, 24).WithMessage("The actor type 'TestActor' is not registered with the dependency injection provider");
 
         await VerifyAnalyzer.VerifyAnalyzerAsync<ActorRegistrationAnalyzer>(testCode, expected);
     }

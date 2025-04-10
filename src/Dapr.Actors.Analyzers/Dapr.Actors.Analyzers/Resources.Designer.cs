@@ -78,7 +78,7 @@ namespace Dapr.Actors.Analyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The actor type &apos;{0}&apos; is not registered with dependency injection.
+        ///   Looks up a localized string similar to The actor type &apos;{0}&apos; is not registered with the dependency injection provider.
         /// </summary>
         internal static string DAPR1402MessageFormat {
             get {
@@ -87,7 +87,7 @@ namespace Dapr.Actors.Analyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The actor type is not registered with dependency injection.
+        ///   Looks up a localized string similar to The actor type is not registered with the dependency injection provider.
         /// </summary>
         internal static string DAPR1402Title {
             get {
