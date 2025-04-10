@@ -1,6 +1,6 @@
 ﻿---
 type: docs
-title: "Overview of Dapr source code analsis"
+title: "Overview of Dapr source code analysis"
 linkTitle: "Code Analysis"
 weight: 70000
 description: Code analyzers and fixes for common Dapr issues
