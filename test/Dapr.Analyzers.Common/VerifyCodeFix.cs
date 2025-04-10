@@ -11,16 +11,20 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Xunit;
 
-namespace Dapr.Actors.Analyzers.Tests;
+namespace Dapr.Analyzers.Common;
 
 internal static class VerifyCodeFix
 {
-    public static async Task RunTest<T>(string code, string expectedChangedCode) where T : CodeFixProvider, new()
+    public static async Task RunTest<T>(string code, string expectedChangedCode, IReadOnlyList<MetadataReference> metadataReferences, ImmutableArray<DiagnosticAnalyzer> analyzers) where T : CodeFixProvider, new()
     {
-        var (diagnostics, document, workspace) = await TestUtilities.GetDiagnosticsAdvanced(code);
+        var (diagnostics, document, workspace) = await TestUtilities.GetDiagnosticsAdvanced(code, metadataReferences, analyzers);
 
         Assert.Single(diagnostics);
 

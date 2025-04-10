@@ -11,6 +11,8 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Dapr.Analyzers.Common;
+
 namespace Dapr.Actors.Analyzers.Tests;
 
 public class MappedActorHandlersAnalyzerTests
@@ -40,7 +42,8 @@ public class MappedActorHandlersAnalyzerTests
         var expected = VerifyAnalyzer.Diagnostic(MappedActorHandlersAnalyzer.DiagnosticDescriptorMapActorsHandlers)
             .WithSpan(10, 25, 13, 27).WithMessage("Call app.MapActorsHandlers to map endpoints for Dapr actors");
 
-        await VerifyAnalyzer.VerifyAnalyzerAsync<MappedActorHandlersAnalyzer>(testCode, expected);
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MappedActorHandlersAnalyzer>(testCode, expected);
     }
 
     [Fact]
@@ -66,6 +69,7 @@ public class MappedActorHandlersAnalyzerTests
                                                 }
                                 """;
 
-        await VerifyAnalyzer.VerifyAnalyzerAsync<MappedActorHandlersAnalyzer>(testCode);
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MappedActorHandlersAnalyzer>(testCode);
     }
 }

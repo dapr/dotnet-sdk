@@ -13,19 +13,20 @@
 
 using System.Collections.Immutable;
 using System.Reflection;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
-namespace Dapr.Actors.Analyzers.Tests;
+namespace Dapr.Analyzers.Common;
 
 internal static class TestUtilities
 {
-        public static async Task<(ImmutableArray<Diagnostic> diagnostics, Document document, Workspace workspace)> GetDiagnosticsAdvanced(string code)
+    internal static async Task<(ImmutableArray<Diagnostic> diagnostics, Document document, Workspace workspace)>
+        GetDiagnosticsAdvanced(
+            string code,
+            IReadOnlyList<MetadataReference> additionalMetadataReferences,
+            ImmutableArray<DiagnosticAnalyzer> analyzers)
     {
         var workspace = new AdhocWorkspace();
 
@@ -42,47 +43,40 @@ internal static class TestUtilities
                 {
                     { "CS1701", ReportDiagnostic.Suppress }
                 }))
-            .AddMetadataReferences(await referenceAssemblies.ResolveAsync(LanguageNames.CSharp, default))
+            .AddMetadataReferences(await referenceAssemblies.ResolveAsync(LanguageNames.CSharp, CancellationToken.None))
             .AddMetadataReference(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
-            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(WebApplication)))
-            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(IHost)))
-            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(ActorsEndpointRouteBuilderExtensions)))
-            .AddMetadataReferences(GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
+            .AddMetadataReferences(additionalMetadataReferences);
 
         // Add the document to the project
         var document = project.AddDocument("TestDocument.cs", code);
 
         // Get the syntax tree and create a compilation
-        var syntaxTree = await document.GetSyntaxTreeAsync() ?? throw new InvalidOperationException("Syntax tree is null");
+        var syntaxTree = await document.GetSyntaxTreeAsync() ??
+                         throw new InvalidOperationException("Syntax tree is null");
         var compilation = CSharpCompilation.Create("TestCompilation")
             .AddSyntaxTrees(syntaxTree)
             .AddReferences(project.MetadataReferences)
             .WithOptions(project.CompilationOptions!);
 
-        var compilationWithAnalyzer = compilation.WithAnalyzers(
-        [
-            new ActorRegistrationAnalyzer(),
-            new MappedActorHandlersAnalyzer(),
-            new PreferActorJsonSerializationAnalyzer(),
-            new TimerCallbackMethodPresentAnalyzer()
-        ]);
+        var compilationWithAnalyzer = compilation.WithAnalyzers(analyzers);
 
         // Get diagnostics from the compilation
         var diagnostics = await compilationWithAnalyzer.GetAllDiagnosticsAsync();
         return (diagnostics, document, workspace);
     }
 
-    public static MetadataReference[] GetAllReferencesNeededForType(Type type)
+    internal static MetadataReference[] GetAllReferencesNeededForType(Type type)
     {
         var files = GetAllAssemblyFilesNeededForType(type);
 
         return files.Select(x => MetadataReference.CreateFromFile(x)).Cast<MetadataReference>().ToArray();
     }
 
-    private static ImmutableArray<string> GetAllAssemblyFilesNeededForType(Type type) => type.Assembly
-        .GetReferencedAssemblies()
-        .Select(x => Assembly.Load(x.FullName))
-        .Append(type.Assembly)
-        .Select(x => x.Location)
-        .ToImmutableArray();
+    private static ImmutableArray<string> GetAllAssemblyFilesNeededForType(Type type) => [
+        ..type.Assembly
+            .GetReferencedAssemblies()
+            .Select(x => Assembly.Load(x.FullName))
+            .Append(type.Assembly)
+            .Select(x => x.Location)
+    ];
 }

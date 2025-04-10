@@ -11,6 +11,8 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Dapr.Analyzers.Common;
+
 namespace Dapr.Actors.Analyzers.Tests;
 
 public class PreferActorJsonSerializationCodeFixProviderTests
@@ -57,6 +59,6 @@ public class PreferActorJsonSerializationCodeFixProviderTests
                                                        }
                                            """;
 
-        await VerifyCodeFix.RunTest<PreferActorJsonSerializationCodeFixProvider>(code, expectedChangedCode);
+        await VerifyCodeFix.RunTest<PreferActorJsonSerializationCodeFixProvider>(code, expectedChangedCode, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 }

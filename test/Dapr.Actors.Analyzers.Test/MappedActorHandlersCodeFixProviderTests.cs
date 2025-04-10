@@ -11,6 +11,8 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Dapr.Analyzers.Common;
+
 namespace Dapr.Actors.Analyzers.Tests;
 
 public class MappedActorHandlersCodeFixProviderTests
@@ -73,7 +75,7 @@ public class MappedActorHandlersCodeFixProviderTests
                                               }
                                   """;
 
-        await VerifyCodeFix.RunTest<MappedActorHandlersCodeFixProvider>(code, expectedChangedCode);
+        await VerifyCodeFix.RunTest<MappedActorHandlersCodeFixProvider>(code, expectedChangedCode, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 
     [Fact]
@@ -126,6 +128,6 @@ public class MappedActorHandlersCodeFixProviderTests
                                               
                                   """;
 
-        await VerifyCodeFix.RunTest<MappedActorHandlersCodeFixProvider>(code, expectedChangedCode);
+        await VerifyCodeFix.RunTest<MappedActorHandlersCodeFixProvider>(code, expectedChangedCode, Utilities.GetReferences(), Utilities.GetAnalyzers());
     }
 }

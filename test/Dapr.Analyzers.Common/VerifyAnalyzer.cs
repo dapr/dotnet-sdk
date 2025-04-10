@@ -11,27 +11,24 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using Microsoft.AspNetCore.Builder;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
-namespace Dapr.Actors.Analyzers.Tests;
+namespace Dapr.Analyzers.Common;
 
-internal static class VerifyAnalyzer
+internal class VerifyAnalyzer(IReadOnlyList<MetadataReference> metadataReferences)
 {
     public static DiagnosticResult Diagnostic(DiagnosticDescriptor descriptor) => new(descriptor);
 
-    public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source, params DiagnosticResult[] expected)
+    public async Task VerifyAnalyzerAsync<TAnalyzer>(string source, params DiagnosticResult[] expected)
     where TAnalyzer : DiagnosticAnalyzer, new()
     {
         await VerifyAnalyzerAsync<TAnalyzer>(source, null, expected);
     }
 
-    public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source, string? program, params DiagnosticResult[] expected)
+    public async Task VerifyAnalyzerAsync<TAnalyzer>(string source, string? program, params DiagnosticResult[] expected)
     where TAnalyzer : DiagnosticAnalyzer, new()
     {
         var test = new Test<TAnalyzer> { TestCode = source };
@@ -47,14 +44,14 @@ internal static class VerifyAnalyzer
             test.TestState.Sources.Add(("Program.cs", program));
         }
 
-        var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(ActorRegistrationAnalyzer)).ToList();
-        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(MappedActorHandlersAnalyzer)));
-        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(PreferActorJsonSerializationAnalyzer)));
-        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(TimerCallbackMethodPresentAnalyzer)));
-        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
-        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(WebApplication).Assembly.Location));
-        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
+        // var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(ActorRegistrationAnalyzer)).ToList();
+        // metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(MappedActorHandlersAnalyzer)));
+        // metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(PreferActorJsonSerializationAnalyzer)));
+        // metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(TimerCallbackMethodPresentAnalyzer)));
+        // metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(ActorsServiceCollectionExtensions)));
+        // metadataReferences.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+        // metadataReferences.Add(MetadataReference.CreateFromFile(typeof(WebApplication).Assembly.Location));
+        // metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
 
         foreach (var reference in metadataReferences)
         {
@@ -65,8 +62,6 @@ internal static class VerifyAnalyzer
         await test.RunAsync(CancellationToken.None);
     }
 
-    
-    
     private sealed class Test<TAnalyzer> : CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
     where TAnalyzer : DiagnosticAnalyzer, new()
     {
@@ -81,3 +76,4 @@ internal static class VerifyAnalyzer
         }
     }
 }
+
