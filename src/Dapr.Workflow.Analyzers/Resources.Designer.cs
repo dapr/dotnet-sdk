@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Dapr.Actors.Analyzers {
+namespace Dapr.Workflow.Analyzers {
     using System;
     
     
@@ -38,7 +38,7 @@ namespace Dapr.Actors.Analyzers {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Dapr.Actors.Analyzers.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Dapr.Workflow.Analyzers.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -60,74 +60,38 @@ namespace Dapr.Actors.Analyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Actor timer method invocations require the named callback &apos;{0}&apos; method to exist on type &apos;{1}&apos;.
+        ///   Looks up a localized string similar to The workflow type &apos;{0}&apos; is not registered with the dependency injection provider.
         /// </summary>
-        internal static string DAPR1401MessageFormat {
+        internal static string DAPR1301MessageFormat {
             get {
-                return ResourceManager.GetString("DAPR1401MessageFormat", resourceCulture);
+                return ResourceManager.GetString("DAPR1301MessageFormat", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Actor timer method invocations require the named callback method to exist on type.
+        ///   Looks up a localized string similar to The workflow type is not registered with the dependency injection provider.
         /// </summary>
-        internal static string DAPR1401Title {
+        internal static string DAPR1301Title {
             get {
-                return ResourceManager.GetString("DAPR1401Title", resourceCulture);
+                return ResourceManager.GetString("DAPR1301Title", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The actor type &apos;{0}&apos; is not registered with the dependency injection provider.
+        ///   Looks up a localized string similar to The workflow activity type &apos;{0}&apos; is not registered with the dependency injection provider.
         /// </summary>
-        internal static string DAPR1402MessageFormat {
+        internal static string DAPR1302MessageFormat {
             get {
-                return ResourceManager.GetString("DAPR1402MessageFormat", resourceCulture);
+                return ResourceManager.GetString("DAPR1302MessageFormat", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The actor type is not registered with the dependency injection provider.
+        ///   Looks up a localized string similar to The workflow activity type is not registered with the dependency injection provider.
         /// </summary>
-        internal static string DAPR1402Title {
+        internal static string DAPR1302Title {
             get {
-                return ResourceManager.GetString("DAPR1402Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Set options.UseJsonSerialization to true to support interoperability with non-.NET actors.
-        /// </summary>
-        internal static string DAPR1403MessageFormat {
-            get {
-                return ResourceManager.GetString("DAPR1403MessageFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Set options.UseJsonSerialization to true to support interoperability with non-.NET actors.
-        /// </summary>
-        internal static string DAPR1403Title {
-            get {
-                return ResourceManager.GetString("DAPR1403Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Call app.MapActorsHandlers to map endpoints for Dapr actors.
-        /// </summary>
-        internal static string DAPR1404MessageFormat {
-            get {
-                return ResourceManager.GetString("DAPR1404MessageFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Call app.MapActorsHandlers to map endpoints for Dapr actors.
-        /// </summary>
-        internal static string DAPR1404Title {
-            get {
-                return ResourceManager.GetString("DAPR1404Title", resourceCulture);
+                return ResourceManager.GetString("DAPR1302Title", resourceCulture);
             }
         }
     }

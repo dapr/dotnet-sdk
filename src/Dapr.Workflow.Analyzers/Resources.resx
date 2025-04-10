@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<root>
+    <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+        <xsd:element name="root" msdata:IsDataSet="true">
+            
+        </xsd:element>
+    </xsd:schema>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>1.3</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <data name="DAPR1301Title" xml:space="preserve">
+        <value>The workflow type is not registered with the dependency injection provider</value>
+    </data>
+    <data name="DAPR1301MessageFormat" xml:space="preserve">
+        <value>The workflow type '{0}' is not registered with the dependency injection provider</value>
+    </data>
+    <data name="DAPR1302Title" xml:space="preserve">
+        <value>The workflow activity type is not registered with the dependency injection provider</value>
+    </data>
+    <data name="DAPR1302MessageFormat" xml:space="preserve">
+        <value>The workflow activity type '{0}' is not registered with the dependency injection provider</value>
+    </data>
+</root>

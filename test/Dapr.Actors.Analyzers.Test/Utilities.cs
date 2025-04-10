@@ -11,42 +11,28 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Collections.Immutable;
+using Dapr.Analyzers.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Dapr.Actors.Analyzers.Tests;
+namespace Dapr.Actors.Analyzers.Test;
 
-internal static class VerifyAnalyzer
+internal static class Utilities
 {
-    public static DiagnosticResult Diagnostic(DiagnosticDescriptor descriptor) => new(descriptor);
-
-    public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source, params DiagnosticResult[] expected)
-    where TAnalyzer : DiagnosticAnalyzer, new()
+    internal static ImmutableArray<DiagnosticAnalyzer> GetAnalyzers() =>
+    [
+        new ActorRegistrationAnalyzer(),
+        new MappedActorHandlersAnalyzer(),
+        new PreferActorJsonSerializationAnalyzer(),
+        new TimerCallbackMethodPresentAnalyzer()
+    ];
+    
+    internal static IReadOnlyList<MetadataReference> GetReferences()
     {
-        await VerifyAnalyzerAsync<TAnalyzer>(source, null, expected);
-    }
-
-    public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source, string? program, params DiagnosticResult[] expected)
-    where TAnalyzer : DiagnosticAnalyzer, new()
-    {
-        var test = new Test<TAnalyzer> { TestCode = source };
-
-#if NET8_0
-        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net80;
-#elif NET9_0
-        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
-#endif
-
-        if (program != null)
-        {
-            test.TestState.Sources.Add(("Program.cs", program));
-        }
-
         var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(ActorRegistrationAnalyzer)).ToList();
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(MappedActorHandlersAnalyzer)));
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(PreferActorJsonSerializationAnalyzer)));
@@ -55,29 +41,8 @@ internal static class VerifyAnalyzer
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(WebApplication).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
-
-        foreach (var reference in metadataReferences)
-        {
-            test.TestState.AdditionalReferences.Add(reference);
-        }
-
-        test.ExpectedDiagnostics.AddRange(expected);
-        await test.RunAsync(CancellationToken.None);
-    }
-
-    
-    
-    private sealed class Test<TAnalyzer> : CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
-    where TAnalyzer : DiagnosticAnalyzer, new()
-    {
-        public Test()
-        {
-            SolutionTransforms.Add((solution, projectId) =>
-            {
-                var compilationOptions = solution.GetProject(projectId)!.CompilationOptions!;
-                solution = solution.WithProjectCompilationOptions(projectId, compilationOptions);
-                return solution;
-            });
-        }
+        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(ActorsEndpointRouteBuilderExtensions).Assembly.Location));
+        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(ActorsServiceCollectionExtensions).Assembly.Location));
+        return metadataReferences;
     }
 }

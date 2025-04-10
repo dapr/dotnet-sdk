@@ -1,9 +1,5 @@
-﻿using Dapr.Jobs.Models;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Testing;
+﻿using Dapr.Analyzers.Common;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.Extensions.Hosting;
 
 namespace Dapr.Jobs.Analyzers.Test;
 
@@ -13,7 +9,7 @@ public class DaprJobsAnalyzerAnalyzerTests
 #if  NET8_0
     private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net80;
 #elif NET9_0
-        private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net90;
+    private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net90;
 #endif
 
     [Fact]
@@ -47,11 +43,13 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 }
                                 """;
 
-        await VerifyAnalyzerAsync(testCode,
-            new DiagnosticResult(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-                .WithSpan(22, 25, 23, 83)
-                .WithMessage(
-                "Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder"));
+        var expected = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
+            .WithSpan(22, 25, 23, 83)
+            .WithMessage(
+                "Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder");
+        
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode, expected);
     }
 
     [Fact]
@@ -82,7 +80,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 }
                                 """;
 
-        await VerifyAnalyzerAsync(testCode);
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode);
     }
 
     [Fact]
@@ -118,13 +117,15 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 }
                                 """;
 
-        await VerifyAnalyzerAsync(testCode,
-            new DiagnosticResult(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-                .WithSpan(22, 25, 23, 83)
-                .WithMessage("Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder"),
-            new DiagnosticResult(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-                .WithSpan(24, 25, 25, 83)
-                .WithMessage("Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob2' on IEndpointRouteBuilder"));
+        var expected1 = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
+            .WithSpan(22, 25, 23, 83)
+            .WithMessage(
+                "Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder");
+        var expected2 = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
+            .WithSpan(24, 25, 25, 83)
+            .WithMessage("Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob2' on IEndpointRouteBuilder");
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode, expected1, expected2);
     }
 
     [Fact]
@@ -165,7 +166,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 }
                                 """;
 
-        await VerifyAnalyzerAsync(testCode);
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode);
     }
 
     [Fact]
@@ -206,7 +208,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 }
                                 """;
 
-        await VerifyAnalyzerAsync(testCode);
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode);
     }
 
     [Fact]
@@ -245,28 +248,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 
                                 """;
 
-        await VerifyAnalyzerAsync(testCode);
-    }
-
-    private static async Task VerifyAnalyzerAsync(string testCode, params DiagnosticResult[] expectedDiagnostics)
-    {
-        var test = new CSharpAnalyzerTest<MapDaprScheduledJobHandlerAnalyzer, DefaultVerifier>
-        {
-            TestCode = testCode
-        };
-
-        test.TestState.ReferenceAssemblies = referenceAssemblies;
-
-        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(WebApplication).Assembly.Location));
-        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(DaprJobsClient).Assembly.Location));
-        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(DaprJobSchedule).Assembly.Location));
-        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(EndpointRouteBuilderExtensions).Assembly.Location));
-        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(IApplicationBuilder).Assembly.Location));
-        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(
-            typeof(Microsoft.Extensions.DependencyInjection.ServiceCollection).Assembly.Location));
-        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
-
-        test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
-        await test.RunAsync();
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode);
     }
 }
