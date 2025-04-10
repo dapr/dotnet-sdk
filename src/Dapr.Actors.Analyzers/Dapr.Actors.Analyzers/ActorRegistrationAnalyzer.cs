@@ -27,10 +27,10 @@ namespace Dapr.Actors.Analyzers;
 public sealed class ActorRegistrationAnalyzer : DiagnosticAnalyzer
 {
     internal static readonly DiagnosticDescriptor DiagnosticDescriptorActorRegistration = new(
-        id: "DAPR4002",
-        title: new LocalizableResourceString(nameof(Resources.DAPR4002Title), Resources.ResourceManager,
+        id: "DAPR1402",
+        title: new LocalizableResourceString(nameof(Resources.DAPR1402Title), Resources.ResourceManager,
             typeof(Resources)),
-        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR4002MessageFormat), Resources.ResourceManager,
+        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1402MessageFormat), Resources.ResourceManager,
             typeof(Resources)),
         category: "Usage",
         DiagnosticSeverity.Warning,
