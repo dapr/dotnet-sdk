@@ -27,9 +27,9 @@ namespace Dapr.Actors.Analyzers;
 public sealed class TimerCallbackMethodPresentAnalyzer : DiagnosticAnalyzer
 {
     internal static readonly DiagnosticDescriptor DaprTimerCallbackMethodRule = new(
-        id: "DAPR4001",
-        title: new LocalizableResourceString(nameof(Resources.DAPR4001Title), Resources.ResourceManager, typeof(Resources)),
-        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR4001MessageFormat), Resources.ResourceManager, typeof(Resources)),
+        id: "DAPR1401",
+        title: new LocalizableResourceString(nameof(Resources.DAPR1401Title), Resources.ResourceManager, typeof(Resources)),
+        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1401MessageFormat), Resources.ResourceManager, typeof(Resources)),
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true

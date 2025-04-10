@@ -27,10 +27,10 @@ namespace Dapr.Actors.Analyzers;
 public sealed class PreferActorJsonSerializationAnalyzer : DiagnosticAnalyzer
 {
     internal static readonly DiagnosticDescriptor DiagnosticDescriptorJsonSerialization = new(
-        id: "DAPR4003",
-        title: new LocalizableResourceString(nameof(Resources.DAPR4003Title), Resources.ResourceManager,
+        id: "DAPR1403",
+        title: new LocalizableResourceString(nameof(Resources.DAPR1403Title), Resources.ResourceManager,
             typeof(Resources)),
-        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR4003MessageFormat), Resources.ResourceManager,
+        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1403MessageFormat), Resources.ResourceManager,
             typeof(Resources)),
         category: "Usage",
         DiagnosticSeverity.Info,

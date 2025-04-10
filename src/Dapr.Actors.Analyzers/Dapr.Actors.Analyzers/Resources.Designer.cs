@@ -62,72 +62,72 @@ namespace Dapr.Actors.Analyzers {
         /// <summary>
         ///   Looks up a localized string similar to Actor timer method invocations require the named callback &apos;{0}&apos; method to exist on type &apos;{1}&apos;.
         /// </summary>
-        internal static string DAPR4001MessageFormat {
+        internal static string DAPR1401MessageFormat {
             get {
-                return ResourceManager.GetString("DAPR4001MessageFormat", resourceCulture);
+                return ResourceManager.GetString("DAPR1401MessageFormat", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Actor timer method invocations require the named callback method to exist on type.
         /// </summary>
-        internal static string DAPR4001Title {
+        internal static string DAPR1401Title {
             get {
-                return ResourceManager.GetString("DAPR4001Title", resourceCulture);
+                return ResourceManager.GetString("DAPR1401Title", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to The actor type &apos;{0}&apos; is not registered with dependency injection.
         /// </summary>
-        internal static string DAPR4002MessageFormat {
+        internal static string DAPR1402MessageFormat {
             get {
-                return ResourceManager.GetString("DAPR4002MessageFormat", resourceCulture);
+                return ResourceManager.GetString("DAPR1402MessageFormat", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to The actor type is not registered with dependency injection.
         /// </summary>
-        internal static string DAPR4002Title {
+        internal static string DAPR1402Title {
             get {
-                return ResourceManager.GetString("DAPR4002Title", resourceCulture);
+                return ResourceManager.GetString("DAPR1402Title", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Set options.UseJsonSerialization to true to support interoperability with non-.NET actors.
         /// </summary>
-        internal static string DAPR4003MessageFormat {
+        internal static string DAPR1403MessageFormat {
             get {
-                return ResourceManager.GetString("DAPR4003MessageFormat", resourceCulture);
+                return ResourceManager.GetString("DAPR1403MessageFormat", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Set options.UseJsonSerialization to true to support interoperability with non-.NET actors.
         /// </summary>
-        internal static string DAPR4003Title {
+        internal static string DAPR1403Title {
             get {
-                return ResourceManager.GetString("DAPR4003Title", resourceCulture);
+                return ResourceManager.GetString("DAPR1403Title", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Call app.MapActorsHandlers to map endpoints for Dapr actors.
         /// </summary>
-        internal static string DAPR4004MessageFormat {
+        internal static string DAPR1404MessageFormat {
             get {
-                return ResourceManager.GetString("DAPR4004MessageFormat", resourceCulture);
+                return ResourceManager.GetString("DAPR1404MessageFormat", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to Call app.MapActorsHandlers to map endpoints for Dapr actors.
         /// </summary>
-        internal static string DAPR4004Title {
+        internal static string DAPR1404Title {
             get {
-                return ResourceManager.GetString("DAPR4004Title", resourceCulture);
+                return ResourceManager.GetString("DAPR1404Title", resourceCulture);
             }
         }
     }

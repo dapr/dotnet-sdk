@@ -18,10 +18,10 @@
     <resheader name="writer">
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
-    <data name="DAPR3001Title" xml:space="preserve">
+    <data name="DAPR1501Title" xml:space="preserve">
         <value>Ensure handler endpoint is present for all scheduled Jobs</value>
     </data>
-    <data name="DAPR3001MessageFormat" xml:space="preserve">
+    <data name="DAPR1501MessageFormat" xml:space="preserve">
         <value>Job invocations require the MapDaprScheduledJobHandler be set and configured for job name '{0}' on IEndpointRouteBuilder</value>
     </data>
 </root>
