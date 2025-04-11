@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Text.Json;
+using Dapr.Common.Serialization;
 using P = Dapr.Client.Autogen.Grpc.v1.Dapr;
 
 namespace Dapr.Messaging.PublishSubscribe;
@@ -21,7 +23,8 @@ namespace Dapr.Messaging.PublishSubscribe;
 internal sealed class DaprPublishSubscribeGrpcClient(
     P.DaprClient client,
     HttpClient httpClient,
-    string? daprApiToken = null) : DaprPublishSubscribeClient(client, httpClient, daprApiToken)
+    JsonSerializerOptions jsonSerializerOptions,
+    string? daprApiToken = null) : DaprPublishSubscribeClient(client, httpClient, jsonSerializerOptions, daprApiToken)
 {
     /// <summary>
     /// Dynamically subscribes to a Publish/Subscribe component and topic.
@@ -42,6 +45,76 @@ internal sealed class DaprPublishSubscribeGrpcClient(
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, Client);
         await receiver.SubscribeAsync(cancellationToken);
         return receiver;
+    }
+
+    /// <summary>
+    /// Publishes an event to the specified topic.
+    /// </summary>
+    /// <param name="pubSubName">The name of the Publish/Subscribe component.</param>
+    /// <param name="topicName">The name of the topic to publish to.</param>
+    /// <param name="data">The optional data that will be JSON serialized and provided as the event payload.</param>
+    /// <param name="metadata">A collection of optional metadata key/value pairs that will be provided to the component. The valid
+    /// metadata keys and values are determined by the type of PubSub component used.</param>
+    /// <param name="cancellationToken">Cancellation token used to cancel the operation.</param>
+    /// <typeparam name="TData">The type of data that will be JSON serialized and provided  as the event payload.</typeparam>
+    public override async Task PublishEventAsync<TData>(
+        string pubSubName,
+        string topicName,
+        TData? data = null,
+        Dictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default) where TData : class
+    {
+        ArgumentException.ThrowIfNullOrEmpty(pubSubName, nameof(pubSubName));
+        ArgumentException.ThrowIfNullOrEmpty(topicName, nameof(topicName));
+
+        var payload = data is null ? null : TypeConverters.ToJsonByteString(data, JsonSerializerOptions);
+        return MakePublishRequestAsync(pubSubName, topicName, payload, metadata, data is CloudEvent  
+    }
+
+    /// <summary>
+    /// Bulk-publishes multiple events to the specified topic at once.
+    /// </summary>
+    /// <param name="pubSubName">The name of the Publish/Subscribe component.</param>
+    /// <param name="topicName">The name of the topic to publish to.</param>
+    /// <param name="data">The collection of data that will be JSON serialized and provided as the event payload.</param>
+    /// <param name="metadata">A collection of optional metadata key/value pairs that will be provided to the component. The valid
+    /// metadata keys and values are determined by the type of PubSub component used.</param>
+    /// <param name="cancellationToken">Cancellation token used to cancel the operation.</param>
+    /// <typeparam name="TData">The type of data that will be JSON serialized and provided  as the event payload.</typeparam>
+    public override async Task PublishEventAsync<TData>(
+        string pubSubName,
+        string topicName,
+        IReadOnlyList<TData> data,
+        Dictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Publishes an event with a byte-based payload to the specified topic.
+    /// </summary>
+    /// <param name="pubSubName">The name of the Publish/Subscribe component.</param>
+    /// <param name="topicName">The name of the topic to publish to.</param>
+    /// <param name="data">The raw byte data used as the event payload.</param>
+    /// <param name="dataContentType">The content type of the given bytes. This defaults to "application/json".</param>
+    /// <param name="metadata">A collection of optional metadata key/value pairs that will be provided to the component. The valid
+    /// metadata keys and values are determined by the type of PubSub component used.</param>
+    /// <param name="cancellationToken">Cancellation token used to cancel the operation.</param>
+    public override async Task PublishEventAsync(
+        string pubSubName,
+        string topicName,
+        ReadOnlyMemory<byte> data,
+        string dataContentType = "application/json",
+        Dictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task MakePublishRequestAsync()
+    {
+        
     }
 
     /// <inheritdoc />
