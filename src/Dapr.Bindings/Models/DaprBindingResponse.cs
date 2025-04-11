@@ -11,17 +11,15 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using Microsoft.Extensions.DependencyInjection;
-
-namespace Dapr.Jobs.Extensions;
+namespace Dapr.Bindings.Models;
 
 /// <summary>
-/// Used by the fluent registration builder to configure a Dapr Jobs client.
+/// Represents the response from invoking a binding.
 /// </summary>
-public sealed class DaprJobsBuilder(IServiceCollection services) : IDaprJobsBuilder
-{
-    /// <summary>
-    /// The registered services on the builder.
-    /// </summary>
-    public IServiceCollection Services { get; } = services;
-}
+/// <param name="Request">The <see cref="DaprBindingRequest"/> associated with this response.</param>
+/// <param name="Data">The response payload.</param>
+/// <param name="Metadata">The response metadata.</param>
+public sealed record DaprBindingResponse(
+    DaprBindingRequest Request,
+    ReadOnlyMemory<byte> Data,
+    IReadOnlyDictionary<string, string> Metadata);
