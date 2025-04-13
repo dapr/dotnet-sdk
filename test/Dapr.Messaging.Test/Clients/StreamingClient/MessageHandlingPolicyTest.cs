@@ -12,9 +12,8 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Messaging.Clients.StreamingClient;
-using Dapr.Messaging.PublishSubscribe;
 
-namespace Dapr.Messaging.Test.PublishSubscribe;
+namespace Dapr.Messaging.Test.Clients.StreamingClient;
 
 public class MessageHandlingPolicyTest
 {

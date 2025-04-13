@@ -14,12 +14,11 @@
 using System.Threading.Channels;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Dapr.Messaging.Clients.StreamingClient;
-using Dapr.Messaging.PublishSubscribe;
 using Grpc.Core;
 using Moq;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
-namespace Dapr.Messaging.Test.PublishSubscribe;
+namespace Dapr.Messaging.Test.Clients.StreamingClient;
 
 public class PublishSubscribeReceiverTests
 {
