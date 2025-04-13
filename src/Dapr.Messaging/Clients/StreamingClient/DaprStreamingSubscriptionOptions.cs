@@ -11,13 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.Messaging.Clients.StreamingClient;
 
 /// <summary>
 /// Options used to configure the dynamic Dapr subscription.
 /// </summary>
 /// <param name="MessageHandlingPolicy">Describes the policy to take on messages that have not been acknowledged within the timeout period.</param>
-public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandlingPolicy)
+public sealed record DaprStreamingSubscriptionOptions(MessageHandlingPolicy MessageHandlingPolicy)
 {
     /// <summary>
     /// Subscription metadata.

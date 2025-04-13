@@ -13,6 +13,7 @@
 
 using System.Text.Json.Serialization;
 using Dapr.Common.JsonConverters;
+using Dapr.Messaging.JsonConverters;
 
 namespace Dapr.Messaging.PublishSubscribe;
 
@@ -39,7 +40,7 @@ public record CloudEvent(
     /// for "patch" changes that don't change this property's value in the serialization.
     /// </remarks>
     [JsonPropertyName("specversion")]
-    public static string SpecVersion => "1.0";
+    public string SpecVersion => "1.0";
 
     /// <summary>
     /// The timestamp of when the occurrence happened.
@@ -55,6 +56,7 @@ public record CloudEvent(
 /// <param name="Source">The context in which an event happened, e.g. the type of an event source.</param>
 /// <param name="Type">Describes the type of event related to the originating occurrence.</param>
 /// <param name="Data">Domain-specific information about the event occurrence.</param>
+[JsonConverter(typeof(CloudEventDataJsonSerializer<>))]
 public record CloudEvent<TData>(
     Uri Source, 
     string Type, 

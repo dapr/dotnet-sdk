@@ -13,27 +13,12 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Dapr.Common.JsonConverters;
 using Dapr.Messaging.PublishSubscribe;
 
 namespace Dapr.Messaging.JsonConverters;
 
-internal sealed class CloudEventDataConverterFactory(string dataContentType) : JsonConverterFactory
-{
-    /// <summary>When overridden in a derived class, determines whether the converter instance can convert the specified object type.</summary>
-    /// <param name="typeToConvert">The type of the object to check whether it can be converted by this converter instance.</param>
-    /// <returns>
-    /// <see langword="true" /> if the instance can convert the specified object type; otherwise, <see langword="false" />.</returns>
-    public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(object);
-
-    /// <summary>Creates a converter for a specified type.</summary>
-    /// <param name="typeToConvert">The type handled by the converter.</param>
-    /// <param name="options">The serialization options to use.</param>
-    /// <returns>A converter for which <typeparamref name="T" /> is compatible with <paramref name="typeToConvert" />.</returns>
-    public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options) =>
-        new CloudEventDataConverter(dataContentType);
-}
-
-internal sealed class CloudEventJsonSerializer<T> : JsonConverter<CloudEvent<T>>
+internal sealed class CloudEventDataJsonSerializer<T> : JsonConverter<CloudEvent<T>>
 {
     /// <summary>Reads and converts the JSON to type <typeparamref name="T" />.</summary>
     /// <param name="reader">The reader.</param>
@@ -52,7 +37,23 @@ internal sealed class CloudEventJsonSerializer<T> : JsonConverter<CloudEvent<T>>
     public override void Write(Utf8JsonWriter writer, CloudEvent<T> value, JsonSerializerOptions options)
     {
         writer.WriteStartObject();
+        
+        writer.WriteString("source", value.Source.ToString());
+        writer.WriteString("type", value.Type);
+        writer.WriteString("specversion", value.SpecVersion);
 
+        if (value.Subject is not null)
+        {
+            writer.WriteString("subject", value.Subject);
+        }
+
+        if (value.Time is not null)
+        {
+            options.Converters.Add(new Rfc3389JsonConverter());
+            var serializedTime = JsonSerializer.Serialize(value.Time, options);
+            writer.WriteString("time", serializedTime);
+        }
+        
         if (value.DataContentType == "application/json")
         {
             writer.WritePropertyName("Data");

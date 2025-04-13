@@ -11,9 +11,9 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.Messaging.Clients.StreamingClient;
 
 /// <summary>
 /// Provides a Dapr client builder specific for Publish/Subscribe operations.
 /// </summary>
-public interface IDaprPubSubBuilder : IDaprMessagingBuilder;
+public interface IDaprPubSubStreamingBuilder : IDaprPubSubBuilder;
