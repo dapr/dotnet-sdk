@@ -152,10 +152,20 @@ internal sealed class DaprPubSubProgrammaticGrpcClient(
                 Event = TypeConverters.ToJsonByteString(events[counter], JsonSerializerOptions),
                 ContentType = events[counter].DataContentType
             };
+            
+            //Add the metadata to each entry
+            if (metadata is not null)
+            {
+                foreach (var kvp in metadata)
+                {
+                    entry.Metadata.Add(kvp.Key, kvp.Value);
+                }
+            }
             envelope.Entries.Add(entry);
             entryMap.Add(counter.ToString(), entry);
         }
         
+        //Add the metadata to the outer request as well
         if (metadata is not null)
         {
             foreach (var kvp in metadata)
