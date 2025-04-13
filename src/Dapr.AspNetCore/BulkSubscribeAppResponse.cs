@@ -13,26 +13,25 @@
 
 using System.Collections.Generic;
 
-namespace Dapr.AspNetCore
+namespace Dapr.AspNetCore;
+
+/// <summary>
+/// Response from the application containing status for each entry in the bulk message.
+/// It is posted to the bulk subscribe handler.
+/// </summary>
+public class BulkSubscribeAppResponse
 {
     /// <summary>
-    /// Response from the application containing status for each entry in the bulk message.
-    /// It is posted to the bulk subscribe handler.
+    /// Initializes a new instance of the <see cref="BulkSubscribeAppResponse"/> class.
     /// </summary>
-    public class BulkSubscribeAppResponse
+    /// <param name="statuses">List of statuses.</param>
+    public BulkSubscribeAppResponse(List<BulkSubscribeAppResponseEntry> statuses)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkSubscribeAppResponse"/> class.
-        /// </summary>
-        /// <param name="statuses">List of statuses.</param>
-        public BulkSubscribeAppResponse(List<BulkSubscribeAppResponseEntry> statuses)
-        {
-            this.Statuses = statuses;
-        }
-        
-        /// <summary>
-        /// List of statuses.
-        /// </summary>
-        public List<BulkSubscribeAppResponseEntry> Statuses { get; }
+        this.Statuses = statuses;
     }
+        
+    /// <summary>
+    /// List of statuses.
+    /// </summary>
+    public List<BulkSubscribeAppResponseEntry> Statuses { get; }
 }

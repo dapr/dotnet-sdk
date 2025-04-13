@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- [.NET 6+](https://dotnet.microsoft.com/download) installed
+- [.NET 8+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
@@ -20,7 +20,7 @@ To load secrets into configuration call the _AddDaprSecretStore_ extension metho
 Use Dapr to run the application:
 
 ```shell
-dapr run --app-id SecretStoreConfigurationProviderSample --components-path ./components/ -- dotnet run
+dapr run --app-id SecretStoreConfigurationProviderSample --resources-path ./components/ -- dotnet run
 ```
 
 ### 2. Test the application

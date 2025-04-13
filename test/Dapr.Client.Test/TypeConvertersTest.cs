@@ -11,35 +11,34 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client.Test
+namespace Dapr.Client.Test;
+
+using System.Text.Json;
+using Shouldly;
+using Xunit;
+
+public class TypeConvertersTest
 {
-    using System.Text.Json;
-    using FluentAssertions;
-    using Xunit;
-
-    public class TypeConvertersTest
+    [Fact]
+    public void AnyConversion_JSON_Serialization_Deserialization()
     {
-        [Fact]
-        public void AnyConversion_JSON_Serialization_Deserialization()
+        var response = new Response()
         {
-            var response = new Response()
-            {
-                Name = "test"
-            };
+            Name = "test"
+        };
 
-            var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-            var any = TypeConverters.ToJsonAny(response, options);
-            var type = TypeConverters.FromJsonAny<Response>(any, options);
+        var any = TypeConverters.ToJsonAny(response, options);
+        var type = TypeConverters.FromJsonAny<Response>(any, options);
 
-            type.Should().BeEquivalentTo(response);
-            any.TypeUrl.Should().Be(string.Empty);
-            type.Name.Should().Be("test");
-        }
+        type.ShouldBeEquivalentTo(response);
+        any.TypeUrl.ShouldBe(string.Empty);
+        type.Name.ShouldBe("test");
+    }
 
-        private class Response
-        {
-            public string Name { get; set; }
-        }
+    private class Response
+    {
+        public string Name { get; set; }
     }
 }

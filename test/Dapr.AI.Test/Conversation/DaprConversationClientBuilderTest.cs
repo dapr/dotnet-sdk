@@ -28,6 +28,6 @@ public class DaprConversationClientBuilderTest
 
         // Assert
         Assert.NotNull(client);
-        Assert.IsType<DaprConversationClient>(client);
+        Assert.IsAssignableFrom<DaprConversationClient>(client);
     }
 }

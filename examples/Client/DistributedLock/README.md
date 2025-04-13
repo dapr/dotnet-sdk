@@ -2,13 +2,13 @@
 
 ## Prerequisites
 
-- [.NET 6+](https://dotnet.microsoft.com/download) installed
+- [.NET 8+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
 
 ## Distributed Lock API
-Dapr 1.8 introduces the Distributed Lock API. This API can be used to prevent multiple processes from accessing the same resource. In Dapr, locks are scoped to a specific App ID.
+Dapr 1.8 introduced the Distributed Lock API. This API can be used to prevent multiple processes from accessing the same resource. In Dapr, locks are scoped to a specific App ID.
 
 For this example, we will be running multiple instances of the same application to demonstrate an event driven consumer pattern. This example also includes a simple generator that creates some data that can be processed.
 
@@ -24,7 +24,7 @@ cd examples/Client/DistributedLock
 In order to run the application that generates data for the workers to process, simply run the following command:
 
 ```bash
-dapr run --components-path ./Components --app-id generator -- dotnet run
+dapr run --resources-path ./Components --app-id generator -- dotnet run
 ```
 
 This application will create a new file to process once every 10 seconds. The files are stored in `DistributedLock/tmp`.
@@ -33,8 +33,8 @@ This application will create a new file to process once every 10 seconds. The fi
 In order to properly demonstrate locking, this application will be run more than once with the same App ID. However, the applications do need different ports in order to properly receive bindings. Run them with the command below:
 
 ```bash
-dapr run --components-path ./Components --app-id worker --app-port 5000 -- dotnet run
-dapr run --components-path ./Components --app-id worker --app-port 5001 -- dotnet run
+dapr run --resources-path ./Components --app-id worker --app-port 5000 -- dotnet run
+dapr run --resources-path ./Components --app-id worker --app-port 5001 -- dotnet run
 ```
 
 After running the applications, they will attempt to process files. You should see output such as:

@@ -50,6 +50,21 @@ button. Ensuring that the "User, group or service principal" option is selected,
 Add to add this service principal to the list of members for the new role assignment and click Review + Assign twice to assign the role. This will take effect within a few seconds 
 or minutes. This step ensures that while Dapr can authenticate as your service principal, that it also has permission to access and use the key in your Key Vault.
 
+## Generating the Keys
+This sample requires a private RSA key to be generated and placed in the `/keys` directory within the project. 
+If you have OpenSSL installed on your machine, you can generate the key by navigating first
+into the project directory and then running the following command:
+
+```bash
+# Generates a private RSA 40960-bit key named 'rsa-private-key.pem'
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out keys/rsa-private-key.pem
+```
+
+> **WARNING: This RSA key is included in this project strictly for demonstration and testing purposes.**
+> - Do **NOT** use this key in any production environment or for any real-world applications.
+> - This key is publicly available and should be considered compromised.
+> - Generating and using your own secure keys is essential for maintaining security in your projects.
+
 ## Running the example
 
 To run the sample locally, run this command in the DaprClient directory:

@@ -11,25 +11,24 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System;
+using System.Runtime.Serialization;
+
+[DataContract(Name = "msgResponse", Namespace = Constants.Namespace)]
+internal class ActorResponseMessageBody : IActorResponseMessageBody
 {
-    using System;
-    using System.Runtime.Serialization;
+    [DataMember]
+    private object response;
 
-    [DataContract(Name = "msgResponse", Namespace = Constants.Namespace)]
-    internal class ActorResponseMessageBody : IActorResponseMessageBody
+    public void Set(object response)
     {
-        [DataMember]
-        private object response;
+        this.response = response;
+    }
 
-        public void Set(object response)
-        {
-            this.response = response;
-        }
-
-        public object Get(Type paramType)
-        {
-            return this.response;
-        }
+    public object Get(Type paramType)
+    {
+        return this.response;
     }
 }

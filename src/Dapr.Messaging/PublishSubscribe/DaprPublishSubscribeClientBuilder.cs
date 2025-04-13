@@ -20,16 +20,9 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// <summary>
 /// Builds a <see cref="DaprPublishSubscribeClient"/>.
 /// </summary>
-public sealed class DaprPublishSubscribeClientBuilder : DaprGenericClientBuilder<DaprPublishSubscribeClient>
+/// <param name="configuration">An optional instance of <see cref="IConfiguration"/>.</param>
+public sealed class DaprPublishSubscribeClientBuilder(IConfiguration? configuration = null) : DaprGenericClientBuilder<DaprPublishSubscribeClient>(configuration)
 {
-    /// <summary>
-    /// Used to initialize a new instance of the <see cref="DaprPublishSubscribeClientBuilder"/>.
-    /// </summary>
-    /// <param name="configuration">An optional instance of <see cref="IConfiguration"/>.</param>
-    public DaprPublishSubscribeClientBuilder(IConfiguration? configuration = null) : base(configuration)
-    {
-    }
-    
     /// <summary>
     /// Builds the client instance from the properties of the builder.
     /// </summary>

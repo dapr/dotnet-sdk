@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks></TargetFrameworks>
+        <IsPackable>false</IsPackable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <NoWarn>$(NoWarn);RS1038</NoWarn>
+        <Description>This package contains Roslyn analyers for Dapr.Jobs</Description>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <EmbeddedResource Update="Resources.resx">
+        <Generator>ResXFileCodeGenerator</Generator>
+        <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Compile Update="Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <!-- Suppress false-positive error NU5128 when packing analyzers with no lib/ref files. -->
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+
+        <!-- Suppress generation of symbol package (.snupkg). -->
+        <IncludeSymbols>false</IncludeSymbols>
+
+        <!-- Additional NuGet package properties. -->
+        <Description>This package contains Roslyn analyzers for jobs.</Description>
+        <PackageTags>$(PackageTags)</PackageTags>
+    </PropertyGroup>
+</Project>

@@ -15,12 +15,11 @@ using System;
 using System.Threading.Tasks;
 using Dapr.Actors;
 
-namespace Dapr.E2E.Test.Actors.State
-{
-    public interface IStateActor : IPingActor, IActor
-    {
-        Task<string> GetState(string key);
+namespace Dapr.E2E.Test.Actors.State;
 
-        Task SetState(string key, string value, TimeSpan? ttl);
-    }
+public interface IStateActor : IPingActor, IActor
+{
+    Task<string> GetState(string key);
+
+    Task SetState(string key, string value, TimeSpan? ttl);
 }
