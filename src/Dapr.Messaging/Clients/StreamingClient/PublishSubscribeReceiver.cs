@@ -16,7 +16,7 @@ using Dapr.AppCallback.Autogen.Grpc.v1;
 using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.Messaging.Clients.StreamingClient;
 
 /// <summary>
 /// A thread-safe implementation of a receiver for messages from a specified Dapr publish/subscribe component and
@@ -43,7 +43,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <summary>
     /// Options allowing the behavior of the receiver to be configured.
     /// </summary>
-    private readonly DaprSubscriptionOptions options;
+    private readonly DaprStreamingSubscriptionOptions options;
     /// <summary>
     /// A channel used to decouple the messages received from the sidecar to their consumption.
     /// </summary>
@@ -90,7 +90,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <param name="options">Options allowing the behavior of the receiver to be configured.</param>
     /// <param name="handler">The delegate reflecting the action to take upon messages received by the subscription.</param>
     /// <param name="client">A reference to the DaprClient instance.</param>
-    internal PublishSubscribeReceiver(string pubSubName, string topicName, DaprSubscriptionOptions options, TopicMessageHandler handler, P.Dapr.DaprClient client)
+    internal PublishSubscribeReceiver(string pubSubName, string topicName, DaprStreamingSubscriptionOptions options, TopicMessageHandler handler, P.Dapr.DaprClient client)
     {
         this.client = client;
         this.pubSubName = pubSubName;

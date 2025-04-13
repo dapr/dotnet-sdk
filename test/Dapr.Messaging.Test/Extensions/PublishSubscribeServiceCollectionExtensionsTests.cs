@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Messaging.Clients.StreamingClient;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.PublishSubscribe.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -39,7 +40,7 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
 
         var app = services.BuildServiceProvider();
 
-        var pubSubClient = app.GetRequiredService<DaprPublishSubscribeClient>() as DaprPublishSubscribeGrpcClient;
+        var pubSubClient = app.GetRequiredService<DaprPubSubStreamingClient>() as DaprPubSubStreamingGrpcClient;
 
         Assert.NotNull(pubSubClient!);
         Assert.Equal(apiToken, pubSubClient.DaprApiToken);
@@ -52,7 +53,7 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
         services.AddDaprPubSubClient();
 
         var serviceProvider = services.BuildServiceProvider();
-        var daprClient = serviceProvider.GetService<DaprPublishSubscribeClient>();
+        var daprClient = serviceProvider.GetService<DaprPubSubStreamingClient>();
         Assert.NotNull(daprClient);
     }
 
@@ -66,12 +67,12 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
         services.AddDaprPubSubClient(Configure);
 
         var serviceProvider = services.BuildServiceProvider();
-        var daprClient = serviceProvider.GetService<DaprPublishSubscribeClient>();
+        var daprClient = serviceProvider.GetService<DaprPubSubStreamingClient>();
         Assert.NotNull(daprClient);
         Assert.True(configureCalled);
         return;
 
-        void Configure(IServiceProvider sp, DaprPublishSubscribeClientBuilder builder)
+        void Configure(IServiceProvider sp, DaprPubSubStreamingClientBuilder builder)
         {
             configureCalled = true;
         }
@@ -87,7 +88,7 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
         var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
         Assert.NotNull(httpClientFactory);
 
-        var daprPubSubClient = serviceProvider.GetService<DaprPublishSubscribeClient>();
+        var daprPubSubClient = serviceProvider.GetService<DaprPubSubStreamingClient>();
         Assert.NotNull(daprPubSubClient);
     }
     
@@ -99,8 +100,8 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
         services.AddDaprPubSubClient(lifetime: ServiceLifetime.Singleton);
         var serviceProvider = services.BuildServiceProvider();
 
-        var daprPubSubClient1 = serviceProvider.GetService<DaprPublishSubscribeClient>();
-        var daprPubSubClient2 = serviceProvider.GetService<DaprPublishSubscribeClient>();
+        var daprPubSubClient1 = serviceProvider.GetService<DaprPubSubStreamingClient>();
+        var daprPubSubClient2 = serviceProvider.GetService<DaprPubSubStreamingClient>();
 
         Assert.NotNull(daprPubSubClient1);
         Assert.NotNull(daprPubSubClient2);
@@ -117,10 +118,10 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
         var serviceProvider = services.BuildServiceProvider();
 
         await using var scope1 = serviceProvider.CreateAsyncScope();
-        var daprPubSubClient1 = scope1.ServiceProvider.GetService<DaprPublishSubscribeClient>();
+        var daprPubSubClient1 = scope1.ServiceProvider.GetService<DaprPubSubStreamingClient>();
 
         await using var scope2 = serviceProvider.CreateAsyncScope();
-        var daprPubSubClient2 = scope2.ServiceProvider.GetService<DaprPublishSubscribeClient>();
+        var daprPubSubClient2 = scope2.ServiceProvider.GetService<DaprPubSubStreamingClient>();
                 
         Assert.NotNull(daprPubSubClient1);
         Assert.NotNull(daprPubSubClient2);
@@ -135,8 +136,8 @@ public sealed class PublishSubscribeServiceCollectionExtensionsTests
         services.AddDaprPubSubClient(lifetime: ServiceLifetime.Transient);
         var serviceProvider = services.BuildServiceProvider();
 
-        var daprPubSubClient1 = serviceProvider.GetService<DaprPublishSubscribeClient>();
-        var daprPubSubClient2 = serviceProvider.GetService<DaprPublishSubscribeClient>();
+        var daprPubSubClient1 = serviceProvider.GetService<DaprPubSubStreamingClient>();
+        var daprPubSubClient2 = serviceProvider.GetService<DaprPubSubStreamingClient>();
 
         Assert.NotNull(daprPubSubClient1);
         Assert.NotNull(daprPubSubClient2);

@@ -13,7 +13,7 @@
 
 using Google.Protobuf.WellKnownTypes;
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.Messaging.Clients.StreamingClient;
 
 /// <summary>
 /// A message retrieved from a Dapr publish/subscribe topic.

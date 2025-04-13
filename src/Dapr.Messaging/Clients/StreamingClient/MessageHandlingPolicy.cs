@@ -11,24 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+
+namespace Dapr.Messaging.Clients.StreamingClient;
 
 /// <summary>
-/// Describes the various actions that can be taken on a topic message.
+/// Defines the policy for handling streaming message subscriptions, including retry logic and timeout settings.
 /// </summary>
-public enum TopicResponseAction
-{
-    /// <summary>
-    /// Indicates the message was processed successfully and should be deleted from the pub/sub topic.
-    /// </summary>
-    Success,
-    /// <summary>
-    /// Indicates a failure while processing the message and that the message should be resent for a retry.
-    /// </summary>
-    Retry,
-    /// <summary>
-    /// Indicates a failure while processing the message and that the message should be dropped or sent to the
-    /// dead-letter topic if specified.
-    /// </summary>
-    Drop
-}
+/// <param name="TimeoutDuration">The duration to wait before timing out a message handling operation.</param>
+/// <param name="DefaultResponseAction">The default action to take when a message handling operation times out.</param>
+public sealed record MessageHandlingPolicy(TimeSpan TimeoutDuration, TopicResponseAction DefaultResponseAction);
+

@@ -13,12 +13,12 @@
 
 using System.Threading.Channels;
 using Dapr.AppCallback.Autogen.Grpc.v1;
-using Dapr.Messaging.PublishSubscribe;
+using Dapr.Messaging.Clients.StreamingClient;
 using Grpc.Core;
 using Moq;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
-namespace Dapr.Messaging.Test.PublishSubscribe;
+namespace Dapr.Messaging.Test.Clients.StreamingClient;
 
 public class PublishSubscribeReceiverTests
 {
@@ -28,7 +28,7 @@ public class PublishSubscribeReceiverTests
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
         var options =
-            new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+            new DaprStreamingSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
             {
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };
@@ -65,7 +65,7 @@ public class PublishSubscribeReceiverTests
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
         var options =
-            new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+            new DaprStreamingSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
             {
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };
@@ -85,7 +85,7 @@ public class PublishSubscribeReceiverTests
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
         var options =
-            new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+            new DaprStreamingSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
             {
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };
@@ -127,7 +127,7 @@ public class PublishSubscribeReceiverTests
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
-        var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(30), TopicResponseAction.Success))
+        var options = new DaprStreamingSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(30), TopicResponseAction.Success))
         {
             MaximumQueuedMessages = 100 // Example value, adjust as needed
         };
@@ -177,7 +177,7 @@ public class PublishSubscribeReceiverTests
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
         var options =
-            new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+            new DaprStreamingSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
             {
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };

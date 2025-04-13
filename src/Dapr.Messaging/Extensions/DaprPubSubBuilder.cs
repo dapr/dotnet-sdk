@@ -11,6 +11,7 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using Dapr.Messaging.Clients.StreamingClient;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Messaging.PublishSubscribe.Extensions;

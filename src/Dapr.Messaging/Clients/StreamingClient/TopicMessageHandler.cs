@@ -11,13 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.Messaging.Clients.StreamingClient;
 
 /// <summary>
-/// Defines the policy for handling streaming message subscriptions, including retry logic and timeout settings.
+/// The handler delegate responsible for processing the topic message.
 /// </summary>
-/// <param name="TimeoutDuration">The duration to wait before timing out a message handling operation.</param>
-/// <param name="DefaultResponseAction">The default action to take when a message handling operation times out.</param>
-public sealed record MessageHandlingPolicy(TimeSpan TimeoutDuration, TopicResponseAction DefaultResponseAction);
-
+/// <param name="request">The message request to process.</param>
+/// <param name="cancellationToken">Cancellation token.</param>
+/// <returns>The acknowledgement behavior to report back to the pub/sub endpoint about the message.</returns>
+public delegate Task<TopicResponseAction> TopicMessageHandler(TopicMessage request,
+    CancellationToken cancellationToken = default);
