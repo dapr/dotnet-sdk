@@ -68,7 +68,8 @@ internal sealed class Rfc3389JsonConverter : JsonConverter<DateTimeOffset?>
             else
             { 
                 var dateString = ((DateTimeOffset)value).ToString(Rfc3389Format, CultureInfo.InvariantCulture);
-                writer.WriteStringValue(dateString.Replace("+00:00", "Z"));
+                var targetValue = dateString.Replace("+00:00", "Z").Trim('"');
+                writer.WriteStringValue(targetValue);
             }
         }
         catch (Exception ex)

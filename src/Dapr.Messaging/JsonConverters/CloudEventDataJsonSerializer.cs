@@ -50,7 +50,8 @@ internal sealed class CloudEventDataJsonSerializer<T> : JsonConverter<CloudEvent
         if (value.Time is not null)
         {
             options.Converters.Add(new Rfc3389JsonConverter());
-            var serializedTime = JsonSerializer.Serialize(value.Time, options);
+            var serializedTime = JsonSerializer.Serialize(value.Time, options).Trim('"');
+            
             writer.WriteString("time", serializedTime);
         }
         
