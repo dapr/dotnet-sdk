@@ -173,6 +173,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Crypto", "src\Dapr.Cry
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Crypto.Test", "test\Dapr.Crypto.Test\Dapr.Crypto.Test.csproj", "{B508EBD6-0F14-480C-A446-45A09052733B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamingSubscriptionExample", "examples\Client\PublishSubscribe\StreamingSubscriptionExample\StreamingSubscriptionExample.csproj", "{EABD3DEE-860E-470F-9A41-5E23D82ED0C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -457,6 +459,10 @@ Global
 		{B508EBD6-0F14-480C-A446-45A09052733B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B508EBD6-0F14-480C-A446-45A09052733B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B508EBD6-0F14-480C-A446-45A09052733B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EABD3DEE-860E-470F-9A41-5E23D82ED0C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EABD3DEE-860E-470F-9A41-5E23D82ED0C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EABD3DEE-860E-470F-9A41-5E23D82ED0C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EABD3DEE-860E-470F-9A41-5E23D82ED0C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -539,6 +545,7 @@ Global
 		{7E23E229-6823-4D84-AF3A-AE14CEAEF52A} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{160EFFA0-F6B9-49E4-B62B-68C0D53DB425} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{B508EBD6-0F14-480C-A446-45A09052733B} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+		{EABD3DEE-860E-470F-9A41-5E23D82ED0C1} = {0EF6EA64-D7C3-420D-9890-EAE8D54A57E6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
