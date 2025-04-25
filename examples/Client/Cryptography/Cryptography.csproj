@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -8,17 +8,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="C:\Users\whit_\source\repos\dapr-dotnet-sdk\properties\\IsExternalInit.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Update="file.txt">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Dapr.Crypto\Dapr.Crypto.csproj" />
     </ItemGroup>
 
 </Project>

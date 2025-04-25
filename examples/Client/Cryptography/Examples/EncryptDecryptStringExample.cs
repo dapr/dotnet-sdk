@@ -12,31 +12,29 @@
 // ------------------------------------------------------------------------
 
 using System.Text;
-using Dapr.Client;
+using Dapr.Crypto.Encryption;
+using Dapr.Crypto.Encryption.Models;
+
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace Cryptography.Examples;
 
-internal class EncryptDecryptStringExample(string componentName, string keyName) : Example
+internal sealed class EncryptDecryptStringExample(DaprEncryptionClient daprClient) : IExample
 {
-    public override string DisplayName => "Using Cryptography to encrypt and decrypt a string";
-
-    public override async Task RunAsync(CancellationToken cancellationToken)
+    public static string DisplayName => "Using Cryptography to encrypt and decrypt a string";
+    public  async Task RunAsync(string componentName, string keyName)
     {
-        using var client = new DaprClientBuilder().Build();
-            
         const string plaintextStr = "This is the value we're going to encrypt today";
         Console.WriteLine($"Original string value: '{plaintextStr}'");
 
         //Encrypt the string
         var plaintextBytes = Encoding.UTF8.GetBytes(plaintextStr);
-        var encryptedBytesResult = await client.EncryptAsync(componentName, plaintextBytes, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa),
-            cancellationToken);
+        var encryptedBytesResult = await daprClient.EncryptAsync(componentName, plaintextBytes, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa));
 
         Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult.Span)}'");
 
         //Decrypt the string
-        var decryptedBytes = await client.DecryptAsync(componentName, encryptedBytesResult, keyName, cancellationToken);
+        var decryptedBytes = await daprClient.DecryptAsync(componentName, encryptedBytesResult, keyName);
         Console.WriteLine($"Decrypted string: '{Encoding.UTF8.GetString(decryptedBytes.ToArray())}'");
     }
 }

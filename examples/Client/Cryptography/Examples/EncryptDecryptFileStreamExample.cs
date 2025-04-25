@@ -12,23 +12,23 @@
 // ------------------------------------------------------------------------
 
 using System.Buffers;
-using Dapr.Client;
+using Dapr.Crypto.Encryption;
+using Dapr.Crypto.Encryption.Models;
+
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace Cryptography.Examples;
 
-internal class EncryptDecryptFileStreamExample(string componentName, string keyName) : Example
+internal sealed class EncryptDecryptFileStreamExample(DaprEncryptionClient daprClient) : IExample
 {
-    public override string DisplayName => "Use Cryptography to encrypt and decrypt a file";
-    public override async Task RunAsync(CancellationToken cancellationToken)
+    public static string DisplayName => "Use Cryptography to encrypt and decrypt a file";
+    public async Task RunAsync(string componentName, string keyName)
     {
-        using var client = new DaprClientBuilder().Build();
-
         // The name of the file we're using as an example
         const string fileName = "file.txt";
 
         Console.WriteLine("Original file contents:");
-        foreach (var line in await File.ReadAllLinesAsync(fileName, cancellationToken))
+        foreach (var line in await File.ReadAllLinesAsync(fileName))
         {
             Console.WriteLine(line);
         }
@@ -37,9 +37,8 @@ internal class EncryptDecryptFileStreamExample(string componentName, string keyN
         await using var encryptFs = new FileStream(fileName, FileMode.Open);
 
         var bufferedEncryptedBytes = new ArrayBufferWriter<byte>();
-        await foreach (var bytes in (await client.EncryptAsync(componentName, encryptFs, keyName,
-                           new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken))
-                       .WithCancellation(cancellationToken))
+        await foreach (var bytes in (await daprClient.EncryptAsync(componentName, encryptFs, keyName,
+                           new EncryptionOptions(KeyWrapAlgorithm.Rsa))))
         {
             bufferedEncryptedBytes.Write(bytes.Span);
         }
@@ -53,8 +52,7 @@ internal class EncryptDecryptFileStreamExample(string componentName, string keyN
             
         //We'll stream the decrypted bytes from a MemoryStream into the above temporary file
         await using var encryptedMs = new MemoryStream(bufferedEncryptedBytes.WrittenMemory.ToArray());
-        await foreach (var result in (await client.DecryptAsync(componentName, encryptedMs, keyName,
-                           cancellationToken)).WithCancellation(cancellationToken))
+        await foreach (var result in (await daprClient.DecryptAsync(componentName, encryptedMs, keyName)))
         {
             decryptFs.Write(result.Span);
         }
@@ -62,7 +60,7 @@ internal class EncryptDecryptFileStreamExample(string componentName, string keyN
         decryptFs.Close();
             
         //Let's confirm the value as written to the file
-        var decryptedValue = await File.ReadAllTextAsync(tempDecryptedFile, cancellationToken);
+        var decryptedValue = await File.ReadAllTextAsync(tempDecryptedFile);
         Console.WriteLine("Decrypted value: ");
         Console.WriteLine(decryptedValue);
             
