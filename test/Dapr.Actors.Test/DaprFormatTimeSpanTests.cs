@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Text.Json;
+
 #pragma warning disable 0618
 namespace Dapr.Actors.Test;
 
@@ -91,15 +93,8 @@ public class DaprFormatTimeSpanTests
     [MemberData(nameof(DaprFormatTimeSpanJsonStringsAndExpectedDeserializedValues))]
     public void DaprFormat_TimeSpan_Parsing(string daprFormatTimeSpanJsonString, TimeSpan expectedDeserializedValue)
     {
-        using var textReader = new StringReader(daprFormatTimeSpanJsonString);
-        using var jsonTextReader = new JsonTextReader(textReader);
-
-        while (jsonTextReader.TokenType != JsonToken.String)
-        {
-            jsonTextReader.Read();
-        }
-
-        var timespanString = (string)jsonTextReader.Value;
+        using var jsonDocument = JsonDocument.Parse(daprFormatTimeSpanJsonString);
+        var timespanString = jsonDocument.RootElement.GetString();
         var deserializedTimeSpan = ConverterUtils.ConvertTimeSpanFromDaprFormat(timespanString);
 
         Assert.Equal(expectedDeserializedValue, deserializedTimeSpan);
