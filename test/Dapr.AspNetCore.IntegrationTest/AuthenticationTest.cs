@@ -14,6 +14,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr.AspNetCore.IntegrationTest.App;
 using Shouldly;
@@ -35,13 +36,13 @@ public class AuthenticationTest
             var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
             var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/requires-api-token")
             {
-                Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
+                Content = new StringContent(JsonSerializer.Serialize(userInfo), Encoding.UTF8, "application/json")
             };
             request.Headers.Add("Dapr-Api-Token", "abcdefg");
             var response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-            var responseUserInfo = JsonConvert.DeserializeObject<UserInfo>(responseContent);
+            var responseUserInfo = JsonSerializer.Deserialize<UserInfo>(responseContent);
             responseUserInfo.Name.ShouldBe(userInfo.Name);
         }
     }
@@ -58,7 +59,7 @@ public class AuthenticationTest
             var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
             var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/requires-api-token")
             {
-                Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
+                Content = new StringContent(JsonSerializer.Serialize(userInfo), Encoding.UTF8, "application/json")
             };
             request.Headers.Add("Dapr-Api-Token", "asdfgh");
             var response = await httpClient.SendAsync(request);
