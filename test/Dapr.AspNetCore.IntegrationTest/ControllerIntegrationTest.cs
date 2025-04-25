@@ -11,14 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest;
-
+using System.Text.Json;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Dapr.AspNetCore.IntegrationTest.App;
 using Shouldly;
-using Newtonsoft.Json;
 using Xunit;
+
+namespace Dapr.AspNetCore.IntegrationTest;
 
 public class ControllerIntegrationTest
 {
@@ -55,7 +55,7 @@ public class ControllerIntegrationTest
             var response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-            var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+            var responseWidget = JsonSerializer.Deserialize<Widget>(responseContent);
             responseWidget.Size.ShouldBe(widget.Size);
             responseWidget.Count.ShouldBe(widget.Count);
         }
@@ -72,7 +72,7 @@ public class ControllerIntegrationTest
             var response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-            var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+            var responseWidget = JsonSerializer.Deserialize<Widget>(responseContent);
             Assert.Null(responseWidget);
         }
     }
@@ -129,7 +129,7 @@ public class ControllerIntegrationTest
             var response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-            var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+            var responseWidget = JsonSerializer.Deserialize<Widget>(responseContent);
             responseWidget.Size.ShouldBe(widget.Size);
             responseWidget.Count.ShouldBe(widget.Count);
         }
@@ -146,7 +146,7 @@ public class ControllerIntegrationTest
             var response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-            var responseWidget = JsonConvert.DeserializeObject<Widget>(responseContent);
+            var responseWidget = JsonSerializer.Deserialize<Widget>(responseContent);
             Assert.Null(responseWidget);
         }
     }

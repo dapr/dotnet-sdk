@@ -17,7 +17,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Dapr.AspNetCore.IntegrationTest.App;
 using Shouldly;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace Dapr.AspNetCore.IntegrationTest;

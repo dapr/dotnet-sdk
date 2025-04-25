@@ -19,7 +19,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
-using Newtonsoft.Json;
 using Xunit;
 
 public class DaprFormatTimeSpanTests
