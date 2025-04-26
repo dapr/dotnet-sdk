@@ -13,12 +13,12 @@
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Dapr.Jobs.Extensions;
+namespace Dapr.Bindings.Extensions;
 
 /// <summary>
-/// Used by the fluent registration builder to configure a Dapr Jobs client.
+/// Used by the fluent registration builder to configure a Dapr Bindings client.
 /// </summary>
-public sealed class DaprJobsBuilder(IServiceCollection services) : IDaprJobsBuilder
+public sealed class DaprBindingsBuilder(IServiceCollection services) : IDaprBindingsBuilder
 {
     /// <summary>
     /// The registered services on the builder.
