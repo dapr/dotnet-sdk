@@ -17,9 +17,7 @@ using System.Text.Json;
 namespace Dapr.Actors.Test;
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
+using System.Collections.Generic;using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 using Xunit;
 
@@ -29,12 +27,12 @@ public class DaprFormatTimeSpanTests
     {
         new object[]
         {
-            "{\"dueTime\":\"4h15m50s60ms\"",
+            "4h15m50s60ms",
             new TimeSpan(0, 4, 15, 50, 60),
         },
         new object[]
         {
-            "{\"dueTime\":\"0h35m10s12ms\"",
+            "0h35m10s12ms",
             new TimeSpan(0, 0, 35, 10, 12),
         },
     };
@@ -91,10 +89,8 @@ public class DaprFormatTimeSpanTests
 
     [Theory]
     [MemberData(nameof(DaprFormatTimeSpanJsonStringsAndExpectedDeserializedValues))]
-    public void DaprFormat_TimeSpan_Parsing(string daprFormatTimeSpanJsonString, TimeSpan expectedDeserializedValue)
+    public void DaprFormat_TimeSpan_Parsing(string timespanString, TimeSpan expectedDeserializedValue)
     {
-        using var jsonDocument = JsonDocument.Parse(daprFormatTimeSpanJsonString);
-        var timespanString = jsonDocument.RootElement.GetString();
         var deserializedTimeSpan = ConverterUtils.ConvertTimeSpanFromDaprFormat(timespanString);
 
         Assert.Equal(expectedDeserializedValue, deserializedTimeSpan);
@@ -110,7 +106,7 @@ public class DaprFormatTimeSpanTests
                 state: null,
                 dueTime: dueTime,
                 period: period);
-            return Task.FromResult(System.Text.Json.JsonSerializer.Serialize<TimerInfo>(timerInfo));
+            return Task.FromResult(JsonSerializer.Serialize<TimerInfo>(timerInfo));
         }
 
         var inTheFuture = TimeSpan.FromMilliseconds(20);
