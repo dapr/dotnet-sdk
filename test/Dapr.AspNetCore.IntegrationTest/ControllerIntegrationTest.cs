@@ -72,7 +72,8 @@ public class ControllerIntegrationTest
             var response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-            var responseWidget = JsonSerializer.Deserialize<Widget>(responseContent);
+            var responseWidget =
+                !string.IsNullOrWhiteSpace(responseContent) ? JsonSerializer.Deserialize<Widget>(responseContent) : null;
             Assert.Null(responseWidget);
         }
     }
@@ -146,7 +147,7 @@ public class ControllerIntegrationTest
             var response = await httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-            var responseWidget = JsonSerializer.Deserialize<Widget>(responseContent);
+            var responseWidget = !string.IsNullOrWhiteSpace(responseContent) ? JsonSerializer.Deserialize<Widget>(responseContent) : null;
             Assert.Null(responseWidget);
         }
     }
