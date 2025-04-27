@@ -54,6 +54,7 @@ namespace GrpcServiceSample
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapGrpcService<BankingService>();
+                endpoints.MapGrpcService<GreeterService>();
 
                 endpoints.MapGet("/", async context =>
                 {
