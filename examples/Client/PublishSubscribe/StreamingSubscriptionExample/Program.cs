@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Dapr.Messaging.Clients.StreamingClient;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.PublishSubscribe.Extensions;
 
@@ -21,12 +22,12 @@ Task<TopicResponseAction> HandleMessageAsync(TopicMessage message, CancellationT
     }
 }
 
-var messagingClient = app.Services.GetRequiredService<DaprPublishSubscribeClient>();
+var messagingClient = app.Services.GetRequiredService<DaprPubSubStreamingClient>();
 
 //Create a dynamic streaming subscription and subscribe with a timeout of 30 seconds and 10 seconds for message handling
 var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 var subscription = await messagingClient.SubscribeAsync("pubsub", "myTopic",
-    new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Retry)),
+    new DaprStreamingSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Retry)),
     HandleMessageAsync, cancellationTokenSource.Token);
 
 await Task.Delay(TimeSpan.FromMinutes(1));

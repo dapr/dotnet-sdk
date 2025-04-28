@@ -11,13 +11,24 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Messaging.PublishSubscribe;
+namespace Dapr.Messaging.Clients.StreamingClient;
 
 /// <summary>
-/// The handler delegate responsible for processing the topic message.
+/// Describes the various actions that can be taken on a topic message.
 /// </summary>
-/// <param name="request">The message request to process.</param>
-/// <param name="cancellationToken">Cancellation token.</param>
-/// <returns>The acknowledgement behavior to report back to the pub/sub endpoint about the message.</returns>
-public delegate Task<TopicResponseAction> TopicMessageHandler(TopicMessage request,
-    CancellationToken cancellationToken = default);
+public enum TopicResponseAction
+{
+    /// <summary>
+    /// Indicates the message was processed successfully and should be deleted from the pub/sub topic.
+    /// </summary>
+    Success,
+    /// <summary>
+    /// Indicates a failure while processing the message and that the message should be resent for a retry.
+    /// </summary>
+    Retry,
+    /// <summary>
+    /// Indicates a failure while processing the message and that the message should be dropped or sent to the
+    /// dead-letter topic if specified.
+    /// </summary>
+    Drop
+}
