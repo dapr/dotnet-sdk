@@ -1,0 +1,3 @@
+[submodule "src/DurableTaskDotnet"]
+	path = src/DurableTaskDotnet
+	url = https://github.com/microsoft/durabletask-dotnet.git

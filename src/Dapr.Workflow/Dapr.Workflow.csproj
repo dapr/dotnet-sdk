@@ -13,15 +13,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.DurableTask.Client.Grpc" />
-    <PackageReference Include="Microsoft.DurableTask.Worker.Grpc" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
     <ProjectReference Include="..\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
-    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    <ProjectReference Include="..\DurableTaskDotnet\src\Client\Grpc\Client.Grpc.csproj" />
+    <ProjectReference Include="..\DurableTaskDotnet\src\Worker\Grpc\Worker.Grpc.csproj" />
   </ItemGroup>
 
 </Project>
