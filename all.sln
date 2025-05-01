@@ -111,8 +111,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.Actors.Generators.Test
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapr.E2E.Test.Actors.Generators", "test\Dapr.E2E.Test.Actors.Generators\Dapr.E2E.Test.Actors.Generators.csproj", "{B5CDB0DC-B26D-48F1-B934-FE5C1C991940}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cryptography", "examples\Cryptography\Cryptography.csproj", "{C74FBA78-13E8-407F-A173-4555AEE41FF3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Protos", "src\Dapr.Protos\Dapr.Protos.csproj", "{DFBABB04-50E9-42F6-B470-310E1B545638}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Common", "src\Dapr.Common\Dapr.Common.csproj", "{B445B19C-A925-4873-8CB7-8317898B6970}"
