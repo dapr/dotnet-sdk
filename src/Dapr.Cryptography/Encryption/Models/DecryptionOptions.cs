@@ -14,7 +14,7 @@
 namespace Dapr.Cryptography.Encryption.Models;
 
 /// <summary>
-/// A collection fo options used to configure how decryption cryptographic operations are performed.
+/// A collection of options used to configure how decryption cryptographic operations are performed.
 /// </summary>
 public sealed class DecryptionOptions
 {
