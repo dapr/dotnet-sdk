@@ -25,4 +25,10 @@
   <ItemGroup>
     <Protobuf Include="../Dapr.E2E.Test.App.Grpc/Proto/message.proto" GrpcServices="Client" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="keys\rsa-private-key.pem" />
+    <Content Include="keys\rsa-private-key.pem">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
