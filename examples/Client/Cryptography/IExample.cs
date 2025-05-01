@@ -15,5 +15,5 @@ namespace Cryptography;
 
 internal interface IExample
 {
-    public Task RunAsync(string componentName, string keyName);
+    public Task RunAsync(string componentName, string keyName, CancellationToken cancellationToken);
 }

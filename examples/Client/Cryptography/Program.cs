@@ -12,37 +12,53 @@
 // ------------------------------------------------------------------------
 
 using Cryptography.Examples;
+using Dapr.Crypto.Encryption.Extensions;
 
-namespace Cryptography;
+const string ComponentName = "localstorage";
+const string KeyName = "rsa-private-key.pem"; //This should match the name of your generated key - this sample expects an RSA symmetrical key.
 
-class Program
+if (int.TryParse(args[0], out var exampleId))
 {
-    private const string ComponentName = "localstorage";
-    private const string KeyName = "rsa-private-key.pem"; //This should match the name of your generated key - this sample expects an RSA symmetrical key.
-        
-    private static readonly Example[] Examples = new Example[]
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Services.AddDaprEncryptionClient((sp, opt) =>
     {
-        new EncryptDecryptStringExample(ComponentName, KeyName),
-        new EncryptDecryptFileStreamExample(ComponentName, KeyName)
-    };
+        opt.UseHttpEndpoint("http://localhost:6552");
+        opt.UseGrpcEndpoint("http://localhost:6551");
+    });
+    builder.Services.AddTransient<EncryptDecryptStringExample>();
+    builder.Services.AddTransient<EncryptDecryptFileStreamExample>();
+    builder.Services.AddTransient<EncryptDecryptLargeFileExample>();
+    var app = builder.Build();
 
-    static async Task<int> Main(string[] args)
+    var ctx = new CancellationTokenSource();
+    Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) => ctx.Cancel();
+
+    switch (exampleId)
     {
-        if (args.Length > 0 && int.TryParse(args[0], out var index) && index >= 0 && index < Examples.Length)
+        case 0:
         {
-            var cts = new CancellationTokenSource();
-            Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) => cts.Cancel();
-
-            await Examples[index].RunAsync(cts.Token);
+            var ex0 = app.Services.GetRequiredService<EncryptDecryptStringExample>();
+            await ex0.RunAsync(ComponentName, KeyName, ctx.Token);
             return 0;
         }
-
-        Console.WriteLine("Hello, please choose a sample to run by passing your selection's number into the arguments, e.g. 'dotnet run 0':");
-        for (var i = 0; i < Examples.Length; i++)
+        case 1:
         {
-            Console.WriteLine($"{i}: {Examples[i].DisplayName}");
+            var ex1 = app.Services.GetRequiredService<EncryptDecryptFileStreamExample>();
+            await ex1.RunAsync(ComponentName, KeyName, ctx.Token);
+            return 0;
         }
-        Console.WriteLine();
-        return 1;
+        case 2:
+        {
+            var ex2 = app.Services.GetRequiredService<EncryptDecryptLargeFileExample>();
+            await ex2.RunAsync(ComponentName, KeyName, ctx.Token);
+            return 0;
+        }
     }
 }
+
+Console.WriteLine("Please choose a sample to run by passing your selection's number into the arguments, e.g. 'dotnet run 0':");
+Console.WriteLine($"0: {EncryptDecryptStringExample.DisplayName}");
+Console.WriteLine($"1: {EncryptDecryptFileStreamExample.DisplayName}");
+Console.WriteLine($"2: {EncryptDecryptLargeFileExample.DisplayName}");
+Console.WriteLine();
+return 1;

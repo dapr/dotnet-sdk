@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Buffers;
+using System.Text;
 using Dapr.Crypto.Encryption;
 using Dapr.Crypto.Encryption.Models;
 
@@ -22,13 +23,14 @@ namespace Cryptography.Examples;
 internal sealed class EncryptDecryptFileStreamExample(DaprEncryptionClient daprClient) : IExample
 {
     public static string DisplayName => "Use Cryptography to encrypt and decrypt a file";
-    public async Task RunAsync(string componentName, string keyName)
+
+    public async Task RunAsync(string componentName, string keyName, CancellationToken cancellationToken)
     {
         // The name of the file we're using as an example
         const string fileName = "file.txt";
 
         Console.WriteLine("Original file contents:");
-        foreach (var line in await File.ReadAllLinesAsync(fileName))
+        foreach (var line in await File.ReadAllLinesAsync(fileName, cancellationToken))
         {
             Console.WriteLine(line);
         }
@@ -37,33 +39,34 @@ internal sealed class EncryptDecryptFileStreamExample(DaprEncryptionClient daprC
         await using var encryptFs = new FileStream(fileName, FileMode.Open);
 
         var bufferedEncryptedBytes = new ArrayBufferWriter<byte>();
-        await foreach (var bytes in (await daprClient.EncryptAsync(componentName, encryptFs, keyName,
-                           new EncryptionOptions(KeyWrapAlgorithm.Rsa))))
+        await foreach (var bytes in ((daprClient.EncryptAsync(componentName, encryptFs, keyName,
+                               new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken))))
         {
             bufferedEncryptedBytes.Write(bytes.Span);
         }
 
-        Console.WriteLine("Encrypted bytes:");
+        Console.WriteLine($"Encrypted bytes ({bufferedEncryptedBytes.WrittenMemory.Length} bytes):");
         Console.WriteLine(Convert.ToBase64String(bufferedEncryptedBytes.WrittenMemory.ToArray()));
-            
+
         //We'll write to a temporary file via a FileStream
         var tempDecryptedFile = Path.GetTempFileName();
         await using var decryptFs = new FileStream(tempDecryptedFile, FileMode.Create);
-            
+
         //We'll stream the decrypted bytes from a MemoryStream into the above temporary file
         await using var encryptedMs = new MemoryStream(bufferedEncryptedBytes.WrittenMemory.ToArray());
-        await foreach (var result in (await daprClient.DecryptAsync(componentName, encryptedMs, keyName)))
+        await foreach (var result in ((daprClient.DecryptAsync(componentName, encryptedMs, keyName,
+                           cancellationToken: cancellationToken))))
         {
             decryptFs.Write(result.Span);
         }
 
         decryptFs.Close();
-            
+
         //Let's confirm the value as written to the file
-        var decryptedValue = await File.ReadAllTextAsync(tempDecryptedFile);
-        Console.WriteLine("Decrypted value: ");
+        var decryptedValue = await File.ReadAllTextAsync(tempDecryptedFile, cancellationToken);
+        Console.WriteLine($"Decrypted value ({Encoding.UTF8.GetByteCount(decryptedValue)} bytes): ");
         Console.WriteLine(decryptedValue);
-            
+
         //And some cleanup to delete our temp file
         File.Delete(tempDecryptedFile);
     }

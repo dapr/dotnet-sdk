@@ -22,19 +22,19 @@ namespace Cryptography.Examples;
 internal sealed class EncryptDecryptStringExample(DaprEncryptionClient daprClient) : IExample
 {
     public static string DisplayName => "Using Cryptography to encrypt and decrypt a string";
-    public  async Task RunAsync(string componentName, string keyName)
+    public  async Task RunAsync(string componentName, string keyName, CancellationToken cancellationToken)
     {
         const string plaintextStr = "This is the value we're going to encrypt today";
         Console.WriteLine($"Original string value: '{plaintextStr}'");
 
         //Encrypt the string
         var plaintextBytes = Encoding.UTF8.GetBytes(plaintextStr);
-        var encryptedBytesResult = await daprClient.EncryptAsync(componentName, plaintextBytes, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa));
+        var encryptedBytesResult = await daprClient.EncryptAsync(componentName, plaintextBytes, keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken);
 
-        Console.WriteLine($"Encrypted bytes: '{Convert.ToBase64String(encryptedBytesResult.Span)}'");
+        Console.WriteLine($"Encrypted bytes ({encryptedBytesResult.Length} bytes): '{Convert.ToBase64String(encryptedBytesResult.Span)}'");
 
         //Decrypt the string
-        var decryptedBytes = await daprClient.DecryptAsync(componentName, encryptedBytesResult, keyName);
-        Console.WriteLine($"Decrypted string: '{Encoding.UTF8.GetString(decryptedBytes.ToArray())}'");
+        var decryptedBytes = await daprClient.DecryptAsync(componentName, encryptedBytesResult, keyName, cancellationToken: cancellationToken);
+        Console.WriteLine($"Decrypted string ({decryptedBytes.Length} bytes): '{Encoding.UTF8.GetString(decryptedBytes.ToArray())}'");
     }
 }
