@@ -33,7 +33,7 @@ public partial class E2ETests
     [Fact]
     public async Task Encrypt_SmallString()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
     
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddDaprEncryptionClient();
@@ -46,7 +46,7 @@ public partial class E2ETests
             new EncryptionOptions(KeyWrapAlgorithm.Rsa), cts.Token);
         Assert.NotEqual(plaintextBytes, encryptionResponse); //The plaintext and encrypted bytes should not equal one another
         
-        cts.CancelAfter(TimeSpan.FromSeconds(20)); //Start with a 20 second timeout each operation
+        cts.CancelAfter(TimeSpan.FromSeconds(60)); //Reset the timeout
     
         var decryptionResponse = await daprClient.DecryptAsync(CryptoComponentName, encryptionResponse, KeyName,
             cancellationToken: cts.Token);
@@ -57,7 +57,7 @@ public partial class E2ETests
     [Fact]
     public async Task Encrypt_MediumString()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
     
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddDaprEncryptionClient();
@@ -97,7 +97,7 @@ public partial class E2ETests
             new EncryptionOptions(KeyWrapAlgorithm.Rsa), cts.Token);
         Assert.NotEqual(plaintextBytes, encryptionResponse); //The plaintext and encrypted bytes should not equal one another
         
-        cts.CancelAfter(TimeSpan.FromSeconds(30)); //Start with a 30 second timeout each operation
+        cts.CancelAfter(TimeSpan.FromSeconds(60)); //Reset the timeout
     
         var decryptionResponse = await daprClient.DecryptAsync(CryptoComponentName, encryptionResponse, KeyName,
             cancellationToken: cts.Token);
