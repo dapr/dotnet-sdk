@@ -8,3 +8,4 @@ This repository contains a samples that highlight the Dapr .NET SDK capabilities
 | [2. Actor](./Actor)              | Demonstrates creating virtual actors that encapsulate code and state.                                                                                                  |
 | [3. ASP.NET Core](./AspNetCore)  | Demonstrates ASP.NET Core integration with Dapr by creating Controllers and Routes. |
 | [4. Workflow](./Workflow)        | Demonstrates creating durable, long-running Dapr workflows using code. |
+| [5. Cryptography](./Cryptography) | Demonstrates encryption and decryption operations using Dapr. |
