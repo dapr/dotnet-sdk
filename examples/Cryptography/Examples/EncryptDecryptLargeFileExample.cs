@@ -88,12 +88,10 @@ internal sealed class EncryptDecryptLargeFileExample(DaprEncryptionClient daprCl
     private static async Task WriteLargeFileAsync(string fileName, long sizeLimit)
     {
         var buffer = new byte[5 * 1024 * 1024]; // 5 MB buffer
-        var random = new Random();
-
         await using var fs = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.Read);
         for (var written = 0; written < sizeLimit; written += buffer.Length)
         {
-            random.NextBytes(buffer);
+            Random.Shared.NextBytes(buffer);
             await fs.WriteAsync(buffer);
         }
     }

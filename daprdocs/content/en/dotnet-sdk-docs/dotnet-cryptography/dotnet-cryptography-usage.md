@@ -1,4 +1,4 @@
-Whit---
+---
 type: docs
 title: "Dapr Cryptography Client"
 linkTitle: "Cryptography client"
