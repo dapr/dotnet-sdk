@@ -169,9 +169,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Actors.Analyzers.Test"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Analyzers.Common", "test\Dapr.Analyzers.Common\Dapr.Analyzers.Common.csproj", "{7E23E229-6823-4D84-AF3A-AE14CEAEF52A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Crypto", "src\Dapr.Crypto\Dapr.Crypto.csproj", "{160EFFA0-F6B9-49E4-B62B-68C0D53DB425}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Cryptography", "src\Dapr.Cryptography\Dapr.Cryptography.csproj", "{160EFFA0-F6B9-49E4-B62B-68C0D53DB425}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Crypto.Test", "test\Dapr.Crypto.Test\Dapr.Crypto.Test.csproj", "{B508EBD6-0F14-480C-A446-45A09052733B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Cryptography.Test", "test\Dapr.Cryptography.Test\Dapr.Cryptography.Test.csproj", "{B508EBD6-0F14-480C-A446-45A09052733B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamingSubscriptionExample", "examples\Messaging\StreamingSubscriptionExample\StreamingSubscriptionExample.csproj", "{E070F694-335D-4D96-8951-F41D0A5F2A8B}"
 EndProject

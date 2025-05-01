@@ -11,8 +11,8 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using System.Security.Cryptography;using Dapr.Crypto.Encryption;
-using Dapr.Crypto.Encryption.Models;
+using System.Security.Cryptography;using Dapr.Cryptography.Encryption;
+using Dapr.Cryptography.Encryption.Models;
 
 #pragma warning disable CS0618 // Type or member is obsolete
 

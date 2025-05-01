@@ -12,7 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Cryptography.Examples;
-using Dapr.Crypto.Encryption.Extensions;
+using Dapr.Cryptography.Encryption.Extensions;
 
 const string ComponentName = "localstorage";
 const string KeyName = "rsa-private-key.pem"; //This should match the name of your generated key - this sample expects an RSA symmetrical key.
