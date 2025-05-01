@@ -14,8 +14,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\src\Dapr.Common\Dapr.Common.csproj" />
-      <ProjectReference Include="..\..\..\src\Dapr.Cryptography\Dapr.Cryptography.csproj" />
+      <ProjectReference Include="..\..\src\Dapr.Common\Dapr.Common.csproj" />
+      <ProjectReference Include="..\..\src\Dapr.Cryptography\Dapr.Cryptography.csproj" />
     </ItemGroup>
 
 </Project>
