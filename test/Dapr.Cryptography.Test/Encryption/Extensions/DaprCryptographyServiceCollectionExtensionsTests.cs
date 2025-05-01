@@ -1,8 +1,10 @@
-﻿using Dapr.Cryptography.Encryption;
+﻿using System;
+using System.Linq;
+using Dapr.Cryptography.Encryption;
 using Dapr.Cryptography.Encryption.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Dapr.Crypto.Test.Encryption.Extensions;
+namespace Dapr.Cryptography.Test.Encryption.Extensions;
 
 public class DaprCryptographyServiceCollectionExtensionsTests
 {

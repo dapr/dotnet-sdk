@@ -11,9 +11,10 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System;
 using Dapr.Cryptography.Extensions;
 
-namespace Dapr.Crypto.Test.Extensions;
+namespace Dapr.Cryptography.Test.Extensions;
 
 public class ReadOnlyMemoryExtensionsTests
 {

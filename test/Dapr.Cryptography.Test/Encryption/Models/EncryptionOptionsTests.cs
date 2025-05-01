@@ -11,9 +11,10 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System;
 using Dapr.Cryptography.Encryption.Models;
 
-namespace Dapr.Crypto.Test.Encryption.Models;
+namespace Dapr.Cryptography.Test.Encryption.Models;
 
 public class EncryptionOptionsTests
 {
