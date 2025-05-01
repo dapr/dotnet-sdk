@@ -45,7 +45,7 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An array of encrypted bytes.</returns>
     [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
         EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -72,6 +72,6 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
     [Obsolete(
         "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-    public Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
         string keyName, DecryptionOptions? options = null, CancellationToken cancellationToken = default);
 }
