@@ -77,7 +77,3 @@ Put the Dapr AI .NET SDK to the test. Walk through the samples to see Dapr in ac
 
 This part of the .NET SDK allows you to interface with the Conversations API to send and receive messages from
 large language models.
-
-### Send messages
-
-
