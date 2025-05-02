@@ -200,7 +200,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
         }
 
-      var httpEndpoint = new Uri(this.HttpEndpoint);
+        var httpEndpoint = new Uri(this.HttpEndpoint);
         if (httpEndpoint.Scheme != "http" && httpEndpoint.Scheme != "https")
         {
             throw new InvalidOperationException("The HTTP endpoint must use http or https.");

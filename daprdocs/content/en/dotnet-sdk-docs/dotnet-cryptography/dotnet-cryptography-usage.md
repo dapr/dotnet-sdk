@@ -1,43 +1,41 @@
 ---
 type: docs
-title: "Dapr AI Client"
-linkTitle: "AI client"
-weight: 50005
-description: Learn how to create Dapr AI clients
+title: "Dapr Cryptography Client"
+linkTitle: "Cryptography client"
+weight: 510005
+description: Learn how to create Dapr Crytography clients
 ---
 
-The Dapr AI client package allows you to interact with the AI capabilities provided by the Dapr sidecar.
+The Dapr Cryptography package allows you to perform encryption and decryption operations provided by the Dapr sidecar.
 
 ## Lifetime management
-A `DaprConversationClient` is a version of the Dapr client that is dedicated to interacting with the Dapr Conversation 
-API. It can be registered alongside a `DaprClient` and other Dapr clients without issue.
+A `DaprEncryptionClient` is a version of the Dapr client that is dedicated to interacting with the Dapr Cryptography API.
+It can be registered alongside a `DaprClient` and other Dapr clients without issue.
 
 It maintains access to networking resources in the form of TCP sockets used to communicate with the Dapr sidecar.
 
-For best performance, create a single long-lived instance of `DaprConversationClient` and provide access to that shared
-instance throughout your application. `DaprConversationClient` instances are thread-safe and intended to be shared.
+For best performance, create a single long-lived instance of `DaprEncryptionClient` and provide access to that shared
+instance throughout your application. `DaprEncryptionClient` instances are thread-safe and intended to be shared.
 
-This can be aided by utilizing the dependency injection functionality. The registration method supports registration 
-as a singleton, a scoped instance or as transient (meaning it's recreated every time it's injected), but also enables
-registration to utilize values from an `IConfiguration` or other injected service in a way that's impractical when
-creating the client from scratch in each of your classes.
+This can be aided by utilizing the dependency injection functionality. The registration method supports registration
+as a singleton, a scoped instance, or as a transient (meaning it's recreated every time it's injected), but also enables
+registration to utilize values from an `IConfiguration` or other injected service in a way that's impractical when creating
+the client from scratch in each of your classes.
 
-Avoid creating a `DaprConversationClient` for each operation.
+Avoid creating a `DaprEncryptionClient` for each operation.
 
-## Configuring DaprConversationClient via DaprConversationClientBuilder
-
-A `DaprConversationClient` can be configured by invoking methods on the `DaprConversationClientBuilder` class before 
-calling `.Build()` to create the client itself. The settings for each `DaprConversationClient` are separate
-and cannot be changed after calling `.Build()`.
+## Configuring `DaprEncryptionClient` via `DaprEncryptionClientBuilder`
+A `DaprCryptographyClient` can be configured by invoking methods on the `DaprEncryptionClientBuilder` class before calling
+`.Build()` to create the client itself. The settings for each `DaprEncryptionClientBuilder` are separate can cannot be
+changed after calling `.Build()`.
 
 ```cs
-var daprConversationClient = new DaprConversationClientBuilder()
-    .UseDaprApiToken("abc123") // Specify the API token used to authenticate to other Dapr sidecars
+var daprEncryptionClient = new DaprEncryptionClientBuilder()
+    .UseDaprApiToken("abc123") //Specify the API token used to authenticate to the Dapr sidecar
     .Build();
 ```
 
-The `DaprConversationClientBuilder` contains settings for:
-
+The `DaprEncryptionClientBuilder` contains settings for:
 - The HTTP endpoint of the Dapr sidecar
 - The gRPC endpoint of the Dapr sidecar
 - The `JsonSerializerOptions` object used to configure JSON serialization
@@ -60,52 +58,50 @@ Dapr's use of `CancellationToken` for cancellation relies on the configuration o
 to configure these options yourself, make sure to enable the [ThrowOperationCanceledOnCancellation setting](https://grpc.github.io/grpc/csharp-dotnet/api/Grpc.Net.Client.GrpcChannelOptions.html#Grpc_Net_Client_GrpcChannelOptions_ThrowOperationCanceledOnCancellation).
 
 ```cs
-var daprConversationClient = new DaprConversationClientBuilder()
-    .UseGrpcChannelOptions(new GrpcChannelOptions { ... ThrowOperationCanceledOnCancellation = true })
+var daprEncryptionClient = new DaprEncryptionClientBuilder()
+    .UseGrpcChannelOptions(new GrpcChannelOptions { .. ThrowOperationCanceledOnCancellation = true })
     .Build();
 ```
 
-## Using cancellation with `DaprConversationClient`
-
-The APIs on `DaprConversationClient` perform asynchronous operations and accept an optional `CancellationToken` parameter. This
+## Using cancellation with `DaprEncryptionClient`
+The APIs on `DaprEncryptionClient` perform asynchronous operations and accept an optional `CancellationToken` parameter. This
 follows a standard .NET practice for cancellable operations. Note that when cancellation occurs, there is no guarantee that
 the remote endpoint stops processing the request, only that the client has stopped waiting for completion.
 
 When an operation is cancelled, it will throw an `OperationCancelledException`.
 
-## Configuring `DaprConversationClient` via dependency injection
-
-Using the built-in extension methods for registering the `DaprConversationClient` in a dependency injection container can
+## Configuring `DaprEncryptionClient` via dependency injection
+Using the built-in extension methods for registering the `DaprEncryptionClient` in a dependency injection container can
 provide the benefit of registering the long-lived service a single time, centralize complex configuration and improve
 performance by ensuring similarly long-lived resources are re-purposed when possible (e.g. `HttpClient` instances).
 
 There are three overloads available to give the developer the greatest flexibility in configuring the client for their
 scenario. Each of these will register the `IHttpClientFactory` on your behalf if not already registered, and configure
-the `DaprConversationClientBuilder` to use it when creating the `HttpClient` instance in order to re-use the same instance as
+the `DaprEncryptionClientBuilder` to use it when creating the `HttpClient` instance in order to re-use the same instance as
 much as possible and avoid socket exhaustion and other issues.
 
-In the first approach, there's no configuration done by the developer and the `DaprConversationClient` is configured with the
+In the first approach, there's no configuration done by the developer and the `DaprEncryptionClient` is configured with the
 default settings.
 
 ```cs
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDaprConversationClient(); //Registers the `DaprConversationClient` to be injected as needed
+builder.Services.AddDaprEncryptionClent(); //Registers the `DaprEncryptionClient` to be injected as needed
 var app = builder.Build();
 ```
 
 Sometimes the developer will need to configure the created client using the various configuration options detailed
-above. This is done through an overload that passes in the `DaprConversationClientBuiler` and exposes methods for configuring
+above. This is done through an overload that passes in the `DaprEncryptionClientBuiler` and exposes methods for configuring
 the necessary options.
 
 ```cs
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDaprConversationClient((_, daprConversationClientBuilder) => {
+builder.Services.AddDaprEncryptionClient((_, daprEncrpyptionClientBuilder) => {
    //Set the API token
-   daprConversationClientBuilder.UseDaprApiToken("abc123");
+   daprEncryptionClientBuilder.UseDaprApiToken("abc123");
    //Specify a non-standard HTTP endpoint
-   daprConversationClientBuilder.UseHttpEndpoint("http://dapr.my-company.com");
+   daprEncryptionClientBuilder.UseHttpEndpoint("http://dapr.my-company.com");
 });
 
 var app = builder.Build();
@@ -122,13 +118,13 @@ var builder = WebApplication.CreateBuilder(args);
 //Register a fictional service that retrieves secrets from somewhere
 builder.Services.AddSingleton<SecretService>();
 
-builder.Services.AddDaprConversationClient((serviceProvider, daprConversationClientBuilder) => {
+builder.Services.AddDaprEncryptionClient((serviceProvider, daprEncryptionClientBuilder) => {
     //Retrieve an instance of the `SecretService` from the service provider
     var secretService = serviceProvider.GetRequiredService<SecretService>();
     var daprApiToken = secretService.GetSecret("DaprApiToken").Value;
 
-    //Configure the `DaprConversationClientBuilder`
-    daprConversationClientBuilder.UseDaprApiToken(daprApiToken);
+    //Configure the `DaprEncryptionClientBuilder`
+    daprEncryptionClientBuilder.UseDaprApiToken(daprApiToken);
 });
 
 var app = builder.Build();
