@@ -1664,7 +1664,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Obsolete(
-        "As of Dapr v1.17, this method will be removed and should be installed via the Dapr.Cryptography package on NuGet")]
+        "As of Dapr v1.17, this method will be removed and should be used via the Dapr.Cryptography package on NuGet")]
     public override async Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName,
         ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
         CancellationToken cancellationToken = default)
@@ -1684,7 +1684,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Obsolete(
-        "As of Dapr v1.17, this method will be removed and should be installed via the Dapr.Cryptography package on NuGet")]
+        "As of Dapr v1.17, this method will be removed and should be used via the Dapr.Cryptography package on NuGet")]
     public override async IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName,
         Stream plaintextStream,
         string keyName, EncryptionOptions encryptionOptions, 
@@ -1741,7 +1741,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Obsolete(
-        "As of Dapr v1.17, this method will be removed and should be installed via the Dapr.Cryptography package on NuGet")]
+        "As of Dapr v1.17, this method will be removed and should be used via the Dapr.Cryptography package on NuGet")]
     public override async IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         Stream ciphertextStream, string keyName,
         DecryptionOptions decryptionOptions, 
@@ -1784,7 +1784,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Obsolete(
-        "As of Dapr v1.17, this method will be removed and should be installed via the Dapr.Cryptography package on NuGet")]
+        "As of Dapr v1.17, this method will be removed and should be used via the Dapr.Cryptography package on NuGet")]
     public override IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         Stream ciphertextStream, string keyName, CancellationToken cancellationToken = default) =>
         DecryptAsync(vaultResourceName, ciphertextStream, keyName, new DecryptionOptions(),
@@ -1792,7 +1792,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Obsolete(
-        "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        "As of Dapr v1.17, this method will be removed and should be used via the Dapr.Cryptography package on NuGet")]
     public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions decryptionOptions,
         CancellationToken cancellationToken = default)
@@ -1812,7 +1812,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Obsolete(
-        "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
+        "As of Dapr v1.17, this method will be removed and should be used via the Dapr.Cryptography package on NuGet")]
     public override async Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         ReadOnlyMemory<byte> ciphertextBytes, string keyName, CancellationToken cancellationToken = default) =>
         await DecryptAsync(vaultResourceName, ciphertextBytes, keyName,
