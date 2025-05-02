@@ -374,19 +374,19 @@ public sealed class ActorManagerTests
             Assert.Equal(TimeSpan.FromHours(3).Add(TimeSpan.FromMinutes(2)).Add(TimeSpan.FromSeconds(15)), result.Period);
         }
         
-        // [Fact]
-        // public async Task DeserializeTimer_Period_DaprFormat_Monthly()
-        // {
-        //     const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@monthly\"}";
-        //     await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
-        //     var result = await ActorManager.DeserializeAsync(stream);
-        //     
-        //     Assert.Equal("TimerCallback", result.Callback);
-        //     Assert.Equal(Array.Empty<byte>(), result.Data);
-        //     Assert.Null(result.Ttl);
-        //     Assert.Equal(TimeSpan.Zero, result.DueTime);
-        //     Assert.Equal(TimeSpan.FromDays(30), result.Period);
-        // }
+        [Fact]
+        public async Task DeserializeTimer_Period_DaprFormat_Monthly()
+        {
+            const string timerJson = "{\"callback\": \"TimerCallback\", \"period\": \"@monthly\"}";
+            await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(timerJson));
+            var result = await ActorManager.DeserializeAsync(stream);
+            
+            Assert.Equal("TimerCallback", result.Callback);
+            Assert.Equal(Array.Empty<byte>(), result.Data);
+            Assert.Null(result.Ttl);
+            Assert.Equal(TimeSpan.Zero, result.DueTime);
+            Assert.Equal(TimeSpan.FromDays(30), result.Period);
+        }
         
         [Fact]
         public async Task DeserializeTimer_Period_DaprFormat_Weekly()
