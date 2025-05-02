@@ -37,9 +37,8 @@ namespace Cryptography.Examples
             await using var encryptFs = new FileStream(fileName, FileMode.Open);
 
             var bufferedEncryptedBytes = new ArrayBufferWriter<byte>();
-            await foreach (var bytes in (await client.EncryptAsync(componentName, encryptFs, keyName,
-                               new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken))
-                           .WithCancellation(cancellationToken))
+            await foreach (var bytes in (client.EncryptAsync(componentName, encryptFs, keyName,
+                               new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken)))
             {
                 bufferedEncryptedBytes.Write(bytes.Span);
             }
@@ -53,8 +52,8 @@ namespace Cryptography.Examples
             
             //We'll stream the decrypted bytes from a MemoryStream into the above temporary file
             await using var encryptedMs = new MemoryStream(bufferedEncryptedBytes.WrittenMemory.ToArray());
-            await foreach (var result in (await client.DecryptAsync(componentName, encryptedMs, keyName,
-                               cancellationToken)).WithCancellation(cancellationToken))
+            await foreach (var result in (client.DecryptAsync(componentName, encryptedMs, keyName,
+                               cancellationToken)))
             {
                 decryptFs.Write(result.Span);
             }
