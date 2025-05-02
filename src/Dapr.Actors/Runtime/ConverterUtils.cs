@@ -49,7 +49,7 @@ internal static class ConverterUtils
         int msIndex = spanOfValue.IndexOf("ms");
 
         // handle days from hours.
-        var hoursSpan = spanOfValue.Slice(0, hIndex);
+        var hoursSpan = spanOfValue[..hIndex];
         var hours = int.Parse(hoursSpan);
         var days = hours / 24;
         hours %= 24;
