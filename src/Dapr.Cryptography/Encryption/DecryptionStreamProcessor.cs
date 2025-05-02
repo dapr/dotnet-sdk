@@ -74,16 +74,18 @@ internal sealed class DecryptionStreamProcessor : IDecryptionStreamProcessor, ID
                         sequenceNumber++;
                     }
                 }
-
-                await call.RequestStream.CompleteAsync();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // Expected cancellation exception
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 OnException?.Invoke(this, ex);
+            }
+            finally
+            {
+                await call.RequestStream.CompleteAsync();
             }
         }, cancellationToken);
         
@@ -96,12 +98,14 @@ internal sealed class DecryptionStreamProcessor : IDecryptionStreamProcessor, ID
                 {
                     await outputChannel.Writer.WriteAsync(response.Payload.Data.Memory, cancellationToken);
                 }
-
-                outputChannel.Writer.Complete();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 OnException?.Invoke(this, ex);
+            }
+            finally
+            {
+                outputChannel.Writer.Complete();
             }
         }, cancellationToken);
     }
