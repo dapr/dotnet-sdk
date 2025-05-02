@@ -13,7 +13,6 @@
 
 using System.Buffers;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices.ComTypes;
 using Dapr.Common;
 using Dapr.Cryptography.Extensions;
 using Dapr.Common.Extensions;

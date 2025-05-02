@@ -11,7 +11,6 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using System.Runtime.CompilerServices;
 using Grpc.Core;
 
 namespace Dapr.Cryptography.Encryption;
