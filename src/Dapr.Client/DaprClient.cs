@@ -1105,7 +1105,7 @@ namespace Dapr.Client
         /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>An array of encrypted bytes.</returns>
         [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
+        public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
             EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -1144,7 +1144,7 @@ namespace Dapr.Client
         /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
         [Obsolete(
             "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
+        public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
             string keyName, DecryptionOptions options, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -1157,7 +1157,7 @@ namespace Dapr.Client
         /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
         [Obsolete(
             "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
-        public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
+        public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
             string keyName, CancellationToken cancellationToken = default);
 
         #endregion
