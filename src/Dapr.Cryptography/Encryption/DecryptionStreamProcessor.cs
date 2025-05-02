@@ -77,6 +77,10 @@ internal sealed class DecryptionStreamProcessor : IDecryptionStreamProcessor, ID
 
                 await call.RequestStream.CompleteAsync();
             }
+            catch (OperationCancelledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Expected cancellation exception
+            }
             catch(Exception ex)
             {
                 OnException?.Invoke(this, ex);
