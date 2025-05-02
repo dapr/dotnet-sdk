@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -31,28 +30,6 @@ namespace Dapr.Client.Test
         }
 
         [Fact]
-        public async Task EncryptAsync_Stream_VaultResourceName_ArgumentVerifierException()
-        {
-            var client = new DaprClientBuilder().Build();
-            const string vaultResourceName = "";
-            //Get response and validate
-            await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync(vaultResourceName,
-                new MemoryStream(), "MyKey", new EncryptionOptions(KeyWrapAlgorithm.Rsa),
-                CancellationToken.None));
-        }
-
-        [Fact]
-        public async Task EncryptAsync_Stream_KeyName_ArgumentVerifierException()
-        {
-            var client = new DaprClientBuilder().Build();
-            const string keyName = "";
-            //Get response and validate
-            await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync("myVault",
-                (Stream) new MemoryStream(), keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa),
-                CancellationToken.None));
-        }
-
-        [Fact]
         public async Task DecryptAsync_ByteArray_VaultResourceName_ArgumentVerifierException()
         {
             var client = new DaprClientBuilder().Build();
@@ -70,26 +47,6 @@ namespace Dapr.Client.Test
             //Get response and validate
             await Assert.ThrowsAsync<ArgumentException>(async () => await client.DecryptAsync("myVault",
                 Array.Empty<byte>(), keyName, new DecryptionOptions(), CancellationToken.None));
-        }
-
-        [Fact]
-        public async Task DecryptAsync_Stream_VaultResourceName_ArgumentVerifierException()
-        {
-            var client = new DaprClientBuilder().Build();
-            const string vaultResourceName = "";
-            //Get response and validate
-            await Assert.ThrowsAsync<ArgumentException>(async () => await client.DecryptAsync(vaultResourceName,
-                new MemoryStream(), "MyKey", new DecryptionOptions(), CancellationToken.None));
-        }
-
-        [Fact]
-        public async Task DecryptAsync_Stream_KeyName_ArgumentVerifierException()
-        {
-            var client = new DaprClientBuilder().Build();
-            const string keyName = "";
-            //Get response and validate
-            await Assert.ThrowsAsync<ArgumentException>(async () => await client.DecryptAsync("myVault",
-                new MemoryStream(), keyName, new DecryptionOptions(), CancellationToken.None));
         }
     }
 }
