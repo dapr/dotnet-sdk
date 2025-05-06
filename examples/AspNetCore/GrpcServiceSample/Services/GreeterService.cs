@@ -27,7 +27,7 @@ public class GreeterService: Greeter.GreeterBase
 
     public override async Task SayHelloStream(IAsyncStreamReader<HelloRequest> requestStream, IServerStreamWriter<HelloReply> responseStream, ServerCallContext context)
     {
-        await foreach (var message in requestStream.ReadAllAsync())
+        await foreach (var message in requestStream.ReadAllAsync(context.CancellationToken))
         {
             await responseStream.WriteAsync(new HelloReply() { Message = "Hello " + message.Name });
         }
