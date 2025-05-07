@@ -24,6 +24,7 @@ namespace Samples.Client
             new InvokeServiceGrpcExample(),
             new InvokeServiceHttpExample(),
             new InvokeServiceHttpClientExample(),
+            new InvokeServiceHttpNonDaprEndpointExample()
         };
 
         static async Task<int> Main(string[] args)
