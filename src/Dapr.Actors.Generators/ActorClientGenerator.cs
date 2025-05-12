@@ -164,6 +164,62 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
             var actorClientClassTypeParameters = descriptor.InterfaceType.TypeParameters
                 .Select(x => SyntaxFactory.TypeParameter(x.ToString()));
 
+            // Create constraint clauses for type parameters
+            var constraintClauses = new List<TypeParameterConstraintClauseSyntax>();
+
+            // For each type parameter, create constraint clauses based on the interface's constraints
+            foreach (var typeParam in descriptor.InterfaceType.TypeParameters)
+            {
+                if (typeParam.HasReferenceTypeConstraint ||
+                    typeParam.HasValueTypeConstraint ||
+                    typeParam.HasUnmanagedTypeConstraint ||
+                    typeParam.HasNotNullConstraint ||
+                    typeParam.ConstraintTypes.Length > 0)
+                {
+                    var constraints = new List<TypeParameterConstraintSyntax>();
+
+                    // Add class/struct constraints
+                    if (typeParam.HasReferenceTypeConstraint)
+                    {
+                        constraints.Add(SyntaxFactory.ClassOrStructConstraint(SyntaxKind.ClassConstraint));
+                    }
+                    else if (typeParam.HasValueTypeConstraint)
+                    {
+                        constraints.Add(SyntaxFactory.ClassOrStructConstraint(SyntaxKind.StructConstraint));
+                    }
+
+                    // Add unmanaged constraint
+                    if (typeParam.HasUnmanagedTypeConstraint)
+                    {
+                        constraints.Add(SyntaxFactory.TypeConstraint(SyntaxFactory.IdentifierName("unmanaged")));
+                    }
+
+                    // Add type constraints (e.g., where T : IInterface)
+                    foreach (var constraintType in typeParam.ConstraintTypes)
+                    {
+                        constraints.Add(SyntaxFactory.TypeConstraint(
+                            SyntaxFactory.ParseTypeName(constraintType.ToString())));
+                    }
+
+                    // Add notnull constraint
+                    if (typeParam.HasNotNullConstraint)
+                    {
+                        constraints.Add(SyntaxFactory.TypeConstraint(SyntaxFactory.IdentifierName("notnull")));
+                    }
+
+                    // Add new() constraint - must be last
+                    if (typeParam.HasConstructorConstraint)
+                    {
+                        constraints.Add(SyntaxFactory.ConstructorConstraint());
+                    }
+
+                    constraintClauses.Add(
+                        SyntaxFactory.TypeParameterConstraintClause(
+                            SyntaxFactory.IdentifierName(typeParam.Name),
+                            SyntaxFactory.SeparatedList(constraints)));
+                }
+            }
+
             var actorClientClassDeclaration = (actorClientClassTypeParameters.Count() == 0)
                 ? SyntaxFactory.ClassDeclaration(descriptor.ClientTypeName)
                     .WithModifiers(SyntaxFactory.TokenList(actorClientClassModifiers))
@@ -174,6 +230,7 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 : SyntaxFactory.ClassDeclaration(descriptor.ClientTypeName)
                     .WithModifiers(SyntaxFactory.TokenList(actorClientClassModifiers))
                     .WithTypeParameterList(SyntaxFactory.TypeParameterList(SyntaxFactory.SeparatedList(actorClientClassTypeParameters)))
+                    .WithConstraintClauses(SyntaxFactory.List(constraintClauses)) // Add constraint clauses to the class
                     .WithMembers(SyntaxFactory.List(actorMembers))
                     .WithBaseList(SyntaxFactory.BaseList(
                         SyntaxFactory.Token(SyntaxKind.ColonToken),
