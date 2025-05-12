@@ -893,10 +893,10 @@ namespace Test
     }
     
     [GenerateActorClient]
-    public interface ITestActor<TTrait> where TTrait : ITrait
+    public interface ITestActor<in TTrait> where TTrait : ITrait
     {
         Task<bool> SetTrait(TTrait trait);
-        Task<TTrait> GetTrait(string name);
+        Task<ITrait> GetTrait(string name);
     }
 }";
 
@@ -917,9 +917,9 @@ namespace Test
             this.actorProxy = actorProxy;
         }
 
-        public System.Threading.Tasks.Task<TTrait> GetTrait(string name)
+        public System.Threading.Tasks.Task<Test.ITrait> GetTrait(string name)
         {
-            return this.actorProxy.InvokeMethodAsync<string, TTrait>(""GetTrait"", name);
+            return this.actorProxy.InvokeMethodAsync<string, Test.ITrait>(""GetTrait"", name);
         }
 
         public System.Threading.Tasks.Task<bool> SetTrait(TTrait trait)
