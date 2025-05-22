@@ -6,9 +6,4 @@
     <ProjectReference Include="..\..\..\src\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net6</TargetFramework>
-  </PropertyGroup>
-
-
 </Project>
