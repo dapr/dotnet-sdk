@@ -7,8 +7,8 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
     <PackageVersion Include="coverlet.msbuild" Version="6.0.2" />
-    <PackageVersion Include="Dapr.DurableTask.Client.Grpc" Version="1.15.2" />
-    <PackageVersion Include="Dapr.DurableTask.Worker.Grpc" Version="1.15.2" />
+    <PackageVersion Include="Dapr.DurableTask.Client.Grpc" Version="1.15.0" />
+    <PackageVersion Include="Dapr.DurableTask.Worker.Grpc" Version="1.15.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="1.1.2" />
     <PackageVersion Include="Google.Api.CommonProtos" Version="2.2.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.31.0" />
