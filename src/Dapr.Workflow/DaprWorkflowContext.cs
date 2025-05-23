@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 namespace Dapr.Workflow
 {
     using System;
-    using Microsoft.DurableTask;
+    using Dapr.DurableTask;
     using System.Threading.Tasks;
     using System.Threading;
 

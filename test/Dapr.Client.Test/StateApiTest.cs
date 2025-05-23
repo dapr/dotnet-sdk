@@ -334,15 +334,15 @@ namespace Dapr.Client.Test
             
             envelope.States[0].Key.ShouldBe("testKey1");
             envelope.States[0].Value.ShouldBe(ByteString.CopyFromUtf8(JsonSerializer.Serialize("testValue1")));
-            envelope.States[0].Metadata.ShouldContainKey("partitionKey1");
+            ((IDictionary<string, string>)envelope.States[0].Metadata).ShouldContainKey("partitionKey1");
             
             envelope.States[1].Key.ShouldBe("testKey2");
             envelope.States[1].Value.ShouldBe(ByteString.CopyFromUtf8(JsonSerializer.Serialize("testValue2")));
-            envelope.States[1].Metadata.ShouldContainKey("partitionKey2");
+            ((IDictionary<string, string>)envelope.States[1].Metadata).ShouldContainKey("partitionKey2");
             
             envelope.States[2].Key.ShouldBe("testKey3");
             envelope.States[2].Value.ShouldBe(ByteString.CopyFromUtf8(JsonSerializer.Serialize("testValue3")));
-            envelope.States[2].Metadata.ShouldContainKey("partitionKey3");
+            ((IDictionary<string, string>)envelope.States[2].Metadata).ShouldContainKey("partitionKey3");
         }
 
         [Fact]
@@ -1004,7 +1004,7 @@ namespace Dapr.Client.Test
             envelope.StoreName.ShouldBe("testStore");
             envelope.States.Count.ShouldBe(1);
             envelope.States[0].Key.ShouldBe(key);
-            envelope.States[0].Metadata.ShouldContainKey("partitionKey");
+            ((IDictionary<string, string>)envelope.States[0].Metadata).ShouldContainKey("partitionKey");
         }
 
         [Fact]

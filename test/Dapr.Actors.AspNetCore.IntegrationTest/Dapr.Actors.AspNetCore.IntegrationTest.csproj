@@ -19,4 +19,8 @@
     <ProjectReference Include="..\Dapr.Actors.AspNetCore.IntegrationTest.App\Dapr.Actors.AspNetCore.IntegrationTest.App.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9'">
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
 </Project>

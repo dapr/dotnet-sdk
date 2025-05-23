@@ -27,4 +27,8 @@
     <ProjectReference Include="..\..\src\Dapr.Actors.Generators\Dapr.Actors.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9'">
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
 </Project>
