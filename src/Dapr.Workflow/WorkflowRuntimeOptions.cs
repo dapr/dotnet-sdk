@@ -18,7 +18,7 @@ namespace Dapr.Workflow
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using Microsoft.DurableTask;
+    using Dapr.DurableTask;
     using Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
