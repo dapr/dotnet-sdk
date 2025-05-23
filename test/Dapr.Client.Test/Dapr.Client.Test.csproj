@@ -37,4 +37,8 @@
     <ProjectReference Include="..\..\src\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9'">
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
 </Project>
