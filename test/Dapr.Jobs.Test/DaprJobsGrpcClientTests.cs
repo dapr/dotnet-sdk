@@ -13,6 +13,7 @@
 
 using System;
 using System.Net.Http;
+using Dapr.Client.Autogen.Grpc.v1;
 using Dapr.Jobs.Models;
 using Moq;
 using Xunit;
@@ -166,6 +167,21 @@ public sealed class DaprJobsGrpcClientTests
             await client.DeleteJobAsync(string.Empty, default);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
+    }
+    
+    [Fact]
+    public void ShouldDeserialize_EveryExpression()
+    {
+        const string scheduleText = "@every 1m";
+        var response = new GetJobResponse { Job = new Job { Name = "test", Schedule = scheduleText } };
+        var schedule = DaprJobSchedule.FromExpression(scheduleText);
+        
+        var jobDetails = DaprJobsGrpcClient.DeserializeJobResponse(response);
+        Assert.Null(jobDetails.Payload);
+        Assert.Equal(0, jobDetails.RepeatCount);
+        Assert.Null(jobDetails.Ttl);
+        Assert.Null(jobDetails.DueTime);
+        Assert.Equal(jobDetails.Schedule.ExpressionValue, schedule.ExpressionValue);
     }
 
     private sealed record TestPayload(string Name, string Color);
