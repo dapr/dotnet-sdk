@@ -220,27 +220,39 @@ internal sealed class ActorManager
         }
     }
 
-    internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task<bool> FireTimerAsync(
+        ActorId actorId,
+        Stream requestBodyStream,
+        CancellationToken cancellationToken = default)
     {
 #pragma warning disable 0618
-        var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream);
+        var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream, cancellationToken: cancellationToken);
 #pragma warning restore 0618
 
+        return await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
+
         // Create a Func to be invoked by common method.
-        async Task<byte[]> RequestFunc(Actor actor, CancellationToken ct)
+        async Task<bool> RequestFunc(Actor actor, CancellationToken ct)
         {
             var actorType = actor.Host.ActorTypeInfo.ImplementationType;
             var methodInfo = actor.GetMethodInfoUsingReflection(actorType, timerData.Callback);
 
             var parameters = methodInfo.GetParameters();
+            var args = (parameters.Length == 0) ? null : new object[] { timerData.Data };
+            
+            var result = methodInfo.Invoke(actor, args);
 
-            // The timer callback routine needs to return a type Task
-            await (Task)(methodInfo.Invoke(actor, (parameters.Length == 0) ? null : new object[] { timerData.Data }));
-
-            return default;
+            switch (result)
+            {
+                case Task<bool> boolTask:
+                    return await boolTask;
+                case Task task:
+                    await task;
+                    return false;
+                default:
+                    return false;
+            }
         }
-
-        await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
     }
 
     internal async Task ActivateActorAsync(ActorId actorId)
