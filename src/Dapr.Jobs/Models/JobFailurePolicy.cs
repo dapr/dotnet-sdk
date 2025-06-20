@@ -11,8 +11,6 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
-using System.Runtime.Serialization;
-
 namespace Dapr.Jobs.Models;
 
 /// <summary>
@@ -23,11 +21,9 @@ public enum JobFailurePolicy
     /// <summary>
     /// Drops the job tick with the job fails to trigger.
     /// </summary>
-    [EnumMember(Value="drop")]
     Drop,
     /// <summary>
     /// Retries the job at a consistent interval when the job fails to trigger.
     /// </summary>
-    [EnumMember(Value="constant")]
     Constant
 }
