@@ -11,9 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Runtime.Serialization;
-using System.Text.Json.Serialization;
-
 namespace Dapr.Jobs.Models.Responses;
 
 /// <summary>
