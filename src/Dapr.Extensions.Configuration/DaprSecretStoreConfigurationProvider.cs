@@ -189,7 +189,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
 
     private async Task LoadAsync()
     {
-        var data = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+        var data = new Dictionary<string, string?>(StringComparer.InvariantCultureIgnoreCase);
 
         // Wait for the Dapr Sidecar to report healthy before attempting to fetch secrets.
         using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
