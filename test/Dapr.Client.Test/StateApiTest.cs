@@ -1004,7 +1004,7 @@ public class StateApiTest
         envelope.StoreName.ShouldBe("testStore");
         envelope.States.Count.ShouldBe(1);
         envelope.States[0].Key.ShouldBe(key);
-        envelope.States[0].Metadata.ShouldContainKey("partitionKey");
+        ((IDictionary<string, string>)envelope.States[0].Metadata).ShouldContainKey("partitionKey");
     }
 
     [Fact]
