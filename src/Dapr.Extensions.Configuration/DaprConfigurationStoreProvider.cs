@@ -89,7 +89,7 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
                         var subscribeConfigurationResponse = await daprClient.SubscribeConfiguration(store, keys, metadata, cts.Token);
                         await foreach (var items in subscribeConfigurationResponse.Source.WithCancellation(cts.Token))
                         {
-                            var data = new Dictionary<string, string>(Data, StringComparer.OrdinalIgnoreCase);
+                            var data = new Dictionary<string, string?>(Data, StringComparer.OrdinalIgnoreCase);
                             foreach (var item in items)
                             {
                                 id = subscribeConfigurationResponse.Id;
