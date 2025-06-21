@@ -36,7 +36,7 @@ The attribute includes:
 For example:
 
 ```csharp
-csharp using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 namespace Dapr.Cryptography.Encryption 
 { 
     [Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")] 
