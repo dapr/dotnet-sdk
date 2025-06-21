@@ -25,9 +25,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                                using System.Diagnostics.CodeAnalysis;
                                 
-                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -43,6 +42,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                             Encoding.UTF8.GetBytes("This is a test"), repeats: 10).GetAwaiter().GetResult();
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var expected = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
@@ -67,9 +67,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                                using System.Diagnostics.CodeAnalysis;
                                 
-                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -82,6 +81,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
@@ -101,9 +101,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                                using System.Diagnostics.CodeAnalysis;
                                 
-                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -121,6 +120,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                             Encoding.UTF8.GetBytes("This is a test"), repeats: 10).GetAwaiter().GetResult();
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var expected1 = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
@@ -147,9 +147,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                                using System.Diagnostics.CodeAnalysis;
                                 
-                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -172,6 +171,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         }, TimeSpan.FromSeconds(5));
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
@@ -191,9 +191,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                                using System.Diagnostics.CodeAnalysis;
-                                
-                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
+                                                
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static async Task Main()
@@ -216,6 +215,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         }, TimeSpan.FromSeconds(5));
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
@@ -235,9 +235,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                                using System.Diagnostics.CodeAnalysis;
-                                
-                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
+                                                
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static async Task Main()
@@ -257,6 +256,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         return Task.CompletedTask;
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                                 
                                 """;
 
