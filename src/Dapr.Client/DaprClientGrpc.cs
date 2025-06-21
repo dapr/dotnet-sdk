@@ -1688,7 +1688,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
-    public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName,
+    public override async IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName,
         Stream plaintextStream,
         string keyName, EncryptionOptions encryptionOptions, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -1744,7 +1744,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
-    public override async Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName,
+    public override async IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         Stream ciphertextStream, string keyName,
         DecryptionOptions decryptionOptions, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -1786,7 +1786,7 @@ internal class DaprClientGrpc : DaprClient
 
     /// <inheritdoc />
     [Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
-    public override Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName,
+    public override IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName,
         Stream ciphertextStream, string keyName, CancellationToken cancellationToken = default) =>
         DecryptAsync(vaultResourceName, ciphertextStream, keyName, new DecryptionOptions(),
             cancellationToken);
