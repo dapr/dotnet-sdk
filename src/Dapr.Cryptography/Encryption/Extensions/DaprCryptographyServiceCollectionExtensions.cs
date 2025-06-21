@@ -11,6 +11,7 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using Dapr.Common.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +20,7 @@ namespace Dapr.Cryptography.Encryption.Extensions;
 /// <summary>
 /// Contains extension methods for using Dapr cryptography with dependency injection.
 /// </summary>
+[Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
 public static class DaprCryptographyServiceCollectionExtensions
 {
     /// <summary>
