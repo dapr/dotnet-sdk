@@ -11,6 +11,7 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using Dapr.Common;
 using Dapr.Cryptography.Encryption.Models;
 
@@ -19,6 +20,7 @@ namespace Dapr.Cryptography.Encryption;
 /// <summary>
 /// Provides the implementation shape for the Dapr encryption client.
 /// </summary>
+[Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
 public interface IDaprEncryptionClient : IDaprClient
 {
     /// <summary>
@@ -30,7 +32,6 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <param name="encryptionOptions">Options informing how the encryption operation should be configured.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An array of encrypted bytes.</returns>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName,
         ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions,
         CancellationToken cancellationToken = default);
@@ -44,7 +45,6 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <param name="encryptionOptions">Options informing how the encryption operation should be configured.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An array of encrypted bytes.</returns>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
         EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default);
 
@@ -57,7 +57,6 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <param name="options">Options informing how the decryption operation should be configured.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An array of decrypted bytes.</returns>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public Task<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, ReadOnlyMemory<byte> ciphertextBytes, string keyName, DecryptionOptions? options = null,
         CancellationToken cancellationToken = default);
 
@@ -70,8 +69,6 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <param name="options">Options informing how the decryption operation should be configured.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
-    [Obsolete(
-        "The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
         string keyName, DecryptionOptions? options = null, CancellationToken cancellationToken = default);
 }

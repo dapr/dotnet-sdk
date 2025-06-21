@@ -220,14 +220,12 @@ internal sealed class ActorManager
         }
     }
 
-    internal async Task<bool> FireTimerAsync(
-        ActorId actorId,
-        Stream requestBodyStream,
-        CancellationToken cancellationToken = default)
+
+    internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
     {
-#pragma warning disable 0618
-        var timerData = await JsonSerializer.DeserializeAsync<TimerInfo>(requestBodyStream, cancellationToken: cancellationToken);
-#pragma warning restore 0618
+        #pragma warning disable 0618
+        var timerData = await DeserializeAsync(requestBodyStream);
+        #pragma warning restore 0618
 
         return await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
 
@@ -254,6 +252,62 @@ internal sealed class ActorManager
             }
         }
     }
+
+#pragma warning disable 0618
+    internal static async Task<TimerInfo> DeserializeAsync(Stream stream)
+    {
+        var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
+        if (json.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        var setAnyProperties = false; // Used to determine if anything was actually deserialized
+        var dueTime = TimeSpan.Zero;
+        var callback = "";
+        var period = TimeSpan.Zero;
+        var data = Array.Empty<byte>();
+        TimeSpan? ttl = null;
+        if (json.TryGetProperty("callback", out var callbackProperty))
+        {
+            setAnyProperties = true;
+            callback = callbackProperty.GetString();
+        }
+        if (json.TryGetProperty("dueTime", out var dueTimeProperty))
+        {
+            setAnyProperties = true;
+            var dueTimeString = dueTimeProperty.GetString();
+            dueTime = ConverterUtils.ConvertTimeSpanFromDaprFormat(dueTimeString);
+        }
+
+        if (json.TryGetProperty("period", out var periodProperty))
+        {
+            setAnyProperties = true;
+            var periodString = periodProperty.GetString();
+            (period, _) = ConverterUtils.ConvertTimeSpanValueFromISO8601Format(periodString);
+        }
+
+        if (json.TryGetProperty("data", out var dataProperty) && dataProperty.ValueKind != JsonValueKind.Null)
+        {
+            setAnyProperties = true;
+            data = dataProperty.GetBytesFromBase64();
+        }
+
+        if (json.TryGetProperty("ttl", out var ttlProperty))
+        {
+            setAnyProperties = true;
+            var ttlString = ttlProperty.GetString();
+            ttl = ConverterUtils.ConvertTimeSpanFromDaprFormat(ttlString);
+        }
+
+        if (!setAnyProperties)
+        {
+            return null; //No properties were ever deserialized, so return null instead of default values
+        }
+
+        return new TimerInfo(callback, data, dueTime, period, ttl);
+    }
+#pragma warning restore 0618
 
     internal async Task ActivateActorAsync(ActorId actorId)
     {

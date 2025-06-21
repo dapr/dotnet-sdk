@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using Dapr.Jobs.Models;
@@ -20,6 +21,7 @@ namespace Dapr.Jobs.Extensions;
 /// <summary>
 /// Provides helper extensions for performing serialization operations when scheduling one-time Cron jobs for the developer.
 /// </summary>
+[Experimental("DAPR_JOBS", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/jobs/jobs-overview/")]
 public static class DaprJobsSerializationExtensions
 {
     /// <summary>
@@ -41,7 +43,6 @@ public static class DaprJobsSerializationExtensions
     /// <param name="overwrite">A flag indicating whether the job should be overwritten when submitted (true); otherwise false to require that an existing job with the same name be deleted first.</param>
     /// <param name="failurePolicyOptions">The characteristics of the policy to apply when a job fails to trigger.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleJobWithPayloadAsync(this DaprJobsClient client, string jobName, DaprJobSchedule schedule,
         object payload, DateTime? startingFrom = null, int? repeats = null, 
         JsonSerializerOptions? jsonSerializerOptions = null, DateTimeOffset? ttl = null, 
@@ -71,7 +72,6 @@ public static class DaprJobsSerializationExtensions
     /// <param name="overwrite">A flag indicating whether the job should be overwritten when submitted (true); otherwise false to require that an existing job with the same name be deleted first.</param>
     /// <param name="failurePolicyOptions">The characteristics of the policy to apply when a job fails to trigger.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleJobWithPayloadAsync(this DaprJobsClient client, string jobName, DaprJobSchedule schedule,
         string payload, DateTime? startingFrom = null, int? repeats = null, DateTimeOffset? ttl = null,
         bool overwrite = false, IJobFailurePolicyOptions? failurePolicyOptions = null,

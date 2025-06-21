@@ -7,5 +7,6 @@
     <OutputPath>$(RepoRoot)bin\$(Configuration)\examples\$(MSBuildProjectName)\</OutputPath>
 
     <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);DAPR_CONVERSATION;DAPR_JOBS;DAPR_DISTRIBUTEDLOCK;DAPR_CRYPTOGRAPHY</NoWarn>
   </PropertyGroup>
 </Project>
