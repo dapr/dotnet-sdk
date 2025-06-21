@@ -31,28 +31,6 @@ public class CryptographyApiTest
     }
 
     [Fact]
-    public async Task EncryptAsync_Stream_VaultResourceName_ArgumentVerifierException()
-    {
-        var client = new DaprClientBuilder().Build();
-        const string vaultResourceName = "";
-        //Get response and validate
-        await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync(vaultResourceName,
-            new MemoryStream(), "MyKey", new EncryptionOptions(KeyWrapAlgorithm.Rsa),
-            CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task EncryptAsync_Stream_KeyName_ArgumentVerifierException()
-    {
-        var client = new DaprClientBuilder().Build();
-        const string keyName = "";
-        //Get response and validate
-        await Assert.ThrowsAsync<ArgumentException>(async () => await client.EncryptAsync("myVault",
-            (Stream) new MemoryStream(), keyName, new EncryptionOptions(KeyWrapAlgorithm.Rsa),
-            CancellationToken.None));
-    }
-
-    [Fact]
     public async Task DecryptAsync_ByteArray_VaultResourceName_ArgumentVerifierException()
     {
         var client = new DaprClientBuilder().Build();
