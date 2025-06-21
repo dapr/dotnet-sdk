@@ -25,7 +25,9 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
+                                                using System.Diagnostics.CodeAnalysis;
                                 
+                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -65,7 +67,9 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
+                                                using System.Diagnostics.CodeAnalysis;
                                 
+                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -97,7 +101,9 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
+                                                using System.Diagnostics.CodeAnalysis;
                                 
+                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -141,7 +147,9 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
+                                                using System.Diagnostics.CodeAnalysis;
                                 
+                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -183,7 +191,9 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
+                                                using System.Diagnostics.CodeAnalysis;
                                 
+                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
                                                 public static class Program
                                                 {
                                                     public static async Task Main()
@@ -225,7 +235,9 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
+                                                using System.Diagnostics.CodeAnalysis;
                                 
+                                                [SuppressMessage("Experimental", "DAPR_JOBS:Type is experimental", Justification = "Intentionally using experimental Jobs API")]
                                                 public static class Program
                                                 {
                                                     public static async Task Main()
