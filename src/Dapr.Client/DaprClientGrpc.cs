@@ -2161,7 +2161,7 @@ internal class DaprClientGrpc : DaprClient
     #region Distributed Lock API
 
     /// <inheritdoc/>
-    [Obsolete]
+    [Experimental("DAPR_DISTRIBUTEDLOCK", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/distributed-lock/distributed-lock-api-overview/")]
     public async override Task<TryLockResponse> Lock(
         string storeName,
         string resourceId,
@@ -2201,7 +2201,7 @@ internal class DaprClientGrpc : DaprClient
     }
 
     /// <inheritdoc/>
-    [Obsolete]
+    [Experimental("DAPR_DISTRIBUTEDLOCK", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/distributed-lock/distributed-lock-api-overview/")]
     public async override Task<UnlockResponse> Unlock(
         string storeName,
         string resourceId,
