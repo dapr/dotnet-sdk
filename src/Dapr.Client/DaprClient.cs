@@ -1105,7 +1105,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An array of encrypted bytes.</returns>
     [Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
-    public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
+    public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
         EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -1143,7 +1143,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
     [Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
-    public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
+    public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
         string keyName, DecryptionOptions options, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -1155,7 +1155,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
     [Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
-    public abstract Task<IAsyncEnumerable<ReadOnlyMemory<byte>>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
+    public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
         string keyName, CancellationToken cancellationToken = default);
 
     #endregion
