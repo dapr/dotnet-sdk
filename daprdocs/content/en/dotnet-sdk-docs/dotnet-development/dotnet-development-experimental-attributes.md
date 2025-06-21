@@ -20,7 +20,7 @@ components that have not yet passed the stable lifecycle certification. This app
 between:
 
 1. **Experimental APIs** - Features that are available but still evolving and have not yet been certified as stable 
-2. according to the [Dapr Component Certification Lifecycle](https://docs.dapr.io/operations/components/certification-lifecycle/).
+according to the [Dapr Component Certification Lifecycle](https://docs.dapr.io/operations/components/certification-lifecycle/).
 
 2. **Obsolete APIs** - Features that are truly deprecated and will be removed in a future release.
 
