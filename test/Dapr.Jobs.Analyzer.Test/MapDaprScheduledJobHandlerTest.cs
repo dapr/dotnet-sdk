@@ -46,7 +46,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                 """;
 
         var expected = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-            .WithSpan(22, 25, 23, 83)
+            .WithSpan(23, 25, 24, 83)
             .WithMessage(
                 "Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder");
         
@@ -124,11 +124,11 @@ public class DaprJobsAnalyzerAnalyzerTests
                                 """;
 
         var expected1 = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-            .WithSpan(22, 25, 23, 83)
+            .WithSpan(23, 25, 24, 83)
             .WithMessage(
                 "Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder");
         var expected2 = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-            .WithSpan(24, 25, 25, 83)
+            .WithSpan(25, 25, 26, 83)
             .WithMessage("Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob2' on IEndpointRouteBuilder");
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
         await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode, expected1, expected2);
