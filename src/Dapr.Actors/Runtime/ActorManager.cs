@@ -227,8 +227,6 @@ internal sealed class ActorManager
         var timerData = await DeserializeAsync(requestBodyStream);
         #pragma warning restore 0618
 
-        return await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
-
         // Create a Func to be invoked by common method.
         async Task<bool> RequestFunc(Actor actor, CancellationToken ct)
         {
@@ -251,6 +249,8 @@ internal sealed class ActorManager
                     return false;
             }
         }
+        
+        return await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
     }
 
 #pragma warning disable 0618
