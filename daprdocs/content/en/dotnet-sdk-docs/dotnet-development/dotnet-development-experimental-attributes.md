@@ -75,24 +75,7 @@ var client = new DaprEncryptionClient();
 
 This approach is useful when you want to suppress warnings only for specific sections of your code.
 
-#### Option 2: Using SuppressMessage attribute
-
-For a more targeted approach, you can use the `[SuppressMessage]` attribute:
-
-```csharp
-using System.Diagnostics.CodeAnalysis;
-
-[SuppressMessage("Experimental", "DAPR_CRYPTOGRAPHY:Type is experimental", Justification = "Intentionally using experimental Cryptography API")] 
-public void MyMethod() 
-{ 
-    var client = new DaprEncryptionClient(); 
-    // Your code 
-}
-```
-
-This approach is more declarative and provides documentation about why you're suppressing the warning.
-
-#### Option 3: Project-level suppression
+#### Option 2: Project-level suppression
 
 To suppress warnings for an entire project, add the following to your `.csproj` file.
 file.
@@ -113,7 +96,7 @@ You can include multiple diagnostic IDs separated by semicolons:
 
 This approach is particularly useful for test projects that need to use experimental APIs.
 
-#### Option 4: Directory-level suppression
+#### Option 3: Directory-level suppression
 
 For suppressing warnings across multiple projects in a directory, add a `Directory.Build.props` file:
 
