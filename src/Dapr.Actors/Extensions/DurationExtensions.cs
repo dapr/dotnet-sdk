@@ -68,13 +68,12 @@ internal static class DurationExtensions
 
         if (period.StartsWith(MonthlyPrefixPeriod))
         {
-            var dateTime = DateTime.UtcNow;
-            return dateTime.AddMonths(1) - dateTime;
+            return TimeSpan.FromDays(30);
         }
 
         if (period.StartsWith(MidnightPrefixPeriod))
         {
-            return new TimeSpan();
+            return TimeSpan.Zero;
         }
 
         if (period.StartsWith(WeeklyPrefixPeriod))
