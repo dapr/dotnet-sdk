@@ -80,4 +80,19 @@ public abstract class DaprConversationClient : DaprAIClient
     public abstract Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName,
         IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends various inputs to the large language model via the Conversational building block on the Dapr sidecar
+    /// and get a streamed response back.
+    /// </summary>
+    /// <param name="daprConversationComponentName">The name of the Dapr conversation component.</param>
+    /// <param name="inputs">The input values to send.</param>
+    /// <param name="options">Optional options used to configure the conversation.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The response provided as a stream by the LLM provider.</returns>
+    public abstract IAsyncEnumerable<string> ConverseAsStreamAsync(
+        string daprConversationComponentName,
+        IReadOnlyList<DaprConversationInput> inputs,
+        ConversationOptions? options = null,
+        CancellationToken cancellationToken = default);
 }
