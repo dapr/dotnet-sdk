@@ -221,7 +221,7 @@ internal sealed class ActorManager
     }
 
 
-    internal async Task FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task<bool> FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
     {
         #pragma warning disable 0618
         var timerData = await DeserializeAsync(requestBodyStream);
