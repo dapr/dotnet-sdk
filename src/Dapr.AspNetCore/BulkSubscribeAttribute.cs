@@ -25,9 +25,9 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
         /// </summary>
-        /// <param name="topicName">The name of topic.</param>
-        /// <param name="maxMessagesCount">The name of the pubsub component to use.</param>
-        /// <param name="maxAwaitDurationMs">The topic name.</param>
+        /// <param name="topicName">The name of the topic to be bulk subscribed.</param>
+        /// <param name="maxMessagesCount">Maximum number of messages in a bulk message from the broker.</param>
+        /// <param name="maxAwaitDurationMs">Maximum duration in milliseconds to wait for maxMessagesCount messages by the broker.</param>
         public BulkSubscribeAttribute(string topicName, int maxMessagesCount, int maxAwaitDurationMs)
         {
             this.TopicName = topicName;
@@ -38,8 +38,8 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
         /// </summary>
-        /// <param name="topicName">The name of topic.</param>
-        /// <param name="maxMessagesCount">The name of the pubsub component to use.</param>
+        /// <param name="topicName">The name of the topic to be bulk subscribed.</param>
+        /// <param name="maxMessagesCount">Maximum number of messages in a bulk message from the broker.</param>
         public BulkSubscribeAttribute(string topicName, int maxMessagesCount)
         {
             this.TopicName = topicName;
@@ -49,19 +49,19 @@ namespace Dapr.AspNetCore
         /// <summary>
         /// Initializes a new instance of the <see cref="BulkSubscribeAttribute" /> class.
         /// </summary>
-        /// <param name="topicName">The name of topic.</param>
+        /// <param name="topicName">The name of the topic to be bulk subscribed.</param>
         public BulkSubscribeAttribute(string topicName)
         {
             this.TopicName = topicName;
         }
 
         /// <summary>
-        /// Maximum number of messages in a bulk message from the message bus.
+        /// Maximum number of messages in a bulk message from the broker.
         /// </summary>
         public int MaxMessagesCount { get; } = 100;
 
         /// <summary>
-        /// Maximum duration to wait for maxBulkSubCount messages by the message bus
+        /// Maximum duration in milliseconds to wait for MaxMessagesCount messages by the broker
         /// before sending the messages to Dapr.
         /// </summary>
         public int MaxAwaitDurationMs { get; } = 1000;
