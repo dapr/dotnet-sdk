@@ -13,8 +13,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
-    <PackageVersion Include="Dapr.DurableTask.Client.Grpc" Version="1.16.0-rc03" />
-    <PackageVersion Include="Dapr.DurableTask.Worker.Grpc" Version="1.16.0-rc03" />
+    <PackageVersion Include="Dapr.DurableTask.Client.Grpc" Version="1.16.0-rc04" />
+    <PackageVersion Include="Dapr.DurableTask.Worker.Grpc" Version="1.16.0-rc04" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
