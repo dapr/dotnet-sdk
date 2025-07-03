@@ -68,12 +68,18 @@ dotnet new web MyApp
 ```
 
 Next we'll configure the AppHost project to add the necessary package to support local Dapr development. Navigate
-into the AppHost directory with the following and install the `Aspire.Hosting.Dapr` package from NuGet into the project.
+into the AppHost directory with the following and install the `CommunityToolkit.Aspire.Hosting.Dapr` package from NuGet into the project.
 We'll also add a reference to our `MyApp` project so we can reference it during the registration process.
+
+{{% alert color="primary" %}}
+
+This package was previously called `Aspire.Hosting.Dapr`, which has been [marked as deprecated](https://www.nuget.org/packages/Aspire.Hosting.Dapr).
+
+{{% /alert %}}
 
 ```sh
 cd aspiredemo.AppHost
-dotnet add package Aspire.Hosting.Dapr
+dotnet add package CommunityToolkit.Aspire.Hosting.Dapr
 dotnet add reference ../MyApp/
 ```
 
