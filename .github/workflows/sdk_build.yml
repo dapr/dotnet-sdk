@@ -126,7 +126,11 @@ jobs:
     name: Publish Packages
     needs: ['build', 'test']
     runs-on: ubuntu-latest
-    if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+    # Only run this job if workflow_run was successful and we're on a tag
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') &&
+            startswith(github.ref, 'refs/tags/v') && 
+            !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
     steps:
     - name: Download release artifacts
       uses: actions/download-artifact@v4
