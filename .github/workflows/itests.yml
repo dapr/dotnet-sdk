@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - release-*
+      - dev-*
+      - feature-*
     tags:
       - v*
     
@@ -12,6 +14,8 @@ on:
     branches: 
     - master
     - release-*
+    - dev-*
+    - feature-*
 
 jobs:
   build:
@@ -119,7 +123,7 @@ jobs:
       - name: Build
         # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
         run: dotnet build --configuration release --no-restore /p:GITHUB_ACTIONS=false
-      - name: Run General Tests
+      - name: Run General Integration Tests
         id: tests
         continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
         run: |
@@ -134,7 +138,7 @@ jobs:
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=opencover \
             /p:GITHUB_ACTIONS=false
-      - name: Run Generators Tests
+      - name: Run Generators Integration Tests
         id: generator-tests
         continue-on-error: true # proceed if tests fail, the report step will report the failure with more details.
         run: |
