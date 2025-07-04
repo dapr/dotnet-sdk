@@ -21,6 +21,7 @@ namespace Samples.Client
     {
         private static readonly Example[] Examples = new Example[]
         {
+            new InvokeServiceGrpcByDaprProxyExample(),
             new InvokeServiceGrpcExample(),
             new InvokeServiceHttpExample(),
             new InvokeServiceHttpClientExample(),
