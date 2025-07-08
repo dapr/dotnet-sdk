@@ -177,6 +177,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cryptography", "examples\Cr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Messaging", "Messaging", "{442E80E5-8040-4123-B88A-26FD36BA95D9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkflowParallelFanOut", "examples\Workflow\WorkflowParallelFanOut\WorkflowParallelFanOut.csproj", "{5764B1AA-66B8-43AE-9E0D-0B3B71714B92}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -469,6 +471,10 @@ Global
 		{097D5F6F-D26F-4BFB-9074-FA52577EB442}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{097D5F6F-D26F-4BFB-9074-FA52577EB442}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{097D5F6F-D26F-4BFB-9074-FA52577EB442}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5764B1AA-66B8-43AE-9E0D-0B3B71714B92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5764B1AA-66B8-43AE-9E0D-0B3B71714B92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5764B1AA-66B8-43AE-9E0D-0B3B71714B92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5764B1AA-66B8-43AE-9E0D-0B3B71714B92}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -554,6 +560,7 @@ Global
 		{097D5F6F-D26F-4BFB-9074-FA52577EB442} = {6843B5B3-9E95-4022-B792-8A1DE6BFEFEC}
 		{442E80E5-8040-4123-B88A-26FD36BA95D9} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
 		{E070F694-335D-4D96-8951-F41D0A5F2A8B} = {442E80E5-8040-4123-B88A-26FD36BA95D9}
+		{5764B1AA-66B8-43AE-9E0D-0B3B71714B92} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
