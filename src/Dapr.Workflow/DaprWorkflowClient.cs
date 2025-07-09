@@ -50,6 +50,8 @@ namespace Dapr.Workflow
         /// <param name="startTime">
         /// The time when the workflow instance should start executing. If not specified or if a date-time in the past
         /// is specified, the workflow instance will be scheduled immediately.
+        /// Setting this value will cause Dapr to not wait for the Workflow to
+        /// "start", improving throughput of creating many workflows.
         /// </param>
         /// <param name="input">
         /// The optional input to pass to the scheduled workflow instance. This must be a serializable value.
