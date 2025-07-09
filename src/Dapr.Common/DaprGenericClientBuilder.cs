@@ -11,8 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System;
 using System.Reflection;
 using System.Text.Json;
+using System.Threading;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
 
@@ -30,6 +33,11 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     {
         this.GrpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
         this.HttpEndpoint = DaprDefaults.GetDefaultHttpEndpoint();
+
+        this.GrpcKeepAliveEnabled = DaprDefaults.GetDefaultGrpcKeepAliveEnable(configuration);
+        this.GrpcKeepAliveTime = TimeSpan.FromSeconds(DaprDefaults.GetDefaultGrpcKeepAliveTimeSeconds(configuration));
+        this.GrpcKeepAliveTimeout = TimeSpan.FromSeconds(DaprDefaults.GetDefaultGrpcKeepAliveTimeoutSeconds(configuration));
+        this.GrpcKeepAlivePermitWithoutCalls = DaprDefaults.GetDefaultGrpcKeepAliveWithoutCalls(configuration);
 
         this.GrpcChannelOptions = new GrpcChannelOptions()
         {
@@ -71,11 +79,31 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// Property exposed for testing purposes.
     /// </summary>
     public string DaprApiToken { get; private set; }
-    
+
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
     internal TimeSpan Timeout { get; private set; }
+
+    /// <summary>
+    /// Property exposed for testing purposes.
+    /// </summary>
+    internal bool GrpcKeepAliveEnabled { get; private set; }
+
+    /// <summary>
+    /// Property exposed for testing purposes.
+    /// </summary>
+    internal TimeSpan GrpcKeepAliveTime { get; private set; }
+
+    /// <summary>
+    /// Property exposed for testing purposes.
+    /// </summary>
+    internal TimeSpan GrpcKeepAliveTimeout { get; private set; }
+
+    /// <summary>
+    /// Property exposed for testing purposes.
+    /// </summary>
+    internal bool GrpcKeepAlivePermitWithoutCalls { get; private set; }
 
     /// <summary>
     /// Overrides the HTTP endpoint used by the Dapr client for communicating with the Dapr runtime.
@@ -181,6 +209,50 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     }
 
     /// <summary>
+    /// Enables or disables gRPC keep-alive.
+    /// </summary>
+    /// <param name="enabled">Whether to enable gRPC keep-alive.</param>
+    /// <returns>The <see cref="DaprGenericClientBuilder{TClientBuilder}" /> instance.</returns>
+    public DaprGenericClientBuilder<TClientBuilder> UseGrpcKeepAlive(bool enabled)
+    {
+        this.GrpcKeepAliveEnabled = enabled;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the gRPC keep-alive time interval.
+    /// </summary>
+    /// <param name="keepAliveTime">The time interval between keep-alive pings.</param>
+    /// <returns>The <see cref="DaprGenericClientBuilder{TClientBuilder}" /> instance.</returns>
+    public DaprGenericClientBuilder<TClientBuilder> UseGrpcKeepAliveTime(TimeSpan keepAliveTime)
+    {
+        this.GrpcKeepAliveTime = keepAliveTime;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the gRPC keep-alive timeout.
+    /// </summary>
+    /// <param name="keepAliveTimeout">The time to wait for a keep-alive ping response before considering the connection dead.</param>
+    /// <returns>The <see cref="DaprGenericClientBuilder{TClientBuilder}" /> instance.</returns>
+    public DaprGenericClientBuilder<TClientBuilder> UseGrpcKeepAliveTimeout(TimeSpan keepAliveTimeout)
+    {
+        this.GrpcKeepAliveTimeout = keepAliveTimeout;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets whether gRPC keep-alive should be sent when there are no active calls.
+    /// </summary>
+    /// <param name="permitWithoutCalls">Whether to send keep-alive pings even when there are no active calls.</param>
+    /// <returns>The <see cref="DaprGenericClientBuilder{TClientBuilder}" /> instance.</returns>
+    public DaprGenericClientBuilder<TClientBuilder> UseGrpcKeepAlivePermitWithoutCalls(bool permitWithoutCalls)
+    {
+        this.GrpcKeepAlivePermitWithoutCalls = permitWithoutCalls;
+        return this;
+    }
+
+    /// <summary>
     /// Builds out the inner DaprClient that provides the core shape of the
     /// runtime gRPC client used by the consuming package.
     /// </summary>
@@ -209,8 +281,25 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
         //Configure the HTTP client
         var httpClient = ConfigureHttpClient(assembly);
         this.GrpcChannelOptions.HttpClient = httpClient;
+
+        if (this.GrpcKeepAliveEnabled)
+        {
+            if (!(this.GrpcChannelOptions.HttpHandler is SocketsHttpHandler))
+            {
+                var handler = new SocketsHttpHandler();
+                this.GrpcChannelOptions.HttpHandler = handler;
+            }
+
+            var socketsHandler = (SocketsHttpHandler)this.GrpcChannelOptions.HttpHandler;
+
+            socketsHandler.KeepAlivePingDelay = this.GrpcKeepAliveTime;
+            socketsHandler.KeepAlivePingTimeout = this.GrpcKeepAliveTimeout;
+            socketsHandler.KeepAlivePingPolicy = this.GrpcKeepAlivePermitWithoutCalls
+                ? HttpKeepAlivePingPolicy.Always
+                : HttpKeepAlivePingPolicy.WithActiveRequests;
+        }
         
-        var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);        
+        var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);
         return (channel, httpClient, httpEndpoint, this.DaprApiToken);
     }
 
@@ -222,17 +311,17 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     private HttpClient ConfigureHttpClient(Assembly assembly)
     {
         var httpClient = HttpClientFactory is not null ? HttpClientFactory() : new HttpClient();
-        
+
         //Set the timeout as necessary
         if (this.Timeout > TimeSpan.Zero)
         {
             httpClient.Timeout = this.Timeout;
         }
-        
+
         //Set the user agent
         var userAgent = DaprClientUtilities.GetUserAgent(assembly);
         httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent.ToString());
-        
+
         //Set the API token
         var apiTokenHeader = DaprClientUtilities.GetDaprApiTokenHeader(this.DaprApiToken);
         if (apiTokenHeader is not null)
