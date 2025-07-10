@@ -76,9 +76,9 @@ public class DaprWorkflowClient(DurableTaskClient innerClient) : IAsyncDisposabl
     /// </param>
     public Task<string> ScheduleNewWorkflowAsync(
         string name,
-        string? instanceId = null,
-        object? input = null,
-        DateTimeOffset? startTime = null)
+        string? instanceId,
+        object? input,
+        DateTimeOffset? startTime)
     {
         StartOrchestrationOptions options = new(instanceId, startTime);
         return this.innerClient.ScheduleNewOrchestrationInstanceAsync(name, input, options);
