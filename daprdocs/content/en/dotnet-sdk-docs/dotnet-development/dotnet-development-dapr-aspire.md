@@ -24,13 +24,11 @@ Amazon AWS, deployment is currently outside the scope of this guide. More inform
 documentation [here](https://learn.microsoft.com/en-us/dotnet/aspire/deployment/overview).
 
 ## Prerequisites
-- While the Dapr .NET SDK is compatible with [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0), 
-[.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0), 
-.NET Aspire is only compatible with [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) or 
-[.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0).
+- Both the Dapr .NET SDK and .NET Aspire are compatible with [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) 
+or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0)
 - An OCI compliant container runtime such as [Docker Desktop](https://www.docker.com/products/docker-desktop) or 
 [Podman](https://podman.io/)
-- Install and initialize Dapr v1.13 or later
+- Install and initialize Dapr v1.16 or later
 
 ## Using .NET Aspire via CLI
 

@@ -1,6 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Dapr.Common.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Dapr.Messaging.PublishSubscribe.Extensions;
 
@@ -16,40 +15,10 @@ public static class PublishSubscribeServiceCollectionExtensions
     /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprPublishSubscribeClient"/> using injected services.</param>
     /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns></returns>
-    public static IServiceCollection AddDaprPubSubClient(this IServiceCollection services, Action<IServiceProvider, DaprPublishSubscribeClientBuilder>? configure = null, ServiceLifetime lifetime = ServiceLifetime.Singleton)
-    {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
-
-        //Register the IHttpClientFactory implementation
-        services.AddHttpClient();
-
-        var registration = new Func<IServiceProvider, DaprPublishSubscribeClient>(serviceProvider =>
-        {
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var configuration = serviceProvider.GetService<IConfiguration>();
-
-            var builder = new DaprPublishSubscribeClientBuilder(configuration);
-            builder.UseHttpClientFactory(httpClientFactory);
-
-            configure?.Invoke(serviceProvider, builder);
-
-            return builder.Build();
-        });
-
-        switch (lifetime)
-        {
-            case ServiceLifetime.Scoped:
-                services.TryAddScoped(registration);
-                break;
-            case ServiceLifetime.Transient:
-                services.TryAddTransient(registration);
-                break;
-            default:
-            case ServiceLifetime.Singleton:
-                services.TryAddSingleton(registration);
-                break;
-        }
-
-        return services;
-    }
+    public static IDaprPubSubBuilder AddDaprPubSubClient(
+        this IServiceCollection services,
+        Action<IServiceProvider, DaprPublishSubscribeClientBuilder>? configure = null,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
+        services.AddDaprClient<DaprPublishSubscribeClient, DaprPublishSubscribeGrpcClient, DaprPubSubBuilder, DaprPublishSubscribeClientBuilder>(
+            configure, lifetime);
 }

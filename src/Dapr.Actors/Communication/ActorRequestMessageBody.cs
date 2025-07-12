@@ -11,31 +11,30 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
+
+[DataContract(Name = "msgBody", Namespace = Constants.Namespace)]
+internal class ActorRequestMessageBody : IActorRequestMessageBody
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Runtime.Serialization;
+    [DataMember]
+    private readonly Dictionary<string, object> parameters;
 
-    [DataContract(Name = "msgBody", Namespace = Constants.Namespace)]
-    internal class ActorRequestMessageBody : IActorRequestMessageBody
+    public ActorRequestMessageBody(int parameterInfos)
     {
-        [DataMember]
-        private readonly Dictionary<string, object> parameters;
+        this.parameters = new Dictionary<string, object>(parameterInfos);
+    }
 
-        public ActorRequestMessageBody(int parameterInfos)
-        {
-            this.parameters = new Dictionary<string, object>(parameterInfos);
-        }
+    public void SetParameter(int position, string paramName, object parameter)
+    {
+        this.parameters[paramName] = parameter;
+    }
 
-        public void SetParameter(int position, string paramName, object parameter)
-        {
-            this.parameters[paramName] = parameter;
-        }
-
-        public object GetParameter(int position, string paramName, Type paramType)
-        {
-            return this.parameters[paramName];
-        }
+    public object GetParameter(int position, string paramName, Type paramType)
+    {
+        return this.parameters[paramName];
     }
 }

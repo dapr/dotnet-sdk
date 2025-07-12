@@ -16,145 +16,144 @@ using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
 
-namespace Dapr.Actors.Description
+namespace Dapr.Actors.Description;
+
+public sealed class ActorInterfaceDescriptionTests
 {
-    public sealed class ActorInterfaceDescriptionTests
+    [Fact]
+    public void ActorInterfaceDescription_CreateActorInterfaceDescription()
     {
-        [Fact]
-        public void ActorInterfaceDescription_CreateActorInterfaceDescription()
-        {
-            // Arrange
-            Type type = typeof(ITestActor);
+        // Arrange
+        Type type = typeof(ITestActor);
             
-            // Act
-            var description = ActorInterfaceDescription.Create(type);
+        // Act
+        var description = ActorInterfaceDescription.Create(type);
 
-            // Assert
-            description.ShouldNotBeNull();
+        // Assert
+        description.ShouldNotBeNull();
             
-            description.InterfaceType.ShouldBe(type);
-            description.Id.ShouldNotBe(0);
-            description.V1Id.ShouldBe(0);
-            description.Methods.Length.ShouldBe(2);
-        }
+        description.InterfaceType.ShouldBe(type);
+        description.Id.ShouldNotBe(0);
+        description.V1Id.ShouldBe(0);
+        description.Methods.Length.ShouldBe(2);
+    }
 
-        [Fact]
-        public void ActorInterfaceDescription_CreateThrowsArgumentException_WhenTypeIsNotAnInterface()
-        {
-            // Arrange
-            Type type = typeof(object);
+    [Fact]
+    public void ActorInterfaceDescription_CreateThrowsArgumentException_WhenTypeIsNotAnInterface()
+    {
+        // Arrange
+        Type type = typeof(object);
 
-            // Act
-            Action action = () => ActorInterfaceDescription.Create(type);
+        // Act
+        Action action = () => ActorInterfaceDescription.Create(type);
 
-            // Assert
-            var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldMatch(@"The type 'System.Object' is not an Actor interface as it is not an interface.*");
-            exception.ParamName.ShouldBe("actorInterfaceType");
-        }
+        // Assert
+        var exception = Should.Throw<ArgumentException>(action);
+        exception.Message.ShouldMatch(@"The type 'System.Object' is not an Actor interface as it is not an interface.*");
+        exception.ParamName.ShouldBe("actorInterfaceType");
+    }
 
-        [Fact]
-        public void ActorInterfaceDescription_CreateThrowsArgumentException_WhenTypeIsNotAnActorInterface()
-        {
-            // Arrange
-            Type type = typeof(ICloneable);
+    [Fact]
+    public void ActorInterfaceDescription_CreateThrowsArgumentException_WhenTypeIsNotAnActorInterface()
+    {
+        // Arrange
+        Type type = typeof(ICloneable);
 
-            // Act
-            Action action = () => ActorInterfaceDescription.Create(type);
+        // Act
+        Action action = () => ActorInterfaceDescription.Create(type);
 
-            // Assert
-            var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldMatch(@"The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
-            exception.ParamName.ShouldBe("actorInterfaceType");
-        }
+        // Assert
+        var exception = Should.Throw<ArgumentException>(action);
+        exception.Message.ShouldMatch(@"The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
+        exception.ParamName.ShouldBe("actorInterfaceType");
+    }
 
-        [Fact]
-        public void ActorInterfaceDescription_CreateThrowsArgumentException_WhenActorInterfaceInheritsNonActorInterfaces()
-        {
-            // Arrange
-            Type type = typeof(IClonableActor);
+    [Fact]
+    public void ActorInterfaceDescription_CreateThrowsArgumentException_WhenActorInterfaceInheritsNonActorInterfaces()
+    {
+        // Arrange
+        Type type = typeof(IClonableActor);
 
-            // Act
-            Action action = () => ActorInterfaceDescription.Create(type);
+        // Act
+        Action action = () => ActorInterfaceDescription.Create(type);
 
-            // Assert
-            var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldMatch(@"The type '.*\+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
-            exception.ParamName.ShouldBe("actorInterfaceType");
-        }
+        // Assert
+        var exception = Should.Throw<ArgumentException>(action);
+        exception.Message.ShouldMatch(@"The type '.*\+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
+        exception.ParamName.ShouldBe("actorInterfaceType");
+    }
 
-        [Fact]
-        public void ActorInterfaceDescription_CreateUsingCRCIdActorInterfaceDescription()
-        {
-            // Arrange
-            Type type = typeof(ITestActor);
+    [Fact]
+    public void ActorInterfaceDescription_CreateUsingCRCIdActorInterfaceDescription()
+    {
+        // Arrange
+        Type type = typeof(ITestActor);
 
-            // Act
-            var description = ActorInterfaceDescription.CreateUsingCRCId(type);
+        // Act
+        var description = ActorInterfaceDescription.CreateUsingCRCId(type);
 
-            // Assert
-            description.ShouldNotBeNull();
+        // Assert
+        description.ShouldNotBeNull();
 
-            description.InterfaceType.ShouldBe(type);
-            description.Id.ShouldBe(-934188464);
-            description.V1Id.ShouldNotBe(0);
-            description.Methods.Length.ShouldBe(2);
-        }
+        description.InterfaceType.ShouldBe(type);
+        description.Id.ShouldBe(-934188464);
+        description.V1Id.ShouldNotBe(0);
+        description.Methods.Length.ShouldBe(2);
+    }
 
-        [Fact]
-        public void ActorInterfaceDescription_CreateUsingCRCIdThrowsArgumentException_WhenTypeIsNotAnInterface()
-        {
-            // Arrange
-            Type type = typeof(object);
+    [Fact]
+    public void ActorInterfaceDescription_CreateUsingCRCIdThrowsArgumentException_WhenTypeIsNotAnInterface()
+    {
+        // Arrange
+        Type type = typeof(object);
 
-            // Act
-            Action action = () => ActorInterfaceDescription.CreateUsingCRCId(type);
+        // Act
+        Action action = () => ActorInterfaceDescription.CreateUsingCRCId(type);
 
-            // Assert
-            var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldMatch(@"The type 'System.Object' is not an Actor interface as it is not an interface.*");
-            exception.ParamName.ShouldBe("actorInterfaceType");
-        }
+        // Assert
+        var exception = Should.Throw<ArgumentException>(action);
+        exception.Message.ShouldMatch(@"The type 'System.Object' is not an Actor interface as it is not an interface.*");
+        exception.ParamName.ShouldBe("actorInterfaceType");
+    }
 
-        [Fact]
-        public void ActorInterfaceDescription_CreateUsingCRCIdThrowsArgumentException_WhenTypeIsNotAnActorInterface()
-        {
-            // Arrange
-            Type type = typeof(ICloneable);
+    [Fact]
+    public void ActorInterfaceDescription_CreateUsingCRCIdThrowsArgumentException_WhenTypeIsNotAnActorInterface()
+    {
+        // Arrange
+        Type type = typeof(ICloneable);
 
-            // Act
-            Action action = () => ActorInterfaceDescription.CreateUsingCRCId(type);
+        // Act
+        Action action = () => ActorInterfaceDescription.CreateUsingCRCId(type);
 
-            // Assert
-            var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldMatch(@"The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
-            exception.ParamName.ShouldBe("actorInterfaceType");
-        }
+        // Assert
+        var exception = Should.Throw<ArgumentException>(action);
+        exception.Message.ShouldMatch(@"The type 'System.ICloneable' is not an actor interface as it does not derive from the interface 'Dapr.Actors.IActor'.*");
+        exception.ParamName.ShouldBe("actorInterfaceType");
+    }
 
-        [Fact]
-        public void ActorInterfaceDescription_CreateUsingCRCIdThrowsArgumentException_WhenActorInterfaceInheritsNonActorInterfaces()
-        {
-            // Arrange
-            Type type = typeof(IClonableActor);
+    [Fact]
+    public void ActorInterfaceDescription_CreateUsingCRCIdThrowsArgumentException_WhenActorInterfaceInheritsNonActorInterfaces()
+    {
+        // Arrange
+        Type type = typeof(IClonableActor);
 
-            // Act
-            Action action = () => ActorInterfaceDescription.CreateUsingCRCId(type);
+        // Act
+        Action action = () => ActorInterfaceDescription.CreateUsingCRCId(type);
 
-            // Assert
-            var exception = Should.Throw<ArgumentException>(action);
-            exception.Message.ShouldMatch(@"The type '.*\+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
-            exception.ParamName.ShouldBe("actorInterfaceType");
-        }
+        // Assert
+        var exception = Should.Throw<ArgumentException>(action);
+        exception.Message.ShouldMatch(@"The type '.*\+IClonableActor' is not an actor interface as it derive from a non actor interface 'System.ICloneable'. All actor interfaces must derive from 'Dapr.Actors.IActor'.*");
+        exception.ParamName.ShouldBe("actorInterfaceType");
+    }
 
-        internal interface IClonableActor : ICloneable, IActor
-        {
-        }
+    internal interface IClonableActor : ICloneable, IActor
+    {
+    }
 
-        internal interface ITestActor : IActor
-        {
-            Task<string> GetString();
+    internal interface ITestActor : IActor
+    {
+        Task<string> GetString();
 
-            Task MethodWithArguments(int number, bool choice, string information);
-        }
+        Task MethodWithArguments(int number, bool choice, string information);
     }
 }

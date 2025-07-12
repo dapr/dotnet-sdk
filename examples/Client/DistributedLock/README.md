@@ -2,13 +2,13 @@
 
 ## Prerequisites
 
-- [.NET 6+](https://dotnet.microsoft.com/download) installed
+- [.NET 8+](https://dotnet.microsoft.com/download) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
 
 ## Distributed Lock API
-Dapr 1.8 introduces the Distributed Lock API. This API can be used to prevent multiple processes from accessing the same resource. In Dapr, locks are scoped to a specific App ID.
+Dapr 1.8 introduced the Distributed Lock API. This API can be used to prevent multiple processes from accessing the same resource. In Dapr, locks are scoped to a specific App ID.
 
 For this example, we will be running multiple instances of the same application to demonstrate an event driven consumer pattern. This example also includes a simple generator that creates some data that can be processed.
 

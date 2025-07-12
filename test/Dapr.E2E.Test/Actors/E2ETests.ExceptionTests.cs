@@ -11,27 +11,26 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.E2E.Test
-{
-    using System;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Dapr.Actors;
-    using Dapr.E2E.Test.Actors.ExceptionTesting;
-    using Xunit;
-    public partial class E2ETests : IAsyncLifetime
-    {
-        [Fact]
-        public async Task ActorCanProvideExceptionDetails()
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+namespace Dapr.E2E.Test;
 
-            var proxy = this.ProxyFactory.CreateActorProxy<IExceptionActor>(ActorId.CreateRandom(), "ExceptionActor");
-            await WaitForActorRuntimeAsync(proxy, cts.Token);
-            ActorMethodInvocationException ex = await Assert.ThrowsAsync<ActorMethodInvocationException>(async () => await proxy.ExceptionExample());
-            Assert.Contains("Remote Actor Method Exception", ex.Message);
-            Assert.Contains("ExceptionExample", ex.Message);
-            Assert.Contains("32", ex.Message);
-        }
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Actors;
+using Dapr.E2E.Test.Actors.ExceptionTesting;
+using Xunit;
+public partial class E2ETests : IAsyncLifetime
+{
+    [Fact]
+    public async Task ActorCanProvideExceptionDetails()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+
+        var proxy = this.ProxyFactory.CreateActorProxy<IExceptionActor>(ActorId.CreateRandom(), "ExceptionActor");
+        await WaitForActorRuntimeAsync(proxy, cts.Token);
+        ActorMethodInvocationException ex = await Assert.ThrowsAsync<ActorMethodInvocationException>(async () => await proxy.ExceptionExample());
+        Assert.Contains("Remote Actor Method Exception", ex.Message);
+        Assert.Contains("ExceptionExample", ex.Message);
+        Assert.Contains("32", ex.Message);
     }
 }

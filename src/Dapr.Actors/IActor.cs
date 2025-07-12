@@ -11,12 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors
+namespace Dapr.Actors;
+
+/// <summary>
+/// Base interface for inheriting reliable actor interfaces.
+/// </summary>
+public interface IActor
 {
-    /// <summary>
-    /// Base interface for inheriting reliable actor interfaces.
-    /// </summary>
-    public interface IActor
-    {
-    }
 }

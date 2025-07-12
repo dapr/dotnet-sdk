@@ -11,47 +11,46 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Microsoft.Extensions.DependencyInjection
+namespace Microsoft.Extensions.DependencyInjection;
+
+using System;
+using System.Linq;
+using Dapr.AspNetCore;
+using Dapr.Client;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+/// <summary>
+/// Provides extension methods for <see cref="IMvcBuilder" />.
+/// </summary>
+public static class DaprMvcBuilderExtensions
 {
-    using System;
-    using System.Linq;
-    using Dapr.AspNetCore;
-    using Dapr.Client;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.ApplicationModels;
-    using Microsoft.Extensions.DependencyInjection.Extensions;
-
     /// <summary>
-    /// Provides extension methods for <see cref="IMvcBuilder" />.
+    /// Adds Dapr integration for MVC to the provided <see cref="IMvcBuilder" />.
     /// </summary>
-    public static class DaprMvcBuilderExtensions
+    /// <param name="builder">The <see cref="IMvcBuilder" />.</param>
+    /// <param name="configureClient">The (optional) <see cref="DaprClientBuilder" /> to use for configuring the DaprClient.</param>
+    /// <returns>The <see cref="IMvcBuilder" /> builder.</returns>
+    public static IMvcBuilder AddDapr(this IMvcBuilder builder, Action<DaprClientBuilder> configureClient = null)
     {
-        /// <summary>
-        /// Adds Dapr integration for MVC to the provided <see cref="IMvcBuilder" />.
-        /// </summary>
-        /// <param name="builder">The <see cref="IMvcBuilder" />.</param>
-        /// <param name="configureClient">The (optional) <see cref="DaprClientBuilder" /> to use for configuring the DaprClient.</param>
-        /// <returns>The <see cref="IMvcBuilder" /> builder.</returns>
-        public static IMvcBuilder AddDapr(this IMvcBuilder builder, Action<DaprClientBuilder> configureClient = null)
+        if (builder is null)
         {
-            if (builder is null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
-
-            builder.Services.AddDaprClient(configureClient);
-
-            builder.Services.TryAddSingleton<IApplicationModelProvider, StateEntryApplicationModelProvider>();
-
-            builder.Services.Configure<MvcOptions>(options =>
-            {
-                if (!options.ModelBinderProviders.Any(p => p is StateEntryModelBinderProvider))
-                {
-                    options.ModelBinderProviders.Insert(0, new StateEntryModelBinderProvider());
-                }
-            });
-
-            return builder;
+            throw new ArgumentNullException(nameof(builder));
         }
+
+        builder.Services.AddDaprClient(configureClient);
+
+        builder.Services.TryAddSingleton<IApplicationModelProvider, StateEntryApplicationModelProvider>();
+
+        builder.Services.Configure<MvcOptions>(options =>
+        {
+            if (!options.ModelBinderProviders.Any(p => p is StateEntryModelBinderProvider))
+            {
+                options.ModelBinderProviders.Insert(0, new StateEntryModelBinderProvider());
+            }
+        });
+
+        return builder;
     }
 }

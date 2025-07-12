@@ -14,7 +14,6 @@
 using System;
 using System.Collections.Generic;
 using Dapr.Jobs.Extensions;
-using Xunit;
 
 namespace Dapr.Jobs.Test.Extensions;
 

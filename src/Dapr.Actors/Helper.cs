@@ -11,28 +11,27 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors
-{
-    using System;
-    using System.Globalization;
-    using Dapr.Actors.Communication;
+namespace Dapr.Actors;
 
-    internal class Helper
+using System;
+using System.Globalization;
+using Dapr.Actors.Communication;
+
+internal class Helper
+{
+    public static string GetCallContext()
     {
-        public static string GetCallContext()
+        if (ActorLogicalCallContext.TryGet(out var callContextValue))
         {
-            if (ActorLogicalCallContext.TryGet(out var callContextValue))
-            {
-                return string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0}{1}",
-                    callContextValue,
-                    Guid.NewGuid().ToString());
-            }
-            else
-            {
-                return Guid.NewGuid().ToString();
-            }
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}{1}",
+                callContextValue,
+                Guid.NewGuid().ToString());
+        }
+        else
+        {
+            return Guid.NewGuid().ToString();
         }
     }
 }

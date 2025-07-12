@@ -11,30 +11,29 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr;
+
+/// <summary>
+/// IOriginalTopicMetadata that describes subscribe endpoint to a topic original metadata.
+/// </summary>
+public interface IOriginalTopicMetadata
 {
     /// <summary>
-    /// IOriginalTopicMetadata that describes subscribe endpoint to a topic original metadata.
+    /// Gets the topic metadata id.
     /// </summary>
-    public interface IOriginalTopicMetadata
-    {
-        /// <summary>
-        /// Gets the topic metadata id.
-        /// </summary>
-        /// <remarks>
-        /// It is only used for simple identification,<see cref="IOwnedOriginalTopicMetadata.OwnedMetadatas"/>. When it is empty, it can be used for all topics in the current context.
-        /// </remarks>
-        string Id { get; }
+    /// <remarks>
+    /// It is only used for simple identification,<see cref="IOwnedOriginalTopicMetadata.OwnedMetadatas"/>. When it is empty, it can be used for all topics in the current context.
+    /// </remarks>
+    string Id { get; }
 
-        /// <summary>
-        /// Gets the topic metadata name.
-        /// </summary>
-        /// <remarks>Multiple identical names. only the first <see cref="Value"/> is valid.</remarks>
-        string Name { get; }
+    /// <summary>
+    /// Gets the topic metadata name.
+    /// </summary>
+    /// <remarks>Multiple identical names. only the first <see cref="Value"/> is valid.</remarks>
+    string Name { get; }
 
-        /// <summary>
-        ///  Gets the topic metadata value.
-        /// </summary>
-        string Value { get; }
-    }
+    /// <summary>
+    ///  Gets the topic metadata value.
+    /// </summary>
+    string Value { get; }
 }

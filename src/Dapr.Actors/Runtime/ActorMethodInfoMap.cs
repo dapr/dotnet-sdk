@@ -11,41 +11,40 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Runtime
+namespace Dapr.Actors.Runtime;
+
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+
+/// <summary>
+/// Actor method dispatcher map for non remoting calls. method_name -> MethodInfo for methods defined in IACtor interfaces.
+/// </summary>
+internal class ActorMethodInfoMap
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Reflection;
+    private readonly Dictionary<string, MethodInfo> methods;
 
-    /// <summary>
-    /// Actor method dispatcher map for non remoting calls. method_name -> MethodInfo for methods defined in IACtor interfaces.
-    /// </summary>
-    internal class ActorMethodInfoMap
+    public ActorMethodInfoMap(IEnumerable<Type> interfaceTypes)
     {
-        private readonly Dictionary<string, MethodInfo> methods;
+        this.methods = new Dictionary<string, MethodInfo>();
 
-        public ActorMethodInfoMap(IEnumerable<Type> interfaceTypes)
+        // Find methods which are defined in IActor interface.
+        foreach (var actorInterface in interfaceTypes)
         {
-            this.methods = new Dictionary<string, MethodInfo>();
-
-            // Find methods which are defined in IActor interface.
-            foreach (var actorInterface in interfaceTypes)
+            foreach (var methodInfo in actorInterface.GetMethods())
             {
-                foreach (var methodInfo in actorInterface.GetMethods())
-                {
-                    this.methods.Add(methodInfo.Name, methodInfo);
-                }
+                this.methods.Add(methodInfo.Name, methodInfo);
             }
         }
+    }
 
-        public MethodInfo LookupActorMethodInfo(string methodName)
+    public MethodInfo LookupActorMethodInfo(string methodName)
+    {
+        if (!this.methods.TryGetValue(methodName, out var methodInfo))
         {
-            if (!this.methods.TryGetValue(methodName, out var methodInfo))
-            {
-                throw new MissingMethodException($"Actor type doesn't contain method {methodName}");
-            }
-
-            return methodInfo;
+            throw new MissingMethodException($"Actor type doesn't contain method {methodName}");
         }
+
+        return methodInfo;
     }
 }

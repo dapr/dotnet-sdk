@@ -11,13 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest.App
-{
-    using System.ComponentModel.DataAnnotations;
+namespace Dapr.AspNetCore.IntegrationTest.App;
 
-    public class UserInfo
-    {
-        [Required]
-        public string Name { get; set; }
-    }
+using System.ComponentModel.DataAnnotations;
+
+public class UserInfo
+{
+    [Required]
+    public string Name { get; set; }
 }

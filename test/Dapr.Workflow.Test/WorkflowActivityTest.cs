@@ -11,45 +11,44 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow.Test
+namespace Dapr.Workflow.Test;
+
+using Moq;
+using System.Threading.Tasks;
+using Xunit;
+using Xunit.Sdk;
+
+/// <summary>
+/// Contains tests for WorkflowActivityContext.
+/// </summary>
+public class WorkflowActivityTest
 {
-    using Moq;
-    using System.Threading.Tasks;
-    using Xunit;
-    using Xunit.Sdk;
+    private IWorkflowActivity workflowActivity;
 
-    /// <summary>
-    /// Contains tests for WorkflowActivityContext.
-    /// </summary>
-    public class WorkflowActivityTest
+    private Mock<WorkflowActivityContext> workflowActivityContextMock;
+
+    public WorkflowActivityTest()
     {
-        private IWorkflowActivity workflowActivity;
+        this.workflowActivity = new TestDaprWorkflowActivity();
+        this.workflowActivityContextMock = new Mock<WorkflowActivityContext>();
+    }
 
-        private Mock<WorkflowActivityContext> workflowActivityContextMock;
+    [Fact]
+    public async Task RunAsync_ShouldReturnCorrectContextInstanceId()
+    {
+        this.workflowActivityContextMock.Setup((x) => x.InstanceId).Returns("instanceId");
 
-        public WorkflowActivityTest()
+        string result = (string) (await this.workflowActivity.RunAsync(this.workflowActivityContextMock.Object, "input"))!;
+
+        Assert.Equal("instanceId", result);
+    }
+
+
+    public class TestDaprWorkflowActivity : WorkflowActivity<string, string>
+    {
+        public override Task<string> RunAsync(WorkflowActivityContext context, string input)
         {
-            this.workflowActivity = new TestDaprWorkflowActivity();
-            this.workflowActivityContextMock = new Mock<WorkflowActivityContext>();
-        }
-
-        [Fact]
-        public async Task RunAsync_ShouldReturnCorrectContextInstanceId()
-        {
-            this.workflowActivityContextMock.Setup((x) => x.InstanceId).Returns("instanceId");
-
-            string result = (string) (await this.workflowActivity.RunAsync(this.workflowActivityContextMock.Object, "input"))!;
-
-            Assert.Equal("instanceId", result);
-        }
-
-
-        public class TestDaprWorkflowActivity : WorkflowActivity<string, string>
-        {
-            public override Task<string> RunAsync(WorkflowActivityContext context, string input)
-            {
-                return Task.FromResult(context.InstanceId);
-            }
+            return Task.FromResult(context.InstanceId);
         }
     }
 }

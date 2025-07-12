@@ -11,23 +11,23 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Microsoft.AspNetCore.Hosting;
+using DemoActor;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace DemoActor
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<BankService>();
+builder.Services.AddActors(options =>
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            CreateHostBuilder(args).Build().Run();
-        }
+    options.Actors.RegisterActor<DemoActor.DemoActor>();
+});
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<Startup>();
-                });
-    }
+var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
 }
+
+app.UseRouting();
+app.MapActorsHandlers();

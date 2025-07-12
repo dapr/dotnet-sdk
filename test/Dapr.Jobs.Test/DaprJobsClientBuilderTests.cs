@@ -14,7 +14,6 @@
 using System;
 using System.Text.Json;
 using Grpc.Net.Client;
-using Xunit;
 
 namespace Dapr.Jobs.Test;
 

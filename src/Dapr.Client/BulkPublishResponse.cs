@@ -13,25 +13,16 @@
 
 using System.Collections.Generic;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Class representing the response returned on bulk publishing events.
+/// </summary>
+/// <param name="failedEntries">The List of BulkPublishResponseEntries representing the list of events that failed to be published.</param>
+public class BulkPublishResponse<TValue>(List<BulkPublishResponseFailedEntry<TValue>> failedEntries)
 {
     /// <summary>
-    /// Class representing the response returned on bulk publishing events.
+    /// The List of BulkPublishResponseFailedEntry objects that have failed to publish.
     /// </summary>
-    public class BulkPublishResponse<TValue>
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkPublishResponse{TValue}"/> class.
-        /// </summary>
-        /// <param name="failedEntries">The List of BulkPublishResponseEntries representing the list of events that failed to be published.</param>
-        public BulkPublishResponse(List<BulkPublishResponseFailedEntry<TValue>> failedEntries)
-        {
-            this.FailedEntries = failedEntries;
-        }
-
-        /// <summary>
-        /// The List of BulkPublishResponseFailedEntry objects that have failed to publish.
-        /// </summary>
-        public List<BulkPublishResponseFailedEntry<TValue>> FailedEntries { get; }
-    }
+    public List<BulkPublishResponseFailedEntry<TValue>> FailedEntries { get; } = failedEntries;
 }

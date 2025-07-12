@@ -16,36 +16,35 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Provides extensions specific to HTTP types.
+/// </summary>
+internal static class HttpExtensions
 {
     /// <summary>
-    /// Provides extensions specific to HTTP types.
+    /// Appends key/value pairs to the query string on an HttpRequestMessage.
     /// </summary>
-    internal static class HttpExtensions
+    /// <param name="uri">The uri to append the query string parameters to.</param>
+    /// <param name="queryStringParameters">The key/value pairs to populate the query string with.</param>
+    public static Uri AddQueryParameters(this Uri? uri,
+        IReadOnlyCollection<KeyValuePair<string, string>>? queryStringParameters)
     {
-        /// <summary>
-        /// Appends key/value pairs to the query string on an HttpRequestMessage.
-        /// </summary>
-        /// <param name="uri">The uri to append the query string parameters to.</param>
-        /// <param name="queryStringParameters">The key/value pairs to populate the query string with.</param>
-        public static Uri AddQueryParameters(this Uri? uri,
-            IReadOnlyCollection<KeyValuePair<string, string>>? queryStringParameters)
+        ArgumentNullException.ThrowIfNull(uri, nameof(uri));
+        if (queryStringParameters is null)
+            return uri;
+
+        var uriBuilder = new UriBuilder(uri);
+        var qsBuilder = new StringBuilder(uriBuilder.Query);
+        foreach (var kvParam in queryStringParameters)
         {
-            ArgumentNullException.ThrowIfNull(uri, nameof(uri));
-            if (queryStringParameters is null)
-                return uri;
-
-            var uriBuilder = new UriBuilder(uri);
-            var qsBuilder = new StringBuilder(uriBuilder.Query);
-            foreach (var kvParam in queryStringParameters)
-            {
-                if (qsBuilder.Length > 0)
-                    qsBuilder.Append('&');
-                qsBuilder.Append($"{Uri.EscapeDataString(kvParam.Key)}={Uri.EscapeDataString(kvParam.Value)}");
-            }
-
-            uriBuilder.Query = qsBuilder.ToString();
-            return uriBuilder.Uri;
+            if (qsBuilder.Length > 0)
+                qsBuilder.Append('&');
+            qsBuilder.Append($"{Uri.EscapeDataString(kvParam.Key)}={Uri.EscapeDataString(kvParam.Value)}");
         }
+
+        uriBuilder.Query = qsBuilder.ToString();
+        return uriBuilder.Uri;
     }
 }

@@ -11,32 +11,31 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore
+namespace Dapr.AspNetCore;
+
+/// <summary>
+/// Maps an entry from bulk subscribe messages to a response status.
+/// </summary>
+public class BulkSubscribeAppResponseEntry
 {
+
     /// <summary>
-    /// Maps an entry from bulk subscribe messages to a response status.
+    /// Initializes a new instance of the <see cref="BulkSubscribeAppResponseEntry"/> class.
     /// </summary>
-    public class BulkSubscribeAppResponseEntry
-    {
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkSubscribeAppResponseEntry"/> class.
-        /// </summary>
-        /// <param name="entryId">Entry ID of the event.</param>
-        /// <param name="status">Status of the event processing in application.</param>
-        public BulkSubscribeAppResponseEntry(string entryId, BulkSubscribeAppResponseStatus status) {
-            this.EntryId = entryId;
-            this.Status = status.ToString();
-        }
-
-        /// <summary>
-        /// Entry ID of the event.
-        /// </summary>
-        public string EntryId { get; }
-        
-        /// <summary>
-        /// Status of the event processing in application.
-        /// </summary>
-        public string Status { get; }
+    /// <param name="entryId">Entry ID of the event.</param>
+    /// <param name="status">Status of the event processing in application.</param>
+    public BulkSubscribeAppResponseEntry(string entryId, BulkSubscribeAppResponseStatus status) {
+        this.EntryId = entryId;
+        this.Status = status.ToString();
     }
+
+    /// <summary>
+    /// Entry ID of the event.
+    /// </summary>
+    public string EntryId { get; }
+        
+    /// <summary>
+    /// Status of the event processing in application.
+    /// </summary>
+    public string Status { get; }
 }

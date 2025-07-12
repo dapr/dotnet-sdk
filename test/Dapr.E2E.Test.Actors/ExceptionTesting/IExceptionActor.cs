@@ -13,10 +13,9 @@
 using Dapr.Actors;
 using System.Threading.Tasks;
 
-namespace Dapr.E2E.Test.Actors.ExceptionTesting
+namespace Dapr.E2E.Test.Actors.ExceptionTesting;
+
+public interface IExceptionActor : IPingActor, IActor
 {
-    public interface IExceptionActor : IPingActor, IActor
-    {
-        Task ExceptionExample();
-    }
+    Task ExceptionExample();
 }

@@ -11,30 +11,29 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest
+namespace Dapr.AspNetCore.IntegrationTest;
+
+using Dapr.AspNetCore.IntegrationTest.App;
+using Dapr.Client;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+public class AppWebApplicationFactory : WebApplicationFactory<Startup>
 {
-    using Dapr.AspNetCore.IntegrationTest.App;
-    using Dapr.Client;
-    using Microsoft.AspNetCore.Mvc.Testing;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Hosting;
-    using Microsoft.Extensions.Logging;
+    internal StateTestClient DaprClient { get; } = new StateTestClient();
 
-    public class AppWebApplicationFactory : WebApplicationFactory<Startup>
+    protected override IHostBuilder CreateHostBuilder()
     {
-        internal StateTestClient DaprClient { get; } = new StateTestClient();
-
-        protected override IHostBuilder CreateHostBuilder()
+        var builder = base.CreateHostBuilder();
+        builder.ConfigureLogging(b =>
         {
-            var builder = base.CreateHostBuilder();
-            builder.ConfigureLogging(b =>
-            {
-                b.SetMinimumLevel(LogLevel.None);
-            });
-            return builder.ConfigureServices((context, services) =>
-            {
-                services.AddSingleton<DaprClient>(this.DaprClient);
-            });
-        }
+            b.SetMinimumLevel(LogLevel.None);
+        });
+        return builder.ConfigureServices((context, services) =>
+        {
+            services.AddSingleton<DaprClient>(this.DaprClient);
+        });
     }
 }

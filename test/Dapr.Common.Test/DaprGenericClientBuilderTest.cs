@@ -83,12 +83,19 @@ public class DaprGenericClientBuilderTest
         Assert.Equal(timeout, builder.Timeout);
     }
 
-    private class SampleDaprGenericClientBuilder : DaprGenericClientBuilder<SampleDaprGenericClientBuilder>
+    private sealed class SampleDaprGenericClientBuilder : DaprGenericClientBuilder<SampleDaprGenericClientBuilder>, IDaprClient
     {
         public override SampleDaprGenericClientBuilder Build()
         {
             // Implementation
             throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
+        public void Dispose()
+        {
         }
     }
 }

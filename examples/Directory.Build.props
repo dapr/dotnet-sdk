@@ -2,9 +2,11 @@
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
 
   <PropertyGroup>
+    <TargetFrameworks>net8;net9</TargetFrameworks>
     <!-- Set Output Path for samples-->
     <OutputPath>$(RepoRoot)bin\$(Configuration)\examples\$(MSBuildProjectName)\</OutputPath>
 
     <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);DAPR_CONVERSATION;DAPR_JOBS;DAPR_DISTRIBUTEDLOCK;DAPR_CRYPTOGRAPHY</NoWarn>
   </PropertyGroup>
 </Project>

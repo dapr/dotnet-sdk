@@ -11,11 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
-{
-        /// <summary>
-        /// Initializes a new <see cref="StartWorkflowResponse" />.
-        /// </summary>
-        /// <param name="InstanceId">The instance ID associated with this response.</param>
-        public record StartWorkflowResponse(string InstanceId);
-}
+namespace Dapr.Client;
+
+/// <summary>
+/// Initializes a new <see cref="StartWorkflowResponse" />.
+/// </summary>
+/// <param name="InstanceId">The instance ID associated with this response.</param>
+public record StartWorkflowResponse(string InstanceId);

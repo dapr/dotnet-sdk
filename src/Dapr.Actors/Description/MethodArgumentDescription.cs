@@ -11,91 +11,90 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Description
+namespace Dapr.Actors.Description;
+
+using System;
+using System.Globalization;
+using System.Reflection;
+using Dapr.Actors.Resources;
+
+internal sealed class MethodArgumentDescription
 {
-    using System;
-    using System.Globalization;
-    using System.Reflection;
-    using Dapr.Actors.Resources;
+    private readonly ParameterInfo parameterInfo;
 
-    internal sealed class MethodArgumentDescription
+    private MethodArgumentDescription(ParameterInfo parameterInfo)
     {
-        private readonly ParameterInfo parameterInfo;
+        this.parameterInfo = parameterInfo;
+    }
 
-        private MethodArgumentDescription(ParameterInfo parameterInfo)
+    public string Name
+    {
+        get { return this.parameterInfo.Name; }
+    }
+
+    public Type ArgumentType
+    {
+        get { return this.parameterInfo.ParameterType; }
+    }
+
+    internal static MethodArgumentDescription Create(string remotedInterfaceKindName, MethodInfo methodInfo, ParameterInfo parameter)
+    {
+        var remotedInterfaceType = methodInfo.DeclaringType;
+        EnsureNotOutRefOptional(remotedInterfaceKindName, remotedInterfaceType, methodInfo, parameter);
+        EnsureNotVariableLength(remotedInterfaceKindName, remotedInterfaceType, methodInfo, parameter);
+
+        return new MethodArgumentDescription(parameter);
+    }
+
+    private static void EnsureNotVariableLength(
+        string remotedInterfaceKindName,
+        Type remotedInterfaceType,
+        MethodInfo methodInfo,
+        ParameterInfo param)
+    {
+        if (param.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0)
         {
-            this.parameterInfo = parameterInfo;
+            ThrowArgumentExceptionForParamChecks(
+                remotedInterfaceKindName,
+                remotedInterfaceType,
+                methodInfo,
+                param,
+                SR.ErrorRemotedMethodHasVarArgParameter);
         }
+    }
 
-        public string Name
+    private static void EnsureNotOutRefOptional(
+        string remotedInterfaceKindName,
+        Type remotedInterfaceType,
+        MethodInfo methodInfo,
+        ParameterInfo param)
+    {
+        if (param.IsOut || param.IsIn || param.IsOptional)
         {
-            get { return this.parameterInfo.Name; }
+            ThrowArgumentExceptionForParamChecks(
+                remotedInterfaceKindName,
+                remotedInterfaceType,
+                methodInfo,
+                param,
+                SR.ErrorRemotedMethodHasOutRefOptionalParameter);
         }
+    }
 
-        public Type ArgumentType
-        {
-            get { return this.parameterInfo.ParameterType; }
-        }
-
-        internal static MethodArgumentDescription Create(string remotedInterfaceKindName, MethodInfo methodInfo, ParameterInfo parameter)
-        {
-            var remotedInterfaceType = methodInfo.DeclaringType;
-            EnsureNotOutRefOptional(remotedInterfaceKindName, remotedInterfaceType, methodInfo, parameter);
-            EnsureNotVariableLength(remotedInterfaceKindName, remotedInterfaceType, methodInfo, parameter);
-
-            return new MethodArgumentDescription(parameter);
-        }
-
-        private static void EnsureNotVariableLength(
-            string remotedInterfaceKindName,
-            Type remotedInterfaceType,
-            MethodInfo methodInfo,
-            ParameterInfo param)
-        {
-            if (param.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0)
-            {
-                ThrowArgumentExceptionForParamChecks(
-                    remotedInterfaceKindName,
-                    remotedInterfaceType,
-                    methodInfo,
-                    param,
-                    SR.ErrorRemotedMethodHasVarArgParameter);
-            }
-        }
-
-        private static void EnsureNotOutRefOptional(
-            string remotedInterfaceKindName,
-            Type remotedInterfaceType,
-            MethodInfo methodInfo,
-            ParameterInfo param)
-        {
-            if (param.IsOut || param.IsIn || param.IsOptional)
-            {
-                ThrowArgumentExceptionForParamChecks(
-                    remotedInterfaceKindName,
-                    remotedInterfaceType,
-                    methodInfo,
-                    param,
-                    SR.ErrorRemotedMethodHasOutRefOptionalParameter);
-            }
-        }
-
-        private static void ThrowArgumentExceptionForParamChecks(
-            string remotedInterfaceKindName,
-            Type remotedInterfaceType,
-            MethodInfo methodInfo,
-            ParameterInfo param,
-            string resourceName)
-        {
-            throw new ArgumentException(
-                string.Format(
-                    CultureInfo.CurrentCulture,
-                    resourceName,
-                    remotedInterfaceKindName,
-                    methodInfo.Name,
-                    remotedInterfaceType.FullName,
-                    param.Name),
-                remotedInterfaceKindName + "InterfaceType");
-        }
+    private static void ThrowArgumentExceptionForParamChecks(
+        string remotedInterfaceKindName,
+        Type remotedInterfaceType,
+        MethodInfo methodInfo,
+        ParameterInfo param,
+        string resourceName)
+    {
+        throw new ArgumentException(
+            string.Format(
+                CultureInfo.CurrentCulture,
+                resourceName,
+                remotedInterfaceKindName,
+                methodInfo.Name,
+                remotedInterfaceType.FullName,
+                param.Name),
+            remotedInterfaceKindName + "InterfaceType");
     }
 }

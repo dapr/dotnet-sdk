@@ -11,20 +11,19 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.E2E.Test
+namespace Dapr.E2E.Test;
+
+public class DaprRunConfiguration
 {
-    public class DaprRunConfiguration
-    {
-        public bool UseAppPort { get; set; }
+    public bool UseAppPort { get; set; }
 
-        public string AppId { get; set; }
+    public string AppId { get; set; }
 
-        public string AppProtocol { get; set; }
+    public string AppProtocol { get; set; }
         
-        public bool AppJsonSerialization { get; set; }
+    public bool AppJsonSerialization { get; set; }
 
-        public string ConfigurationPath { get; set; }
+    public string ConfigurationPath { get; set; }
 
-        public string TargetProject { get; set; }
-    }
+    public string TargetProject { get; set; }
 }

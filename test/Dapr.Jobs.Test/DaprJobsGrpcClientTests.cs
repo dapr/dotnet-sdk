@@ -16,7 +16,6 @@ using System.Net.Http;
 using Dapr.Client.Autogen.Grpc.v1;
 using Dapr.Jobs.Models;
 using Moq;
-using Xunit;
 
 namespace Dapr.Jobs.Test;
 

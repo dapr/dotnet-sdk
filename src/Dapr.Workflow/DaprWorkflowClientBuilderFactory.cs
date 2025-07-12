@@ -24,20 +24,8 @@ namespace Dapr.Workflow;
 /// <summary>
 /// A factory for building a <see cref="DaprWorkflowClient"/>.
 /// </summary>
-internal sealed class DaprWorkflowClientBuilderFactory
+internal sealed class DaprWorkflowClientBuilderFactory(IConfiguration? configuration, IHttpClientFactory httpClientFactory)
 {
-    private readonly IConfiguration? configuration;
-    private readonly IHttpClientFactory httpClientFactory;
-    
-    /// <summary>
-    /// Constructor used to inject the required types into the factory.
-    /// </summary>
-    public DaprWorkflowClientBuilderFactory(IConfiguration? configuration, IHttpClientFactory httpClientFactory)
-    {
-        this.configuration = configuration;
-        this.httpClientFactory = httpClientFactory;
-    }
-
     /// <summary>
     /// Responsible for building the client itself.
     /// </summary>

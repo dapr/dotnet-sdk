@@ -1,0 +1,9 @@
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "DebugRoslynAnalyzers": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "../Dapr.Actors.Analyzers.Sample/Dapr.Actors.Analyzers.Sample.csproj"
+    }
+  }
+}

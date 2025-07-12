@@ -3,7 +3,7 @@
   <Import Project="dapr_common.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <LangVersion>10.0</LangVersion>
+    <LangVersion>12.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
     <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
@@ -40,10 +40,10 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <Product>Microsoft Dapr</Product>
-    <Copyright>Copyright (c) Microsoft Corporation.  All rights reserved.</Copyright>
-    <Company>Microsoft</Company>
-    <Authors>Microsoft</Authors>
+    <Product>Dapr</Product>
+    <Copyright>Copyright (c) The Dapr Authors.  All rights reserved.</Copyright>
+    <Company>The Dapr Authors</Company>
+    <Authors>The Dapr Authors</Authors>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -62,7 +62,7 @@
   <!-- Configure properties for MinVer -->
   <PropertyGroup>
     <MinVerTagPrefix>v</MinVerTagPrefix>
-    <MinVerDefaultPreReleasePhase>rc</MinVerDefaultPreReleasePhase>
+    <MinVerDefaultPreReleaseIdentifiers>rc</MinVerDefaultPreReleaseIdentifiers>
     <!-- <MinVerVerbosity>detailed</MinVerVerbosity>-->
   </PropertyGroup>
 </Project>

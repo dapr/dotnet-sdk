@@ -11,12 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest.App
-{
-    public class Widget
-    {
-        public string Size { get; set; }
+using System.Text.Json.Serialization;
 
-        public int Count { get; set; }
-    }
+namespace Dapr.AspNetCore.IntegrationTest.App;
+
+public class Widget
+{
+    [JsonPropertyName("size")]
+    public string Size { get; set; }
+
+    [JsonPropertyName("count")]
+    public int Count { get; set; }
 }

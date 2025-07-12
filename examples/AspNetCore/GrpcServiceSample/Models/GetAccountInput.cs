@@ -11,16 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace GrpcServiceSample.Models
+namespace GrpcServiceSample.Models;
+
+/// <summary>
+/// BankService GetAccount input model
+/// </summary>
+public class GetAccountInput
 {
     /// <summary>
-    /// BankService GetAccount input model
+    /// Id of account
     /// </summary>
-    public class GetAccountInput
-    {
-        /// <summary>
-        /// Id of account
-        /// </summary>
-        public string Id { get; set; }
-    }
+    public string Id { get; set; }
 }

@@ -19,68 +19,67 @@ using Dapr.Actors.AspNetCore.IntegrationTest.App.ActivationTests;
 using Xunit;
 using Xunit.Sdk;
 
-namespace Dapr.Actors.AspNetCore.IntegrationTest
+namespace Dapr.Actors.AspNetCore.IntegrationTest;
+
+public class ActivationTests
 {
-    public class ActivationTests
+    private readonly JsonSerializerOptions options = new JsonSerializerOptions()
     {
-        private readonly JsonSerializerOptions options = new JsonSerializerOptions()
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
+
+    [Fact]
+    public async Task CanActivateActorWithDependencyInjection()
+    {
+        using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        // Doing this twice verifies that the Actor stays active and retains state using DI.
+        var text = await IncrementCounterAsync(httpClient, "A");
+        Assert.Equal("0", text);
+
+        text = await IncrementCounterAsync(httpClient, "A");
+        Assert.Equal("1", text);
+
+        await DeactivateActor(httpClient, "A");
+    }
+
+    private async Task<string> IncrementCounterAsync(HttpClient httpClient, string actorId)
+    {
+        var actorTypeName = nameof(DependencyInjectionActor);
+        var methodName = nameof(DependencyInjectionActor.IncrementAsync);
+
+        var request = new HttpRequestMessage(HttpMethod.Put, $"http://localhost/actors/{actorTypeName}/{actorId}/method/{methodName}");
+        var response = await httpClient.SendAsync(request);
+        await Assert2XXStatusAsync(response);
+
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    private async Task DeactivateActor(HttpClient httpClient, string actorId)
+    {
+        var actorTypeName = nameof(DependencyInjectionActor);
+
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"http://localhost/actors/{actorTypeName}/{actorId}");
+        var response = await httpClient.SendAsync(request);
+        await Assert2XXStatusAsync(response);
+    }
+
+    private async Task Assert2XXStatusAsync(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            PropertyNameCaseInsensitive = true,
-        };
-
-        [Fact]
-        public async Task CanActivateActorWithDependencyInjection()
-        {
-            using var factory = new AppWebApplicationFactory();
-            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-
-            // Doing this twice verifies that the Actor stays active and retains state using DI.
-            var text = await IncrementCounterAsync(httpClient, "A");
-            Assert.Equal("0", text);
-
-            text = await IncrementCounterAsync(httpClient, "A");
-            Assert.Equal("1", text);
-
-            await DeactivateActor(httpClient, "A");
+            return;
         }
 
-        private async Task<string> IncrementCounterAsync(HttpClient httpClient, string actorId)
+        if (response.Content == null)
         {
-            var actorTypeName = nameof(DependencyInjectionActor);
-            var methodName = nameof(DependencyInjectionActor.IncrementAsync);
-
-            var request = new HttpRequestMessage(HttpMethod.Put, $"http://localhost/actors/{actorTypeName}/{actorId}/method/{methodName}");
-            var response = await httpClient.SendAsync(request);
-            await Assert2XXStatusAsync(response);
-
-            return await response.Content.ReadAsStringAsync();
+            throw new XunitException($"The response failed with a {response.StatusCode} and no body.");
         }
 
-        private async Task DeactivateActor(HttpClient httpClient, string actorId)
-        {
-            var actorTypeName = nameof(DependencyInjectionActor);
-
-            var request = new HttpRequestMessage(HttpMethod.Delete, $"http://localhost/actors/{actorTypeName}/{actorId}");
-            var response = await httpClient.SendAsync(request);
-            await Assert2XXStatusAsync(response);
-        }
-
-        private async Task Assert2XXStatusAsync(HttpResponseMessage response)
-        {
-            if (response.IsSuccessStatusCode)
-            {
-                return;
-            }
-
-            if (response.Content == null)
-            {
-                throw new XunitException($"The response failed with a {response.StatusCode} and no body.");
-            }
-
-            // We assume a textual response. #YOLO
-            var text = await response.Content.ReadAsStringAsync();
-            throw new XunitException($"The response failed with a {response.StatusCode} and body:" + Environment.NewLine + text);
-        }
+        // We assume a textual response. #YOLO
+        var text = await response.Content.ReadAsStringAsync();
+        throw new XunitException($"The response failed with a {response.StatusCode} and body:" + Environment.NewLine + text);
     }
 }

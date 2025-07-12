@@ -11,29 +11,28 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+internal class ActorResponseMessage : IActorResponseMessage
 {
-    internal class ActorResponseMessage : IActorResponseMessage
+    private readonly IActorResponseMessageHeader header;
+    private readonly IActorResponseMessageBody msgBody;
+
+    public ActorResponseMessage(
+        IActorResponseMessageHeader header,
+        IActorResponseMessageBody msgBody)
     {
-        private readonly IActorResponseMessageHeader header;
-        private readonly IActorResponseMessageBody msgBody;
+        this.header = header;
+        this.msgBody = msgBody;
+    }
 
-        public ActorResponseMessage(
-            IActorResponseMessageHeader header,
-            IActorResponseMessageBody msgBody)
-        {
-            this.header = header;
-            this.msgBody = msgBody;
-        }
+    public IActorResponseMessageHeader GetHeader()
+    {
+        return this.header;
+    }
 
-        public IActorResponseMessageHeader GetHeader()
-        {
-            return this.header;
-        }
-
-        public IActorResponseMessageBody GetBody()
-        {
-            return this.msgBody;
-        }
+    public IActorResponseMessageBody GetBody()
+    {
+        return this.msgBody;
     }
 }
