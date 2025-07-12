@@ -40,10 +40,10 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <Product>Microsoft Dapr</Product>
-    <Copyright>Copyright (c) Microsoft Corporation.  All rights reserved.</Copyright>
-    <Company>Microsoft</Company>
-    <Authors>Microsoft</Authors>
+    <Product>Dapr</Product>
+    <Copyright>Copyright (c) The Dapr Authors.  All rights reserved.</Copyright>
+    <Company>The Dapr Authors</Company>
+    <Authors>The Dapr Authors</Authors>
   </PropertyGroup>
 
   <PropertyGroup>
