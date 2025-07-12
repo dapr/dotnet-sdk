@@ -62,7 +62,7 @@
   <!-- Configure properties for MinVer -->
   <PropertyGroup>
     <MinVerTagPrefix>v</MinVerTagPrefix>
-    <MinVerDefaultPreReleasePhase>rc</MinVerDefaultPreReleasePhase>
+    <MinVerDefaultPreReleaseIdentifiers>rc</MinVerDefaultPreReleaseIdentifiers>
     <!-- <MinVerVerbosity>detailed</MinVerVerbosity>-->
   </PropertyGroup>
 </Project>
