@@ -15,16 +15,17 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Samples.Client;
-
-class Program
+namespace Samples.Client
 {
-    private static readonly Example[] Examples = new Example[]
+    class Program
     {
-        new InvokeServiceGrpcExample(),
-        new InvokeServiceHttpExample(),
-        new InvokeServiceHttpClientExample(),
-    };
+        private static readonly Example[] Examples = new Example[]
+        {
+            new InvokeServiceGrpcExample(),
+            new InvokeServiceHttpExample(),
+            new InvokeServiceHttpClientExample(),
+            new InvokeServiceHttpNonDaprEndpointExample()
+        };
 
     static async Task<int> Main(string[] args)
     {
