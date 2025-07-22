@@ -11,15 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
-{
-    internal class BuildResult
-    {
-        protected BuildResult(CodeBuilderContext buildContext)
-        {
-            this.BuildContext = buildContext;
-        }
+namespace Dapr.Actors.Builder;
 
-        public CodeBuilderContext BuildContext { get; }
+internal class BuildResult
+{
+    protected BuildResult(CodeBuilderContext buildContext)
+    {
+        this.BuildContext = buildContext;
     }
+
+    public CodeBuilderContext BuildContext { get; }
 }

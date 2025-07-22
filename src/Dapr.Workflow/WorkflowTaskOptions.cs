@@ -13,56 +13,41 @@
 
 using Microsoft.DurableTask;
 
-namespace Dapr.Workflow
+namespace Dapr.Workflow;
+
+/// <summary>
+/// Options that can be used to control the behavior of workflow task execution.
+/// </summary>
+/// <param name="RetryPolicy">The workflow retry policy.</param>
+public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null)
 {
-    /// <summary>
-    /// Options that can be used to control the behavior of workflow task execution.
-    /// </summary>
-    /// <param name="RetryPolicy">The workflow retry policy.</param>
-    public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null)
+    internal TaskOptions ToDurableTaskOptions()
     {
-        internal TaskOptions ToDurableTaskOptions()
+        TaskRetryOptions? retryOptions = null;
+        if (this.RetryPolicy is not null)
         {
-            TaskRetryOptions? retryOptions = null;
-            if (this.RetryPolicy is not null)
-            {
-                retryOptions = this.RetryPolicy.GetDurableRetryPolicy();
-            }
-
-            return new TaskOptions(retryOptions);
+            retryOptions = this.RetryPolicy.GetDurableRetryPolicy();
         }
+
+        return new TaskOptions(retryOptions);
     }
+}
 
-    /// <summary>
-    /// Options for controlling the behavior of child workflow execution.
-    /// </summary>
-    public record ChildWorkflowTaskOptions : WorkflowTaskOptions
+/// <summary>
+/// Options for controlling the behavior of child workflow execution.
+/// </summary>
+/// <param name="InstanceId">The instance ID to use for the child workflow.</param>
+/// <param name="RetryPolicy">The child workflow's retry policy.</param>
+public record ChildWorkflowTaskOptions(string? InstanceId = null, WorkflowRetryPolicy? RetryPolicy = null) : WorkflowTaskOptions(RetryPolicy)
+{
+    internal new SubOrchestrationOptions ToDurableTaskOptions()
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ChildWorkflowTaskOptions"/> record.
-        /// </summary>
-        /// <param name="instanceId">The instance ID to use for the child workflow.</param>
-        /// <param name="retryPolicy">The child workflow's retry policy.</param>
-        public ChildWorkflowTaskOptions(string? instanceId = null, WorkflowRetryPolicy ? retryPolicy = null)
-            : base(retryPolicy)
+        TaskRetryOptions? retryOptions = null;
+        if (this.RetryPolicy is not null)
         {
-            this.InstanceId = instanceId;
+            retryOptions = this.RetryPolicy.GetDurableRetryPolicy();
         }
 
-        /// <summary>
-        /// Gets the instance ID to use when creating a child workflow.
-        /// </summary>
-        public string? InstanceId { get; init; }
-
-        internal new SubOrchestrationOptions ToDurableTaskOptions()
-        {
-            TaskRetryOptions? retryOptions = null;
-            if (this.RetryPolicy is not null)
-            {
-                retryOptions = this.RetryPolicy.GetDurableRetryPolicy();
-            }
-
-            return new SubOrchestrationOptions(retryOptions, this.InstanceId);
-        }
+        return new SubOrchestrationOptions(retryOptions, this.InstanceId);
     }
 }

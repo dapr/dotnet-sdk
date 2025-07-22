@@ -11,16 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr;
+
+/// <summary>
+/// This class defines configurations for the subscribe endpoint.
+/// </summary>
+public class SubscribeOptions
 {
     /// <summary>
-    /// This class defines configurations for the subscribe endpoint.
+    /// Gets or Sets a value which indicates whether to enable or disable processing raw messages.
     /// </summary>
-    public class SubscribeOptions
-    {
-        /// <summary>
-        /// Gets or Sets a value which indicates whether to enable or disable processing raw messages.
-        /// </summary>
-        public bool EnableRawPayload { get; set; }
-    }
+    public bool EnableRawPayload { get; set; }
 }

@@ -11,27 +11,26 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+namespace Dapr.Workflow;
+
+using System;
+using Microsoft.DurableTask;
+
+/// <summary>
+/// Defines properties and methods for task activity context objects.
+/// </summary>
+public class DaprWorkflowActivityContext : WorkflowActivityContext
 {
-    using System;
-    using Microsoft.DurableTask;
+    readonly TaskActivityContext innerContext;
 
-    /// <summary>
-    /// Defines properties and methods for task activity context objects.
-    /// </summary>
-    public class DaprWorkflowActivityContext : WorkflowActivityContext
+    internal DaprWorkflowActivityContext(TaskActivityContext innerContext)
     {
-        readonly TaskActivityContext innerContext;
-
-        internal DaprWorkflowActivityContext(TaskActivityContext innerContext)
-        {
-            this.innerContext = innerContext ?? throw new ArgumentNullException(nameof(innerContext));
-        }
-
-        /// <inheritdoc/>
-        public override TaskName Name => this.innerContext.Name;
-
-        /// <inheritdoc/>
-        public override string InstanceId => this.innerContext.InstanceId;
+        this.innerContext = innerContext ?? throw new ArgumentNullException(nameof(innerContext));
     }
+
+    /// <inheritdoc/>
+    public override TaskName Name => this.innerContext.Name;
+
+    /// <inheritdoc/>
+    public override string InstanceId => this.innerContext.InstanceId;
 }

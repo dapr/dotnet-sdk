@@ -3,7 +3,7 @@ type: docs
 title: "Actor serialization in the .NET SDK"
 linkTitle: "Actor serialization"
 weight: 300000
-description: Necessary steps to serialize your types using remoted Actors in .NET
+description: Necessary steps to serialize your types remoted and non-remoted Actors in .NET
 ---
 # Actor Serialization
 
@@ -253,6 +253,36 @@ a complex versioning scheme for our existing enum values in the state.
 ```json
 {"event":  "Conference",  "season":  "fall"}
 ```
+
+### Polymorphic Serialization
+When working with polymorphic types in Dapr Actor clients, it is essential to handle serialization and deserialization correctly to ensure that the appropriate
+derived types are instantiated. Polymorphic serialization allows you to serialize objects of a base type while preserving the specific derived type information.
+
+To enable polymorphic deserialization, you must use the `[JsonPolymorphic]` attribute on your base type. Additionally,
+it is crucial to include the `[AllowOutOfOrderMetadataProperties]` attribute to ensure that metadata properties, such as `$type`
+can be processed correctly by System.Text.Json even if they are not the first properties in the JSON object.
+
+#### Example
+```cs
+[JsonPolymorphic]
+[AllowOutOfOrderMetadataProperties]
+public abstract class SampleValueBase
+{
+    public string CommonProperty { get; set; }
+}
+
+public class DerivedSampleValue : SampleValueBase
+{
+    public string SpecificProperty { get; set; }
+}
+```
+In this example, the `SampleValueBase` class is marked with both `[JsonPolymorphic]` and `[AllowOutOfOrderMetadataProperties]` 
+attributes. This setup ensures that the `$type` metadata property can be correctly identified and processed during 
+deserialization, regardless of its position in the JSON object.
+
+By following this approach, you can effectively manage polymorphic serialization and deserialization in your Dapr Actor
+clients, ensuring that the correct derived types are instantiated and used.
+
 
 ## Strongly-typed Dapr Actor client
 In this section, you will learn how to configure your classes and records so they are properly serialized and deserialized at runtime when using a strongly-typed actor client. These clients are implemented using .NET interfaces and are <u>not</u> compatible with Dapr Actors written using other languages.

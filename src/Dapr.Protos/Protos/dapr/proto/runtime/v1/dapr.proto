@@ -694,7 +694,14 @@ message GetMetadataResponse {
   string runtime_version = 8 [json_name = "runtimeVersion"];
   repeated string enabled_features = 9 [json_name = "enabledFeatures"];
   ActorRuntime actor_runtime = 10 [json_name = "actorRuntime"];
-  //TODO: Cassie: probably add scheduler runtime status
+  optional MetadataScheduler scheduler = 11 [json_name = "scheduler"];
+}
+
+// MetadataScheduler is a message that contains the list of addresses of the
+// scheduler connections.
+message MetadataScheduler {
+  // connected_addresses the list of addresses of the scheduler connections.
+  repeated string connected_addresses = 1;
 }
 
 message ActorRuntime {
@@ -1258,6 +1265,12 @@ message Job {
   // payload is the serialized job payload that will be sent to the recipient
   // when the job is triggered.
   google.protobuf.Any data = 6 [json_name = "data"];
+
+  // If true, allows this job to overwrite an existing job with the same name.
+  bool overwrite = 7  [json_name = "overwrite"];
+
+  // failure_policy is the optional policy for handling job failures.
+  optional common.v1.JobFailurePolicy failure_policy = 8 [json_name = "failurePolicy"];
 }
 
 // ScheduleJobRequest is the message to create/schedule the job.

@@ -1,14 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- NuGet configuration -->
   <PropertyGroup>
-    <!-- NOTE: Workflows targeted .NET 7 (whereas other packages did not, so we must continue until .NET 7 EOL). -->
-    <TargetFrameworks>net6;net7;net8;net9</TargetFrameworks>
     <Nullable>enable</Nullable>
     <PackageId>Dapr.Workflow</PackageId>
     <Title>Dapr Workflow Authoring SDK</Title>
     <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
-    <VersionPrefix>0.3.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
   </PropertyGroup>
 
@@ -21,7 +17,6 @@
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
     <ProjectReference Include="..\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
-    <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
   </ItemGroup>
 
 </Project>

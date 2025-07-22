@@ -11,24 +11,23 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Common.Exceptions
+namespace Dapr.Common.Exceptions;
+
+/// <summary>
+/// Definitions of expected types to be returned from the Dapr runtime.
+/// </summary>
+internal static class DaprExtendedErrorConstants
 {
-    /// <summary>
-    /// Definitions of expected types to be returned from the Dapr runtime.
-    /// </summary>
-    internal static class DaprExtendedErrorConstants
-    {
-        public const string ErrorDetailTypeUrl = "type.googleapis.com/";
-        public const string GrpcDetails = "grpc-status-details-bin";
-        public const string ErrorInfo = $"{ErrorDetailTypeUrl}Google.rpc.ErrorInfo";
-        public const string RetryInfo = $"{ErrorDetailTypeUrl}Google.rpc.RetryInfo";
-        public const string DebugInfo = $"{ErrorDetailTypeUrl}Google.rpc.DebugInfo";
-        public const string QuotaFailure = $"{ErrorDetailTypeUrl}Google.rpc.QuotaFailure";
-        public const string PreconditionFailure = $"{ErrorDetailTypeUrl}Google.rpc.PreconditionFailure";
-        public const string BadRequest = $"{ErrorDetailTypeUrl}Google.rpc.BadRequest";
-        public const string RequestInfo = $"{ErrorDetailTypeUrl}Google.rpc.RequestInfo";
-        public const string ResourceInfo = $"{ErrorDetailTypeUrl}Google.rpc.ResourceInfo";
-        public const string Help = $"{ErrorDetailTypeUrl}Google.rpc.Help";
-        public const string LocalizedMessage = $"{ErrorDetailTypeUrl}Google.rpc.LocalizedMessage";
-    }
+    public const string ErrorDetailTypeUrl = "type.googleapis.com/";
+    public const string GrpcDetails = "grpc-status-details-bin";
+    public const string ErrorInfo = $"{ErrorDetailTypeUrl}Google.rpc.ErrorInfo";
+    public const string RetryInfo = $"{ErrorDetailTypeUrl}Google.rpc.RetryInfo";
+    public const string DebugInfo = $"{ErrorDetailTypeUrl}Google.rpc.DebugInfo";
+    public const string QuotaFailure = $"{ErrorDetailTypeUrl}Google.rpc.QuotaFailure";
+    public const string PreconditionFailure = $"{ErrorDetailTypeUrl}Google.rpc.PreconditionFailure";
+    public const string BadRequest = $"{ErrorDetailTypeUrl}Google.rpc.BadRequest";
+    public const string RequestInfo = $"{ErrorDetailTypeUrl}Google.rpc.RequestInfo";
+    public const string ResourceInfo = $"{ErrorDetailTypeUrl}Google.rpc.ResourceInfo";
+    public const string Help = $"{ErrorDetailTypeUrl}Google.rpc.Help";
+    public const string LocalizedMessage = $"{ErrorDetailTypeUrl}Google.rpc.LocalizedMessage";
 }

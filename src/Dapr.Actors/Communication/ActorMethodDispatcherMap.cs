@@ -11,43 +11,42 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using Dapr.Actors.Builder;
+using Dapr.Actors.Resources;
+
+/// <summary>
+/// Actor method dispatcher map for remoting calls.
+/// </summary>
+internal class ActorMethodDispatcherMap
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Globalization;
-    using Dapr.Actors.Builder;
-    using Dapr.Actors.Resources;
+    private readonly IDictionary<int, ActorMethodDispatcherBase> map;
 
-    /// <summary>
-    /// Actor method dispatcher map for remoting calls.
-    /// </summary>
-    internal class ActorMethodDispatcherMap
+    public ActorMethodDispatcherMap(IEnumerable<Type> interfaceTypes)
     {
-        private readonly IDictionary<int, ActorMethodDispatcherBase> map;
+        this.map = new Dictionary<int, ActorMethodDispatcherBase>();
 
-        public ActorMethodDispatcherMap(IEnumerable<Type> interfaceTypes)
+        foreach (var actorInterfaceType in interfaceTypes)
         {
-            this.map = new Dictionary<int, ActorMethodDispatcherBase>();
+            var methodDispatcher = ActorCodeBuilder.GetOrCreateMethodDispatcher(actorInterfaceType);
+            this.map.Add(methodDispatcher.InterfaceId, methodDispatcher);
+        }
+    }
 
-            foreach (var actorInterfaceType in interfaceTypes)
-            {
-                var methodDispatcher = ActorCodeBuilder.GetOrCreateMethodDispatcher(actorInterfaceType);
-                this.map.Add(methodDispatcher.InterfaceId, methodDispatcher);
-            }
+    public ActorMethodDispatcherBase GetDispatcher(int interfaceId)
+    {
+        if (!this.map.TryGetValue(interfaceId, out var methodDispatcher))
+        {
+            throw new KeyNotFoundException(string.Format(
+                CultureInfo.CurrentCulture,
+                SR.ErrorMethodDispatcherNotFound,
+                interfaceId));
         }
 
-        public ActorMethodDispatcherBase GetDispatcher(int interfaceId)
-        {
-            if (!this.map.TryGetValue(interfaceId, out var methodDispatcher))
-            {
-                throw new KeyNotFoundException(string.Format(
-                    CultureInfo.CurrentCulture,
-                    SR.ErrorMethodDispatcherNotFound,
-                    interfaceId));
-            }
-
-            return methodDispatcher;
-        }
+        return methodDispatcher;
     }
 }

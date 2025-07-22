@@ -17,46 +17,45 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
 
-namespace Samples.Client
+namespace Samples.Client;
+
+public class InvokeServiceHttpExample : Example
 {
-    public class InvokeServiceHttpExample : Example
+    public override string DisplayName => "Invoking an HTTP service with DaprClient";
+
+    public override async Task RunAsync(CancellationToken cancellationToken)
     {
-        public override string DisplayName => "Invoking an HTTP service with DaprClient";
+        using var client = new DaprClientBuilder().Build();
 
-        public override async Task RunAsync(CancellationToken cancellationToken)
-        {
-            using var client = new DaprClientBuilder().Build();
+        // Invokes a POST method named "deposit" that takes input of type "Transaction" as define in the RoutingSample.
+        Console.WriteLine("Invoking deposit");
+        var data = new { id = "17", amount = 99m };
+        var account = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data, cancellationToken);
+        Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 
-            // Invokes a POST method named "deposit" that takes input of type "Transaction" as define in the RoutingSample.
-            Console.WriteLine("Invoking deposit");
-            var data = new { id = "17", amount = 99m };
-            var account = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data, cancellationToken);
-            Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
+        // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
+        Console.WriteLine("Invoking withdraw");
+        data = new { id = "17", amount = 10m, };
+        await client.InvokeMethodAsync<object>("routing", "Withdraw", data, cancellationToken);
+        Console.WriteLine("Completed");
 
-            // Invokes a POST method named "Withdraw" that takes input of type "Transaction" as define in the RoutingSample.
-            Console.WriteLine("Invoking withdraw");
-            data = new { id = "17", amount = 10m, };
-            await client.InvokeMethodAsync<object>("routing", "Withdraw", data, cancellationToken);
-            Console.WriteLine("Completed");
+        // Invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
+        Console.WriteLine("Invoking balance");
+        account = await client.InvokeMethodAsync<Account>(HttpMethod.Get, "routing", "17", cancellationToken);
+        Console.WriteLine($"Received balance {account.Balance}");
+    }
 
-            // Invokes a GET method named "hello" that takes input of type "MyData" and returns a string.
-            Console.WriteLine("Invoking balance");
-            account = await client.InvokeMethodAsync<Account>(HttpMethod.Get, "routing", "17", cancellationToken);
-            Console.WriteLine($"Received balance {account.Balance}");
-        }
+    internal class Transaction
+    {
+        public string? Id { get; set; }
 
-        internal class Transaction
-        {
-            public string? Id { get; set; }
+        public decimal? Amount { get; set; }
+    }
 
-            public decimal? Amount { get; set; }
-        }
+    internal class Account
+    {
+        public string? Id { get; set; }
 
-        internal class Account
-        {
-            public string? Id { get; set; }
-
-            public decimal? Balance { get; set; }
-        }
+        public decimal? Balance { get; set; }
     }
 }

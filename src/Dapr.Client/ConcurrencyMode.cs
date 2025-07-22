@@ -11,21 +11,20 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Concurrency mode for state operations with Dapr.
+/// </summary>
+public enum ConcurrencyMode
 {
     /// <summary>
-    /// Concurrency mode for state operations with Dapr.
+    /// State operations will be handled in a first-write-wins fashion
     /// </summary>
-    public enum ConcurrencyMode
-    {
-        /// <summary>
-        /// State operations will be handled in a first-write-wins fashion
-        /// </summary>
-        FirstWrite,
+    FirstWrite,
 
-        /// <summary>
-        /// State operations will be handled in a last-write-wins fashion
-        /// </summary>
-        LastWrite,
-    }
+    /// <summary>
+    /// State operations will be handled in a last-write-wins fashion
+    /// </summary>
+    LastWrite,
 }

@@ -15,54 +15,45 @@ using System;
 using System.Text.Json.Serialization;
 using Dapr.Client;
 
-namespace Dapr
+namespace Dapr;
+
+/// <summary>
+/// Represents a CloudEvent without data.
+/// </summary>        
+public class CloudEvent
 {
-	/// <summary>
-	/// Represents a CloudEvent without data.
-	/// </summary>        
-	public class CloudEvent
-	{
-		/// <summary>
-		/// CloudEvent 'source' attribute.
-		/// </summary>
-		[JsonPropertyName("source")]
-		public Uri Source { get; init; }
+    /// <summary>
+    /// CloudEvent 'source' attribute.
+    /// </summary>
+    [JsonPropertyName("source")]
+    public Uri Source { get; init; }
 
-		/// <summary>
-		/// CloudEvent 'type' attribute.
-		/// </summary>
-		[JsonPropertyName("type")]
-		public string Type { get; init; }
+    /// <summary>
+    /// CloudEvent 'type' attribute.
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string Type { get; init; }
 
-		/// <summary>
-		/// CloudEvent 'subject' attribute.
-		/// </summary>
-		[JsonPropertyName("subject")]
-		public string Subject { get; init; }
-	}
+    /// <summary>
+    /// CloudEvent 'subject' attribute.
+    /// </summary>
+    [JsonPropertyName("subject")]
+    public string Subject { get; init; }
+}
 
-	/// <summary>
-	/// Represents a CloudEvent with typed data.
-	/// </summary>
-	public class CloudEvent<TData> : CloudEvent
-	{
-		/// <summary>
-		/// Initialize a new instance of the <see cref="CloudEvent{TData}"/> class.
-		/// </summary>
-		public CloudEvent(TData data)
-		{
-			Data = data;
-		}
+/// <summary>
+/// Represents a CloudEvent with typed data.
+/// </summary>
+public class CloudEvent<TData>(TData data) : CloudEvent
+{
+    /// <summary>
+    /// CloudEvent 'data' content.
+    /// </summary>
+    public TData Data { get; } = data;
 
-		/// <summary>
-		/// CloudEvent 'data' content.
-		/// </summary>
-		public TData Data { get; }
-
-		/// <summary>
-		/// Gets event data.
-		/// </summary>
-		[JsonPropertyName("datacontenttype")]
-		public string DataContentType { get; } = Constants.ContentTypeApplicationJson;
-	}
+    /// <summary>
+    /// Gets event data.
+    /// </summary>
+    [JsonPropertyName("datacontenttype")]
+    public string DataContentType { get; } = Constants.ContentTypeApplicationJson;
 }

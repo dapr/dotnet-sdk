@@ -11,23 +11,22 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr;
+
+/// <summary>
+/// IOwnedOriginalTopicMetadata that describes subscribe endpoint to topic owned metadata.
+/// </summary>
+public interface IOwnedOriginalTopicMetadata
 {
     /// <summary>
-    /// IOwnedOriginalTopicMetadata that describes subscribe endpoint to topic owned metadata.
+    /// Gets the <see cref="IOriginalTopicMetadata.Id"/> owned by topic.
     /// </summary>
-    public interface IOwnedOriginalTopicMetadata
-    {
-        /// <summary>
-        /// Gets the <see cref="IOriginalTopicMetadata.Id"/> owned by topic.
-        /// </summary>
-        /// <remarks>When the <see cref="IOriginalTopicMetadata.Id"/> is not empty, the metadata owned by topic.</remarks>
-        string[] OwnedMetadatas { get; }
+    /// <remarks>When the <see cref="IOriginalTopicMetadata.Id"/> is not empty, the metadata owned by topic.</remarks>
+    string[] OwnedMetadatas { get; }
 
-        /// <summary>
-        ///  Get separator to use for metadata
-        /// </summary>
-        /// <remarks>Separator to be used for <see cref="IOriginalTopicMetadata.Value"/> when multiple values exist for a <see cref="IOriginalTopicMetadata.Name"/>.</remarks>
-        string MetadataSeparator { get; }
-    }
+    /// <summary>
+    ///  Get separator to use for metadata
+    /// </summary>
+    /// <remarks>Separator to be used for <see cref="IOriginalTopicMetadata.Value"/> when multiple values exist for a <see cref="IOriginalTopicMetadata.Name"/>.</remarks>
+    string MetadataSeparator { get; }
 }

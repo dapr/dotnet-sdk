@@ -11,16 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr;
+
+/// <summary>
+/// RawMetadata that describes subscribe endpoint to enable or disable processing raw messages.
+/// </summary>
+public interface IRawTopicMetadata
 {
     /// <summary>
-    /// RawMetadata that describes subscribe endpoint to enable or disable processing raw messages.
+    /// Gets the enable or disable value for processing raw messages.
     /// </summary>
-    public interface IRawTopicMetadata
-    {
-        /// <summary>
-        /// Gets the enable or disable value for processing raw messages.
-        /// </summary>
-        bool? EnableRawPayload { get; }
-    }
+    bool? EnableRawPayload { get; }
 }

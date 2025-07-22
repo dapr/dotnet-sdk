@@ -11,71 +11,70 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest.App
+namespace Dapr.AspNetCore.IntegrationTest.App;
+
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Dapr.Client;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+public class Startup
 {
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
-    using Dapr.Client;
-    using Microsoft.AspNetCore.Authentication;
-    using Microsoft.AspNetCore.Authorization;
-    using Microsoft.AspNetCore.Builder;
-    using Microsoft.AspNetCore.Hosting;
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Hosting;
-
-    public class Startup
+    public Startup(IConfiguration configuration)
     {
-        public Startup(IConfiguration configuration)
+        this.Configuration = configuration;
+    }
+
+    public IConfiguration Configuration { get; }
+
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddAuthentication().AddDapr(options => options.Token = "abcdefg");
+
+        services.AddAuthorization(o => o.AddDapr());
+
+        services.AddControllers().AddDapr();
+    }
+
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
         {
-            this.Configuration = configuration;
+            app.UseDeveloperExceptionPage();
         }
 
-        public IConfiguration Configuration { get; }
+        app.UseRouting();
 
-        public void ConfigureServices(IServiceCollection services)
+        app.UseAuthentication();
+
+        app.UseAuthorization();
+
+        app.UseCloudEvents();
+
+        app.UseEndpoints(endpoints =>
         {
-            services.AddAuthentication().AddDapr(options => options.Token = "abcdefg");
+            endpoints.MapSubscribeHandler();
+            endpoints.MapControllers();
 
-            services.AddAuthorization(o => o.AddDapr());
+            endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("testpubsub", "A").WithTopic("testpubsub", "A.1");
 
-            services.AddControllers().AddDapr();
-        }
+            endpoints.MapPost("/splitTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitTopicBuilder");
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-        {
-            if (env.IsDevelopment())
+            endpoints.MapPost("/splitMetadataTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitMetadataTopicBuilder", new Dictionary<string, string> { { "n1", "v1" }, { "n2", "v1" } });
+
+            endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
             {
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseRouting();
-
-            app.UseAuthentication();
-
-            app.UseAuthorization();
-
-            app.UseCloudEvents();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapSubscribeHandler();
-                endpoints.MapControllers();
-
-                endpoints.MapPost("/topic-a", context => Task.CompletedTask).WithTopic("testpubsub", "A").WithTopic("testpubsub", "A.1");
-
-                endpoints.MapPost("/splitTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitTopicBuilder");
-
-                endpoints.MapPost("/splitMetadataTopics", context => Task.CompletedTask).WithTopic("pubsub", "splitMetadataTopicBuilder", new Dictionary<string, string> { { "n1", "v1" }, { "n2", "v1" } });
-
-                endpoints.MapPost("/routingwithstateentry/{widget}", async context =>
-                {
-                    var daprClient = context.RequestServices.GetRequiredService<DaprClient>();
-                    var state = await daprClient.GetStateEntryAsync<Widget>("testStore", (string)context.Request.RouteValues["widget"]);
-                    state.Value.Count++;
-                    await state.SaveAsync();
-                });
+                var daprClient = context.RequestServices.GetRequiredService<DaprClient>();
+                var state = await daprClient.GetStateEntryAsync<Widget>("testStore", (string)context.Request.RouteValues["widget"]);
+                state.Value.Count++;
+                await state.SaveAsync();
             });
-        }
+        });
     }
 }

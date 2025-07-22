@@ -20,14 +20,7 @@ In the .NET example project:
 
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
-- [.NET 7](https://dotnet.microsoft.com/download/dotnet/7.0), [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) installed
-
-{{% alert title="Note" color="primary" %}}
-
-Dapr.Workflows supports .NET 7 or newer in v1.15. However, following the release of Dapr v1.16, only
-.NET 8 and .NET 9 will be supported.
-
-{{% /alert %}}
+- [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) installed
 
 ## Set up the environment
 

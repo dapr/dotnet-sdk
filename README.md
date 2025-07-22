@@ -44,12 +44,21 @@ This repo builds the following packages:
 - Dapr.AspNetCore
 - Dapr.Actors
 - Dapr.Actors.AspNetCore
+- Dapr.Actors.Generators
+- Dapr.AI
+- Dapr.Jobs
+- Dapr.Messaging
 - Dapr.Extensions.Configuration
 - Dapr.Workflow
 
+It also builds the following packages which are not intended for public use and contain common types used in the packages above:
+- Dapr.Common
+- Dapr.Protos
+
+
 ### Prerequisites
 
-Each project is a normal C# project. At minimum, you need [.NET 6.0 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) to build, test, and generate NuGet packages.
+Each project is a normal C# project. At minimum, you need [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) to build, test, and generate NuGet packages.
 
 Also make sure to reference the [.NET SDK contribution guide](https://docs.dapr.io/contributing/sdk-contrib/dotnet-contributing/)
 
@@ -59,7 +68,7 @@ On macOS or Linux we recommend [Visual Studio Code](https://code.visualstudio.co
 
 **Windows:**
 
-On Windows, we recommend installing [the latest Visual Studio 2019](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
+On Windows, we recommend installing [the latest Visual Studio 2022](https://www.visualstudio.com/vs/) which will set you up with all the .NET build tools and allow you to open the solution files. Community Edition is free and can be used to build everything here.
 
 Make sure you [update Visual Studio to the most recent release](https://docs.microsoft.com/visualstudio/install/update-visual-studio).
 

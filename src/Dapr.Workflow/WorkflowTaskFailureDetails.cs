@@ -11,62 +11,61 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+namespace Dapr.Workflow;
+
+using System;
+using Microsoft.DurableTask;
+
+/// <summary>
+/// Represents workflow task failure details.
+/// </summary>
+public class WorkflowTaskFailureDetails
 {
-    using System;
-    using Microsoft.DurableTask;
+    readonly TaskFailureDetails details;
+
+    internal WorkflowTaskFailureDetails(TaskFailureDetails details)
+    {
+        this.details = details ?? throw new ArgumentNullException(nameof(details));
+    }
 
     /// <summary>
-    /// Represents workflow task failure details.
+    /// Gets the error type, which is the namespace-qualified exception type name.
     /// </summary>
-    public class WorkflowTaskFailureDetails
+    public string ErrorType => this.details.ErrorType;
+
+    /// <summary>
+    /// Gets a summary description of the failure, which is typically an exception message.
+    /// </summary>
+    public string ErrorMessage => this.details.ErrorMessage;
+
+    /// <summary>
+    /// Gets the stack trace of the failure.
+    /// </summary>
+    public string? StackTrace => this.details.StackTrace;
+
+    /// <summary>
+    /// Returns <c>true</c> if the failure was caused by the specified exception type.
+    /// </summary>
+    /// <remarks>
+    /// This method allows checking if a workflow task failed due to an exception of a specific type by attempting
+    /// to load the type specified in <see cref="ErrorType"/>. If the exception type cannot be loaded
+    /// for any reason, this method will return <c>false</c>. Base types are supported.
+    /// </remarks>
+    /// <typeparam name="T">The type of exception to test against.</typeparam>
+    /// <returns>
+    /// Returns <c>true</c> if the <see cref="ErrorType"/> value matches <typeparamref name="T"/>; <c>false</c> otherwise.
+    /// </returns>
+    public bool IsCausedBy<T>() where T : Exception
     {
-        readonly TaskFailureDetails details;
+        return this.details.IsCausedBy<T>();
+    }
 
-        internal WorkflowTaskFailureDetails(TaskFailureDetails details)
-        {
-            this.details = details ?? throw new ArgumentNullException(nameof(details));
-        }
-
-        /// <summary>
-        /// Gets the error type, which is the namespace-qualified exception type name.
-        /// </summary>
-        public string ErrorType => this.details.ErrorType;
-
-        /// <summary>
-        /// Gets a summary description of the failure, which is typically an exception message.
-        /// </summary>
-        public string ErrorMessage => this.details.ErrorMessage;
-
-        /// <summary>
-        /// Gets the stack trace of the failure.
-        /// </summary>
-        public string? StackTrace => this.details.StackTrace;
-
-        /// <summary>
-        /// Returns <c>true</c> if the failure was caused by the specified exception type.
-        /// </summary>
-        /// <remarks>
-        /// This method allows checking if a workflow task failed due to an exception of a specific type by attempting
-        /// to load the type specified in <see cref="ErrorType"/>. If the exception type cannot be loaded
-        /// for any reason, this method will return <c>false</c>. Base types are supported.
-        /// </remarks>
-        /// <typeparam name="T">The type of exception to test against.</typeparam>
-        /// <returns>
-        /// Returns <c>true</c> if the <see cref="ErrorType"/> value matches <typeparamref name="T"/>; <c>false</c> otherwise.
-        /// </returns>
-        public bool IsCausedBy<T>() where T : Exception
-        {
-            return this.details.IsCausedBy<T>();
-        }
-
-        /// <summary>
-        /// Gets a debug-friendly description of the failure information.
-        /// </summary>
-        /// <returns>A debugger friendly display string.</returns>
-        public override string ToString()
-        {
-            return $"{this.ErrorType}: {this.ErrorMessage}";
-        }
+    /// <summary>
+    /// Gets a debug-friendly description of the failure information.
+    /// </summary>
+    /// <returns>A debugger friendly display string.</returns>
+    public override string ToString()
+    {
+        return $"{this.ErrorType}: {this.ErrorMessage}";
     }
 }

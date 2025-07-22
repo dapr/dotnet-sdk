@@ -11,66 +11,51 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+#nullable enable
+using System;
+
+namespace Dapr.Client;
+
+using System.Collections.Generic;
+
+/// <summary>
+/// Represents a single request in in a StateTransaction.
+/// </summary>
+/// <param name="key">The state key.</param>
+/// <param name="value">The serialized state value.</param>
+/// <param name="operationType">The operation type.</param>
+/// <param name="etag">The etag (optional).</param>
+/// <param name="metadata">Additional key value pairs for the state (optional).</param>
+/// <param name="options">State options (optional).</param>
+public sealed class StateTransactionRequest(string key, byte[]? value, StateOperationType operationType, string? etag = null, IReadOnlyDictionary<string, string>? metadata = null, StateOptions? options = null)
 {
-    using System.Collections.Generic;
+    /// <summary>
+    /// Gets the state key.
+    /// </summary>
+    public string Key { get; } = key ?? throw new ArgumentNullException(nameof(key));
 
     /// <summary>
-    /// Represents a single request in in a StateTransaction.
+    /// Gets or sets the value locally.
     /// </summary>
-    public sealed class StateTransactionRequest
-    {
+    public byte[]? Value { get; set; } = value;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="StateTransactionRequest"/> class.
-        /// </summary>
-        /// <param name="key">The state key.</param>
-        /// <param name="value">The serialized state value.</param>
-        /// <param name="operationType">The operation type.</param>
-        /// <param name="etag">The etag (optional).</param>
-        /// <param name="metadata">Additional key value pairs for the state (optional).</param>
-        /// <param name="options">State options (optional).</param>
-        public StateTransactionRequest(string key, byte[] value, StateOperationType operationType, string etag = default, IReadOnlyDictionary<string, string> metadata = default, StateOptions options = default)
-        {
-            ArgumentVerifier.ThrowIfNull(key, nameof(key));
+    /// <summary>
+    /// The Operation type.
+    /// </summary>
+    public StateOperationType? OperationType { get; set; } = operationType;
 
-            this.Key = key;
-            this.Value = value;
-            this.OperationType = operationType;
-            this.ETag = etag;
-            this.Metadata = metadata;
-            this.Options = options;
-        }
+    /// <summary>
+    /// The ETag (optional).
+    /// </summary>
+    public string? ETag { get; set; } = etag;
 
+    /// <summary>
+    /// Additional key-value pairs to be passed to the state store (optional).
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Metadata { get; set; } = metadata;
 
-        /// <summary>
-        /// Gets the state key.
-        /// </summary>
-        public string Key { get; }
-
-        /// <summary>
-        /// Gets or sets the value locally.
-        /// </summary>
-        public byte[] Value { get; set; }
-
-        /// <summary>
-        /// The Operation type.
-        /// </summary>
-        public StateOperationType OperationType { get; set; }
-
-        /// <summary>
-        /// The ETag (optional).
-        /// </summary>
-        public string ETag { get; set; }
-
-        /// <summary>
-        /// Additional key-value pairs to be passed to the state store (optional).
-        /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; set; }
-
-        /// <summary>
-        /// State Options (optional).
-        /// </summary>
-        public StateOptions Options;
-    }
+    /// <summary>
+    /// State Options (optional).
+    /// </summary>
+    public StateOptions? Options = options;
 }

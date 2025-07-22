@@ -11,21 +11,20 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Options when perfroming state operations with Dapr.
+/// </summary>
+public class StateOptions
 {
     /// <summary>
-    /// Options when perfroming state operations with Dapr.
+    /// Consistency mode for state operations with Dapr.
     /// </summary>
-    public class StateOptions
-    {
-        /// <summary>
-        /// Consistency mode for state operations with Dapr.
-        /// </summary>
-        public ConsistencyMode? Consistency { get; set; }
+    public ConsistencyMode? Consistency { get; set; }
 
-        /// <summary>
-        /// Concurrency mode for state operations with Dapr.
-        /// </summary>
-        public ConcurrencyMode? Concurrency { get; set; }
-    }
+    /// <summary>
+    /// Concurrency mode for state operations with Dapr.
+    /// </summary>
+    public ConcurrencyMode? Concurrency { get; set; }
 }

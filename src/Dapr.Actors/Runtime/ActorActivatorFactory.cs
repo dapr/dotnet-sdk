@@ -11,19 +11,18 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Runtime
+namespace Dapr.Actors.Runtime;
+
+/// <summary>
+/// An abstraction used to construct an <see cref="ActorActivator" /> for a given
+/// <see cref="ActorTypeInformation" />.
+/// </summary>
+public abstract class ActorActivatorFactory 
 {
     /// <summary>
-    /// An abstraction used to construct an <see cref="ActorActivator" /> for a given
-    /// <see cref="ActorTypeInformation" />.
+    /// Creates the <see cref="ActorActivator" /> for the provided <paramref name="type" />.
     /// </summary>
-    public abstract class ActorActivatorFactory 
-    {
-        /// <summary>
-        /// Creates the <see cref="ActorActivator" /> for the provided <paramref name="type" />.
-        /// </summary>
-        /// <param name="type">The <see cref="ActorTypeInformation" />.</param>
-        /// <returns>An <see cref="ActorActivator" />.</returns>
-        public abstract ActorActivator CreateActivator(ActorTypeInformation type);
-    }
+    /// <param name="type">The <see cref="ActorTypeInformation" />.</param>
+    /// <returns>An <see cref="ActorActivator" />.</returns>
+    public abstract ActorActivator CreateActivator(ActorTypeInformation type);
 }

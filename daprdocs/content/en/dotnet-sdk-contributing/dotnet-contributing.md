@@ -101,17 +101,8 @@ squashing the PR locally and resubmitting to ensure that the sign-off statement 
 
 # Languages, Tools and Processes
 All source code in the Dapr .NET SDK is written in C# and targets the latest language version available to the earliest
-supported .NET SDK. As of v1.15, this means that because .NET 6 is still supported, the latest language version available
-is [C# version 10](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-version-history#c-version-10).
-
-As of v1.15, the following versions of .NET are supported:
-
-| Version | Notes                                                           |
-| --- |-----------------------------------------------------------------|
-| .NET 6 | Will be discontinued in v1.16                                   |
-| .NET 7 | Only supported in Dapr.Workflows, will be discontinued in v1.16 |
-| .NET 8 | Will continue to be supported in v1.16                          |
-| .NET 9 | Will continue to be supported in v1.16                          |
+supported .NET SDK. As of v1.16, this means that both .NET 8 and .NET 9 are supported. The latest language version available
+is [C# version 12](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-version-history#c-version-12)
 
 Contributors are welcome to use whatever IDE they're most comfortable developing in, but please do not submit 
 IDE-specific preference files along with your contributions as these will be rejected.

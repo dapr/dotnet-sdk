@@ -11,54 +11,53 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
+namespace Dapr.Actors.Builder;
+
+using System;
+using System.Reflection;
+
+/// <summary>
+/// The Attribute class to configure dyanamic code generation process for service remoting.
+/// </summary>
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Interface)]
+public class CodeBuilderAttribute : Attribute
 {
-    using System;
-    using System.Reflection;
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CodeBuilderAttribute"/> class.
+    /// </summary>
+    public CodeBuilderAttribute()
+    {
+    }
 
     /// <summary>
-    /// The Attribute class to configure dyanamic code generation process for service remoting.
+    /// Gets or sets a value indicating whether to enable debugging flag for the attribute to be used by auto code generation.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Interface)]
-    public class CodeBuilderAttribute : Attribute
+    /// <value><see cref="bool"/> to get or set enable debugging flag for the attribute to be used by auto code generation.</value>
+    public bool EnableDebugging { get; set; }
+
+    internal static bool IsDebuggingEnabled(Type type = null)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="CodeBuilderAttribute"/> class.
-        /// </summary>
-        public CodeBuilderAttribute()
+        var enableDebugging = false;
+        var entryAssembly = Assembly.GetEntryAssembly();
+
+        if (entryAssembly != null)
         {
+            var attribute = entryAssembly.GetCustomAttribute<CodeBuilderAttribute>();
+            enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
         }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether to enable debugging flag for the attribute to be used by auto code generation.
-        /// </summary>
-        /// <value><see cref="bool"/> to get or set enable debugging flag for the attribute to be used by auto code generation.</value>
-        public bool EnableDebugging { get; set; }
-
-        internal static bool IsDebuggingEnabled(Type type = null)
+        if (!enableDebugging && (type != null))
         {
-            var enableDebugging = false;
-            var entryAssembly = Assembly.GetEntryAssembly();
+            var attribute = type.GetTypeInfo().Assembly.GetCustomAttribute<CodeBuilderAttribute>();
+            enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
 
-            if (entryAssembly != null)
+            if (!enableDebugging)
             {
-                var attribute = entryAssembly.GetCustomAttribute<CodeBuilderAttribute>();
+                attribute = type.GetTypeInfo().GetCustomAttribute<CodeBuilderAttribute>(true);
                 enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
             }
-
-            if (!enableDebugging && (type != null))
-            {
-                var attribute = type.GetTypeInfo().Assembly.GetCustomAttribute<CodeBuilderAttribute>();
-                enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
-
-                if (!enableDebugging)
-                {
-                    attribute = type.GetTypeInfo().GetCustomAttribute<CodeBuilderAttribute>(true);
-                    enableDebugging = ((attribute != null) && (attribute.EnableDebugging));
-                }
-            }
-
-            return enableDebugging;
         }
+
+        return enableDebugging;
     }
 }

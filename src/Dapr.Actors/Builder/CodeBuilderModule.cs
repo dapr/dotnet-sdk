@@ -11,29 +11,28 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
+namespace Dapr.Actors.Builder;
+
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using Dapr.Actors.Description;
+
+internal abstract class CodeBuilderModule
 {
-    using System.Collections.Generic;
-    using System.Collections.ObjectModel;
-    using System.Linq;
-    using Dapr.Actors.Description;
-
-    internal abstract class CodeBuilderModule
+    protected CodeBuilderModule(ICodeBuilder codeBuilder)
     {
-        protected CodeBuilderModule(ICodeBuilder codeBuilder)
-        {
-            this.CodeBuilder = codeBuilder;
-        }
+        this.CodeBuilder = codeBuilder;
+    }
 
-        protected ICodeBuilder CodeBuilder { get; }
+    protected ICodeBuilder CodeBuilder { get; }
 
-        protected static IReadOnlyDictionary<int, string> GetMethodNameMap(InterfaceDescription interfaceDescription)
-        {
-            var methodNameMap = interfaceDescription.Methods.ToDictionary(
-                methodDescription => methodDescription.Id,
-                methodDescription => methodDescription.Name);
+    protected static IReadOnlyDictionary<int, string> GetMethodNameMap(InterfaceDescription interfaceDescription)
+    {
+        var methodNameMap = interfaceDescription.Methods.ToDictionary(
+            methodDescription => methodDescription.Id,
+            methodDescription => methodDescription.Name);
 
-            return new ReadOnlyDictionary<int, string>(methodNameMap);
-        }
+        return new ReadOnlyDictionary<int, string>(methodNameMap);
     }
 }

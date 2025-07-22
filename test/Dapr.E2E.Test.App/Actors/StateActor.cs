@@ -15,32 +15,31 @@ using System;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
-namespace Dapr.E2E.Test.Actors.State
+namespace Dapr.E2E.Test.Actors.State;
+
+public class StateActor : Actor, IStateActor
 {
-    public class StateActor : Actor, IStateActor
+    public StateActor(ActorHost host)
+        : base(host)
     {
-        public StateActor(ActorHost host)
-            : base(host)
-        {
-        }
+    }
 
-        public Task Ping()
-        {
-            return Task.CompletedTask;
-        }
+    public Task Ping()
+    {
+        return Task.CompletedTask;
+    }
 
-        public Task<string> GetState(string key)
-        {
-            return this.StateManager.GetStateAsync<string>(key);
-        }
+    public Task<string> GetState(string key)
+    {
+        return this.StateManager.GetStateAsync<string>(key);
+    }
 
-        public Task SetState(string key, string value, TimeSpan? ttl)
+    public Task SetState(string key, string value, TimeSpan? ttl)
+    {
+        if (ttl.HasValue)
         {
-            if (ttl.HasValue)
-            {
-                return this.StateManager.SetStateAsync<String>(key, value, ttl: ttl.Value);
-            }
-            return this.StateManager.SetStateAsync<String>(key, value);
+            return this.StateManager.SetStateAsync<String>(key, value, ttl: ttl.Value);
         }
+        return this.StateManager.SetStateAsync<String>(key, value);
     }
 }

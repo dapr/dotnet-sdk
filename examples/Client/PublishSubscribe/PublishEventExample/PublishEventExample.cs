@@ -16,19 +16,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
 
-namespace Samples.Client
+namespace Samples.Client;
+
+public class PublishEventExample : Example
 {
-    public class PublishEventExample : Example
+    public override string DisplayName => "Publishing Events";
+
+    public override async Task RunAsync(CancellationToken cancellationToken)
     {
-        public override string DisplayName => "Publishing Events";
+        using var client = new DaprClientBuilder().Build();
 
-        public override async Task RunAsync(CancellationToken cancellationToken)
-        {
-            using var client = new DaprClientBuilder().Build();
-
-            var eventData = new { Id = "17", Amount = 10m, };
-            await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
-            Console.WriteLine("Published deposit event!");
-        }
+        var eventData = new { Id = "17", Amount = 10m, };
+        await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
+        Console.WriteLine("Published deposit event!");
     }
 }

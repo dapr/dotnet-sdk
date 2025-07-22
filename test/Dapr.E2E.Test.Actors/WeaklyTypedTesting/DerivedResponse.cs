@@ -11,10 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting
+namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting;
+
+public class DerivedResponse : ResponseBase
 {
-    public class DerivedResponse : ResponseBase
-    {
-        public string DerivedProperty { get; set; }
-    }
+    public string DerivedProperty { get; set; }
 }

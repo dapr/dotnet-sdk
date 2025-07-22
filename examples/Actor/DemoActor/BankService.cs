@@ -13,24 +13,23 @@
 
 using IDemoActor;
 
-namespace DemoActor
+namespace DemoActor;
+
+public sealed class BankService
 {
-    public class BankService
+    // Allow overdraft of up to 50 (of whatever currency).
+    private const decimal OverdraftThreshold = -50m;
+
+    public decimal Withdraw(decimal balance, decimal amount)
     {
-        // Allow overdraft of up to 50 (of whatever currency).
-        private readonly decimal OverdraftThreshold = -50m;
+        // Imagine putting some complex auditing logic here in addition to the basics.
 
-        public decimal Withdraw(decimal balance, decimal amount)
+        var updated = balance - amount;
+        if (updated < OverdraftThreshold)
         {
-            // Imagine putting some complex auditing logic here in addition to the basics.
-
-            var updated = balance - amount;
-            if (updated < OverdraftThreshold)
-            {
-                throw new OverdraftException(balance, amount);
-            }
-
-            return updated;
+            throw new OverdraftException(balance, amount);
         }
+
+        return updated;
     }
 }

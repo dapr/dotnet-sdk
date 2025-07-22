@@ -11,40 +11,39 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System;
+
+/// <summary>
+/// Represents a response from fetching an actor state key.
+/// </summary>
+public class ActorStateResponse<T>
 {
-    using System;
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ActorStateResponse{T}"/> class.
+    /// </summary>
+    /// <param name="value">The response value.</param>
+    /// <param name="ttlExpireTime">The time to live expiration time.</param>
+    public ActorStateResponse(T value, DateTimeOffset? ttlExpireTime)
+    {
+        this.Value = value;
+        this.TTLExpireTime = ttlExpireTime;
+    }
 
     /// <summary>
-    /// Represents a response from fetching an actor state key.
+    /// Gets the response value as a string.
     /// </summary>
-    public class ActorStateResponse<T>
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ActorStateResponse{T}"/> class.
-        /// </summary>
-        /// <param name="value">The response value.</param>
-        /// <param name="ttlExpireTime">The time to live expiration time.</param>
-        public ActorStateResponse(T value, DateTimeOffset? ttlExpireTime)
-        {
-            this.Value = value;
-            this.TTLExpireTime = ttlExpireTime;
-        }
+    /// <value>
+    /// The response value as a string.
+    /// </value>
+    public T Value { get; }
 
-        /// <summary>
-        /// Gets the response value as a string.
-        /// </summary>
-        /// <value>
-        /// The response value as a string.
-        /// </value>
-        public T Value { get; }
-
-        /// <summary>
-        /// Gets the time to live expiration time.
-        /// </summary>
-        /// <value>
-        /// The time to live expiration time.
-        /// </value>
-        public DateTimeOffset? TTLExpireTime { get; }
-    }
+    /// <summary>
+    /// Gets the time to live expiration time.
+    /// </summary>
+    /// <value>
+    /// The time to live expiration time.
+    /// </value>
+    public DateTimeOffset? TTLExpireTime { get; }
 }

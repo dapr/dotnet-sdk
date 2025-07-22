@@ -11,80 +11,79 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Common.Exceptions
+namespace Dapr.Common.Exceptions;
+
+/// <summary>
+/// Extended error detail types.
+/// This is based on the Richer Error Model (see <see href="https://google.aip.dev/193#error_model"/> and
+/// <see href="https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto"/>)
+/// and is implemented by the Dapr runtime (see <see href="https://github.com/dapr/dapr/blob/master/pkg/api/errors/README.md"/>).
+/// </summary>
+public enum DaprExtendedErrorType
 {
     /// <summary>
-    /// Extended error detail types.
-    /// This is based on the Richer Error Model (see <see href="https://google.aip.dev/193#error_model"/> and
-    /// <see href="https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto"/>)
-    /// and is implemented by the Dapr runtime (see <see href="https://github.com/dapr/dapr/blob/master/pkg/api/errors/README.md"/>).
+    /// Unknown extended error type.
+    /// Implemented by <see cref="DaprUnknownDetail"/>.
     /// </summary>
-    public enum DaprExtendedErrorType
-    {
-        /// <summary>
-        /// Unknown extended error type.
-        /// Implemented by <see cref="DaprUnknownDetail"/>.
-        /// </summary>
-        Unknown,
+    Unknown,
 
-        /// <summary>
-        /// Retry info detail type.
-        /// See <see cref="DaprRetryInfoDetail"/>.
-        /// </summary>
-        RetryInfo,
+    /// <summary>
+    /// Retry info detail type.
+    /// See <see cref="DaprRetryInfoDetail"/>.
+    /// </summary>
+    RetryInfo,
 
-        /// <summary>
-        /// Debug info detail type.
-        /// See <see cref="DaprDebugInfoDetail"/>.
-        /// </summary>
-        DebugInfo,
+    /// <summary>
+    /// Debug info detail type.
+    /// See <see cref="DaprDebugInfoDetail"/>.
+    /// </summary>
+    DebugInfo,
 
-        /// <summary>
-        /// Quote failure detail type.
-        /// See <see cref="DaprQuotaFailureDetail"/>.
-        /// </summary>
-        QuotaFailure,
+    /// <summary>
+    /// Quote failure detail type.
+    /// See <see cref="DaprQuotaFailureDetail"/>.
+    /// </summary>
+    QuotaFailure,
 
-        /// <summary>
-        /// Precondition failure detail type.
-        /// See <see cref="DaprPreconditionFailureDetail"/>.
-        /// </summary>
-        PreconditionFailure,
+    /// <summary>
+    /// Precondition failure detail type.
+    /// See <see cref="DaprPreconditionFailureDetail"/>.
+    /// </summary>
+    PreconditionFailure,
 
-        /// <summary>
-        /// Request info detail type.
-        /// See <see cref="DaprRequestInfoDetail"/>.
-        /// </summary>
-        RequestInfo,
+    /// <summary>
+    /// Request info detail type.
+    /// See <see cref="DaprRequestInfoDetail"/>.
+    /// </summary>
+    RequestInfo,
 
-        /// <summary>
-        /// Localized message detail type.
-        /// See <see cref="DaprLocalizedMessageDetail"/>.
-        /// </summary>
-        LocalizedMessage,
+    /// <summary>
+    /// Localized message detail type.
+    /// See <see cref="DaprLocalizedMessageDetail"/>.
+    /// </summary>
+    LocalizedMessage,
 
-        /// <summary>
-        /// Bad request detail type.
-        /// See <see cref="DaprBadRequestDetail"/>.
-        /// </summary>
-        BadRequest,
+    /// <summary>
+    /// Bad request detail type.
+    /// See <see cref="DaprBadRequestDetail"/>.
+    /// </summary>
+    BadRequest,
 
-        /// <summary>
-        /// Error info detail type.
-        /// See <see cref="DaprErrorInfoDetail"/>.
-        /// </summary>
-        ErrorInfo,
+    /// <summary>
+    /// Error info detail type.
+    /// See <see cref="DaprErrorInfoDetail"/>.
+    /// </summary>
+    ErrorInfo,
 
-        /// <summary>
-        /// Help detail type.
-        /// See <see cref="DaprHelpDetail"/>.
-        /// </summary>
-        Help,
+    /// <summary>
+    /// Help detail type.
+    /// See <see cref="DaprHelpDetail"/>.
+    /// </summary>
+    Help,
 
-        /// <summary>
-        /// Resource info detail type.
-        /// See <see cref="DaprResourceInfoDetail"/>.
-        /// </summary>
-        ResourceInfo
-    }
+    /// <summary>
+    /// Resource info detail type.
+    /// See <see cref="DaprResourceInfoDetail"/>.
+    /// </summary>
+    ResourceInfo
 }
