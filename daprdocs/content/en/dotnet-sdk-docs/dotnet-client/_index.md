@@ -40,7 +40,7 @@ using var client = new DaprClientBuilder().
 
 // Invokes a POST method named "deposit" that takes input of type "Transaction"
 var data = new { id = "17", amount = 99m };
-var account = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data, cancellationToken);
+var account = await client.InvokeMethodAsync<Account>("routing", "deposit", data, cancellationToken);
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
 {{% /tab %}}
