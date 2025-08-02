@@ -32,6 +32,11 @@ public sealed class WorkflowRuntimeOptions
     readonly Dictionary<string, Action<DurableTaskRegistry>> factories = new();
 
     /// <summary>
+    /// For testing.
+    /// </summary>
+    internal IReadOnlyDictionary<string, Action<DurableTaskRegistry>> FactoriesInternal => this.factories;
+
+    /// <summary>
     /// Override GrpcChannelOptions.
     /// </summary>
     internal GrpcChannelOptions? GrpcChannelOptions { get; private set; }
@@ -68,10 +73,11 @@ public sealed class WorkflowRuntimeOptions
     /// <summary>
     /// Registers a workflow class that derives from <see cref="Workflow{TInput, TOutput}"/>.
     /// </summary>
+    /// <param name="name">Workflow name. If not specified, then the name of <typeparamref name="TWorkflow"/> is used.</param>
     /// <typeparam name="TWorkflow">The <see cref="Workflow{TInput, TOutput}"/> type to register.</typeparam>
-    public void RegisterWorkflow<TWorkflow>() where TWorkflow : class, IWorkflow, new()
+    public void RegisterWorkflow<TWorkflow>(string? name = null) where TWorkflow : class, IWorkflow, new()
     {
-        string name = typeof(TWorkflow).Name;
+        name ??= typeof(TWorkflow).Name;
 
         // Dapr workflows are implemented as specialized Durable Task orchestrations
         this.factories.Add(name, (DurableTaskRegistry registry) =>
@@ -107,10 +113,11 @@ public sealed class WorkflowRuntimeOptions
     /// <summary>
     /// Registers a workflow activity class that derives from <see cref="WorkflowActivity{TInput, TOutput}"/>.
     /// </summary>
+    /// <param name="name">Activity name. If not specified, then the name of <typeparamref name="TActivity"/> is used.</param>
     /// <typeparam name="TActivity">The <see cref="WorkflowActivity{TInput, TOutput}"/> type to register.</typeparam>
-    public void RegisterActivity<TActivity>() where TActivity : class, IWorkflowActivity
+    public void RegisterActivity<TActivity>(string? name = null) where TActivity : class, IWorkflowActivity
     {
-        string name = typeof(TActivity).Name;
+        name ??= typeof(TActivity).Name;
 
         // Dapr workflows are implemented as specialized Durable Task orchestrations
         this.factories.Add(name, (DurableTaskRegistry registry) =>
