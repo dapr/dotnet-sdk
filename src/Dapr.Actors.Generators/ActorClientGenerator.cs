@@ -186,6 +186,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                     else if (typeParam.HasValueTypeConstraint)
                     {
                         constraints.Add(SyntaxFactory.ClassOrStructConstraint(SyntaxKind.StructConstraint));
+                    else if (typeParam.HasValueTypeConstraint && !typeParam.HasUnmanagedTypeConstraint)
+                    {
+                        constraints.Add(SyntaxFactory.ClassOrStructConstraint(SyntaxKind.StructConstraint));
                     }
 
                     // Add unmanaged constraint
