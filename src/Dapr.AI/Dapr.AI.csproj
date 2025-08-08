@@ -19,8 +19,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="A2A" />
+    </ItemGroup>
+    
+    <ItemGroup>
         <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
         <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+        <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
     </ItemGroup>
     
 </Project>
