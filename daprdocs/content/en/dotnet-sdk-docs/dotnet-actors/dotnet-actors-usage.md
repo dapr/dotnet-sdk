@@ -241,4 +241,4 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 
 ## Next steps
 
-Try the [Running and using virtual actors example]({{< ref dotnet-actors-howto.md >}}). 
+Try the [Running and using virtual actors example]({{% ref dotnet-actors-howto.md %}}). 
