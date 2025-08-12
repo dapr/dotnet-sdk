@@ -13,5 +13,5 @@ v1.15 release, this package only contains the functionality corresponding to the
 Future Dapr .NET SDK releases will migrate existing messaging capabilities out from Dapr.Client to this 
 Dapr.Messaging package. This will be documented in the release notes, documentation and obsolete attributes in advance.
 
-To get started, walk through the [Dapr Messaging]({{< ref dotnet-messaging-pubsub-howto.md >}}) how-to guide and
-refer to [best practices documentation]({{< ref dotnet-messaging-pubsub-usage.md >}}) for additional guidance.
+To get started, walk through the [Dapr Messaging]({{% ref dotnet-messaging-pubsub-howto.md %}}) how-to guide and
+refer to [best practices documentation]({{% ref dotnet-messaging-pubsub-usage.md %}}) for additional guidance.

@@ -10,14 +10,14 @@ no_list: true
 The Dapr client package allows you to interact with other Dapr applications from a .NET application.
 
 {{% alert title="Note" color="primary" %}}
- If you haven't already, [try out one of the quickstarts]({{< ref quickstarts >}}) for a quick walk-through on how to use the Dapr .NET SDK with an API building block.
+ If you haven't already, [try out one of the quickstarts]({{% ref quickstarts %}}) for a quick walk-through on how to use the Dapr .NET SDK with an API building block.
 
 {{% /alert %}}
 
 
 ## Building blocks
 
-The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< ref building-blocks >}}).
+The .NET SDK allows you to interface with all of the [Dapr building blocks]({{% ref building-blocks %}}).
 
 ### Invoke a service
 
@@ -25,14 +25,14 @@ The .NET SDK allows you to interface with all of the [Dapr building blocks]({{< 
 You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke your services.
 
 {{% alert title="Note" color="primary" %}}
- You can also [invoke a non-Dapr endpoint using either a named `HTTPEndpoint` or an FQDN URL to the non-Dapr environment]({{< ref "howto-invoke-non-dapr-endpoints.md#using-an-httpendpoint-resource-or-fqdn-url-for-non-dapr-endpoints" >}}).
+ You can also [invoke a non-Dapr endpoint using either a named `HTTPEndpoint` or an FQDN URL to the non-Dapr environment]({{% ref "howto-invoke-non-dapr-endpoints.md#using-an-httpendpoint-resource-or-fqdn-url-for-non-dapr-endpoints" %}}).
 
 {{% /alert %}}
 
 
-{{< tabs SDK HTTP>}}
+{{< tabpane text=true >}}
 
-{{% codetab %}}
+{{% tab header="SDK" %}}
 ```csharp
 using var client = new DaprClientBuilder().
                 UseTimeout(TimeSpan.FromSeconds(2)). // Optionally, set a timeout
@@ -43,9 +43,9 @@ var data = new { id = "17", amount = 99m };
 var account = await client.InvokeMethodAsync<object, Account>("routing", "deposit", data, cancellationToken);
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
-{{% /codetab %}}
+{{% /tab %}}
 
-{{% codetab %}}
+{{% tab header="HTTP" %}}
 ```csharp
 var client = DaprClient.CreateInvokeHttpClient(appId: "routing");
 
@@ -57,8 +57,8 @@ var response = await client.PostAsJsonAsync("/deposit", deposit, cancellationTok
 var account = await response.Content.ReadFromJsonAsync<Account>(cancellationToken: cancellationToken);
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
-{{% /codetab %}}
-{{< /tabs >}}
+{{% /tab %}}
+{{< /tabpane >}}
 
 #### gRPC
 You can use the `DaprClient` to invoke your services over gRPC.
@@ -74,7 +74,7 @@ await client.MyMethodAsync(new Empty(), options);
 Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
 ```
 
-- For a full guide on service invocation visit [How-To: Invoke a service]({{< ref howto-invoke-discover-services.md >}}).
+- For a full guide on service invocation visit [How-To: Invoke a service]({{% ref howto-invoke-discover-services.md %}}).
 
 ### Save & get application state
 
@@ -117,7 +117,7 @@ foreach (var account in queryResponse.Results)
 }
 ```
 
-- For a full list of state operations visit [How-To: Get & save state]({{< ref howto-get-save-state.md >}}).
+- For a full list of state operations visit [How-To: Get & save state]({{% ref howto-get-save-state.md %}}).
 
 ### Publish messages
 
@@ -129,7 +129,7 @@ await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationTok
 Console.WriteLine("Published deposit event!");
 ```
 
-- For a full list of state operations visit [How-To: Publish & subscribe]({{< ref howto-publish-subscribe.md >}}).
+- For a full list of state operations visit [How-To: Publish & subscribe]({{% ref howto-publish-subscribe.md %}}).
 - Visit [.NET SDK examples](https://github.com/dapr/dotnet-sdk/tree/master/examples/Client/PublishSubscribe) for code samples and instructions to try out pub/sub
 
 ### Interact with output bindings
@@ -150,13 +150,13 @@ var email = new
 await client.InvokeBindingAsync("send-email", "create", email);
 ```
 
-- For a full guide on output bindings visit [How-To: Use bindings]({{< ref howto-bindings.md >}}).
+- For a full guide on output bindings visit [How-To: Use bindings]({{% ref howto-bindings.md %}}).
 
 ### Retrieve secrets
 
-{{< tabs Multi-value-secret Single-value-secret >}}
+{{< tabpane text=true >}}
 
-{{% codetab %}}
+{{% tab header="Multi-value-secret" %}}
 
 ```csharp
 var client = new DaprClientBuilder().Build();
@@ -166,9 +166,9 @@ var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secre
 Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
 ```
 
-{{% /codetab %}}
+{{% /tab %}}
 
-{{% codetab %}}
+{{% tab header="Single-value-secret" %}}
 
 ```csharp
 var client = new DaprClientBuilder().Build();
@@ -184,11 +184,11 @@ var value = data["single-value-secret"]
 Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secret!");
 ```
 
-{{% /codetab %}}
+{{% /tab %}}
 
-{{< /tabs >}}
+{{< /tabpane >}}
 
-- For a full guide on secrets visit [How-To: Retrieve secrets]({{< ref howto-secrets.md >}}).
+- For a full guide on secrets visit [How-To: Retrieve secrets]({{% ref howto-secrets.md %}}).
 
 ### Get Configuration Keys
 ```csharp
