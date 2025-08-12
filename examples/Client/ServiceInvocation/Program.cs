@@ -19,13 +19,14 @@ namespace Samples.Client;
 
 class Program
 {
-    private static readonly Example[] Examples =
-    [
+    private static readonly Example[] Examples = new Example[]
+    {
+        new InvokeServiceGrpcByDaprProxyExample(),
         new InvokeServiceGrpcExample(),
         new InvokeServiceHttpExample(),
         new InvokeServiceHttpClientExample(),
         new InvokeServiceHttpNonDaprEndpointExample()
-    ];
+    };
 
     static async Task<int> Main(string[] args)
     {
