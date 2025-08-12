@@ -20,6 +20,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 
 namespace Microsoft.AspNetCore.Builder;
 
@@ -166,7 +168,12 @@ public static class ActorsEndpointRouteBuilderExtensions
             var timerName = (string)routeValues["timerName"];
 
             // read dueTime, period and data from Request Body.
-            await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body);
+            var timerResult = await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body);
+            
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "application/json";
+            
+            await JsonSerializer.SerializeAsync(context.Response.Body, timerResult);
         }).WithDisplayName(b => "Dapr Actors Timer");
     }
 

@@ -41,6 +41,10 @@ public class DaprWorkflowClient(DurableTaskClient innerClient) : IAsyncDisposabl
     /// <param name="startTime">
     /// The time when the workflow instance should start executing. If not specified or if a date-time in the past
     /// is specified, the workflow instance will be scheduled immediately.
+    /// If specified with a <see cref="DateTime.Kind"/> of <see cref="DateTimeKind.Unspecified"/>,
+    /// this is interpreted as a local time.
+    /// Setting this value will cause Dapr to not wait for the Workflow to
+    /// "start", improving throughput of creating many workflows.
     /// </param>
     /// <param name="input">
     /// The optional input to pass to the scheduled workflow instance. This must be a serializable value.
@@ -50,6 +54,31 @@ public class DaprWorkflowClient(DurableTaskClient innerClient) : IAsyncDisposabl
         string? instanceId = null,
         object? input = null,
         DateTime? startTime = null)
+    {
+        return ScheduleNewWorkflowAsync(name, instanceId, input, (DateTimeOffset?)startTime);
+    }
+
+    /// <summary>
+    /// Schedules a new workflow instance for execution.
+    /// </summary>
+    /// <param name="name">The name of the workflow to schedule.</param>
+    /// <param name="instanceId">
+    /// The unique ID of the workflow instance to schedule. If not specified, a new GUID value is used.
+    /// </param>
+    /// <param name="startTime">
+    /// The time when the workflow instance should start executing. If not specified or if a date-time in the past
+    /// is specified, the workflow instance will be scheduled immediately.
+    /// Setting this value will cause Dapr to not wait for the Workflow to
+    /// "start", improving throughput of creating many workflows.
+    /// </param>
+    /// <param name="input">
+    /// The optional input to pass to the scheduled workflow instance. This must be a serializable value.
+    /// </param>
+    public Task<string> ScheduleNewWorkflowAsync(
+        string name,
+        string? instanceId,
+        object? input,
+        DateTimeOffset? startTime)
     {
         StartOrchestrationOptions options = new(instanceId, startTime);
         return this.innerClient.ScheduleNewOrchestrationInstanceAsync(name, input, options);
