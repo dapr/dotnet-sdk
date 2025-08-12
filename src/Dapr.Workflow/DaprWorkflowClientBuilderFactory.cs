@@ -14,8 +14,8 @@
 using System;
 using System.Net.Http;
 using Grpc.Net.Client;
-using Microsoft.DurableTask.Client;
-using Microsoft.DurableTask.Worker;
+using Dapr.DurableTask.Client;
+using Dapr.DurableTask.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

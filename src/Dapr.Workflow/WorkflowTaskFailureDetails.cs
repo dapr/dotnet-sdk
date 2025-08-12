@@ -14,7 +14,7 @@
 namespace Dapr.Workflow;
 
 using System;
-using Microsoft.DurableTask;
+using Dapr.DurableTask;
 
 /// <summary>
 /// Represents workflow task failure details.

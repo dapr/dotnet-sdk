@@ -13,7 +13,7 @@
 
 using System;
 using System.Threading;
-using Microsoft.DurableTask;
+using Dapr.DurableTask;
 
 namespace Dapr.Workflow;
 

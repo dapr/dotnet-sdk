@@ -13,7 +13,7 @@
 
 namespace Dapr.Workflow;
 
-using Microsoft.DurableTask;
+using Dapr.DurableTask;
 
 /// <summary>
 /// Defines properties and methods for task activity context objects.

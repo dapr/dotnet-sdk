@@ -11,7 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Microsoft.DurableTask;
+using Dapr.DurableTask;
 
 namespace Dapr.Workflow;
 
