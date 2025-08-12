@@ -11,12 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
-
 namespace Dapr.Workflow;
 
 using System;
-using Microsoft.DurableTask;
+using Dapr.DurableTask;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System.Threading;
 
