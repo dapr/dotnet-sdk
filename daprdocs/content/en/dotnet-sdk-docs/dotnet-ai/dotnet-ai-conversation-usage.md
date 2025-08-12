@@ -17,7 +17,7 @@ It maintains access to networking resources in the form of TCP sockets used to c
 For best performance, create a single long-lived instance of `DaprConversationClient` and provide access to that shared
 instance throughout your application. `DaprConversationClient` instances are thread-safe and intended to be shared.
 
-This can be aided by utilizing the dependency injection functionality. The registration method supports registration using
+This can be aided by utilizing the dependency injection functionality. The registration method supports registration 
 as a singleton, a scoped instance or as transient (meaning it's recreated every time it's injected), but also enables
 registration to utilize values from an `IConfiguration` or other injected service in a way that's impractical when
 creating the client from scratch in each of your classes.

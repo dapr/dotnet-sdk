@@ -11,19 +11,18 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
+namespace Dapr.Actors.Builder;
+
+using System;
+
+internal class MethodDispatcherBuildResult : BuildResult
 {
-    using System;
-
-    internal class MethodDispatcherBuildResult : BuildResult
+    public MethodDispatcherBuildResult(CodeBuilderContext buildContext)
+        : base(buildContext)
     {
-        public MethodDispatcherBuildResult(CodeBuilderContext buildContext)
-            : base(buildContext)
-        {
-        }
-
-        public Type MethodDispatcherType { get; set; }
-
-        public ActorMethodDispatcherBase MethodDispatcher { get; set; }
     }
+
+    public Type MethodDispatcherType { get; set; }
+
+    public ActorMethodDispatcherBase MethodDispatcher { get; set; }
 }

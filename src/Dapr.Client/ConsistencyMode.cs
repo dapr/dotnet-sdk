@@ -11,21 +11,20 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Consistency mode for state operations with Dapr.
+/// </summary>
+public enum ConsistencyMode
 {
     /// <summary>
-    /// Consistency mode for state operations with Dapr.
+    /// Eventual consistency.
     /// </summary>
-    public enum ConsistencyMode
-    {
-        /// <summary>
-        /// Eventual consistency.
-        /// </summary>
-        Eventual,
+    Eventual,
 
-        /// <summary>
-        /// Strong consistency.
-        /// </summary>
-        Strong,
-    }
+    /// <summary>
+    /// Strong consistency.
+    /// </summary>
+    Strong,
 }

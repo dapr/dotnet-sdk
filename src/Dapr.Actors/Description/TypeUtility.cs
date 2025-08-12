@@ -11,23 +11,22 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Description
+namespace Dapr.Actors.Description;
+
+using System;
+using System.Reflection;
+using System.Threading.Tasks;
+
+internal static class TypeUtility
 {
-    using System;
-    using System.Reflection;
-    using System.Threading.Tasks;
-
-    internal static class TypeUtility
+    public static bool IsTaskType(Type type)
     {
-        public static bool IsTaskType(Type type)
-        {
-            return ((type == typeof(Task)) ||
-                    (type.GetTypeInfo().IsGenericType && (type.GetGenericTypeDefinition() == typeof(Task<>))));
-        }
+        return ((type == typeof(Task)) ||
+                (type.GetTypeInfo().IsGenericType && (type.GetGenericTypeDefinition() == typeof(Task<>))));
+    }
 
-        public static bool IsVoidType(Type type)
-        {
-            return ((type == typeof(void)) || (type == null));
-        }
+    public static bool IsVoidType(Type type)
+    {
+        return ((type == typeof(void)) || (type == null));
     }
 }

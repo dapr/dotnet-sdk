@@ -1,24 +1,23 @@
 ﻿using Dapr.Workflow;
 using Microsoft.Extensions.Logging;
 
-namespace WorkflowConsoleApp.Activities
+namespace WorkflowConsoleApp.Activities;
+
+public record Notification(string Message);
+
+public class NotifyActivity : WorkflowActivity<Notification, object>
 {
-    public record Notification(string Message);
+    readonly ILogger logger;
 
-    public class NotifyActivity : WorkflowActivity<Notification, object>
+    public NotifyActivity(ILoggerFactory loggerFactory)
     {
-        readonly ILogger logger;
+        this.logger = loggerFactory.CreateLogger<NotifyActivity>();
+    }
 
-        public NotifyActivity(ILoggerFactory loggerFactory)
-        {
-            this.logger = loggerFactory.CreateLogger<NotifyActivity>();
-        }
+    public override Task<object> RunAsync(WorkflowActivityContext context, Notification notification)
+    {
+        this.logger.LogInformation(notification.Message);
 
-        public override Task<object> RunAsync(WorkflowActivityContext context, Notification notification)
-        {
-            this.logger.LogInformation(notification.Message);
-
-            return Task.FromResult<object>(null);
-        }
+        return Task.FromResult<object>(null);
     }
 }

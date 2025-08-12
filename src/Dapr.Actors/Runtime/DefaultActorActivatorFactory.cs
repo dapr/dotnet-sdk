@@ -11,21 +11,20 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Runtime
+namespace Dapr.Actors.Runtime;
+
+/// <summary>
+/// A default implementation of <see cref="ActorActivatorFactory" /> that uses <see cref="DefaultActorActivator" />.
+/// </summary>
+public class DefaultActorActivatorFactory : ActorActivatorFactory
 {
     /// <summary>
-    /// A default implementation of <see cref="ActorActivatorFactory" /> that uses <see cref="DefaultActorActivator" />.
+    /// Creates the <see cref="ActorActivator" /> for the provided <paramref name="type" />.
     /// </summary>
-    public class DefaultActorActivatorFactory : ActorActivatorFactory
+    /// <param name="type">The <see cref="ActorTypeInformation" />.</param>
+    /// <returns>An <see cref="ActorActivator" />.</returns>
+    public override ActorActivator CreateActivator(ActorTypeInformation type)
     {
-        /// <summary>
-        /// Creates the <see cref="ActorActivator" /> for the provided <paramref name="type" />.
-        /// </summary>
-        /// <param name="type">The <see cref="ActorTypeInformation" />.</param>
-        /// <returns>An <see cref="ActorActivator" />.</returns>
-        public override ActorActivator CreateActivator(ActorTypeInformation type)
-        {
-            return new DefaultActorActivator();
-        }
+        return new DefaultActorActivator();
     }
 }

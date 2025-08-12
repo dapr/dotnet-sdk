@@ -13,36 +13,35 @@
 
 using System.Collections.Concurrent;
 
-namespace Dapr.E2E.Test
+namespace Dapr.E2E.Test;
+
+public class MessageRepository
 {
-    public class MessageRepository
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> messages;
+
+    public MessageRepository()
     {
-        private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> messages;
+        this.messages = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
+    }
 
-        public MessageRepository()
+    public void AddMessage(string recipient, string message)
+    {
+        if (!this.messages.ContainsKey(recipient))
         {
-            this.messages = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
+            this.messages.TryAdd(recipient, new ConcurrentQueue<string>());
         }
+        this.messages[recipient].Enqueue(message);
+    }
 
-        public void AddMessage(string recipient, string message)
+    public string GetMessage(string recipient)
+    {
+        if (this.messages.TryGetValue(recipient, out var messages) && !messages.IsEmpty)
         {
-            if (!this.messages.ContainsKey(recipient))
+            if (messages.TryDequeue(out var message))
             {
-                this.messages.TryAdd(recipient, new ConcurrentQueue<string>());
+                return message;
             }
-            this.messages[recipient].Enqueue(message);
         }
-
-        public string GetMessage(string recipient)
-        {
-            if (this.messages.TryGetValue(recipient, out var messages) && !messages.IsEmpty)
-            {
-                if (messages.TryDequeue(out var message))
-                {
-                    return message;
-                }
-            }
-            return string.Empty;
-        }
+        return string.Empty;
     }
 }

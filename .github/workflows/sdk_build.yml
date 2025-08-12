@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - release-*
+      - dev-*
+      - feature-*
     tags:
       - v*
     
@@ -12,6 +14,13 @@ on:
     branches: 
     - master
     - release-*
+    - dev-*
+    - feature-*
+
+  workflow_run:
+    workflows: [ "integration-test" ]
+    types:
+      - completed
 
 jobs:
   build:
@@ -28,8 +37,10 @@ jobs:
         with:
           dotnet-version: 9.0.x
           dotnet-quality: 'ga'
+      - name: Restore dependencies
+        run: dotnet restore
       - name: Build
-        run: dotnet build --configuration release
+        run: dotnet build --configuration release --no-restore
       - name: Generate Packages
         run: dotnet pack --configuration release
       - name: Upload packages
@@ -44,18 +55,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['6.0', '7.0', '8.0', '9.0']
+        dotnet-version: ['8.0', '9.0']
         include:
-        - dotnet-version: '6.0'
-          display-name: '.NET 6.0'
-          framework: 'net6'
-          prefix: 'net6'
-          install-version: '6.0.x'
-        - dotnet-version: '7.0'
-          display-name: '.NET 7.0'
-          framework: 'net7'
-          prefix: 'net7'
-          install-version: '7.0.x'
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
           framework: 'net8'
@@ -125,7 +126,11 @@ jobs:
     name: Publish Packages
     needs: ['build', 'test']
     runs-on: ubuntu-latest
-    if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+    # Only run this job if workflow_run was successful and we're on a tag
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') &&
+            startswith(github.ref, 'refs/tags/v') && 
+            !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
     steps:
     - name: Download release artifacts
       uses: actions/download-artifact@v4

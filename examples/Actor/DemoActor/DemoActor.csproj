@@ -1,13 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net6</TargetFramework>
-    </PropertyGroup>
-
-    <PropertyGroup>
         <IsPublishable>true</IsPublishable>
         <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
         <ContainerRepository>demo-actor</ContainerRepository>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,7 +15,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
         <ProjectReference Include="..\..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
-        <ProjectReference Include="..\IDemoActor\IDemoActor.csproj" />
+        <ProjectReference Include="..\DemoActor.Interfaces\DemoActor.Interfaces.csproj" />
     </ItemGroup>
 
 </Project>
