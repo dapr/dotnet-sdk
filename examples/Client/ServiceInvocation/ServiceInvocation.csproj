@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\..\AspNetCore\GrpcServiceSample\Protos\*.proto" ProtoRoot="..\..\AspNetCore\GrpcServiceSample\Protos\" GrpcServices="None" />
+    <Protobuf Include="..\..\AspNetCore\GrpcServiceSample\Protos\*.proto" ProtoRoot="..\..\AspNetCore\GrpcServiceSample\Protos\" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>
