@@ -111,4 +111,4 @@ Dapr.Actors.ActorMethodInvocationException: Remote Actor Method Exception, DETAI
 
 ## Next steps
 
-[Learn how to author and run actors with `ActorHost`]({{< ref dotnet-actors-usage.md >}}).
+[Learn how to author and run actors with `ActorHost`]({{% ref dotnet-actors-usage.md %}}).

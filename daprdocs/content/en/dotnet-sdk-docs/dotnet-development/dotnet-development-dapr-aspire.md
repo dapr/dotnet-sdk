@@ -23,6 +23,9 @@ While Aspire also assists with deployment of your application to various cloud h
 Amazon AWS, deployment is currently outside the scope of this guide. More information can be found in Aspire's 
 documentation [here](https://learn.microsoft.com/en-us/dotnet/aspire/deployment/overview).
 
+An end-to-end demonstration featuring the following and demonstrating service invocation between multiple Dapr-enabled
+services can be found [here](https://github.com/dapr/dotnet-sdk/tree/master/examples/Hosting/Aspire/ServiceInvocationDemo).
+
 ## Prerequisites
 - Both the Dapr .NET SDK and .NET Aspire are compatible with [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) 
 or [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0)
@@ -57,17 +60,18 @@ resilience, service discovery and telemetry capabilities offered by Aspire (thes
 offered in Dapr itself).
 - `aspiredemo.sln` is the file that maintains the layout of your current solution
 
-We'll next create a project that'll serve as our Dapr application. From the same directory, use the following
-to create an empty ASP.NET Core project called `MyApp`. This will be created relative to your current directory in 
-`MyApp\MyApp.csproj`.
+We'll next create twp projects that'll serve as our Dapr application and demonstrate Dapr functionality. From the same 
+directory, use the following to create an empty ASP.NET Core project called `FrontEndApp` and another called 
+'BackEndApp'. Either one will be created relative to your current directory in
+`FrontEndApp\FrontEndApp.csproj` and `BackEndApp\BackEndApp.csproj`, respectively.
 
 ```sh
-dotnet new web MyApp
+dotnet new web --name FrontEndApp
 ```
 
 Next we'll configure the AppHost project to add the necessary package to support local Dapr development. Navigate
 into the AppHost directory with the following and install the `CommunityToolkit.Aspire.Hosting.Dapr` package from NuGet into the project.
-We'll also add a reference to our `MyApp` project so we can reference it during the registration process.
+We'll also add a reference to our `FrontEndApp` project so we can reference it during the registration process.
 
 {{% alert color="primary" %}}
 
@@ -78,7 +82,8 @@ This package was previously called `Aspire.Hosting.Dapr`, which has been [marked
 ```sh
 cd aspiredemo.AppHost
 dotnet add package CommunityToolkit.Aspire.Hosting.Dapr
-dotnet add reference ../MyApp/
+dotnet add reference ../FrontEndApp/
+dotnet add reference ../BackEndApp/
 ```
 
 Next, we need to configure Dapr as a resource to be loaded alongside your project. Open the `Program.cs` file in that 
@@ -97,8 +102,12 @@ Because we've already added a project reference to `MyApp`, we need to start by 
 as well. Add the following before the `builder.Build().Run()` line:
 
 ```csharp
-var myApp = builder
-    .AddProject<Projects.MyApp>("myapp")
+var backEndApp = builder
+    .AddProject<Projects.BackEndApp>("be")
+    .WithDaprSidecar();
+
+var frontEndApp = builder
+    .AddProject<Projects.FrontEndApp>("fe")
     .WithDaprSidecar();
 ```
 
@@ -114,7 +123,7 @@ the following example:
 ```csharp
 DaprSidecarOptions sidecarOptions = new()
 {
-    AppId = "my-other-app",
+    AppId = "how-dapr-identifies-your-app",
     AppPort = 8080, //Note that this argument is required if you intend to configure pubsub, actors or workflows as of Aspire v9.0 
     DaprGrpcPort = 50001,
     DaprHttpPort = 3500,
@@ -122,7 +131,7 @@ DaprSidecarOptions sidecarOptions = new()
 };
 
 builder
-    .AddProject<Projects.MyOtherApp>("myotherapp")
+    .AddProject<Projects.BackEndApp>("be")
     .WithReference(myApp)
     .WithDaprSidecar(sidecarOptions);
 ```
@@ -135,6 +144,9 @@ a configured option as Aspire will not automatically pass it to Dapr at runtime.
 change in a future release as a fix has been merged and can be tracked [here](https://github.com/dotnet/aspire/pull/6362).
 
 {{% /alert %}}
+
+Finally, let's add an endpoint to the back-end app that we can invoke using Dapr's service invocation to display to a 
+page to demonstrate that Dapr is working as expected.
 
 When you open the solution in your IDE, ensure that the `aspiredemo.AppHost` is configured as your startup project, but 
 when you launch it in a debug configuration, you'll note that your integrated console should reflect your expected Dapr 

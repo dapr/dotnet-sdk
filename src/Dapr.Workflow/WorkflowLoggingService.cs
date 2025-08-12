@@ -13,33 +13,32 @@
 
 namespace Dapr.Workflow;
 
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
+using System.Collections.Concurrent;
 
 /// <summary>
 /// Defines runtime options for workflows.
 /// </summary>
 internal sealed class WorkflowLoggingService(ILogger<WorkflowLoggingService> logger) : IHostedService
 {
-    private static readonly HashSet<string> registeredWorkflows = [];
-    private static readonly HashSet<string> registeredActivities = [];
+    private static readonly ConcurrentDictionary<string, byte> registeredWorkflows = new();
+    private static readonly ConcurrentDictionary<string, byte> registeredActivities = new();
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         logger.Log(LogLevel.Information, "WorkflowLoggingService started");
 
         logger.Log(LogLevel.Information, "List of registered workflows");
-        foreach (string item in registeredWorkflows)
+        foreach (string item in registeredWorkflows.Keys)
         {
             logger.Log(LogLevel.Information, item);
         }
 
         logger.Log(LogLevel.Information, "List of registered activities:");
-        foreach (string item in registeredActivities)
+        foreach (string item in registeredActivities.Keys)
         {
             logger.Log(LogLevel.Information, item);
         }
@@ -50,18 +49,17 @@ internal sealed class WorkflowLoggingService(ILogger<WorkflowLoggingService> log
     public Task StopAsync(CancellationToken cancellationToken)
     {
         logger.Log(LogLevel.Information, "WorkflowLoggingService stopped");
-    
+
         return Task.CompletedTask;
     }
 
     public static void LogWorkflowName(string workflowName)
     {
-        registeredWorkflows.Add(workflowName);
+        registeredWorkflows.TryAdd(workflowName, 0);
     }
 
     public static void LogActivityName(string activityName)
     {
-        registeredActivities.Add(activityName);
+        registeredActivities.TryAdd(activityName, 0);
     }
-
 }

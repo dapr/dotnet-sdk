@@ -19,19 +19,20 @@ namespace Samples.Client;
 
 class Program
 {
-    private static readonly Example[] Examples = new Example[]
-    {
+    private static readonly Example[] Examples =
+    [
         new InvokeServiceGrpcExample(),
         new InvokeServiceHttpExample(),
         new InvokeServiceHttpClientExample(),
-    };
+        new InvokeServiceHttpNonDaprEndpointExample()
+    ];
 
     static async Task<int> Main(string[] args)
     {
         if (args.Length > 0 && int.TryParse(args[0], out var index) && index >= 0 && index < Examples.Length)
         {
             var cts = new CancellationTokenSource();
-            Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) => cts.Cancel();
+            Console.CancelKeyPress += (sender, e) => cts.Cancel();
 
             await Examples[index].RunAsync(cts.Token);
             return 0;
