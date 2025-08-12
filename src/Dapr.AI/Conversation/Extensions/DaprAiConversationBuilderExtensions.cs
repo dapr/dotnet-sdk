@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using Dapr.Common.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +25,7 @@ public static class DaprAiConversationBuilderExtensions
     /// <summary>
     /// Registers the necessary functionality for the Dapr AI Conversation functionality.
     /// </summary>
+    [Experimental("DAPR_CONVERSATION", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/conversation/conversation-overview/")]
     public static IDaprAiConversationBuilder AddDaprConversationClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprConversationClientBuilder>? configure = null,

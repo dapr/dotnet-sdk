@@ -26,6 +26,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
                                 
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -41,10 +42,11 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                             Encoding.UTF8.GetBytes("This is a test"), repeats: 10).GetAwaiter().GetResult();
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var expected = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-            .WithSpan(22, 25, 23, 83)
+            .WithSpan(23, 25, 24, 83)
             .WithMessage(
                 "Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder");
         
@@ -66,6 +68,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
                                 
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -78,6 +81,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
@@ -98,6 +102,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
                                 
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -115,14 +120,15 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                             Encoding.UTF8.GetBytes("This is a test"), repeats: 10).GetAwaiter().GetResult();
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var expected1 = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-            .WithSpan(22, 25, 23, 83)
+            .WithSpan(23, 25, 24, 83)
             .WithMessage(
                 "Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob' on IEndpointRouteBuilder");
         var expected2 = VerifyAnalyzer.Diagnostic(MapDaprScheduledJobHandlerAnalyzer.DaprJobHandlerRule)
-            .WithSpan(24, 25, 25, 83)
+            .WithSpan(25, 25, 26, 83)
             .WithMessage("Job invocations require the MapDaprScheduledJobHandler be set and configured for job name 'myJob2' on IEndpointRouteBuilder");
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
         await analyzer.VerifyAnalyzerAsync<MapDaprScheduledJobHandlerAnalyzer>(testCode, expected1, expected2);
@@ -142,6 +148,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
                                 
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static void Main()
@@ -164,6 +171,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         }, TimeSpan.FromSeconds(5));
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
@@ -183,7 +191,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                
+                                                
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static async Task Main()
@@ -206,6 +215,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         }, TimeSpan.FromSeconds(5));
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                 """;
 
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
@@ -225,7 +235,8 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                 using Dapr.Jobs;
                                                 using Dapr.Jobs.Extensions;
                                                 using Dapr.Jobs.Models;
-                                
+                                                
+                                                #pragma warning disable DAPR_JOBS
                                                 public static class Program
                                                 {
                                                     public static async Task Main()
@@ -245,6 +256,7 @@ public class DaprJobsAnalyzerAnalyzerTests
                                                         return Task.CompletedTask;
                                                     }
                                                 }
+                                                #pragma warning restore DAPR_JOBS
                                                 
                                 """;
 

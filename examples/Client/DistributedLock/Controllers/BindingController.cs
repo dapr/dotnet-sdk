@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -11,24 +12,15 @@ using Microsoft.Extensions.Logging;
 namespace DistributedLock.Controllers;
 
 [ApiController]
-public class BindingController : ControllerBase
+[Experimental("DAPR_DISTRIBUTEDLOCK", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/distributed-lock/distributed-lock-api-overview/")]
+public class BindingController(DaprClient client, ILogger<BindingController> logger) : ControllerBase
 {
-    private DaprClient client;
-    private ILogger<BindingController> logger;
-    private string appId;
-
-    public BindingController(DaprClient client, ILogger<BindingController> logger)
-    {
-        this.client = client;
-        this.logger = logger;
-        this.appId = Environment.GetEnvironmentVariable("APP_ID");
-    }
-
+    private string appId = Environment.GetEnvironmentVariable("APP_ID");
+    
     [HttpPost("cronbinding")]
-    [Obsolete]
     public async Task<IActionResult> HandleBindingEvent()
     {
-        logger.LogInformation($"Received binding event on {appId}, scanning for work.");
+        logger.LogInformation("Received binding event on {appId}, scanning for work.", appId);
 
         var request = new BindingRequest("localstorage", "list");
         var result = client.InvokeBindingAsync(request);
@@ -47,44 +39,40 @@ public class BindingController : ControllerBase
         return Ok();
     }
 
-
-    [Obsolete]
     private async Task AttemptToProcessFile(string fileName)
     {
         // Locks are Disposable and will automatically unlock at the end of a 'using' statement.
-        logger.LogInformation($"Attempting to lock: {fileName}");
-        await using (var fileLock = await client.Lock("redislock", fileName, appId, 60))
+        logger.LogInformation("Attempting to lock: {fileName}", fileName);
+        await using var fileLock = await client.Lock("redislock", fileName, appId, 60);
+        if (fileLock.Success)
         {
-            if (fileLock.Success)
+            logger.LogInformation("Successfully locked file: {fileName}", fileName);
+
+            // Get the file after we've locked it, we're safe here because of the lock.
+            var fileState = await GetFile(fileName);
+
+            if (fileState == null)
             {
-                logger.LogInformation($"Successfully locked file: {fileName}");
-
-                // Get the file after we've locked it, we're safe here because of the lock.
-                var fileState = await GetFile(fileName);
-
-                if (fileState == null)
-                {
-                    logger.LogWarning($"File {fileName} has already been processed!");
-                    return;
-                }
-
-                // "Analyze" the file before committing it to our remote storage.
-                fileState.Analysis = fileState.Number > 50 ? "High" : "Low";
-
-                // Save it to remote storage.
-                await client.SaveStateAsync("redisstore", fileName, fileState);
-
-                // Remove it from local storage.
-                var bindingDeleteRequest = new BindingRequest("localstorage", "delete");
-                bindingDeleteRequest.Metadata["fileName"] = fileName;
-                await client.InvokeBindingAsync(bindingDeleteRequest);
-
-                logger.LogInformation($"Done processing {fileName}");
+                logger.LogWarning("File {fileName} has already been processed!", fileName);
+                return;
             }
-            else
-            {
-                logger.LogWarning($"Failed to lock {fileName}.");
-            }
+
+            // "Analyze" the file before committing it to our remote storage.
+            fileState.Analysis = fileState.Number > 50 ? "High" : "Low";
+
+            // Save it to remote storage.
+            await client.SaveStateAsync("redisstore", fileName, fileState);
+
+            // Remove it from local storage.
+            var bindingDeleteRequest = new BindingRequest("localstorage", "delete");
+            bindingDeleteRequest.Metadata["fileName"] = fileName;
+            await client.InvokeBindingAsync(bindingDeleteRequest);
+
+            logger.LogInformation("Done processing {fileName}", fileName);
+        }
+        else
+        {
+            logger.LogWarning("Failed to lock {fileName}.", fileName);
         }
     }
 

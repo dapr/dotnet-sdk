@@ -1,0 +1,89 @@
+﻿<div class="demo-section">
+    <h3>@Title</h3>
+    <p>@Description</p>
+    
+    <div class="demo-controls">
+        <button @onclick="ClearResponse">Clear</button>
+        <button @onclick="ExecuteDemo" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span>Working...</span>
+            }
+            else
+            {
+                <span>Go</span>
+            }
+        </button>
+    </div>
+    <div class="response-area margin-top: 3px">
+        <h5>Response:</h5>
+        <div>
+            @if (!string.IsNullOrEmpty(Response))
+            {
+                @Response
+            }
+            else
+            {
+                <em>No response yet...</em>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+    [Parameter]
+    public string Description { get; set; } = string.Empty;
+    [Parameter]
+    public Func<Task<string>>? ExecuteAsync { get; set; }
+
+    private string Response { get; set; } = string.Empty;
+
+    private bool isLoading = false;
+
+    private void ClearResponse()
+    {
+        Response = string.Empty;
+    }
+
+    private async Task ExecuteDemo()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ExecuteAsync!();
+            Response = result;
+        }
+        catch (Exception ex)
+        {
+            Response = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+    
+}
+
+<style>
+    .demo-section {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .demo-controls {
+        margin: 1rem 0;
+    }
+    
+    .response-area {
+        font-family: monospace;
+        font-size: 0.9em;
+    }
+</style>

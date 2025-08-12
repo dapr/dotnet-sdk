@@ -45,3 +45,9 @@ See [InvokeServiceHttpExample.cs](./InvokeServiceHttpExample.cs) for an example 
 Make sure to first run the [GrpcService](../../AspNetCore/GrpcServiceSample) to have a service to invoke.
 
 See [InvokeServiceGrpcExample.cs](./InvokeServiceGrpcExample.cs) for an example using the `DaprClient` to invoke a service using gRPC through Dapr.
+
+## Dapr Non-Dapr endpoint
+
+Make sure to first run the [Routing Service](../../AspNetCore/RoutingSample) to have a service to invoke.
+
+See [InvokeServiceHttpNonDaprEndpointExample](./InvokeServiceHttpNonDaprEndpointExample.cs) for an example using the `DaprClient` to invoke a non-Dapr endpoint through Dapr.
