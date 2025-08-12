@@ -8,4 +8,4 @@ description: Get up and running with the Dapr actors .NET SDK
 
 With the Dapr actor package, you can interact with Dapr virtual actors from a .NET application.
 
-To get started, walk through the [Dapr actors]({{< ref dotnet-actors-howto.md >}}) how-to guide.
+To get started, walk through the [Dapr actors]({{% ref dotnet-actors-howto.md %}}) how-to guide.

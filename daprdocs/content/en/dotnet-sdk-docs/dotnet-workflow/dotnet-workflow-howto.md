@@ -83,9 +83,9 @@ This guide focuses on the workflow API option.
 
 Run the following command to start a workflow. 
 
-{{< tabs "Linux/MacOS" "Windows">}}
+{{< tabpane text=true >}}
 
-{{% codetab %}}
+{{% tab header="Linux/MacOS" %}}
 
 ```bash
 curl -i -X POST http://localhost:3500/v1.0/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 \
@@ -93,9 +93,9 @@ curl -i -X POST http://localhost:3500/v1.0/workflows/dapr/OrderProcessingWorkflo
   -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
 
-{{% /codetab %}}
+{{% /tab %}}
 
-{{% codetab %}}
+{{% tab header="Windows" %}}
 
 ```powershell
 curl -i -X POST http://localhost:3500/v1.0/workflows/dapr/OrderProcessingWorkflow/start?instanceID=12345678 `
@@ -103,9 +103,9 @@ curl -i -X POST http://localhost:3500/v1.0/workflows/dapr/OrderProcessingWorkflo
   -d '{"Name": "Paperclips", "TotalCost": 99.95, "Quantity": 1}'
 ```
 
-{{% /codetab %}}
+{{% /tab %}}
 
-{{< /tabs >}}
+{{< /tabpane >}}
 
 If successful, you should see a response like the following: 
 
@@ -175,5 +175,5 @@ Watch this video [demonstrating .NET Workflow](https://youtu.be/BxiKpEmchgQ?t=25
 
 ## Next steps
 
-- [Try the Dapr Workflow quickstart]({{< ref workflow-quickstart.md >}})
-- [Learn more about Dapr Workflow]({{< ref workflow-overview.md >}})
+- [Try the Dapr Workflow quickstart]({{% ref workflow-quickstart.md %}})
+- [Learn more about Dapr Workflow]({{% ref workflow-overview.md %}})
