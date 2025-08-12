@@ -11,14 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Grpc.Net.Client;
 
 namespace Dapr.Workflow;
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.DurableTask;
+using Dapr.DurableTask;
+using Grpc.Net.Client;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>

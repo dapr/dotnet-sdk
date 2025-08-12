@@ -14,8 +14,7 @@
 namespace Dapr.Workflow;
 
 using System;
-using Dapr.Client;
-using Microsoft.DurableTask.Client;
+using Dapr.DurableTask.Client;
 
 /// <summary>
 /// Represents a snapshot of a workflow instance's current state, including runtime status.
