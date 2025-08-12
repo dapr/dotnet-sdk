@@ -11,9 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
-using Microsoft.DurableTask.Client.Grpc;
+using Dapr.DurableTask;
+using Dapr.DurableTask.Client;
+using Dapr.DurableTask.Client.Grpc;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Dapr.Workflow.Test;
