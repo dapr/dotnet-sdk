@@ -13,14 +13,13 @@
 
 using System;
 
-namespace Dapr.E2E.Test.Actors.Timers
+namespace Dapr.E2E.Test.Actors.Timers;
+
+public class State
 {
-    public class State
-    {
-        public int Count { get; set; }
+    public int Count { get; set; }
 
-        public bool IsTimerRunning { get; set; }
+    public bool IsTimerRunning { get; set; }
 
-        public DateTime Timestamp { get; set; }
-    }
+    public DateTime Timestamp { get; set; }
 }

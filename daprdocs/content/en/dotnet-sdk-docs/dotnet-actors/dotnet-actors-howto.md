@@ -42,18 +42,9 @@ An actor class must also implement a constructor that accepts an `ActorService` 
 This project contains the implementation of the actor client which calls MyActor's method defined in Actor Interfaces.
 
 ## Prerequisites
-
-- [Dapr CLI]({{% ref install-dapr-cli.md %}}) installed.
-- Initialized [Dapr environment]({{% ref install-dapr-selfhost.md %}}).
-- [.NET 6](https://dotnet.microsoft.com/download), [.NET 8](https://dotnet.microsoft.com/download) or [.NET 9](https://dotnet.microsoft.com/download) installed
-
-{{% alert title="Note" color="primary" %}}
-
-Note that while .NET 6 is generally supported as the minimum .NET requirement across the Dapr .NET SDK packages
-and .NET 7 is the minimally supported version of .NET by Dapr.Workflows in Dapr v1.15, only .NET 8 and .NET 9 will
-continue to be supported by Dapr in v1.16 and later.
-
-{{% /alert %}}
+- [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed.
+- Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}}).
+- [.NET 8](https://dotnet.microsoft.com/download) or [.NET 9](https://dotnet.microsoft.com/download) installed
 
 ## Step 0: Prepare
 

@@ -13,7 +13,6 @@
 
 using System;
 using Dapr.Jobs.Models;
-using Xunit;
 
 namespace Dapr.Jobs.Test.Models;
 
