@@ -28,11 +28,19 @@ internal static class DaprDefaults
     public const string DaprHttpPortName = "DAPR_HTTP_PORT";
     public const string DaprGrpcEndpointName = "DAPR_GRPC_ENDPOINT";
     public const string DaprGrpcPortName = "DAPR_GRPC_PORT";
+    public const string DaprGrpcKeepAliveEnableName = "DAPR_ENABLE_KEEP_ALIVE";
+    public const string DaprGrpcKeepAliveTimeName = "DAPR_KEEP_ALIVE_TIME";
+    public const string DaprGrpcKeepAliveTimeoutName = "DAPR_KEEP_ALIVE_TIMEOUT";
+    public const string DaprGrpcKeepAliveWithoutCallsName = "DAPR_KEEP_ALIVE_WITHOUT_CALLS";
 
     public const string DefaultDaprScheme = "http";
     public const string DefaultDaprHost = "localhost";
     public const int DefaultHttpPort = 3500;
     public const int DefaultGrpcPort = 50001;
+    public const bool DefaultGrpcKeepAliveEnable = false;
+    public const int DefaultGrpcKeepAliveTimeSeconds = 60;
+    public const int DefaultGrpcKeepAliveTimeoutSeconds = 20;
+    public const bool DefaultGrpcKeepAliveWithoutCalls = true;
 
     /// <summary>
     /// Get the value of environment variable DAPR_API_TOKEN
@@ -129,5 +137,49 @@ internal static class DaprDefaults
 
         //Fall back to the environment variable with the same name or default to an empty string
         return Environment.GetEnvironmentVariable(name);
+    }
+
+    /// <summary>
+    /// Get whether gRPC keep-alive is enabled based on environment variables.
+    /// </summary>
+    /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull the value from.</param>
+    /// <returns>A boolean indicating whether gRPC keep-alive is enabled.</returns>
+    public static bool GetDefaultGrpcKeepAliveEnable(IConfiguration? configuration = null)
+    {
+        var value = GetResourceValue(configuration, DaprGrpcKeepAliveEnableName);
+        return string.IsNullOrWhiteSpace(value) ? DefaultGrpcKeepAliveEnable : bool.Parse(value);
+    }
+
+    /// <summary>
+    /// Get the gRPC keep-alive time in seconds based on environment variables.
+    /// </summary>
+    /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull the value from.</param>
+    /// <returns>The gRPC keep-alive time in seconds.</returns>
+    public static int GetDefaultGrpcKeepAliveTimeSeconds(IConfiguration? configuration = null)
+    {
+        var value = GetResourceValue(configuration, DaprGrpcKeepAliveTimeName);
+        return string.IsNullOrWhiteSpace(value) ? DefaultGrpcKeepAliveTimeSeconds : int.Parse(value);
+    }
+
+    /// <summary>
+    /// Get the gRPC keep-alive timeout in seconds based on environment variables.
+    /// </summary>
+    /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull the value from.</param>
+    /// <returns>The gRPC keep-alive timeout in seconds.</returns>
+    public static int GetDefaultGrpcKeepAliveTimeoutSeconds(IConfiguration? configuration = null)
+    {
+        var value = GetResourceValue(configuration, DaprGrpcKeepAliveTimeoutName);
+        return string.IsNullOrWhiteSpace(value) ? DefaultGrpcKeepAliveTimeoutSeconds : int.Parse(value);
+    }
+
+    /// <summary>
+    /// Get whether gRPC keep-alive should be sent without calls based on environment variables.
+    /// </summary>
+    /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull the value from.</param>
+    /// <returns>A boolean indicating whether gRPC keep-alive should be sent without calls.</returns>
+    public static bool GetDefaultGrpcKeepAliveWithoutCalls(IConfiguration? configuration = null)
+    {
+        var value = GetResourceValue(configuration, DaprGrpcKeepAliveWithoutCallsName);
+        return string.IsNullOrWhiteSpace(value) ? DefaultGrpcKeepAliveWithoutCalls : bool.Parse(value);
     }
 }
