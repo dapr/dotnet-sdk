@@ -220,7 +220,6 @@ internal sealed class ActorManager
         }
     }
 
-
     internal async Task<bool> FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
     {
         #pragma warning disable 0618

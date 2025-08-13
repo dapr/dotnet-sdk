@@ -31,7 +31,6 @@ internal sealed class WorkflowLoggingService(ILogger<WorkflowLoggingService> log
     public Task StartAsync(CancellationToken cancellationToken)
     {
         logger.Log(LogLevel.Information, "WorkflowLoggingService started");
-
         logger.Log(LogLevel.Information, "List of registered workflows");
         foreach (string item in registeredWorkflows)
         {

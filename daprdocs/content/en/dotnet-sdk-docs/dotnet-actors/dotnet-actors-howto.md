@@ -42,7 +42,6 @@ An actor class must also implement a constructor that accepts an `ActorService` 
 This project contains the implementation of the actor client which calls MyActor's method defined in Actor Interfaces.
 
 ## Prerequisites
-
 - [Dapr CLI]({{< ref install-dapr-cli.md >}}) installed.
 - Initialized [Dapr environment]({{< ref install-dapr-selfhost.md >}}).
 - [.NET 8](https://dotnet.microsoft.com/download) or [.NET 9](https://dotnet.microsoft.com/download) installed
@@ -464,5 +463,5 @@ Now you have successfully created an actor service and client. See the related l
 
 ## Related links
 
-- [.NET Dapr Actors client guide]({{< ref dotnet-actors-client.md >}})
-- [.NET Dapr Actors usage guide]({{< ref dotnet-actors-usage.md >}})
+- [.NET Dapr Actors client guide]({{% ref dotnet-actors-client.md %}})
+- [.NET Dapr Actors usage guide]({{% ref dotnet-actors-usage.md %}})

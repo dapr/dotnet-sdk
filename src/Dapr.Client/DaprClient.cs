@@ -891,7 +891,6 @@ public abstract class DaprClient : IDisposable
         IReadOnlyDictionary<string, string>? metadata = null,
         CancellationToken cancellationToken = default);
 
-
     /// <summary>
     /// Gets the current binary value associated with the <paramref name="key" /> from the Dapr state store.
     /// </summary>
