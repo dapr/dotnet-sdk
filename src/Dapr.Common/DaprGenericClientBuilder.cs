@@ -45,17 +45,17 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    internal string GrpcEndpoint { get; private set; }
+    protected internal string GrpcEndpoint { get; private set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    internal string HttpEndpoint { get; private set; }
+    protected internal string HttpEndpoint { get; private set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    internal Func<HttpClient>? HttpClientFactory { get; set; }
+    protected internal Func<HttpClient>? HttpClientFactory { get; set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
@@ -65,7 +65,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    internal GrpcChannelOptions GrpcChannelOptions { get; private set; }
+    protected internal GrpcChannelOptions GrpcChannelOptions { get; private set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
@@ -75,7 +75,7 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// <summary>
     /// Property exposed for testing purposes.
     /// </summary>
-    internal TimeSpan Timeout { get; private set; }
+    protected internal TimeSpan Timeout { get; private set; }
 
     /// <summary>
     /// Overrides the HTTP endpoint used by the Dapr client for communicating with the Dapr runtime.
@@ -185,8 +185,10 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// runtime gRPC client used by the consuming package.
     /// </summary>
     /// <param name="assembly">The assembly the dependencies are being built for.</param>
+    /// <param name="providedHttpClient"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    protected internal (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken) BuildDaprClientDependencies(Assembly assembly)
+    protected internal (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken)
+        BuildDaprClientDependencies(Assembly assembly, HttpClient? providedHttpClient = null)
     {
         var grpcEndpoint = new Uri(this.GrpcEndpoint);
         if (grpcEndpoint.Scheme != "http" && grpcEndpoint.Scheme != "https")
@@ -205,10 +207,13 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
         {
             throw new InvalidOperationException("The HTTP endpoint must use http or https.");
         }
-
-        //Configure the HTTP client
-        var httpClient = ConfigureHttpClient(assembly);
-        this.GrpcChannelOptions.HttpClient = httpClient;
+        
+        // If provided with an HttpClient, use it directory - this supports the one registered in DI otherwise
+        var httpClient = providedHttpClient ?? ConfigureHttpClient(assembly);
+        
+        // Apply the current GprcChannelOptions
+        var options = this.GrpcChannelOptions;
+        options.HttpClient = httpClient;
         
         var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);        
         return (channel, httpClient, httpEndpoint, this.DaprApiToken);
