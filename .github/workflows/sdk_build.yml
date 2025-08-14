@@ -118,6 +118,7 @@ jobs:
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   publish:
     name: Publish Packages
+    needs: ['build', 'test']
     if: |
       startswith(github.ref, 'refs/tags/v') &&
       !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
