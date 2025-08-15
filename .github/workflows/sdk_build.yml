@@ -139,7 +139,7 @@ jobs:
         id: set-matrix
         run: |
           echo "Generating package matrix..."
-          filtes=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
+          files=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$files" >> $GITHUB_OUTPUT
   
   publish:
