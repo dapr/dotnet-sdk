@@ -12,10 +12,10 @@ on:
     
   pull_request:
     branches: 
-    - master
-    - release-*
-    - dev-*
-    - feature-*
+      - master
+      - release-*
+      - dev-*
+      - feature-*
 
 jobs:
   build:
@@ -116,45 +116,78 @@ jobs:
       with:
         TRX_PATH: ${{ github.workspace }}/TestResults
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  publish:
-    name: Publish Packages
-    needs: ['build', 'test']
+  integration-test:
+    uses: ./.github/workflows/itests.yml
+  discover:
+    name: 'Discover Packages'
+    needs: ['build', 'test', 'integration-test']
+    runs-on: ubuntu-latest
     if: |
       startswith(github.ref, 'refs/tags/v') &&
       !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
-    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
           name: packages
           path: packages
-
-      - name: List packages (for sanity check)
-        run: ls -R
-        working-directory: packages
-
-      - name: Publish binaries to github for tags
-        if: startswith(github.ref, 'refs/tags/v')
+      - name: List packages
+        run: ls packages/*.nupkg
+      - name: Generate matrix
+        id: set-matrix
         run: |
-          sudo npm install --silent --no-progress -g github-release-cli@1.3.1
-
-          OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          RELEASE_ARTIFACT=(./packages/*)
-
-          export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
-          echo "Uploading Nuget packages to GitHub Release"
-          github-release upload \
-            --owner $OWNER_NAME \
-            --repo $REPO_NAME \
-            --body "Release dapr dotnet SDK v${REL_VERSION}" \
-            --tag "v${REL_VERSION}" \
-            --name "Dapr dotnet SDK v${REL_VERSION}" \
-            --prerelease true \
-            ${RELEASE_ARTIFACT[*]}
-
-      - name: Publish nuget packages to nuget.org
-        if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+          echo "Generating package matrix..."
+          filtes=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$files" >> $GITHUB_OUTPUT
+  
+  publish:
+    name: Publish Packages
+    needs: ['discover']
+    if: |
+      startswith(github.ref, 'refs/tags/v') &&
+      !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover-packages.outputs.matrix) }}
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: Publish ${{ matrix.package }} to NuGet
         run: |
-          dotnet nuget push "./packages/Dapr*.nupkg" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "${{ matrix.package }}" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
+          
+#      - name: List packages (for sanity check)
+#        run: ls -R
+#        working-directory: packages
+#
+#      - name: Publish binaries to github for tags
+#        if: startswith(github.ref, 'refs/tags/v')
+#        run: |
+#          sudo npm install --silent --no-progress -g github-release-cli@1.3.1
+#
+#          OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
+#          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+#          RELEASE_ARTIFACT=(./packages/*)
+#
+#          export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
+#          echo "Uploading Nuget packages to GitHub Release"
+#          github-release upload \
+#            --owner $OWNER_NAME \
+#            --repo $REPO_NAME \
+#            --body "Release dapr dotnet SDK v${REL_VERSION}" \
+#            --tag "v${REL_VERSION}" \
+#            --name "Dapr dotnet SDK v${REL_VERSION}" \
+#            --prerelease true \
+#            ${RELEASE_ARTIFACT[*]}
+#
+#      - name: Publish nuget packages to nuget.org
+#        if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+#        run: |
+#          dotnet nuget push "./packages/Dapr*.nupkg" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json

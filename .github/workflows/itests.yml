@@ -1,21 +1,7 @@
 name: integration-test
 
-on: 
-  push:
-    branches:
-      - master
-      - release-*
-      - dev-*
-      - feature-*
-    tags:
-      - v*
-    
-  pull_request:
-    branches: 
-    - master
-    - release-*
-    - dev-*
-    - feature-*
+on:
+  workflow_call:
 
 jobs:
   build:
@@ -43,8 +29,8 @@ jobs:
       GOARCH: amd64
       GOPROXY: https://proxy.golang.org
       DAPR_CLI_VER: 1.15.2
-      DAPR_RUNTIME_VER: 1.15.9
-      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/release-1.15/install/install.sh
+      DAPR_RUNTIME_VER: 1.16.0-rc.3
+      DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/release-1.16/install/install.sh
       DAPR_CLI_REF: ''
     steps:
       - name: Set up Dapr CLI
