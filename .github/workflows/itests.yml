@@ -1,7 +1,21 @@
 name: integration-test
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - master
+      - release-*
+      - dev-*
+      - feature-*
+    tags:
+      - v*
+  
+  pull_request:
+    branches:
+      - master
+      - release-*
+      - dev-*
+      - feature-*
 
 jobs:
   build:

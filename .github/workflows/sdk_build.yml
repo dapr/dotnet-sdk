@@ -12,10 +12,10 @@ on:
     
   pull_request:
     branches: 
-    - master
-    - release-*
-    - dev-*
-    - feature-*
+      - master
+      - release-*
+      - dev-*
+      - feature-*
 
 jobs:
   build:
@@ -116,11 +116,11 @@ jobs:
       with:
         TRX_PATH: ${{ github.workspace }}/TestResults
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  integration-test:
-    uses: ./.github/workflows/itests.yml
+#  integration-test:
+#    uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'test', 'integration-test']
+    needs: ['build', 'test'] #, 'integration-test']
     runs-on: ubuntu-latest
     if: |
       startswith(github.ref, 'refs/tags/v') &&
