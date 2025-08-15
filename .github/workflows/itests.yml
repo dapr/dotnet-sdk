@@ -2,8 +2,6 @@ name: integration-test
 
 on:
   workflow_call:
-    inputs:
-    secrets:
 
 jobs:
   build:
