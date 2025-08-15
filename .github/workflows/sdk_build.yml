@@ -139,7 +139,7 @@ jobs:
         id: set-matrix
         run: |
           echo "Generating package matrix..."
-          filtes=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
+          files=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$files" >> $GITHUB_OUTPUT
   
   publish:
@@ -152,7 +152,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.discover-packages.outputs.matrix) }}
+        package: ${{ fromJson(needs.discover.outputs.matrix) }}
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
