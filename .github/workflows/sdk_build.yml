@@ -144,7 +144,7 @@ jobs:
   
   publish:
     name: Publish Packages
-    needs: ['discover-packages']
+    needs: ['discover']
     if: |
       startswith(github.ref, 'refs/tags/v') &&
       !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
