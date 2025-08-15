@@ -28,7 +28,8 @@ public class DaprTaskStore : ITaskStore
     /// <param name="stateStoreName">The name of the state store component to use</param>
     public DaprTaskStore(DaprClient daprClient, string stateStoreName = "statestore")
     {
-        _daprClient = daprClient ?? throw new ArgumentNullException(nameof(daprClient));
+        ArgumentNullException.ThrowIfNull(daprClient, nameof(daprClient));
+        _daprClient = daprClient;
         _stateStoreName = stateStoreName;
     }
 
@@ -40,10 +41,10 @@ public class DaprTaskStore : ITaskStore
     /// <returns>The task if found, null otherwise.</returns>
     public async Task<AgentTask?> GetTaskAsync(string taskId, CancellationToken cancellationToken = default)
     {
-        if (taskId == null) throw new ArgumentNullException(nameof(taskId));
+        ArgumentNullException.ThrowIfNull(taskId, nameof(taskId));
 
         // Retrieve the AgentTask from Dapr state store with strong consistency to get the latest data
-        AgentTask? task = await _daprClient.GetStateAsync<AgentTask>(
+        var task = await _daprClient.GetStateAsync<AgentTask>(
                               _stateStoreName,
                               key: taskId,
                               consistencyMode: ConsistencyMode.Strong,
@@ -60,7 +61,7 @@ public class DaprTaskStore : ITaskStore
     /// <returns>A task representing the operation.</returns>
     public async Task SetTaskAsync(AgentTask task, CancellationToken cancellationToken = default)
     {
-        if (task == null) throw new ArgumentNullException(nameof(task));
+        ArgumentNullException.ThrowIfNull(task, nameof(task));
         // The task.Id will be used as the key. We save the entire AgentTask object.
         // Use strong consistency on write; concurrency defaults to last-write-wins for new entries.
         await _daprClient.SaveStateAsync(
@@ -84,7 +85,7 @@ public class DaprTaskStore : ITaskStore
     /// <returns>The updated task status.</returns>
     public async Task<AgentTaskStatus> UpdateStatusAsync(string taskId, TaskState status, Message? message = null, CancellationToken cancellationToken = default)
     {
-        if (taskId == null) throw new ArgumentNullException(nameof(taskId));
+        ArgumentNullException.ThrowIfNull(taskId, nameof(taskId));
         // Fetch state with its ETag for concurrency control.
         // We use strong consistency to get the latest state and ETag.
         var (existingTask, etag) = await _daprClient.GetStateAndETagAsync<AgentTask>(
@@ -141,9 +142,9 @@ public class DaprTaskStore : ITaskStore
     /// <returns>The push notification configuration if found, null otherwise.</returns>
     public async Task<TaskPushNotificationConfig?> GetPushNotificationAsync(string taskId, string notificationConfigId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(taskId)) throw new ArgumentNullException(nameof(taskId));
-        if (string.IsNullOrWhiteSpace(notificationConfigId)) throw new ArgumentNullException(nameof(notificationConfigId));
-
+        ArgumentException.ThrowIfNullOrWhiteSpace(taskId, nameof(taskId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(notificationConfigId, nameof(notificationConfigId));
+        
         return await _daprClient.GetStateAsync<TaskPushNotificationConfig>(
             _stateStoreName,
             key: PushCfgKey(taskId, notificationConfigId),
@@ -160,7 +161,7 @@ public class DaprTaskStore : ITaskStore
     /// <returns>A task representing the operation.</returns>
     public async Task SetPushNotificationConfigAsync(TaskPushNotificationConfig pushNotificationConfig, CancellationToken cancellationToken = default)
     {
-        if (pushNotificationConfig is null) throw new ArgumentNullException(nameof(pushNotificationConfig));
+        ArgumentNullException.ThrowIfNull(pushNotificationConfig, nameof(pushNotificationConfig));
 
         // Adjust these property names if your model differs:
         var taskId = pushNotificationConfig.TaskId ?? throw new ArgumentException("Config.TaskId is required.");
@@ -185,7 +186,7 @@ public class DaprTaskStore : ITaskStore
                 metadata: null,
                 cancellationToken: cancellationToken);
 
-            var list = (index ?? Array.Empty<string>()).ToList();
+            var list = index.ToList();
             if (!list.Contains(configId, StringComparer.Ordinal))
                 list.Add(configId);
 
@@ -213,34 +214,36 @@ public class DaprTaskStore : ITaskStore
     /// <returns>The push notification configuration if found, null otherwise.</returns>
     public async Task<IEnumerable<TaskPushNotificationConfig>> GetPushNotificationsAsync(string taskId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(taskId)) throw new ArgumentNullException(nameof(taskId));
+        ArgumentNullException.ThrowIfNull(taskId, nameof(taskId));
 
         var ids = await _daprClient.GetStateAsync<string[]>(
             _stateStoreName,
             key: PushCfgIndexKey(taskId),
             consistencyMode: ConsistencyMode.Strong,
             metadata: null,
-            cancellationToken: cancellationToken) ?? Array.Empty<string>();
+            cancellationToken: cancellationToken);
 
-        if (ids.Length == 0) return Array.Empty<TaskPushNotificationConfig>();
+        if (ids.Length == 0) 
+            return [];
 
         const int maxParallel = 8;
-        using var gate = new SemaphoreSlim(maxParallel);
         var bag = new ConcurrentBag<TaskPushNotificationConfig>();
 
         await Task.WhenAll(ids.Select(async id =>
         {
+            using var gate = new SemaphoreSlim(maxParallel);
             await gate.WaitAsync(cancellationToken);
             try
             {
-                var cfg = await _daprClient.GetStateAsync<TaskPushNotificationConfig>(
+                var cfg = await _daprClient.GetStateAsync<TaskPushNotificationConfig?>(
                     _stateStoreName,
                     key: PushCfgKey(taskId, id),
                     consistencyMode: ConsistencyMode.Strong,
                     metadata: null,
                     cancellationToken: cancellationToken);
 
-                if (cfg is not null) bag.Add(cfg);
+                if (cfg is not null) 
+                    bag.Add(cfg);
             }
             finally
             {
