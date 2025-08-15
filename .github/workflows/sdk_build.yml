@@ -152,7 +152,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.discover-packages.outputs.matrix) }}
+        package: ${{ fromJson(needs.discover.outputs.matrix) }}
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
