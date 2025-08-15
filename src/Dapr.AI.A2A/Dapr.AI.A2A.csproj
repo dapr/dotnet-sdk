@@ -9,6 +9,10 @@
         <VersionSuffix>alpha</VersionSuffix>
     </PropertyGroup>
     
+    <PropertyGroup>
+        <SignAssembly>false</SignAssembly>
+    </PropertyGroup>
+
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
