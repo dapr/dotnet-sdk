@@ -127,20 +127,20 @@ jobs:
       !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      steps:
-        - name: Download release artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: packages
-            path: packages
-        - name: List packages
-          run: ls packages/*.nupkg
-        - name: Generate matrix
-          id: set-matrix
-          run: |
-            echo "Generating package matrix..."
-            filtes=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
-            echo "matrix=$files" >> $GITHUB_OUTPUT
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: List packages
+        run: ls packages/*.nupkg
+      - name: Generate matrix
+        id: set-matrix
+        run: |
+          echo "Generating package matrix..."
+          filtes=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$files" >> $GITHUB_OUTPUT
   
   publish:
     name: Publish Packages
