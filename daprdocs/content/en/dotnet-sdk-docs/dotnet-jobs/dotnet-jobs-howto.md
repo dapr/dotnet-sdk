@@ -264,17 +264,32 @@ app.Run();
 
 Finally, we have to register the job we want scheduled. Note that from here, all SDK methods have cancellation token support and use a default token if not otherwise set.
 
-There are three different ways to set up a job that vary based on how you want to configure the schedule:
-
-### One-time job
-A one-time job is exactly that; it will run at a single point in time and will not repeat. This approach requires that you select a job name and specify a time it should be triggered.
+There are three different ways to set up a job that vary based on how you want to configure the schedule. The following
+shows the different arguments available when scheduling a job:
 
 | Argument Name | Type | Description | Required |
 |---|---|---|---|
 | jobName | string | The name of the job being scheduled. | Yes |
-| scheduledTime | DateTime | The point in time when the job should be run. | Yes |
+| schedule | DaprJobSchedule | The schedule defining when the job will be triggered. | Yes |
 | payload | ReadOnlyMemory<byte> | Job data provided to the invocation endpoint when triggered. | No |
+| startingFrom | DateTime | The point in time from which the job schedule should start. | No |
+| repeats | int | The maximum number of times the job should be triggered. | No |
+| ttl | When the job should expires and no longer trigger. | No |
+| overwrite | bool | A flag indicating whether an existing job should be overwritten when submitted or false to require that an existing job with the same name be deleted first. | No |
 | cancellationToken | CancellationToken | Used to cancel out of the operation early, e.g. because of an operation timeout. | No |
+
+### `DaprJobSchedule`
+All jobs are scheduled via the SDK using the `DaprJobSchedule` which creates an expression passed to the
+runtime to schedule jobs. There are several static methods exposed on the `DaprJobSchedule` used to faciliate
+easy registration of each of the kinds of job schedules available as follows. This separates specifying
+the job schedule itself from any additional options like repeating the operation or providing a cancellation token.
+
+### One-time job
+A one-time job is exactly that; it will run at a single point in time and will not repeat. 
+
+This approach requires that you select a job name and specify a time it should be triggered.
+
+`DaprJobSchedule.FromDateTime(DateTimeOffset scheduledTime)`
 
 One-time jobs can be scheduled from the Dapr Jobs client as in the following example:
 
@@ -283,26 +298,19 @@ public class MyOperation(DaprJobsClient daprJobsClient)
 {
     public async Task ScheduleOneTimeJobAsync(CancellationToken cancellationToken)
     {
-        var today = DateTime.UtcNow;
+        var today = DateTimeOffset.UtcNow;
         var threeDaysFromNow = today.AddDays(3);
 
-        await daprJobsClient.ScheduleOneTimeJobAsync("myJobName", threeDaysFromNow, cancellationToken: cancellationToken);
+        var schedule = DaprJobSchedule.FromDateTime(threeDaysFromNow);
+        await daprJobsClient.ScheduleJobAsync("job", schedule, cancellationToken: cancellationToken);
     }
 }
 ```
 
 ### Interval-based job
-An interval-based job is one that runs on a recurring loop configured as a fixed amount of time, not unlike how [reminders](https://docs.dapr.io/developing-applications/building-blocks/actors/actors-timers-reminders/#actor-reminders) work in the Actors building block today. These jobs can be scheduled with a number of optional arguments as well:
+An interval-based job is one that runs on a recurring loop configured as a fixed amount of time, not unlike how [reminders](https://docs.dapr.io/developing-applications/building-blocks/actors/actors-timers-reminders/#actor-reminders) work in the Actors building block today.
 
-| Argument Name | Type | Description | Required |
-|---|---|---|---|
-| jobName | string | The name of the job being scheduled. | Yes |
-| interval | TimeSpan | The interval at which the job should be triggered. | Yes |
-| startingFrom | DateTime | The point in time from which the job schedule should start. | No |
-| repeats | int | The maximum number of times the job should be triggered. | No |
-| ttl | When the job should expires and no longer trigger. | No |
-| payload | ReadOnlyMemory<byte> | Job data provided to the invocation endpoint when triggered. | No |
-| cancellationToken | CancellationToken | Used to cancel out of the operation early, e.g. because of an operation timeout. | No |
+`DaprJobSchedule.FromDuration(TimeSpan interval)`
 
 Interval-based jobs can be scheduled from the Dapr Jobs client as in the following example:
 
@@ -315,41 +323,64 @@ public class MyOperation(DaprJobsClient daprJobsClient)
         var hourlyInterval = TimeSpan.FromHours(1);
 
         //Trigger the job hourly, but a maximum of 5 times
-        await daprJobsClient.ScheduleIntervalJobAsync("myJobName", hourlyInterval, repeats: 5), cancellationToken: cancellationToken;
+        var schedule = DaprJobSchedule.FromDuration(hourlyInterval);
+        await daprJobsClient.ScheduleJobAsync("job", schedule, repeats: 5, cancellationToken: cancellationToken);
     }
 }
 ```
 
 ### Cron-based job
-A Cron-based job is scheduled using a Cron expression. This gives more calendar-based control over when the job is triggered as it can used calendar-based values in the expression.  Like the other options, these jobs can be scheduled with a number of optional arguments as well:
+A Cron-based job is scheduled using a Cron expression. This gives more calendar-based control over when the job is triggered as it can used calendar-based values in the expression.
 
-| Argument Name | Type | Description | Required |
-|---|---|---|---|
-| jobName | string | The name of the job being scheduled. | Yes |
-| cronExpression | string | The systemd Cron-like expression indicating when the job should be triggered. | Yes |
-| startingFrom | DateTime | The point in time from which the job schedule should start. | No |
-| repeats | int | The maximum number of times the job should be triggered. | No |
-| ttl | When the job should expires and no longer trigger. | No |
-| payload | ReadOnlyMemory<byte> | Job data provided to the invocation endpoint when triggered. | No |
-| cancellationToken | CancellationToken | Used to cancel out of the operation early, e.g. because of an operation timeout. | No |
+`DaprJobSchedule.FromCronExpression(string cronExpression)`
 
-A Cron-based job can be scheduled from the Dapr Jobs client as follows:
+There are two different approaches supported to scheduling a Cron-based job in the Dapr SDK.
 
-```cs
+#### Provide your own Cron expression
+You can just provide your own Cron expression via a string via `DaprJobSchedule.FromExpression()`:
+
+```csharp
 public class MyOperation(DaprJobsClient daprJobsClient)
 {
     public async Task ScheduleCronJobAsync(CancellationToken cancellationToken)
     {
         //At the top of every other hour on the fifth day of the month
         const string cronSchedule = "0 */2 5 * *";
+        var schedule = DaprJobSchedule.FromExpression(cronSchedule);
 
         //Don't start this until next month
         var now = DateTime.UtcNow;
         var oneMonthFromNow = now.AddMonths(1);
         var firstOfNextMonth = new DateTime(oneMonthFromNow.Year, oneMonthFromNow.Month, 1, 0, 0, 0);
 
-        //Trigger the job hourly, but a maximum of 5 times
-        await daprJobsClient.ScheduleCronJobAsync("myJobName", cronSchedule, dueTime: firstOfNextMonth, cancellationToken: cancellationToken);
+        await daprJobsClient.ScheduleJobAsync("myJobName", )
+        await daprJobsClient.ScheduleCronJobAsync("myJobName", schedule, dueTime: firstOfNextMonth, cancellationToken: cancellationToken);
+    }
+}
+```
+
+#### Use the `CronExpressionBuilder`
+Alternatively, you can use our fluent builder to produce a valid Cron expression:
+
+```csharp
+public class MyOperation(DaprJobsClient daprJobsClient)
+{
+    public async Task ScheduleCronJobAsync(CancellationToken cancellationToken)
+    {
+        //At the top of every other hour on the fifth day of the month
+        var cronExpression = new CronExpressionBuilder()
+            .Every(EveryCronPeriod.Hour, 2)
+            .On(OnCronPeriod.DayOfMonth, 5)
+            .ToString();
+        var schedule = DaprJobSchedule.FromExpression(cronExpression);
+
+        //Don't start this until next month
+        var now = DateTime.UtcNow;
+        var oneMonthFromNow = now.AddMonths(1);
+        var firstOfNextMonth = new DateTime(oneMonthFromNow.Year, oneMonthFromNow.Month, 1, 0, 0, 0);
+
+        await daprJobsClient.ScheduleJobAsync("myJobName", )
+        await daprJobsClient.ScheduleCronJobAsync("myJobName", schedule, dueTime: firstOfNextMonth, cancellationToken: cancellationToken);
     }
 }
 ```
