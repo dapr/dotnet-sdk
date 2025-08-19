@@ -74,12 +74,10 @@ public abstract class DaprConversationClient : DaprAIClient
     /// <summary>
     /// Sends various inputs to the large language model via the Conversational building block on the Dapr sidecar.
     /// </summary>
-    /// <param name="daprConversationComponentName">The name of the Dapr conversation component.</param>
-    /// <param name="inputs">The input values to send.</param>
-    /// <param name="options">Optional options used to configure the conversation.</param>
+    /// <param name="inputs">The inputs for the conversation.</param>
+    /// <param name="options">Options used to configure the conversation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The response(s) provided by the LLM provider.</returns>
-    public abstract Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName,
-        IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
-        CancellationToken cancellationToken = default);
+    public abstract Task<ConversationResponse> ConverseAsync(IReadOnlyList<ConversationInput> inputs,
+        ConversationOptions options, CancellationToken cancellationToken = default);
 }
