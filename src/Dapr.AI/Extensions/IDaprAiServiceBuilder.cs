@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Common;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.AI.Extensions;
 

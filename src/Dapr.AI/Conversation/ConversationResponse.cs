@@ -18,4 +18,4 @@ namespace Dapr.AI.Conversation;
 /// </summary>
 /// <param name="Outputs">The collection of conversation results.</param>
 /// <param name="ConversationId">The identifier of an existing or newly created conversation.</param>
-public record DaprConversationResponse(IReadOnlyList<DaprConversationResult> Outputs, string? ConversationId = null);
+public record ConversationResponse(IReadOnlyList<ConversationResponseResult> Outputs, string? ConversationId = null);
