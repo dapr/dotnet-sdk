@@ -2,7 +2,7 @@
 type: docs
 title: "Error Model in the Dapr .NET SDK"
 linkTitle: "Error Model"
-weight: 62000
+weight: 85100
 description: Learn how to use the richer error model in the .NET SDK.
 ---
 

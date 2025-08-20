@@ -2,7 +2,7 @@
 type: docs
 title: "Dapr .NET SDK Development with .NET Aspire"
 linkTitle: ".NET Aspire"
-weight: 40000
+weight: 90300
 description: Learn about local development with .NET Aspire
 ---
 

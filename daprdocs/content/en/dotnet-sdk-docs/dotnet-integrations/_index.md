@@ -1,9 +1,9 @@
 ---
 type: docs
 title: "Developing applications with the Dapr .NET SDK"
-linkTitle: "Development Guidance"
-weight: 100000
-description: Guidance for developing Dapr applications with the .NET SDK
+linkTitle: "Deployment Integrations"
+weight: 90000
+description: Deployment integrations with the Dapr .NET SDK
 ---
 
 ## Thinking more than one at a time

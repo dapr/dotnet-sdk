@@ -2,7 +2,7 @@
 type: docs
 title: "Dapr source code analyzers and generators"
 linkTitle: "Roslyn Analyzers/Generators"
-weight: 70000
+weight: 85300
 description: Code analyzers and fixes for common Dapr issues
 no_list: true
 ---
