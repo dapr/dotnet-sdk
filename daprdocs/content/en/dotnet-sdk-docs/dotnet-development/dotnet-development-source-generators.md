@@ -69,7 +69,7 @@ the `EnableNETAnalyzers` property to `false` in your csproj file.
 
 ## Analyzer Categories
 The following are each of the eligible categories that an analyzer can be assigned to and are modeled after the 
-standard categories used by the.NET analyzers:
+standard categories used by the .NET analyzers:
 - Design
 - Documentation
 - Globalization
