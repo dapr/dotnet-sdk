@@ -1,9 +1,9 @@
 ﻿---
 type: docs
-title: "Dapr .NET SDK Development with Dapr CLI"
+title: "Experimental Attributes"
 linkTitle: "Experimental Attributes"
 weight: 61000
-description: Learn about local development with the Dapr CLI
+description: Learn about why we mark some methods with the `[Experimental]` attribute
 ---
 
 ## Experimental Attributes
