@@ -75,7 +75,7 @@ All details implement the abstract `DaprExtendedErrorDetail` and have an associa
 
 ## RetryInfo
 
-Information telling the client how long to wait before they should retry. Provides a `DaprRetryDelay` with the properties 
+Information notifying the client how long to wait before they should retry. Provides a `DaprRetryDelay` with the properties 
 `Second` (offset in seconds) and `Nano` (offset in nanoseconds).
 
 ## DebugInfo
