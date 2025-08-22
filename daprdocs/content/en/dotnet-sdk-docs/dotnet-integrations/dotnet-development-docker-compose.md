@@ -2,7 +2,7 @@
 type: docs
 title: "Dapr .NET SDK Development with Docker-Compose"
 linkTitle: "Docker Compose"
-weight: 60000
+weight: 90200
 description: Learn about local development with Docker-Compose
 ---
 
