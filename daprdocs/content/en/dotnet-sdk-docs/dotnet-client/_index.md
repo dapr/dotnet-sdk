@@ -32,17 +32,37 @@ You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke yo
 
 {{< tabpane text=true >}}
 
-{{% tab header="SDK" %}}
+{{% tab header="ASP.NET Core Project" %}}
 ```csharp
-using var client = new DaprClientBuilder().
-                UseTimeout(TimeSpan.FromSeconds(2)). // Optionally, set a timeout
-                Build(); 
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDaprClient();
+var app = builder.Build();
 
+using var scope = app.Services.CreateScope();
+var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+ 
 // Invokes a POST method named "deposit" that takes input of type "Transaction"
 var data = new { id = "17", amount = 99m };
 var account = await client.InvokeMethodAsync<Account>("routing", "deposit", data, cancellationToken);
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
+{{% /tab %}}
+
+{{% tab header="Console Project" %}}
+using Microsoft.Extensins.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddDaprClient();
+var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+
+// Invokes a POST method named "deposit" that takes input of type "Transaction"
+var data = new { id = "17", amount = 99m };
+var account = await client.InvokeMethodAsync<Account>("routing", "deposit", data, cancellationToken);
+Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 {{% /tab %}}
 
 {{% tab header="HTTP" %}}
