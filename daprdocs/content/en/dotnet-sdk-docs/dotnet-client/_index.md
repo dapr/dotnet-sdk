@@ -17,7 +17,16 @@ The Dapr client package allows you to interact with other Dapr applications from
 
 ## Building blocks
 
-The .NET SDK allows you to interface with all of the [Dapr building blocks]({{% ref building-blocks %}}).
+The .NET SDK allows you to interface with all of the [Dapr building blocks]({{% ref building-blocks %}}). 
+
+{{% alert title="Note" color="primary" %}}
+
+We will only include the dependency injection registration for the `DaprClient` in the first example 
+(service invocation). In nearly all other examples, it's assumed you've already registered the `DaprClient` in your 
+application in the latter examples and have injected an instance of `DaprClient` into your code as an instance named 
+`client`.
+
+{{% /alert %}}
 
 ### Invoke a service
 
@@ -32,17 +41,37 @@ You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke yo
 
 {{< tabpane text=true >}}
 
-{{% tab header="SDK" %}}
+{{% tab header="ASP.NET Core Project" %}}
 ```csharp
-using var client = new DaprClientBuilder().
-                UseTimeout(TimeSpan.FromSeconds(2)). // Optionally, set a timeout
-                Build(); 
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDaprClient();
+var app = builder.Build();
 
+using var scope = app.Services.CreateScope();
+var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+ 
 // Invokes a POST method named "deposit" that takes input of type "Transaction"
 var data = new { id = "17", amount = 99m };
 var account = await client.InvokeMethodAsync<Account>("routing", "deposit", data, cancellationToken);
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
+{{% /tab %}}
+
+{{% tab header="Console Project" %}}
+using Microsoft.Extensins.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddDaprClient();
+var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+
+// Invokes a POST method named "deposit" that takes input of type "Transaction"
+var data = new { id = "17", amount = 99m };
+var account = await client.InvokeMethodAsync<Account>("routing", "deposit", data, cancellationToken);
+Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 {{% /tab %}}
 
 {{% tab header="HTTP" %}}
@@ -79,8 +108,6 @@ Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
 ### Save & get application state
 
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 var state = new Widget() { Size = "small", Color = "yellow", };
 await client.SaveStateAsync(storeName, stateKeyName, state, cancellationToken: cancellationToken);
 Console.WriteLine("Saved State!");
@@ -106,8 +133,6 @@ var query = "{" +
                     "}" +
                 "]" +
             "}";
-
-var client = new DaprClientBuilder().Build();
 var queryResponse = await client.QueryStateAsync<Account>("querystore", query, cancellationToken: cancellationToken);
 
 Console.WriteLine($"Got {queryResponse.Results.Count}");
@@ -122,8 +147,6 @@ foreach (var account in queryResponse.Results)
 ### Publish messages
 
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 var eventData = new { Id = "17", Amount = 10m, };
 await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
 Console.WriteLine("Published deposit event!");
@@ -135,8 +158,6 @@ Console.WriteLine("Published deposit event!");
 ### Interact with output bindings
 
 ```csharp
-using var client = new DaprClientBuilder().Build();
-
 // Example payload for the Twilio SendGrid binding
 var email = new 
 {
@@ -217,8 +238,6 @@ Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secr
 
 ### Get Configuration Keys
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 // Retrieve a specific set of keys.
 var specificItems = await client.GetConfiguration("configstore", new List<string>() { "key1", "key2" });
 Console.WriteLine($"Here are my values:\n{specificItems[0].Key} -> {specificItems[0].Value}\n{specificItems[1].Key} -> {specificItems[1].Value}");
@@ -234,8 +253,6 @@ foreach (var item in configItems)
 
 ### Subscribe to Configuration Keys
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 // The Subscribe Configuration API returns a wrapper around an IAsyncEnumerable<IEnumerable<ConfigurationItem>>.
 // Iterate through it by accessing its Source in a foreach loop. The loop will end when the stream is severed
 // or if the cancellation token is cancelled.
@@ -256,6 +273,8 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 ```csharp
 using System;
 using Dapr.Client;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LockService
 {
@@ -264,9 +283,18 @@ namespace LockService
         [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
         static async Task Main(string[] args)
         {
-            var daprLockName = "lockstore";
-            var fileName = "my_file_name";
-            var client = new DaprClientBuilder().Build();
+            const string daprLockName = "lockstore";
+            const string fileName = "my_file_name";
+            
+            var builder = Host.CreateDefaultBuilder();
+            builder.ConfigureServices(services =>
+            {
+                services.AddDaprClient();
+            });
+            var app = builder.Build();
+            
+            using var scope = app.Services.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
      
             // Locking with this approach will also unlock it automatically, as this is a disposable object
             await using (var fileLock = await client.Lock(DAPR_LOCK_NAME, fileName, "random_id_abc123", 60))
@@ -298,8 +326,17 @@ namespace LockService
         static async Task Main(string[] args)
         {
             var daprLockName = "lockstore";
-            var client = new DaprClientBuilder().Build();
-
+            
+            var builder = Host.CreateDefaultBuilder();
+            builder.ConfigureServices(services =>
+            {
+                services.AddDaprClient();
+            });
+            var app = builder.Build();
+            
+            using var scope = app.Services.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+            
             var response = await client.Unlock(DAPR_LOCK_NAME, "my_file_name", "random_id_abc123"));
             Console.WriteLine(response.status);
         }
