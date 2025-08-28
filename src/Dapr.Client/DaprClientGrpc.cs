@@ -2170,7 +2170,7 @@ internal class DaprClientGrpc : DaprClient
     /// <inheritdoc/>
     public override async Task<bool> CheckOutboundHealthAsync(CancellationToken cancellationToken = default)
     {
-        var path = "/v1.0/healthz/outbound";
+        const string path = "/v1.0/healthz/outbound";
         var request = new HttpRequestMessage(HttpMethod.Get, new Uri(this.httpEndpoint, path));
 
         if (this.apiTokenHeader is not null)
