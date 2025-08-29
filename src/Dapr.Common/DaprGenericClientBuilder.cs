@@ -11,8 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Reflection;
 using System.Text.Json;
+using Dapr.Common.Http;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
 
@@ -23,11 +23,16 @@ namespace Dapr.Common;
 /// </summary>
 public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuilder : class, IDaprClient
 {
+    private readonly IDaprHttpClientFactory daprHttpClientFactory;
+    
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprGenericClientBuilder{TClientBuilder}"/> class.
     /// </summary>
-    protected DaprGenericClientBuilder(IConfiguration? configuration = null)
+    protected DaprGenericClientBuilder(IDaprHttpClientFactory daprHttpClientFactory, IConfiguration? configuration = null)
     {
+        ArgumentNullException.ThrowIfNull(daprHttpClientFactory);
+        this.daprHttpClientFactory = daprHttpClientFactory;
+        
         this.GrpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint();
         this.HttpEndpoint = DaprDefaults.GetDefaultHttpEndpoint();
 
@@ -51,11 +56,6 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// Property exposed for testing purposes.
     /// </summary>
     internal string HttpEndpoint { get; private set; }
-
-    /// <summary>
-    /// Property exposed for testing purposes.
-    /// </summary>
-    internal Func<HttpClient>? HttpClientFactory { get; set; }
 
     /// <summary>
     /// Property exposed for testing purposes.
@@ -91,27 +91,6 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(httpEndpoint, nameof(httpEndpoint));
         this.HttpEndpoint = httpEndpoint;
-        return this;
-    }
-
-    /// <summary>
-    /// Exposed internally for testing purposes.
-    /// </summary>
-    internal DaprGenericClientBuilder<TClientBuilder> UseHttpClientFactory(Func<HttpClient> factory)
-    {
-        this.HttpClientFactory = factory;
-        return this;
-    }
-
-    /// <summary>
-    /// Overrides the legacy mechanism for building an HttpClient and uses the new <see cref="IHttpClientFactory"/>
-    /// introduced in .NET Core 2.1.
-    /// </summary>
-    /// <param name="httpClientFactory">The factory used to create <see cref="HttpClient"/> instances.</param>
-    /// <returns></returns>
-    public DaprGenericClientBuilder<TClientBuilder> UseHttpClientFactory(IHttpClientFactory httpClientFactory)
-    {
-        this.HttpClientFactory = httpClientFactory.CreateClient;
         return this;
     }
 
@@ -184,9 +163,8 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// Builds out the inner DaprClient that provides the core shape of the
     /// runtime gRPC client used by the consuming package.
     /// </summary>
-    /// <param name="assembly">The assembly the dependencies are being built for.</param>
     /// <exception cref="InvalidOperationException"></exception>
-    protected internal (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken) BuildDaprClientDependencies(Assembly assembly)
+    protected internal (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken) BuildDaprClientDependencies()
     {
         var grpcEndpoint = new Uri(this.GrpcEndpoint);
         if (grpcEndpoint.Scheme != "http" && grpcEndpoint.Scheme != "https")
@@ -207,40 +185,17 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
         }
 
         //Configure the HTTP client
-        var httpClient = ConfigureHttpClient(assembly);
-        this.GrpcChannelOptions.HttpClient = httpClient;
+        var httpClient = daprHttpClientFactory.CreateClient();
         
-        var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);        
-        return (channel, httpClient, httpEndpoint, this.DaprApiToken);
-    }
-
-    /// <summary>
-    /// Configures the HTTP client.
-    /// </summary>
-    /// <param name="assembly">The assembly the user agent is built from.</param>
-    /// <returns>The HTTP client to interact with the Dapr runtime with.</returns>
-    private HttpClient ConfigureHttpClient(Assembly assembly)
-    {
-        var httpClient = HttpClientFactory is not null ? HttpClientFactory() : new HttpClient();
-        
-        //Set the timeout as necessary
+        //Update the timeout to use the one provided in this builder
         if (this.Timeout > TimeSpan.Zero)
         {
             httpClient.Timeout = this.Timeout;
         }
+        this.GrpcChannelOptions.HttpClient = httpClient;
         
-        //Set the user agent
-        var userAgent = DaprClientUtilities.GetUserAgent(assembly);
-        httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent.ToString());
-        
-        //Set the API token
-        var apiTokenHeader = DaprClientUtilities.GetDaprApiTokenHeader(this.DaprApiToken);
-        if (apiTokenHeader is not null)
-        {
-            httpClient.DefaultRequestHeaders.Add(apiTokenHeader.Value.Key, apiTokenHeader.Value.Value);
-        }
-
-        return httpClient;
+        var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);        
+        return (channel, httpClient, httpEndpoint, this.DaprApiToken);
     }
 
     /// <summary>
