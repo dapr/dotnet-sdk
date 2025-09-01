@@ -21,7 +21,7 @@ internal static class ProtobufHelpers
         field.AddRange(items);
         return field;
     }
-    
+
     /// <summary>
     /// Creates a <see cref="Value"/> from an object.
     /// </summary>
