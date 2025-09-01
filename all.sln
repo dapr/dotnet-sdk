@@ -195,6 +195,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "examples\Hosting\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.A2A", "src\Dapr.AI.A2A\Dapr.AI.A2A.csproj", "{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.DotnetExtensions", "src\Dapr.AI.DotnetExtensions\Dapr.AI.DotnetExtensions.csproj", "{CA680984-0D3A-40E5-88FD-E2A125C6A126}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -515,6 +517,10 @@ Global
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -609,6 +615,7 @@ Global
 		{5BB15C36-BAF7-44F6-BF85-C533B8B47862} = {55E08C7F-81C8-4D0B-AB18-87C89B261477}
 		{6CD90C22-0F79-4D61-8DCE-5BE22C1304C4} = {55E08C7F-81C8-4D0B-AB18-87C89B261477}
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
