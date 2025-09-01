@@ -1,7 +1,7 @@
 ﻿apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: echo
+  name: conversation
 spec:
   type: conversation.echo
   version: v1
