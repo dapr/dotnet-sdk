@@ -1,11 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
-        <PackageId>Dapr.AI.DotnetExtensions</PackageId>
         <Nullable>enable</Nullable>
+        <PackageId>Dapr.AI.DotnetExtensions</PackageId>
+        <Title>Dapr .NET AI Implementation</Title>
         <Description>Dapr AI implementation for performing operations with the .NET AI extensions.</Description>
+        <VersionSuffix>alpha</VersionSuffix>
     </PropertyGroup>
 
     <ItemGroup>
