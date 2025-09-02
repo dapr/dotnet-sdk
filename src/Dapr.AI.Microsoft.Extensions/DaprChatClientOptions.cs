@@ -1,4 +1,4 @@
-﻿namespace Dapr.AI.DotnetExtensions;
+﻿namespace Dapr.AI.Microsoft.Extensions;
 
 /// <summary>
 /// Provides the required operation for configuring the <see cref="DaprChatClient"/>.

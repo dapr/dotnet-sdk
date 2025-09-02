@@ -3,7 +3,7 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <PackageId>Dapr.AI.DotnetExtensions</PackageId>
+        <PackageId>Dapr.AI.Microsoft.Extensions</PackageId>
         <Title>Dapr .NET AI Implementation</Title>
         <Description>Dapr AI implementation for performing operations with the .NET AI extensions.</Description>
         <VersionSuffix>alpha</VersionSuffix>

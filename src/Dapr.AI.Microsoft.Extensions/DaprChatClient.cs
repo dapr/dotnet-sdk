@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Type = System.Type;
 
-namespace Dapr.AI.DotnetExtensions;
+namespace Dapr.AI.Microsoft.Extensions;
 
 /// <summary>
 /// Provides a concrete implementation of <see cref="IChatClient"/> that uses the Dapr Conversation component.

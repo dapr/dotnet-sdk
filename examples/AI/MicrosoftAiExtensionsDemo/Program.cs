@@ -1,7 +1,5 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using Dapr.AI.Conversation.Extensions;
-using Dapr.AI.DotnetExtensions;
+﻿using Dapr.AI.Conversation.Extensions;
+using Dapr.AI.Microsoft.Extensions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
