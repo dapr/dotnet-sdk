@@ -360,7 +360,7 @@ to create an outbound connection. This means that if your application takes a de
 without using any of these Dapr components, it will indefinitely lock up during startup as the endpoint will never be established.
 
 A future release will remove these methods altogether and perform this as an internal SDK operation, so neither
-method should be relied on in general. Please reach out in the #dotnet-sdk channel in Discord for more clarification as
+method should be relied on in general. Reach out in the Discord #dotnet-sdk channel for more clarification as
 to whether your scenario may necessitate using this, but in most situations, you should not use either of these methods
 going forward.
 
