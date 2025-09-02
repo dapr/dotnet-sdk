@@ -356,7 +356,7 @@ for a successful HTTP status code and reports readiness based on this value.
 
 The "outbound" direction refers to the communication outbound from the Dapr runtime to your application. If your 
 application doesn't use actors, secret management, configuration retrieval or workflows, the runtime will not attempt
-to create an outbound connection, meaning that if your application just takes a naive dependency on `WaitForSidecarAsync`
+to create an outbound connection. This means that if your application takes a dependency on `WaitForSidecarAsync`
 without any of these Dapr components, it will indefinitely lock up during startup as the endpoint will never be established.
 
 A future release will remove these methods altogether and perform this as an internal SDK operation, so neither
