@@ -183,7 +183,7 @@ This method is simply opening a connection to the {{% ref health_api#wait-for-sp
 endpoint in the Dapr Health API and evaluating the HTTP status code returned to determine the health of the endpoint 
 as reported by the runtime.
 
-It's important to note that this and the `WaitForSidecarAsync` methods do nearly identical operations: `WaitForSidecarAsync`
+It's important to note that this and the `WaitForSidecarAsync` methods perform nearly identical operations; `WaitForSidecarAsync`
 polls the `CheckOutboundHealthAsync` endpoint indefinitely until it returns a healthy status value and they are intended 
 exclusively for situations like secrets or configuration retrieval. Using them in other scenarios will result in 
 unintended behavior (e.g., the endpoint never being ready because there are no registered components that use an 
