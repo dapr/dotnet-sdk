@@ -201,6 +201,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MicrosoftAiExtensionsDemo",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.DistributedLock", "src\Dapr.DistributedLock\Dapr.DistributedLock.csproj", "{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DistributedLock", "DistributedLock", "{11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedLock", "examples\DistributedLock\DistributedLock\DistributedLock.csproj", "{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -533,6 +537,10 @@ Global
 		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -630,6 +638,8 @@ Global
 		{CA680984-0D3A-40E5-88FD-E2A125C6A126} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A} = {3046DBF4-C2FF-4F3A-9176-E1C01E0A90E5}
 		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93} = {11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
