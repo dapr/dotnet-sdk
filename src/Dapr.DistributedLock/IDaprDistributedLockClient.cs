@@ -32,7 +32,7 @@ public interface IDaprDistributedLockClient : IDaprClient
     /// <param name="expiryInSeconds">The time after which the lock gets expired.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task"/> containing a <see cref="LockResponse"/></returns>
-    public Task<LockResponse> TryLockAsync(string storeName, string resourceId, string lockOwner, int expiryInSeconds,
+    public Task<LockResponse?> TryLockAsync(string storeName, string resourceId, string lockOwner, int expiryInSeconds,
         CancellationToken cancellationToken = default);
     
     /// <summary>
