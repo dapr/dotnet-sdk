@@ -199,6 +199,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.Microsoft.Extension
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MicrosoftAiExtensionsDemo", "examples\AI\MicrosoftAiExtensionsDemo\MicrosoftAiExtensionsDemo.csproj", "{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.DistributedLock", "src\Dapr.DistributedLock\Dapr.DistributedLock.csproj", "{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -527,6 +529,10 @@ Global
 		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -623,6 +629,7 @@ Global
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{CA680984-0D3A-40E5-88FD-E2A125C6A126} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A} = {3046DBF4-C2FF-4F3A-9176-E1C01E0A90E5}
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
