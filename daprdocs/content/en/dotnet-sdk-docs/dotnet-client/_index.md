@@ -361,7 +361,7 @@ without using any of these Dapr components, it will indefinitely lock up during 
 
 A future release will remove these methods altogether and perform this as an internal SDK operation, so neither
 method should be relied on in general. Reach out in the Discord #dotnet-sdk channel for more clarification as
-to whether your scenario may necessitate using this, but in most situations, you should not use either of these methods
+to whether your scenario may necessitate using this, but in most situations, these methods should not be required.
 going forward.
 
 
