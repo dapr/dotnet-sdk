@@ -22,12 +22,17 @@ var builder = Host.CreateDefaultBuilder(args);
 builder.ConfigureServices(services =>
 {
     services.AddDaprDistributedLock();
+    services.AddLogging();
+});
+builder.ConfigureLogging((_, loggingBuilder) =>
+{
+    loggingBuilder.AddConsole();
 });
 
 var app = builder.Build();
 
 using var scope = app.Services.CreateScope();
-var logger = scope.ServiceProvider.GetRequiredService<ILogger>();
+var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 var distributedLockClient = scope.ServiceProvider.GetRequiredService<DaprDistributedLockClient>();
 
 // Locks are disposable and will automatically unlock at the end of a using scope

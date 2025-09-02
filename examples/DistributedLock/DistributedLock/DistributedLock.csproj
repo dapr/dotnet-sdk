@@ -7,12 +7,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\src\Dapr.DistributedLock\Dapr.DistributedLock.csproj" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+      <PackageReference Include="Microsoft.Extensions.Hosting" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-      <PackageReference Include="Microsoft.Extensions.Hosting" />
+      <ProjectReference Include="..\..\..\src\Dapr.DistributedLock\Dapr.DistributedLock.csproj" />
     </ItemGroup>
 
 </Project>
