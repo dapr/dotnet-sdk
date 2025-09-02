@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Type = System.Type;
 
-namespace Dapr.AI.DotnetExtensions;
+namespace Dapr.AI.Microsoft.Extensions;
 
 /// <summary>
 /// Provides a concrete implementation of <see cref="IChatClient"/> that uses the Dapr Conversation component.
@@ -129,10 +129,20 @@ public class DaprChatClient(DaprConversationClient daprClient, IServiceProvider 
                         {
                             if (toolCall is CalledToolFunction calledToolFunction)
                             {
+                                var jsonArgs = new Dictionary<string, object?>();
+                                try
+                                {
+                                    jsonArgs = JsonSerializer.Deserialize<Dictionary<string, object?>>(
+                                        calledToolFunction.JsonArguments);
+                                }
+                                catch
+                                {
+                                    // Ignored - either it's not set, badly formed or something else is wrong
+                                }
+                                
                                 content.Add(new FunctionCallContent(calledToolFunction.Id ?? string.Empty,
                                     calledToolFunction.Name,
-                                    JsonSerializer.Deserialize<Dictionary<string, object?>>(
-                                        calledToolFunction.JsonArguments)));
+                                    jsonArgs));
                             }
                         }
 

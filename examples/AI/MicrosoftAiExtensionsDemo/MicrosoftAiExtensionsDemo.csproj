@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\src\Dapr.AI.DotnetExtensions\Dapr.AI.DotnetExtensions.csproj" />
+      <ProjectReference Include="..\..\..\src\Dapr.AI.Microsoft.Extensions\Dapr.AI.Microsoft.Extensions.csproj" />
     </ItemGroup>
 
 </Project>

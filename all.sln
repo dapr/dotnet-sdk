@@ -195,9 +195,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "examples\Hosting\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.A2A", "src\Dapr.AI.A2A\Dapr.AI.A2A.csproj", "{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.DotnetExtensions", "src\Dapr.AI.DotnetExtensions\Dapr.AI.DotnetExtensions.csproj", "{CA680984-0D3A-40E5-88FD-E2A125C6A126}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.Microsoft.Extensions", "src\Dapr.AI.Microsoft.Extensions\Dapr.AI.Microsoft.Extensions.csproj", "{CA680984-0D3A-40E5-88FD-E2A125C6A126}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetExtensionsDemo", "examples\AI\DotNetExtensionsDemo\DotNetExtensionsDemo.csproj", "{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MicrosoftAiExtensionsDemo", "examples\AI\MicrosoftAiExtensionsDemo\MicrosoftAiExtensionsDemo.csproj", "{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

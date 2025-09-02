@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
-namespace Dapr.AI.DotnetExtensions;
+namespace Dapr.AI.Microsoft.Extensions;
 
 /// <summary>
 /// Contains extension methods for an <see cref="IServiceCollection"/> for registering <see cref="DaprChatClient"/>.
