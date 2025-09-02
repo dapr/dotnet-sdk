@@ -184,7 +184,7 @@ endpoint in the Dapr Health API and evaluating the HTTP status code returned to 
 as reported by the runtime.
 
 It's important to note that this and the `WaitForSidecarAsync` methods perform nearly identical operations; `WaitForSidecarAsync`
-polls the `CheckOutboundHealthAsync` endpoint indefinitely until it returns a healthy status value and they are intended 
+polls the `CheckOutboundHealthAsync` endpoint indefinitely until it returns a healthy status value. They are intended 
 exclusively for situations like secrets or configuration retrieval. Using them in other scenarios will result in 
 unintended behavior (e.g., the endpoint never being ready because there are no registered components that use an 
 "outbound" channel).
