@@ -42,7 +42,6 @@
         <IncludeSymbols>false</IncludeSymbols>
 
         <!-- Additional NuGet package properties. -->
-        <Description>This package contains Roslyn analyzers for jobs.</Description>
         <PackageTags>$(PackageTags)</PackageTags>
     </PropertyGroup>
 </Project>
