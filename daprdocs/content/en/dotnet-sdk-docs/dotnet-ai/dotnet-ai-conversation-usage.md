@@ -19,7 +19,7 @@ instance throughout your application. `DaprConversationClient` instances are thr
 
 This can be aided by utilizing the dependency injection functionality. The registration method supports registration 
 as a singleton, a scoped instance or as transient (meaning it's recreated every time it's injected), but also enables
-registration to utilize values from an `IConfiguration` or other injected service in a way that's impractical when
+registration to utilize values from an `IConfiguration` or other injected services in a way that's impractical when
 creating the client from scratch in each of your classes.
 
 Avoid creating a `DaprConversationClient` for each operation.
