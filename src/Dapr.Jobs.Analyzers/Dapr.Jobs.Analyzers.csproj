@@ -3,12 +3,11 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
         <TargetFrameworks></TargetFrameworks>
-        <IsPackable>false</IsPackable>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <Description>This package contains Roslyn analyers for Dapr.Jobs</Description>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <NoWarn>$(NoWarn);RS1038</NoWarn>
-        <Description>This package contains Roslyn analyers for Dapr.Jobs</Description>
     </PropertyGroup>
     
     <ItemGroup>
@@ -34,16 +33,5 @@
         <DependentUpon>Resources.resx</DependentUpon>
       </Compile>
     </ItemGroup>
-
-    <PropertyGroup>
-        <!-- Suppress false-positive error NU5128 when packing analyzers with no lib/ref files. -->
-        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-
-        <!-- Suppress generation of symbol package (.snupkg). -->
-        <IncludeSymbols>false</IncludeSymbols>
-
-        <!-- Additional NuGet package properties. -->
-        <Description>This package contains Roslyn analyzers for jobs.</Description>
-        <PackageTags>$(PackageTags)</PackageTags>
-    </PropertyGroup>
+    
 </Project>
