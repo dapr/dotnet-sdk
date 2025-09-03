@@ -20,7 +20,7 @@ var app = builder.Build();
 using var scope = app.Services.CreateScope();
 var chatClient = scope.ServiceProvider.GetRequiredService<IChatClient>();
 
-// Vanilla message/resposne
+// Vanilla message/response
 var response = await chatClient.GetResponseAsync([
     new ChatMessage(ChatRole.User,
         "Please write me a poem in iambic pentameter about the joys of using Dapr to develop distributed applications with .NET")
