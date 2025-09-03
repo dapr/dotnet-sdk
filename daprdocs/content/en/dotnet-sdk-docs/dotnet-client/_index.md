@@ -174,12 +174,35 @@ await client.InvokeBindingAsync("send-email", "create", email);
 - For a full guide on output bindings visit [How-To: Use bindings]({{% ref howto-bindings.md %}}).
 
 ### Retrieve secrets
+Prior to retrieving secrets, it's important that the outbound channel be registered and ready or the SDK will be unable
+to communicate bidirectionally with the Dapr sidecar. The SDK provides a helper method intended to be used for this 
+purpose called `CheckOutboundHealthAsync`. This isn't referring to outbound from the SDK to the runtime, so much as 
+outbound from the Dapr runtime back into the client application using the SDK.
+
+This method is simply opening a connection to the {{% ref health_api#wait-for-specific-health-check-against-outbound-path %}}
+endpoint in the Dapr Health API and evaluating the HTTP status code returned to determine the health of the endpoint 
+as reported by the runtime.
+
+It's important to note that this and the `WaitForSidecarAsync` methods perform nearly identical operations; `WaitForSidecarAsync`
+polls the `CheckOutboundHealthAsync` endpoint indefinitely until it returns a healthy status value. They are intended 
+exclusively for situations like secrets or configuration retrieval. Using them in other scenarios will result in 
+unintended behavior (e.g., the endpoint never being ready because there are no registered components that use an 
+"outbound" channel).
+
+This behavior will be changed in a future release and should only be relied on sparingly.
+
 
 {{< tabpane text=true >}}
 
 {{% tab header="Multi-value-secret" %}}
 
 ```csharp
+// Get an instance of the DaprClient from DI
+var client = scope.GetRequiredService<DaprClient>();
+
+// Wait for the outbound channel to be established - only use for this scenario and not generally
+await client.WaitForOutboundHealthAsync();
+
 // Retrieve a key-value-pair-based secret - returns a Dictionary<string, string>
 var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secret");
 Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
@@ -190,6 +213,12 @@ Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
 {{% tab header="Single-value-secret" %}}
 
 ```csharp
+// Get an instance of the DaprClient from DI
+var client = scope.GetRequiredService<DaprClient>();
+
+// Wait for the outbound channel to be established - only use for this scenario and not generally
+await client.WaitForOutboundHealthAsync();
+
 // Retrieve a key-value-pair-based secret - returns a Dictionary<string, string>
 var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secret");
 Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
@@ -317,51 +346,23 @@ namespace LockService
 
 ## Sidecar APIs
 ### Sidecar Health
-The .NET SDK provides a way to poll for the sidecar health, as well as a convenience method to wait for the sidecar to be ready.
+While the .NET SDK provides a way to poll for the sidecar health, it is not generally recommended that developer
+utilize this functionality unless they are explicitly using Dapr to also retrieve secrets or configuration values.
 
-#### Poll for health
-This health endpoint returns true when both the sidecar and your application are up (fully initialized).
+There are two methods available:
+- `CheckOutboundHealthAsync` which queries an outbound readiness endpoint in the Dapr Health API {{% ref health_api#wait-for-specific-health-check-against-outbound-path %}}
+for a successful HTTP status code and reports readiness based on this value.
+- `WaitForSidecarAsync` continuously polls `CheckOutboundHealthAsync` until it returns a successful status code.
 
-```csharp
-var client = new DaprClientBuilder().Build();
+The "outbound" direction refers to the communication outbound from the Dapr runtime to your application. If your 
+application doesn't use actors, secret management, configuration retrieval or workflows, the runtime will not attempt
+to create an outbound connection. This means that if your application takes a dependency on `WaitForSidecarAsync`
+without using any of these Dapr components, it will indefinitely lock up during startup as the endpoint will never be established.
 
-var isDaprReady = await client.CheckHealthAsync();
+A future release will remove these methods altogether and perform this as an internal SDK operation, so neither
+method should be relied on in general. Reach out in the Discord #dotnet-sdk channel for more clarification as
+to whether your scenario may necessitate using this, but in most situations, these methods should not be required.
 
-if (isDaprReady) 
-{
-    // Execute Dapr dependent code.
-}
-```
-
-#### Poll for health (outbound)
-This health endpoint returns true when Dapr has initialized all its components, but may not have finished setting up a communication channel with your application.
-
-This is best used when you want to utilize a Dapr component in your startup path, for instance, loading secrets from a secretstore.
-
-```csharp
-var client = new DaprClientBuilder().Build();
-
-var isDaprComponentsReady = await client.CheckOutboundHealthAsync();
-
-if (isDaprComponentsReady) 
-{
-    // Execute Dapr component dependent code.
-}
-```
-
-#### Wait for sidecar
-The `DaprClient` also provides a helper method to wait for the sidecar to become healthy (components only). When using this method, it is recommended to include a `CancellationToken` to
-allow for the request to timeout. Below is an example of how this is used in the `DaprSecretStoreConfigurationProvider`.
-
-```csharp
-// Wait for the Dapr sidecar to report healthy before attempting use Dapr components.
-using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
-{
-    await client.WaitForSidecarAsync(tokenSource.Token);
-}
-
-// Perform Dapr component operations here i.e. fetching secrets.
-```
 
 ### Shutdown the sidecar
 ```csharp
