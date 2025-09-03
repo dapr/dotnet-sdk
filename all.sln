@@ -155,7 +155,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Analyzers", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Analyzers.Test", "test\Dapr.Workflow.Analyzers.Test\Dapr.Workflow.Analyzers.Test.csproj", "{CE0D5FEB-F6DB-4EB8-B8A9-6A4A32944539}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzers", "src\Dapr.Jobs.Analyzer\Dapr.Jobs.Analyzers.csproj", "{28B87C37-4B52-400F-B84D-64F134931BDC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzers", "src\Dapr.Jobs.Analyzers\Dapr.Jobs.Analyzers.csproj", "{28B87C37-4B52-400F-B84D-64F134931BDC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzers.Test", "test\Dapr.Jobs.Analyzer.Test\Dapr.Jobs.Analyzers.Test.csproj", "{CADEAE45-8981-4723-B641-9C28251C7D3B}"
 EndProject
