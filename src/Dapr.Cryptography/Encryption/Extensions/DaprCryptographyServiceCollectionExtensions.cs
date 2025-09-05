@@ -20,7 +20,8 @@ namespace Dapr.Cryptography.Encryption.Extensions;
 /// <summary>
 /// Contains extension methods for using Dapr cryptography with dependency injection.
 /// </summary>
-[Experimental("DAPR_CRYPTOGRAPHY", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
+[Experimental("DAPR_CRYPTOGRAPHY",
+    UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/cryptography/cryptography-overview/")]
 public static class DaprCryptographyServiceCollectionExtensions
 {
     /// <summary>
@@ -39,6 +40,27 @@ public static class DaprCryptographyServiceCollectionExtensions
         services.AddTransient<IEncryptionStreamProcessor, EncryptionStreamProcessor>();
         return services
             .AddDaprClient<DaprEncryptionClient, DaprEncryptionGrpcClient, DaprCryptographyBuilder,
-                DaprEncryptionClientBuilder>(configure, lifetime);
+                DaprEncryptionClientBuilder>(configure, null, lifetime);
+    }
+
+    /// <summary>
+    /// Adds Dapr encryption/decryption support to the service collection.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprEncryptionClient"/> using injected services.</param>
+    /// <param name="configureHttpClient">Optionally allows greater configuration of the <see cref="HttpClient"/> used by the <see cref="DaprEncryptionClient"/>.</param>  
+    /// <param name="lifetime">The lifetime of the registered services.</param>
+    /// <returns></returns>
+    public static IDaprCryptographyBuilder AddDaprEncryptionClient(
+        this IServiceCollection services,
+        Action<IServiceProvider, DaprEncryptionClientBuilder>? configure = null,
+        Action<IServiceProvider, HttpClient>? configureHttpClient = null,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        services.AddTransient<IDecryptionStreamProcessor, DecryptionStreamProcessor>();
+        services.AddTransient<IEncryptionStreamProcessor, EncryptionStreamProcessor>();
+        return services
+            .AddDaprClient<DaprEncryptionClient, DaprEncryptionGrpcClient, DaprCryptographyBuilder,
+                DaprEncryptionClientBuilder>(configure, configureHttpClient, lifetime);
     }
 }
