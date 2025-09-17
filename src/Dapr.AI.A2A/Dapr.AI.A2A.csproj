@@ -10,6 +10,7 @@
     </PropertyGroup>
     
     <PropertyGroup>
+        <NoWarn>NU5104;</NoWarn>
         <SignAssembly>false</SignAssembly>
     </PropertyGroup>
 
