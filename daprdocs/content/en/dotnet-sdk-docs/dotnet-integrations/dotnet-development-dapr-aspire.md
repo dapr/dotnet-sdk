@@ -80,12 +80,6 @@ This package was previously called `Aspire.Hosting.Dapr`, which has been [marked
 
 {{% /alert %}}
 
-{{% alert color="primary" %}}
-
-This package was previously called `Aspire.Hosting.Dapr`, which has been [marked as deprecated](https://www.nuget.org/packages/Aspire.Hosting.Dapr).
-
-{{% /alert %}}
-
 ```sh
 cd aspiredemo.AppHost
 dotnet add package CommunityToolkit.Aspire.Hosting.Dapr
