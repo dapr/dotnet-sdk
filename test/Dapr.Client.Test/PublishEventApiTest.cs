@@ -65,20 +65,21 @@ public class PublishEventApiTest
         var clientBuilder = new DaprClientBuilder()
             .UseJsonSerializationOptions(new JsonSerializerOptions()
             {
-                Converters = {new JsonStringEnumConverter(null, false)}
+                Converters = { new JsonStringEnumConverter(null, false) }
             })
             .UseHttpClientFactory(() => httpClient)
             .UseGrpcChannelOptions(new GrpcChannelOptions()
             {
-                HttpClient = httpClient, ThrowOperationCanceledOnCancellation = true
+                HttpClient = httpClient,
+                ThrowOperationCanceledOnCancellation = true
             });
         var client = new TestClient<DaprClient>(clientBuilder.Build(), handler);
-            
+
         //Ensure that the JsonStringEnumConverter is registered
         client.InnerClient.JsonSerializerOptions.Converters.Count.ShouldBe(1);
         client.InnerClient.JsonSerializerOptions.Converters.First().GetType().Name.ShouldMatch(nameof(JsonStringEnumConverter));
 
-        var publishData = new Widget {Size = "Large", Color = WidgetColor.Red};
+        var publishData = new Widget { Size = "Large", Color = WidgetColor.Red };
         var request = await client.CaptureGrpcRequestAsync(async daprClient =>
         {
             await daprClient.PublishEventAsync<Widget>(TestPubsubName, "test", publishData);
@@ -292,6 +293,37 @@ public class PublishEventApiTest
         // The default serializer forces camel case, so this should be different from our serialization above.
         jsonFromRequest.ShouldNotBe(JsonSerializer.Serialize(publishBytes, client.InnerClient.JsonSerializerOptions));
         envelope.Metadata.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task PublishBulkByteEventAsync_PublishesEventsAndReturnsResponse()
+    {
+        // Arrange
+        var client = new DaprClientBuilder().Build();
+        var pubsubName = "pubsub";
+        var topicName = "bulk-deposit";
+        var events = new List<ReadOnlyMemory<byte>>
+        {
+            new byte[] { 1, 2, 3 },
+            new byte[] { 4, 5, 6 }
+        };
+        var metadata = new Dictionary<string, string>
+        {
+            { "test-key", "test-value" }
+        };
+
+        // Act
+        var response = await client.PublishBulkByteEventAsync(
+            pubsubName,
+            topicName,
+            events,
+            "application/json",
+            metadata,
+            CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.True(response.FailedEntries.Count == 0, "No failed entries expected for successful publish.");
     }
 
     private class PublishData

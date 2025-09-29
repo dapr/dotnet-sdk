@@ -314,11 +314,11 @@ public abstract class DaprClient : IDisposable
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
     /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
-    public HttpRequestMessage CreateInvokeMethodRequest(string appId, string methodName, IReadOnlyCollection<KeyValuePair<string,string>> queryStringParameters)
+    public HttpRequestMessage CreateInvokeMethodRequest(string appId, string methodName, IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters)
     {
         return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, queryStringParameters);
     }
-        
+
     /// <summary>
     /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
     /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
@@ -357,7 +357,7 @@ public abstract class DaprClient : IDisposable
     {
         return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, new List<KeyValuePair<string, string>>(), data);
     }
-        
+
     /// <summary>
     /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
     /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
@@ -371,8 +371,8 @@ public abstract class DaprClient : IDisposable
     /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
     /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
     /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
-    public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, IReadOnlyCollection<KeyValuePair<string,string>> queryStringParameters, TRequest data);
-        
+    public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters, TRequest data);
+
     /// <summary>
     /// Perform health-check of Dapr sidecar. Return 'true' if sidecar is healthy. Otherwise 'false'.
     /// CheckHealthAsync handle <see cref="HttpRequestException"/> and will return 'false' if error will occur on transport level
@@ -446,7 +446,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
     public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
-    
+
     /// <summary>
     /// <para>
     /// Creates an <see cref="HttpClient"/> that can be used to perform Dapr service invocation using <see cref="HttpRequestMessage"/>
@@ -779,7 +779,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of deserialized values when the operation has completed.</returns>
     public abstract Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default);
-        
+
     /// <summary>
     /// Saves a list of <paramref name="items" /> to the Dapr state store.
     /// </summary>
@@ -917,10 +917,10 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.  This wraps the read value and an ETag.</returns>
     public abstract Task<(ReadOnlyMemory<byte>, string etag)> GetByteStateAndETagAsync(
-        string storeName, 
-        string key, 
-        ConsistencyMode? consistencyMode = null, 
-        IReadOnlyDictionary<string, string>? metadata = null, 
+        string storeName,
+        string key,
+        ConsistencyMode? consistencyMode = null,
+        IReadOnlyDictionary<string, string>? metadata = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -1356,7 +1356,7 @@ public abstract class DaprClient : IDisposable
     #endregion
 
     #region Distributed Lock
-    
+
     /// <summary>
     /// Attempt to lock the given resourceId with response indicating success.
     /// </summary>
@@ -1389,9 +1389,9 @@ public abstract class DaprClient : IDisposable
         string resourceId,
         string lockOwner,
         CancellationToken cancellationToken = default);
-    
+
     #endregion
-        
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -1423,4 +1423,22 @@ public abstract class DaprClient : IDisposable
 
         return new ProductInfoHeaderValue("dapr-sdk-dotnet", $"v{assemblyVersion}");
     }
+
+    /// <summary>
+    /// Bulk publishes raw byte events to the specified topic.
+    /// </summary>
+    /// <param name="pubsubName">The name of the pubsub component to use.</param>
+    /// <param name="topicName">The name of the topic the request should be published to.</param>
+    /// <param name="events">The list of raw byte events to be published.</param>
+    /// <param name="dataContentType">The content type of the given bytes, defaults to application/json.</param>
+    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values are determined by the type of binding used.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
+    /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+    public abstract Task<BulkPublishResponse<byte[]>> PublishBulkByteEventAsync(
+        string pubsubName,
+        string topicName,
+        IReadOnlyList<ReadOnlyMemory<byte>> events,
+        string dataContentType = "application/json",
+        Dictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default);
 }
