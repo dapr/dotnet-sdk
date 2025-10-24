@@ -179,7 +179,7 @@ to communicate bidirectionally with the Dapr sidecar. The SDK provides a helper 
 purpose called `CheckOutboundHealthAsync`. This isn't referring to outbound from the SDK to the runtime, so much as 
 outbound from the Dapr runtime back into the client application using the SDK.
 
-This method is simply opening a connection to the {{% ref health_api#wait-for-specific-health-check-against-outbound-path %}}
+This method is simply opening a connection to the {{% ref "health_api#wait-for-specific-health-check-against-outbound-path" %}}
 endpoint in the Dapr Health API and evaluating the HTTP status code returned to determine the health of the endpoint 
 as reported by the runtime.
 
@@ -350,7 +350,7 @@ While the .NET SDK provides a way to poll for the sidecar health, it is not gene
 utilize this functionality unless they are explicitly using Dapr to also retrieve secrets or configuration values.
 
 There are two methods available:
-- `CheckOutboundHealthAsync` which queries an outbound readiness endpoint in the Dapr Health API {{% ref health_api#wait-for-specific-health-check-against-outbound-path %}}
+- `CheckOutboundHealthAsync` which queries an outbound readiness endpoint in the Dapr Health API {{% ref "health_api#wait-for-specific-health-check-against-outbound-path" %}}
 for a successful HTTP status code and reports readiness based on this value.
 - `WaitForSidecarAsync` continuously polls `CheckOutboundHealthAsync` until it returns a successful status code.
 
