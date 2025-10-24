@@ -1438,7 +1438,7 @@ public abstract class DaprClient : IDisposable
         string pubsubName,
         string topicName,
         IReadOnlyList<ReadOnlyMemory<byte>> events,
-        string dataContentType = "application/json",
+        string dataContentType = Constants.ContentTypeApplicationJson,
         Dictionary<string, string>? metadata = null,
         CancellationToken cancellationToken = default);
 }

@@ -263,7 +263,6 @@ internal class DaprClientGrpc : DaprClient
         }
     }
 
-#nullable enable
     public override async Task<BulkPublishResponse<byte[]>> PublishBulkByteEventAsync(
         string pubsubName,
         string topicName,
@@ -326,7 +325,6 @@ internal class DaprClientGrpc : DaprClient
 
         return new BulkPublishResponse<byte[]>(failedEntries);
     }
-#nullable restore
 
     #endregion
 
