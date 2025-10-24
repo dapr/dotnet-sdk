@@ -2,7 +2,7 @@
 type: docs
 title: "How to: Using Microsoft's AI extensions with Dapr's .NET Conversation SDK"
 linkTitle: "How to: Use Microsoft's AI extensions with Dapr"
-weight: 500200
+weight: 50020
 description: Learn how to create and use Dapr with Microsoft's AI extensions
 ---
 
