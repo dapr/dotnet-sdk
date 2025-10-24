@@ -319,7 +319,6 @@ public abstract class DaprClient : IDisposable
         return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, queryStringParameters);
     }
 
-
     /// <summary>
     /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
     /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
@@ -359,7 +358,6 @@ public abstract class DaprClient : IDisposable
         return CreateInvokeMethodRequest(HttpMethod.Post, appId, methodName, new List<KeyValuePair<string, string>>(), data);
     }
 
-
     /// <summary>
     /// Creates an <see cref="HttpRequestMessage" /> that can be used to perform service invocation for the
     /// application identified by <paramref name="appId" /> and invokes the method specified by <paramref name="methodName" />
@@ -374,7 +372,6 @@ public abstract class DaprClient : IDisposable
     /// <param name="queryStringParameters">A collection of key/value pairs to populate the query string from.</param>
     /// <returns>An <see cref="HttpRequestMessage" /> for use with <c>SendInvokeMethodRequestAsync</c>.</returns>
     public abstract HttpRequestMessage CreateInvokeMethodRequest<TRequest>(HttpMethod httpMethod, string appId, string methodName, IReadOnlyCollection<KeyValuePair<string, string>> queryStringParameters, TRequest data);
-
 
     /// <summary>
     /// Perform health-check of Dapr sidecar. Return 'true' if sidecar is healthy. Otherwise 'false'.
@@ -449,7 +446,6 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
     public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
-
 
     /// <summary>
     /// <para>
@@ -784,7 +780,6 @@ public abstract class DaprClient : IDisposable
     /// <returns>A <see cref="Task{IReadOnlyList}" /> that will return the list of deserialized values when the operation has completed.</returns>
     public abstract Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default);
 
-
     /// <summary>
     /// Saves a list of <paramref name="items" /> to the Dapr state store.
     /// </summary>
@@ -906,10 +901,10 @@ public abstract class DaprClient : IDisposable
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
     public abstract Task<ReadOnlyMemory<byte>> GetByteStateAsync(
-        string storeName, 
-        string key, 
-        ConsistencyMode? consistencyMode = null, 
-        IReadOnlyDictionary<string, string>? metadata = null, 
+        string storeName,
+        string key,
+        ConsistencyMode? consistencyMode = null,
+        IReadOnlyDictionary<string, string>? metadata = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -1362,7 +1357,6 @@ public abstract class DaprClient : IDisposable
 
     #region Distributed Lock
 
-
     /// <summary>
     /// Attempt to lock the given resourceId with response indicating success.
     /// </summary>
@@ -1397,7 +1391,6 @@ public abstract class DaprClient : IDisposable
         CancellationToken cancellationToken = default);
 
     #endregion
-
 
     /// <inheritdoc />
     public void Dispose()
