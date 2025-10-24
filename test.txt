@@ -1,1 +1,0 @@
-"Enhance bulk publish to support raw byte array payloads" 
