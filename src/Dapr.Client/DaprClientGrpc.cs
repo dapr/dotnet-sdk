@@ -220,7 +220,7 @@ internal class DaprClientGrpc : DaprClient
             }
             else
             {
-                entry.Event = TypeConverters.ToJsonByteString(events[counter], this.jsonSerializerOptions);
+                entry.Event = TypeConverters.ToJsonByteString(events[counter], jsonSerializerOptions);
                 entry.ContentType = events[counter] is CloudEvent ? Constants.ContentTypeCloudEvent : Constants.ContentTypeApplicationJson;
             }
 
