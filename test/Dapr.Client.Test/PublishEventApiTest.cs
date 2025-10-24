@@ -295,37 +295,6 @@ public class PublishEventApiTest
         envelope.Metadata.Count.ShouldBe(0);
     }
 
-    [Fact]
-    public async Task PublishBulkByteEventAsync_PublishesEventsAndReturnsResponse()
-    {
-        // Arrange
-        var client = new DaprClientBuilder().Build();
-        var pubsubName = "pubsub";
-        var topicName = "bulk-deposit";
-        var events = new List<ReadOnlyMemory<byte>>
-        {
-            new byte[] { 1, 2, 3 },
-            new byte[] { 4, 5, 6 }
-        };
-        var metadata = new Dictionary<string, string>
-        {
-            { "test-key", "test-value" }
-        };
-
-        // Act
-        var response = await client.PublishBulkByteEventAsync(
-            pubsubName,
-            topicName,
-            events,
-            "application/json",
-            metadata,
-            CancellationToken.None);
-
-        // Assert
-        Assert.NotNull(response);
-        Assert.True(response.FailedEntries.Count == 0, "No failed entries expected for successful publish.");
-    }
-
     private class PublishData
     {
         public string PublishObjectParameter { get; set; }

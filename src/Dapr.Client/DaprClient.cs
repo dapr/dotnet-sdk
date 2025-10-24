@@ -1423,22 +1423,4 @@ public abstract class DaprClient : IDisposable
 
         return new ProductInfoHeaderValue("dapr-sdk-dotnet", $"v{assemblyVersion}");
     }
-
-    /// <summary>
-    /// Bulk publishes raw byte events to the specified topic.
-    /// </summary>
-    /// <param name="pubsubName">The name of the pubsub component to use.</param>
-    /// <param name="topicName">The name of the topic the request should be published to.</param>
-    /// <param name="events">The list of raw byte events to be published.</param>
-    /// <param name="dataContentType">The content type of the given bytes, defaults to application/json.</param>
-    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the pubsub. The valid metadata keys and values are determined by the type of binding used.</param>
-    /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
-    /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
-    public abstract Task<BulkPublishResponse<byte[]>> PublishBulkByteEventAsync(
-        string pubsubName,
-        string topicName,
-        IReadOnlyList<ReadOnlyMemory<byte>> events,
-        string dataContentType = Constants.ContentTypeApplicationJson,
-        Dictionary<string, string>? metadata = null,
-        CancellationToken cancellationToken = default);
 }
