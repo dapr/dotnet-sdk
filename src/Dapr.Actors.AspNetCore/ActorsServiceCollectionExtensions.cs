@@ -66,6 +66,7 @@ public static class ActorsServiceCollectionExtensions
                     JsonSerializerOptions = options.JsonSerializerOptions,
                     DaprApiToken = options.DaprApiToken,
                     HttpEndpoint = options.HttpEndpoint,
+                    UseJsonSerialization = options.UseJsonSerialization
                 }
             };
 
