@@ -470,7 +470,7 @@ public class CloudEventsMiddlewareTest
         encoding ??= Encoding.UTF8;
 
         var bytes = new byte[stream.Length];
-#if NET9_0
+#if NET9_0_OR_GREATER
         stream.ReadExactly(bytes, 0, bytes.Length);
 #else
             stream.Read(bytes, 0, bytes.Length);
