@@ -36,7 +36,7 @@ internal static class TestUtilities
 #elif NET9_0
         var referenceAssemblies = ReferenceAssemblies.Net.Net90;
 #elif NET10_0
-        var referenceAssemblies = ReferenceAssemblies.Net.Net10;
+        var referenceAssemblies = ReferenceAssemblies.Net.Net100;
 #endif
 
         // Create a new project with necessary references
