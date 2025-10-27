@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.Jobs.Test.Extensions;
@@ -76,40 +77,45 @@ public class EndpointRouteBuilderExtensionsTest
         // Arrange
         var timeout = TimeSpan.FromSeconds(5);
         const string testJobName = "testJob";
-        var testJobPayload = Encoding.UTF8.GetBytes("testPayload");
+        var testJobPayload = "testPayload"u8.ToArray();
 
-        var builder = new WebHostBuilder()
-            .ConfigureServices(services =>
+        var builder = new HostBuilder();
+        builder.ConfigureServices(services =>
             {
                 services.AddLogging();
                 services.AddRouting();
             })
-            .Configure(app =>
+            .ConfigureWebHost(webBuilder =>
             {
-                app.UseRouting();
-                app.UseEndpoints(endpoints =>
+                webBuilder.Configure(app =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (
-                        string jobName,
-                        ReadOnlyMemory<byte> jobPayload,
-                        ILogger? logger,
-                        CancellationToken cancellationToken) =>
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints =>
                     {
-                        logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
+                        endpoints.MapDaprScheduledJobHandler(async (
+                            string jobName,
+                            ReadOnlyMemory<byte> jobPayload,
+                            ILogger? logger,
+                            CancellationToken cancellationToken) =>
+                        {
+                            logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
 
-                        var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
-                        logger?.LogInformation(
-                            "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
-                            jobName, deserializedPayload);
-                        await Task.Delay(TimeSpan.FromSeconds(1),
-                            cancellationToken);  //Less than the timeout, so this should work without throwing
+                            var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
+                            logger?.LogInformation(
+                                "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
+                                jobName, deserializedPayload);
+                            await Task.Delay(TimeSpan.FromSeconds(1),
+                                cancellationToken); //Less than the timeout, so this should work without throwing
 
-                        return Task.CompletedTask;
-                    }, timeout);
+                            return Task.CompletedTask;
+                        }, timeout);
+                    });
                 });
             });
 
-        var testServer = new TestServer(builder);
+        var host = await builder.StartAsync();
+        var testServer = host.GetTestServer();
+        
         var client = testServer.CreateClient();
 
         var requestContent = new ByteArrayContent(testJobPayload);
@@ -129,7 +135,7 @@ public class EndpointRouteBuilderExtensionsTest
         // Arrange
         var timeout = TimeSpan.FromSeconds(1);
         const string testJobName = "testJob";
-        var testJobPayload = Encoding.UTF8.GetBytes("testPayload");
+        var testJobPayload = "testPayload"u8.ToArray();
 
         var builder = new WebHostBuilder()
             .ConfigureServices(services =>
