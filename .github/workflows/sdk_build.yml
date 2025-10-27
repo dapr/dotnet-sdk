@@ -50,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['8.0', '9.0']
+        dotnet-version: ['8.0', '9.0', '10.0']
         include:
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
@@ -62,6 +62,11 @@ jobs:
           framework: 'net9'
           prefix: 'net9'
           install-version: '9.0.x'
+        - dotnet-version: '10.0'
+          display-name: '.NET 10.0'
+          framework: 'net10'
+          prefix: 'net10'
+          install-version: '10.0.x'
     steps:
     - uses: actions/checkout@v1
     - name: Parse release version
@@ -73,16 +78,22 @@ jobs:
         dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
     - name: Setup .NET 8 (required)
       uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version != '8.0.x' }}
+      if: ${{ matrix.install-version == '8.0.x' }}
       with:
         dotnet-version: '8.0.x'
         dotnet-quality: 'ga'
     - name: Setup .NET 9 (required)
       uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version != '9.0.x' }}
+      if: ${{ matrix.install-version == '9.0.x' }}
       with:
         dotnet-version: '9.0.x'
         dotnet-quality: 'ga'
+    - name: Setup .NET 10 (required)
+      uses: actions/setup-dotnet@v3
+      if: ${{ matrix.install-version == '10.0.x' }}
+      with:
+        dotnet-version: '10.0.x'
+        dotnet-quality: 'preview'
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
