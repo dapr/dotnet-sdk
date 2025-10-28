@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['8.0', '9.0']
+        dotnet-version: ['8.0', '9.0', '10.0']
         include:
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
@@ -22,14 +22,19 @@ jobs:
           framework: 'net9'
           prefix: 'net9'
           install-version: '9.0.x'
+        - dotnet-version: '10.0'
+          display-name: '.NET 10.0'
+          framework: 'net10'
+          prefix: 'net10'
+          install-version: '10.0.x'
     env:
       NUPKG_OUTDIR: bin/Release/nugets
       GOVER: 1.20.3
       GOOS: linux
       GOARCH: amd64
       GOPROXY: https://proxy.golang.org
-      DAPR_CLI_VER: 1.15.2
-      DAPR_RUNTIME_VER: 1.16.0-rc.6
+      DAPR_CLI_VER: 1.16.0
+      DAPR_RUNTIME_VER: 1.16.1
       DAPR_INSTALL_URL: https://raw.githubusercontent.com/dapr/cli/release-1.16/install/install.sh
       DAPR_CLI_REF: ''
     steps:
@@ -94,16 +99,22 @@ jobs:
           dotnet-quality: 'ga'  # Prefer a GA release, but use the RC if not available
       - name: Setup .NET 8 (required)
         uses: actions/setup-dotnet@v3
-        if: ${{ matrix.install-version != '8.0.x' }}
+        if: ${{ matrix.install-version == '8.0.x' }}
         with:
           dotnet-version: '8.0.x'
           dotnet-quality: 'ga'
       - name: Setup .NET 9 (required)
         uses: actions/setup-dotnet@v3
-        if: ${{ matrix.install-version != '9.0.x' }}
+        if: ${{ matrix.install-version == '9.0.x' }}
         with:
           dotnet-version: '9.0.x'
           dotnet-quality: 'ga'
+      - name: Setup .NET 10 (required)
+        uses: actions/setup-dotnet@v3
+        if: ${{ matrix.install-version == '10.0.x' }}
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
