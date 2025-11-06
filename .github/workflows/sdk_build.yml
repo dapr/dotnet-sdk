@@ -88,13 +88,11 @@ jobs:
         dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
     - name: Setup .NET 8 (required)
       uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version == '8.0.x' }}
       with:
         dotnet-version: '8.0.x'
         dotnet-quality: 'ga'
     - name: Setup .NET 9 (required)
       uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version == '9.0.x' }}
       with:
         dotnet-version: '9.0.x'
         dotnet-quality: 'ga'
