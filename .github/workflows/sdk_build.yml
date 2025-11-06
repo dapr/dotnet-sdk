@@ -100,7 +100,6 @@ jobs:
         dotnet-quality: 'ga'
     - name: Setup .NET 10 (required)
       uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version == '10.0.x' }}
       with:
         dotnet-version: '10.0.x'
         dotnet-quality: 'preview'
