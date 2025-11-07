@@ -161,6 +161,8 @@ jobs:
           echo "matrix=$files" >> $GITHUB_OUTPUT
   
   publish:
+    permissions:
+      id-token: write # Enable GitHub OIDC token issuance for this job
     name: Publish Packages
     needs: ['discover']
     if: |
@@ -177,9 +179,15 @@ jobs:
         with:
           name: packages
           path: packages
+      - name: NuGet logic (OIDC -> temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGETORG_DAPR_USER }} 
       - name: Publish ${{ matrix.package }} to NuGet
         run: |
-          dotnet nuget push "${{ matrix.package }}" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "${{ matrix.package }}" --skip-duplicate --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json  
+# Old: dotnet nuget push "${{ matrix.package }}" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
           
 #      - name: List packages (for sanity check)
 #        run: ls -R
