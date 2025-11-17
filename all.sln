@@ -155,7 +155,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Analyzers", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Analyzers.Test", "test\Dapr.Workflow.Analyzers.Test\Dapr.Workflow.Analyzers.Test.csproj", "{CE0D5FEB-F6DB-4EB8-B8A9-6A4A32944539}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzers", "src\Dapr.Jobs.Analyzer\Dapr.Jobs.Analyzers.csproj", "{28B87C37-4B52-400F-B84D-64F134931BDC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzers", "src\Dapr.Jobs.Analyzers\Dapr.Jobs.Analyzers.csproj", "{28B87C37-4B52-400F-B84D-64F134931BDC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Jobs.Analyzers.Test", "test\Dapr.Jobs.Analyzer.Test\Dapr.Jobs.Analyzers.Test.csproj", "{CADEAE45-8981-4723-B641-9C28251C7D3B}"
 EndProject
@@ -194,6 +194,16 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "examples\Hosting\Aspire\ServiceInvocationDemo\Common\Common.csproj", "{6CD90C22-0F79-4D61-8DCE-5BE22C1304C4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.A2A", "src\Dapr.AI.A2A\Dapr.AI.A2A.csproj", "{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.AI.Microsoft.Extensions", "src\Dapr.AI.Microsoft.Extensions\Dapr.AI.Microsoft.Extensions.csproj", "{CA680984-0D3A-40E5-88FD-E2A125C6A126}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MicrosoftAiExtensionsDemo", "examples\AI\MicrosoftAiExtensionsDemo\MicrosoftAiExtensionsDemo.csproj", "{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.DistributedLock", "src\Dapr.DistributedLock\Dapr.DistributedLock.csproj", "{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DistributedLock", "DistributedLock", "{11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedLock", "examples\DistributedLock\DistributedLock\DistributedLock.csproj", "{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -515,6 +525,22 @@ Global
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -609,6 +635,11 @@ Global
 		{5BB15C36-BAF7-44F6-BF85-C533B8B47862} = {55E08C7F-81C8-4D0B-AB18-87C89B261477}
 		{6CD90C22-0F79-4D61-8DCE-5BE22C1304C4} = {55E08C7F-81C8-4D0B-AB18-87C89B261477}
 		{AE9804A8-906C-4C3B-B2A8-41F4D3269C19} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{CA680984-0D3A-40E5-88FD-E2A125C6A126} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{EDEEEAED-1856-4408-BAA6-A83E1B497B2A} = {3046DBF4-C2FF-4F3A-9176-E1C01E0A90E5}
+		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
+		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93} = {11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}

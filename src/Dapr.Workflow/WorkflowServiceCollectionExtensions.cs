@@ -12,10 +12,12 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Dapr.Workflow;
 
@@ -40,6 +42,19 @@ public static class WorkflowServiceCollectionExtensions
         serviceCollection.AddDaprClient(lifetime: lifetime);
         serviceCollection.AddHttpClient();
         serviceCollection.AddHostedService<WorkflowLoggingService>();
+        
+        // Configure default logging levels for the DurableTask packages (can be overridden by consumer in appsettings.json)
+        serviceCollection.Configure<LoggerFilterOptions>(options =>
+        {
+            if (!HasExistingFilter(options, "Dapr.DurableTask.Grpc"))
+                options.AddFilter("Dapr.DurableTask.Grpc", LogLevel.Error);
+            if (!HasExistingFilter(options, "Dapr.DurableTask.Client.Grpc"))
+                options.AddFilter("Dapr.DurableTask.Client.Grpc", LogLevel.Error);
+            if (!HasExistingFilter(options, "Dapr.DurableTask.Worker"))
+                options.AddFilter("Dapr.DurableTask.Worker", LogLevel.Error);
+            if (!HasExistingFilter(options, "Dapr.DurableTask.Worker.Grpc"))
+                options.AddFilter("Dapr.DurableTask.Worker.Grpc", LogLevel.Error);
+        });
 
         switch (lifetime)
         {
@@ -73,4 +88,7 @@ public static class WorkflowServiceCollectionExtensions
 
         return serviceCollection;
     }
+
+    private static bool HasExistingFilter(LoggerFilterOptions options, string categoryName)
+        => options.Rules.Any(rule => rule.CategoryName == categoryName);
 }

@@ -2,7 +2,7 @@
 type: docs
 title: "How to: Create and use Dapr AI Conversations in the .NET SDK"
 linkTitle: "How to: Use the AI Conversations client"
-weight: 500100
+weight: 50010
 description: Learn how to create and use the Dapr Conversational AI client using the .NET SDK
 ---
 

@@ -17,7 +17,16 @@ The Dapr client package allows you to interact with other Dapr applications from
 
 ## Building blocks
 
-The .NET SDK allows you to interface with all of the [Dapr building blocks]({{% ref building-blocks %}}).
+The .NET SDK allows you to interface with all of the [Dapr building blocks]({{% ref building-blocks %}}). 
+
+{{% alert title="Note" color="primary" %}}
+
+We will only include the dependency injection registration for the `DaprClient` in the first example 
+(service invocation). In nearly all other examples, it's assumed you've already registered the `DaprClient` in your 
+application in the latter examples and have injected an instance of `DaprClient` into your code as an instance named 
+`client`.
+
+{{% /alert %}}
 
 ### Invoke a service
 
@@ -32,17 +41,37 @@ You can either use the `DaprClient` or `System.Net.Http.HttpClient` to invoke yo
 
 {{< tabpane text=true >}}
 
-{{% tab header="SDK" %}}
+{{% tab header="ASP.NET Core Project" %}}
 ```csharp
-using var client = new DaprClientBuilder().
-                UseTimeout(TimeSpan.FromSeconds(2)). // Optionally, set a timeout
-                Build(); 
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDaprClient();
+var app = builder.Build();
 
+using var scope = app.Services.CreateScope();
+var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+ 
 // Invokes a POST method named "deposit" that takes input of type "Transaction"
 var data = new { id = "17", amount = 99m };
 var account = await client.InvokeMethodAsync<Account>("routing", "deposit", data, cancellationToken);
 Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 ```
+{{% /tab %}}
+
+{{% tab header="Console Project" %}}
+using Microsoft.Extensins.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddDaprClient();
+var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+
+// Invokes a POST method named "deposit" that takes input of type "Transaction"
+var data = new { id = "17", amount = 99m };
+var account = await client.InvokeMethodAsync<Account>("routing", "deposit", data, cancellationToken);
+Console.WriteLine("Returned: id:{0} | Balance:{1}", account.Id, account.Balance);
 {{% /tab %}}
 
 {{% tab header="HTTP" %}}
@@ -79,8 +108,6 @@ Assert.Equal(StatusCode.DeadlineExceeded, ex.StatusCode);
 ### Save & get application state
 
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 var state = new Widget() { Size = "small", Color = "yellow", };
 await client.SaveStateAsync(storeName, stateKeyName, state, cancellationToken: cancellationToken);
 Console.WriteLine("Saved State!");
@@ -106,8 +133,6 @@ var query = "{" +
                     "}" +
                 "]" +
             "}";
-
-var client = new DaprClientBuilder().Build();
 var queryResponse = await client.QueryStateAsync<Account>("querystore", query, cancellationToken: cancellationToken);
 
 Console.WriteLine($"Got {queryResponse.Results.Count}");
@@ -122,8 +147,6 @@ foreach (var account in queryResponse.Results)
 ### Publish messages
 
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 var eventData = new { Id = "17", Amount = 10m, };
 await client.PublishEventAsync(pubsubName, "deposit", eventData, cancellationToken);
 Console.WriteLine("Published deposit event!");
@@ -186,13 +209,34 @@ await client.InvokeBindingAsync("send-email", "create", email);
 - For a full guide on output bindings visit [How-To: Use bindings]({{% ref howto-bindings.md %}}).
 
 ### Retrieve secrets
+Prior to retrieving secrets, it's important that the outbound channel be registered and ready or the SDK will be unable
+to communicate bidirectionally with the Dapr sidecar. The SDK provides a helper method intended to be used for this 
+purpose called `CheckOutboundHealthAsync`. This isn't referring to outbound from the SDK to the runtime, so much as 
+outbound from the Dapr runtime back into the client application using the SDK.
+
+This method is simply opening a connection to the {{% ref "health_api#wait-for-specific-health-check-against-outbound-path" %}}
+endpoint in the Dapr Health API and evaluating the HTTP status code returned to determine the health of the endpoint 
+as reported by the runtime.
+
+It's important to note that this and the `WaitForSidecarAsync` methods perform nearly identical operations; `WaitForSidecarAsync`
+polls the `CheckOutboundHealthAsync` endpoint indefinitely until it returns a healthy status value. They are intended 
+exclusively for situations like secrets or configuration retrieval. Using them in other scenarios will result in 
+unintended behavior (e.g., the endpoint never being ready because there are no registered components that use an 
+"outbound" channel).
+
+This behavior will be changed in a future release and should only be relied on sparingly.
+
 
 {{< tabpane text=true >}}
 
 {{% tab header="Multi-value-secret" %}}
 
 ```csharp
-var client = new DaprClientBuilder().Build();
+// Get an instance of the DaprClient from DI
+var client = scope.GetRequiredService<DaprClient>();
+
+// Wait for the outbound channel to be established - only use for this scenario and not generally
+await client.WaitForOutboundHealthAsync();
 
 // Retrieve a key-value-pair-based secret - returns a Dictionary<string, string>
 var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secret");
@@ -204,7 +248,11 @@ Console.WriteLine($"Got secret keys: {string.Join(", ", secrets.Keys)}");
 {{% tab header="Single-value-secret" %}}
 
 ```csharp
-var client = new DaprClientBuilder().Build();
+// Get an instance of the DaprClient from DI
+var client = scope.GetRequiredService<DaprClient>();
+
+// Wait for the outbound channel to be established - only use for this scenario and not generally
+await client.WaitForOutboundHealthAsync();
 
 // Retrieve a key-value-pair-based secret - returns a Dictionary<string, string>
 var secrets = await client.GetSecretAsync("mysecretstore", "key-value-pair-secret");
@@ -225,8 +273,6 @@ Console.WriteLine("Got a secret value, I'm not going to be print it, it's a secr
 
 ### Get Configuration Keys
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 // Retrieve a specific set of keys.
 var specificItems = await client.GetConfiguration("configstore", new List<string>() { "key1", "key2" });
 Console.WriteLine($"Here are my values:\n{specificItems[0].Key} -> {specificItems[0].Value}\n{specificItems[1].Key} -> {specificItems[1].Value}");
@@ -242,8 +288,6 @@ foreach (var item in configItems)
 
 ### Subscribe to Configuration Keys
 ```csharp
-var client = new DaprClientBuilder().Build();
-
 // The Subscribe Configuration API returns a wrapper around an IAsyncEnumerable<IEnumerable<ConfigurationItem>>.
 // Iterate through it by accessing its Source in a foreach loop. The loop will end when the stream is severed
 // or if the cancellation token is cancelled.
@@ -264,6 +308,8 @@ await foreach (var items in subscribeConfigurationResponse.Source.WithCancellati
 ```csharp
 using System;
 using Dapr.Client;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LockService
 {
@@ -272,9 +318,18 @@ namespace LockService
         [Obsolete("Distributed Lock API is in Alpha, this can be removed once it is stable.")]
         static async Task Main(string[] args)
         {
-            var daprLockName = "lockstore";
-            var fileName = "my_file_name";
-            var client = new DaprClientBuilder().Build();
+            const string daprLockName = "lockstore";
+            const string fileName = "my_file_name";
+            
+            var builder = Host.CreateDefaultBuilder();
+            builder.ConfigureServices(services =>
+            {
+                services.AddDaprClient();
+            });
+            var app = builder.Build();
+            
+            using var scope = app.Services.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
      
             // Locking with this approach will also unlock it automatically, as this is a disposable object
             await using (var fileLock = await client.Lock(DAPR_LOCK_NAME, fileName, "random_id_abc123", 60))
@@ -306,8 +361,17 @@ namespace LockService
         static async Task Main(string[] args)
         {
             var daprLockName = "lockstore";
-            var client = new DaprClientBuilder().Build();
-
+            
+            var builder = Host.CreateDefaultBuilder();
+            builder.ConfigureServices(services =>
+            {
+                services.AddDaprClient();
+            });
+            var app = builder.Build();
+            
+            using var scope = app.Services.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprClient>();
+            
             var response = await client.Unlock(DAPR_LOCK_NAME, "my_file_name", "random_id_abc123"));
             Console.WriteLine(response.status);
         }
@@ -317,51 +381,23 @@ namespace LockService
 
 ## Sidecar APIs
 ### Sidecar Health
-The .NET SDK provides a way to poll for the sidecar health, as well as a convenience method to wait for the sidecar to be ready.
+While the .NET SDK provides a way to poll for the sidecar health, it is not generally recommended that developer
+utilize this functionality unless they are explicitly using Dapr to also retrieve secrets or configuration values.
 
-#### Poll for health
-This health endpoint returns true when both the sidecar and your application are up (fully initialized).
+There are two methods available:
+- `CheckOutboundHealthAsync` which queries an outbound readiness endpoint in the Dapr Health API {{% ref "health_api#wait-for-specific-health-check-against-outbound-path" %}}
+for a successful HTTP status code and reports readiness based on this value.
+- `WaitForSidecarAsync` continuously polls `CheckOutboundHealthAsync` until it returns a successful status code.
 
-```csharp
-var client = new DaprClientBuilder().Build();
+The "outbound" direction refers to the communication outbound from the Dapr runtime to your application. If your 
+application doesn't use actors, secret management, configuration retrieval or workflows, the runtime will not attempt
+to create an outbound connection. This means that if your application takes a dependency on `WaitForSidecarAsync`
+without using any of these Dapr components, it will indefinitely lock up during startup as the endpoint will never be established.
 
-var isDaprReady = await client.CheckHealthAsync();
+A future release will remove these methods altogether and perform this as an internal SDK operation, so neither
+method should be relied on in general. Reach out in the Discord #dotnet-sdk channel for more clarification as
+to whether your scenario may necessitate using this, but in most situations, these methods should not be required.
 
-if (isDaprReady) 
-{
-    // Execute Dapr dependent code.
-}
-```
-
-#### Poll for health (outbound)
-This health endpoint returns true when Dapr has initialized all its components, but may not have finished setting up a communication channel with your application.
-
-This is best used when you want to utilize a Dapr component in your startup path, for instance, loading secrets from a secretstore.
-
-```csharp
-var client = new DaprClientBuilder().Build();
-
-var isDaprComponentsReady = await client.CheckOutboundHealthAsync();
-
-if (isDaprComponentsReady) 
-{
-    // Execute Dapr component dependent code.
-}
-```
-
-#### Wait for sidecar
-The `DaprClient` also provides a helper method to wait for the sidecar to become healthy (components only). When using this method, it is recommended to include a `CancellationToken` to
-allow for the request to timeout. Below is an example of how this is used in the `DaprSecretStoreConfigurationProvider`.
-
-```csharp
-// Wait for the Dapr sidecar to report healthy before attempting use Dapr components.
-using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
-{
-    await client.WaitForSidecarAsync(tokenSource.Token);
-}
-
-// Perform Dapr component operations here i.e. fetching secrets.
-```
 
 ### Shutdown the sidecar
 ```csharp

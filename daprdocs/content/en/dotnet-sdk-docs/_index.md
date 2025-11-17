@@ -39,50 +39,27 @@ Put the Dapr .NET SDK to the test. Walk through the .NET quickstarts and tutoria
 
 ## Available packages
 
-<div class="card-deck">
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title"><b>Client</b></h5>
-      <p class="card-text">Create .NET clients that interact with a Dapr sidecar and other Dapr applications.</p>
-      <a href="{{% ref dotnet-client %}}" class="stretched-link"></a>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title"><b>Server</b></h5>
-      <p class="card-text">Write servers and services in .NET using the Dapr SDK. Includes support for ASP.NET.</p>
-      <a href="https://github.com/dapr/dotnet-sdk/tree/master/examples/AspNetCore" class="stretched-link"></a>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title"><b>Actors</b></h5>
-      <p class="card-text">Create virtual actors with state, reminders/timers, and methods in .NET.</p>
-      <a href="{{% ref dotnet-actors %}}" class="stretched-link"></a>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title"><b>Workflow</b></h5>
-      <p class="card-text">Create and manage workflows that work with other Dapr APIs in .NET.</p>
-      <a href="{{% ref dotnet-workflow %}}" class="stretched-link"></a>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title"><b>Jobs</b></h5>
-      <p class="card-text">Create and manage the scheduling and orchestration of jobs in .NET.</p>
-      <a href="{{% ref dotnet-jobs %}}" class="stretched-link"></a>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title"><b>AI</b></h5>
-      <p class="card-text">Create and manage AI operations in .NET</p>
-      <a href="{{% ref dotnet-ai %}}" class="stretched-link"></a>
-    </div>
-  </div>
-</div>
+| Package Name                                                                                              | Documentation Link                                            | Description                                                                                                                                         |
+|-----------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Dapr.Client](https://www.nuget.org/packages/Dapr.Client)                                                 | [Documentation]({{% ref dotnet-client %}})                    | Create .NET clients that interact with a Dapr sidecar and other Dapr applications.                                                                  |
+| [Dapr.AI](https://www.nuget.org/packages/Dapr.AI)                                                         | [Documentation]({{% ref dotnet-ai %}})                        | Create and manage AI operations in .NET.                                                                                                            |
+| [Dapr.AI.A2a](https://www.nuget.org/packages/Dapr.AI.A2a)                                                 |                                                               | Dapr SDK for implementing agent-to-agent operations using the [A2A](https://github.com/a2aproject/a2a-dotnet) framework.                            |
+| [Dapr.AI.Microsoft.Extensions](https://www.nuget.org/packages/Dapr.AI.Microsoft.Extensions)               | [Documentation]({{% ref dotnet-ai-extensions-howto %}})       | Easily interact with LLMs conversationally and using tooling via the Dapr Conversation building block.                                              |   
+| [Dapr.AspNetCore](https://www.nuget.org/packages/Dapr.AspNetCore)                                         | [Documentation]({{% ref dotnet-client %}})                    | Write servers and services in .NET using the Dapr SDK. Includes support and utilities providing richer integration with ASP.NET Core.               |
+| [Dapr.Actors](https://www.nuget.org/packages/Dapr.Actors)                                                 | [Documentation]({{% ref dotnet-actors %}})                    | Create virtual actors with state, reminders/timers, and methods.                                                                                    |
+| [Dapr.Actors.AspNetCore](https://www.nuget.org/packages/Dapr.Actors)                                      | [Documentation]({{% ref dotnet-actors %}})                    | Create virtual actors with state, reminders/timers, and methods with rich integration with ASP.NET Core.                                            |
+| [Dapr.Actors.Analyzers](https://www.nuget.org/packages/Dapr.Actors.Analyzers)                             | [Documentation]({{% ref dotnet-guidance-source-generators %}}) | A collection of Roslyn source generators and analyzers for enabling better practices and preventing common errors when using Dapr Actors in .NET.   |
+| [Dapr.Cryptography](https://www.nuget.org/packages/Dapr.Cryptography)                                     | [Documentation]({{% ref dotnet-cryptography %}})                  | Encrypt and decrypt streaming state of any size using Dapr's cryptography building block.                                                           |
+| [Dapr.Jobs](https://www.nuget.org/packages/Dapr.Jobs)                                                     | [Documentation]({{% ref dotnet-jobs %}})                      | Create and manage the scheduling and orchestration of jobs.                                                                                         |
+| [Dapr.Jobs.Analyzers](https://www.nuget.org/packages/Dapr.Jobs.Analyzers)                                 | [Documentation]({{% ref dotnet-guidance-source-generators %}})                      | A collection of Roslyn source generators and analyzers for enabling better practices and preventing common errors when using Dapr Jobs in .NET.     |
+| [Dapr.DistributedLocks](https://www.nuget.org/packages/Dapr.DistributedLocks)                             | [Documentation]({{% ref dotnet-distributed-lock %}})          | Create and manage distributed locks for managing exclusive resource access.                                                                         |
+| [Dapr.Extensions.Configuration](https://www.nuget.org/packages/Dapr.Extensions.Configuration)             |                                                               | Dapr secret store configuration provider implementation for `Microsoft.Extensions.Configuration`.                                                   |
+| [Dapr.PluggableComponents](https://www.nuget.org/packages/Dapr.PluggableComponents)                       |                                                               | Used to implement pluggable components with Dapr using .NET.                                                                                        |
+| [Dapr.PluggableComponents.AspNetCore](https://www.nuget.org/packages/Dapr.PluggableComponents.AspNetCore) |                                                               | Implement pluggable components with Dapr using .NET with rich ASP.NET Core support.                                                                 |
+| [Dapr.PluggableComponents.Protos](https://www.nuget.org/packages/Dapr.PluggableComponents.Protos)         |                                                               | **Note:** Developers needn't install this package directly in their applications.                                                                   |
+| [Dapr.Messaging](https://www.nuget.org/packages/Dapr.Messaging)                                           | [Documentation]({{% ref dotnet-messaging %}})                 | Build distributed applications using the Dapr Messaging SDK that utilize messaging components like streaming pub/sub subscriptions.                 |
+| [Dapr.Workflow](https://www.nuget.org/packages/Dapr.Workflow)                                             | [Documentation]({{% ref dotnet-workflow %}})                  | Create and manage workflows that work with other Dapr APIs.                                                                                         |
+| [Dapr.Workflow.Analyzers](https://www.nuget.org/packages/Dapr.Workflow.Analyzers)                         | [Documentation]({{% ref dotnet-guidance-source-generators %}}) | A collection of Roslyn source generators and analyzers for enabling better practices and preventing common errors when using Dapr Workflows in .NET |
 
 ## More information
 
