@@ -134,10 +134,43 @@ Console.WriteLine("Published deposit event!");
 
 ### Interact with output bindings
 
+When calling `InvokeBindingAsync`, you have the option to handle serialization and encoding yourself, 
+or to have the SDK serialize it to JSON and then encode it to bytes for you.
+
+{{% alert title="Important" color="warning" %}}
+Bindings differ in the shape of data they expect, take special note and ensure that the data you 
+are sending is handled accordingly.
+{{% /alert %}}
+
+#### Manual serialization
+
+For most scenarios, we advise that you use this overload of `InvokeBindingAsync` as it gives you clarity and control over 
+how the data is being handled.
+
+_In this example, the data is sent as the UTF-8 byte representation of the string._
+
 ```csharp
 using var client = new DaprClientBuilder().Build();
 
-// Example payload for the Twilio SendGrid binding
+var request = new BindingRequest("send-email", "create")
+{
+    Data = Encoding.UTF8.GetBytes("<h1>Testing Dapr Bindings</h1>This is a test.<br>Bye!"),
+    Metadata =
+    {
+        { "emailTo", "customer@example.com" },
+        { "subject", "An email from Dapr SendGrid binding" },
+    },
+}
+await client.InvokeBindingAsync(request);
+```
+
+#### Automatic serialzation and encoding
+
+_In this example, the data is sent as a UTF-8 encoded byte representation of the value serialized to JSON._
+
+```csharp
+using var client = new DaprClientBuilder().Build();
+
 var email = new 
 {
     metadata = new 
