@@ -157,16 +157,54 @@ Console.WriteLine("Published deposit event!");
 
 ### Interact with output bindings
 
+When calling `InvokeBindingAsync`, you have the option to handle serialization and encoding yourself, 
+or to have the SDK serialize it to JSON and then encode it to bytes for you.
+
+{{% alert title="Important" color="warning" %}}
+Bindings differ in the shape of data they expect, take special note and ensure that the data you 
+are sending is handled accordingly.  If you are authoring both an output and an input, make sure
+that they both follow the same conventions for serialization.
+{{% /alert %}}
+
+#### Manual serialization
+
+For most scenarios, you're advised to use this overload of `InvokeBindingAsync` as it gives you clarity and control over 
+how the data is being handled.
+
+_In this example, the data is sent as the UTF-8 byte representation of the string._
+
 ```csharp
-// Example payload for the Twilio SendGrid binding
+using var client = new DaprClientBuilder().Build();
+
+var request = new BindingRequest("send-email", "create")
+{
+    // note: This is an example payload for the Twilio SendGrid binding 
+    Data = Encoding.UTF8.GetBytes("<h1>Testing Dapr Bindings</h1>This is a test.<br>Bye!"),
+    Metadata =
+    {
+        { "emailTo", "customer@example.com" },
+        { "subject", "An email from Dapr SendGrid binding" },
+    },
+}
+await client.InvokeBindingAsync(request);
+```
+
+#### Automatic serialzation and encoding
+
+_In this example, the data is sent as a UTF-8 encoded byte representation of the value serialized to JSON._
+
+```csharp
+using var client = new DaprClientBuilder().Build();
+
 var email = new 
 {
+    // note: This is an example payload for the Twilio SendGrid binding 
+    data =  "<h1>Testing Dapr Bindings</h1>This is a test.<br>Bye!",
     metadata = new 
     {
         emailTo = "customer@example.com",
         subject = "An email from Dapr SendGrid binding",    
-    }, 
-    data =  "<h1>Testing Dapr Bindings</h1>This is a test.<br>Bye!",
+    },
 };
 await client.InvokeBindingAsync("send-email", "create", email);
 ```
