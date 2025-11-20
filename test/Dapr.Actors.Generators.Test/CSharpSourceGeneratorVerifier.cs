@@ -36,6 +36,8 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
                 8;
 #elif NET9_0
                 9;
+#elif NET10_0
+                10;
 #endif
 
             //
@@ -48,7 +50,7 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
 
             this.ReferenceAssemblies =
                 new ReferenceAssemblies(
-                    $"net{frameworkVersion}.0",
+                    $"net{(frameworkVersion)}.0",
                     new PackageIdentity(
                         "Microsoft.NETCore.App.Ref",
                         $"{frameworkVersion}.0.0"),

@@ -35,6 +35,8 @@ internal static class TestUtilities
         var referenceAssemblies = ReferenceAssemblies.Net.Net80;
 #elif NET9_0
         var referenceAssemblies = ReferenceAssemblies.Net.Net90;
+ #elif NET10_0
+        var referenceAssemblies = new ReferenceAssemblies("net10.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "10.0.0-rc.1.25451.107"), Path.Combine("ref", "net10.0"));
 #endif
 
         // Create a new project with necessary references

@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.Jobs.Test.Extensions;
@@ -33,7 +34,7 @@ public class EndpointRouteBuilderExtensionsTest
     [Fact]
     public async Task MapDaprScheduledJobHandler_ValidRequest_ExecutesAction()
     {
-        var server = CreateTestServer();
+        var server = await CreateTestServer();
         var client = server.CreateClient();
 
         var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
@@ -53,7 +54,7 @@ public class EndpointRouteBuilderExtensionsTest
     [Fact]
     public async Task MapDaprScheduleJobHandler_HandleMissingCancellationToken()
     {
-        var server = CreateTestServer2();
+        var server = await CreateTestServer2();
         var client = server.CreateClient();
 
         var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
@@ -76,40 +77,45 @@ public class EndpointRouteBuilderExtensionsTest
         // Arrange
         var timeout = TimeSpan.FromSeconds(5);
         const string testJobName = "testJob";
-        var testJobPayload = Encoding.UTF8.GetBytes("testPayload");
+        var testJobPayload = "testPayload"u8.ToArray();
 
-        var builder = new WebHostBuilder()
-            .ConfigureServices(services =>
+        var builder = new HostBuilder();
+        builder.ConfigureServices(services =>
             {
                 services.AddLogging();
                 services.AddRouting();
             })
-            .Configure(app =>
+            .ConfigureWebHost(webBuilder =>
             {
-                app.UseRouting();
-                app.UseEndpoints(endpoints =>
+                webBuilder.Configure(app =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (
-                        string jobName,
-                        ReadOnlyMemory<byte> jobPayload,
-                        ILogger? logger,
-                        CancellationToken cancellationToken) =>
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints =>
                     {
-                        logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
+                        endpoints.MapDaprScheduledJobHandler(async (
+                            string jobName,
+                            ReadOnlyMemory<byte> jobPayload,
+                            ILogger? logger,
+                            CancellationToken cancellationToken) =>
+                        {
+                            logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
 
-                        var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
-                        logger?.LogInformation(
-                            "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
-                            jobName, deserializedPayload);
-                        await Task.Delay(TimeSpan.FromSeconds(1),
-                            cancellationToken);  //Less than the timeout, so this should work without throwing
+                            var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
+                            logger?.LogInformation(
+                                "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
+                                jobName, deserializedPayload);
+                            await Task.Delay(TimeSpan.FromSeconds(1),
+                                cancellationToken); //Less than the timeout, so this should work without throwing
 
-                        return Task.CompletedTask;
-                    }, timeout);
+                            return Task.CompletedTask;
+                        }, timeout);
+                    });
                 });
             });
 
-        var testServer = new TestServer(builder);
+        var host = await builder.StartAsync();
+        var testServer = host.GetTestServer();
+        
         var client = testServer.CreateClient();
 
         var requestContent = new ByteArrayContent(testJobPayload);
@@ -129,40 +135,44 @@ public class EndpointRouteBuilderExtensionsTest
         // Arrange
         var timeout = TimeSpan.FromSeconds(1);
         const string testJobName = "testJob";
-        var testJobPayload = Encoding.UTF8.GetBytes("testPayload");
-
-        var builder = new WebHostBuilder()
-            .ConfigureServices(services =>
+        var testJobPayload = "testPayload"u8.ToArray();
+        
+        var builder = new HostBuilder();
+        builder.ConfigureServices(services =>
             {
                 services.AddLogging();
                 services.AddRouting();
             })
-            .Configure(app =>
+            .ConfigureWebHost(webBuilder =>
             {
-                app.UseRouting();
-                app.UseEndpoints(endpoints =>
+                webBuilder.Configure(app =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (
-                        string jobName,
-                        ReadOnlyMemory<byte> jobPayload,
-                        ILogger? logger,
-                        CancellationToken cancellationToken) =>
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints =>
                     {
-                        logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
+                        endpoints.MapDaprScheduledJobHandler(async (
+                            string jobName,
+                            ReadOnlyMemory<byte> jobPayload,
+                            ILogger? logger,
+                            CancellationToken cancellationToken) =>
+                        {
+                            logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
 
-                        var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
-                        logger?.LogInformation(
-                            "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
-                            jobName, deserializedPayload);
-                        await Task.Delay(timeout.Add(TimeSpan.FromSeconds(3)),
-                            cancellationToken); //Intentionally delay longer than the timeout allows
+                            var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
+                            logger?.LogInformation(
+                                "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
+                                jobName, deserializedPayload);
+                            await Task.Delay(timeout.Add(TimeSpan.FromSeconds(3)),
+                                cancellationToken); //Intentionally delay longer than the timeout allows
 
-                        return Task.CompletedTask;
-                    }, timeout);
+                            return Task.CompletedTask;
+                        }, timeout);
+                    });
                 });
             });
 
-        var testServer = new TestServer(builder);
+        var host = await builder.StartAsync();
+        var testServer = host.GetTestServer();
         var client = testServer.CreateClient();
 
         var requestContent = new ByteArrayContent(testJobPayload);
@@ -183,55 +193,66 @@ public class EndpointRouteBuilderExtensionsTest
         public string? SerializedPayload { get; set; }
     }
 
-    private static TestServer CreateTestServer()
+    private static async Task<TestServer> CreateTestServer()
     {
-        var builder = new WebHostBuilder()
+        var builder = new HostBuilder()
             .ConfigureServices(services =>
             {
                 services.AddSingleton<Validator>();
                 services.AddRouting();
             })
-            .Configure(app =>
+            .ConfigureWebHost(host =>
             {
-                app.UseRouting();
-                app.UseEndpoints(endpoints =>
+                host.Configure(app =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (string jobName, ReadOnlyMemory<byte> jobPayload, Validator validator, CancellationToken cancellationToken) =>
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints =>
                     {
-                        validator.JobName = jobName;
-                        validator.SerializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
-                        await Task.CompletedTask;
+                        endpoints.MapDaprScheduledJobHandler(async (string jobName, ReadOnlyMemory<byte> jobPayload,
+                            Validator validator, CancellationToken cancellationToken) =>
+                        {
+                            validator.JobName = jobName;
+                            validator.SerializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
+                            await Task.CompletedTask;
+                        });
                     });
                 });
             });
 
-        return new TestServer(builder);
+        var host = await builder.StartAsync();
+        var testServer = host.GetTestServer();
+        return testServer;
     }
     
-    private static TestServer CreateTestServer2()
+    private static async Task<TestServer> CreateTestServer2()
     {
-        var builder = new WebHostBuilder()
+        var builder = new HostBuilder()
             .ConfigureServices(services =>
             {
                 services.AddSingleton<Validator>();
                 services.AddRouting();
             })
-            .Configure(app =>
+            .ConfigureWebHost(host =>
             {
-                app.UseRouting();
-                app.UseEndpoints(endpoints =>
+                host.Configure(app =>
                 {
-                    endpoints.MapDaprScheduledJobHandler(async (string jobName, Validator validator, ReadOnlyMemory<byte> payload) =>
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints =>
                     {
-                        validator.JobName = jobName;
-                        
-                        var payloadString = Encoding.UTF8.GetString(payload.Span);
-                        validator.SerializedPayload = payloadString;
-                        await Task.CompletedTask;
+                        endpoints.MapDaprScheduledJobHandler(async (string jobName, Validator validator,
+                            ReadOnlyMemory<byte> payload) =>
+                        {
+                            validator.JobName = jobName;
+
+                            var payloadString = Encoding.UTF8.GetString(payload.Span);
+                            validator.SerializedPayload = payloadString;
+                            await Task.CompletedTask;
+                        });
                     });
                 });
             });
 
-        return new TestServer(builder);
+        var host = await builder.StartAsync();
+        return host.GetTestServer();
     }
 }
