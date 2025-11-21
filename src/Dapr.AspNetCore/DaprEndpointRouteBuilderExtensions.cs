@@ -74,9 +74,9 @@ public static class DaprEndpointRouteBuilderExtensions
                     var originalTopicMetadata = e.Metadata.GetOrderedMetadata<IOriginalTopicMetadata>();
                     var bulkSubscribeMetadata = e.Metadata.GetOrderedMetadata<IBulkSubscribeMetadata>();
 
-                    var subs = new List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload, 
-                        string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata, 
-                        string MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe)>();
+                    var subs = new List<(string PubsubName, string Name, string DeadLetterTopic, bool? EnableRawPayload,
+                        string Match, int Priority, Dictionary<string, string[]> OriginalTopicMetadata,
+                        string MetadataSeparator, RoutePattern RoutePattern, DaprTopicBulkSubscribe bulkSubscribe, string SubscriptionName)>();
 
                     for (int i = 0; i < topicMetadata.Count(); i++)
                     {
@@ -109,13 +109,14 @@ public static class DaprEndpointRouteBuilderExtensions
                                 .ToDictionary(m => m.Key, m => m.Select(c => c.Value).Distinct().ToArray()),
                             (topicMetadata[i] as IOwnedOriginalTopicMetadata)?.MetadataSeparator,
                             e.RoutePattern,
-                            bulkSubscribe));
+                            bulkSubscribe,
+                            topicMetadata[i].SubscriptionName));
                     }
 
                     return subs;
                 })
                 .Distinct()
-                .GroupBy(e => new { e.PubsubName, e.Name })
+                .GroupBy(e => new { e.PubsubName, e.Name, e.SubscriptionName })
                 .Select(e => e.OrderBy(e => e.Priority))
                 .Select(e =>
                 {
@@ -155,7 +156,8 @@ public static class DaprEndpointRouteBuilderExtensions
                         Topic = first.Name,
                         PubsubName = first.PubsubName,
                         Metadata = metadata.Count > 0 ? metadata : null,
-                        BulkSubscribe = first.bulkSubscribe
+                        BulkSubscribe = first.bulkSubscribe,
+                        Name = first.SubscriptionName
                     };
 
                     if (first.DeadLetterTopic != null)

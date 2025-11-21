@@ -44,7 +44,7 @@ internal class Subscription
     /// Gets or sets the metadata.
     /// </summary>
     public Metadata Metadata { get; set; }
-        
+
     /// <summary>
     /// Gets or sets the deadletter topic.
     /// </summary>
@@ -54,6 +54,12 @@ internal class Subscription
     /// Gets or sets the bulk subscribe options.
     /// </summary>
     public DaprTopicBulkSubscribe BulkSubscribe { get; set; }
+
+    /// <summary>
+    /// Gets or sets the subscription name. This is optional and allows multiple subscriptions
+    /// to the same topic within a single application.
+    /// </summary>
+    public string Name { get; set; }
 }
 
 /// <summary>

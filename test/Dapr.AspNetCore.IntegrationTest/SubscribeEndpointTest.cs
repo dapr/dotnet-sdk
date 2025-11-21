@@ -40,7 +40,7 @@ public class SubscribeEndpointTest
                 var json = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
                 json.ValueKind.ShouldBe(JsonValueKind.Array);
-                json.GetArrayLength().ShouldBe(18);
+                json.GetArrayLength().ShouldBe(20);  // Updated from 18 to 20 to account for 2 new subscription name tests
 
                 var subscriptions = new List<(string PubsubName, string Topic, string Route, string rawPayload, 
                     string match, string metadata, string DeadLetterTopic, string bulkSubscribeMetadata)>();
@@ -131,6 +131,9 @@ public class SubscribeEndpointTest
                     "{\"enabled\":true,\"maxMessagesCount\":500,\"maxAwaitDurationMs\":2000}"));
                 subscriptions.ShouldContain(("pubsub", "splitMetadataTopicBuilder", "splitMetadataTopics", string.Empty, string.Empty, "n1=v1;n2=v1", string.Empty, String.Empty));
                 subscriptions.ShouldContain(("pubsub", "metadataseparatorbyemptytring", "topicmetadataseparatorattrbyemptytring", string.Empty, string.Empty, "n1=v1,", string.Empty, String.Empty));
+                // Test subscription names - multiple subscriptions to same topic
+                subscriptions.ShouldContain(("pubsub", "H", "H-Handler1", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
+                subscriptions.ShouldContain(("pubsub", "H", "H-Handler2", string.Empty, string.Empty, string.Empty, string.Empty, String.Empty));
                 // Test priority route sorting
                 var eTopic = subscriptions.FindAll(e => e.Topic == "E");
                 eTopic.Count.ShouldBe(3);
