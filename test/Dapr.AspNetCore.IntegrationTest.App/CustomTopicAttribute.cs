@@ -30,4 +30,6 @@ public class CustomTopicAttribute : Attribute, ITopicMetadata
     public new string Match { get; }
 
     public int Priority { get; }
+
+    public string SubscriptionName { get; }
 }

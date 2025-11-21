@@ -41,4 +41,7 @@ public class CustomTopicAttribute : Attribute, ITopicMetadata
 
     /// <inheritdoc/>
     public int Priority { get; }
+
+    /// <inheritdoc/>
+    public string SubscriptionName { get; }
 }
