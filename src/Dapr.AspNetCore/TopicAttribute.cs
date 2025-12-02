@@ -28,7 +28,8 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
     /// <param name="name">The topic name.</param>
     /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
     /// <param name="metadataSeparator">Separator to use for metadata.</param>
-    public TopicAttribute(string pubsubName, string name, string[] ownedMetadatas = null, string metadataSeparator = null)
+    /// <param name="subscriptionName">The subscription name (optional). Allows multiple subscriptions to the same topic.</param>
+    public TopicAttribute(string pubsubName, string name, string[] ownedMetadatas = null, string metadataSeparator = null, string subscriptionName = null)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
         ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -37,6 +38,7 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
         this.PubsubName = pubsubName;
         this.OwnedMetadatas = ownedMetadatas;
         this.MetadataSeparator = metadataSeparator;
+        this.SubscriptionName = subscriptionName;
     }
 
     /// <summary>
@@ -47,7 +49,8 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
     /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
     /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
     /// <param name="metadataSeparator">Separator to use for metadata.</param>
-    public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null)
+    /// <param name="subscriptionName">The subscription name (optional). Allows multiple subscriptions to the same topic.</param>
+    public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null, string subscriptionName = null)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
         ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -57,6 +60,7 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
         this.EnableRawPayload = enableRawPayload;
         this.OwnedMetadatas = ownedMetadatas;
         this.MetadataSeparator = metadataSeparator;
+        this.SubscriptionName = subscriptionName;
     }
 
     /// <summary>
@@ -68,7 +72,8 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
     /// <param name="priority">The priority of the rule (low-to-high values).</param>
     /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
     /// <param name="metadataSeparator">Separator to use for metadata.</param>
-    public TopicAttribute(string pubsubName, string name, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null)
+    /// <param name="subscriptionName">The subscription name (optional). Allows multiple subscriptions to the same topic.</param>
+    public TopicAttribute(string pubsubName, string name, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null, string subscriptionName = null)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
         ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -79,6 +84,7 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
         this.Priority = priority;
         this.OwnedMetadatas = ownedMetadatas;
         this.MetadataSeparator = metadataSeparator;
+        this.SubscriptionName = subscriptionName;
     }
 
     /// <summary>
@@ -91,7 +97,8 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
     /// <param name="priority">The priority of the rule (low-to-high values).</param>
     /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
     /// <param name="metadataSeparator">Separator to use for metadata.</param>
-    public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null)
+    /// <param name="subscriptionName">The subscription name (optional). Allows multiple subscriptions to the same topic.</param>
+    public TopicAttribute(string pubsubName, string name, bool enableRawPayload, string match, int priority, string[] ownedMetadatas = null, string metadataSeparator = null, string subscriptionName = null)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
         ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -103,6 +110,7 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
         this.Priority = priority;
         this.OwnedMetadatas = ownedMetadatas;
         this.MetadataSeparator = metadataSeparator;
+        this.SubscriptionName = subscriptionName;
     }
 
     /// <summary>
@@ -114,7 +122,8 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
     /// <param name="enableRawPayload">The enable/disable raw pay load flag.</param>
     /// <param name="ownedMetadatas">The topic owned metadata ids.</param>
     /// <param name="metadataSeparator">Separator to use for metadata.</param>
-    public TopicAttribute(string pubsubName, string name, string deadLetterTopic, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null)
+    /// <param name="subscriptionName">The subscription name (optional). Allows multiple subscriptions to the same topic.</param>
+    public TopicAttribute(string pubsubName, string name, string deadLetterTopic, bool enableRawPayload, string[] ownedMetadatas = null, string metadataSeparator = null, string subscriptionName = null)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(pubsubName, nameof(pubsubName));
         ArgumentVerifier.ThrowIfNullOrEmpty(name, nameof(name));
@@ -125,6 +134,7 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
         this.EnableRawPayload = enableRawPayload;
         this.OwnedMetadatas = ownedMetadatas;
         this.MetadataSeparator = metadataSeparator;
+        this.SubscriptionName = subscriptionName;
     }
 
     /// <inheritdoc/>
@@ -150,4 +160,7 @@ public class TopicAttribute : Attribute, ITopicMetadata, IRawTopicMetadata, IOwn
 
     /// <inheritdoc/>
     public string DeadLetterTopic { get; set; }
+
+    /// <inheritdoc/>
+    public string SubscriptionName { get; set; }
 }

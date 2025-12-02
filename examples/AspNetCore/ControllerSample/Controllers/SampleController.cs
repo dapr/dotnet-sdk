@@ -294,4 +294,30 @@ public class SampleController : ControllerBase
     {
         return Ok();
     }
+
+    /// <summary>
+    /// Example demonstrating multiple subscriptions to the same topic using subscription names.
+    /// This handler processes deposits for accounting purposes.
+    /// </summary>
+    [Topic("pubsub", "multisub-deposit", subscriptionName: "deposit-accounting-subscription")]
+    [HttpPost("multisub/deposit/accounting")]
+    public ActionResult<Account> MultiSubDepositAccounting(Transaction transaction)
+    {
+        logger.LogInformation("Accounting handler: Processing deposit {Id} for amount {Amount}",
+            transaction.Id, transaction.Amount);
+        return Ok(new { handler = "accounting", transactionId = transaction.Id });
+    }
+
+    /// <summary>
+    /// Example demonstrating multiple subscriptions to the same topic using subscription names.
+    /// This handler processes deposits for notification purposes.
+    /// </summary>
+    [Topic("pubsub", "multisub-deposit", subscriptionName: "deposit-notification-subscription")]
+    [HttpPost("multisub/deposit/notifications")]
+    public ActionResult<Account> MultiSubDepositNotifications(Transaction transaction)
+    {
+        logger.LogInformation("Notification handler: Processing deposit {Id} for amount {Amount}",
+            transaction.Id, transaction.Amount);
+        return Ok(new { handler = "notifications", transactionId = transaction.Id });
+    }
 }

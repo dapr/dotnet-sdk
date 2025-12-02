@@ -37,4 +37,11 @@ public interface ITopicMetadata
     /// The priority in which this rule should be evaluated (lower to higher).
     /// </summary>
     int Priority { get; }
+
+    /// <summary>
+    /// Gets the subscription name. This is optional and allows multiple subscriptions
+    /// to the same topic within a single application. If not specified, the subscription
+    /// is identified by the combination of PubsubName and topic Name.
+    /// </summary>
+    string SubscriptionName { get; }
 }

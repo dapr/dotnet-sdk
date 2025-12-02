@@ -170,4 +170,17 @@ public class DaprController : ControllerBase
     {
         return user;
     }
+
+    // Test subscription names - multiple subscriptions to same topic
+    [Topic("pubsub", "H", subscriptionName: "subscription-h-1")]
+    [HttpPost("/H-Handler1")]
+    public void TopicHHandler1()
+    {
+    }
+
+    [Topic("pubsub", "H", subscriptionName: "subscription-h-2")]
+    [HttpPost("/H-Handler2")]
+    public void TopicHHandler2()
+    {
+    }
 }
