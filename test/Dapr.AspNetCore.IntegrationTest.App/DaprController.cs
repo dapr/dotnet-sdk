@@ -94,11 +94,11 @@ public class DaprController : ControllerBase
     {
     }
 
-    [Topic("pubsub", "metadataseparatorbyemptytring")]
-    [HttpPost("/topicmetadataseparatorattrbyemptytring")]
+    [Topic("pubsub", "metadataseparatorbyemptystring")]
+    [HttpPost("/topicmetadataseparatorattrbyemptystring")]
     [TopicMetadata("n1", "v1")]
     [TopicMetadata("n1", "")]
-    public void TopicMetadataSeparatorByemptytring ()
+    public void TopicMetadataSeparatorByemptyString ()
     {
     }
 

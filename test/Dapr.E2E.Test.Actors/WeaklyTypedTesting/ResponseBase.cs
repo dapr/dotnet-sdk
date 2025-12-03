@@ -19,5 +19,5 @@ namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting;
 #endif
 public class ResponseBase
 {
-    public string BasePropeprty { get; set; }
+    public string BaseProperty { get; set; }
 }
