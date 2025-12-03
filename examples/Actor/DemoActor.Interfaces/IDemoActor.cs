@@ -25,7 +25,7 @@ public interface IDemoActor : IActor
     /// <summary>
     /// Method to save data.
     /// </summary>
-    /// <param name="data">DAta to save.</param>
+    /// <param name="data">Data to save.</param>
     /// <param name="ttl">TTL of state key.</param>
     /// <returns>A task that represents the asynchronous save operation.</returns>
     Task SaveData(MyData data, TimeSpan ttl);

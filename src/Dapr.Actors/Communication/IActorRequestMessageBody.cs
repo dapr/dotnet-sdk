@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,16 +25,16 @@ public interface IActorRequestMessageBody
     /// This Api gets called to set remoting method parameters before serializing/dispatching the request.
     /// </summary>
     /// <param name="position">Position of the parameter in Remoting Method.</param>
-    /// <param name="parameName">Parameter Name in the Remoting Method.</param>
+    /// <param name="parameterName">Parameter Name in the Remoting Method.</param>
     /// <param name="parameter">Parameter Value.</param>
-    void SetParameter(int position, string parameName, object parameter);
+    void SetParameter(int position, string parameterName, object parameter);
 
     /// <summary>
-    /// This is used to retrive parameter from request body before dispatching to service remoting method.
+    /// This is used to retrieve parameter from request body before dispatching to service remoting method.
     /// </summary>
     /// <param name="position">Position of the parameter in Remoting Method.</param>
-    /// <param name="parameName">Parameter Name in the Remoting Method.</param>
+    /// <param name="parameterName">Parameter Name in the Remoting Method.</param>
     /// <param name="paramType">Parameter Type.</param>
     /// <returns>The parameter that is at the specified position and has the specified name.</returns>
-    object GetParameter(int position, string parameName, Type paramType);
+    object GetParameter(int position, string parameterName, Type paramType);
 }

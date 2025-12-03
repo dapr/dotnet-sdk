@@ -32,7 +32,7 @@ public class WeaklyTypedTestingActor : Actor, IWeaklyTypedTestingActor
     {
         var response = new DerivedResponse
         {
-            BasePropeprty = "Base property value",
+            BaseProperty = "Base property value",
             DerivedProperty = "Derived property value"
         };
 
