@@ -402,7 +402,7 @@ public class CloudEventsMiddlewareTest
         {
             httpContext.Request.ContentType.ShouldBe(dataContentType);
             var bytes = new byte[httpContext.Request.Body.Length];
-#if NET9_0
+#if NET9_0_OR_GREATER
             httpContext.Request.Body.ReadExactly(bytes, 0, bytes.Length);
 #else
                 httpContext.Request.Body.Read(bytes, 0, bytes.Length);
@@ -470,7 +470,7 @@ public class CloudEventsMiddlewareTest
         encoding ??= Encoding.UTF8;
 
         var bytes = new byte[stream.Length];
-#if NET9_0
+#if NET9_0_OR_GREATER
         stream.ReadExactly(bytes, 0, bytes.Length);
 #else
             stream.Read(bytes, 0, bytes.Length);
