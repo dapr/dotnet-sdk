@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -13,36 +13,9 @@
 
 namespace Dapr.Workflow;
 
+using Abstractions;
 using System;
 using System.Threading.Tasks;
-
-/// <summary>
-/// Common interface for workflow activity implementations.
-/// </summary>
-/// <remarks>
-/// Users should not implement workflow activities using this interface, directly.
-/// Instead, <see cref="WorkflowActivity{TInput, TOutput}"/> should be used to implement workflow activities.
-/// </remarks>
-public interface IWorkflowActivity
-{
-    /// <summary>
-    /// Gets the type of the input parameter that this activity accepts.
-    /// </summary>
-    Type InputType { get; }
-
-    /// <summary>
-    /// Gets the type of the return value that this activity produces.
-    /// </summary>
-    Type OutputType { get; }
-
-    /// <summary>
-    /// Invokes the workflow activity with the specified context and input.
-    /// </summary>
-    /// <param name="context">The workflow activity's context.</param>
-    /// <param name="input">The workflow activity's input.</param>
-    /// <returns>Returns the workflow activity output as the result of a <see cref="Task"/>.</returns>
-    Task<object?> RunAsync(WorkflowActivityContext context, object? input);
-}
 
 /// <summary>
 /// Base class for workflow activities.
@@ -77,7 +50,7 @@ public abstract class WorkflowActivity<TInput, TOutput> : IWorkflowActivity
     Type IWorkflowActivity.OutputType => typeof(TOutput);
 
     /// <inheritdoc/>
-    async Task<object?> IWorkflowActivity.RunAsync(WorkflowActivityContext context, object? input)
+    public async Task<object?> RunAsync(WorkflowActivityContext context, object? input)
     {
         return await this.RunAsync(context, (TInput)input!);
     }

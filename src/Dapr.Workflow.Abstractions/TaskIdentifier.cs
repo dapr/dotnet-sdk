@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2022 The Dapr Authors
+// Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,22 +11,26 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow;
-
-using Dapr.DurableTask;
+namespace Dapr.Workflow.Abstractions;
 
 /// <summary>
-/// Defines properties and methods for task activity context objects.
+/// Identifies a workflow task (workflow or activity).
 /// </summary>
-public abstract class WorkflowActivityContext
+/// <param name="Name">The name of the task.</param>
+public readonly record struct TaskIdentifier(string Name)
 {
     /// <summary>
-    /// Gets the name of the activity.
+    /// Implicitly converts a string to a <see cref="TaskIdentifier"/>.
     /// </summary>
-    public abstract TaskName Name { get; }
+    /// <param name="name">The task name.</param>
+    public static implicit operator TaskIdentifier(string name) => new (name);
 
     /// <summary>
-    /// Gets the unique ID of the current workflow instance.
+    /// Implicitly converts a <see cref="TaskIdentifier"/> to a string.
     /// </summary>
-    public abstract string InstanceId {  get; }
+    /// <param name="identifier">The task identifier.</param>
+    public static implicit operator string(TaskIdentifier identifier) => identifier.Name;
+    
+    /// <inheritdoc />
+    public override string ToString() => Name;
 }

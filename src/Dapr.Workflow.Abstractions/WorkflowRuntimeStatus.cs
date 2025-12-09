@@ -52,4 +52,9 @@ public enum WorkflowRuntimeStatus
     /// The workflow was suspended.
     /// </summary>
     Suspended,
+    
+    /// <summary>
+    /// The workflow was stalled.
+    /// </summary>
+    Stalled
 }

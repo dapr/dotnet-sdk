@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,34 +14,26 @@
 namespace Dapr.Workflow;
 
 using System;
-using Dapr.DurableTask;
 
 /// <summary>
 /// Represents workflow task failure details.
 /// </summary>
-public class WorkflowTaskFailureDetails
+public class WorkflowTaskFailureDetails(string errorType, string errorMessage, string? stackTrace = null)
 {
-    readonly TaskFailureDetails details;
-
-    internal WorkflowTaskFailureDetails(TaskFailureDetails details)
-    {
-        this.details = details ?? throw new ArgumentNullException(nameof(details));
-    }
-
     /// <summary>
     /// Gets the error type, which is the namespace-qualified exception type name.
     /// </summary>
-    public string ErrorType => this.details.ErrorType;
+    public string ErrorType => errorType ?? throw new ArgumentNullException(errorType, nameof(errorType));
 
     /// <summary>
     /// Gets a summary description of the failure, which is typically an exception message.
     /// </summary>
-    public string ErrorMessage => this.details.ErrorMessage;
+    public string ErrorMessage => errorMessage ?? throw new ArgumentNullException(errorMessage, nameof(errorMessage));
 
     /// <summary>
     /// Gets the stack trace of the failure.
     /// </summary>
-    public string? StackTrace => this.details.StackTrace;
+    public string? StackTrace => stackTrace;
 
     /// <summary>
     /// Returns <c>true</c> if the failure was caused by the specified exception type.
@@ -57,15 +49,36 @@ public class WorkflowTaskFailureDetails
     /// </returns>
     public bool IsCausedBy<T>() where T : Exception
     {
-        return this.details.IsCausedBy<T>();
+        try
+        {
+            Type? exceptionType = Type.GetType(this.ErrorType, throwOnError: false);
+            return exceptionType is not null && typeof(T).IsAssignableFrom(exceptionType);
+        }
+        catch
+        {
+            // If we can't load the type for any reason, return false
+            return false;
+        }
     }
 
     /// <summary>
     /// Gets a debug-friendly description of the failure information.
     /// </summary>
     /// <returns>A debugger friendly display string.</returns>
-    public override string ToString()
+    public override string ToString() => $"{this.ErrorType}: {this.ErrorMessage}";
+
+    /// <summary>
+    /// Creates a <see cref="WorkflowTaskFailureDetails"/> from an exception.
+    /// </summary>
+    /// <param name="ex">The exception to convert.</param>
+    /// <returns>A new instance of <see cref="WorkflowTaskFailureDetails"/>.</returns>
+    internal static WorkflowTaskFailureDetails FromException(Exception ex)
     {
-        return $"{this.ErrorType}: {this.ErrorMessage}";
+        ArgumentNullException.ThrowIfNull(ex);
+        
+        return new WorkflowTaskFailureDetails(
+            ex.GetType().FullName ?? ex.GetType().Name,
+            ex.Message,
+            ex.StackTrace);
     }
 }

@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,20 +11,22 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Workflow.Abstractions;
+
 namespace Dapr.Workflow;
 
-using System;
-
 /// <summary>
-/// Exception type for Dapr Workflow task failures.
+/// Defines properties and methods for task activity context objects.
 /// </summary>
-/// <param name="message">The exception message.</param>
-/// <param name="failureDetails">Details about the failure.</param>
-public class WorkflowTaskFailedException(string message, WorkflowTaskFailureDetails failureDetails)
-    : Exception(message)
+public abstract class WorkflowActivityContext
 {
     /// <summary>
-    /// Gets more information about the underlying workflow task failure.
+    /// Gets the name of the activity.
     /// </summary>
-    public WorkflowTaskFailureDetails FailureDetails { get; } = failureDetails ?? throw new ArgumentNullException(nameof(failureDetails));
+    public abstract TaskIdentifier Name { get; }
+
+    /// <summary>
+    /// Gets the unique ID of the current workflow instance.
+    /// </summary>
+    public abstract string InstanceId {  get; }
 }

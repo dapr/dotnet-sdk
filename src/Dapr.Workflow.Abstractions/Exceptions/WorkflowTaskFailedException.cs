@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2022 The Dapr Authors
+// Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,27 +11,19 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Workflow.Abstractions;
-
 namespace Dapr.Workflow;
 
 using System;
 
 /// <summary>
-/// Defines properties and methods for task activity context objects.
+/// Exception type for Dapr Workflow task failures.
 /// </summary>
-public class DaprWorkflowActivityContext : WorkflowActivityContext
+/// <param name="message">The exception message.</param>
+/// <param name="failureDetails">Details about the failure.</param>
+public class WorkflowTaskFailedException(string message, WorkflowTaskFailureDetails failureDetails) : Exception(message)
 {
-    readonly TaskActivityContext innerContext;
-
-    internal DaprWorkflowActivityContext(TaskActivityContext innerContext)
-    {
-        this.innerContext = innerContext ?? throw new ArgumentNullException(nameof(innerContext));
-    }
-
-    /// <inheritdoc/>
-    public override TaskIdentifier Name => this.innerContext.Name;
-
-    /// <inheritdoc/>
-    public override string InstanceId => this.innerContext.InstanceId;
+    /// <summary>
+    /// Gets more information about the underlying workflow task failure.
+    /// </summary>
+    public WorkflowTaskFailureDetails FailureDetails { get; } = failureDetails ?? throw new ArgumentNullException(nameof(failureDetails));
 }

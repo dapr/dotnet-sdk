@@ -7,16 +7,12 @@
     <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
     <VersionSuffix>alpha</VersionSuffix>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Dapr.DurableTask.Client.Grpc" />
-    <PackageReference Include="Dapr.DurableTask.Worker.Grpc" />
-  </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
     <ProjectReference Include="..\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
+    <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>
