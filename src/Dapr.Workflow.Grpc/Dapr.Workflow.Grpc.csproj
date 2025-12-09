@@ -1,9 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackageId>Dapr.Workflow.Grpc</PackageId>
+        <Title>Dapr Workflow gRPC protocol definitions</Title>
+        <Description>The gRPC protocol definitions for Dapr Workflows.</Description>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,6 +15,13 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+      <PackageReference Include="Microsoft.Extensions.Http" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <Protobuf Include="orchestrator_service.proto" GrpcServices="Client" />
+        <Protobuf Include="runtime_state.proto" GrpcServices="None" />
     </ItemGroup>
 
 </Project>
