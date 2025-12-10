@@ -22,10 +22,10 @@ internal interface IWorkflowsFactory
     /// Tries to create a workflow instance.
     /// </summary>
     /// <param name="identifier">The identifier of the workflow.</param>
-    /// <param name="serviceprovider">The service provider for dependency injection.</param>
+    /// <param name="serviceProvider">The service provider for dependency injection.</param>
     /// <param name="workflow">The created workflow, or null if not found.</param>
     /// <returns>True if the workflow was created; otherwise false.</returns>
-    bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceprovider, out IWorkflow? workflow);
+    bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow);
 
     /// <summary>
     /// Tries to create an activity instance.

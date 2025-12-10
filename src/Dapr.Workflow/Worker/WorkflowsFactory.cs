@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using Dapr.Workflow.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -24,18 +25,44 @@ namespace Dapr.Workflow.Worker;
 /// </summary>
 internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWorkflowsFactory
 {
-    private readonly ConcurrentDictionary<string, Type> _workflows = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, Type> _activities = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Func<IServiceProvider, IWorkflow>> _workflowFactories =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Func<IServiceProvider, IWorkflowActivity>> _activityFactories =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Registers a workflow type.
     /// </summary>
-    public void RegisterWorkflow<TWorkflow>() where TWorkflow : IWorkflow
+    /// <typeparam name="TWorkflow">The workflow type to register.</typeparam>
+    /// <param name="name">Optional workflow name. If not specified, uses the type name.</param>
+    public void RegisterWorkflow<TWorkflow>(string? name = null) where TWorkflow : class, IWorkflow
     {
-        var workflowType = typeof(TWorkflow);
-        var name = workflowType.Name;
+        name ??= typeof(TWorkflow).Name;
 
-        if (_workflows.TryAdd(name, workflowType))
+        if (_workflowFactories.TryAdd(name, sp => ActivatorUtilities.CreateInstance<TWorkflow>(sp)))
+        {
+            logger.LogRegisterWorkflowSuccess(name);
+        }
+        else
+        {
+            logger.LogRegisterWorkflowAlreadyRegistered(name);
+        }
+    }
+
+    /// <summary>
+    /// Registers a workflow as a function.
+    /// </summary>
+    /// <typeparam name="TInput">The type of the workflow input.</typeparam>
+    /// <typeparam name="TOutput">The type of the workflow output.</typeparam>
+    /// <param name="name">Workflow name.</param>
+    /// <param name="implementation">Function implementing the workflow definition.</param>
+    public void RegisterWorkflow<TInput, TOutput>(string name,
+        Func<WorkflowContext, TInput, Task<TOutput>> implementation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(implementation);
+
+        if (_workflowFactories.TryAdd(name, _ => new FunctionWorkflow<TInput, TOutput>(implementation)))
         {
             logger.LogRegisterWorkflowSuccess(name);
         }
@@ -48,12 +75,37 @@ internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWork
     /// <summary>
     /// Registers a workflow activity type.
     /// </summary>
-    public void RegisterActivity<TActivity>() where TActivity : IWorkflowActivity
+    /// <typeparam name="TActivity">The activity type to register.</typeparam>
+    /// <param name="name">Optional activity name. If not specified, uses the type name.</param>
+    public void RegisterActivity<TActivity>(string? name = null) where TActivity : class, IWorkflowActivity
     {
-        var activityType = typeof(TActivity);
-        var name = activityType.Name;
+        name ??= typeof(TActivity).Name;
 
-        if (_activities.TryAdd(name, activityType))
+        if (_activityFactories.TryAdd(name, sp => ActivatorUtilities.CreateInstance<TActivity>(sp)))
+        {
+            logger.LogRegisterActivitySuccess(name);
+        }
+        else
+        {
+            logger.LogRegisterActivityAlreadyRegistered(name);
+        }
+    }
+
+    /// <summary>
+    /// Registers an activity as a function. 
+    /// </summary>
+    /// <param name="name">The name of the activity.</param>
+    /// <param name="implementation">The implementation of the activity.</param>
+    /// <typeparam name="TInput">The type of the input to the activity.</typeparam>
+    /// <typeparam name="TOutput">The type of the output returned from the activity.</typeparam>
+    public void RegisterActivity<TInput, TOutput>(string name,
+        Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(implementation);
+        
+        // Create a synthetic type that wraps the function
+        if (_activityFactories.TryAdd(name, _ => new FunctionActivity<TInput, TOutput>(implementation)))
         {
             logger.LogRegisterActivitySuccess(name);
         }
@@ -64,13 +116,13 @@ internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWork
     }
     
     /// <inheritdoc />
-    public bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceprovider, out IWorkflow? workflow)
+    public bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow)
     {
-        if (_workflows.TryGetValue(identifier.Name, out var workflowType))
+        if (_workflowFactories.TryGetValue(identifier.Name, out var factory))
         {
             try
             {
-                workflow = (IWorkflow)ActivatorUtilities.CreateInstance(serviceprovider, workflowType);
+                workflow = factory(serviceProvider);
                 logger.LogCreateWorkflowInstanceSuccess(identifier.Name);
                 return true;
             }
@@ -90,11 +142,11 @@ internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWork
     /// <inheritdoc />
     public bool TryCreateActivity(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflowActivity? activity)
     {
-        if (_activities.TryGetValue(identifier.Name, out var activityType))
+        if (_activityFactories.TryGetValue(identifier.Name, out var factory))
         {
             try
             {
-                activity = (IWorkflowActivity)ActivatorUtilities.CreateInstance(serviceProvider, activityType);
+                activity = factory(serviceProvider);
                 logger.LogCreateActivityInstanceSuccess(identifier.Name);
                 return true;
             }
@@ -109,5 +161,33 @@ internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWork
         logger.LogCreateActivityNotFoundInRegistry(identifier.Name);
         activity = null;
         return false;
+    }
+
+    /// <summary>
+    /// Internal wrapper that adapts a function to <see cref="IWorkflow"/>.
+    /// </summary>
+    private sealed class FunctionWorkflow<TInput, TOutput>(Func<WorkflowContext, TInput, Task<TOutput>> implementation) : IWorkflow
+    {
+        public Type InputType => typeof(TInput);
+        public Type OutputType => typeof(TOutput);
+
+        public async Task<object?> RunAsync(WorkflowContext context, object? input)
+        {
+            return await implementation(context, (TInput)input!);
+        }
+    }
+
+    /// <summary>
+    /// Internal wrapper that adapts a function to <see cref="IWorkflowActivity"/>.
+    /// </summary>
+    private sealed class FunctionActivity<TInput, TOutput>(Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation) : IWorkflowActivity
+    {
+        public Type InputType => typeof(TInput);
+        public Type OutputType => typeof(TOutput);
+
+        public async Task<object?> RunAsync(WorkflowActivityContext context, object? input)
+        {
+            return await implementation(context, (TInput)input!);
+        }
     }
 }
