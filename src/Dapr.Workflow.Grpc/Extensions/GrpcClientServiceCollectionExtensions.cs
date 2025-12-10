@@ -22,6 +22,9 @@ namespace Dapr.Workflow.Grpc.Extensions;
 /// </summary>
 public static class GrpcClientServiceCollectionExtensions
 {
+    /// <summary>
+    /// Used to add the gRPC client used internally for communication with the Dapr sidecar by the Dapr Workflow SDK
+    /// </summary>
     public static IHttpClientBuilder AddDaprWorkflowGrpcClient(
         this IServiceCollection services,
         Action<GrpcClientFactoryOptions>? configureClient = null) =>
