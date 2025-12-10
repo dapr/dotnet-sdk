@@ -12,6 +12,8 @@
 // ------------------------------------------------------------------------
 
 using System;
+using Dapr.DurableTask.Protobuf;
+using Dapr.Workflow.Client;
 using Dapr.Workflow.Grpc.Extensions;
 using Dapr.Workflow.Worker;
 using Microsoft.Extensions.Configuration;
@@ -62,7 +64,7 @@ public static class WorkflowServiceCollectionExtensions
     /// Adds Dapr Workflow support to the service collection.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-    /// <param name="configure">A delegate used to configure actor options and register workflow functions.</param>
+    /// <param name="configure">A delegate used to configure workflow options and register workflow functions.</param>
     /// <param name="lifetime">The lifetime of the registered services.</param>
     public static IServiceCollection AddDaprWorkflow(
         this IServiceCollection serviceCollection,
@@ -96,6 +98,15 @@ public static class WorkflowServiceCollectionExtensions
         
         // Register the IWorkflowsFactory interface
         serviceCollection.TryAddSingleton<IWorkflowsFactory>(sp => sp.GetRequiredService<WorkflowsFactory>());
+        
+        // Register the internal WorkflowClient implementation
+        serviceCollection.TryAddSingleton<WorkflowClient>(sp =>
+        {
+            var grpcClient = sp.GetRequiredService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
+            return new WorkflowGrpcClient(grpcClient, logger);
+        });
         
         // Register gRPC client for communicating with Dapr sidecar
         // This sets up a proper long-lived streaming connection configuration
