@@ -1,4 +1,5 @@
 ﻿using System;
+using Dapr.DurableTask.Protobuf;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
@@ -6,6 +7,84 @@ namespace Dapr.Workflow;
 
 internal static partial class Logging
 {
+    [LoggerMessage(LogLevel.Warning, "Received unknown work item type: '{WorkItemType}'")]
+    public static partial void LogGrpcProtocolHandlerUnknownWorkItemType(this ILogger logger, WorkItem.RequestOneofCase workItemType);
+    
+    [LoggerMessage(LogLevel.Debug, "Processing workflow request: Instance='{InstanceId}', Active={activeCount}")]
+    public static partial void LogGrpcProtocolHandlerWorkflowProcessorStart(this ILogger logger, string instanceId, int activeCount);
+    
+    [LoggerMessage(LogLevel.Information, "Workflow processing canceled: '{InstanceId}'")]
+    public static partial void LogGrpcProtocolHandlerWorkflowProcessorCanceled(this ILogger logger, string instanceId);
+    
+    [LoggerMessage(LogLevel.Error, "Error processing workflow for instance '{InstanceId}'")]
+    public static partial void LogGrpcProtocolHandlerWorkflowProcessorError(this ILogger logger, Exception ex, string? instanceId);
+    
+    [LoggerMessage(LogLevel.Error, "Failed to send workflow failure result for '{InstanceId}'")]
+    public static partial void LogGrpcProtocolHandlerWorkflowProcessorFailedToSendError(this ILogger logger, Exception ex, string instanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Processing activity request: Instance='{InstanceId}', Activity='{ActivityName}', TaskId='{TaskId}', Active={activeCount}")]
+    public static partial void LogGrpcProtocolHandlerActivityProcessorStart(this ILogger logger, string instanceId, string activityName, int taskId, int activeCount);
+    
+    [LoggerMessage(LogLevel.Information, "Activity processing canceled: '{ActivityName}'")]
+    public static partial void LogGrpcProtocolHandlerActivityProcessorCanceled(this ILogger logger, string activityName);
+    
+    [LoggerMessage(LogLevel.Error, "Error processing activity '{ActivityName}' for instance '{InstanceId}'")]
+    public static partial void LogGrpcProtocolHandlerActivityProcessorError(this ILogger logger, Exception ex, string activityName, string? instanceId);
+    
+    [LoggerMessage(LogLevel.Error, "Failed to send activity failure result for '{ActivityName}'")]
+    public static partial void LogGrpcProtocolHandlerActivityProcessorFailedToSendError(this ILogger logger, Exception ex, string activityName);
+    
+    [LoggerMessage(LogLevel.Information, "Receive loop completed, waiting for {Count} active work items")]
+    public static partial void LogGrpcProtocolHandlerReceiveLoopCompleted(this ILogger logger, int count);
+    
+    [LoggerMessage(LogLevel.Error, "Error in receive loop")]
+    public static partial void LogGrpcProtocolHandlerReceiveLoopError(this ILogger logger, Exception ex);
+
+    [LoggerMessage(LogLevel.Information, "Disposing gRPC protocol handler")]
+    public static partial void LogGrpcProtocolHandlerDisposing(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "gRPC protocol handler disposed")]
+    public static partial void LogGrpcProtocolHandlerDisposed(this ILogger logger);
+    
+    [LoggerMessage(LogLevel.Information, "Starting gRPC bidirectional stream with Dapr sidecar")]
+    public static partial void LogGrpcProtocolHandlerStartStream(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "gRPC stream canceled")]
+    public static partial void LogGrpcProtocolHandlerStreamCanceled(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Error, "Error in gRPC protocol handler")]
+    public static partial void LogGrpcProtocolHandlerGenericError(this ILogger logger, Exception ex);
+    
+    [LoggerMessage(LogLevel.Debug, "Successfully created activity instance for '{ActivityName}'")]
+    public static partial void LogCreateActivityInstanceSuccess(this ILogger logger, string activityName);
+
+    [LoggerMessage(LogLevel.Warning, "Activity '{ActivityName}' not found in registry")]
+    public static partial void LogCreateActivityNotFoundInRegistry(this ILogger logger, string activityName);
+
+    [LoggerMessage(LogLevel.Error, "Failed to create activity instance for '{ActivityName}'")]
+    public static partial void LogCreateActivityFailure(this ILogger logger, Exception ex, string activityName);
+    
+    [LoggerMessage(LogLevel.Debug, "Successfully created workflow instance for '{WorkflowName}'")]
+    public static partial void LogCreateWorkflowInstanceSuccess(this ILogger logger, string workflowName);
+    
+    [LoggerMessage(LogLevel.Warning, "Workflow '{WorkflowName}' not found in registry")]
+    public static partial void LogCreateWorkflowNotFoundInRegistry(this ILogger logger, string workflowName);
+    
+    [LoggerMessage(LogLevel.Error, "Failed to create workflow instance for '{WorkflowName}'")]
+    public static partial void LogCreateWorkflowFailure(this ILogger logger, Exception ex, string workflowName);
+    
+    [LoggerMessage(LogLevel.Debug, "Registered activity '{ActivityName}'")]
+    public static partial void LogRegisterActivitySuccess(this ILogger logger, string activityName);
+
+    [LoggerMessage(LogLevel.Warning, "Activity '{ActivityName}' is already registered")]
+    public static partial void LogRegisterActivityAlreadyRegistered(this ILogger logger, string activityName);
+    
+    [LoggerMessage(LogLevel.Debug, "Registered workflow '{WorkflowName}'")]
+    public static partial void LogRegisterWorkflowSuccess(this ILogger logger, string workflowName);
+
+    [LoggerMessage(LogLevel.Warning, "Workflow '{WorkflowName}' is already registered")]
+    public static partial void LogRegisterWorkflowAlreadyRegistered(this ILogger logger, string workflowName);
+    
     [LoggerMessage(LogLevel.Information, "Scheduled workflow '{WorkflowName}' with instance ID '{InstanceId}'")]
     public static partial void LogScheduleWorkflowSuccess(this ILogger logger, string workflowName, string instanceId);
     
