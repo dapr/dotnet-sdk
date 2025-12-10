@@ -24,10 +24,10 @@ namespace Dapr.Workflow.Worker.Grpc;
 /// <summary>
 /// Handles the bidirectional gRPC streaming protocol with the Dapr sidecar.
 /// </summary>
-internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, ILogger<GrpcProtocolHandler> logger, int maxConcurrentWorkItems = 100, int maxConcurrentActivities = 100) : IAsyncDisposable
+internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, ILoggerFactory loggerFactory, int maxConcurrentWorkItems = 100, int maxConcurrentActivities = 100) : IAsyncDisposable
 {
     private readonly CancellationTokenSource _disposalCts = new();
-    private readonly ILogger<GrpcProtocolHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient =
         grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly int _maxConcurrentWorkItems =  maxConcurrentWorkItems > 0 ? maxConcurrentWorkItems : throw new ArgumentOutOfRangeException(nameof(maxConcurrentWorkItems));
