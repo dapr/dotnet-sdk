@@ -13,11 +13,11 @@
 
 using System;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
+using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +29,7 @@ namespace Dapr.Workflow.Worker;
 /// <summary>
 /// Background service that processes workflow and activity work items from the Dapr sidecar.
 /// </summary>
-internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, IWorkflowsFactory workflowsFactory, ILoggerFactory loggerFactory, IServiceProvider serviceProvider, WorkflowRuntimeOptions options) : BackgroundService
+internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, IWorkflowsFactory workflowsFactory, ILoggerFactory loggerFactory, IWorkflowSerializer workflowSerializer, IServiceProvider serviceProvider, WorkflowRuntimeOptions options) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
@@ -109,13 +109,13 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             if (request.PastEvents.Count > 0 && request.PastEvents[0].Timestamp != null)
                 currentUtcDateTime = request.PastEvents[0].Timestamp.ToDateTime();
             
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, request.PastEvents, currentUtcDateTime, loggerFactory);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, request.PastEvents, currentUtcDateTime, workflowSerializer, loggerFactory);
 
             // Deserialize the input
             object? input = null;
             if (!string.IsNullOrEmpty(serializedInput))
             {
-                input = JsonSerializer.Deserialize(serializedInput, workflow!.InputType);
+                input = workflowSerializer.Deserialize(serializedInput, workflow!.InputType);
             }
 
             // Execute the workflow
@@ -131,7 +131,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             if (context.PendingActions.All(a => a.CompleteOrchestration?.OrchestrationStatus != OrchestrationStatus.ContinuedAsNew))
             {
                 // Serialize the output
-                var outputJson = output != null ? JsonSerializer.Serialize(output) : string.Empty;
+                var outputJson = output != null ? workflowSerializer.Serialize(output) : string.Empty;
                 
                 response.Actions.Add(new OrchestratorAction
                 {
@@ -145,7 +145,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             
             // Set custom status if provided
             if (context.CustomStatus != null)
-                response.CustomStatus = JsonSerializer.Serialize(context.CustomStatus);
+                response.CustomStatus = workflowSerializer.Serialize(context.CustomStatus);
             
             _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
 
@@ -214,7 +214,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             object? input = null;
             if (!string.IsNullOrEmpty(request.Input))
             {
-                input = JsonSerializer.Deserialize(request.Input, activity!.InputType);
+                input = workflowSerializer.Deserialize(request.Input, activity!.InputType);
             }
             
             // Execute the activity
@@ -222,7 +222,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             
             // Serialize output
             var outputJson = output != null
-                ? JsonSerializer.Serialize(output)
+                ? workflowSerializer.Serialize(output)
                 : string.Empty;
             
             _logger.LogWorkerWorkflowHandleActivityRequestCompleted(request.Name, request.TaskId);

@@ -16,10 +16,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Workflow.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.Workflow.Worker.Internal;
@@ -33,7 +33,7 @@ namespace Dapr.Workflow.Worker.Internal;
 /// Subsequent executions: History is replayed, tasks complete from history, workflow advances further
 /// Completion: When no more awaitable operations exist, workflow returns final result
 /// </remarks>
-internal sealed class WorkflowOrchestrationContext(string name, string instanceId, IEnumerable<HistoryEvent> history, DateTime currentUtcDateTime, ILoggerFactory loggerFactory) : WorkflowContext
+internal sealed class WorkflowOrchestrationContext(string name, string instanceId, IEnumerable<HistoryEvent> history, DateTime currentUtcDateTime, IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory) : WorkflowContext
 {
     private readonly List<HistoryEvent> _pastEvents = [..history];
     private readonly List<OrchestratorAction> _pendingActions = [];
@@ -94,7 +94,7 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
             ScheduleTask = new ScheduleTaskAction
             {
                 Name = name,
-                Input = JsonSerializer.Serialize(input)
+                Input = workflowSerializer.Serialize(input)
             }
         });
 
@@ -193,7 +193,7 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
             {
                 Instance = new OrchestrationInstance{InstanceId = instanceId},
                 Name = eventName,
-                Data = JsonSerializer.Serialize(payload)
+                Data = workflowSerializer.Serialize(payload)
             }
         });
     }
@@ -229,7 +229,7 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
             {
                 Name = workflowName,
                 InstanceId = childInstanceId,
-                Input = JsonSerializer.Serialize(input)
+                Input = workflowSerializer.Serialize(input)
             }
         });
         
@@ -247,7 +247,7 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
             CompleteOrchestration = new CompleteOrchestrationAction
             {
                 OrchestrationStatus = OrchestrationStatus.ContinuedAsNew,
-                Result = JsonSerializer.Serialize(newInput),
+                Result = workflowSerializer.Serialize(newInput),
                 CarryoverEvents = { preserveUnprocessedEvents ? GetUnprocessedEvents() : [] }
             }
         });
@@ -330,7 +330,7 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
             return true;
         }
         
-        historyEvent = default!;
+        historyEvent = null!;
         return false;
     }
     
@@ -380,13 +380,13 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
         => (guid[left], guid[right]) = (guid[right], guid[left]);
 
     /// <summary>
-    /// Deserializes JSON to a specific type.
+    /// Deserializes string value to a specific type.
     /// </summary>
-    /// <param name="json">The string value to deserialize.</param>
+    /// <param name="value">The string value to deserialize.</param>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The strongly typed deserialized data.</returns>
-    private static T DeserializeResult<T>(string json) 
-        => string.IsNullOrEmpty(json) ? default! : JsonSerializer.Deserialize<T>(json)!;
+    private T DeserializeResult<T>(string value) 
+        => string.IsNullOrEmpty(value) ? default! : workflowSerializer.Deserialize<T>(value)!;
 
     /// <summary>
     /// An exception that represents a task failed event.

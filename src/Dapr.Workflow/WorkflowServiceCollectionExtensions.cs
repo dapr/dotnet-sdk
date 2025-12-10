@@ -12,9 +12,11 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Grpc.Extensions;
+using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -47,6 +49,10 @@ public static class WorkflowServiceCollectionExtensions
         // Register options as a singleton as they don't change a runtime
         serviceCollection.AddSingleton(options);
         
+        // Register default JSON serializer if no custom serializer is registered
+        serviceCollection.TryAddSingleton<IWorkflowSerializer>(
+            new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        
         // Register the workflow factory
         serviceCollection.TryAddSingleton<WorkflowsFactory>(sp =>
         {
@@ -72,7 +78,8 @@ public static class WorkflowServiceCollectionExtensions
             var grpcClient = sp.GetRequiredService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
-            return new WorkflowGrpcClient(grpcClient, logger);
+            var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+            return new WorkflowGrpcClient(grpcClient, logger, serializer);
         });
         
         // Register gRPC client for communicating with Dapr sidecar
@@ -118,5 +125,94 @@ public static class WorkflowServiceCollectionExtensions
         }
 
         return serviceCollection;
+    }
+
+    /// <summary>
+    /// Configures a custom workflow serializer to replace the default JSON serializer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call this method <b>before</b> <see cref="AddDaprWorkflow"/> for cleaner intent.
+    /// However, it can also be called <b>after</b> if needed, and will replace the default serializer.
+    /// </para>
+    /// <para>
+    /// By default, workflows use <see cref="JsonWorkflowSerializer"/> with <see cref="JsonSerializerDefaults.Web"/> settings.
+    /// Use this method to provide alternative serialization (e.g., MessagePack, Protobuf, or custom JSON settings).
+    /// </para>
+    /// <para>
+    /// <b>Warning:</b> Changing serializers between application deployments will cause deserialization errors
+    /// for in-flight workflows due to format incompatibilities.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="serializer">The custom serializer instance to use.</param>
+    /// <returns>The <see cref="IServiceCollection"/> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="services"/> or <paramref name="serializer"/> is null.</exception>
+    public static IServiceCollection AddDaprWorkflowSerializer(this IServiceCollection services,
+        IWorkflowSerializer serializer)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(serializer);
+        
+        // Replace any existing registration
+        services.AddSingleton(serializer);
+
+        return services;
+    }
+    
+    /// <summary>
+    /// Configures a custom workflow serializer using a factory method.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call this method <b>before</b> <see cref="AddDaprWorkflow"/> for cleaner intent.
+    /// However, it can also be called <b>after</b> if needed, and will replace the default serializer.
+    /// </para>
+    /// <para>
+    /// Use this overload when your serializer needs dependencies from the service provider.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="serializerFactory">A factory function that creates the serializer using the service provider.</param>
+    /// <returns>The <see cref="IServiceCollection"/> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="services"/> or <paramref name="serializerFactory"/> is null.</exception>
+    public static IServiceCollection AddDaprWorkflowSerializer(
+        this IServiceCollection services,
+        Func<IServiceProvider, IWorkflowSerializer> serializerFactory)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(serializerFactory);
+
+        // Replace any existing registration
+        services.AddSingleton(serializerFactory);
+        
+        return services;
+    }
+
+    /// <summary>
+    /// Configures the default JSON workflow serializer with custom options.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Call this method <b>before</b> <see cref="AddDaprWorkflow"/> for cleaner intent.
+    /// However, it can also be called <b>after</b> if needed, and will replace the default serializer.
+    /// </para>
+    /// <para>
+    /// Use this as a convenient alternative to <see cref="AddDaprWorkflowSerializer(IServiceCollection, IWorkflowSerializer)"/>
+    /// when you want to customize JSON serialization without implementing a custom serializer.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="jsonOptions">The JSON serializer options to use.</param>
+    /// <returns>The <see cref="IServiceCollection"/> for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="services"/> or <paramref name="jsonOptions"/> is null.</exception>
+    public static IServiceCollection AddDaprWorkflowJsonSerializer(
+        this IServiceCollection services,
+        JsonSerializerOptions jsonOptions)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(jsonOptions);
+
+        return services.AddDaprWorkflowSerializer(new JsonWorkflowSerializer(jsonOptions));
     }
 }

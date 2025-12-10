@@ -89,7 +89,7 @@ public interface IDaprWorkflowClient: IAsyncDisposable
     /// A <see cref="WorkflowMetadata"/> object, or <c>null</c> if the workflow instance does not exist.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    Task<WorkflowMetadata?> GetWorkflowStateAsync(
+    Task<WorkflowState?> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default);
@@ -110,7 +110,7 @@ public interface IDaprWorkflowClient: IAsyncDisposable
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
-    Task<WorkflowMetadata> WaitForWorkflowStartAsync(
+    Task<WorkflowState> WaitForWorkflowStartAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default);
@@ -137,7 +137,7 @@ public interface IDaprWorkflowClient: IAsyncDisposable
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
-    Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(
+    Task<WorkflowState> WaitForWorkflowCompletionAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default);

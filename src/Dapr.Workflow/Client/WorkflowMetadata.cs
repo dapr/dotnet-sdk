@@ -13,6 +13,7 @@
 
 using System;
 using System.Text.Json;
+using Dapr.Workflow.Serialization;
 
 namespace Dapr.Workflow.Client;
 
@@ -24,12 +25,13 @@ namespace Dapr.Workflow.Client;
 /// <param name="RuntimeStatus">The runtime status of the workflow.</param>
 /// <param name="CreatedAt">The time when the workflow was created.</param>
 /// <param name="LastUpdatedAt">The time when the workflow last updated.</param>
-public sealed record WorkflowMetadata(
+internal sealed record WorkflowMetadata(
     string InstanceId,
     string Name,
     WorkflowRuntimeStatus RuntimeStatus,
     DateTime CreatedAt,
-    DateTime LastUpdatedAt)
+    DateTime LastUpdatedAt,
+    IWorkflowSerializer Serializer)
 {
     /// <summary>
     /// Gets the serialized input of the workflow, if available.
@@ -61,19 +63,19 @@ public sealed record WorkflowMetadata(
     /// </summary>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The deserialized input, or default if not available.</returns>
-    public T? ReadInputAs<T>() => string.IsNullOrEmpty(SerializedInput) ? default : JsonSerializer.Deserialize<T>(SerializedInput);
+    public T? ReadInputAs<T>() => string.IsNullOrEmpty(SerializedInput) ? default : Serializer.Deserialize<T>(SerializedInput);
 
     /// <summary>
     /// Deserializes the workflow output.
     /// </summary>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The deserialized output, or default if not available.</returns>
-    public T? ReadOutputAs<T>() => string.IsNullOrEmpty(SerializedOutput) ? default : JsonSerializer.Deserialize<T>(SerializedOutput);
+    public T? ReadOutputAs<T>() => string.IsNullOrEmpty(SerializedOutput) ? default : Serializer.Deserialize<T>(SerializedOutput);
 
     /// <summary>
     /// Deserializes the custom status.
     /// </summary>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The deserialized custom status, or default if not available.</returns>
-    public T? ReadCustomStatusAs<T>() => string.IsNullOrEmpty(SerializedCustomStatus) ? default : JsonSerializer.Deserialize<T>(SerializedCustomStatus);
+    public T? ReadCustomStatusAs<T>() => string.IsNullOrEmpty(SerializedCustomStatus) ? default : Serializer.Deserialize<T>(SerializedCustomStatus);
 }

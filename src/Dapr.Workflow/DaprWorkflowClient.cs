@@ -118,13 +118,14 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// A <see cref="WorkflowMetadata"/> object, or <c>null</c> if the workflow instance does not exist.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    public async Task<WorkflowMetadata?> GetWorkflowStateAsync(
+    public async Task<WorkflowState?> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        return await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
+        var metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
+        return metadata is null ? null : new WorkflowState(metadata);
     }
     
     /// <summary>
@@ -143,13 +144,14 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
-    public async Task<WorkflowMetadata> WaitForWorkflowStartAsync(
+    public async Task<WorkflowState> WaitForWorkflowStartAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        return await _innerClient.WaitForWorkflowStartAsync(instanceId, getInputsAndOutputs, cancellation);
+        var metadata = await _innerClient.WaitForWorkflowStartAsync(instanceId, getInputsAndOutputs, cancellation);
+        return new WorkflowState(metadata);
     }
     
     /// <summary>
@@ -174,13 +176,14 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
-    public async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(
+    public async Task<WorkflowState> WaitForWorkflowCompletionAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        return await _innerClient.WaitForWorkflowCompletionAsync(instanceId, getInputsAndOutputs, cancellation);
+        var metadata = await _innerClient.WaitForWorkflowCompletionAsync(instanceId, getInputsAndOutputs, cancellation);
+        return new WorkflowState(metadata);
     }
     
     /// <summary>
