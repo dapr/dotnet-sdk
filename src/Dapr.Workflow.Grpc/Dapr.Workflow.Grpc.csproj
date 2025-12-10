@@ -23,5 +23,9 @@
         <Protobuf Include="orchestrator_service.proto" GrpcServices="Client" />
         <Protobuf Include="runtime_state.proto" GrpcServices="None" />
     </ItemGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    </ItemGroup>
 
 </Project>

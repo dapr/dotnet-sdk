@@ -27,9 +27,9 @@ public static class GrpcClientServiceCollectionExtensions
         Action<GrpcClientFactoryOptions>? configureClient = null) =>
         services.AddGrpcClient<TaskHubSidecarService.TaskHubSidecarServiceClient>(options =>
             {
-                // Default to Dapr sidecar address
-                options.Address = new Uri(GetDaprGrpcAddress());
-
+                // Use DaprDefaults for consistent sidecar address resolution
+                options.Address = new Uri(DaprDefaults.GetDefaultGrpcEndpoint());
+                
                 // Configure for long-lived streaming connections
                 options.ChannelOptionsActions.Add(channelOptions =>
                 {
@@ -74,17 +74,4 @@ public static class GrpcClientServiceCollectionExtensions
                 // Disable HttpClient's own timeout - let gRPC handle it
                 httpClient.Timeout = Timeout.InfiniteTimeSpan;
             });
-
-    /// <summary>
-    /// Gets the Dapr gRPC address from environment variables or uses default.
-    /// </summary>
-    private static string GetDaprGrpcAddress()
-    {
-        // TODO Improve to use failover approach with options
-        // Check for the Dapr sidecar address environment variable
-        var daprGrpcPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT") ?? "50001";
-        var daprHost = Environment.GetEnvironmentVariable("DAPR_HOST") ?? "localhost";
-
-        return $"http://{daprHost}:{daprGrpcPort}";
-    }
 }
