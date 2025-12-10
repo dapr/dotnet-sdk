@@ -16,7 +16,6 @@ using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Grpc.Extensions;
 using Dapr.Workflow.Worker;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -28,38 +27,6 @@ namespace Dapr.Workflow;
 /// </summary>
 public static class WorkflowServiceCollectionExtensions
 {
-    /// <summary>
-    /// Adds Dapr Workflow support to the service collection sourcing options from the configuration under the key "DaprWorkflow". 
-    /// </summary>
-    /// <example>
-    /// Configuration is read from the "DaprWorkflow" section. Example:
-    /// <code>
-    /// {
-    ///   "DaprWorkflow": {
-    ///     "MaxConcurrentWorkflows" 100,
-    ///     "MaxConcurrentActivities": "100
-    ///   }
-    /// }
-    /// </code>
-    /// </example>
-    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-    /// <param name="configuration">The applications's configuration.</param>
-    /// <param name="lifetime">The lifetime of the registered service.</param>
-    /// <returns></returns>
-    public static IServiceCollection AddDaprWorkflow(
-        this IServiceCollection serviceCollection,
-        IConfiguration configuration,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton)
-    {
-        ArgumentNullException.ThrowIfNull(serviceCollection);
-        ArgumentNullException.ThrowIfNull(configuration);
-        
-        return serviceCollection.AddDaprWorkflow(opts =>
-        {
-            configuration.GetSection("DaprWorkflow").Bind(opts);
-        }, lifetime);
-    }
-
     /// <summary>
     /// Adds Dapr Workflow support to the service collection.
     /// </summary>
