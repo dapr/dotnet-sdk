@@ -25,6 +25,7 @@ namespace Dapr.Workflow.Client;
 /// <param name="RuntimeStatus">The runtime status of the workflow.</param>
 /// <param name="CreatedAt">The time when the workflow was created.</param>
 /// <param name="LastUpdatedAt">The time when the workflow last updated.</param>
+/// <param name="Serializer">Provides serialization support.</param>
 internal sealed record WorkflowMetadata(
     string InstanceId,
     string Name,
