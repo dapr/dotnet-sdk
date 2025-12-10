@@ -26,35 +26,45 @@ public enum WorkflowRuntimeStatus
     /// <summary>
     /// The workflow started running.
     /// </summary>
-    Running,
+    Running = 0,
 
     /// <summary>
     /// The workflow completed normally.
     /// </summary>
-    Completed,
-
+    Completed = 1,
+    
+    /// <summary>
+    /// The workflow was continued as a new workflow.
+    /// </summary>
+    ContinuedAsNew = 2,
+    
     /// <summary>
     /// The workflow completed with an unhandled exception.
     /// </summary>
-    Failed,
+    Failed = 3,
+    
+    /// <summary>
+    /// The workflow was canceled.
+    /// </summary>
+    Canceled = 4,
 
     /// <summary>
     /// The workflow was abruptly terminated via a management API call.
     /// </summary>
-    Terminated,
+    Terminated = 5,
 
     /// <summary>
     /// The workflow was scheduled but hasn't started running.
     /// </summary>
-    Pending,
+    Pending = 6,
 
     /// <summary>
     /// The workflow was suspended.
     /// </summary>
-    Suspended,
+    Suspended = 7,
     
     /// <summary>
     /// The workflow was stalled.
     /// </summary>
-    Stalled
+    Stalled = 8
 }
