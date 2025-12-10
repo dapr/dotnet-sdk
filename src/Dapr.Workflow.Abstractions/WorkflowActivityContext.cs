@@ -23,7 +23,7 @@ public abstract class WorkflowActivityContext
     /// <summary>
     /// Gets the name of the activity.
     /// </summary>
-    public abstract TaskIdentifier Name { get; }
+    public abstract TaskIdentifier Identifier { get; }
 
     /// <summary>
     /// Gets the unique ID of the current workflow instance.
