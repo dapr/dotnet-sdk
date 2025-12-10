@@ -26,7 +26,7 @@ public interface IDaprWorkflowClient: IAsyncDisposable
     /// <summary>
     /// Schedules a new workflow instance for execution.
     /// </summary>
-    /// <param name="workflowName">The name of the workflow to schedule.</param>
+    /// <param name="name">The name of the workflow to schedule.</param>
     /// <param name="instanceId">
     /// The unique ID for the workflow instance. If not specified, a GUID is auto-generated.
     /// </param>
@@ -34,16 +34,16 @@ public interface IDaprWorkflowClient: IAsyncDisposable
     /// The optional input to pass to the workflow. Must be serializable via System.Text.Json.
     /// </param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     Task<string> ScheduleNewWorkflowAsync(
-        string workflowName,
+        string name,
         string? instanceId = null,
         object? input = null);
 
     /// <summary>
     /// Schedules a new workflow instance for execution at a specified time.
     /// </summary>
-    /// <param name="workflowName">The name of the workflow to schedule.</param>
+    /// <param name="name">The name of the workflow to schedule.</param>
     /// <param name="instanceId">
     /// The unique ID for the workflow instance. If not specified, a GUID is auto-generated.
     /// </param>
@@ -52,9 +52,9 @@ public interface IDaprWorkflowClient: IAsyncDisposable
     /// The time when the workflow should start. If in the past or <c>null</c>, the workflow starts immediately.
     /// </param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     Task<string> ScheduleNewWorkflowAsync(
-        string workflowName,
+        string name,
         string? instanceId,
         object? input,
         DateTime? startTime);
@@ -62,15 +62,15 @@ public interface IDaprWorkflowClient: IAsyncDisposable
     /// <summary>
     /// Schedules a new workflow instance for execution at a specified time.
     /// </summary>
-    /// <param name="workflowName">The name of the workflow to schedule.</param>
+    /// <param name="name">The name of the workflow to schedule.</param>
     /// <param name="instanceId">The unique ID for the workflow instance. Auto-generated if not specified.</param>
     /// <param name="input">The optional input to pass to the workflow.</param>
     /// <param name="startTime">The time when the workflow should start. If in the past or <c>null</c>, starts immediately.</param>
     /// <param name="cancellation">Token to cancel the scheduling operation.</param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     Task<string> ScheduleNewWorkflowAsync(
-        string workflowName,
+        string name,
         string? instanceId,
         object? input,
         DateTimeOffset? startTime,
