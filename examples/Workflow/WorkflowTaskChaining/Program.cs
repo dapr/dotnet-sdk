@@ -46,19 +46,19 @@ var instanceId = $"demo-workflow-{Guid.NewGuid().ToString()[..8]}";
 await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DemoWorkflow), instanceId, wfInput);
 
 //Get the status of the workflow
-WorkflowState workflowState;
+WorkflowState? workflowState;
 while (true)
 {
     workflowState = await daprWorkflowClient.GetWorkflowStateAsync(instanceId, true);
-    Console.WriteLine($@"Workflow status: {workflowState.RuntimeStatus}");
-    if (workflowState.IsWorkflowCompleted)
+    Console.WriteLine($@"Workflow status: {workflowState?.RuntimeStatus}");
+    if (workflowState?.IsWorkflowCompleted == true)
         break;
 
     await Task.Delay(TimeSpan.FromSeconds(1));
 }
 
 //Display the result from the workflow
-var result = string.Join(" ", workflowState.ReadOutputAs<int[]>() ?? Array.Empty<int>());
+var result = string.Join(" ", workflowState.ReadOutputAs<int[]>() ?? []);
 Console.WriteLine($@"Workflow result: {result}");
 
 
