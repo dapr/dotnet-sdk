@@ -41,7 +41,6 @@ public static class WorkflowServiceCollectionExtensions
 
         serviceCollection.AddDaprClient(lifetime: lifetime);
         serviceCollection.AddHttpClient();
-        serviceCollection.AddHostedService<WorkflowLoggingService>();
         
         // Configure default logging levels for the DurableTask packages (can be overridden by consumer in appsettings.json)
         serviceCollection.Configure<LoggerFilterOptions>(options =>
