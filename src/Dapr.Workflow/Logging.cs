@@ -106,9 +106,9 @@ internal static partial class Logging
 
     [LoggerMessage(LogLevel.Debug, "Workflow '{InstanceId}' completed with status '{Status}'")]
     public static partial void LogWaitForCompletionCompleted(this ILogger logger, string instanceId, WorkflowRuntimeStatus status);
-    
+
     [LoggerMessage(LogLevel.Information, "Raised event '{EventName}' to workflow '{InstanceId}'")]
-    public static partial void LogRaisedEvent(this ILogger logger, string eventName, string instanceId)
+    public static partial void LogRaisedEvent(this ILogger logger, string eventName, string instanceId);
     
     [LoggerMessage(LogLevel.Information, "Terminated workflow '{InstanceId}'")]
     public static partial void LogTerminateWorkflow(this ILogger logger, string instanceId);
