@@ -12,8 +12,8 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Linq;
-using System.Net.Http;
+using Dapr.Workflow.Grpc.Extensions;
+using Dapr.Workflow.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -27,6 +27,38 @@ namespace Dapr.Workflow;
 public static class WorkflowServiceCollectionExtensions
 {
     /// <summary>
+    /// Adds Dapr Workflow support to the service collection sourcing options from the configuration under the key "DaprWorkflow". 
+    /// </summary>
+    /// <example>
+    /// Configuration is read from the "DaprWorkflow" section. Example:
+    /// <code>
+    /// {
+    ///   "DaprWorkflow": {
+    ///     "MaxConcurrentWorkflows" 100,
+    ///     "MaxConcurrentActivities": "100
+    ///   }
+    /// }
+    /// </code>
+    /// </example>
+    /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configuration">The applications's configuration.</param>
+    /// <param name="lifetime">The lifetime of the registered service.</param>
+    /// <returns></returns>
+    public static IServiceCollection AddDaprWorkflow(
+        this IServiceCollection serviceCollection,
+        IConfiguration configuration,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        ArgumentNullException.ThrowIfNull(serviceCollection);
+        ArgumentNullException.ThrowIfNull(configuration);
+        
+        return serviceCollection.AddDaprWorkflow(opts =>
+        {
+            configuration.GetSection("DaprWorkflow").Bind(opts);
+        }, lifetime);
+    }
+
+    /// <summary>
     /// Adds Dapr Workflow support to the service collection.
     /// </summary>
     /// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
@@ -37,57 +69,76 @@ public static class WorkflowServiceCollectionExtensions
         Action<WorkflowRuntimeOptions> configure,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
-        ArgumentNullException.ThrowIfNull(serviceCollection, nameof(serviceCollection));
-
-        serviceCollection.AddDaprClient(lifetime: lifetime);
-        serviceCollection.AddHttpClient();
+        ArgumentNullException.ThrowIfNull(serviceCollection);
         
-        // Configure default logging levels for the DurableTask packages (can be overridden by consumer in appsettings.json)
-        serviceCollection.Configure<LoggerFilterOptions>(options =>
+        // Configure workflow runtime options
+        var options = new WorkflowRuntimeOptions();
+        configure(options);
+        
+        // Register options as a singleton as they don't change a runtime
+        serviceCollection.AddSingleton(options);
+        
+        // Register the workflow factory
+        serviceCollection.TryAddSingleton<WorkflowsFactory>(sp =>
         {
-            if (!HasExistingFilter(options, "Dapr.DurableTask.Grpc"))
-                options.AddFilter("Dapr.DurableTask.Grpc", LogLevel.Error);
-            if (!HasExistingFilter(options, "Dapr.DurableTask.Client.Grpc"))
-                options.AddFilter("Dapr.DurableTask.Client.Grpc", LogLevel.Error);
-            if (!HasExistingFilter(options, "Dapr.DurableTask.Worker"))
-                options.AddFilter("Dapr.DurableTask.Worker", LogLevel.Error);
-            if (!HasExistingFilter(options, "Dapr.DurableTask.Worker.Grpc"))
-                options.AddFilter("Dapr.DurableTask.Worker.Grpc", LogLevel.Error);
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger<WorkflowsFactory>();
+            var factory = new WorkflowsFactory(logger);
+            
+            // Apply all registrations from options
+            options.ApplyRegistrations(factory);
+
+            return factory;
         });
 
+        // Necessary for the gRPC client factory
+        serviceCollection.AddHttpClient();
+        
+        // Register the IWorkflowsFactory interface
+        serviceCollection.TryAddSingleton<IWorkflowsFactory>(sp => sp.GetRequiredService<WorkflowsFactory>());
+        
+        // Register gRPC client for communicating with Dapr sidecar
+        // This sets up a proper long-lived streaming connection configuration
+        serviceCollection.AddDaprWorkflowGrpcClient(grpcOptions =>
+        {
+            // Apply custom gRPC channel options if configured
+            if (options.GrpcChannelOptions != null)
+            {
+                grpcOptions.ChannelOptionsActions.Add(channelOptions =>
+                {
+                    // Copy over any custom settings from options
+                    if (options.GrpcChannelOptions.MaxReceiveMessageSize.HasValue)
+                    {
+                        channelOptions.MaxReceiveMessageSize = options.GrpcChannelOptions.MaxReceiveMessageSize;
+                    }
+
+                    if (options.GrpcChannelOptions.MaxSendMessageSize.HasValue)
+                    {
+                        channelOptions.MaxSendMessageSize = options.GrpcChannelOptions.MaxSendMessageSize;
+                    }
+                });
+            }
+        });
+        
+        // Register the workflow worker as a hosted service
+        serviceCollection.AddHostedService<WorkflowWorker>();
+        
+        // Register the workflow client with the specified lifetime
         switch (lifetime)
         {
             case ServiceLifetime.Singleton:
                 serviceCollection.TryAddSingleton<DaprWorkflowClient>();
-                serviceCollection.TryAddSingleton<WorkflowRuntimeOptions>();
                 break;
             case ServiceLifetime.Scoped:
                 serviceCollection.TryAddScoped<DaprWorkflowClient>();
-                serviceCollection.TryAddScoped<WorkflowRuntimeOptions>();
                 break;
             case ServiceLifetime.Transient:
                 serviceCollection.TryAddTransient<DaprWorkflowClient>();
-                serviceCollection.TryAddTransient<WorkflowRuntimeOptions>();
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
-        }
-
-        serviceCollection.AddOptions<WorkflowRuntimeOptions>().Configure(configure);
-
-        //Register the factory and force resolution so the Durable Task client and worker can be registered
-        using (var scope = serviceCollection.BuildServiceProvider().CreateScope())
-        {
-            var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-            var configuration = scope.ServiceProvider.GetService<IConfiguration>();
-
-            var factory = new DaprWorkflowClientBuilderFactory(configuration, httpClientFactory);
-            factory.CreateClientBuilder(serviceCollection, configure);
+                throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, @"Invalid service lifetime");
         }
 
         return serviceCollection;
     }
-
-    private static bool HasExistingFilter(LoggerFilterOptions options, string categoryName)
-        => options.Rules.Any(rule => rule.CategoryName == categoryName);
 }
