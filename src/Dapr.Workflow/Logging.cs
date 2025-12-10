@@ -185,7 +185,6 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Debug, "Child workflow '{WorkflowName}' failed from history for parent '{ParentInstanceId}'")]
     public static partial void LogChildWorkflowFailedFromHistory(this ILogger logger, string workflowName, string parentInstanceId);
 
-
     /// <summary>
     /// Creates a logger named "Dapr.Workflow" with an optional subcategory.
     /// </summary>

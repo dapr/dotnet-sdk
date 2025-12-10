@@ -15,5 +15,5 @@
     <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
     <ProjectReference Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
   </ItemGroup>
-
+  
 </Project>
