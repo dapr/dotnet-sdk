@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -10,313 +10,297 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.DurableTask;
-using Dapr.DurableTask.Client;
+using Dapr.Workflow.Client;
 
 namespace Dapr.Workflow;
 
 /// <summary>
-/// Defines client operations for managing Dapr Workflow instances.
+/// A client for scheduling and managing Dapr Workflow instances.
 /// </summary>
 /// <remarks>
-/// This is an alternative to the general purpose Dapr client. It uses a gRPC connection to send
-/// commands directly to the workflow engine, bypassing the Dapr API layer.
+/// This client provides high-level operations for interacting with workflows running on the Dapr sidecar.
+/// It communicates directly via gRPC, bypassing the generate-purpose Dapr HTTP API for improved performance.
 /// </remarks>
-/// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
-/// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
-public class DaprWorkflowClient(DurableTaskClient innerClient) : IAsyncDisposable
+public sealed class DaprWorkflowClient : IAsyncDisposable
 {
-    readonly DurableTaskClient innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
+    private readonly WorkflowClient _innerClient;
 
     /// <summary>
-    /// Schedules a new workflow instance for execution.
+    /// Initializes a new instance of the <see cref="DaprWorkflowClient"/> class.
     /// </summary>
-    /// <param name="name">The name of the workflow to schedule.</param>
-    /// <param name="instanceId">
-    /// The unique ID of the workflow instance to schedule. If not specified, a new GUID value is used.
-    /// </param>
-    /// <param name="startTime">
-    /// The time when the workflow instance should start executing. If not specified or if a date-time in the past
-    /// is specified, the workflow instance will be scheduled immediately.
-    /// If specified with a <see cref="DateTime.Kind"/> of <see cref="DateTimeKind.Unspecified"/>,
-    /// this is interpreted as a local time.
-    /// Setting this value will cause Dapr to not wait for the Workflow to
-    /// "start", improving throughput of creating many workflows.
-    /// </param>
-    /// <param name="input">
-    /// The optional input to pass to the scheduled workflow instance. This must be a serializable value.
-    /// </param>
-    public Task<string> ScheduleNewWorkflowAsync(
-        string name,
-        string? instanceId = null,
-        object? input = null,
-        DateTime? startTime = null)
+    /// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
+    internal DaprWorkflowClient(WorkflowClient innerClient)
     {
-        return ScheduleNewWorkflowAsync(name, instanceId, input, (DateTimeOffset?)startTime);
+        _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
     }
-
+    
     /// <summary>
     /// Schedules a new workflow instance for execution.
     /// </summary>
-    /// <param name="name">The name of the workflow to schedule.</param>
+    /// <param name="workflowName">The name of the workflow to schedule.</param>
     /// <param name="instanceId">
-    /// The unique ID of the workflow instance to schedule. If not specified, a new GUID value is used.
-    /// </param>
-    /// <param name="startTime">
-    /// The time when the workflow instance should start executing. If not specified or if a date-time in the past
-    /// is specified, the workflow instance will be scheduled immediately.
-    /// Setting this value will cause Dapr to not wait for the Workflow to
-    /// "start", improving throughput of creating many workflows.
+    /// The unique ID for the workflow instance. If not specified, a GUID is auto-generated.
     /// </param>
     /// <param name="input">
-    /// The optional input to pass to the scheduled workflow instance. This must be a serializable value.
+    /// The optional input to pass to the workflow. Must be serializable via System.Text.Json.
     /// </param>
+    /// <returns>The instance ID of the scheduled workflow.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
     public Task<string> ScheduleNewWorkflowAsync(
-        string name,
+        string workflowName,
+        string? instanceId = null,
+        object? input = null) =>
+        ScheduleNewWorkflowAsync(workflowName, instanceId, input, null, CancellationToken.None);
+    
+    /// <summary>
+    /// Schedules a new workflow instance for execution at a specified time.
+    /// </summary>
+    /// <param name="workflowName">The name of the workflow to schedule.</param>
+    /// <param name="instanceId">
+    /// The unique ID for the workflow instance. If not specified, a GUID is auto-generated.
+    /// </param>
+    /// <param name="input">The optional input to pass to the workflow.</param>
+    /// <param name="startTime">
+    /// The time when the workflow should start. If in the past or <c>null</c>, the workflow starts immediately.
+    /// </param>
+    /// <returns>The instance ID of the scheduled workflow.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
+    public Task<string> ScheduleNewWorkflowAsync(
+        string workflowName,
         string? instanceId,
         object? input,
-        DateTimeOffset? startTime)
-    {
-        StartOrchestrationOptions options = new(instanceId, startTime);
-        return this.innerClient.ScheduleNewOrchestrationInstanceAsync(name, input, options);
-    }
-
+        DateTime? startTime) =>
+        ScheduleNewWorkflowAsync(workflowName, instanceId, input, startTime.HasValue ? new DateTimeOffset(startTime.Value) : null, CancellationToken.None);
+    
     /// <summary>
-    /// Fetches runtime state for the specified workflow instance.
+    /// Schedules a new workflow instance for execution at a specified time.
     /// </summary>
-    /// <param name="instanceId">The unique ID of the workflow instance to fetch.</param>
-    /// <param name="getInputsAndOutputs">
-    /// Specify <c>true</c> to fetch the workflow instance's inputs, outputs, and custom status, or <c>false</c> to
-    /// omit them. Defaults to true.
-    /// </param>
-    public async Task<WorkflowState> GetWorkflowStateAsync(string instanceId, bool getInputsAndOutputs = true)
+    /// <param name="workflowName">The name of the workflow to schedule.</param>
+    /// <param name="instanceId">The unique ID for the workflow instance. Auto-generated if not specified.</param>
+    /// <param name="input">The optional input to pass to the workflow.</param>
+    /// <param name="startTime">The time when the workflow should start. If in the past or <c>null</c>, starts immediately.</param>
+    /// <param name="cancellation">Token to cancel the scheduling operation.</param>
+    /// <returns>The instance ID of the scheduled workflow.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
+    public Task<string> ScheduleNewWorkflowAsync(
+        string workflowName,
+        string? instanceId,
+        object? input,
+        DateTimeOffset? startTime,
+        CancellationToken cancellation = default)
     {
-        OrchestrationMetadata? metadata = await this.innerClient.GetInstancesAsync(
-            instanceId,
-            getInputsAndOutputs);
-        return new WorkflowState(metadata);
-    }
+        ArgumentException.ThrowIfNullOrEmpty(workflowName);
 
+        var options = new StartWorkflowOptions
+        {
+            InstanceId = instanceId,
+            StartAt = startTime
+        };
+
+        return _innerClient.ScheduleNewWorkflowAsync(workflowName, input, options, cancellation);
+    }
+    
     /// <summary>
-    /// Waits for a workflow to start running and returns a <see cref="WorkflowState"/> object that contains metadata
-    /// about the started workflow.
+    /// Gets the current metadata and state of a workflow instance.
+    /// </summary>
+    /// <param name="instanceId">The unique ID of the workflow instance to retrieve.</param>
+    /// <param name="getInputsAndOutputs">
+    /// <c>true</c> to include serialized inputs, outputs, and custom status; <c>false</c> to omit them.
+    /// Omitting can reduce network bandwidth and memory usage.
+    /// </param>
+    /// <param name="cancellation">Token to cancel the retrieval operation.</param>
+    /// <returns>
+    /// A <see cref="WorkflowMetadata"/> object, or <c>null</c> if the workflow instance does not exist.
+    /// </returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    public async Task<WorkflowMetadata?> GetWorkflowStateAsync(
+        string instanceId,
+        bool getInputsAndOutputs = true,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
+    }
+    
+    /// <summary>
+    /// Waits for a workflow instance to transition from the pending state to an active state.
+    /// </summary>
+    /// <remarks>
+    /// Returns immediately if the workflow has already started or completed.
+    /// </remarks>
+    /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
+    /// <param name="getInputsAndOutputs">
+    /// <c>true</c> to include serialized inputs, outputs, and custom status; <c>false</c> to omit them.
+    /// </param>
+    /// <param name="cancellation">Token to cancel the wait operation.</param>
+    /// <returns>
+    /// A <see cref="WorkflowMetadata"/> object describing the workflow state once it has started.
+    /// </returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
+    public async Task<WorkflowMetadata> WaitForWorkflowStartAsync(
+        string instanceId,
+        bool getInputsAndOutputs = true,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return await _innerClient.WaitForWorkflowStartAsync(instanceId, getInputsAndOutputs, cancellation);
+    }
+    
+    /// <summary>
+    /// Waits for a workflow instance to reach a terminal state (completed, failed, or terminated).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A "started" workflow instance is any instance not in the <see cref="WorkflowRuntimeStatus.Pending"/> state.
-    /// </para><para>
-    /// This method will return a completed task if the workflow has already started running or has already completed.
+    /// This operation may block indefinitely for eternal workflows. Ensure appropriate timeouts
+    /// are enforced using the <paramref name="cancellation"/> parameter.
+    /// </para>
+    /// <para>
+    /// Returns immediately if the workflow is already in a terminal state.
     /// </para>
     /// </remarks>
     /// <param name="instanceId">The unique ID of the workflow instance to wait for.</param>
     /// <param name="getInputsAndOutputs">
-    /// Specify <c>true</c> to fetch the workflow instance's inputs, outputs, and custom status, or <c>false</c> to
-    /// omit them. Setting this value to <c>false</c> can help minimize the network bandwidth, serialization, and memory costs
-    /// associated with fetching the instance metadata.
+    /// <c>true</c> to include serialized inputs, outputs, and custom status; <c>false</c> to omit them.
     /// </param>
-    /// <param name="cancellation">A <see cref="CancellationToken"/> that can be used to cancel the wait operation.</param>
+    /// <param name="cancellation">Token to cancel the wait operation.</param>
     /// <returns>
-    /// Returns a <see cref="WorkflowState"/> record that describes the workflow instance and its execution
-    /// status. If the specified workflow isn't found, the <see cref="WorkflowState.Exists"/> value will be <c>false</c>.
+    /// A <see cref="WorkflowMetadata"/> object containing the final state of the completed workflow.
     /// </returns>
-    public async Task<WorkflowState> WaitForWorkflowStartAsync(
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
+    public async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
     {
-        OrchestrationMetadata metadata = await this.innerClient.WaitForInstanceStartAsync(
-            instanceId,
-            getInputsAndOutputs,
-            cancellation);
-        return new WorkflowState(metadata);
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return await _innerClient.WaitForWorkflowCompletionAsync(instanceId, getInputsAndOutputs, cancellation);
     }
-
+    
     /// <summary>
-    /// Waits for a workflow to complete and returns a <see cref="WorkflowState"/>
-    /// object that contains metadata about the started instance.
+    /// Raises an external event for a workflow instance.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A "completed" workflow instance is any instance in one of the terminal states. For example, the
-    /// <see cref="WorkflowRuntimeStatus.Completed"/>, <see cref="WorkflowRuntimeStatus.Failed"/>, or
-    /// <see cref="WorkflowRuntimeStatus.Terminated"/> states.
-    /// </para><para>
-    /// Workflows are long-running and could take hours, days, or months before completing.
-    /// Workflows can also be eternal, in which case they'll never complete unless terminated.
-    /// In such cases, this call may block indefinitely, so care must be taken to ensure appropriate timeouts are
-    /// enforced using the <paramref name="cancellation"/> parameter.
-    /// </para><para>
-    /// If a workflow instance is already complete when this method is called, the method will return immediately.
-    /// </para>
-    /// </remarks>
-    /// <inheritdoc cref="WaitForWorkflowStartAsync(string, bool, CancellationToken)"/>
-    public async Task<WorkflowState> WaitForWorkflowCompletionAsync(
-        string instanceId,
-        bool getInputsAndOutputs = true,
-        CancellationToken cancellation = default)
-    {
-        OrchestrationMetadata metadata = await this.innerClient.WaitForInstanceCompletionAsync(
-            instanceId,
-            getInputsAndOutputs,
-            cancellation);
-        return new WorkflowState(metadata);
-    }
-
-    /// <summary>
-    /// Terminates a running workflow instance and updates its runtime status to
-    /// <see cref="WorkflowRuntimeStatus.Terminated"/>.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This method internally enqueues a "terminate" message in the task hub. When the task hub worker processes
-    /// this message, it will update the runtime status of the target instance to
-    /// <see cref="WorkflowRuntimeStatus.Terminated"/>. You can use the
-    /// <see cref="WaitForWorkflowCompletionAsync(string, bool, CancellationToken)"/> to wait for the instance to reach
-    /// the terminated state.
+    /// The target workflow must be waiting for this event via <see cref="WorkflowContext.WaitForExternalEventAsync{T}(string, CancellationToken)"/>.
+    /// If the workflow is not currently waiting, the event is buffered and delivered when the workflow begins waiting.
     /// </para>
     /// <para>
-    /// Terminating a workflow terminates all of the child workflow instances that were created by the target. But it
-    /// has no effect on any in-flight activity function executions
-    /// that were started by the terminated instance. Those actions will continue to run
-    /// without interruption. However, their results will be discarded.
-    /// </para><para>
-    /// At the time of writing, there is no way to terminate an in-flight activity execution.
+    /// Events for non-existent or completed workflows are silently discarded.
     /// </para>
     /// </remarks>
-    /// <param name="instanceId">The ID of the workflow instance to terminate.</param>
-    /// <param name="output">The optional output to set for the terminated workflow instance.</param>
-    /// <param name="cancellation">
-    /// The cancellation token. This only cancels enqueueing the termination request to the backend. Does not abort
-    /// termination of the workflow once enqueued.
-    /// </param>
-    /// <returns>A task that completes when the terminate message is enqueued.</returns>
-    public Task TerminateWorkflowAsync(
-        string instanceId,
-        string? output = null,
-        CancellationToken cancellation = default)
-    {
-        TerminateInstanceOptions options = new TerminateInstanceOptions {
-            Output = output,
-            Recursive = true,
-        };
-        return this.innerClient.TerminateInstanceAsync(instanceId, options, cancellation);
-    }
-
-    /// <summary>
-    /// Sends an event notification message to a waiting workflow instance.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// In order to handle the event, the target workflow instance must be waiting for an
-    /// event named <paramref name="eventName"/> using the
-    /// <see cref="WorkflowContext.WaitForExternalEventAsync{T}(string, CancellationToken)"/> API.
-    /// If the target workflow instance is not yet waiting for an event named <paramref name="eventName"/>,
-    /// then the event will be saved in the workflow instance state and dispatched immediately when the
-    /// workflow calls <see cref="WorkflowContext.WaitForExternalEventAsync{T}(string, CancellationToken)"/>.
-    /// This event saving occurs even if the workflow has canceled its wait operation before the event was received.
-    /// </para><para>
-    /// Workflows can wait for the same event name multiple times, so sending multiple events with the same name is
-    /// allowed. Each external event received by an workflow will complete just one task returned by the
-    /// <see cref="WorkflowContext.WaitForExternalEventAsync{T}(string, CancellationToken)"/> method.
-    /// </para><para>
-    /// Raised events for a completed or non-existent workflow instance will be silently discarded.
-    /// </para>
-    /// </remarks>
-    /// <param name="instanceId">The ID of the workflow instance that will handle the event.</param>
-    /// <param name="eventName">The name of the event. Event names are case-insensitive.</param>
-    /// <param name="eventPayload">The serializable data payload to include with the event.</param>
-    /// <param name="cancellation">
-    /// The cancellation token. This only cancels enqueueing the event to the backend. Does not abort sending the event
-    /// once enqueued.
-    /// </param>
-    /// <returns>A task that completes when the event notification message has been enqueued.</returns>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown if <paramref name="instanceId"/> or <paramref name="eventName"/> is null or empty.
-    /// </exception>
-    public Task RaiseEventAsync(
+    /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+    /// <param name="eventName">The name of the event (case-sensitive).</param>
+    /// <param name="eventPayload">The optional event data, must be serializable via System.Text.Json.</param>
+    /// <param name="cancellation">Token to cancel the event submission operation.</param>
+    /// <returns>A task that completes when the event has been enqueued.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> or <paramref name="eventName"/> is null or empty.</exception>
+    public async Task RaiseEventAsync(
         string instanceId,
         string eventName,
         object? eventPayload = null,
         CancellationToken cancellation = default)
     {
-        return this.innerClient.RaiseEventAsync(instanceId, eventName, eventPayload, cancellation);
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        ArgumentException.ThrowIfNullOrEmpty(eventName);
+        await _innerClient.RaiseEventAsync(instanceId, eventName, eventPayload, cancellation);
     }
 
     /// <summary>
-    /// Suspends a workflow instance, halting processing of it until
-    /// <see cref="ResumeWorkflowAsync(string, string, CancellationToken)" /> is used to resume the workflow.
-    /// </summary>
-    /// <param name="instanceId">The instance ID of the workflow to suspend.</param>
-    /// <param name="reason">The optional suspension reason.</param>
-    /// <param name="cancellation">
-    /// A <see cref="CancellationToken"/> that can be used to cancel the suspend operation. Note, cancelling this token
-    /// does <b>not</b> resume the workflow if suspend was successful.
-    /// </param>
-    /// <returns>A task that completes when the suspend has been committed to the backend.</returns>
-    public Task SuspendWorkflowAsync(
-        string instanceId,
-        string? reason = null,
-        CancellationToken cancellation = default)
-    {
-        return this.innerClient.SuspendInstanceAsync(instanceId, reason, cancellation);
-    }
-
-    /// <summary>
-    /// Resumes a workflow instance that was suspended via <see cref="SuspendWorkflowAsync(string, string, CancellationToken)" />.
-    /// </summary>
-    /// <param name="instanceId">The instance ID of the workflow to resume.</param>
-    /// <param name="reason">The optional resume reason.</param>
-    /// <param name="cancellation">
-    /// A <see cref="CancellationToken"/> that can be used to cancel the resume operation. Note, cancelling this token
-    /// does <b>not</b> re-suspend the workflow if resume was successful.
-    /// </param>
-    /// <returns>A task that completes when the resume has been committed to the backend.</returns>
-    public Task ResumeWorkflowAsync(
-        string instanceId,
-        string? reason = null,
-        CancellationToken cancellation = default)
-    {
-        return this.innerClient.ResumeInstanceAsync(instanceId, reason, cancellation);
-    }
-
-    /// <summary>
-    /// Purges workflow instance state from the workflow state store.
+    /// Terminates a running workflow instance.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This method can be used to permanently delete workflow metadata from the underlying state store,
-    /// including any stored inputs, outputs, and workflow history records. This is often useful for implementing
-    /// data retention policies and for keeping storage costs minimal. Only workflow instances in the
-    /// <see cref="WorkflowRuntimeStatus.Completed"/>, <see cref="WorkflowRuntimeStatus.Failed"/>, or
-    /// <see cref="WorkflowRuntimeStatus.Terminated"/> state can be purged.
+    /// Termination updates the workflow status to <see cref="WorkflowRuntimeStatus.Terminated"/>.
+    /// Child workflows are also terminated, but in-flight activities continue to completion.
+    /// </para>
+    /// </remarks>
+    /// <param name="instanceId">The unique ID of the workflow instance to terminate.</param>
+    /// <param name="output">Optional output to set as the workflow's result.</param>
+    /// <param name="cancellation">Token to cancel the termination request.</param>
+    /// <returns>A task that completes when the termination has been enqueued.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    public async Task TerminateWorkflowAsync(
+        string instanceId,
+        object? output = null,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        await _innerClient.TerminateWorkflowAsync(instanceId, output, cancellation);
+    }
+
+    /// <summary>
+    /// Suspends a workflow instance, pausing its execution until resumed.
+    /// </summary>
+    /// <param name="instanceId">The unique ID of the workflow instance to suspend.</param>
+    /// <param name="reason">Optional reason for the suspension.</param>
+    /// <param name="cancellation">Token to cancel the suspension request.</param>
+    /// <returns>A task that completes when the suspension has been committed.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    public async Task SuspendWorkflowAsync(
+        string instanceId,
+        string? reason = null,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        await _innerClient.SuspendWorkflowAsync(instanceId, reason, cancellation);
+    }
+
+    /// <summary>
+    /// Resumes a previously suspended workflow instance.
+    /// </summary>
+    /// <param name="instanceId">The unique ID of the workflow instance to resume.</param>
+    /// <param name="reason">Optional reason for the resumption.</param>
+    /// <param name="cancellation">Token to cancel the resume request.</param>
+    /// <returns>A task that completes when the resumption has been committed.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    public async Task ResumeWorkflowAsync(
+        string instanceId,
+        string? reason = null,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        await _innerClient.ResumeWorkflowAsync(instanceId, reason, cancellation);
+    }
+
+    /// <summary>
+    /// Permanently deletes a workflow instance from the state store.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Only workflows in terminal states (<see cref="WorkflowRuntimeStatus.Completed"/>,
+    /// <see cref="WorkflowRuntimeStatus.Failed"/>, or <see cref="WorkflowRuntimeStatus.Terminated"/>) can be purged.
     /// </para>
     /// <para>
-    /// Purging a workflow purges all of the child workflows that were created by the target.
+    /// Purging also removes all child workflows and their history records.
     /// </para>
     /// </remarks>
     /// <param name="instanceId">The unique ID of the workflow instance to purge.</param>
-    /// <param name="cancellation">
-    /// A <see cref="CancellationToken"/> that can be used to cancel the purge operation.
-    /// </param>
+    /// <param name="cancellation">Token to cancel the purge operation.</param>
     /// <returns>
-    /// Returns a task that completes when the purge operation has completed. The value of this task will be
-    /// <c>true</c> if the workflow state was found and purged successfully; <c>false</c> otherwise.
+    /// A task that completes when the purge operation finishes.
+    /// The result is <c>true</c> if successfully purged; <c>false</c> if the workflow doesn't exist or isn't in a terminal state.
     /// </returns>
-    public async Task<bool> PurgeInstanceAsync(string instanceId, CancellationToken cancellation = default)
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    public async Task<bool> PurgeInstanceAsync(
+        string instanceId,
+        CancellationToken cancellation = default)
     {
-        PurgeInstanceOptions options = new PurgeInstanceOptions {Recursive = true};
-        PurgeResult result = await this.innerClient.PurgeInstanceAsync(instanceId, options, cancellation);
-        return result.PurgedInstanceCount > 0;
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return await _innerClient.PurgeInstanceAsync(instanceId, cancellation);
     }
 
     /// <summary>
     /// Disposes any unmanaged resources associated with this client.
     /// </summary>
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        return ((IAsyncDisposable)this.innerClient).DisposeAsync();
+        await _innerClient.DisposeAsync();
     }
 }
