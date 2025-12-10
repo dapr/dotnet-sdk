@@ -9,7 +9,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// ------------------------------------------------------------------------
+//  ------------------------------------------------------------------------
 
 using System;
 using System.Threading;
@@ -19,26 +19,10 @@ using Dapr.Workflow.Client;
 namespace Dapr.Workflow;
 
 /// <summary>
-/// A client for scheduling and managing Dapr Workflow instances.
+/// Defines methods for scheduling and managing Dapr Workflow instances.
 /// </summary>
-/// <remarks>
-/// This client provides high-level operations for interacting with workflows running on the Dapr sidecar.
-/// It communicates directly via gRPC, bypassing the generate-purpose Dapr HTTP API for improved performance.
-/// </remarks>
-public sealed class DaprWorkflowClient : IDaprWorkflowClient
+public interface IDaprWorkflowClient: IAsyncDisposable
 {
-    private readonly WorkflowClient _innerClient;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DaprWorkflowClient"/> class.
-    /// </summary>
-    /// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
-    internal DaprWorkflowClient(WorkflowClient innerClient)
-    {
-        _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
-    }
-    
     /// <summary>
     /// Schedules a new workflow instance for execution.
     /// </summary>
@@ -51,12 +35,11 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
-    public Task<string> ScheduleNewWorkflowAsync(
+    Task<string> ScheduleNewWorkflowAsync(
         string workflowName,
         string? instanceId = null,
-        object? input = null) =>
-        ScheduleNewWorkflowAsync(workflowName, instanceId, input, null, CancellationToken.None);
-    
+        object? input = null);
+
     /// <summary>
     /// Schedules a new workflow instance for execution at a specified time.
     /// </summary>
@@ -70,13 +53,12 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
-    public Task<string> ScheduleNewWorkflowAsync(
+    Task<string> ScheduleNewWorkflowAsync(
         string workflowName,
         string? instanceId,
         object? input,
-        DateTime? startTime) =>
-        ScheduleNewWorkflowAsync(workflowName, instanceId, input, startTime.HasValue ? new DateTimeOffset(startTime.Value) : null, CancellationToken.None);
-    
+        DateTime? startTime);
+
     /// <summary>
     /// Schedules a new workflow instance for execution at a specified time.
     /// </summary>
@@ -87,24 +69,13 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="cancellation">Token to cancel the scheduling operation.</param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="workflowName"/> is null or empty.</exception>
-    public Task<string> ScheduleNewWorkflowAsync(
+    Task<string> ScheduleNewWorkflowAsync(
         string workflowName,
         string? instanceId,
         object? input,
         DateTimeOffset? startTime,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(workflowName);
+        CancellationToken cancellation = default);
 
-        var options = new StartWorkflowOptions
-        {
-            InstanceId = instanceId,
-            StartAt = startTime
-        };
-
-        return _innerClient.ScheduleNewWorkflowAsync(workflowName, input, options, cancellation);
-    }
-    
     /// <summary>
     /// Gets the current metadata and state of a workflow instance.
     /// </summary>
@@ -118,15 +89,11 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// A <see cref="WorkflowMetadata"/> object, or <c>null</c> if the workflow instance does not exist.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    public async Task<WorkflowMetadata?> GetWorkflowStateAsync(
+    Task<WorkflowMetadata?> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        return await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
-    }
-    
+        CancellationToken cancellation = default);
+
     /// <summary>
     /// Waits for a workflow instance to transition from the pending state to an active state.
     /// </summary>
@@ -143,15 +110,11 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
-    public async Task<WorkflowMetadata> WaitForWorkflowStartAsync(
+    Task<WorkflowMetadata> WaitForWorkflowStartAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        return await _innerClient.WaitForWorkflowStartAsync(instanceId, getInputsAndOutputs, cancellation);
-    }
-    
+        CancellationToken cancellation = default);
+
     /// <summary>
     /// Waits for a workflow instance to reach a terminal state (completed, failed, or terminated).
     /// </summary>
@@ -174,15 +137,11 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the workflow instance does not exist.</exception>
-    public async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(
+    Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        return await _innerClient.WaitForWorkflowCompletionAsync(instanceId, getInputsAndOutputs, cancellation);
-    }
-    
+        CancellationToken cancellation = default);
+
     /// <summary>
     /// Raises an external event for a workflow instance.
     /// </summary>
@@ -201,16 +160,11 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="cancellation">Token to cancel the event submission operation.</param>
     /// <returns>A task that completes when the event has been enqueued.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> or <paramref name="eventName"/> is null or empty.</exception>
-    public async Task RaiseEventAsync(
+    Task RaiseEventAsync(
         string instanceId,
         string eventName,
         object? eventPayload = null,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        ArgumentException.ThrowIfNullOrEmpty(eventName);
-        await _innerClient.RaiseEventAsync(instanceId, eventName, eventPayload, cancellation);
-    }
+        CancellationToken cancellation = default);
 
     /// <summary>
     /// Terminates a running workflow instance.
@@ -226,14 +180,10 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="cancellation">Token to cancel the termination request.</param>
     /// <returns>A task that completes when the termination has been enqueued.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    public async Task TerminateWorkflowAsync(
+    Task TerminateWorkflowAsync(
         string instanceId,
         object? output = null,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        await _innerClient.TerminateWorkflowAsync(instanceId, output, cancellation);
-    }
+        CancellationToken cancellation = default);
 
     /// <summary>
     /// Suspends a workflow instance, pausing its execution until resumed.
@@ -243,14 +193,10 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="cancellation">Token to cancel the suspension request.</param>
     /// <returns>A task that completes when the suspension has been committed.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    public async Task SuspendWorkflowAsync(
+    Task SuspendWorkflowAsync(
         string instanceId,
         string? reason = null,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        await _innerClient.SuspendWorkflowAsync(instanceId, reason, cancellation);
-    }
+        CancellationToken cancellation = default);
 
     /// <summary>
     /// Resumes a previously suspended workflow instance.
@@ -260,14 +206,10 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="cancellation">Token to cancel the resume request.</param>
     /// <returns>A task that completes when the resumption has been committed.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    public async Task ResumeWorkflowAsync(
+    Task ResumeWorkflowAsync(
         string instanceId,
         string? reason = null,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        await _innerClient.ResumeWorkflowAsync(instanceId, reason, cancellation);
-    }
+        CancellationToken cancellation = default);
 
     /// <summary>
     /// Permanently deletes a workflow instance from the state store.
@@ -288,19 +230,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// The result is <c>true</c> if successfully purged; <c>false</c> if the workflow doesn't exist or isn't in a terminal state.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    public async Task<bool> PurgeInstanceAsync(
+    Task<bool> PurgeInstanceAsync(
         string instanceId,
-        CancellationToken cancellation = default)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        return await _innerClient.PurgeInstanceAsync(instanceId, cancellation);
-    }
-
-    /// <summary>
-    /// Disposes any unmanaged resources associated with this client.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        await _innerClient.DisposeAsync();
-    }
+        CancellationToken cancellation = default);
 }
