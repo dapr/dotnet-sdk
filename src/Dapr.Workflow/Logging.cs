@@ -7,6 +7,42 @@ namespace Dapr.Workflow;
 
 internal static partial class Logging
 {
+    [LoggerMessage(LogLevel.Information, "Starting Dapr Workflow Worker")]
+    public static partial void LogWorkerWorkflowStart(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "Stopping Dapr Workflow Worker")]
+    public static partial void LogWorkerWorkflowStop(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "Workflow worker stopped")]
+    public static partial void LogWorkerWorkflowCanceled(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Error, "Fatal error in workflow worker")]
+    public static partial void LogWorkerWorkflowError(this ILogger logger, Exception ex);
+
+    [LoggerMessage(LogLevel.Debug, "Executing workflow: Instance='{InstanceId}'")]
+    public static partial void LogWorkerWorkflowHandleOrchestratorRequestStart(this ILogger logger, string? instanceId);
+    
+    [LoggerMessage(LogLevel.Error, "Workflow '{WorkflowName}' not found in registry")]
+    public static partial void LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(this ILogger logger, string workflowName);
+    
+    [LoggerMessage(LogLevel.Information, "Workflow execution completed: Name='{WorkflowName}', InstanceId='{InstanceId}'")]
+    public static partial void LogWorkerWorkflowHandleOrchestratorRequestCompleted(this ILogger logger, string workflowName, string instanceId);
+    
+    [LoggerMessage(LogLevel.Error, "Error executing workflow instance '{InstanceId}'")]
+    public static partial void LogWorkerWorkflowHandleOrchestratorRequestFailed(this ILogger logger, Exception ex, string instanceId);
+
+    [LoggerMessage(LogLevel.Debug, "Executing activity: Name='{ActivityName}', Instance='{InstanceId}', TaskId='{TaskId}'")]
+    public static partial void LogWorkerWorkflowHandleActivityRequestStart(this ILogger logger, string activityName, string? instanceId, int taskId);
+    
+    [LoggerMessage(LogLevel.Error, "Activity '{ActivityName}' not found in registry")]
+    public static partial void LogWorkerWorkflowHandleActivityRequestNotInRegistry(this ILogger logger, string activityName);
+    
+    [LoggerMessage(LogLevel.Debug, "Activity execution completed: Name='{ActivityName}', TaskId='{TasKId}'")]
+    public static partial void LogWorkerWorkflowHandleActivityRequestCompleted(this ILogger logger, string activityName, int taskId);
+    
+    [LoggerMessage(LogLevel.Error, "Error executing activity '{ActivityName}' for instance '{InstanceId}'")]
+    public static partial void LogWorkerWorkflowHandleActivityRequestFailed(this ILogger logger, Exception ex, string activityName, string? instanceId);
+    
     [LoggerMessage(LogLevel.Warning, "Received unknown work item type: '{WorkItemType}'")]
     public static partial void LogGrpcProtocolHandlerUnknownWorkItemType(this ILogger logger, WorkItem.RequestOneofCase workItemType);
     
@@ -124,6 +160,31 @@ internal static partial class Logging
 
     [LoggerMessage(LogLevel.Debug, "Workflow '{InstanceId}' was not purged (may not exist or not in terminal state)")]
     public static partial void LogPurgedWorkflowUnsuccessfully(this ILogger logger, string instanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Scheduling activity '{ActivityName}' for workflow '{InstanceId}'")]
+    public static partial void LogSchedulingActivity(this ILogger logger, string activityName, string instanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Activity '{ActivityName}' completed from history for workflow '{InstanceId}'")]
+    public static partial void LogActivityCompletedFromHistory(this ILogger logger, string activityName, string instanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Activity '{ActivityName}' failed from history for workflow '{InstanceId}'")]
+    public static partial void LogActivityFailedFromHistory(this ILogger logger, string activityName, string instanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Scheduling timer to fire at '{FireAt}' for workflow '{InstanceId}'")]
+    public static partial void LogSchedulingTimer(this ILogger logger, DateTime fireAt, string instanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Timer fired from history for workflow '{InstanceId}'")]
+    public static partial void LogTimerFiredFromHistory(this ILogger logger, string instanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Scheduling child workflow '{WorkflowName}' with instance '{ChildInstanceId}' for parent '{ParentInstanceId}'")]
+    public static partial void LogSchedulingChildWorkflow(this ILogger logger, string workflowName, string childInstanceId, string parentInstanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Child workflow '{WorkflowName}' completed from history for parent '{ParentInstanceId}'")]
+    public static partial void LogChildWorkflowCompletedFromHistory(this ILogger logger, string workflowName, string parentInstanceId);
+    
+    [LoggerMessage(LogLevel.Debug, "Child workflow '{WorkflowName}' failed from history for parent '{ParentInstanceId}'")]
+    public static partial void LogChildWorkflowFailedFromHistory(this ILogger logger, string workflowName, string parentInstanceId);
+
 
     /// <summary>
     /// Creates a logger named "Dapr.Workflow" with an optional subcategory.
