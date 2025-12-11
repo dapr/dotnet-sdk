@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
     <ProjectReference Include="..\..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
   </ItemGroup>
 
