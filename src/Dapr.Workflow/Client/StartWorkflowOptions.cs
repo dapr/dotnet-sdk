@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2022 The Dapr Authors
+// Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,22 +11,29 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow;
+using System;
 
-using Dapr.DurableTask;
+namespace Dapr.Workflow.Client;
 
 /// <summary>
-/// Defines properties and methods for task activity context objects.
+/// Options for starting a new workflow instance.
 /// </summary>
-public abstract class WorkflowActivityContext
+public sealed class StartWorkflowOptions
 {
     /// <summary>
-    /// Gets the name of the activity.
+    /// Gets or sets the instance ID for the workflow.
     /// </summary>
-    public abstract TaskName Name { get; }
-
+    /// <remarks>
+    /// If not specified, a random GUID will be generated.
+    /// </remarks>
+    public string? InstanceId { get; set; }
+    
     /// <summary>
-    /// Gets the unique ID of the current workflow instance.
+    /// Gets or sets the scheduled start time for the workflow.
     /// </summary>
-    public abstract string InstanceId {  get; }
+    /// <remarks>
+    /// If not specified or if a time in the past is specified, the workflow will start immediately. Setting
+    /// this alue improves throughput when creating many workflows.
+    /// </remarks>
+    public DateTimeOffset? StartAt { get; set; }
 }

@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2023 The Dapr Authors
+// Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,45 +11,26 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow;
+namespace Dapr.Workflow.Abstractions;
 
 /// <summary>
-/// Enum describing the runtime status of a workflow.
+/// Identifies a workflow task (workflow or activity).
 /// </summary>
-public enum WorkflowRuntimeStatus
+/// <param name="Name">The name of the task.</param>
+public readonly record struct TaskIdentifier(string Name)
 {
     /// <summary>
-    /// The status of the workflow is unknown.
+    /// Implicitly converts a string to a <see cref="TaskIdentifier"/>.
     /// </summary>
-    Unknown = -1,
+    /// <param name="name">The task name.</param>
+    public static implicit operator TaskIdentifier(string name) => new (name);
 
     /// <summary>
-    /// The workflow started running.
+    /// Implicitly converts a <see cref="TaskIdentifier"/> to a string.
     /// </summary>
-    Running,
-
-    /// <summary>
-    /// The workflow completed normally.
-    /// </summary>
-    Completed,
-
-    /// <summary>
-    /// The workflow completed with an unhandled exception.
-    /// </summary>
-    Failed,
-
-    /// <summary>
-    /// The workflow was abruptly terminated via a management API call.
-    /// </summary>
-    Terminated,
-
-    /// <summary>
-    /// The workflow was scheduled but hasn't started running.
-    /// </summary>
-    Pending,
-
-    /// <summary>
-    /// The workflow was suspended.
-    /// </summary>
-    Suspended,
+    /// <param name="identifier">The task identifier.</param>
+    public static implicit operator string(TaskIdentifier identifier) => identifier.Name;
+    
+    /// <inheritdoc />
+    public override string ToString() => Name;
 }
