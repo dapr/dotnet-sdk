@@ -369,6 +369,172 @@ public class WorkflowGrpcClientTests
 
         await client.DisposeAsync();
     }
+    
+    [Fact]
+    public async Task WaitForWorkflowStartAsync_ShouldPollUntilStatusIsNotPending()
+    {
+        var serializer = new JsonWorkflowSerializer();
+
+        var grpcClientMock = CreateGrpcClientMock();
+
+        var requests = new List<GetInstanceRequest>();
+        var callCount = 0;
+
+        grpcClientMock
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns((GetInstanceRequest request, Metadata? _, DateTime? __, CancellationToken ___) =>
+            {
+                requests.Add(request);
+                callCount++;
+
+                var status = callCount == 1 ? OrchestrationStatus.Pending : OrchestrationStatus.Running;
+
+                return CreateAsyncUnaryCall(new GetInstanceResponse
+                {
+                    Exists = true,
+                    OrchestrationState = new OrchestrationState
+                    {
+                        InstanceId = "i",
+                        Name = "n",
+                        OrchestrationStatus = status
+                    }
+                });
+            });
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var result = await client.WaitForWorkflowStartAsync("i", getInputsAndOutputs: false, cancellationToken: cts.Token);
+
+        Assert.Equal("i", result.InstanceId);
+        Assert.Equal(WorkflowRuntimeStatus.Running, result.RuntimeStatus);
+
+        Assert.True(requests.Count >= 2);
+        Assert.All(requests, r => Assert.Equal("i", r.InstanceId));
+        Assert.All(requests, r => Assert.False(r.GetInputsAndOutputs));
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldPollUntilTerminalStatus()
+    {
+        var serializer = new JsonWorkflowSerializer();
+
+        var grpcClientMock = CreateGrpcClientMock();
+
+        var requests = new List<GetInstanceRequest>();
+        var callCount = 0;
+
+        grpcClientMock
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns((GetInstanceRequest request, Metadata? _, DateTime? __, CancellationToken ___) =>
+            {
+                requests.Add(request);
+                callCount++;
+
+                var status = callCount == 1 ? OrchestrationStatus.Running : OrchestrationStatus.Completed;
+
+                return CreateAsyncUnaryCall(new GetInstanceResponse
+                {
+                    Exists = true,
+                    OrchestrationState = new OrchestrationState
+                    {
+                        InstanceId = "i",
+                        Name = "n",
+                        OrchestrationStatus = status,
+                        Output = status == OrchestrationStatus.Completed ? "\"done\"" : string.Empty
+                    }
+                });
+            });
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var result = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true, cancellationToken: cts.Token);
+
+        Assert.Equal("i", result.InstanceId);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        Assert.Equal("\"done\"", result.SerializedOutput);
+
+        Assert.True(requests.Count >= 2);
+        Assert.All(requests, r => Assert.Equal("i", r.InstanceId));
+        Assert.All(requests, r => Assert.True(r.GetInputsAndOutputs));
+    }
+    
+    [Theory]
+    [InlineData(OrchestrationStatus.Failed, WorkflowRuntimeStatus.Failed)]
+    [InlineData(OrchestrationStatus.Terminated, WorkflowRuntimeStatus.Terminated)]
+    public async Task WaitForWorkflowCompletionAsync_ShouldReturnImmediately_WhenStatusIsTerminalFailedOrTerminated(
+        OrchestrationStatus protoStatus,
+        WorkflowRuntimeStatus expectedStatus)
+    {
+        var serializer = new JsonWorkflowSerializer();
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
+            {
+                Exists = true,
+                OrchestrationState = new OrchestrationState
+                {
+                    InstanceId = "i",
+                    Name = "n",
+                    OrchestrationStatus = protoStatus
+                }
+            }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var result = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true);
+
+        Assert.Equal("i", result.InstanceId);
+        Assert.Equal(expectedStatus, result.RuntimeStatus);
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldThrowInvalidOperationException_WhenInstanceDoesNotExist()
+    {
+        var serializer = new JsonWorkflowSerializer();
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncUnaryCall(new GetInstanceResponse { Exists = false }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.WaitForWorkflowCompletionAsync("missing", getInputsAndOutputs: true));
+
+        Assert.Contains("missing", ex.Message);
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldRespectCancellationToken_WhileWaiting()
+    {
+        var serializer = new JsonWorkflowSerializer();
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
+            {
+                Exists = true,
+                OrchestrationState = new OrchestrationState
+                {
+                    InstanceId = "i",
+                    Name = "n",
+                    OrchestrationStatus = OrchestrationStatus.Running
+                }
+            }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true, cancellationToken: cts.Token));
+    }
 
     private static Mock<TaskHubSidecarService.TaskHubSidecarServiceClient> CreateGrpcClientMock()
     {
