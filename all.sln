@@ -209,6 +209,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Abstractions"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Grpc", "src\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj", "{B55A8400-75EF-4FFF-AF24-72BB5A9B82B4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Abstractions.Test", "test\Dapr.Workflow.Abstractions.Test\Dapr.Workflow.Abstractions.Test.csproj", "{18FCC589-8A7C-4ACC-A987-FAA01579B70D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -553,6 +555,10 @@ Global
 		{B55A8400-75EF-4FFF-AF24-72BB5A9B82B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B55A8400-75EF-4FFF-AF24-72BB5A9B82B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B55A8400-75EF-4FFF-AF24-72BB5A9B82B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18FCC589-8A7C-4ACC-A987-FAA01579B70D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18FCC589-8A7C-4ACC-A987-FAA01579B70D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18FCC589-8A7C-4ACC-A987-FAA01579B70D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18FCC589-8A7C-4ACC-A987-FAA01579B70D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -654,6 +660,7 @@ Global
 		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93} = {11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20}
 		{E3537143-C255-42E2-97CB-8FDDAB05C4B4} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{B55A8400-75EF-4FFF-AF24-72BB5A9B82B4} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{18FCC589-8A7C-4ACC-A987-FAA01579B70D} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
