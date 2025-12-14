@@ -118,7 +118,7 @@ public static class WorkflowServiceCollectionExtensions
                 serviceCollection.TryAddTransient<DaprWorkflowClient>();
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, @"Invalid service lifetime");
+                throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
         }
 
         return serviceCollection;
