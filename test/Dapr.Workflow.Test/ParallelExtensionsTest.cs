@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Dapr.Workflow.Test;
@@ -350,6 +351,25 @@ public class ParallelExtensionsTest
         Assert.Equal(30, results[2].ProcessedId);
         Assert.Equal("TEST3", results[2].ProcessedValue);
     }
+    
+    [Fact]
+    public async Task ProcessInParallelAsync_ShouldPreserveInputOrder_WhenTasksCompleteOutOfOrder()
+    {
+        var context = new FakeWorkflowContext();
+
+        var inputs = new[] { 1, 2, 3, 4 };
+
+        var results = await context.ProcessInParallelAsync(
+            inputs,
+            async i =>
+            {
+                await Task.Delay(i == 1 ? 50 : 1);
+                return i * 10;
+            },
+            maxConcurrency: 4);
+
+        Assert.Equal(new[] { 10, 20, 30, 40 }, results);
+    }
 
     [Fact]
     public async Task ProcessInParallelAsync_WithLargeDataset_ShouldHandleEfficiently()
@@ -378,5 +398,26 @@ public class ParallelExtensionsTest
     {
         public int ProcessedId { get; set; }
         public string ProcessedValue { get; set; } = string.Empty;
+    }
+    
+    private sealed class FakeWorkflowContext : WorkflowContext
+    {
+        public override string Name => "wf";
+        public override string InstanceId => "i";
+        public override DateTime CurrentUtcDateTime => DateTime.UtcNow;
+        public override bool IsReplaying => false;
+
+        public override Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null) => throw new NotSupportedException();
+        public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public override Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public override Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout) => throw new NotSupportedException();
+        public override void SendEvent(string instanceId, string eventName, object payload) => throw new NotSupportedException();
+        public override void SetCustomStatus(object? customStatus) => throw new NotSupportedException();
+        public override Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, ChildWorkflowTaskOptions? options = null) => throw new NotSupportedException();
+        public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true) => throw new NotSupportedException();
+        public override Guid NewGuid() => Guid.NewGuid();
+        public override ILogger CreateReplaySafeLogger(string categoryName) => throw new NotSupportedException();
+        public override ILogger CreateReplaySafeLogger(Type type) => throw new NotSupportedException();
+        public override ILogger CreateReplaySafeLogger<T>() => throw new NotSupportedException();
     }
 }

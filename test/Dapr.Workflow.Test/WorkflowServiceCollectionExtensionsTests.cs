@@ -1,58 +1,94 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Text.Json;
+using Dapr.Workflow.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Workflow.Test;
 
 public class WorkflowServiceCollectionExtensionsTests
 {
     [Fact]
-    public void RegisterWorkflowClient_ShouldRegisterSingleton_WhenLifetimeIsSingleton()
+    public void AddDaprWorkflow_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
-        var services = new ServiceCollection();
+        IServiceCollection services = null!;
 
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Singleton);
-        var serviceProvider = services.BuildServiceProvider();
-
-        var daprWorkflowClient1 = serviceProvider.GetService<DaprWorkflowClient>();
-        var daprWorkflowClient2 = serviceProvider.GetService<DaprWorkflowClient>();
-
-        Assert.NotNull(daprWorkflowClient1);
-        Assert.NotNull(daprWorkflowClient2);
-        
-        Assert.Same(daprWorkflowClient1, daprWorkflowClient2);
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow(_ => { }));
     }
 
     [Fact]
-    public async Task RegisterWorkflowClient_ShouldRegisterScoped_WhenLifetimeIsScoped()
+    public void AddDaprWorkflow_ShouldThrowArgumentOutOfRangeException_WhenLifetimeIsInvalid()
     {
         var services = new ServiceCollection();
 
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Scoped);
-        var serviceProvider = services.BuildServiceProvider();
-
-        await using var scope1 = serviceProvider.CreateAsyncScope();
-        var daprWorkflowClient1 = scope1.ServiceProvider.GetService<DaprWorkflowClient>();
-
-        await using var scope2 = serviceProvider.CreateAsyncScope();
-        var daprWorkflowClient2 = scope2.ServiceProvider.GetService<DaprWorkflowClient>();
-                
-        Assert.NotNull(daprWorkflowClient1);
-        Assert.NotNull(daprWorkflowClient2);
-        Assert.NotSame(daprWorkflowClient1, daprWorkflowClient2);
+        Assert.Throws<ArgumentOutOfRangeException>(() => services.AddDaprWorkflow(_ => { }, (ServiceLifetime)999));
     }
 
     [Fact]
-    public void RegisterWorkflowClient_ShouldRegisterTransient_WhenLifetimeIsTransient()
+    public void AddDaprWorkflowSerializer_InstanceOverload_ShouldThrowArgumentNullException_WhenArgsAreNull()
     {
         var services = new ServiceCollection();
 
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Transient);
-        var serviceProvider = services.BuildServiceProvider();
+        Assert.Throws<ArgumentNullException>(() => ((IServiceCollection)null!).AddDaprWorkflowSerializer(MockSerializer.Instance));
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowSerializer((IWorkflowSerializer)null!));
+    }
 
-        var daprWorkflowClient1 = serviceProvider.GetService<DaprWorkflowClient>();
-        var daprWorkflowClient2 = serviceProvider.GetService<DaprWorkflowClient>();
+    [Fact]
+    public void AddDaprWorkflowSerializer_FactoryOverload_ShouldThrowArgumentNullException_WhenArgsAreNull()
+    {
+        var services = new ServiceCollection();
 
-        Assert.NotNull(daprWorkflowClient1);
-        Assert.NotNull(daprWorkflowClient2);
-        Assert.NotSame(daprWorkflowClient1, daprWorkflowClient2);
+        Assert.Throws<ArgumentNullException>(() => ((IServiceCollection)null!).AddDaprWorkflowSerializer(_ => MockSerializer.Instance));
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowSerializer((Func<IServiceProvider, IWorkflowSerializer>)null!));
+    }
+
+    [Fact]
+    public void AddDaprWorkflowJsonSerializer_ShouldThrowArgumentNullException_WhenArgsAreNull()
+    {
+        var services = new ServiceCollection();
+
+        Assert.Throws<ArgumentNullException>(() => ((IServiceCollection)null!).AddDaprWorkflowJsonSerializer(new JsonSerializerOptions()));
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowJsonSerializer(null!));
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldUseCustomSerializer_WhenRegisteredBeforeCallingAddDaprWorkflow()
+    {
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddDaprWorkflowSerializer(MockSerializer.Instance);
+
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+
+        var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+
+        Assert.Same(MockSerializer.Instance, serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowJsonSerializer_ShouldReplaceDefaultSerializer()
+    {
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddDaprWorkflowJsonSerializer(new JsonSerializerOptions { PropertyNamingPolicy = null });
+
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+
+        var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+
+        Assert.IsType<JsonWorkflowSerializer>(serializer);
+    }
+
+    private sealed class MockSerializer : IWorkflowSerializer
+    {
+        public static MockSerializer Instance { get; } = new();
+
+        public string Serialize(object? value, Type? inputType = null) => "mock";
+        public T? Deserialize<T>(string? data) => default;
+        public object? Deserialize(string? data, Type returnType) => null;
     }
 }

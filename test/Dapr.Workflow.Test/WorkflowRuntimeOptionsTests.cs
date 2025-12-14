@@ -11,55 +11,75 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Workflow.Worker;
+using Grpc.Net.Client;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Dapr.Workflow.Test;
 
 public class WorkflowRuntimeOptionsTests
 {
     [Fact]
-    public void RegisterWorkflow_WithoutName_AddsWorkflowWithTypeName()
+    public void MaxConcurrentWorkflows_ShouldThrow_WhenSetLessThan1()
     {
         var options = new WorkflowRuntimeOptions();
-        options.RegisterWorkflow<TestWorkflow>();
-        Assert.Contains(typeof(TestWorkflow).Name, options.FactoriesInternal);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxConcurrentWorkflows = 0);
     }
 
     [Fact]
-    public void RegisterWorkflow_WithName_AddsWorkflowWithSpecifiedName()
+    public void MaxConcurrentActivities_ShouldThrow_WhenSetLessThan1()
     {
         var options = new WorkflowRuntimeOptions();
-        options.RegisterWorkflow<TestWorkflow>("MyWorkflow_v1.0");
-        Assert.Contains("MyWorkflow_v1.0", options.FactoriesInternal);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxConcurrentActivities = 0);
     }
 
     [Fact]
-    public void RegisterActivity_WithoutName_AddsWorkflowActivityWithTypeName()
+    public void UseGrpcChannelOptions_ShouldThrowArgumentNullException_WhenNull()
     {
         var options = new WorkflowRuntimeOptions();
-        options.RegisterActivity<TestWorkflowActivity>();
-        Assert.Contains(typeof(TestWorkflowActivity).Name, options.FactoriesInternal);
+
+        Assert.Throws<ArgumentNullException>(() => options.UseGrpcChannelOptions(null!));
     }
 
     [Fact]
-    public void RegisterActivity_WithName_AddsWorkflowActivityWithSpecifiedName()
+    public void ApplyRegistrations_ShouldThrowArgumentNullException_WhenFactoryIsNull()
     {
         var options = new WorkflowRuntimeOptions();
-        options.RegisterActivity<TestWorkflowActivity>("MyActivity_v1.0");
-        Assert.Contains("MyActivity_v1.0", options.FactoriesInternal);
+
+        Assert.Throws<ArgumentNullException>(() => options.ApplyRegistrations(null!));
     }
 
-    public class TestWorkflow : Workflow<string, string>
+    [Fact]
+    public void UseGrpcChannelOptions_ShouldStoreOptions_ForLaterUse()
     {
-        public override Task<string> RunAsync(WorkflowContext context, string input)
-        {
-            return Task.FromResult(input);
-        }
+        var options = new WorkflowRuntimeOptions();
+        var grpcOptions = new GrpcChannelOptions { MaxReceiveMessageSize = 123 };
+
+        options.UseGrpcChannelOptions(grpcOptions);
+
+        Assert.NotNull(options.GetType().GetProperty("GrpcChannelOptions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic));
     }
 
-    public class TestWorkflowActivity : WorkflowActivity<string, string>
+    [Fact]
+    public void ApplyRegistrations_ShouldApplyWorkflowAndActivityRegistrations_ToFactory()
     {
-        public override Task<string> RunAsync(WorkflowActivityContext context, string input)
-        {
-            return Task.FromResult(input);
-        }
+        var options = new WorkflowRuntimeOptions();
+
+        options.RegisterWorkflow<int, int>("wf-fn", (_, x) => Task.FromResult(x + 1));
+        options.RegisterActivity<int, int>("act-fn", (_, x) => Task.FromResult(x + 2));
+
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+        options.ApplyRegistrations(factory);
+
+        var sp = new Microsoft.Extensions.DependencyInjection.ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateWorkflow(new("wf-fn"), sp, out var workflow));
+        Assert.NotNull(workflow);
+
+        Assert.True(factory.TryCreateActivity(new("act-fn"), sp, out var activity));
+        Assert.NotNull(activity);
     }
 }
