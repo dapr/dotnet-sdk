@@ -109,13 +109,25 @@ public static class WorkflowServiceCollectionExtensions
         switch (lifetime)
         {
             case ServiceLifetime.Singleton:
-                serviceCollection.TryAddSingleton<DaprWorkflowClient>();
+                serviceCollection.TryAddSingleton<DaprWorkflowClient>(sp =>
+                {
+                    var inner = sp.GetRequiredService<WorkflowClient>();
+                    return new DaprWorkflowClient(inner);
+                });
                 break;
             case ServiceLifetime.Scoped:
-                serviceCollection.TryAddScoped<DaprWorkflowClient>();
+                serviceCollection.TryAddScoped<DaprWorkflowClient>(sp =>
+                {
+                    var inner = sp.GetRequiredService<WorkflowClient>();
+                    return new DaprWorkflowClient(inner);
+                });
                 break;
             case ServiceLifetime.Transient:
-                serviceCollection.TryAddTransient<DaprWorkflowClient>();
+                serviceCollection.TryAddTransient<DaprWorkflowClient>(sp =>
+                {
+                    var inner = sp.GetRequiredService<WorkflowClient>();
+                    return new DaprWorkflowClient(inner);
+                });
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
