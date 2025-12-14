@@ -37,33 +37,10 @@ var instanceId = $"demo-workflow-{Guid.NewGuid().ToString()[..8]}";
 
 await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DemoWorkflow), instanceId, instanceId);
 
-
-bool enterPressed = false;
 Console.WriteLine("Press [ENTER] within the next 10 seconds to approve this workflow");
-using (var cts = new CancellationTokenSource())
+if (await WaitForEnterAsync(TimeSpan.FromSeconds(10)))
 {
-    var inputTask = Task.Run(() =>
-    {
-        if (Console.ReadKey().Key == ConsoleKey.Enter)
-        {
-            Console.WriteLine("Approved");
-            enterPressed = true;
-            cts.Cancel(); //Cancel the delay task if Enter is pressed
-        }
-    });
-
-    try
-    {
-        await Task.Delay(TimeSpan.FromSeconds(10), cts.Token);
-    }
-    catch (TaskCanceledException)
-    {
-        // Task was cancelled because Enter was pressed
-    }
-}
-
-if (enterPressed)
-{
+    Console.WriteLine("Approved");
     await daprWorkflowClient.RaiseEventAsync(instanceId, "Approval", true);
 }
 else
@@ -74,3 +51,27 @@ else
 await daprWorkflowClient.WaitForWorkflowCompletionAsync(instanceId);
 var state = await daprWorkflowClient.GetWorkflowStateAsync(instanceId);
 Console.WriteLine($"Workflow state: {state?.RuntimeStatus}");
+return;
+
+static async Task<bool> WaitForEnterAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+{
+    var deadline = DateTime.UtcNow + timeout;
+    using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(50));
+    while (DateTime.UtcNow < deadline)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ;
+
+        while (Console.KeyAvailable) // Drain buffered keys
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter)
+                return true;
+        }
+        
+        // Wait a bit before checking against
+        await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    return false;
+}
