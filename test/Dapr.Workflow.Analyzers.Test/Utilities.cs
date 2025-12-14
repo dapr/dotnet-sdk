@@ -25,6 +25,7 @@ internal static class Utilities
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(DaprWorkflowClient).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.ServiceCollection).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(IHost).Assembly.Location));
+        metadataReferences.Add(MetadataReference.CreateFromFile(typeof(Host).Assembly.Location));
         return metadataReferences;
     }
 }

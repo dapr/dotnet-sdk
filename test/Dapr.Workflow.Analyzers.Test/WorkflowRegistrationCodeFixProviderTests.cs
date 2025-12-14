@@ -87,14 +87,14 @@ public sealed class WorkflowRegistrationCodeFixProviderTests
     {
         const string code = """       
                                         using Dapr.Workflow;
-                                        using Microsoft.AspNetCore.Builder;
+                                        using Microsoft.Extensions.Hosting;
                                         using System.Threading.Tasks;
                             
                                         public static class Program
                                         {
                                         public static void Main()
                                         {
-                                            var builder = WebApplication.CreateBuilder();
+                                            var builder = Host.CreateApplicationBuilder();
                             
                                             var app = builder.Build();
                                         }
@@ -119,14 +119,14 @@ public sealed class WorkflowRegistrationCodeFixProviderTests
 
         const string expectedChangedCode = """
                                                        using Dapr.Workflow;
-                                                       using Microsoft.AspNetCore.Builder;
+                                                       using Microsoft.Extensions.Hosting;
                                                        using System.Threading.Tasks;
                                            
                                                        public static class Program
                                                        {
                                                        public static void Main()
                                                        {
-                                                           var builder = WebApplication.CreateBuilder();
+                                                           var builder = Host.CreateApplicationBuilder();
                                            
                                                            builder.Services.AddDaprWorkflow(options =>
                                                            {
@@ -162,11 +162,11 @@ public sealed class WorkflowRegistrationCodeFixProviderTests
     {
         const string code = """           
                                         using Dapr.Workflow;
-                                        using Microsoft.AspNetCore.Builder;
                                         using Microsoft.Extensions.DependencyInjection;
+                                        using Microsoft.Extensions.Hosting;
                                         using System.Threading.Tasks;
                             
-                                        var builder = WebApplication.CreateBuilder();
+                                        var builder = Host.CreateApplicationBuilder();
                                             
                                         var app = builder.Build();
                             
@@ -190,11 +190,11 @@ public sealed class WorkflowRegistrationCodeFixProviderTests
 
         const string expectedChangedCode = """           
                                                        using Dapr.Workflow;
-                                                       using Microsoft.AspNetCore.Builder;
                                                        using Microsoft.Extensions.DependencyInjection;
+                                                       using Microsoft.Extensions.Hosting;
                                                        using System.Threading.Tasks;
                                            
-                                                       var builder = WebApplication.CreateBuilder();
+                                                       var builder = Host.CreateApplicationBuilder();
                                            
                                                        builder.Services.AddDaprWorkflow(options =>
                                                        {
