@@ -241,7 +241,7 @@ public sealed class WorkflowRegistrationCodeFixProvider : CodeFixProvider
                 lambda switch
                 {
                     SimpleLambdaExpressionSyntax s => s.Parameter.Identifier.Text,
-                    ParenthesizedLambdaExpressionSyntax p => p.ParameterList.Parameters.FirstOrDefault()?.Identifier.Text,
+                    ParenthesizedLambdaExpressionSyntax p => p.ParameterList.Parameters.LastOrDefault()?.Identifier.Text,
                     _ => null
                 };
 
@@ -256,12 +256,38 @@ public sealed class WorkflowRegistrationCodeFixProvider : CodeFixProvider
             if (lambda.Body is BlockSyntax bodyBlock)
             {
                 var newBodyBlock = bodyBlock.WithStatements(bodyBlock.Statements.Insert(0, addDaprWorkflowStatement));
-                newRoot = newRoot.ReplaceNode(bodyBlock, newBodyBlock);
+
+                LambdaExpressionSyntax? newLambda =
+                    lambda switch
+                    {
+                        SimpleLambdaExpressionSyntax s => s.WithBody(newBodyBlock),
+                        ParenthesizedLambdaExpressionSyntax p => p.WithBody(newBodyBlock),
+                        _ => null
+                    };
+
+                if (newLambda is null)
+                    return (null, null);
+
+                newRoot = newRoot.ReplaceNode((SyntaxNode)lambda, (SyntaxNode)newLambda);
             }
             else if (lambda.Body is ExpressionSyntax exprBody)
             {
-                var newBodyBlock = SyntaxFactory.Block(addDaprWorkflowStatement, SyntaxFactory.ExpressionStatement(exprBody));
-                newRoot = newRoot.ReplaceNode(exprBody, newBodyBlock);
+                var newBodyBlock = SyntaxFactory.Block(
+                    addDaprWorkflowStatement,
+                    SyntaxFactory.ExpressionStatement(exprBody));
+
+                LambdaExpressionSyntax? newLambda =
+                    lambda switch
+                    {
+                        SimpleLambdaExpressionSyntax s => s.WithBody(newBodyBlock),
+                        ParenthesizedLambdaExpressionSyntax p => p.WithBody(newBodyBlock),
+                        _ => null
+                    };
+
+                if (newLambda is null)
+                    return (null, null);
+
+                newRoot = newRoot.ReplaceNode((SyntaxNode)lambda, (SyntaxNode)newLambda);
             }
             else
             {
