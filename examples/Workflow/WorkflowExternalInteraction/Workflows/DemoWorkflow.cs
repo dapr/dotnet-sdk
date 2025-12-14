@@ -28,8 +28,7 @@ internal sealed class DemoWorkflow : Workflow<string, bool>
     {
         try
         {
-            await context.WaitForExternalEventAsync<bool>("Approval");
-            //await context.WaitForExternalEventAsync<bool>(eventName: "Approval", timeout: TimeSpan.FromSeconds(10));
+            await context.WaitForExternalEventAsync<bool>("Approval", timeout: TimeSpan.FromSeconds(10));
         }
         catch (TaskCanceledException)
         {
