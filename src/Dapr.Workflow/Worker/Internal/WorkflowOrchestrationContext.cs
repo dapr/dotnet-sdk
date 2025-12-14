@@ -324,14 +324,54 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
     /// </summary>
     private bool TryGetHistoryEvent(out HistoryEvent historyEvent)
     {
-        if (_historyIndex < _pastEvents.Count)
+        while (_historyIndex < _pastEvents.Count)
         {
-            historyEvent = _pastEvents[_historyIndex++];
+            var next = _pastEvents[_historyIndex++];
+            
+            // Durable histories include orchestration bookkeeping events that are not the
+            // result of an awaited operation (activity/timer/child-workflow/event).
+            // Skip these so CallActivityAsync/CreateTimer/etc. only see actionable events.
+            if (IsSkippableForAwaitConsumption(next))
+            {
+                continue;
+            }
+
+            historyEvent = next;
             return true;
         }
         
         historyEvent = null!;
         return false;
+
+        static bool IsSkippableForAwaitConsumption(HistoryEvent e) =>
+            e is
+                {
+                    ExecutionStarted: not null
+                } or
+                {
+                    OrchestratorStarted: not null
+                } or
+                {
+                    OrchestratorCompleted: not null
+                } or
+                {
+                    HistoryState: not null
+                } or
+                {
+                    GenericEvent: not null
+                } or
+                {
+                    TaskScheduled: not null
+                } or
+                {
+                    SubOrchestrationInstanceCreated: not null
+                } or
+                {
+                    TimerCreated: not null
+                } or
+                {
+                    EventSent: not null
+                };
     }
     
     /// <summary>
