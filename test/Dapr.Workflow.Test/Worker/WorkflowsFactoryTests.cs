@@ -15,6 +15,7 @@ using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace Dapr.Workflow.Test.Worker;
@@ -60,6 +61,52 @@ public class WorkflowsFactoryTests
         Assert.IsType<TestActivityWithDependency>(activity);
         Assert.Equal("dep-2", ((TestActivityWithDependency)activity!).Dep.Value);
     }
+    
+    [Fact]
+    public void RegisterActivity_Generic_ShouldUseProvidedName_WhenNameIsSpecified()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterActivity<TestActivityA>("custom-activity");
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("custom-activity"), sp, out var activity));
+        Assert.NotNull(activity);
+        Assert.IsType<TestActivityA>(activity);
+
+        Assert.False(factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivityA)), sp, out _));
+    }
+
+    [Fact]
+    public void RegisterWorkflow_Generic_ShouldBeCaseInsensitive_ForLookup()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterWorkflow<TestWorkflowA>("MyWorkflow");
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("myworkflow"), sp, out var workflow));
+        Assert.NotNull(workflow);
+        Assert.IsType<TestWorkflowA>(workflow);
+    }
+    
+    [Fact]
+    public void RegisterWorkflow_Generic_ShouldUseProvidedName_WhenNameIsSpecified()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterWorkflow<TestWorkflowA>("custom-workflow");
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("custom-workflow"), sp, out var workflow));
+        Assert.NotNull(workflow);
+        Assert.IsType<TestWorkflowA>(workflow);
+
+        Assert.False(factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflowA)), sp, out _));
+    }
 
     [Fact]
     public void RegisterWorkflow_Function_ShouldThrowArgumentException_WhenNameIsNullOrWhitespace()
@@ -70,6 +117,36 @@ public class WorkflowsFactoryTests
         Assert.Throws<ArgumentException>(() => factory.RegisterWorkflow<int, int>("", (_, x) => Task.FromResult(x)));
         Assert.Throws<ArgumentException>(() => factory.RegisterWorkflow<int, int>("  ", (_, x) => Task.FromResult(x)));
     }
+    
+    [Fact]
+    public void RegisterWorkflow_Generic_ShouldNotOverwrite_WhenRegisteringSameNameTwice()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterWorkflow<TestWorkflowA>("wf");
+        factory.RegisterWorkflow<TestWorkflowB>("wf"); // should be ignored (TryAdd)
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var workflow));
+        Assert.NotNull(workflow);
+        Assert.IsType<TestWorkflowA>(workflow);
+    }
+
+    [Fact]
+    public void RegisterActivity_Generic_ShouldNotOverwrite_WhenRegisteringSameNameTwice()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterActivity<TestActivityA>("act");
+        factory.RegisterActivity<TestActivityB>("act"); // should be ignored (TryAdd)
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var activity));
+        Assert.NotNull(activity);
+        Assert.IsType<TestActivityA>(activity);
+    }
 
     [Fact]
     public void RegisterWorkflow_Function_ShouldThrowArgumentNullException_WhenImplementationIsNull()
@@ -78,6 +155,56 @@ public class WorkflowsFactoryTests
         var factory = new WorkflowsFactory(logger);
 
         Assert.Throws<ArgumentNullException>(() => factory.RegisterWorkflow<int, int>("wf", null!));
+    }
+    
+    [Fact]
+    public void RegisterActivity_Generic_ShouldBeCaseInsensitive_ForLookup()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterActivity<TestActivityA>("MyActivity");
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("myactivity"), sp, out var activity));
+        Assert.NotNull(activity);
+        Assert.IsType<TestActivityA>(activity);
+    }
+
+    [Fact]
+    public async Task RegisterWorkflow_Function_ShouldNotOverwrite_WhenRegisteringSameNameTwice()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterWorkflow<int, int>("wf", (_, x) => Task.FromResult(x + 1));
+        factory.RegisterWorkflow<int, int>("wf", (_, x) => Task.FromResult(x + 999)); // should be ignored (TryAdd)
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var workflow));
+        Assert.NotNull(workflow);
+
+        var result = await workflow!.RunAsync(new FakeWorkflowContext(), 10);
+
+        Assert.Equal(11, result);
+    }
+
+    [Fact]
+    public async Task RegisterActivity_Function_ShouldNotOverwrite_WhenRegisteringSameNameTwice()
+    {
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+
+        factory.RegisterActivity<int, int>("act", (_, x) => Task.FromResult(x + 1));
+        factory.RegisterActivity<int, int>("act", (_, x) => Task.FromResult(x + 999)); // should be ignored (TryAdd)
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var activity));
+        Assert.NotNull(activity);
+
+        var result = await activity!.RunAsync(new FakeActivityContext(), 10);
+
+        Assert.Equal(11, result);
     }
 
     [Fact]
@@ -232,6 +359,34 @@ public class WorkflowsFactoryTests
     private sealed class ThrowingActivity : IWorkflowActivity
     {
         public ThrowingActivity() => throw new InvalidOperationException("boom");
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+        public Task<object?> RunAsync(WorkflowActivityContext context, object? input) => Task.FromResult<object?>(null);
+    }
+    
+    private sealed class TestWorkflowA : IWorkflow
+    {
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+        public Task<object?> RunAsync(WorkflowContext context, object? input) => Task.FromResult<object?>(null);
+    }
+
+    private sealed class TestWorkflowB : IWorkflow
+    {
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+        public Task<object?> RunAsync(WorkflowContext context, object? input) => Task.FromResult<object?>(null);
+    }
+
+    private sealed class TestActivityA : IWorkflowActivity
+    {
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+        public Task<object?> RunAsync(WorkflowActivityContext context, object? input) => Task.FromResult<object?>(null);
+    }
+
+    private sealed class TestActivityB : IWorkflowActivity
+    {
         public Type InputType => typeof(object);
         public Type OutputType => typeof(object);
         public Task<object?> RunAsync(WorkflowActivityContext context, object? input) => Task.FromResult<object?>(null);
