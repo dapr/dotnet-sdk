@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Worker;
 using Grpc.Net.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,5 +82,85 @@ public class WorkflowRuntimeOptionsTests
 
         Assert.True(factory.TryCreateActivity(new("act-fn"), sp, out var activity));
         Assert.NotNull(activity);
+    }
+    
+    [Fact]
+    public void MaxConcurrentWorkflows_ShouldDefaultTo100_AndAllowSettingValidValues()
+    {
+        var options = new WorkflowRuntimeOptions();
+
+        Assert.Equal(100, options.MaxConcurrentWorkflows);
+
+        options.MaxConcurrentWorkflows = 1;
+        Assert.Equal(1, options.MaxConcurrentWorkflows);
+
+        options.MaxConcurrentWorkflows = 250;
+        Assert.Equal(250, options.MaxConcurrentWorkflows);
+    }
+
+    [Fact]
+    public void MaxConcurrentActivities_ShouldDefaultTo100_AndAllowSettingValidValues()
+    {
+        var options = new WorkflowRuntimeOptions();
+
+        Assert.Equal(100, options.MaxConcurrentActivities);
+
+        options.MaxConcurrentActivities = 1;
+        Assert.Equal(1, options.MaxConcurrentActivities);
+
+        options.MaxConcurrentActivities = 250;
+        Assert.Equal(250, options.MaxConcurrentActivities);
+    }
+
+    [Fact]
+    public void RegisterWorkflow_GenericWithName_ShouldRegisterUsingProvidedName_WhenApplied()
+    {
+        var options = new WorkflowRuntimeOptions();
+        options.RegisterWorkflow<TestWorkflow>(name: "MyCustomWorkflowName");
+
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+        options.ApplyRegistrations(factory);
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("MyCustomWorkflowName"), sp, out var workflow));
+        Assert.NotNull(workflow);
+        Assert.IsType<TestWorkflow>(workflow);
+
+        Assert.False(factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflow)), sp, out _));
+    }
+
+    [Fact]
+    public void RegisterActivity_GenericWithName_ShouldRegisterUsingProvidedName_WhenApplied()
+    {
+        var options = new WorkflowRuntimeOptions();
+        options.RegisterActivity<TestActivity>(name: "MyCustomActivityName");
+
+        var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
+        options.ApplyRegistrations(factory);
+
+        var sp = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("MyCustomActivityName"), sp, out var activity));
+        Assert.NotNull(activity);
+        Assert.IsType<TestActivity>(activity);
+
+        Assert.False(factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivity)), sp, out _));
+    }
+
+    private sealed class TestWorkflow : IWorkflow
+    {
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+
+        public Task<object?> RunAsync(WorkflowContext context, object? input) => Task.FromResult<object?>(null);
+    }
+
+    private sealed class TestActivity : IWorkflowActivity
+    {
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+
+        public Task<object?> RunAsync(WorkflowActivityContext context, object? input) => Task.FromResult<object?>(null);
     }
 }
