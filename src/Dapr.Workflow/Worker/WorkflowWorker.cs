@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -78,18 +79,48 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Extract the workflow name from the ExecutionStartedEvent in the history
             string? workflowName = null;
             string? serializedInput = null;
+
             foreach (var historyEvent in request.PastEvents)
             {
-                if (historyEvent.ExecutionStarted != null)
-                {
-                    workflowName = historyEvent.ExecutionStarted.Name;
-                    serializedInput = historyEvent.ExecutionStarted.Input;
+                if (TryExtractExecutionStarted(historyEvent, ref workflowName, ref serializedInput))
                     break;
+            }
+
+            if (string.IsNullOrEmpty(workflowName))
+            {
+                foreach (var historyEvent in request.NewEvents)
+                {
+                    if (TryExtractExecutionStarted(historyEvent, ref workflowName, ref serializedInput))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(workflowName) && request.RequiresHistoryStreaming)
+            {
+                // Fetch history chunks and look for ExecutionStarted
+                var streamRequest = new StreamInstanceHistoryRequest
+                {
+                    InstanceId = request.InstanceId, ExecutionId = request.ExecutionId, ForWorkItemProcessing = true
+                };
+
+                using var call = _grpcClient.StreamInstanceHistory(streamRequest);
+
+                while (await call.ResponseStream.MoveNext(CancellationToken.None).ConfigureAwait(false))
+                {
+                    foreach (var historyEvent in call.ResponseStream.Current.Events)
+                    {
+                        if (TryExtractExecutionStarted(historyEvent, ref workflowName, ref serializedInput))
+                            break;
+                    }
+
+                    if (!string.IsNullOrEmpty(workflowName))
+                        break;
                 }
             }
 
             if (string.IsNullOrEmpty(workflowName))
             {
+                // This is not really a "not in registry" case; we just can't determine the workflow name
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
                 return new OrchestratorResponse { InstanceId = request.InstanceId, Actions = { }, CustomStatus = null };
             }
@@ -106,11 +137,17 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Create the workflow context
             var currentUtcDateTime = DateTime.UtcNow;
             
+            // Combine the past + new events for correct replay behavior
+            // NewEvents can contain the completion events that correspond to TaskScheduled entries in PastEvents
+            var allHistoryEvents = new List<HistoryEvent>();
+            allHistoryEvents.AddRange(request.PastEvents);
+            allHistoryEvents.AddRange(request.NewEvents);
+            
             // Try to get a more accurate timestamp from the first history event
             if (request.PastEvents.Count > 0 && request.PastEvents[0].Timestamp != null)
                 currentUtcDateTime = request.PastEvents[0].Timestamp.ToDateTime();
             
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, request.PastEvents, currentUtcDateTime, _serializer, loggerFactory);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, allHistoryEvents, currentUtcDateTime, _serializer, loggerFactory);
 
             // Deserialize the input
             object? input = null;
@@ -120,7 +157,9 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             }
 
             // Execute the workflow
-            var output = await workflow!.RunAsync(context, input);
+            // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
+            // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
+            var runTask = workflow!.RunAsync(context, input);
             
             // Get all pending actions from the context
             var response = new OrchestratorResponse { InstanceId = request.InstanceId };
@@ -128,29 +167,60 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Add all actions that were scheduled during workflow execution
             response.Actions.AddRange(context.PendingActions);
             
-            // If the workflow completed without ContinueAsNew, add completion action
-            if (context.PendingActions.All(a => a.CompleteOrchestration?.OrchestrationStatus != OrchestrationStatus.ContinuedAsNew))
-            {
-                // Serialize the output
-                var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
-                
-                response.Actions.Add(new OrchestratorAction
-                {
-                    CompleteOrchestration = new CompleteOrchestrationAction
-                    {
-                        Result = outputJson,
-                        OrchestrationStatus = OrchestrationStatus.Completed
-                    }
-                });
-            }
-            
             // Set custom status if provided
             if (context.CustomStatus != null)
                 response.CustomStatus = _serializer.Serialize(context.CustomStatus);
-            
-            _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
 
+            // If the workflow issued ContinueAsNew, it already queued a completion action; just return it.
+            if (context.PendingActions.Any(a => a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
+            {
+                _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
+                return response;
+            }
+
+            // If the workflow is waiting on activities/timers/events, the task won't be complete yet.
+            // Return the scheduled actions now so the sidecar can execute them.
+            if (!runTask.IsCompleted)
+            {
+                _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
+                return response;
+            }
+
+            // The workflow completed synchronously (either on replay or it had nothing to await).
+            // Observe exceptions if any, otherwise serialize the output and complete the orchestration.
+            var output = await runTask.ConfigureAwait(false);
+
+            var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
+
+            response.Actions.Add(new OrchestratorAction
+            {
+                CompleteOrchestration = new CompleteOrchestrationAction
+                {
+                    Result = outputJson,
+                    OrchestrationStatus = OrchestrationStatus.Completed
+                }
+            });
+
+            _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
             return response;
+
+            static bool TryExtractExecutionStarted(HistoryEvent e, ref string? name, ref string? input)
+            {
+                if (e.ExecutionStarted != null)
+                {
+                    name = e.ExecutionStarted.Name;
+                    input = e.ExecutionStarted.Input;
+                    return true;
+                }
+
+                // As a fallback, some implementations may provide name via OrchestratorStarted.version.name
+                if (e.OrchestratorStarted?.Version?.Name is { Length: > 0 } versionName)
+                {
+                    name ??= versionName;
+                }
+
+                return false;
+            }
         }
         catch (Exception ex)
         {
