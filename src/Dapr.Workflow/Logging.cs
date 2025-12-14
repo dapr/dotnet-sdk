@@ -76,6 +76,9 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Error, "Error in receive loop")]
     public static partial void LogGrpcProtocolHandlerReceiveLoopError(this ILogger logger, Exception ex);
 
+    [LoggerMessage(LogLevel.Information, "Workflow worker gRPC stream canceled during shutdown (expected)")]
+    public static partial void LogGrpcProtocolHandlerReceiveLoopCanceled(this ILogger logger, Exception ex);
+
     [LoggerMessage(LogLevel.Information, "Disposing gRPC protocol handler")]
     public static partial void LogGrpcProtocolHandlerDisposing(this ILogger logger);
 

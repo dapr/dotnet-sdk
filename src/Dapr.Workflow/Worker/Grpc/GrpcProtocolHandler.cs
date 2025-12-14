@@ -89,7 +89,7 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     {
         // Track active work items for proper exception handling
         var activeWorkItems = new List<Task>();
-        
+
         try
         {
             await foreach (var workItem in workItemsStream.ReadAllAsync(cancellationToken))
@@ -116,12 +116,22 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
             }
 
             _logger.LogGrpcProtocolHandlerReceiveLoopCompleted(activeWorkItems.Count);
-            
+
             // Wait for all active work items to complete
             if (activeWorkItems.Count > 0)
             {
                 await Task.WhenAll(activeWorkItems);
             }
+        }
+        catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        {
+            // Normal shutdown path (host stopping / handler disposing / token canceled)
+            _logger.LogGrpcProtocolHandlerReceiveLoopCanceled(ex);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+        {
+            // gRPC surfaces token/dispose cancellation as StatusCode.Cancelled
+            _logger.LogGrpcProtocolHandlerReceiveLoopCanceled(ex);
         }
         catch (Exception ex)
         {
