@@ -174,10 +174,10 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
     }
 
     /// <inheritdoc />
-    public override Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
+    public override async Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
     {
         using var cts = new CancellationTokenSource(timeout);
-        return WaitForExternalEventAsync<T>(eventName, cts.Token);
+        return await WaitForExternalEventAsync<T>(eventName, cts.Token).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
