@@ -41,8 +41,9 @@ await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DemoWorkflow), instance
 var status = await daprWorkflowClient.GetWorkflowStateAsync(instanceId);
 do
 {
-    Console.WriteLine($"Current status: {status?.RuntimeStatus}, step: {status?.ReadCustomStatusAs<string>()}");
+    Console.WriteLine($"{DateTime.UtcNow:HH:mm:ss zz}: Current status: {status?.RuntimeStatus}, step: {status?.ReadCustomStatusAs<string>()}");
     status = await daprWorkflowClient.GetWorkflowStateAsync(instanceId);
+    await Task.Delay(TimeSpan.FromSeconds(1));
 } while (status?.IsWorkflowCompleted == false);
 
 Console.WriteLine($"Workflow completed - {status?.ReadCustomStatusAs<string>()}");
