@@ -31,6 +31,25 @@ public class ReplaySafeLoggerTests
         var inner = Mock.Of<ILogger>();
         Assert.Throws<ArgumentNullException>(() => new ReplaySafeLogger(inner, null!));
     }
+    
+    [Fact]
+    public void BeginScope_ShouldForwardToInnerLogger_RegardlessOfReplayState()
+    {
+        var scope = Mock.Of<IDisposable>();
+
+        var innerMock = new Mock<ILogger>(MockBehavior.Strict);
+        innerMock
+            .Setup(x => x.BeginScope(It.IsAny<It.IsAnyType>()))
+            .Returns(scope);
+
+        var logger = new ReplaySafeLogger(innerMock.Object, () => true);
+
+        var returned = logger.BeginScope("scope-state");
+
+        Assert.Same(scope, returned);
+
+        innerMock.Verify(x => x.BeginScope(It.IsAny<It.IsAnyType>()), Times.Once);
+    }
 
     [Fact]
     public void IsEnabled_ShouldReturnFalse_WhenReplayingEvenIfInnerIsEnabled()
