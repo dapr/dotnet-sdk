@@ -144,6 +144,27 @@ public class JsonWorkflowSerializerTests
         Assert.NotNull(roundTripped.Nested);
         Assert.Equal(original.Nested.FirstName, roundTripped.Nested.FirstName);
     }
+    
+    [Fact]
+    public void Deserialize_NonGeneric_ShouldReturnExpectedObject_WhenDataIsValid()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = "{\"firstName\":\"Ada\"}";
+
+        var obj = serializer.Deserialize(json, typeof(SimplePayload));
+
+        Assert.NotNull(obj);
+        var payload = Assert.IsType<SimplePayload>(obj);
+        Assert.Equal("Ada", payload.FirstName);
+    }
+
+    [Fact]
+    public void Deserialize_NonGeneric_ShouldThrowJsonException_WhenDataIsInvalidJson()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.ThrowsAny<JsonException>(() => serializer.Deserialize("{not-json", typeof(SimplePayload)));
+    }
 
     private sealed class SimplePayload
     {
