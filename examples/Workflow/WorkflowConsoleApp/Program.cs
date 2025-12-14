@@ -11,6 +11,7 @@ const string StoreName = "statestore";
 // The workflow host is a background service that connects to the sidecar over gRPC
 var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
 {
+    services.AddDaprClient();
     services.AddDaprWorkflow(options =>
     {
         // Note that it's also possible to register a lambda function as the workflow
