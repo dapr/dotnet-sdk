@@ -54,7 +54,7 @@ public static class WorkflowServiceCollectionExtensions
             new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         
         // Register the workflow factory
-        serviceCollection.TryAddSingleton<WorkflowsFactory>(sp =>
+        serviceCollection.TryAddSingleton<IWorkflowsFactory>(sp =>
         {
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<WorkflowsFactory>();
@@ -68,9 +68,6 @@ public static class WorkflowServiceCollectionExtensions
 
         // Necessary for the gRPC client factory
         serviceCollection.AddHttpClient();
-        
-        // Register the IWorkflowsFactory interface
-        serviceCollection.TryAddSingleton<IWorkflowsFactory>(sp => sp.GetRequiredService<WorkflowsFactory>());
         
         // Register the internal WorkflowClient implementation
         serviceCollection.TryAddSingleton<WorkflowClient>(sp =>
