@@ -387,6 +387,75 @@ public class ParallelExtensionsTest
         // Assert
         Assert.Equal(expectedResults, results);
     }
+    
+    [Fact]
+    public async Task ProcessInParallelAsync_WhenTaskFactoryThrowsSynchronously_ShouldBubbleException()
+    {
+        var inputs = new[] { 1, 2, 3 };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await _workflowContextMock.Object.ProcessInParallelAsync(
+                inputs,
+                input =>
+                {
+                    if (input == 2)
+                        throw new InvalidOperationException("boom");
+                    return Task.FromResult(input * 10);
+                },
+                maxConcurrency: 5));
+
+        Assert.Equal("boom", ex.Message);
+    }
+
+    [Fact]
+    public async Task ProcessInParallelAsync_WhenSomeTasksFail_ShouldStillStartAllInputs_BeforeThrowingAggregate()
+    {
+        var inputs = new[] { 1, 2, 3, 4, 5 };
+        var started = 0;
+
+        var gates = inputs.ToDictionary(i => i, _ => new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously));
+
+        Task<int> Factory(int input)
+        {
+            Interlocked.Increment(ref started);
+
+            if (input == 2)
+                return Task.Run<int>(async () =>
+                {
+                    await Task.Delay(10);
+                    throw new InvalidOperationException("planned failure");
+                });
+
+            return gates[input].Task;
+        }
+
+        var processingTask = _workflowContextMock.Object.ProcessInParallelAsync(inputs, Factory, maxConcurrency: 2);
+
+        foreach (var i in inputs.Where(i => i != 2))
+            gates[i].TrySetResult(i * 100);
+
+        var aggregate = await Assert.ThrowsAsync<AggregateException>(async () => await processingTask);
+
+        Assert.Equal(inputs.Length, Volatile.Read(ref started));
+        Assert.Single(aggregate.InnerExceptions);
+        Assert.IsType<InvalidOperationException>(aggregate.InnerExceptions[0]);
+        Assert.Contains("1 out of 5 tasks failed", aggregate.Message);
+    }
+
+    [Fact]
+    public async Task ProcessInParallelAsync_ShouldEnumerateInputsOnlyOnce()
+    {
+        var context = new FakeWorkflowContext();
+        var trackingInputs = new SingleEnumerationEnumerable<int>(Enumerable.Range(1, 10));
+
+        var results = await context.ProcessInParallelAsync(
+            trackingInputs,
+            i => Task.FromResult(i * 3),
+            maxConcurrency: 3);
+
+        Assert.Equal(1, trackingInputs.EnumerationCount);
+        Assert.Equal(Enumerable.Range(1, 10).Select(i => i * 3).ToArray(), results);
+    }
 
     private class TestInput
     {
@@ -419,5 +488,18 @@ public class ParallelExtensionsTest
         public override ILogger CreateReplaySafeLogger(string categoryName) => throw new NotSupportedException();
         public override ILogger CreateReplaySafeLogger(Type type) => throw new NotSupportedException();
         public override ILogger CreateReplaySafeLogger<T>() => throw new NotSupportedException();
+    }
+    
+    private sealed class SingleEnumerationEnumerable<T>(IEnumerable<T> inner) : IEnumerable<T>
+    {
+        public int EnumerationCount { get; private set; }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            EnumerationCount++;
+            return inner.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
