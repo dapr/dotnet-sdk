@@ -213,6 +213,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Abstractions.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.E2E.Test.Workflow.App", "test\Dapr.E2E.Test.Workflow.App\Dapr.E2E.Test.Workflow.App.csproj", "{916F0794-CE4C-46BF-8DAA-359FB4993CEA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkflowMapReduceDemo", "examples\Workflow\WorkflowMapReduceDemo\WorkflowMapReduceDemo.csproj", "{03E32B57-0E5B-440E-BAFF-D5DBC0861497}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -565,6 +567,10 @@ Global
 		{916F0794-CE4C-46BF-8DAA-359FB4993CEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{916F0794-CE4C-46BF-8DAA-359FB4993CEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{916F0794-CE4C-46BF-8DAA-359FB4993CEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03E32B57-0E5B-440E-BAFF-D5DBC0861497}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03E32B57-0E5B-440E-BAFF-D5DBC0861497}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03E32B57-0E5B-440E-BAFF-D5DBC0861497}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03E32B57-0E5B-440E-BAFF-D5DBC0861497}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -668,6 +674,7 @@ Global
 		{B55A8400-75EF-4FFF-AF24-72BB5A9B82B4} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{18FCC589-8A7C-4ACC-A987-FAA01579B70D} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 		{916F0794-CE4C-46BF-8DAA-359FB4993CEA} = {DD020B34-460F-455F-8D17-CF4A949F100B}
+		{03E32B57-0E5B-440E-BAFF-D5DBC0861497} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
