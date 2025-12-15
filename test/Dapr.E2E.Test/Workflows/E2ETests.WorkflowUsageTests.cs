@@ -14,6 +14,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.E2E.Test.Workflow.App.ShardMapReduce;
+using Dapr.E2E.Test.Workflow.App.ShardMapReduce.Activities;
 using Dapr.E2E.Test.Workflow.App.SimpleWorkflow;
 using Dapr.E2E.Test.Workflow.App.SimpleWorkflow.Activities;
 using Dapr.Workflow;
@@ -38,6 +40,7 @@ public partial class E2ETests : IAsyncLifetime
                 opt.RegisterActivity<AddNumbersActivity>();
             });
         }).Build();
+        await app.StartAsync(cts.Token);
 
         var workflowClient = app.Services.GetRequiredService<DaprWorkflowClient>();
         const int operand1 = 10;
@@ -49,5 +52,38 @@ public partial class E2ETests : IAsyncLifetime
 
         var result = await workflowClient.WaitForWorkflowCompletionAsync(instanceId, true, cts.Token);
         Assert.Equal(expectedResult, result.ReadOutputAs<int>());
-    } 
+    }
+
+    [Fact]
+    public async Task TestMapReduceWorkflowAsync()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+        using var app = Host.CreateDefaultBuilder([]).ConfigureServices(services =>
+        {
+            services.AddDaprWorkflow(opt =>
+            {
+                opt.RegisterWorkflow<MapReduceWorkflow>();
+                opt.RegisterWorkflow<ShardWorkflow>();
+                opt.RegisterActivity<MapWorkerActivity>();
+            });
+        }).Build();
+        await app.StartAsync(cts.Token);
+        
+        var workflowClient = app.Services.GetRequiredService<DaprWorkflowClient>();
+        var input = new MapReduceInput(
+            ShardCount: 200,
+            WorkersPerShard: 10,
+            WorkerDelayMsBase: 1,
+            WorkerDelayMsJitter: 5,
+            ShardBatchSize: 20,
+            WorkerBatchSize: 50);
+
+        var instanceId = Guid.NewGuid().ToString();
+        await workflowClient.ScheduleNewWorkflowAsync(nameof(MapReduceWorkflow), instanceId, input);
+        var result = await workflowClient.WaitForWorkflowCompletionAsync(instanceId, true, cts.Token);
+        
+        Assert.True(result.IsWorkflowCompleted);
+        Assert.False(result.IsWorkflowRunning);
+    }
 }
