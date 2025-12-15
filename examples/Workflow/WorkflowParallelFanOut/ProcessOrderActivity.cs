@@ -44,7 +44,7 @@ public sealed partial class ProcessOrderActivity(ILogger<ProcessOrderActivity> l
                 order.OrderId,
                 IsProcessed: false,
                 TotalAmount: 0,
-                Status: "Failed - System Error",
+                Status: "Failed - Simulated Transient Error",
                 ProcessedAt: DateTime.UtcNow);
         }
 
