@@ -28,10 +28,10 @@ var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
 });
 
 // Dapr uses a random port for gRPC by default. If we don't know what that port
-// is (because this app was started separate from dapr), then assume 4001.
+// is (because this app was started separate from dapr), then assume 50001
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DAPR_GRPC_PORT")))
 {
-    Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", "4001");
+    Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", "50001");
 }
 
 Console.ForegroundColor = ConsoleColor.White;
@@ -39,7 +39,7 @@ Console.WriteLine("*** Welcome to the Dapr Workflow console app sample!");
 Console.WriteLine("*** Using this app, you can place orders that start workflows.");
 Console.WriteLine("*** Ensure that Dapr is running in a separate terminal window using the following command:");
 Console.ForegroundColor = ConsoleColor.Green;
-Console.WriteLine("        dapr run --dapr-grpc-port 4001 --app-id wfapp");
+Console.WriteLine("        dapr run --dapr-grpc-port 50001 --app-id wfapp");
 Console.WriteLine();
 Console.ResetColor();
 
@@ -216,6 +216,9 @@ using (daprClient)
         Console.WriteLine();
     }
 }
+
+return;
+
 static async Task RestockInventory(DaprClient daprClient, List<InventoryItem> inventory)
 {
     Console.WriteLine("*** Restocking inventory...");
