@@ -207,7 +207,9 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
         
-        var childInstanceId = options?.InstanceId ?? Guid.NewGuid().ToString();
+        // Note that child instance IDs must be deterministic across replays
+        // Using Guid.NewGuid() breaks replay and can cause workflows to never complete
+        var childInstanceId = options?.InstanceId ?? NewGuid().ToString(); 
         
         // Check history
         if (TryGetHistoryEvent(out var historyEvent))
