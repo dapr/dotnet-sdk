@@ -95,54 +95,66 @@ public static class ParallelExtensions
             return [];
 
         var results = new TResult[inputList.Count];
-        var inFlightTasks = new Dictionary<Task<TResult>, int>(); // Task -> result index
+        var exceptions = new List<Exception>();
+        
+        // Use insertion-ordered lists to keep the orchestration decisions deterministic
+        var inFlightTasks = new List<Task<TResult>>(capacity: maxConcurrency);
+        var inFlightResultIndexes = new List<int>(capacity: maxConcurrency);
+
         var inputIndex = 0;
         var completedCount = 0;
-        var exceptions = new List<Exception>();
 
         // Start initial batch up to maxConcurrency
         while (inputIndex < inputList.Count && inFlightTasks.Count < maxConcurrency)
         {
-            var task = taskFactory(inputList[inputIndex]);
-            inFlightTasks[task] = inputIndex;
-            inputIndex++;
+            StartNextIfAvailable();
         }
-
-        // Process remaining items with streaming execution
+        
+        // Streaming execution: when one finishes, immediately start the next
         while (completedCount < inputList.Count)
         {
-            var completedTask = await Task.WhenAny(inFlightTasks.Keys);
-            var resultIndex = inFlightTasks[completedTask];
+            // IMPORTANT: Pass a List (stable order) not Dicitonary.keys (not stable order)
+            var completedTask = await Task.WhenAny(inFlightTasks).ConfigureAwait(false);
+
+            var slot = inFlightTasks.IndexOf(completedTask);
+            var resultIndex = inFlightResultIndexes[slot];
 
             try
             {
-                results[resultIndex] = await completedTask;
+                results[resultIndex] = await completedTask.ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 exceptions.Add(ex);
             }
-
-            inFlightTasks.Remove(completedTask);
+            
+            // Remove the completed task from the in-flight window
+            inFlightTasks.RemoveAt(slot);
+            inFlightResultIndexes.RemoveAt(slot);
             completedCount++;
-
-            // Start next task if more work remains
-            if (inputIndex < inputList.Count)
-            {
-                var nextTask = taskFactory(inputList[inputIndex]);
-                inFlightTasks[nextTask] = inputIndex;
-                inputIndex++;
-            }
+            
+            // Keep the window full
+            StartNextIfAvailable();
         }
 
-        // If any exceptions occurred, throw them as an aggregate
         if (exceptions.Count > 0)
         {
             throw new AggregateException(
                 $"One or more tasks failed during parallel processing. {exceptions.Count} out of {inputList.Count} tasks failed.",
                 exceptions);
         }
-
+        
         return results;
+
+        void StartNextIfAvailable()
+        {
+            if (inputIndex >= inputList.Count)
+                return;
+
+            var task = taskFactory(inputList[inputIndex]);
+            inFlightTasks.Add(task);
+            inFlightResultIndexes.Add(inputIndex);
+            inputIndex++;
+        }
     }
 }
