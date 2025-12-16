@@ -19,8 +19,9 @@ namespace Dapr.Workflow.Worker.Internal;
 /// <summary>
 /// Implementation of <see cref="WorkflowActivityContext"/>.
 /// </summary>
-internal sealed class WorkflowActivityContextImpl(TaskIdentifier identifier, string instanceId) : WorkflowActivityContext
+internal sealed class WorkflowActivityContextImpl(TaskIdentifier identifier, string instanceId, string taskExecutionKey) : WorkflowActivityContext
 {
     public override TaskIdentifier Identifier { get; } = identifier;
+    public override string TaskExecutionKey { get; } = taskExecutionKey;
     public override string InstanceId { get; } = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
 }

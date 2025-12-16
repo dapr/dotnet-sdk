@@ -24,6 +24,11 @@ public abstract class WorkflowActivityContext
     /// Gets the name of the activity.
     /// </summary>
     public abstract TaskIdentifier Identifier { get; }
+    
+    /// <summary>
+    /// Gets the task execution key.
+    /// </summary>
+    public abstract string TaskExecutionKey { get; }
 
     /// <summary>
     /// Gets the unique ID of the current workflow instance.
