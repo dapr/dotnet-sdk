@@ -19,80 +19,119 @@ namespace Dapr.Workflow.Test;
 public class WorkflowServiceCollectionExtensionsTests
 {
     [Fact]
+    public void AddDaprWorkflow_Parameterless_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
+    {
+        IServiceCollection services = null!;
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow());
+    }
+
+    [Fact]
     public void AddDaprWorkflow_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
         IServiceCollection services = null!;
-
         Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow(_ => { }));
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldThrowArgumentNullException_WhenConfigureIsNull()
+    {
+        var services = new ServiceCollection();
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow(null!));
     }
 
     [Fact]
     public void AddDaprWorkflow_ShouldThrowArgumentOutOfRangeException_WhenLifetimeIsInvalid()
     {
         var services = new ServiceCollection();
-
         Assert.Throws<ArgumentOutOfRangeException>(() => services.AddDaprWorkflow(_ => { }, (ServiceLifetime)999));
     }
 
     [Fact]
-    public void AddDaprWorkflowSerializer_InstanceOverload_ShouldThrowArgumentNullException_WhenArgsAreNull()
+    public void AddDaprWorkflowBuilder_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
-        var services = new ServiceCollection();
-
-        Assert.Throws<ArgumentNullException>(() => ((IServiceCollection)null!).AddDaprWorkflowSerializer(MockSerializer.Instance));
-        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowSerializer((IWorkflowSerializer)null!));
+        IServiceCollection services = null!;
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowBuilder());
     }
 
     [Fact]
-    public void AddDaprWorkflowSerializer_FactoryOverload_ShouldThrowArgumentNullException_WhenArgsAreNull()
+    public void WithSerializer_InstanceOverload_ShouldThrowArgumentNullException_WhenSerializerIsNull()
     {
         var services = new ServiceCollection();
+        var builder = services.AddDaprWorkflowBuilder();
 
-        Assert.Throws<ArgumentNullException>(() => ((IServiceCollection)null!).AddDaprWorkflowSerializer(_ => MockSerializer.Instance));
-        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowSerializer((Func<IServiceProvider, IWorkflowSerializer>)null!));
+        Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((IWorkflowSerializer)null!));
     }
 
     [Fact]
-    public void AddDaprWorkflowJsonSerializer_ShouldThrowArgumentNullException_WhenArgsAreNull()
+    public void WithSerializer_FactoryOverload_ShouldThrowArgumentNullException_WhenFactoryIsNull()
     {
         var services = new ServiceCollection();
+        var builder = services.AddDaprWorkflowBuilder();
 
-        Assert.Throws<ArgumentNullException>(() => ((IServiceCollection)null!).AddDaprWorkflowJsonSerializer(new JsonSerializerOptions()));
-        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowJsonSerializer(null!));
+        Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((Func<IServiceProvider, IWorkflowSerializer>)null!));
     }
 
     [Fact]
-    public void AddDaprWorkflow_ShouldUseCustomSerializer_WhenRegisteredBeforeCallingAddDaprWorkflow()
+    public void WithJsonSerializer_ShouldThrowArgumentNullException_WhenJsonOptionsIsNull()
     {
         var services = new ServiceCollection();
+        var builder = services.AddDaprWorkflowBuilder();
 
+        Assert.Throws<ArgumentNullException>(() => builder.WithJsonSerializer(null!));
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldNotOverrideCustomSerializer_WhenUserRegistersSerializerBeforeCallingAddDaprWorkflow()
+    {
+        var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDaprWorkflowSerializer(MockSerializer.Instance);
 
+        services.AddSingleton<IWorkflowSerializer>(MockSerializer.Instance);
         services.AddDaprWorkflow(_ => { });
 
         var sp = services.BuildServiceProvider();
-
         var serializer = sp.GetRequiredService<IWorkflowSerializer>();
 
         Assert.Same(MockSerializer.Instance, serializer);
     }
 
     [Fact]
-    public void AddDaprWorkflowJsonSerializer_ShouldReplaceDefaultSerializer()
+    public void AddDaprWorkflowBuilder_WithJsonSerializer_ShouldReplaceDefaultSerializer()
     {
         var services = new ServiceCollection();
-
         services.AddLogging();
-        services.AddDaprWorkflowJsonSerializer(new JsonSerializerOptions { PropertyNamingPolicy = null });
 
-        services.AddDaprWorkflow(_ => { });
+        services
+            .AddDaprWorkflowBuilder(_ => { })
+            .WithJsonSerializer(new JsonSerializerOptions { PropertyNamingPolicy = null });
 
         var sp = services.BuildServiceProvider();
-
         var serializer = sp.GetRequiredService<IWorkflowSerializer>();
 
         Assert.IsType<JsonWorkflowSerializer>(serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_WithSerializerFactory_ShouldResolveDependenciesFromServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddSingleton(new SerializerDependency("dep-1"));
+
+        services
+            .AddDaprWorkflowBuilder(_ => { })
+            .WithSerializer(sp =>
+            {
+                var dep = sp.GetRequiredService<SerializerDependency>();
+                return new DependencyBasedSerializer(dep);
+            });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+
+        var typed = Assert.IsType<DependencyBasedSerializer>(serializer);
+        Assert.Equal("dep-1", typed.Dep.Value);
     }
     
     [Fact]
@@ -221,32 +260,6 @@ public class WorkflowServiceCollectionExtensionsTests
         Assert.NotNull(descriptor);
         Assert.Equal(lifetime, descriptor!.Lifetime);
     }
-
-    [Fact]
-    public void AddDaprWorkflowSerializer_FactoryOverload_ShouldResolveDependenciesFromServiceProvider()
-    {
-        var services = new ServiceCollection();
-        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
-
-        services.AddSingleton<SerializerDependency>(new SerializerDependency("dep-1"));
-
-        services.AddDaprWorkflowSerializer(sp =>
-        {
-            var dep = sp.GetRequiredService<SerializerDependency>();
-            return new DependencyBasedSerializer(dep);
-        });
-
-        services.AddSingleton<WorkflowClient>(new FakeWorkflowClient());
-
-        services.AddDaprWorkflow(_ => { });
-
-        var sp = services.BuildServiceProvider();
-
-        var serializer = sp.GetRequiredService<IWorkflowSerializer>();
-
-        var typed = Assert.IsType<DependencyBasedSerializer>(serializer);
-        Assert.Equal("dep-1", typed.Dep.Value);
-    }
     
     private sealed record SerializerDependency(string Value);
 
@@ -257,38 +270,6 @@ public class WorkflowServiceCollectionExtensionsTests
         public string Serialize(object? value, Type? inputType = null) => "x";
         public T? Deserialize<T>(string? data) => default;
         public object? Deserialize(string? data, Type returnType) => null;
-    }
-    
-    private sealed class FakeWorkflowClient : WorkflowClient
-    {
-        public override Task<string> ScheduleNewWorkflowAsync(string workflowName, object? input = null, StartWorkflowOptions? options = null, CancellationToken cancellation = default)
-            => throw new NotSupportedException();
-
-        public override Task<WorkflowMetadata?> GetWorkflowMetadataAsync(string instanceId, bool getInputsAndOutputs = true, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override Task<WorkflowMetadata> WaitForWorkflowStartAsync(string instanceId, bool getInputsAndOutputs = true, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(string instanceId, bool getInputsAndOutputs = true, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override Task RaiseEventAsync(string instanceId, string eventName, object? eventPayload = null, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override Task TerminateWorkflowAsync(string instanceId, object? output = null, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override Task SuspendWorkflowAsync(string instanceId, string? reason = null, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override Task ResumeWorkflowAsync(string instanceId, string? reason = null, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override Task<bool> PurgeInstanceAsync(string instanceId, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
     
     private sealed class FakeWorkflowContext : WorkflowContext
