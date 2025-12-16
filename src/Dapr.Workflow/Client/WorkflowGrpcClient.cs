@@ -36,11 +36,10 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
         {
             InstanceId = instanceId,
             Name = workflowName,
-            Input = SerializeToJson(input),
-            Version = string.Empty // Not using versions
+            Input = SerializeToJson(input)
         };
         
-        // Add scheduled start time if specified
+        // Add the scheduled start time if specified
         if (options?.StartAt is { } startAt)
         {
             request.ScheduledStartTimestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(startAt);

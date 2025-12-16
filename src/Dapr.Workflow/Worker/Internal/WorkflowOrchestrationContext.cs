@@ -87,16 +87,20 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
         
         // Not in history - schedule new activity execution
         _logger.LogSchedulingActivity(name, InstanceId);
-        
-        _pendingActions.Add(new OrchestratorAction
+
+        var action = new OrchestratorAction
         {
             Id = _sequenceNumber++,
-            ScheduleTask = new ScheduleTaskAction
-            {
-                Name = name,
-                Input = workflowSerializer.Serialize(input)
-            }
-        });
+            ScheduleTask = new ScheduleTaskAction { Name = name, Input = workflowSerializer.Serialize(input) }
+        };
+        
+        // Set the target App ID from the options, if specified
+        if (!string.IsNullOrEmpty(options?.AppId))
+        {
+            action.Router = new TaskRouter { TargetAppID = options.AppId };
+        }
+        
+        _pendingActions.Add(action);
 
         // Return a task that will never complete on this execution. It will only complete on
         // a future replay when the result is in history
@@ -223,17 +227,23 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
         }
 
         _logger.LogSchedulingChildWorkflow(workflowName, childInstanceId, InstanceId);
-        
-        _pendingActions.Add(new OrchestratorAction
+
+        var action = new OrchestratorAction
         {
             Id = _sequenceNumber++,
             CreateSubOrchestration = new CreateSubOrchestrationAction
             {
-                Name = workflowName,
-                InstanceId = childInstanceId,
-                Input = workflowSerializer.Serialize(input)
+                Name = workflowName, InstanceId = childInstanceId, Input = workflowSerializer.Serialize(input)
             }
-        });
+        };
+
+        // Add the target App ID in case it's specified in the options
+        if (!string.IsNullOrEmpty(options?.AppId))
+        {
+            action.Router = new TaskRouter { TargetAppID = options.AppId };
+        }
+        
+        _pendingActions.Add(action);
         
         // Return a task that will never complete on this execution.
         // It will only complete on a future replay when the result is in history.
