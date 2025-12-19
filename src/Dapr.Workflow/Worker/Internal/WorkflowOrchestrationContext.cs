@@ -332,61 +332,6 @@ internal sealed class WorkflowOrchestrationContext(string name, string instanceI
     }
     
     /// <summary>
-    /// Attempts to get the next history event if still replaying.
-    /// </summary>
-    private bool TryGetHistoryEvent(out HistoryEvent historyEvent)
-    {
-        while (_historyIndex < _pastEvents.Count)
-        {
-            var next = _pastEvents[_historyIndex++];
-            
-            // Durable histories include orchestration bookkeeping events that are not the
-            // result of an awaited operation (activity/timer/child-workflow/event).
-            // Skip these so CallActivityAsync/CreateTimer/etc. only see actionable events.
-            if (IsSkippableForAwaitConsumption(next))
-            {
-                continue;
-            }
-
-            historyEvent = next;
-            return true;
-        }
-        
-        historyEvent = null!;
-        return false;
-
-        static bool IsSkippableForAwaitConsumption(HistoryEvent e) =>
-            e is
-                {
-                    ExecutionStarted: not null
-                } or
-                {
-                    OrchestratorStarted: not null
-                } or
-                {
-                    OrchestratorCompleted: not null
-                } or
-                {
-                    HistoryState: not null
-                } or
-                {
-                    GenericEvent: not null
-                } or
-                {
-                    TaskScheduled: not null
-                } or
-                {
-                    SubOrchestrationInstanceCreated: not null
-                } or
-                {
-                    TimerCreated: not null
-                } or
-                {
-                    EventSent: not null
-                };
-    }
-    
-    /// <summary>
     /// Creates a deterministic GUID from a namespace and name using RFC 4122 UUID v5 (SHA-1).
     /// </summary>
     private static Guid CreateGuidFromName(Guid namespaceId, byte[] name)

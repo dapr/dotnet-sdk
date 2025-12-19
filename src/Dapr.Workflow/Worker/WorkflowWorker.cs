@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -120,9 +119,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
 
             if (string.IsNullOrEmpty(workflowName))
             {
-                // This is not really a "not in registry" case; we just can't determine the workflow name
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
-                return new OrchestratorResponse { InstanceId = request.InstanceId, Actions = { }, CustomStatus = null };
+                return new OrchestratorResponse { InstanceId = request.InstanceId };
             }
 
             // Try to get the workflow from the factory
@@ -130,8 +128,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
-
-                return new OrchestratorResponse { InstanceId = request.InstanceId, Actions = { }, CustomStatus = null };
+                return new OrchestratorResponse { InstanceId = request.InstanceId};
             }
 
             // Create the workflow context
@@ -143,18 +140,13 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             allHistoryEvents.AddRange(request.PastEvents);
             allHistoryEvents.AddRange(request.NewEvents);
             
-            // Try to get a more accurate timestamp from the first history event
-            if (request.PastEvents.Count > 0 && request.PastEvents[0].Timestamp != null)
-                currentUtcDateTime = request.PastEvents[0].Timestamp.ToDateTime();
-            
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, allHistoryEvents, currentUtcDateTime, _serializer, loggerFactory);
+            // Initialize the context with the FULL history            
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, allPastEvents, request.NewEvents, currentUtcDateTime, _serializer, loggerFactory);
 
             // Deserialize the input
-            object? input = null;
-            if (!string.IsNullOrEmpty(serializedInput))
-            {
-                input = _serializer.Deserialize(serializedInput, workflow!.InputType);
-            }
+            object? input = string.IsNullOrEmpty(serializedInput)
+                ? null
+                : _serializer.Deserialize(serializedInput, workflow!.InputType);
 
             // Execute the workflow
             // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
