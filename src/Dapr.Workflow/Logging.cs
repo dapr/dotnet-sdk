@@ -164,8 +164,8 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Debug, "Workflow '{InstanceId}' was not purged (may not exist or not in terminal state)")]
     public static partial void LogPurgedWorkflowUnsuccessfully(this ILogger logger, string instanceId);
     
-    [LoggerMessage(LogLevel.Debug, "Scheduling activity '{ActivityName}' for workflow '{InstanceId}'")]
-    public static partial void LogSchedulingActivity(this ILogger logger, string activityName, string instanceId);
+    [LoggerMessage(LogLevel.Debug, "Scheduling activity '{ActivityName}' with task ID '{TaskId}' for workflow '{InstanceId}'")]
+    public static partial void LogSchedulingActivity(this ILogger logger, string activityName, string instanceId, int taskId);
     
     [LoggerMessage(LogLevel.Debug, "Activity '{ActivityName}' completed from history for workflow '{InstanceId}'")]
     public static partial void LogActivityCompletedFromHistory(this ILogger logger, string activityName, string instanceId);
@@ -187,4 +187,49 @@ internal static partial class Logging
     
     [LoggerMessage(LogLevel.Debug, "Child workflow '{WorkflowName}' failed from history for parent '{ParentInstanceId}'")]
     public static partial void LogChildWorkflowFailedFromHistory(this ILogger logger, string workflowName, string parentInstanceId);
+
+    [LoggerMessage(LogLevel.Debug, "Matched PAST history for child workflow taskId={TaskId}")]
+    public static partial void LogCallChildWorkflowPastHistoryMatch(this ILogger logger, int taskId);
+
+    [LoggerMessage(LogLevel.Debug, "Matched NEW history for child workflow taskId={TaskId}")]
+    public static partial void LogCallChildWorkflowNewHistoryMatch(this ILogger logger, int taskId);
+
+    [LoggerMessage(LogLevel.Debug, "Child workflow task {TaskId} ({WorkflowName}) is PENDING")]
+    public static partial void LogCallChildWorkflowPendingMatch(this ILogger logger, int taskId, string workflowName);
+
+    [LoggerMessage(LogLevel.Debug, "Found completion by instance ID for taskId={TaskId}, childInstanceId={ChildInstanceId}")]
+    public static partial void LogCallChildWorkflowFoundCompletion(this ILogger logger, int taskId, string childInstanceId);
+
+    [LoggerMessage(LogLevel.Debug, "Found running child workflow by instance ID for taskId={TaskId}")]
+    public static partial void LogCallChildWorkflowFoundRunning(this ILogger logger, int taskId);
+
+    [LoggerMessage(LogLevel.Debug, "No history found - scheduling new child workflow '{WorkflowName}' with taskId={TaskId}, child instance ID={ChildInstanceId}")]
+    public static partial void LogCallChildWorkflowSchedulingNew(this ILogger logger, string workflowName, int taskId, string childInstanceId);
+
+    [LoggerMessage(LogLevel.Debug, "Matched PAST history for activity taskId={TaskId}")]
+    public static partial void LogCallActivityPastHistoryMatch(this ILogger logger, int taskId);
+
+    [LoggerMessage(LogLevel.Debug, "Matched NEW history for activity taskId={TaskId}")]
+    public static partial void LogCallActivityNewHistoryMatch(this ILogger logger, int taskId);
+
+    [LoggerMessage(LogLevel.Debug, "Activity task {TaskId} ({WorkflowName}) is PENDING")]
+    public static partial void LogCallActivityPendingMatch(this ILogger logger, int taskId, string workflowName);
+
+    [LoggerMessage(LogLevel.Debug, "Timer match: TaskId {TaskId} fired")]
+    public static partial void LogCreateTimerMatch(this ILogger logger, int taskId);
+
+    [LoggerMessage(LogLevel.Debug, "CreateTimer: Task {TaskId} is pending")]
+    public static partial void LogCreateTimerPending(this ILogger logger, int taskId);
+
+    [LoggerMessage(LogLevel.Debug, "Initializing new WorkflowOrchestration context for workflow '{WorkflowName}' in instance '{InstanceId}' with {PastEventsCount} past events, {NewEventsCount} new events, {PastMapEntriesCount} past mapped entries, and {NewMapEntriesCount} new mapped entries")]
+    public static partial void LogWorkflowContextConstructorSetup(this ILogger logger, string workflowName, string instanceId, int pastEventsCount, int newEventsCount, int pastMapEntriesCount, int newMapEntriesCount);
+
+    [LoggerMessage(LogLevel.Debug, "{Mode}: TaskId {TaskId} ({Name}) matched")]
+    public static partial void LogHandleHistoryMatch(this ILogger logger, string mode, int taskId, string name);
+
+    [LoggerMessage(LogLevel.Debug, "Orchestrator yielded: Instance {InstanceId} is waiting or {ActionCount} scheduled actions to complete. Sequence at {Sequence}")]
+    public static partial void LogWorkflowWorkerOrchestratorYield(this ILogger logger, string instanceId, int actionCount, int sequence);
+
+    [LoggerMessage(LogLevel.Debug, "Potential stall: Instance {InstanceId} yielded but scheduled 0 new actions and matched 0 history events")]
+    public static partial void LogWorkflowWorkerOrchestratorStall(this ILogger logger, string instanceId);
 }

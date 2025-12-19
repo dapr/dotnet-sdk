@@ -49,94 +49,59 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     // Parse instance ID as GUID or generate one
     private readonly Guid _instanceGuid;
     // IDs of tasks that have been scheduled but may not have completed yet
-    private readonly HashSet<int> _scheduledEventIds = new();
+    private readonly HashSet<int> _scheduledEventIds = [];
 
-    private int _sequenceNumber = 0;
-    private int _guidCounter = 0;
+    private int _sequenceNumber;
+    private int _guidCounter;
     private object? _customStatus;
     private readonly IWorkflowSerializer workflowSerializer;
 
-    public WorkflowOrchestrationContext(string name, string instanceId, IEnumerable<HistoryEvent> pastEvents, IEnumerable<HistoryEvent> newEvents, DateTime currentUtcDateTime, IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory)
-{
-    this.workflowSerializer = workflowSerializer;
-    _logger = loggerFactory?.CreateLogger<WorkflowOrchestrationContext>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-    _instanceGuid = Guid.TryParse(instanceId, out var guid) ? guid : Guid.NewGuid();
-    Name = name;
-    InstanceId = instanceId;
-    CurrentUtcDateTime = currentUtcDateTime;
-
-    _pastEvents = pastEvents.ToList();
-    _newEvents = newEvents.ToList();
-
-    _logger.LogInformation("==== WorkflowOrchestrationContext CONSTRUCTOR ====");
-    _logger.LogInformation("Workflow: {Name}, Instance: {InstanceId}", name, instanceId);
-    _logger.LogInformation("PastEvents.Count = {PastCount}, NewEvents.Count = {NewCount}", _pastEvents.Count, _newEvents.Count);
-
-    // 1. Index PAST events
-    foreach (var e in _pastEvents)
+    public WorkflowOrchestrationContext(string name, string instanceId, IEnumerable<HistoryEvent> pastEvents,
+        IEnumerable<HistoryEvent> newEvents, DateTime currentUtcDateTime, IWorkflowSerializer workflowSerializer,
+        ILoggerFactory loggerFactory)
     {
-        if (TryGetTaskScheduledId(e, out int scheduledId))
+        this.workflowSerializer = workflowSerializer;
+        _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
+                  throw new ArgumentNullException(nameof(loggerFactory));
+        _instanceGuid = Guid.TryParse(instanceId, out var guid) ? guid : Guid.NewGuid();
+        Name = name;
+        InstanceId = instanceId;
+        CurrentUtcDateTime = currentUtcDateTime;
+
+        _pastEvents = pastEvents.ToList();
+        _newEvents = newEvents.ToList();
+
+
+        // 1. Index PAST events
+        foreach (var e in _pastEvents)
         {
-            _pastEventMap[scheduledId] = e;
+            if (TryGetTaskScheduledId(e, out int scheduledId))
+            {
+                _pastEventMap[scheduledId] = e;
+            }
+
+            // Track scheduled/created events to detect "Pending" state
+            if (e.TaskScheduled != null) _scheduledEventIds.Add(e.EventId);
+            if (e.SubOrchestrationInstanceCreated != null) _scheduledEventIds.Add(e.EventId);
+            if (e.TimerCreated != null) _scheduledEventIds.Add(e.EventId);
         }
 
-        // Track scheduled/created events to detect "Pending" state
-        if (e.TaskScheduled != null) _scheduledEventIds.Add(e.EventId);
-        if (e.SubOrchestrationInstanceCreated != null) _scheduledEventIds.Add(e.EventId);
-        if (e.TimerCreated != null) _scheduledEventIds.Add(e.EventId);
-    }
-
-    // 2. Index NEW events
-    foreach (var e in _newEvents)
-    {
-        if (TryGetTaskScheduledId(e, out int scheduledId))
+        // 2. Index NEW events
+        foreach (var e in _newEvents)
         {
-            _newEventMap[scheduledId] = e;
+            if (TryGetTaskScheduledId(e, out int scheduledId))
+            {
+                _newEventMap[scheduledId] = e;
+            }
+
+            // Track scheduled/created events to detect "Pending" state
+            if (e.TaskScheduled != null) _scheduledEventIds.Add(e.EventId);
+            if (e.SubOrchestrationInstanceCreated != null) _scheduledEventIds.Add(e.EventId);
+            if (e.TimerCreated != null) _scheduledEventIds.Add(e.EventId);
         }
-            
-        // Track scheduled/created events to detect "Pending" state
-        if (e.TaskScheduled != null) _scheduledEventIds.Add(e.EventId);
-        if (e.SubOrchestrationInstanceCreated != null) _scheduledEventIds.Add(e.EventId);
-        if (e.TimerCreated != null) _scheduledEventIds.Add(e.EventId);
+        
+        _logger.LogWorkflowContextConstructorSetup(name, instanceId, _pastEvents.Count, _newEvents.Count, _pastEventMap.Count, _newEventMap.Count);
     }
-    
-    _logger.LogInformation("Indexed PastEventMap: {PastMapCount} entries", _pastEventMap.Count);
-    _logger.LogInformation("Indexed NewEventMap: {NewMapCount} entries", _newEventMap.Count);
-    _logger.LogInformation("==== END CONSTRUCTOR ====");
-}
-    
-    // /// <summary>
-    // /// Internal orchestration context that processes gRPC history events.
-    // /// </summary>
-    // /// <remarks>
-    // /// Here's the intended workflow execution model:
-    // /// First execution: Workflow runs until first `await`, returns pending actions, task doesn't complete
-    // /// Subsequent executions: History is replayed, tasks complete from history, workflow advances further
-    // /// Completion: When no more awaitable operations exist, workflow returns final result
-    // /// </remarks>
-    // public WorkflowOrchestrationContext(string name, string instanceId, IEnumerable<HistoryEvent> pastEvents, IEnumerable<HistoryEvent> newEvents, DateTime currentUtcDateTime, IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory)
-    // {
-    //     this.workflowSerializer = workflowSerializer;
-    //     _logger = loggerFactory?.CreateLogger<WorkflowOrchestrationContext>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-    //     _instanceGuid = Guid.TryParse(instanceId, out var guid) ? guid : Guid.NewGuid();
-    //     Name = name;
-    //     InstanceId = instanceId;
-    //     CurrentUtcDateTime = currentUtcDateTime;
-    //     
-    //     _pastEvents = pastEvents.ToList();
-    //     _newEvents = newEvents.ToList();
-    //     
-    //     // Separate maps to distinguish between replay and execution
-    //     foreach (var e in _pastEvents)
-    //     {
-    //         if (TryGetTaskScheduledId(e, out int scheduledId)) _pastEventMap[scheduledId] = e;
-    //     }
-    //
-    //     foreach (var e in _newEvents)
-    //     {
-    //         if (TryGetTaskScheduledId(e, out int scheduledId)) _newEventMap[scheduledId] = e;
-    //     }
-    // }
 
     /// <inheritdoc />
     public override string Name { get; }
@@ -167,30 +132,26 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         // Check Past Events (true replay)
         if (_pastEventMap.TryGetValue(taskId, out var historyEvent))
         {
+            _logger.LogCallActivityPastHistoryMatch(taskId);
             return HandleHistoryMatch<T>(name, historyEvent, taskId, isReplay: true);
         }
         
         // Check new events (advancing execution)
         if (_newEventMap.TryGetValue(taskId, out historyEvent))
         {
+            _logger.LogCallActivityNewHistoryMatch(taskId);
             return HandleHistoryMatch<T>(name, historyEvent, taskId, isReplay: false);
         }
 
         // Check if already scheduled (Pending)
         if (_scheduledEventIds.Contains(taskId))
         {
-            _logger.LogDebug("CallActivityAsync: Task {TaskId} ({Name}) is PENDING", taskId, name);
+            _logger.LogCallActivityPendingMatch(taskId, name);
             return new TaskCompletionSource<T>().Task;
         }
         
-        // Not in history - schedule
-        _logger.LogInformation("Scheduling: TaskId {TaskId} ({Name})", taskId, name);
-        
-        // Not in history - schedule
-        _logger.LogInformation("Scheduling: TaskId {TaskId} ({Name})", taskId, name);
-
         // Not in history - schedule new activity execution
-        //_logger.LogSchedulingActivity(name, InstanceId);
+        _logger.LogSchedulingActivity(name, InstanceId, taskId);
         
         _pendingActions.Add(new OrchestratorAction
         {
@@ -215,7 +176,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             if (historyEvent.TimerFired is not null)
             {
-                _logger.LogDebug("Timer match: TaskId {TaskId} fired", taskId);
+                _logger.LogCreateTimerMatch(taskId);
                 return Task.CompletedTask;
             }
         }
@@ -223,7 +184,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         // Check if already scheduled (Pending)
         if (_scheduledEventIds.Contains(taskId))
         {
-            _logger.LogDebug("CreateTimer: Task {TaskId} is PENDING", taskId);
+            _logger.LogCreateTimerPending(taskId);
             return new TaskCompletionSource<object?>().Task;
         }
         
@@ -297,83 +258,77 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     public override void SetCustomStatus(object? customStatus) => _customStatus = customStatus;
 
     public override Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null,
-            ChildWorkflowTaskOptions? options = null)
+        ChildWorkflowTaskOptions? options = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
+
+        // CRITICAL: Child instance IDs must be deterministic across replays
+        // Generate the child instance ID BEFORE incrementing sequence
+        var childInstanceId = options?.InstanceId ?? NewGuid().ToString();
+        var taskId = _sequenceNumber++;
+
+        // Try standard TaskScheduledId-based matching first (fast path)
+        if (_pastEventMap.TryGetValue(taskId, out var historyEvent))
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
+            _logger.LogCallChildWorkflowPastHistoryMatch(taskId);
+            return HandleHistoryMatch<TResult>(workflowName, historyEvent, taskId, isReplay: true);
+        }
 
-            // CRITICAL: Child instance IDs must be deterministic across replays
-            // Generate the child instance ID BEFORE incrementing sequence
-            var childInstanceId = options?.InstanceId ?? NewGuid().ToString();
-            var taskId = _sequenceNumber++;
+        if (_newEventMap.TryGetValue(taskId, out historyEvent))
+        {
+            _logger.LogCallChildWorkflowNewHistoryMatch(taskId);
+            return HandleHistoryMatch<TResult>(workflowName, historyEvent, taskId, isReplay: false);
+        }
 
-            // Try standard TaskScheduledId-based matching first (fast path)
-            if (_pastEventMap.TryGetValue(taskId, out var historyEvent))
+        // Check if already scheduled (Pending) via deterministic TaskID
+        if (_scheduledEventIds.Contains(taskId))
+        {
+            _logger.LogCallChildWorkflowPendingMatch(taskId, workflowName);
+            return new TaskCompletionSource<TResult>().Task;
+        }
+
+        // FALLBACK: If TaskScheduledId doesn't match, search by child instance ID
+        // This handles cases where Dapr returns events with mismatched TaskScheduledId values
+        var completionByInstanceId = _newEvents
+            .Concat(_pastEvents)
+            .FirstOrDefault(e =>
             {
-                _logger.LogDebug("CallChildWorkflowAsync: Matched PAST history for taskId={TaskId}", taskId);
-                return HandleHistoryMatch<TResult>(workflowName, historyEvent, taskId, isReplay: true);
-            }
-
-            if (_newEventMap.TryGetValue(taskId, out historyEvent))
-            {
-                _logger.LogDebug("CallChildWorkflowAsync: Matched NEW history for taskId={TaskId}", taskId);
-                return HandleHistoryMatch<TResult>(workflowName, historyEvent, taskId, isReplay: false);
-            }
-
-            // Check if already scheduled (Pending) via deterministic TaskID
-            if (_scheduledEventIds.Contains(taskId))
-            {
-                _logger.LogDebug("CallChildWorkflowAsync: Task {TaskId} ({Name}) is PENDING", taskId, workflowName);
-                return new TaskCompletionSource<TResult>().Task;
-            }
-
-            // FALLBACK: If TaskScheduledId doesn't match, search by child instance ID
-            // This handles cases where Dapr returns events with mismatched TaskScheduledId values
-            var completionByInstanceId = _newEvents
-                .Concat(_pastEvents)
-                .FirstOrDefault(e =>
+                // Check if this is a SubOrchestrationInstanceCreated event with matching instance ID
+                if (e.SubOrchestrationInstanceCreated != null)
                 {
-                    // Check if this is a SubOrchestrationInstanceCreated event with matching instance ID
-                    if (e.SubOrchestrationInstanceCreated != null)
-                    {
-                        return string.Equals(e.SubOrchestrationInstanceCreated.InstanceId, childInstanceId,
-                            StringComparison.OrdinalIgnoreCase);
-                    }
-
-                    return false;
-                });
-
-            if (completionByInstanceId != null)
-            {
-                // We found the CREATION event. The task is at least running.
-                var createdTaskId = completionByInstanceId.EventId;
-                
-                // Try to find the completion using the ID we found in the creation event
-                var completion = _newEvents.Concat(_pastEvents)
-                    .FirstOrDefault(e =>
-                        (e.SubOrchestrationInstanceCompleted != null &&
-                         e.SubOrchestrationInstanceCompleted.TaskScheduledId == createdTaskId) ||
-                        (e.SubOrchestrationInstanceFailed != null &&
-                         e.SubOrchestrationInstanceFailed.TaskScheduledId == createdTaskId));
-
-                if (completion != null)
-                {
-                    _logger.LogDebug(
-                        "CallChildWorkflowAsync: Found completion by InstanceId for taskId={TaskId}, childInstanceId={ChildInstanceId}",
-                        taskId, childInstanceId);
-                    return HandleHistoryMatch<TResult>(workflowName, completion, taskId, isReplay: false);
+                    return string.Equals(e.SubOrchestrationInstanceCreated.InstanceId, childInstanceId,
+                        StringComparison.OrdinalIgnoreCase);
                 }
-                
-                // Found Creation but NO Completion -> Task is PENDING
-                _logger.LogDebug(
-                    "CallChildWorkflowAsync: Found RUNNING child workflow by InstanceId for taskId={TaskId}", taskId);
-                return new TaskCompletionSource<TResult>().Task;
+
+                return false;
+            });
+
+        if (completionByInstanceId != null)
+        {
+            // We found the CREATION event. The task is at least running.
+            var createdTaskId = completionByInstanceId.EventId;
+
+            // Try to find the completion using the ID we found in the creation event
+            var completion = _newEvents.Concat(_pastEvents)
+                .FirstOrDefault(e =>
+                    (e.SubOrchestrationInstanceCompleted != null &&
+                     e.SubOrchestrationInstanceCompleted.TaskScheduledId == createdTaskId) ||
+                    (e.SubOrchestrationInstanceFailed != null &&
+                     e.SubOrchestrationInstanceFailed.TaskScheduledId == createdTaskId));
+
+            if (completion != null)
+            {
+                _logger.LogCallChildWorkflowFoundCompletion(taskId, childInstanceId);
+                return HandleHistoryMatch<TResult>(workflowName, completion, taskId, isReplay: false);
             }
 
-            _logger.LogInformation(
-                "CallChildWorkflowAsync: NO HISTORY - Scheduling NEW child workflow '{WorkflowName}' with taskId={TaskId}, childInstanceId={ChildInstanceId}",
-                workflowName, taskId, childInstanceId);
+            // Found Creation but NO Completion -> Task is PENDING
+            _logger.LogCallChildWorkflowFoundRunning(taskId);
+            return new TaskCompletionSource<TResult>().Task;
+        }
 
-            var action = new OrchestratorAction
+        _logger.LogCallChildWorkflowSchedulingNew(workflowName, taskId, childInstanceId);
+        var action = new OrchestratorAction
         {
             Id = taskId,
             CreateSubOrchestration = new CreateSubOrchestrationAction
@@ -431,7 +386,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     
     private Task<T> HandleHistoryMatch<T>(string name, HistoryEvent e, int taskId, bool isReplay)
     {
-        _logger.LogDebug("{Mode}: TaskId {TaskId} ({Name}) matched", isReplay ? "Replaying" : "Executing", taskId, name);
+        _logger.LogHandleHistoryMatch(isReplay ? "Replaying" : "Executing", taskId, name);
 
         return e switch
         {

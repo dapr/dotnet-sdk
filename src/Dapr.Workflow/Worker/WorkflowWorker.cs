@@ -159,12 +159,11 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
 
             if (!runTask.IsCompleted)
             {
-                _logger.LogInformation("Orchestrator Yielded: Instance {InstanceId} is waiting for {ActionCount} scheduled actions to complete. Sequence at: {Sequence}", 
-                    request.InstanceId, response.Actions.Count, context.PendingActions.Count);
+                _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, context.PendingActions.Count);
                     
                 if (response.Actions.Count == 0 && !context.PendingActions.Any())
                 {
-                    _logger.LogWarning("Potential Stall: Instance {InstanceId} yielded but scheduled 0 new actions and matched 0 history events.", request.InstanceId);
+                    _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
                 }
                 return response;
             }
