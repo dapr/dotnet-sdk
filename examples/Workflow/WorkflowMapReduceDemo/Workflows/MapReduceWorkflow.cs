@@ -38,18 +38,18 @@ public sealed partial class MapReduceWorkflow : Workflow<MapReduceInput, MapRedu
         var status2 = new { Phase = "RunningShards", input.ShardCount, MaxParallelShards = input.ShardBatchSize };
         LogSettingStatus(logger, status2);
         context.SetCustomStatus(status2);
+        
+         var shardSums = await context.ProcessInParallelAsync(shardIds, shardId =>
+         {
+             var shardInput = new ShardWorkflowInput(shardId, input.WorkersPerShard, input.Seed, input.WorkerDelayMsBase,
+                 input.WorkerDelayMsJitter, input.WorkerBatchSize);
+        
+             return context.CallChildWorkflowAsync<ShardWorkflowOutput>(nameof(ShardWorkflow), shardInput);
+         }, input.ShardBatchSize);
+        long total = shardSums.Sum(a => a.Result);
+        var intentionalDelayMs = shardSums.Sum(a => a.ActivityDelayMs);
 
-        var shardSums = await context.ProcessInParallelAsync(shardIds, shardId =>
-        {
-            var shardInput = new ShardWorkflowInput(shardId, input.WorkersPerShard, input.Seed, input.WorkerDelayMsBase,
-                input.WorkerDelayMsJitter, input.WorkerBatchSize);
-
-            return context.CallChildWorkflowAsync<long>(nameof(ShardWorkflow), shardInput);
-        }, input.ShardBatchSize);
-
-        long total = shardSums.Sum();
-
-        var result = new MapReduceResult(total, input.ShardCount, input.WorkersPerShard);
+        var result = new MapReduceResult(total, input.ShardCount, input.WorkersPerShard, intentionalDelayMs);
 
         var status3 = new { Phase = "Completed", result.ShardCount, result.WorkersPerShard, result.Total };
         LogSettingStatus(logger, status3);
@@ -63,5 +63,5 @@ public sealed partial class MapReduceWorkflow : Workflow<MapReduceInput, MapRedu
 }
 
 public sealed record MapReduceInput(int ShardCount, int WorkersPerShard, int Seed = 12345, int WorkerDelayMsBase = 2, int WorkerDelayMsJitter = 5, int ShardBatchSize = 25, int WorkerBatchSize = 100);
-public sealed record MapReduceResult(long Total, int ShardCount, int WorkersPerShard);
+public sealed record MapReduceResult(long Total, int ShardCount, int WorkersPerShard, long IntentionalDelayMs);
 public sealed record ShardWorkflowInput(int ShardId, int WorkersPerShard, int Seed, int WorkerDelayMsBase, int WorkerDelayMsJitter, int WorkerBatchSize);

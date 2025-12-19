@@ -20,9 +20,9 @@ namespace WorkflowMapReduceDemo.Workflows.Activities;
 /// Synthetic worker activity: deterministic "work" + optional small delay.
 /// No external dependencies.
 /// </summary>
-public sealed partial class MapWorkerActivity(ILogger<MapWorkerActivity> logger) : WorkflowActivity<MapWorkerInput, long>
+public sealed partial class MapWorkerActivity(ILogger<MapWorkerActivity> logger) : WorkflowActivity<MapWorkerInput, MapWorkerOutput>
 {
-    public override async Task<long> RunAsync(WorkflowActivityContext context, MapWorkerInput input)
+    public override async Task<MapWorkerOutput> RunAsync(WorkflowActivityContext context, MapWorkerInput input)
     {
         // Small delay to simulate work and create scheduling pressure.
         // Deterministic jitter derived from inputs (no randomness).
@@ -49,7 +49,7 @@ public sealed partial class MapWorkerActivity(ILogger<MapWorkerActivity> logger)
             input.WorkerId;
 
         LogComplete(result);
-        return result;
+        return new MapWorkerOutput(result, delay);
     }
     
     private static uint HashToUInt32(int seed, int shardId, int workerId)
@@ -74,6 +74,8 @@ public sealed partial class MapWorkerActivity(ILogger<MapWorkerActivity> logger)
     [LoggerMessage(LogLevel.Information, "Activity finished with result '{Result}'")]
     partial void LogComplete(long result);
 }
+
+public sealed record MapWorkerOutput(long Result, long DelayMs);
 
 public sealed record MapWorkerInput(
     int ShardId,

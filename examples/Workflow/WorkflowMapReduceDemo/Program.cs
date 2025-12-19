@@ -27,11 +27,11 @@ var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 var input = new MapReduceInput(
     ShardCount: 200,
-    WorkersPerShard: 10,
-    WorkerDelayMsBase: 1,
-    WorkerDelayMsJitter: 5,
+    WorkersPerShard: 15,
+    WorkerDelayMsBase: 100,
+    WorkerDelayMsJitter: 250,
     ShardBatchSize: 20,
-    WorkerBatchSize: 50);
+    WorkerBatchSize: 10);
 
 var instanceId = Guid.NewGuid().ToString();
 logger.LogInformation("Starting workflow with instance ID '{instanceId}'", instanceId);
@@ -44,11 +44,14 @@ Console.WriteLine(result);
 
 var subworkflowCount = input.ShardCount;
 var totalOperations = (long)input.ShardCount * input.WorkersPerShard;
+var workflowOutput = result.ReadOutputAs<MapReduceResult>();
+var totalActivityDelayMs = workflowOutput?.IntentionalDelayMs ?? null;
 
 logger.LogInformation(
-    "Workflow run summary: instanceId={InstanceId}, workflow={WorkflowName}, elapsedMs={ElapsedMs}, shards(subworkflows)={SubworkflowCount}, totalOperations={TotalOperations}",
+    "Workflow run summary: instanceId={InstanceId}, workflow={WorkflowName}, elapsedMs={ElapsedMs}, totalActivityDelayTimeMs={TotalDelayTimeMs} shards(subworkflows)={SubworkflowCount}, totalOperations={TotalOperations}",
     instanceId,
     nameof(MapReduceWorkflow),
     sw.ElapsedMilliseconds,
+    totalActivityDelayMs,
     subworkflowCount,
     totalOperations);

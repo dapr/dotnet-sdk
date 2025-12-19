@@ -16,36 +16,18 @@ using WorkflowMapReduceDemo.Workflows.Activities;
 
 namespace WorkflowMapReduceDemo.Workflows;
 
-public sealed class ShardWorkflow : Workflow<ShardWorkflowInput, long>
+public sealed class ShardWorkflow : Workflow<ShardWorkflowInput, ShardWorkflowOutput>
 {
-    public override async Task<long> RunAsync(WorkflowContext context, ShardWorkflowInput input)
+    public override async Task<ShardWorkflowOutput> RunAsync(WorkflowContext context, ShardWorkflowInput input)
     {
         var workers = input.WorkersPerShard <= 0 ? 1 : input.WorkersPerShard;
         var maxParallelWorkers = input.WorkerBatchSize <= 0 ? workers : input.WorkerBatchSize;
-
-        context.SetCustomStatus(new
-        {
-            Phase = "ShardStarting",
-            input.ShardId,
-            Workers = workers,
-            MaxParallelWorkers = maxParallelWorkers,
-        });
-
         var workerIds = Enumerable.Range(0, workers);
-
-        context.SetCustomStatus(new
-        {
-            Phase = "RunningWorkers",
-            input.ShardId,
-            Workers = workers,
-            MaxParallelWorkers = maxParallelWorkers,
-        });
-
-        // Fan-out workers using ParallelProcessAsync (limited parallelism).
+        
         var workerOutputs = await context.ProcessInParallelAsync(
             workerIds,
             workerId =>
-                context.CallActivityAsync<long>(
+                context.CallActivityAsync<MapWorkerOutput>(
                     nameof(MapWorkerActivity),
                     new MapWorkerInput(
                         ShardId: input.ShardId,
@@ -54,8 +36,9 @@ public sealed class ShardWorkflow : Workflow<ShardWorkflowInput, long>
                         DelayMsBase: input.WorkerDelayMsBase,
                         DelayMsJitter: input.WorkerDelayMsJitter)),
             maxParallelWorkers);
-
-        long shardSum = workerOutputs.Sum();
+        
+        var shardSum = workerOutputs.Sum(a => a.Result);
+        var totalIntentionalDelayMs = workerOutputs.Sum(a => a.DelayMs);
 
         context.SetCustomStatus(new
         {
@@ -63,8 +46,11 @@ public sealed class ShardWorkflow : Workflow<ShardWorkflowInput, long>
             input.ShardId,
             Workers = workers,
             ShardSum = shardSum,
+            IntentionalDelayMs = totalIntentionalDelayMs
         });
 
-        return shardSum;
+        return new ShardWorkflowOutput(shardSum, totalIntentionalDelayMs);
     }
 }
+
+public sealed record ShardWorkflowOutput(long Result, long ActivityDelayMs);
