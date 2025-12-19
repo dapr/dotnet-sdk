@@ -19,6 +19,7 @@ public class IWorkflowActivityTests
     {
         public override TaskIdentifier Identifier { get; } = new TaskIdentifier(id);
         public override string InstanceId { get; } = instance;
+        public override string TaskExecutionKey { get; } = "exec-ctx-1";
     }
 
     [Fact]

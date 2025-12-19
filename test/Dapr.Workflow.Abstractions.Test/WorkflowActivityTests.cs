@@ -15,6 +15,7 @@ public class WorkflowActivityTests
     {
         public override TaskIdentifier Identifier => new("len");
         public override string InstanceId => "instance-1";
+        public override string TaskExecutionKey => "exec-len-1";
     }
 
     [Fact]
