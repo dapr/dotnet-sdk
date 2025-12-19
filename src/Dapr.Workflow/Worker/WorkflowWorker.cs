@@ -75,45 +75,37 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Create a scope for DI
             await using var scope = _serviceProvider.CreateAsyncScope();
 
+            // We must collect ALL past events, including those from the stream if required
+            // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale
+            var allPastEvents = request.PastEvents.ToList();
+            
             // Extract the workflow name from the ExecutionStartedEvent in the history
             string? workflowName = null;
             string? serializedInput = null;
 
-            foreach (var historyEvent in request.PastEvents)
+            if (request.RequiresHistoryStreaming)
             {
-                if (TryExtractExecutionStarted(historyEvent, ref workflowName, ref serializedInput))
-                    break;
-            }
-
-            if (string.IsNullOrEmpty(workflowName))
-            {
-                foreach (var historyEvent in request.NewEvents)
-                {
-                    if (TryExtractExecutionStarted(historyEvent, ref workflowName, ref serializedInput))
-                        break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(workflowName) && request.RequiresHistoryStreaming)
-            {
-                // Fetch history chunks and look for ExecutionStarted
                 var streamRequest = new StreamInstanceHistoryRequest
                 {
                     InstanceId = request.InstanceId, ExecutionId = request.ExecutionId, ForWorkItemProcessing = true
                 };
 
                 using var call = _grpcClient.StreamInstanceHistory(streamRequest);
-
                 while (await call.ResponseStream.MoveNext(CancellationToken.None).ConfigureAwait(false))
                 {
-                    foreach (var historyEvent in call.ResponseStream.Current.Events)
-                    {
-                        if (TryExtractExecutionStarted(historyEvent, ref workflowName, ref serializedInput))
-                            break;
-                    }
-
-                    if (!string.IsNullOrEmpty(workflowName))
-                        break;
+                    var chunk = call.ResponseStream.Current.Events;
+                    allPastEvents.AddRange(chunk);
+                }
+            }
+            
+            // Identify the workflow name from the now-complete history
+            foreach (var e in allPastEvents.Concat(request.NewEvents))
+            {
+                if (e.ExecutionStarted != null)
+                {
+                    workflowName = e.ExecutionStarted.Name;
+                    serializedInput = e.ExecutionStarted.Input;
+                    break;
                 }
             }
 
@@ -131,14 +123,9 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 return new OrchestratorResponse { InstanceId = request.InstanceId};
             }
 
-            // Create the workflow context
-            var currentUtcDateTime = DateTime.UtcNow;
-            
-            // Combine the past + new events for correct replay behavior
-            // NewEvents can contain the completion events that correspond to TaskScheduled entries in PastEvents
-            var allHistoryEvents = new List<HistoryEvent>();
-            allHistoryEvents.AddRange(request.PastEvents);
-            allHistoryEvents.AddRange(request.NewEvents);
+            var currentUtcDateTime = allPastEvents.Count > 0 && allPastEvents[0].Timestamp != null 
+                ? allPastEvents[0].Timestamp.ToDateTime()
+                : DateTime.UtcNow;
             
             // Initialize the context with the FULL history            
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, allPastEvents, request.NewEvents, currentUtcDateTime, _serializer, loggerFactory);
@@ -170,49 +157,56 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 return response;
             }
 
-            // If the workflow is waiting on activities/timers/events, the task won't be complete yet.
-            // Return the scheduled actions now so the sidecar can execute them.
             if (!runTask.IsCompleted)
             {
-                _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
+                _logger.LogInformation("Orchestrator Yielded: Instance {InstanceId} is waiting for {ActionCount} scheduled actions to complete. Sequence at: {Sequence}", 
+                    request.InstanceId, response.Actions.Count, context.PendingActions.Count);
+                    
+                if (response.Actions.Count == 0 && !context.PendingActions.Any())
+                {
+                    _logger.LogWarning("Potential Stall: Instance {InstanceId} yielded but scheduled 0 new actions and matched 0 history events.", request.InstanceId);
+                }
                 return response;
             }
 
-            // The workflow completed synchronously (either on replay or it had nothing to await).
-            // Observe exceptions if any, otherwise serialize the output and complete the orchestration.
-            var output = await runTask.ConfigureAwait(false);
-
-            var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
-
-            response.Actions.Add(new OrchestratorAction
+            // If we are here, the workflow method has finished - we must handle the result or exception
+            try
             {
-                CompleteOrchestration = new CompleteOrchestrationAction
+                // The workflow completed synchronously (either on replay or it had nothing to await).
+                // Observe exceptions if any, otherwise serialize the output and complete the orchestration.
+                var output = await runTask.ConfigureAwait(false);
+
+                var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
+
+                response.Actions.Add(new OrchestratorAction
                 {
-                    Result = outputJson,
-                    OrchestrationStatus = OrchestrationStatus.Completed
-                }
-            });
+                    CompleteOrchestration = new CompleteOrchestrationAction
+                    {
+                        Result = outputJson, 
+                        OrchestrationStatus = OrchestrationStatus.Completed
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // Report the failure as an action so Dapr records the workflow as FAILED
+                response.Actions.Add(new OrchestratorAction
+                {
+                    CompleteOrchestration = new CompleteOrchestrationAction
+                    {
+                        OrchestrationStatus = OrchestrationStatus.Failed,
+                        FailureDetails = new()
+                        {
+                            ErrorType = ex.GetType().FullName ?? "Exception",
+                            ErrorMessage = ex.Message,
+                            StackTrace = ex.StackTrace ?? string.Empty
+                        }
+                    }
+                });
+            }
 
             _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
             return response;
-
-            static bool TryExtractExecutionStarted(HistoryEvent e, ref string? name, ref string? input)
-            {
-                if (e.ExecutionStarted != null)
-                {
-                    name = e.ExecutionStarted.Name;
-                    input = e.ExecutionStarted.Input;
-                    return true;
-                }
-
-                // As a fallback, some implementations may provide name via OrchestratorStarted.version.name
-                if (e.OrchestratorStarted?.Version?.Name is { Length: > 0 } versionName)
-                {
-                    name ??= versionName;
-                }
-
-                return false;
-            }
         }
         catch (Exception ex)
         {
