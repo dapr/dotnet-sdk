@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.TestContainers</PackageId>
+        <Title>Dapr TestContainers implementation</Title>
+        <Description>TestContainers for validating Dapr applications</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Testcontainers" Version="4.9.0" />
+    </ItemGroup>
+
+</Project>

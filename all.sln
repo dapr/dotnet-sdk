@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -204,6 +204,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DistributedLock", "DistributedLock", "{11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedLock", "examples\DistributedLock\DistributedLock\DistributedLock.csproj", "{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.TestContainers", "src\Dapr.TestContainers\Dapr.TestContainers.csproj", "{D14893E1-EF21-4EB4-9DAD-82B5127832CB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -541,6 +543,10 @@ Global
 		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D14893E1-EF21-4EB4-9DAD-82B5127832CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D14893E1-EF21-4EB4-9DAD-82B5127832CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D14893E1-EF21-4EB4-9DAD-82B5127832CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D14893E1-EF21-4EB4-9DAD-82B5127832CB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -640,6 +646,7 @@ Global
 		{9BD12D26-AD9B-4C76-A97F-7A89B7276ABE} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20} = {D687DDC4-66C5-4667-9E3A-FD8B78ECAA78}
 		{F2DFB0FE-DF35-4D94-9CC9-43212B1D6F93} = {11D2CA0F-6D38-4DC7-AE06-C1DAE7FC1C20}
+		{D14893E1-EF21-4EB4-9DAD-82B5127832CB} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
