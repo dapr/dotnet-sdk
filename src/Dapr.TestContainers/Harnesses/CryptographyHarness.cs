@@ -52,5 +52,8 @@ public sealed class CryptographyHarness(string componentsDir, Func<Task<int>>sta
 	{
 		if (_daprd is not null)
 			await _daprd.DisposeAsync();
+        
+        // Cleanup the generated YAML files
+        CleanupComponents(componentsDir);
 	}
 }

@@ -70,5 +70,8 @@ public sealed class WorkflowHarness(string componentsDir, Func<Task<int>> startA
 		await _placement.DisposeAsync();
 		await _scheduler.DisposeAsync();
 		await _redis.DisposeAsync();
+        
+        // Cleanup the generated YAML files
+        CleanupComponents(componentsDir);
 	}
 }

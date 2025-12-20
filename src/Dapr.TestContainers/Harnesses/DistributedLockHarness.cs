@@ -57,5 +57,8 @@ public sealed class DistributedLockHarness(string componentsDir, Func<Task<int>>
 		if (_daprd is not null)
 			await _daprd.DisposeAsync();
 		await _redis.DisposeAsync();
+        
+        // Cleanup the generated YAML files
+        CleanupComponents(componentsDir);
 	}	
 }

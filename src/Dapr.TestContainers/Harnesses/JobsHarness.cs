@@ -53,5 +53,8 @@ public sealed class JobsHarness(string componentsDir, Func<Task<int>> startApp, 
 		if (_daprd is not null)
 			await _daprd.DisposeAsync();
 		await _scheduler.DisposeAsync();
+        
+        // Cleanup the generated YAML files
+        CleanupComponents(componentsDir);
 	}
 }

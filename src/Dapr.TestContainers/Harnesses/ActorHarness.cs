@@ -70,5 +70,8 @@ public sealed class ActorHarness(string componentsDir, Func<Task<int>> startApp,
 		await _redis.DisposeAsync();
 		await _placement.DisposeAsync();
 		await _schedueler.DisposeAsync();
+        
+        // Cleanup the generated YAML files
+        CleanupComponents(componentsDir);
 	}
 }

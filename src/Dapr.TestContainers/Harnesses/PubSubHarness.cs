@@ -57,5 +57,8 @@ public sealed class PubSubHarness(string componentsDir, Func<Task<int>> startApp
 		if (_daprd is not null)
 			await _daprd.DisposeAsync();
 		await _rabbitmq.DisposeAsync();
+        
+        // Cleanup the generated YAML files
+        CleanupComponents(componentsDir);
 	}
 }

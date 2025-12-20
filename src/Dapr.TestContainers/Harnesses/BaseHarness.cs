@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
@@ -74,6 +75,25 @@ public abstract class BaseHarness : IAsyncContainerFixture
             await _daprd.DisposeAsync();
         await Network.DisposeAsync();
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Deletes the specified directory recursively as part of a clean-up operation. 
+    /// </summary>
+    /// <param name="path">The clean to clean up.</param>
+    protected virtual void CleanupComponents(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            try
+            {
+                Directory.Delete(path, true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
     }
     
     private void ConfigureSdkEnvironment()
