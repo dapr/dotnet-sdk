@@ -16,15 +16,10 @@ namespace Dapr.TestContainers.Common.Options;
 /// <summary>
 /// The various options used to spin up the Dapr containers.
 /// </summary>
-/// <param name="appPort">The port of the test app.</param>
-/// <param name="version">The version of the Dapr images to use.</param>
-public sealed class DaprRuntimeOptions(int appPort, string version = "1.16.4")
+/// <param name="AppPort">The port of the test app.</param>
+/// <param name="Version">The version of the Dapr images to use.</param>
+public sealed record DaprRuntimeOptions(int AppPort, string Version = "1.16.4")
 {
-    /// <summary>
-    /// The port of the test app.
-    /// </summary>
-	public int AppPort => appPort;
-
     /// <summary>
     /// The level of Dapr logs to show.
     /// </summary>
@@ -33,15 +28,15 @@ public sealed class DaprRuntimeOptions(int appPort, string version = "1.16.4")
     /// <summary>
     /// The image tag for the Dapr runtime.
     /// </summary>
-	public string RuntimeImageTag => $"daprio/daprd:{version}";
+	public string RuntimeImageTag => $"daprio/daprd:{Version}";
     /// <summary>
     /// The image tag for the Dapr placement service.
     /// </summary>
-	public string PlacementImageTag => $"daprio/placement:{version}";
+	public string PlacementImageTag => $"daprio/placement:{Version}";
     /// <summary>
     /// The image tag for the Dapr scheduler service.
     /// </summary>
-	public string SchedulerImageTag => $"daprio/scheduler:{version}";
+	public string SchedulerImageTag => $"daprio/scheduler:{Version}";
 
     /// <summary>
     /// Sets the Dapr log level.

@@ -27,7 +27,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
 /// <param name="keyPath">The path locally to the cryptography keys to use.</param>
-public sealed class CryptographyHarness(string componentsDir, Func<int, Task> startApp, string keyPath, DaprRuntimeOptions options) : BaseHarness
+public sealed class CryptographyHarness(string componentsDir, Func<Task<int>>startApp, string keyPath, DaprRuntimeOptions options) : BaseHarness
 {
     /// <inheritdoc />
     protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
@@ -36,13 +36,13 @@ public sealed class CryptographyHarness(string componentsDir, Func<int, Task> st
 		LocalStorageCryptographyContainer.Yaml.WriteCryptoYamlToFolder(componentsDir, keyPath);
 		
 		// 2) Start the app
-		await startApp(options.AppPort);
+		var actualAppPort = await startApp();
 		
 		// 3) Configure and start daprd
 		_daprd = new DaprdContainer(
 			appId: "crypto-app",
 			componentsHostFolder: componentsDir,
-			options: options);
+			options: options with {AppPort = actualAppPort});
 		await _daprd.StartAsync(cancellationToken);
 	}
 	

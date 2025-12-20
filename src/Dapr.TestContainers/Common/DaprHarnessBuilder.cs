@@ -23,7 +23,7 @@ namespace Dapr.TestContainers.Common;
 /// </summary>
 /// <param name="options">The Dapr runtime options.</param>
 /// <param name="startApp">The test app to run.</param>
-public sealed class DaprHarnessBuilder(DaprRuntimeOptions options, Func<int, Task> startApp)
+public sealed class DaprHarnessBuilder(DaprRuntimeOptions options, Func<Task<int>> startApp)
 {
     /// <summary>
     /// Builds a workflow harness.

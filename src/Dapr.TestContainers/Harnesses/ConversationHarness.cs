@@ -26,7 +26,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
-public sealed class ConversationHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class ConversationHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly OllamaContainer _ollama = new();
 
@@ -40,13 +40,13 @@ public sealed class ConversationHarness(string componentsDir, Func<int, Task> st
 		OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir);
 		
 		// 3) Start the app
-		await startApp(options.AppPort);
+		var actualAppPort = await startApp();
 		
 		// 4) Configure & start daprd
 		_daprd = new DaprdContainer(
 			appId: "distributed-lock-app",
 			componentsHostFolder: componentsDir,
-			options: options);
+			options: options with {AppPort = actualAppPort});
 		await _daprd.StartAsync(cancellationToken);
 	}
 

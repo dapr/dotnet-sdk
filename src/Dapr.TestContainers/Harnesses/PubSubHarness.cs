@@ -26,7 +26,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
-public sealed class PubSubHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class PubSubHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly RabbitMqContainer _rabbitmq = new();
     
@@ -40,13 +40,13 @@ public sealed class PubSubHarness(string componentsDir, Func<int, Task> startApp
 		RabbitMqContainer.Yaml.WritePubSubYamlToFolder(componentsDir);
 		
 		// 3) Start the test app
-		await startApp(options.AppPort);
+		var actualAppPort = await startApp();
 		
 		// 4) Configure & start daprd
 		_daprd = new DaprdContainer(
 			appId: "pubsub-app",
 			componentsHostFolder: componentsDir,
-			options: options);
+			options: options with {AppPort = actualAppPort});
 		await _daprd.StartAsync(cancellationToken);
 	}
 
