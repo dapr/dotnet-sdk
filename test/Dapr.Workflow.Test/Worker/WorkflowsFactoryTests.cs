@@ -416,6 +416,7 @@ public class WorkflowsFactoryTests
     private sealed class FakeActivityContext : WorkflowActivityContext
     {
         public override TaskIdentifier Identifier => new("act");
+        public override string TaskExecutionKey => "test-key";
         public override string InstanceId => "i";
     }
 }
