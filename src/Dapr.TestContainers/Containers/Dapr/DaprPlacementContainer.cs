@@ -1,0 +1,68 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2025 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//  ------------------------------------------------------------------------
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.TestContainers.Common;
+using Dapr.TestContainers.Common.Options;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
+
+namespace Dapr.TestContainers.Containers.Dapr;
+
+/// <summary>
+/// The container for the Dapr placement service.
+/// </summary>
+public sealed class DaprPlacementContainer : IAsyncStartable
+{
+	private readonly IContainer _container;
+	private const int InternalPort = 50006;
+	
+    /// <summary>
+    /// The container hostname.
+    /// </summary>
+	public string Host => _container.Hostname;
+    /// <summary>
+    /// The container's external port.
+    /// </summary>
+	public int Port { get; private set; }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DaprPlacementContainer"/>.
+    /// </summary>
+    /// <param name="options">The Dapr runtime options.</param>
+	public DaprPlacementContainer(DaprRuntimeOptions options)
+	{
+		//Placement service runs via port 50006
+		_container = new ContainerBuilder()
+			.WithImage(options.PlacementImageTag)
+			.WithName($"placement-{Guid.NewGuid():N}")
+			.WithCommand("./placement", "-port", InternalPort.ToString())
+			.WithPortBinding(InternalPort, assignRandomHostPort: true)
+			.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
+			.Build();
+	}
+
+    /// <inheritdoc />
+	public async Task StartAsync(CancellationToken cancellationToken = default)
+	{
+		await _container.StartAsync(cancellationToken);
+		Port = _container.GetMappedPublicPort(InternalPort);
+	}
+
+    /// <inheritdoc />
+	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
+    /// <inheritdoc />
+	public ValueTask DisposeAsync() => _container.DisposeAsync();
+}
