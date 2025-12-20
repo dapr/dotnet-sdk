@@ -30,7 +30,7 @@ namespace Dapr.TestContainers.Harnesses;
 public sealed class CryptographyHarness(string componentsDir, Func<int, Task> startApp, string keyPath, DaprRuntimeOptions options) : BaseHarness
 {
     /// <inheritdoc />
-	public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+    protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// 1) Emit the component YAML describing the local crypto key store
 		LocalStorageCryptographyContainer.Yaml.WriteCryptoYamlToFolder(componentsDir, keyPath);

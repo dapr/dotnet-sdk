@@ -30,7 +30,7 @@ public sealed class JobsHarness(string componentsDir, Func<int, Task> startApp, 
 	private readonly DaprSchedulerContainer _scheduler = new(options);
 	
     /// <inheritdoc />
-	public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// 1) Start the Dapr Scheduler
 		await _scheduler.StartAsync(cancellationToken);

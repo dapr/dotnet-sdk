@@ -31,7 +31,7 @@ public sealed class ConversationHarness(string componentsDir, Func<int, Task> st
 	private readonly OllamaContainer _ollama = new();
 
     /// <inheritdoc />
-	public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// 1) Start Ollama (conversation)
 		await _ollama.StartAsync(cancellationToken);

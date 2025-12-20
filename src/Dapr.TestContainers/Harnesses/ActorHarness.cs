@@ -34,7 +34,7 @@ public sealed class ActorHarness(string componentsDir, Func<int, Task> startApp,
 	private readonly DaprSchedulerContainer _schedueler = new(options);
 
     /// <inheritdoc />
-	public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// 1) Start Redis (actor state store)
 		await _redis.StartAsync(cancellationToken);

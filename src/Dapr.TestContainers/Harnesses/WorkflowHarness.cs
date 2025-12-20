@@ -34,7 +34,7 @@ public sealed class WorkflowHarness(string componentsDir, Func<int, Task> startA
 	private readonly DaprSchedulerContainer _scheduler = new(options);
 
     /// <inheritdoc />
-	public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// 1) Start Redis (actor state store)
 		await _redis.StartAsync(cancellationToken);

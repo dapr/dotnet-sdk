@@ -31,7 +31,7 @@ public sealed class StateManagementHarness(string componentsDir, Func<int, Task>
 	private readonly RedisContainer _redis = new();
 
     /// <inheritdoc />
-	public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// 1) Start Redis (state store)
 		await _redis.StartAsync(cancellationToken);

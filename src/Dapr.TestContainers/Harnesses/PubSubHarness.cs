@@ -31,7 +31,7 @@ public sealed class PubSubHarness(string componentsDir, Func<int, Task> startApp
 	private readonly RabbitMqContainer _rabbitmq = new();
     
     /// <inheritdoc />
-	public override async Task InitializeAsync(CancellationToken cancellationToken = default)
+	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// 1) Start RabbitMq (pubsub)
 		await _rabbitmq.StartAsync(cancellationToken);

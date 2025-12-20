@@ -39,11 +39,32 @@ public abstract class BaseHarness : IAsyncContainerFixture
     public int DaprGrpcPort => _daprd?.GrpcPort ?? 0;
 
     /// <summary>
+    /// The specific container startup logic for the harness.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns></returns>
+    protected abstract Task OnInitializeAsync(CancellationToken cancellationToken);
+
+    protected void ConfigureSdkEnvironment()
+    {
+        if (DaprHttpPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
+        if (DaprGrpcPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
+    }
+
+    /// <summary>
     /// Initializes and runs the test app with the harness.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns></returns>
-    public abstract Task InitializeAsync(CancellationToken cancellationToken = default);
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        // Automatically link the Dapr .NET SDK to these containers
+        ConfigureSdkEnvironment();
+        // Run the actual container orchestration defined in the subclass
+        await OnInitializeAsync(cancellationToken);
+    }
 
     /// <summary>
     /// Disposes the resources in this harness.
