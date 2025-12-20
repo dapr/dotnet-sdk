@@ -45,14 +45,6 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <returns></returns>
     protected abstract Task OnInitializeAsync(CancellationToken cancellationToken);
 
-    protected void ConfigureSdkEnvironment()
-    {
-        if (DaprHttpPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
-        if (DaprGrpcPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
-    }
-
     /// <summary>
     /// Initializes and runs the test app with the harness.
     /// </summary>
@@ -75,4 +67,13 @@ public abstract class BaseHarness : IAsyncContainerFixture
             await _daprd.DisposeAsync();
         GC.SuppressFinalize(this);
     }
+    
+    private void ConfigureSdkEnvironment()
+    {
+        if (DaprHttpPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
+        if (DaprGrpcPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
+    }
+
 }
