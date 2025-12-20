@@ -28,7 +28,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="options">The Dapr runtime options.</param>
 public sealed class PubSubHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
 {
-	private readonly RabbitMqContainer _rabbitmq = new();
+	private readonly RabbitMqContainer _rabbitmq = new(Network);
     
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
@@ -46,7 +46,8 @@ public sealed class PubSubHarness(string componentsDir, Func<Task<int>> startApp
 		_daprd = new DaprdContainer(
 			appId: "pubsub-app",
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort});
+			options: options with {AppPort = actualAppPort},
+            Network);
 		await _daprd.StartAsync(cancellationToken);
 	}
 

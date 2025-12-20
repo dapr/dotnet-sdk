@@ -18,6 +18,7 @@ using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Containers.Dapr;
 
@@ -41,12 +42,13 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <summary>
     /// Creates a new instance of a <see cref="DaprSchedulerContainer"/>.
     /// </summary>
-	public DaprSchedulerContainer(DaprRuntimeOptions options)
+	public DaprSchedulerContainer(DaprRuntimeOptions options, INetwork network)
 	{
 		// Scheduler service runs via port 51005
 		_container = new ContainerBuilder()
 			.WithImage(options.SchedulerImageTag)
 			.WithName($"scheduler-{Guid.NewGuid():N}")
+            .WithNetwork(network)
 			.WithCommand("./scheduler", InternalPort.ToString(), "-etcd-data-dir", ".")
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
 			.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))

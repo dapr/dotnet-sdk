@@ -28,7 +28,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="options">The Dapr runtime options.</param>
 public sealed class ConversationHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
 {
-	private readonly OllamaContainer _ollama = new();
+	private readonly OllamaContainer _ollama = new(Network);
 
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
@@ -46,7 +46,8 @@ public sealed class ConversationHarness(string componentsDir, Func<Task<int>> st
 		_daprd = new DaprdContainer(
 			appId: "distributed-lock-app",
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort});
+			options: options with {AppPort = actualAppPort},
+            Network);
 		await _daprd.StartAsync(cancellationToken);
 	}
 

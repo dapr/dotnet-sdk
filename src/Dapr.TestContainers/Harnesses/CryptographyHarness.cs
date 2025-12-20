@@ -42,7 +42,8 @@ public sealed class CryptographyHarness(string componentsDir, Func<Task<int>>sta
 		_daprd = new DaprdContainer(
 			appId: "crypto-app",
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort});
+			options: options with {AppPort = actualAppPort},
+            Network);
 		await _daprd.StartAsync(cancellationToken);
 	}
 	

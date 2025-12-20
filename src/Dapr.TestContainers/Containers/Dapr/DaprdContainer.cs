@@ -20,6 +20,7 @@ using Dapr.TestContainers.Common.Options;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Containers.Dapr;
 
@@ -47,9 +48,10 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="appId">The ID of the app to initialize daprd with.</param>
     /// <param name="componentsHostFolder">The path to the Dapr resources directory.</param>
     /// <param name="options">The Dapr runtime options.</param>
+    /// <param name="netowrk">The shared Docker network to connect to.</param>
     /// <param name="placementHostAndPort">The hostname and port of the Placement service.</param>
     /// <param name="schedulerHostAndPort">The hostname and port of the Scheduler service.</param>
-	public DaprdContainer(string appId, string componentsHostFolder, DaprRuntimeOptions options, HostPortPair? placementHostAndPort = null, HostPortPair? schedulerHostAndPort = null)
+    public DaprdContainer(string appId, string componentsHostFolder, DaprRuntimeOptions options, INetwork netowrk, HostPortPair? placementHostAndPort = null, HostPortPair? schedulerHostAndPort = null)
 	{
 		var cmd =
 			new List<string>
@@ -79,6 +81,7 @@ public sealed class DaprdContainer : IAsyncStartable
 			.WithImage(options.RuntimeImageTag)
 			.WithName($"dapr-{Guid.NewGuid():N}")
 			.WithCommand(cmd.ToArray())
+            .WithNetwork(netowrk)
 			.WithPortBinding(HttpPort, assignRandomHostPort: true)
 			.WithPortBinding(GrpcPort, assignRandomHostPort: true)
 			.WithBindMount(componentsHostFolder, "/components", AccessMode.ReadOnly)

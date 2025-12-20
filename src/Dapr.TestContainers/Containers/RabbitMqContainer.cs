@@ -18,19 +18,21 @@ using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Containers;
 
 /// <summary>
 /// Provides a RabbitMQ container.
 /// </summary>
-public sealed class RabbitMqContainer : IAsyncStartable
+public sealed class RabbitMqContainer(INetwork network) : IAsyncStartable
 {
 	private const int InternalPort = 5672;
 
 	private readonly IContainer _container = new ContainerBuilder()
 		.WithImage("rabbitmq:alpine")
 		.WithName($"rabbitmq-{Guid.NewGuid():N}")
+        .WithNetwork(network)
 		.WithPortBinding(InternalPort, assignRandomHostPort: true)
 		.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
 		.Build();

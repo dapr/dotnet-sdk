@@ -18,18 +18,20 @@ using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Containers;
 
 /// <summary>
 /// Provides a Redis container.
 /// </summary>
-public sealed class RedisContainer : IAsyncStartable
+public sealed class RedisContainer(INetwork network) : IAsyncStartable
 {
 	private const int InternalPort = 6379;
 	private readonly IContainer _container = new ContainerBuilder()
 		.WithImage("redis:alpine")
 		.WithName($"redis-{Guid.NewGuid():N}")
+        .WithNetwork(network)
 		.WithPortBinding(InternalPort, assignRandomHostPort: true)
 		.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
 		.Build();

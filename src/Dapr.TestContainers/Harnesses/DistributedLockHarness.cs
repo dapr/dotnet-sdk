@@ -28,7 +28,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="options">The Dapr runtime options.</param>
 public sealed class DistributedLockHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
 {
-	private readonly RedisContainer _redis = new();
+	private readonly RedisContainer _redis = new(Network);
 
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
@@ -46,7 +46,8 @@ public sealed class DistributedLockHarness(string componentsDir, Func<Task<int>>
 		_daprd = new DaprdContainer(
 			appId: "distributed-lock-app",
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort});
+			options: options with {AppPort = actualAppPort},
+            Network);
 		await _daprd.StartAsync(cancellationToken);
 	}
     

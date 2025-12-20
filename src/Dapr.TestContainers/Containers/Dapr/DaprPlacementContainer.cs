@@ -18,6 +18,7 @@ using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Containers.Dapr;
 
@@ -42,12 +43,14 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// Initializes a new instance of the <see cref="DaprPlacementContainer"/>.
     /// </summary>
     /// <param name="options">The Dapr runtime options.</param>
-	public DaprPlacementContainer(DaprRuntimeOptions options)
+    /// <param name="network">The shared Docker network to connect to.</param>
+    public DaprPlacementContainer(DaprRuntimeOptions options, INetwork network)
 	{
 		//Placement service runs via port 50006
 		_container = new ContainerBuilder()
 			.WithImage(options.PlacementImageTag)
 			.WithName($"placement-{Guid.NewGuid():N}")
+            .WithNetwork(network)
 			.WithCommand("./placement", "-port", InternalPort.ToString())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
 			.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))

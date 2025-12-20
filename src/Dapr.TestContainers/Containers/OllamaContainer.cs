@@ -18,19 +18,21 @@ using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Containers;
 
 /// <summary>
 /// Provides an Ollama container.
 /// </summary>
-public sealed class OllamaContainer : IAsyncStartable
+public sealed class OllamaContainer(INetwork network) : IAsyncStartable
 {
 	private const int InternalPort = 11434;
 
 	private readonly IContainer _container = new ContainerBuilder()
 		.WithImage("ollama/ollama")
 		.WithName($"ollama-{Guid.NewGuid():N}")
+        .WithNetwork(network)
 		.WithPortBinding(InternalPort, assignRandomHostPort: true)
 		.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
 		.Build();

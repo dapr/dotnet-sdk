@@ -16,6 +16,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Containers.Dapr;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Harnesses;
 
@@ -28,6 +30,11 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// The Daprd container exposed by the harness.
     /// </summary>
     private protected DaprdContainer? _daprd;
+    
+    /// <summary>
+    ///  A shared Docker network that's safer for CI environments.
+    /// </summary>
+    protected static readonly INetwork Network = new NetworkBuilder().Build();
 
     /// <summary>
     /// The HTTP port used by the Daprd container.
@@ -65,6 +72,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     {
         if (_daprd is not null)
             await _daprd.DisposeAsync();
+        await Network.DisposeAsync();
         GC.SuppressFinalize(this);
     }
     

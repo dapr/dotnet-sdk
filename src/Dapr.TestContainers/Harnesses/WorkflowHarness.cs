@@ -29,9 +29,9 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="options">The Dapr runtime options.</param>
 public sealed class WorkflowHarness(string componentsDir, Func<Task<int>> startApp,  DaprRuntimeOptions options) : BaseHarness
 {
-	private readonly RedisContainer _redis = new();
-	private readonly DaprPlacementContainer _placement = new(options);
-	private readonly DaprSchedulerContainer _scheduler = new(options);
+	private readonly RedisContainer _redis = new(Network);
+	private readonly DaprPlacementContainer _placement = new(options, Network);
+	private readonly DaprSchedulerContainer _scheduler = new(options, Network);
 
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
@@ -56,6 +56,7 @@ public sealed class WorkflowHarness(string componentsDir, Func<Task<int>> startA
 			appId: "workflow-app",
 			componentsHostFolder: componentsDir,
 		 	options: options with {AppPort = actualAppPort},
+            Network,
 			new HostPortPair(_placement.Host, _placement.Port),
 			new HostPortPair(_scheduler.Host, _scheduler.Port));
 		await _daprd.StartAsync(cancellationToken);
