@@ -12,11 +12,14 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
 
@@ -29,6 +32,8 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 {
 	private const int InternalPort = 51005;
 	private readonly IContainer _container;
+    // Contains the data directory used by this instance of the Dapr scheduler service
+    private string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
 	
     /// <summary>
     /// The container's hostname.
@@ -45,15 +50,27 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 	public DaprSchedulerContainer(DaprRuntimeOptions options, INetwork network)
 	{
 		// Scheduler service runs via port 51005
-		_container = new ContainerBuilder()
+        const string containerDataDir = "/tmp/dapr-scheduler";
+        string[] cmd =
+        [
+            "./scheduler",
+            "--port", InternalPort.ToString(),
+            "--etcd-data-dir", containerDataDir
+        ];
+
+        //Create a unique temp directory on the host for the test run based on this instance's data directory
+        Directory.CreateDirectory(_hostDataDir);
+        
+        _container = new ContainerBuilder()
 			.WithImage(options.SchedulerImageTag)
 			.WithName($"scheduler-{Guid.NewGuid():N}")
             .WithNetwork(network)
-			.WithCommand("./scheduler", InternalPort.ToString(), "-etcd-data-dir", ".")
+            .WithCommand(cmd.ToArray())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
-			.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
+            // Mount an anonymous volume to /data to ensure the scheduler has write permissions
+            .WithBindMount(_hostDataDir, containerDataDir, AccessMode.ReadWrite)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("api is ready"))
 			.Build();
-
 	}
     
     /// <inheritdoc />
@@ -72,5 +89,11 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
     /// <inheritdoc />
-	public ValueTask DisposeAsync() => _container.DisposeAsync();
+	public ValueTask DisposeAsync()
+    {
+        // Remove the data directory if it exists
+        if (Directory.Exists(_hostDataDir))
+            Directory.Delete(_hostDataDir, true);
+        return _container.DisposeAsync();
+    }
 }
