@@ -40,7 +40,7 @@ public sealed class JobsHarness(string componentsDir, Func<Task<int>> startApp, 
 		
 		// 3) Configure & start daprd
 		_daprd = new DaprdContainer(
-			appId: "jobs-app",
+			appId: options.AppId,
 			componentsHostFolder: componentsDir,
 			options: options with {AppPort = actualAppPort},
             Network);

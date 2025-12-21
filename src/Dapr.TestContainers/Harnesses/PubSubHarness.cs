@@ -44,7 +44,7 @@ public sealed class PubSubHarness(string componentsDir, Func<Task<int>> startApp
 		
 		// 4) Configure & start daprd
 		_daprd = new DaprdContainer(
-			appId: "pubsub-app",
+			appId: options.AppId,
 			componentsHostFolder: componentsDir,
 			options: options with {AppPort = actualAppPort},
             Network);

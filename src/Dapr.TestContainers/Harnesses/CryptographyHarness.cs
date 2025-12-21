@@ -40,7 +40,7 @@ public sealed class CryptographyHarness(string componentsDir, Func<Task<int>>sta
 		
 		// 3) Configure and start daprd
 		_daprd = new DaprdContainer(
-			appId: "crypto-app",
+			appId: options.AppId,
 			componentsHostFolder: componentsDir,
 			options: options with {AppPort = actualAppPort},
             Network);

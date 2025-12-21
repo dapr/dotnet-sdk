@@ -44,7 +44,7 @@ public sealed class StateManagementHarness(string componentsDir, Func<Task<int>>
 		
 		// 4) Configure & start daprd
 		_daprd = new DaprdContainer(
-			appId: "start-management-app",
+			appId: options.AppId,
 			componentsHostFolder: componentsDir,
 			options: options with {AppPort = actualAppPort},
             Network);

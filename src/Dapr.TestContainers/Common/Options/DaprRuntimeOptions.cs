@@ -11,6 +11,8 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System;
+
 namespace Dapr.TestContainers.Common.Options;
 
 /// <summary>
@@ -20,6 +22,11 @@ namespace Dapr.TestContainers.Common.Options;
 /// <param name="Version">The version of the Dapr images to use.</param>
 public sealed record DaprRuntimeOptions(int AppPort, string Version = "1.16.4")
 {
+    /// <summary>
+    /// The ID of the test application.
+    /// </summary>
+    public string AppId { get; private set; } = $"test-app-{Guid.NewGuid():N}";
+    
     /// <summary>
     /// The level of Dapr logs to show.
     /// </summary>
@@ -42,10 +49,19 @@ public sealed record DaprRuntimeOptions(int AppPort, string Version = "1.16.4")
     /// Sets the Dapr log level.
     /// </summary>
     /// <param name="logLevel">The log level to specify.</param>
-    /// <returns></returns>
     public DaprRuntimeOptions WithLogLevel(DaprLogLevel logLevel)
     {
         LogLevel = logLevel;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the Dapr App ID.
+    /// </summary>
+    /// <param name="appId">The App ID to use for the test application.</param>
+    public DaprRuntimeOptions WithAppId(string appId)
+    {
+        AppId = appId;
         return this;
     }
 }

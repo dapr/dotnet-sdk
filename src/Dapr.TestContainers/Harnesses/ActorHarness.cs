@@ -53,7 +53,7 @@ public sealed class ActorHarness(string componentsDir, Func<Task<int>> startApp,
 		
 		// 6) Configure and start daprd, point at placement & scheduler
 		_daprd = new DaprdContainer(
-			appId: "actor-app",
+			appId: options.AppId,
 			componentsHostFolder: componentsDir,
 			options: options with {AppPort = actualAppPort},
             Network,

@@ -44,7 +44,7 @@ public sealed class DistributedLockHarness(string componentsDir, Func<Task<int>>
 		
 		// 4) Configure & start daprd
 		_daprd = new DaprdContainer(
-			appId: "distributed-lock-app",
+			appId: options.AppId,
 			componentsHostFolder: componentsDir,
 			options: options with {AppPort = actualAppPort},
             Network);

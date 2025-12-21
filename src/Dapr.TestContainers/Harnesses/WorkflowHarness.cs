@@ -53,7 +53,7 @@ public sealed class WorkflowHarness(string componentsDir, Func<Task<int>> startA
 		
 		// 6) Configure and start daprd; point at placement & scheduler
 		_daprd = new DaprdContainer(
-			appId: "workflow-app",
+			appId: options.AppId,
 			componentsHostFolder: componentsDir,
 		 	options: options with {AppPort = actualAppPort},
             Network,
