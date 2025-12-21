@@ -50,7 +50,7 @@ public sealed class LocalStorageCryptographyContainer
 			$@"apiVersion: dapr.io/v1alpha
 kind: Component
 metadata:
-  name: crypto
+  name: {Constants.DaprComponentNames.CryptographyComponentName}
 spec:
   type: crypto.dapr.localstorage
   version: v1

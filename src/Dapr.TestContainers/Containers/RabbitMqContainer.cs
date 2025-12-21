@@ -84,7 +84,7 @@ public sealed class RabbitMqContainer(INetwork network) : IAsyncStartable
 			$@"apiVersion: dapr.io/v1alpha
 kind: Component
 metadata:
-  name: rabbitmq
+  name: {Constants.DaprComponentNames.PubSubComponentName}
 spec:
   type: pubsub.rabbitmq
   metadata:

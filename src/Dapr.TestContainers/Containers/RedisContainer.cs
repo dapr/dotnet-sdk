@@ -101,7 +101,7 @@ public sealed class RedisContainer(INetwork network) : IAsyncStartable
 				$@"apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: lock
+  name: {Constants.DaprComponentNames.DistributedLockComponentName}
   namespace: default
 spec:
   type: lock.redis
@@ -119,7 +119,7 @@ spec:
 				$@"apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
-  name: statestore
+  name: {Constants.DaprComponentNames.StateManagementComponentName}
   namespace: default
 spec:
   type: state.redis

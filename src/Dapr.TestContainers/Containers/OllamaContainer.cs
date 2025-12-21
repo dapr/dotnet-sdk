@@ -84,7 +84,7 @@ public sealed class OllamaContainer(INetwork network) : IAsyncStartable
 			$@"apiVersion: dapr.io/v1alpha
 kind: Component
 metadata:
-  name: ollama
+  name: {Constants.DaprComponentNames.ConversationComponentName}
 spec:
   type: conversation.ollama
   metadata:
