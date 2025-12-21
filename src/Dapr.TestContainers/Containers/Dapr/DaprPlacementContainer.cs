@@ -53,7 +53,7 @@ public sealed class DaprPlacementContainer : IAsyncStartable
             .WithNetwork(network)
 			.WithCommand("./placement", "-port", InternalPort.ToString())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
-			.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("placement server leadership acquired"))
 			.Build();
 	}
 
