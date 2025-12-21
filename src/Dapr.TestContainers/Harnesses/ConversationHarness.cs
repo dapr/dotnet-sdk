@@ -14,6 +14,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
 using Dapr.TestContainers.Containers.Dapr;
@@ -26,29 +27,32 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
-public sealed class ConversationHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class ConversationHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly OllamaContainer _ollama = new(Network);
 
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
-		// 1) Start Ollama (conversation)
+		// Start infrastructure
 		await _ollama.StartAsync(cancellationToken);
 		
-		// 2) Emit component YAMLs for Ollama (use the default tiny model)
+		// Emit component YAMLs for Ollama (use the default tiny model)
 		OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir);
 		
-		// 3) Start the app
-		var actualAppPort = await startApp();
+		// Find a random free port for the test app
+        var assignedAppPort = PortUtilities.GetAvailablePort();
 		
 		// 4) Configure & start daprd
 		_daprd = new DaprdContainer(
 			appId: options.AppId,
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort},
+			options: options with {AppPort = assignedAppPort},
             Network);
 		await _daprd.StartAsync(cancellationToken);
+        
+        // Start the app
+        await startApp(assignedAppPort);
 	}
 
     /// <inheritdoc />

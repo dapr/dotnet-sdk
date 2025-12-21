@@ -14,6 +14,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
 using Dapr.TestContainers.Containers.Dapr;
@@ -27,24 +28,27 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
 /// <param name="keyPath">The path locally to the cryptography keys to use.</param>
-public sealed class CryptographyHarness(string componentsDir, Func<Task<int>>startApp, string keyPath, DaprRuntimeOptions options) : BaseHarness
+public sealed class CryptographyHarness(string componentsDir, Func<int, Task>startApp, string keyPath, DaprRuntimeOptions options) : BaseHarness
 {
     /// <inheritdoc />
     protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
-		// 1) Emit the component YAML describing the local crypto key store
+		// Emit the component YAML describing the local crypto key store
 		LocalStorageCryptographyContainer.Yaml.WriteCryptoYamlToFolder(componentsDir, keyPath);
 		
-		// 2) Start the app
-		var actualAppPort = await startApp();
-		
-		// 3) Configure and start daprd
+        // Find a random free port for the test app
+        var assignedAppPort = PortUtilities.GetAvailablePort();
+        
+		// Configure and start daprd
 		_daprd = new DaprdContainer(
 			appId: options.AppId,
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort},
+			options: options with {AppPort = assignedAppPort},
             Network);
 		await _daprd.StartAsync(cancellationToken);
+        
+        // Start the app
+        await startApp(assignedAppPort);
 	}
 	
     /// <inheritdoc />

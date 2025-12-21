@@ -14,6 +14,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers.Dapr;
 
@@ -25,26 +26,29 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
-public sealed class JobsHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class JobsHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly DaprSchedulerContainer _scheduler = new(options, Network);
 	
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
-		// 1) Start the Dapr Scheduler
-		await _scheduler.StartAsync(cancellationToken);
-		
-		// 2) Start the app
-		var actualAppPort = await startApp();
-		
-		// 3) Configure & start daprd
+        // Start the infrastructure
+        await _scheduler.StartAsync(cancellationToken);
+
+        // Find a random port for the test app
+        var assignedAppPort = PortUtilities.GetAvailablePort();
+        
+		// Configure & start daprd
 		_daprd = new DaprdContainer(
 			appId: options.AppId,
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort},
+			options: options with {AppPort = assignedAppPort},
             Network);
 		await _daprd.StartAsync(cancellationToken);
+        
+        // Start the app
+        await startApp(assignedAppPort);
 	}
 	
     /// <inheritdoc />

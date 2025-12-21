@@ -59,6 +59,7 @@ public sealed class DaprdContainer : IAsyncStartable
 				"./daprd",
 				"-app-id", appId,
 				"-app-port", options.AppPort.ToString(),
+                "-app-channel-address", "host.docker.internal",
 				"-dapr-http-port", InternalHttpPort.ToString(),
 				"-dapr-grpc-port", InternalGrpcPort.ToString(),
 				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),
@@ -85,8 +86,10 @@ public sealed class DaprdContainer : IAsyncStartable
 			.WithPortBinding(HttpPort, assignRandomHostPort: true)
 			.WithPortBinding(GrpcPort, assignRandomHostPort: true)
 			.WithBindMount(componentsHostFolder, "/components", AccessMode.ReadOnly)
-			.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalHttpPort)
-				.UntilInternalTcpPortIsAvailable(InternalGrpcPort))
+			.WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(s => s.ForPath("/v1.0/healthz").ForPort(InternalHttpPort)))
+    //             .UntilInternalTcpPortIsAvailable(InternalHttpPort)
+				// .UntilInternalTcpPortIsAvailable(InternalGrpcPort))
 			.Build();
 	}
 

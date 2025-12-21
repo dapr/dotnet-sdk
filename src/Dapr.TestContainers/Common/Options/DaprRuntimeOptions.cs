@@ -18,10 +18,14 @@ namespace Dapr.TestContainers.Common.Options;
 /// <summary>
 /// The various options used to spin up the Dapr containers.
 /// </summary>
-/// <param name="AppPort">The port of the test app.</param>
 /// <param name="Version">The version of the Dapr images to use.</param>
-public sealed record DaprRuntimeOptions(int AppPort, string Version = "1.16.4")
+public sealed record DaprRuntimeOptions(string Version = "1.16.4")
 {
+    /// <summary>
+    /// The application's port.
+    /// </summary>
+    public int AppPort { get; set; } = 8080;
+    
     /// <summary>
     /// The ID of the test application.
     /// </summary>

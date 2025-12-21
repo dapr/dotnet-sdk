@@ -27,7 +27,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The dapr runtime options.</param>
-public sealed class ActorHarness(string componentsDir, Func<Task<int>> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class ActorHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly RedisContainer _redis = new(Network);
 	private readonly DaprPlacementContainer _placement = new(options, Network);
@@ -36,30 +36,29 @@ public sealed class ActorHarness(string componentsDir, Func<Task<int>> startApp,
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
-		// 1) Start Redis (actor state store)
+		// Start infrastructure
 		await _redis.StartAsync(cancellationToken);
-		
-		// 2) Emit component YAMLs pointing to Redis
+        await _placement.StartAsync(cancellationToken);
+        await _schedueler.StartAsync(cancellationToken);
+        
+		// Emit component YAMLs pointing to Redis
 		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.Host}:{_redis.Port}");
 		
-		// 3) Start placement
-		await _placement.StartAsync(cancellationToken);
-		
-		// 4) Start scheduler
-		await _schedueler.StartAsync(cancellationToken);
-
-		// 5) Start the test
-		var actualAppPort = await startApp();
-		
-		// 6) Configure and start daprd, point at placement & scheduler
+        // Find a random free port for the test app
+        var assignedAppPort = PortUtilities.GetAvailablePort();
+        
+		// Configure and start daprd, point at placement & scheduler
 		_daprd = new DaprdContainer(
 			appId: options.AppId,
 			componentsHostFolder: componentsDir,
-			options: options with {AppPort = actualAppPort},
+			options: options with {AppPort = assignedAppPort},
             Network,
 			new HostPortPair(_placement.Host, _placement.Port),
 			new HostPortPair(_schedueler.Host, _schedueler.Port));
 		await _daprd.StartAsync(cancellationToken);
+        
+        // Start the test
+        await startApp(assignedAppPort);
 	}
 	
     /// <inheritdoc />

@@ -16,6 +16,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
+using DotNet.Testcontainers;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
@@ -33,6 +34,7 @@ public sealed class RabbitMqContainer(INetwork network) : IAsyncStartable
 		.WithImage("rabbitmq:alpine")
 		.WithName($"rabbitmq-{Guid.NewGuid():N}")
         .WithNetwork(network)
+        .WithLogger(ConsoleLogger.Instance)
 		.WithPortBinding(InternalPort, assignRandomHostPort: true)
 		.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
 		.Build();

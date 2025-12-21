@@ -103,5 +103,4 @@ public abstract class BaseHarness : IAsyncContainerFixture
         if (DaprGrpcPort > 0)
             Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
     }
-
 }
