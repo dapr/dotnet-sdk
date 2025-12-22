@@ -26,19 +26,32 @@ namespace Dapr.TestContainers.Containers;
 /// <summary>
 /// Provides a RabbitMQ container.
 /// </summary>
-public sealed class RabbitMqContainer(INetwork network) : IAsyncStartable
+public sealed class RabbitMqContainer : IAsyncStartable
 {
 	private const int InternalPort = 5672;
 
-	private readonly IContainer _container = new ContainerBuilder()
-		.WithImage("rabbitmq:alpine")
-		.WithName($"rabbitmq-{Guid.NewGuid():N}")
-        .WithNetwork(network)
-        .WithLogger(ConsoleLogger.Instance)
-		.WithPortBinding(InternalPort, assignRandomHostPort: true)
-		.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
-		.Build();
+	private readonly IContainer _container;
+    private string _containerName = $"rabbitmq-{Guid.NewGuid():N}";
 
+    /// <summary>
+    /// Provides a RabbitMQ container.
+    /// </summary>
+    public RabbitMqContainer(INetwork network)
+    {
+        _container = new ContainerBuilder()
+            .WithImage("rabbitmq:alpine")
+            .WithName(_containerName)
+            .WithNetwork(network)
+            .WithLogger(ConsoleLogger.Instance)
+            .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
+            .Build();
+    }
+
+    /// <summary>
+    /// The internal network alias/name of the container.
+    /// </summary>
+    public string NetworkAlias => _containerName;
     /// <summary>
     /// The hostname of the container.
     /// </summary>

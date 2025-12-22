@@ -25,17 +25,31 @@ namespace Dapr.TestContainers.Containers;
 /// <summary>
 /// Provides a Redis container.
 /// </summary>
-public sealed class RedisContainer(INetwork network) : IAsyncStartable
+public sealed class RedisContainer : IAsyncStartable
 {
 	private const int InternalPort = 6379;
-	private readonly IContainer _container = new ContainerBuilder()
-		.WithImage("redis:alpine")
-		.WithName($"redis-{Guid.NewGuid():N}")
-        .WithNetwork(network)
-		.WithPortBinding(InternalPort, assignRandomHostPort: true)
-		.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
-		.Build();
+    private readonly string _containerName = $"redis-{Guid.NewGuid():N}";
+    
+	private readonly IContainer _container;
 
+    /// <summary>
+    /// Provides a Redis container.
+    /// </summary>
+    public RedisContainer(INetwork network)
+    {
+        _container = new ContainerBuilder()
+            .WithImage("redis:alpine")
+            .WithName(_containerName)
+            .WithNetwork(network)
+            .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
+            .Build();
+    }
+
+    /// <summary>
+    /// The internal network alias/name of the container.
+    /// </summary>
+    public string NetworkAlias => _containerName;
     /// <summary>
     /// The hostname of the container.
     /// </summary>

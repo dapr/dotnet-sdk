@@ -25,18 +25,31 @@ namespace Dapr.TestContainers.Containers;
 /// <summary>
 /// Provides an Ollama container.
 /// </summary>
-public sealed class OllamaContainer(INetwork network) : IAsyncStartable
+public sealed class OllamaContainer : IAsyncStartable
 {
 	private const int InternalPort = 11434;
+    private string _containerName = $"ollama-{Guid.NewGuid():N}";
 
-	private readonly IContainer _container = new ContainerBuilder()
-		.WithImage("ollama/ollama")
-		.WithName($"ollama-{Guid.NewGuid():N}")
-        .WithNetwork(network)
-		.WithPortBinding(InternalPort, assignRandomHostPort: true)
-		.WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
-		.Build();
+	private readonly IContainer _container;
 
+    /// <summary>
+    /// Provides an Ollama container.
+    /// </summary>
+    public OllamaContainer(INetwork network)
+    {
+        _container = new ContainerBuilder()
+            .WithImage("ollama/ollama")
+            .WithName(_containerName)
+            .WithNetwork(network)
+            .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
+            .Build();
+    }
+
+    /// <summary>
+    /// The internal network alias/name of the container.
+    /// </summary>
+    public string NetworkAlias => _containerName;
     /// <summary>
     /// The hostname of the container.
     /// </summary>

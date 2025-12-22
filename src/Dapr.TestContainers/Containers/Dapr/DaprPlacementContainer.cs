@@ -29,7 +29,12 @@ public sealed class DaprPlacementContainer : IAsyncStartable
 {
 	private readonly IContainer _container;
 	private const int InternalPort = 50006;
-	
+    private string _containerName = $"placement-{Guid.NewGuid():N}";
+
+    /// <summary>
+    /// The internal network alias/name of the container.
+    /// </summary>
+    public string NetworkAlias => _containerName;
     /// <summary>
     /// The container hostname.
     /// </summary>
@@ -49,7 +54,7 @@ public sealed class DaprPlacementContainer : IAsyncStartable
 		//Placement service runs via port 50006
 		_container = new ContainerBuilder()
 			.WithImage(options.PlacementImageTag)
-			.WithName($"placement-{Guid.NewGuid():N}")
+			.WithName(_containerName)
             .WithNetwork(network)
 			.WithCommand("./placement", "-port", InternalPort.ToString())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
