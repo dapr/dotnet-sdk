@@ -81,9 +81,9 @@ public sealed class RabbitMqContainer : IAsyncStartable
         /// <summary>
         /// Writes a PubSub YAML component.
         /// </summary>
-		public static string WritePubSubYamlToFolder(string folderPath, string fileName = "rabbitmq-pubsub.yaml")
+		public static string WritePubSubYamlToFolder(string folderPath, string fileName = "rabbitmq-pubsub.yaml", string rabbitmqHost = "localhost:5672")
 		{
-			var yaml = GetPubSubYaml();
+			var yaml = GetPubSubYaml(rabbitmqHost);
 			return WriteToFolder(folderPath, fileName, yaml);
 		}
 
@@ -95,7 +95,7 @@ public sealed class RabbitMqContainer : IAsyncStartable
 			return fullPath;
 		}
 
-		private static string GetPubSubYaml() =>
+		private static string GetPubSubYaml(string rabbitmqHost) =>
 			$@"apiVersion: dapr.io/v1alpha
 kind: Component
 metadata:
@@ -106,7 +106,7 @@ spec:
   - name: protocol
     value: amqp
   - name: hostname
-    value: localhost
+    value: {rabbitmqHost}
   - name: username
     value: default
   - name: password

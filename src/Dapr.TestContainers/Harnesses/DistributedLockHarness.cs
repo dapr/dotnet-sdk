@@ -38,7 +38,7 @@ public sealed class DistributedLockHarness(string componentsDir, Func<int, Task>
 		await _redis.StartAsync(cancellationToken);
 		
 		// Emit component YAMLs pointing to Redis
-		RedisContainer.Yaml.WriteDistributedLockYamlToFolder(componentsDir, redisHost: $"{_redis.Host}:{_redis.Port}");
+		RedisContainer.Yaml.WriteDistributedLockYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{_redis.Port}");
 		
         // Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();

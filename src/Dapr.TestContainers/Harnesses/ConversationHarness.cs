@@ -38,7 +38,7 @@ public sealed class ConversationHarness(string componentsDir, Func<int, Task>? s
 		await _ollama.StartAsync(cancellationToken);
 		
 		// Emit component YAMLs for Ollama (use the default tiny model)
-		OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir);
+		OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir, endpoint: $"http://{_ollama.NetworkAlias}:{_ollama.Port}/v1");
 		
 		// Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();

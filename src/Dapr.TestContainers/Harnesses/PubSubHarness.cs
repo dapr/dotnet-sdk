@@ -39,7 +39,7 @@ public sealed class PubSubHarness(string componentsDir, Func<int, Task>? startAp
 		await _rabbitmq.StartAsync(cancellationToken);
 		
 		// Emit component YAMLs pointing to RabbitMQ
-		RabbitMqContainer.Yaml.WritePubSubYamlToFolder(componentsDir);
+		RabbitMqContainer.Yaml.WritePubSubYamlToFolder(componentsDir, rabbitmqHost: $"{_rabbitmq.NetworkAlias}:{_rabbitmq.Port}");
         
         // Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
