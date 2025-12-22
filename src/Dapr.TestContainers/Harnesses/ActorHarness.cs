@@ -27,7 +27,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The dapr runtime options.</param>
-public sealed class ActorHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly RedisContainer _redis = new(Network);
 	private readonly DaprPlacementContainer _placement = new(options, Network);
@@ -58,8 +58,9 @@ public sealed class ActorHarness(string componentsDir, Func<int, Task> startApp,
 		await _daprd.StartAsync(cancellationToken);
         
         // Start the test
-        await startApp(assignedAppPort);
-	}
+        if (startApp is not null)
+            await startApp(assignedAppPort);
+    }
 	
     /// <inheritdoc />
 	public override async ValueTask DisposeAsync()

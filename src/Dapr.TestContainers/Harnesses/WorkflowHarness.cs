@@ -27,7 +27,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
-public sealed class WorkflowHarness(string componentsDir, Func<int, Task> startApp,  DaprRuntimeOptions options) : BaseHarness
+public sealed class WorkflowHarness(string componentsDir, Func<int, Task>? startApp,  DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly RedisContainer _redis = new(Network);
 	private readonly DaprPlacementContainer _placement = new(options, Network);
@@ -53,12 +53,13 @@ public sealed class WorkflowHarness(string componentsDir, Func<int, Task> startA
 			componentsHostFolder: componentsDir,
 		 	options: options with {AppPort = assignedAppPort},
             Network,
-			new HostPortPair(_placement.Host, _placement.Port),
-			new HostPortPair(_scheduler.Host, _scheduler.Port));
+			new HostPortPair("host.docker.internal", _placement.Port),
+			new HostPortPair("host.docker.internal", _scheduler.Port));
 		await _daprd.StartAsync(cancellationToken);
         
         // Start the app
-        await startApp(assignedAppPort);
+        if (startApp is not null)
+            await startApp(assignedAppPort);
     }
 
     /// <inheritdoc />

@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
@@ -27,7 +28,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
-public sealed class PubSubHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class PubSubHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly RabbitMqContainer _rabbitmq = new(Network);
     
@@ -49,11 +50,22 @@ public sealed class PubSubHarness(string componentsDir, Func<int, Task> startApp
 			componentsHostFolder: componentsDir,
 			options: options with {AppPort = assignedAppPort},
             Network);
-		await _daprd.StartAsync(cancellationToken);
+		
+        // Create the tasks to wait on, starting with the daprd container
+        var tasks = new List<Task>
+        {
+            _daprd.StartAsync(cancellationToken)
+        };
         
         // Start the test app
-        await startApp(assignedAppPort);
-	}
+        if (startApp is not null)
+        {
+            var appTask = startApp(assignedAppPort);
+            tasks.Add(appTask);
+        }
+
+        await Task.WhenAll(tasks);
+    }
 
     /// <inheritdoc />
 	public override async ValueTask DisposeAsync()
@@ -62,7 +74,7 @@ public sealed class PubSubHarness(string componentsDir, Func<int, Task> startApp
 			await _daprd.DisposeAsync();
 		await _rabbitmq.DisposeAsync();
         
-        // Cleanup the generated YAML files
+        // Clean up the generated YAML files
         CleanupComponents(componentsDir);
 	}
 }

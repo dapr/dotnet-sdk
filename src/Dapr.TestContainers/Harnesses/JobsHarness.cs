@@ -26,7 +26,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <param name="componentsDir">The directory to Dapr components.</param>
 /// <param name="startApp">The test app to validate in the harness.</param>
 /// <param name="options">The Dapr runtime options.</param>
-public sealed class JobsHarness(string componentsDir, Func<int, Task> startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class JobsHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly DaprSchedulerContainer _scheduler = new(options, Network);
 	
@@ -48,7 +48,8 @@ public sealed class JobsHarness(string componentsDir, Func<int, Task> startApp, 
 		await _daprd.StartAsync(cancellationToken);
         
         // Start the app
-        await startApp(assignedAppPort);
+        if (startApp is not null)
+            await startApp(assignedAppPort);
 	}
 	
     /// <inheritdoc />
