@@ -36,11 +36,17 @@ public abstract class BaseHarness : IAsyncContainerFixture
     ///  A shared Docker network that's safer for CI environments.
     /// </summary>
     protected static readonly INetwork Network = new NetworkBuilder().Build();
+    
+    /// <summary>
+    /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
+    /// </summary>
+    public int AppPort { get; private protected set; }
 
     /// <summary>
     /// The HTTP port used by the Daprd container.
     /// </summary>
     public int DaprHttpPort => _daprd?.HttpPort ?? 0;
+    
     /// <summary>
     /// The gRPC port used by the Daprd container.
     /// </summary>

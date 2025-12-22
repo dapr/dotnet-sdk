@@ -43,6 +43,7 @@ public sealed class PubSubHarness(string componentsDir, Func<int, Task>? startAp
         
         // Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
+        AppPort = assignedAppPort;
 		
 		// Configure & start daprd
 		_daprd = new DaprdContainer(

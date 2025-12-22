@@ -42,6 +42,7 @@ public sealed class StateManagementHarness(string componentsDir, Func<int, Task>
 		
         // Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
+        AppPort = assignedAppPort;
 		
 		// Configure & start daprd
 		_daprd = new DaprdContainer(

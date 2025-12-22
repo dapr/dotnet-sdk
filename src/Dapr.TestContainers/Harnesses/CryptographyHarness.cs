@@ -38,6 +38,7 @@ public sealed class CryptographyHarness(string componentsDir, Func<int, Task>? s
 		
         // Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
+        AppPort = assignedAppPort;
         
 		// Configure and start daprd
 		_daprd = new DaprdContainer(

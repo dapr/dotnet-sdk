@@ -30,7 +30,7 @@ namespace Dapr.TestContainers.Harnesses;
 public sealed class ConversationHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
 {
 	private readonly OllamaContainer _ollama = new(Network);
-
+    
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
@@ -42,6 +42,7 @@ public sealed class ConversationHarness(string componentsDir, Func<int, Task>? s
 		
 		// Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
+        AppPort = assignedAppPort;
 		
 		// 4) Configure & start daprd
 		_daprd = new DaprdContainer(

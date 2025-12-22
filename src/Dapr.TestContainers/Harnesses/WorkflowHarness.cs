@@ -46,6 +46,7 @@ public sealed class WorkflowHarness(string componentsDir, Func<int, Task>? start
 		
 		// Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
+        AppPort = assignedAppPort;
         
 		// Configure and start daprd; point at placement & scheduler
 		_daprd = new DaprdContainer(

@@ -38,6 +38,7 @@ public sealed class JobsHarness(string componentsDir, Func<int, Task>? startApp,
 
         // Find a random port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
+        AppPort = assignedAppPort;
         
 		// Configure & start daprd
 		_daprd = new DaprdContainer(

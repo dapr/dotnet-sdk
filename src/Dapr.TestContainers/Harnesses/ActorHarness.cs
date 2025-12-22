@@ -32,7 +32,7 @@ public sealed class ActorHarness(string componentsDir, Func<int, Task>? startApp
 	private readonly RedisContainer _redis = new(Network);
 	private readonly DaprPlacementContainer _placement = new(options, Network);
 	private readonly DaprSchedulerContainer _schedueler = new(options, Network);
-
+    
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
@@ -46,6 +46,7 @@ public sealed class ActorHarness(string componentsDir, Func<int, Task>? startApp
 		
         // Find a random free port for the test app
         var assignedAppPort = PortUtilities.GetAvailablePort();
+        AppPort = assignedAppPort;
         
 		// Configure and start daprd, point at placement & scheduler
 		_daprd = new DaprdContainer(
@@ -58,7 +59,7 @@ public sealed class ActorHarness(string componentsDir, Func<int, Task>? startApp
 		await _daprd.StartAsync(cancellationToken);
         
         // Start the test
-        if (startApp is not null)
+        if (startApp is not null) 
             await startApp(assignedAppPort);
     }
 	
