@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using DotNet.Testcontainers;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
@@ -52,18 +53,19 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="placementHostAndPort">The hostname and port of the Placement service.</param>
     /// <param name="schedulerHostAndPort">The hostname and port of the Scheduler service.</param>
     public DaprdContainer(string appId, string componentsHostFolder, DaprRuntimeOptions options, INetwork netowrk, HostPortPair? placementHostAndPort = null, HostPortPair? schedulerHostAndPort = null)
-	{
+    {
+        const string componentsPath = "/components";
 		var cmd =
 			new List<string>
 			{
-				"./daprd",
+                "/daprd",
 				"-app-id", appId,
 				"-app-port", options.AppPort.ToString(),
                 "-app-channel-address", "host.docker.internal",
 				"-dapr-http-port", InternalHttpPort.ToString(),
 				"-dapr-grpc-port", InternalGrpcPort.ToString(),
 				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),
-				"-resources-path", "/components"
+				"-resources-path", componentsPath
 			};
 
 		if (placementHostAndPort is not null)
@@ -71,6 +73,12 @@ public sealed class DaprdContainer : IAsyncStartable
 			cmd.Add("-placement-host-address");
 			cmd.Add(placementHostAndPort.ToString());
 		}
+        else
+        {
+            // Explicitly disable placement if not provided to speed up startup
+            cmd.Add("-placement-host-address");
+            cmd.Add("");
+        }
 
 		if (schedulerHostAndPort is not null)
 		{
@@ -81,15 +89,15 @@ public sealed class DaprdContainer : IAsyncStartable
 		_container = new ContainerBuilder()
 			.WithImage(options.RuntimeImageTag)
 			.WithName($"dapr-{Guid.NewGuid():N}")
+            .WithLogger(ConsoleLogger.Instance)
 			.WithCommand(cmd.ToArray())
             .WithNetwork(netowrk)
-			.WithPortBinding(HttpPort, assignRandomHostPort: true)
-			.WithPortBinding(GrpcPort, assignRandomHostPort: true)
-			.WithBindMount(componentsHostFolder, "/components", AccessMode.ReadOnly)
+            .WithExtraHost("host.docker.internal", "host-gateway")
+			.WithPortBinding(InternalHttpPort, assignRandomHostPort: true)
+			.WithPortBinding(InternalGrpcPort, assignRandomHostPort: true)
+			.WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
 			.WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(s => s.ForPath("/v1.0/healthz").ForPort(InternalHttpPort)))
-    //             .UntilInternalTcpPortIsAvailable(InternalHttpPort)
-				// .UntilInternalTcpPortIsAvailable(InternalGrpcPort))
+                .UntilMessageIsLogged("Dapr sidecar is up and running."))
 			.Build();
 	}
 
@@ -97,9 +105,12 @@ public sealed class DaprdContainer : IAsyncStartable
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		await _container.StartAsync(cancellationToken);
-		HttpPort = _container.GetMappedPublicPort(HttpPort);
-		GrpcPort = _container.GetMappedPublicPort(GrpcPort);
-	}
+		HttpPort = _container.GetMappedPublicPort(InternalHttpPort);
+		GrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
+
+        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", HttpPort.ToString());
+        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", GrpcPort.ToString());
+    }
 
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
