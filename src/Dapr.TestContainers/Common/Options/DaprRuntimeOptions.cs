@@ -19,7 +19,7 @@ namespace Dapr.TestContainers.Common.Options;
 /// The various options used to spin up the Dapr containers.
 /// </summary>
 /// <param name="Version">The version of the Dapr images to use.</param>
-public sealed record DaprRuntimeOptions(string Version = "1.16.4")
+public sealed record DaprRuntimeOptions(string Version = "latest")
 {
     /// <summary>
     /// The application's port.
