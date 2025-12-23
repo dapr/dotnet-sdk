@@ -14,23 +14,30 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
-using Dapr.TestContainers.Containers.Dapr;
 
 namespace Dapr.TestContainers.Harnesses;
 
 /// <summary>
 /// Provides an implementation harness for conversation functionality.
 /// </summary>
-/// <param name="componentsDir">The directory to Dapr components.</param>
-/// <param name="startApp">The test app to validate in the harness.</param>
-/// <param name="options">The Dapr runtime options.</param>
-public sealed class ConversationHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class ConversationHarness : BaseHarness
 {
 	private readonly OllamaContainer _ollama = new(Network);
-    
+    private readonly string componentsDir;
+
+    /// <summary>
+    /// Provides an implementation harness for conversation functionality.
+    /// </summary>
+    /// <param name="componentsDir">The directory to Dapr components.</param>
+    /// <param name="startApp">The test app to validate in the harness.</param>
+    /// <param name="options">The Dapr runtime options.</param>
+    public ConversationHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    {
+        this.componentsDir = componentsDir;
+    }
+
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
@@ -38,24 +45,9 @@ public sealed class ConversationHarness(string componentsDir, Func<int, Task>? s
 		await _ollama.StartAsync(cancellationToken);
 		
 		// Emit component YAMLs for Ollama (use the default tiny model)
-		OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir, endpoint: $"http://{_ollama.NetworkAlias}:{_ollama.Port}/v1");
-		
-		// Find a random free port for the test app
-        var assignedAppPort = PortUtilities.GetAvailablePort();
-        AppPort = assignedAppPort;
-		
-		// 4) Configure & start daprd
-		_daprd = new DaprdContainer(
-			appId: options.AppId,
-			componentsHostFolder: componentsDir,
-			options: options with {AppPort = assignedAppPort},
-            Network);
-		await _daprd.StartAsync(cancellationToken);
-        
-        // Start the app
-        if (startApp is not null)
-            await startApp(assignedAppPort);
-	}
+        OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir,
+            endpoint: $"http://{_ollama.NetworkAlias}:{_ollama.Port}/v1");
+    }
 
     /// <inheritdoc />
 	public override async ValueTask DisposeAsync()

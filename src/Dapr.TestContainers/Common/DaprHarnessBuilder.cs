@@ -29,56 +29,49 @@ public sealed class DaprHarnessBuilder(DaprRuntimeOptions options, Func<int, Tas
     /// Builds a workflow harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public WorkflowHarness BuildWorkflow(string componentsDir) =>
-		new WorkflowHarness(componentsDir, startApp, options);
+	public WorkflowHarness BuildWorkflow(string componentsDir) => new(componentsDir, startApp, options);
 
     /// <summary>
     /// Builds a distributed lock harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public DistributedLockHarness BuildDistributedLock(string componentsDir) =>
-		new DistributedLockHarness(componentsDir, startApp, options);
+	public DistributedLockHarness BuildDistributedLock(string componentsDir) => new(componentsDir, startApp, options);
 
     /// <summary>
     /// Builds a conversation harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public ConversationHarness BuildConversation(string componentsDir) =>
-		new ConversationHarness(componentsDir, startApp, options);
+	public ConversationHarness BuildConversation(string componentsDir) => new(componentsDir, startApp, options);
 
     /// <summary>
     /// Builds a cryptography harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
     /// <param name="keysDir">The path to the cryptography keys.</param>
-	public CryptographyHarness BuildCryptography(string componentsDir, string keysDir) =>
-		new CryptographyHarness(componentsDir, startApp, keysDir, options);
+    public CryptographyHarness BuildCryptography(string componentsDir, string keysDir) =>
+        new(componentsDir, startApp, keysDir, options);
 
     /// <summary>
     /// Builds a jobs harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public JobsHarness BuildJobs(string componentsDir) =>
-		new JobsHarness(componentsDir, startApp, options);
+	public JobsHarness BuildJobs(string componentsDir) => new(componentsDir, startApp, options);
 
     /// <summary>
     /// Builds a PubSub harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public PubSubHarness BuildPubSub(string componentsDir) =>
-		new PubSubHarness(componentsDir, startApp, options);
+	public PubSubHarness BuildPubSub(string componentsDir) => new(componentsDir, startApp, options);
 
     /// <summary>
     /// Builds a state management harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public StateManagementHarness BuildStateManagement(string componentsDir) =>
-		new StateManagementHarness(componentsDir, startApp, options);
+	public StateManagementHarness BuildStateManagement(string componentsDir) => new(componentsDir, startApp, options);
 
     /// <summary>
     /// Builds an actor harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public ActorHarness BuildActors(string componentsDir) =>
-		new ActorHarness(componentsDir, startApp, options);
+	public ActorHarness BuildActors(string componentsDir) => new(componentsDir, startApp, options);
 }

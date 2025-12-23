@@ -14,22 +14,29 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
-using Dapr.TestContainers.Containers.Dapr;
 
 namespace Dapr.TestContainers.Harnesses;
 
 /// <summary>
 /// Provides an implementation harness for Dapr's distributed lock building block.
 /// </summary>
-/// <param name="componentsDir">The directory to Dapr components.</param>
-/// <param name="startApp">The test app to validate in the harness.</param>
-/// <param name="options">The Dapr runtime options.</param>
-public sealed class DistributedLockHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class DistributedLockHarness : BaseHarness
 {
 	private readonly RedisContainer _redis = new(Network);
+    private readonly string componentsDir;
+
+    /// <summary>
+    /// Provides an implementation harness for Dapr's distributed lock building block.
+    /// </summary>
+    /// <param name="componentsDir">The directory to Dapr components.</param>
+    /// <param name="startApp">The test app to validate in the harness.</param>
+    /// <param name="options">The Dapr runtime options.</param>
+    public DistributedLockHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    {
+        this.componentsDir = componentsDir;
+    }
 
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
@@ -39,22 +46,6 @@ public sealed class DistributedLockHarness(string componentsDir, Func<int, Task>
 		
 		// Emit component YAMLs pointing to Redis
 		RedisContainer.Yaml.WriteDistributedLockYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{_redis.Port}");
-		
-        // Find a random free port for the test app
-        var assignedAppPort = PortUtilities.GetAvailablePort();
-        AppPort = assignedAppPort;
-        
-		// Configure & start daprd
-		_daprd = new DaprdContainer(
-			appId: options.AppId,
-			componentsHostFolder: componentsDir,
-			options: options with {AppPort = assignedAppPort},
-            Network);
-		await _daprd.StartAsync(cancellationToken);
-        
-        // Start the app
-        if (startApp is not null)
-            await startApp(assignedAppPort);
 	}
     
     /// <inheritdoc />

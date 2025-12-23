@@ -12,10 +12,12 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
+using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers.Dapr;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Networks;
@@ -25,7 +27,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// <summary>
 /// Provides a base harness for building Dapr building block harnesses.
 /// </summary>
-public abstract class BaseHarness : IAsyncContainerFixture
+public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? startApp, DaprRuntimeOptions options) : IAsyncContainerFixture
 {
     /// <summary>
     /// The Daprd container exposed by the harness.
@@ -36,11 +38,11 @@ public abstract class BaseHarness : IAsyncContainerFixture
     ///  A shared Docker network that's safer for CI environments.
     /// </summary>
     protected static readonly INetwork Network = new NetworkBuilder().Build();
-    
+
     /// <summary>
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
     /// </summary>
-    public int AppPort { get; private protected set; }
+    public int AppPort { get; private protected set; } = PortUtilities.GetAvailablePort();
 
     /// <summary>
     /// The HTTP port used by the Daprd container.
@@ -53,12 +55,26 @@ public abstract class BaseHarness : IAsyncContainerFixture
     public int DaprGrpcPort => _daprd?.GrpcPort ?? 0;
 
     /// <summary>
+    /// The Dapr components directory.
+    /// </summary>
+    protected string ComponentsDirectory => componentsDirectory;
+    
+    /// <summary>
+    /// The port of the Dapr placement service, if started.
+    /// </summary>
+    protected int? DaprPlacementPort { get; set; }
+    
+    /// <summary>
+    /// The port of the Dapr scheduler service, if started.
+    /// </summary>
+    protected int? DaprSchedulerPort { get; set; }
+    
+    /// <summary>
     /// The specific container startup logic for the harness.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns></returns>
     protected abstract Task OnInitializeAsync(CancellationToken cancellationToken);
-
+    
     /// <summary>
     /// Initializes and runs the test app with the harness.
     /// </summary>
@@ -66,10 +82,36 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <returns></returns>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // Automatically link the Dapr .NET SDK to these containers
-        ConfigureSdkEnvironment();
-        // Run the actual container orchestration defined in the subclass
+        // Automatically link the Dapr .NET SDK to these containers via environment variables
+        if (DaprHttpPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
+        if (DaprGrpcPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
+        
+        // Run the actual container orchestration defined in the subclass to set up any pre-requisite containers before loading daprd and the start app, if specified
         await OnInitializeAsync(cancellationToken);
+        
+        // Configure and start daprd; point at placement & scheduler
+        _daprd = new DaprdContainer(
+            appId: options.AppId,
+            componentsHostFolder: ComponentsDirectory,
+            options: options with {AppPort = this.AppPort},
+            Network,
+            DaprPlacementPort is null ? null : new HostPortPair("host.docker.internal", DaprPlacementPort.Value),
+            DaprSchedulerPort is null ? null : new HostPortPair("host.docker.internal", DaprSchedulerPort.Value));
+        
+        // Create a list of tasks to run concurrently - namely, start daprd and the startApp, if specified
+        var tasks = new List<Task>
+        {
+            _daprd.StartAsync(cancellationToken)
+        };
+
+        if (startApp is not null)
+        {
+            tasks.Add(startApp(this.AppPort));
+        }
+
+        await Task.WhenAll(tasks);
     }
 
     /// <summary>
@@ -80,6 +122,10 @@ public abstract class BaseHarness : IAsyncContainerFixture
         if (_daprd is not null)
             await _daprd.DisposeAsync();
         await Network.DisposeAsync();
+        
+        // Clean up generated YAML files
+        CleanupComponents(ComponentsDirectory);
+        
         GC.SuppressFinalize(this);
     }
 
@@ -87,7 +133,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// Deletes the specified directory recursively as part of a clean-up operation. 
     /// </summary>
     /// <param name="path">The clean to clean up.</param>
-    protected virtual void CleanupComponents(string path)
+    protected static void CleanupComponents(string path)
     {
         if (Directory.Exists(path))
         {
@@ -100,13 +146,5 @@ public abstract class BaseHarness : IAsyncContainerFixture
                 // Ignore cleanup errors
             }
         }
-    }
-    
-    private void ConfigureSdkEnvironment()
-    {
-        if (DaprHttpPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
-        if (DaprGrpcPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
     }
 }

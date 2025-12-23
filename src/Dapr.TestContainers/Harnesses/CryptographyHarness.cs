@@ -14,44 +14,40 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
-using Dapr.TestContainers.Containers.Dapr;
 
 namespace Dapr.TestContainers.Harnesses;
 
 /// <summary>
 /// Provides an implementation harness for Dapr's cryptography building block.
 /// </summary>
-/// <param name="componentsDir">The directory to Dapr components.</param>
-/// <param name="startApp">The test app to validate in the harness.</param>
-/// <param name="options">The Dapr runtime options.</param>
-/// <param name="keyPath">The path locally to the cryptography keys to use.</param>
-public sealed class CryptographyHarness(string componentsDir, Func<int, Task>? startApp, string keyPath, DaprRuntimeOptions options) : BaseHarness
+public sealed class CryptographyHarness : BaseHarness
 {
+    private readonly string componentsDir;
+    private readonly string keyPath;
+
+    /// <summary>
+    /// Provides an implementation harness for Dapr's cryptography building block.
+    /// </summary>
+    /// <param name="componentsDir">The directory to Dapr components.</param>
+    /// <param name="startApp">The test app to validate in the harness.</param>
+    /// <param name="options">The Dapr runtime options.</param>
+    /// <param name="keyPath">The path locally to the cryptography keys to use.</param>
+    public CryptographyHarness(string componentsDir, Func<int, Task>? startApp, string keyPath, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    {
+        this.componentsDir = componentsDir;
+        this.keyPath = keyPath;
+    }
+
     /// <inheritdoc />
-    protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
+    protected override Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
 		// Emit the component YAML describing the local crypto key store
 		LocalStorageCryptographyContainer.Yaml.WriteCryptoYamlToFolder(componentsDir, keyPath);
-		
-        // Find a random free port for the test app
-        var assignedAppPort = PortUtilities.GetAvailablePort();
-        AppPort = assignedAppPort;
-        
-		// Configure and start daprd
-		_daprd = new DaprdContainer(
-			appId: options.AppId,
-			componentsHostFolder: componentsDir,
-			options: options with {AppPort = assignedAppPort},
-            Network);
-		await _daprd.StartAsync(cancellationToken);
-        
-        // Start the app
-        if (startApp is not null)
-            await startApp(assignedAppPort);
-	}
+
+        return Task.CompletedTask;
+    }
 	
     /// <inheritdoc />
 	public override async ValueTask DisposeAsync()

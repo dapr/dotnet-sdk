@@ -14,7 +14,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
 using Dapr.TestContainers.Containers.Dapr;
@@ -24,15 +23,26 @@ namespace Dapr.TestContainers.Harnesses;
 /// <summary>
 /// Provides an implementation harness for Dapr's actor building block.
 /// </summary>
-/// <param name="componentsDir">The directory to Dapr components.</param>
-/// <param name="startApp">The test app to validate in the harness.</param>
-/// <param name="options">The dapr runtime options.</param>
-public sealed class ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class ActorHarness : BaseHarness
 {
 	private readonly RedisContainer _redis = new(Network);
-	private readonly DaprPlacementContainer _placement = new(options, Network);
-	private readonly DaprSchedulerContainer _schedueler = new(options, Network);
-    
+	private readonly DaprPlacementContainer _placement;
+	private readonly DaprSchedulerContainer _schedueler;
+    private readonly string componentsDir;
+
+    /// <summary>
+    /// Provides an implementation harness for Dapr's actor building block.
+    /// </summary>
+    /// <param name="componentsDir">The directory to Dapr components.</param>
+    /// <param name="startApp">The test app to validate in the harness.</param>
+    /// <param name="options">The dapr runtime options.</param>
+    public ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    {
+        this.componentsDir = componentsDir;
+        _placement = new DaprPlacementContainer(options, Network);
+        _schedueler = new DaprSchedulerContainer(options, Network);
+    }
+
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
@@ -43,24 +53,9 @@ public sealed class ActorHarness(string componentsDir, Func<int, Task>? startApp
         
 		// Emit component YAMLs pointing to Redis
 		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{_redis.Port}");
-		
-        // Find a random free port for the test app
-        var assignedAppPort = PortUtilities.GetAvailablePort();
-        AppPort = assignedAppPort;
-        
-		// Configure and start daprd, point at placement & scheduler
-		_daprd = new DaprdContainer(
-			appId: options.AppId,
-			componentsHostFolder: componentsDir,
-			options: options with {AppPort = assignedAppPort},
-            Network,
-			new HostPortPair(_placement.Host, _placement.Port),
-			new HostPortPair(_schedueler.Host, _schedueler.Port));
-		await _daprd.StartAsync(cancellationToken);
-        
-        // Start the test
-        if (startApp is not null) 
-            await startApp(assignedAppPort);
+
+        DaprPlacementPort = _placement.Port;
+        DaprSchedulerPort = _schedueler.Port;
     }
 	
     /// <inheritdoc />

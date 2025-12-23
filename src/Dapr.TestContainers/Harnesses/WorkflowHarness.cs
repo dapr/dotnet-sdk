@@ -14,7 +14,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
 using Dapr.TestContainers.Containers.Dapr;
@@ -24,45 +23,41 @@ namespace Dapr.TestContainers.Harnesses;
 /// <summary>
 /// Provides an implementation harness for Dapr's Workflow building block.
 /// </summary>
-/// <param name="componentsDir">The directory to Dapr components.</param>
-/// <param name="startApp">The test app to validate in the harness.</param>
-/// <param name="options">The Dapr runtime options.</param>
-public sealed class WorkflowHarness(string componentsDir, Func<int, Task>? startApp,  DaprRuntimeOptions options) : BaseHarness
+public sealed class WorkflowHarness : BaseHarness
 {
 	private readonly RedisContainer _redis = new(Network);
-	private readonly DaprPlacementContainer _placement = new(options, Network);
-	private readonly DaprSchedulerContainer _scheduler = new(options, Network);
+	private readonly DaprPlacementContainer _placement;
+    private readonly DaprSchedulerContainer _scheduler;
+
+    /// <summary>
+    /// Provides an implementation harness for Dapr's Workflow building block.
+    /// </summary>
+    /// <param name="componentsDir">The directory to Dapr components.</param>
+    /// <param name="startApp">The test app to validate in the harness.</param>
+    /// <param name="options">The Dapr runtime options.</param>
+    public WorkflowHarness(string componentsDir, Func<int, Task>? startApp,  DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    {
+        _placement = new DaprPlacementContainer(options, Network);
+        _scheduler = new DaprSchedulerContainer(options, Network);
+    }
+
 
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
-		// Start infrastructure
-		await _redis.StartAsync(cancellationToken);
+        // Start infrastructure
+        await _redis.StartAsync(cancellationToken);
         await _placement.StartAsync(cancellationToken);
         await _scheduler.StartAsync(cancellationToken);
-		
-		// Emit component YAMLs pointing to Redis
-		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{_redis.Port}");
-		
-		// Find a random free port for the test app
-        var assignedAppPort = PortUtilities.GetAvailablePort();
-        AppPort = assignedAppPort;
         
-		// Configure and start daprd; point at placement & scheduler
-		_daprd = new DaprdContainer(
-			appId: options.AppId,
-			componentsHostFolder: componentsDir,
-		 	options: options with {AppPort = assignedAppPort},
-            Network,
-			new HostPortPair("host.docker.internal", _placement.Port),
-			new HostPortPair("host.docker.internal", _scheduler.Port));
-		await _daprd.StartAsync(cancellationToken);
+        // Emit component YAMLs pointing to Redis
+        RedisContainer.Yaml.WriteStateStoreYamlToFolder(ComponentsDirectory, redisHost: $"{_redis.NetworkAlias}:6379");
         
-        // Start the app
-        if (startApp is not null)
-            await startApp(assignedAppPort);
+        // Set the service ports
+        this.DaprPlacementPort = _placement.Port;
+        this.DaprSchedulerPort = _scheduler.Port;
     }
-
+    
     /// <inheritdoc />
 	public override async ValueTask DisposeAsync()
 	{
@@ -71,8 +66,5 @@ public sealed class WorkflowHarness(string componentsDir, Func<int, Task>? start
 		await _placement.DisposeAsync();
 		await _scheduler.DisposeAsync();
 		await _redis.DisposeAsync();
-        
-        // Cleanup the generated YAML files
-        CleanupComponents(componentsDir);
 	}
 }

@@ -12,26 +12,32 @@
 //  ------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
-using Dapr.TestContainers.Containers.Dapr;
 
 namespace Dapr.TestContainers.Harnesses;
 
 /// <summary>
 /// Provides an implementation harness for Dapr's pub/sub building block.
 /// </summary>
-/// <param name="componentsDir">The directory to Dapr components.</param>
-/// <param name="startApp">The test app to validate in the harness.</param>
-/// <param name="options">The Dapr runtime options.</param>
-public sealed class PubSubHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class PubSubHarness : BaseHarness
 {
 	private readonly RabbitMqContainer _rabbitmq = new(Network);
-    
+    private readonly string componentsDir;
+
+    /// <summary>
+    /// Provides an implementation harness for Dapr's pub/sub building block.
+    /// </summary>
+    /// <param name="componentsDir">The directory to Dapr components.</param>
+    /// <param name="startApp">The test app to validate in the harness.</param>
+    /// <param name="options">The Dapr runtime options.</param>
+    public PubSubHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options): base(componentsDir, startApp, options)
+    {
+        this.componentsDir = componentsDir;
+    }
+
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
@@ -40,32 +46,6 @@ public sealed class PubSubHarness(string componentsDir, Func<int, Task>? startAp
 		
 		// Emit component YAMLs pointing to RabbitMQ
 		RabbitMqContainer.Yaml.WritePubSubYamlToFolder(componentsDir, rabbitmqHost: $"{_rabbitmq.NetworkAlias}:{_rabbitmq.Port}");
-        
-        // Find a random free port for the test app
-        var assignedAppPort = PortUtilities.GetAvailablePort();
-        AppPort = assignedAppPort;
-		
-		// Configure & start daprd
-		_daprd = new DaprdContainer(
-			appId: options.AppId,
-			componentsHostFolder: componentsDir,
-			options: options with {AppPort = assignedAppPort},
-            Network);
-		
-        // Create the tasks to wait on, starting with the daprd container
-        var tasks = new List<Task>
-        {
-            _daprd.StartAsync(cancellationToken)
-        };
-        
-        // Start the test app
-        if (startApp is not null)
-        {
-            var appTask = startApp(assignedAppPort);
-            tasks.Add(appTask);
-        }
-
-        await Task.WhenAll(tasks);
     }
 
     /// <inheritdoc />

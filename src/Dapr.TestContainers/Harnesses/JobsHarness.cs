@@ -14,7 +14,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers.Dapr;
 
@@ -23,34 +22,28 @@ namespace Dapr.TestContainers.Harnesses;
 /// <summary>
 /// Provides an implementation harness for the Jobs building block.
 /// </summary>
-/// <param name="componentsDir">The directory to Dapr components.</param>
-/// <param name="startApp">The test app to validate in the harness.</param>
-/// <param name="options">The Dapr runtime options.</param>
-public sealed class JobsHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : BaseHarness
+public sealed class JobsHarness : BaseHarness
 {
-	private readonly DaprSchedulerContainer _scheduler = new(options, Network);
-	
+	private readonly DaprSchedulerContainer _scheduler;
+    private readonly string componentsDir;
+
+    /// <summary>
+    /// Provides an implementation harness for the Jobs building block.
+    /// </summary>
+    /// <param name="componentsDir">The directory to Dapr components.</param>
+    /// <param name="startApp">The test app to validate in the harness.</param>
+    /// <param name="options">The Dapr runtime options.</param>
+    public JobsHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    {
+        this.componentsDir = componentsDir;
+        _scheduler = new DaprSchedulerContainer(options, Network);
+    }
+
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
         // Start the infrastructure
         await _scheduler.StartAsync(cancellationToken);
-
-        // Find a random port for the test app
-        var assignedAppPort = PortUtilities.GetAvailablePort();
-        AppPort = assignedAppPort;
-        
-		// Configure & start daprd
-		_daprd = new DaprdContainer(
-			appId: options.AppId,
-			componentsHostFolder: componentsDir,
-			options: options with {AppPort = assignedAppPort},
-            Network);
-		await _daprd.StartAsync(cancellationToken);
-        
-        // Start the app
-        if (startApp is not null)
-            await startApp(assignedAppPort);
 	}
 	
     /// <inheritdoc />
