@@ -103,7 +103,7 @@ public sealed class DaprdContainer : IAsyncStartable
 			.WithPortBinding(InternalGrpcPort, assignRandomHostPort: true)
 			.WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
 			.WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilMessageIsLogged("Dapr sidecar is up and running."))
+                .UntilMessageIsLogged(@"^dapr initialized. Status: Running. Init Elapsed "))
 			.Build();
 	}
 
