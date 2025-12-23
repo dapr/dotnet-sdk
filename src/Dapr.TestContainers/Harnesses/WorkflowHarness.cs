@@ -41,7 +41,6 @@ public sealed class WorkflowHarness : BaseHarness
         _scheduler = new DaprSchedulerContainer(options, Network);
     }
 
-
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{

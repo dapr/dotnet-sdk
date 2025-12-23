@@ -112,9 +112,10 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
         // containers via environment variables.
         // This ensures that when the test body creates a DaprClient, it finds the right ports.
         if (DaprHttpPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
+            Environment.SetEnvironmentVariable("DAPR_HTTP_ENDPOINT", $"http://host.docker.internal:{DaprHttpPort}");
+        
         if (DaprGrpcPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
+            Environment.SetEnvironmentVariable("DAPR_GRPC_ENDPOINT", $"http://host.docker.internal:{DaprGrpcPort}");
     }
 
     /// <summary>
