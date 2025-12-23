@@ -30,7 +30,6 @@ namespace Dapr.TestContainers.Containers.Dapr;
 /// </summary>
 public sealed class DaprSchedulerContainer : IAsyncStartable
 {
-	private const int InternalPort = 51005;
 	private readonly IContainer _container;
     // Contains the data directory used by this instance of the Dapr scheduler service
     private string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
@@ -47,7 +46,11 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <summary>
     /// The container's external port.
     /// </summary>
-	public int Port { get; private set; }
+	public int ExternalPort { get; private set; }
+    /// <summary>
+    /// The container's internal port.
+    /// </summary>
+    public const int InternalPort = 51005;
 
     /// <summary>
     /// Creates a new instance of a <see cref="DaprSchedulerContainer"/>.
@@ -82,7 +85,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		await _container.StartAsync(cancellationToken);
-		Port = _container.GetMappedPublicPort(InternalPort);
+		ExternalPort = _container.GetMappedPublicPort(InternalPort);
 		
 		// Empty dirs with 0777 inside container:
 		await _container.ExecAsync(["sh", "-c", "mkdir -p ./default-dapr-scheduler-server-0/dapr-0.1 && chmod 0777 ./default-dapr-scheduler-server-0/dapr-0.1"

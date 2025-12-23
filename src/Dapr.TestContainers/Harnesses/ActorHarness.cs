@@ -54,8 +54,8 @@ public sealed class ActorHarness : BaseHarness
 		// Emit component YAMLs pointing to Redis
 		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{_redis.Port}");
 
-        DaprPlacementPort = _placement.Port;
-        DaprSchedulerPort = _schedueler.Port;
+        DaprPlacementExternalPort = _placement.ExternalPort;
+        DaprSchedulerExternalPort = _schedueler.ExternalPort;
     }
 	
     /// <inheritdoc />

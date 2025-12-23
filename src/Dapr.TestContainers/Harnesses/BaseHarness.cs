@@ -12,7 +12,6 @@
 //  ------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +32,8 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
     /// The Daprd container exposed by the harness.
     /// </summary>
     private protected DaprdContainer? _daprd;
+
+    private readonly TaskCompletionSource _sidecarPortsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     
     /// <summary>
     ///  A shared Docker network that's safer for CI environments.
@@ -42,17 +43,27 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
     /// <summary>
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
     /// </summary>
-    public int AppPort { get; private protected set; } = PortUtilities.GetAvailablePort();
+    public int AppPort { get; } = PortUtilities.GetAvailablePort();
 
     /// <summary>
     /// The HTTP port used by the Daprd container.
     /// </summary>
     public int DaprHttpPort => _daprd?.HttpPort ?? 0;
+
+    /// <summary>
+    /// The HTTP endpoint used by the Daprd container.
+    /// </summary>
+    public string DaprHttpEndpoint => $"http://{DaprdContainer.ContainerHostAlias}:{DaprHttpPort}";
     
     /// <summary>
     /// The gRPC port used by the Daprd container.
     /// </summary>
     public int DaprGrpcPort => _daprd?.GrpcPort ?? 0;
+
+    /// <summary>
+    /// The gRPC endpoint used by the Daprd container.
+    /// </summary>
+    public string DaprGrpcEndpoint => $"http://{DaprdContainer.ContainerHostAlias}:{DaprGrpcPort}";
 
     /// <summary>
     /// The Dapr components directory.
@@ -62,12 +73,22 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
     /// <summary>
     /// The port of the Dapr placement service, if started.
     /// </summary>
-    protected int? DaprPlacementPort { get; set; }
+    protected int? DaprPlacementExternalPort { get; set; }
+    
+    /// <summary>
+    /// The network alias of the placement container, if started.
+    /// </summary>
+    protected string? DaprPlacementAlias { get; set; }
     
     /// <summary>
     /// The port of the Dapr scheduler service, if started.
     /// </summary>
-    protected int? DaprSchedulerPort { get; set; }
+    protected int? DaprSchedulerExternalPort { get; set; }
+    
+    /// <summary>
+    /// The network alias of the scheduler container, if started.
+    /// </summary>
+    protected string? DaprSchedulerAlias { get; set; }
     
     /// <summary>
     /// The specific container startup logic for the harness.
@@ -91,31 +112,27 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
             componentsHostFolder: ComponentsDirectory,
             options: options with {AppPort = this.AppPort},
             Network,
-            DaprPlacementPort is null ? null : new HostPortPair("host.docker.internal", DaprPlacementPort.Value),
-            DaprSchedulerPort is null ? null : new HostPortPair("host.docker.internal", DaprSchedulerPort.Value));
-        
-        // Create a list of tasks to run concurrently - namely, start daprd and the startApp, if specified
-        var tasks = new List<Task>
-        {
-            _daprd.StartAsync(cancellationToken)
-        };
+            DaprPlacementExternalPort is null || DaprPlacementAlias is null ? null : new HostPortPair(DaprPlacementAlias, DaprPlacementContainer.InternalPort),
+            DaprSchedulerExternalPort is null || DaprSchedulerAlias is null ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort));
 
+        var daprdTask = Task.Run(async () =>
+        {
+            await _daprd!.StartAsync(cancellationToken);
+
+            _sidecarPortsReady.TrySetResult();
+        }, cancellationToken);
+
+        Task? appTask = null;
         if (startApp is not null)
         {
-            tasks.Add(startApp(this.AppPort));
+            appTask = Task.Run(async () =>
+            {
+                await _sidecarPortsReady.Task.WaitAsync(cancellationToken);
+                await startApp(AppPort);
+            }, cancellationToken);
         }
 
-        // Wait for both to start
-        await Task.WhenAll(tasks);
-        
-        // Now that _daprd is populated and ports are assigned, automatically link the Dapr .NET SDK to these
-        // containers via environment variables.
-        // This ensures that when the test body creates a DaprClient, it finds the right ports.
-        if (DaprHttpPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_HTTP_ENDPOINT", $"http://host.docker.internal:{DaprHttpPort}");
-        
-        if (DaprGrpcPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_GRPC_ENDPOINT", $"http://host.docker.internal:{DaprGrpcPort}");
+        await Task.WhenAll(daprdTask, appTask ?? Task.CompletedTask);
     }
 
     /// <summary>

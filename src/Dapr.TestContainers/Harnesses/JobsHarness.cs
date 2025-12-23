@@ -44,7 +44,9 @@ public sealed class JobsHarness : BaseHarness
 	{
         // Start the infrastructure
         await _scheduler.StartAsync(cancellationToken);
-	}
+        DaprSchedulerExternalPort = _scheduler.ExternalPort;
+        DaprSchedulerAlias = _scheduler.NetworkAlias;
+    }
 	
     /// <inheritdoc />
 	public override async ValueTask DisposeAsync()

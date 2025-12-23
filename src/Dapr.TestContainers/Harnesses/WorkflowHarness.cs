@@ -53,8 +53,8 @@ public sealed class WorkflowHarness : BaseHarness
         RedisContainer.Yaml.WriteStateStoreYamlToFolder(ComponentsDirectory, redisHost: $"{_redis.NetworkAlias}:6379");
         
         // Set the service ports
-        this.DaprPlacementPort = _placement.Port;
-        this.DaprSchedulerPort = _scheduler.Port;
+        this.DaprPlacementExternalPort = _placement.ExternalPort;
+        this.DaprSchedulerExternalPort = _scheduler.ExternalPort;
     }
     
     /// <inheritdoc />

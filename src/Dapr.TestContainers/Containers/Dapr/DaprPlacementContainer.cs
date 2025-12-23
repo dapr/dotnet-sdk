@@ -28,7 +28,7 @@ namespace Dapr.TestContainers.Containers.Dapr;
 public sealed class DaprPlacementContainer : IAsyncStartable
 {
 	private readonly IContainer _container;
-	private const int InternalPort = 50006;
+	
     private string _containerName = $"placement-{Guid.NewGuid():N}";
 
     /// <summary>
@@ -42,7 +42,11 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// <summary>
     /// The container's external port.
     /// </summary>
-	public int Port { get; private set; }
+	public int ExternalPort { get; private set; }
+    /// <summary>
+    /// THe contains' internal port.
+    /// </summary>
+    public const int InternalPort = 50006;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprPlacementContainer"/>.
@@ -66,7 +70,7 @@ public sealed class DaprPlacementContainer : IAsyncStartable
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		await _container.StartAsync(cancellationToken);
-		Port = _container.GetMappedPublicPort(InternalPort);
+		ExternalPort = _container.GetMappedPublicPort(InternalPort);
 	}
 
     /// <inheritdoc />
