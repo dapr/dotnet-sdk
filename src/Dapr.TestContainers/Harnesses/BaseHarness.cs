@@ -82,12 +82,6 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
     /// <returns></returns>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // Automatically link the Dapr .NET SDK to these containers via environment variables
-        if (DaprHttpPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
-        if (DaprGrpcPort > 0)
-            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
-        
         // Run the actual container orchestration defined in the subclass to set up any pre-requisite containers before loading daprd and the start app, if specified
         await OnInitializeAsync(cancellationToken);
         
@@ -111,7 +105,16 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
             tasks.Add(startApp(this.AppPort));
         }
 
+        // Wait for both to start
         await Task.WhenAll(tasks);
+        
+        // Now that _daprd is populated and ports are assigned, automatically link the Dapr .NET SDK to these
+        // containers via environment variables.
+        // This ensures that when the test body creates a DaprClient, it finds the right ports.
+        if (DaprHttpPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", DaprHttpPort.ToString());
+        if (DaprGrpcPort > 0)
+            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", DaprGrpcPort.ToString());
     }
 
     /// <summary>
