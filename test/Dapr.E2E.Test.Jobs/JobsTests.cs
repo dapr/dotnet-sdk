@@ -17,8 +17,6 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -32,7 +30,7 @@ public sealed class JobsTests
         var options = new DaprRuntimeOptions();
         var componentsDir = Path.Combine(Directory.GetCurrentDirectory(), $"jobs-components-{Guid.NewGuid():N}");
         var jobName = $"e2e-job-{Guid.NewGuid():N}";
-        var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var invocationTcs = new TaskCompletionSource<(string payload, string jobName)>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -46,7 +44,7 @@ public sealed class JobsTests
                     ILogger<JobsTests>? logger, CancellationToken _) =>
                 {
                     logger?.LogInformation("Received job {Job}", incomingJobName);
-                    invocationTcs.TrySetResult(Encoding.UTF8.GetString(payload.Span));
+                    invocationTcs.TrySetResult((Encoding.UTF8.GetString(payload.Span), incomingJobName));
                 });
             })
             .BuildAndStartAsync();
@@ -60,6 +58,7 @@ public sealed class JobsTests
             payload, repeats: 1, overwrite: true);
 
         var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        Assert.Equal(Encoding.UTF8.GetString(payload), received);
+        Assert.Equal(Encoding.UTF8.GetString(payload), received.payload);
+        Assert.Equal(jobName, received.jobName);
     }
 }
