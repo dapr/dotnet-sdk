@@ -19,6 +19,7 @@ using Dapr.TestContainers.Harnesses;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.E2E.Test.Common;
@@ -60,14 +61,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
         WebApplication? app = null;
         if (_configureServices is not null || _configureApp is not null)
         {
-            // Set environment variables
-            Environment.SetEnvironmentVariable("DAPR_HTTP_ENDPOINT", $"http://127.0.0.1:{harness.DaprHttpPort}");
-            Environment.SetEnvironmentVariable("DAPR_GRPC_ENDPOINT", $"http://127.0.0.1:{harness.DaprGrpcPort}");
-
             var builder = WebApplication.CreateBuilder();
-            builder.Logging.ClearProviders();
-            builder.Logging.AddSimpleConsole();
-            builder.WebHost.UseUrls($"http://0.0.0.0:{harness.AppPort}");
             
             // Configure Dapr endpoints via in-memory configuration instead of environment variables
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -76,9 +70,16 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                 { "DAPR_GRPC_ENDPOINT", $"http://127.0.0.1:{harness.DaprGrpcPort}" }
             });
             
+            builder.Logging.ClearProviders();
+            builder.Logging.AddSimpleConsole();
+            builder.WebHost.UseUrls($"http://0.0.0.0:{harness.AppPort}");
+            
+            
+            
             _configureServices?.Invoke(builder);
 
             app = builder.Build();
+            
             _configureApp?.Invoke(app);
 
             await app.StartAsync();

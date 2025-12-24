@@ -47,7 +47,7 @@ public sealed class ConversationHarness : BaseHarness
 		
 		// Emit component YAMLs for Ollama (use the default tiny model)
         OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir,
-            endpoint: $"http://{_ollama.NetworkAlias}:{_ollama.Port}/v1");
+            endpoint: $"http://{_ollama.NetworkAlias}:{OllamaContainer.ContainerPort}/v1");
     }
 
     /// <inheritdoc />

@@ -17,6 +17,7 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -36,7 +37,18 @@ public sealed class JobsTests
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
-                builder.Services.AddDaprJobsClient();
+                // Explicitly configure the Dapr client with the correct endpoints
+                builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                    var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+                
+                    if (!string.IsNullOrEmpty(grpcEndpoint))
+                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    if (!string.IsNullOrEmpty(httpEndpoint))
+                        clientBuilder.UseHttpEndpoint(httpEndpoint);
+                });
             })
             .ConfigureApp(app =>
             {

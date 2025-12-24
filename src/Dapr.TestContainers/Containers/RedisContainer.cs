@@ -47,6 +47,10 @@ public sealed class RedisContainer : IAsyncStartable
     }
 
     /// <summary>
+    /// The internal container port used by Redis.
+    /// </summary>
+    public const int ContainerPort = InternalPort;
+    /// <summary>
     /// The internal network alias/name of the container.
     /// </summary>
     public string NetworkAlias => _containerName;

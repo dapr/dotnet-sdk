@@ -46,7 +46,7 @@ public sealed class StateManagementHarness : BaseHarness
 		await _redis.StartAsync(cancellationToken);
 		
 		// Emit component YAMLs pointing to Redis
-		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{_redis.Port}");
+		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
     }
 	
     /// <inheritdoc />

@@ -51,7 +51,7 @@ public sealed class WorkflowHarness : BaseHarness
         await _scheduler.StartAsync(cancellationToken);
         
         // Emit component YAMLs pointing to Redis
-        RedisContainer.Yaml.WriteStateStoreYamlToFolder(ComponentsDirectory, redisHost: $"{_redis.NetworkAlias}:6379");
+        RedisContainer.Yaml.WriteStateStoreYamlToFolder(ComponentsDirectory, redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
         
         // Set the service ports
         this.DaprPlacementExternalPort = _placement.ExternalPort;

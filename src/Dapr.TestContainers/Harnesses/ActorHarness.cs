@@ -53,7 +53,7 @@ public sealed class ActorHarness : BaseHarness
         await _schedueler.StartAsync(cancellationToken);
         
 		// Emit component YAMLs pointing to Redis
-		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{_redis.Port}");
+		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
 
         DaprPlacementExternalPort = _placement.ExternalPort;
         DaprSchedulerExternalPort = _schedueler.ExternalPort;

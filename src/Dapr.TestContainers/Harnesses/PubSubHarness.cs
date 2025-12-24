@@ -46,7 +46,7 @@ public sealed class PubSubHarness : BaseHarness
 		await _rabbitmq.StartAsync(cancellationToken);
 		
 		// Emit component YAMLs pointing to RabbitMQ
-		RabbitMqContainer.Yaml.WritePubSubYamlToFolder(componentsDir, rabbitmqHost: $"{_rabbitmq.NetworkAlias}:{_rabbitmq.Port}");
+		RabbitMqContainer.Yaml.WritePubSubYamlToFolder(componentsDir, rabbitmqHost: $"{_rabbitmq.NetworkAlias}:{RabbitMqContainer.ContainerPort}");
     }
 
     /// <inheritdoc />

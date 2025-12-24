@@ -47,6 +47,10 @@ public sealed class OllamaContainer : IAsyncStartable
     }
 
     /// <summary>
+    /// The internal container port used by Ollama.
+    /// </summary>
+    public const int ContainerPort = InternalPort;
+    /// <summary>
     /// The internal network alias/name of the container.
     /// </summary>
     public string NetworkAlias => _containerName;
