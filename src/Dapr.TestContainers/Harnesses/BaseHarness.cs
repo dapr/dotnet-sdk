@@ -140,6 +140,8 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
     /// </summary>
     public virtual async ValueTask DisposeAsync()
     {
+        await OnDisposeAsync();
+        
         if (_daprd is not null)
             await _daprd.DisposeAsync();
         await Network.DisposeAsync();
@@ -149,6 +151,11 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
         
         GC.SuppressFinalize(this);
     }
+
+    /// <summary>
+    /// Override this to dispose harness-specific resources before base cleanup.
+    /// </summary>
+    protected virtual ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 
     /// <summary>
     /// Deletes the specified directory recursively as part of a clean-up operation. 

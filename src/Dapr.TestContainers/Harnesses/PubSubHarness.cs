@@ -49,13 +49,8 @@ public sealed class PubSubHarness : BaseHarness
     }
 
     /// <inheritdoc />
-	public override async ValueTask DisposeAsync()
+	protected override async ValueTask OnDisposeAsync()
 	{
-		if (_daprd is not null)
-			await _daprd.DisposeAsync();
 		await _rabbitmq.DisposeAsync();
-        
-        // Clean up the generated YAML files
-        CleanupComponents(componentsDir);
 	}
 }

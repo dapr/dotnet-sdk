@@ -49,13 +49,8 @@ public sealed class JobsHarness : BaseHarness
     }
 	
     /// <inheritdoc />
-	public override async ValueTask DisposeAsync()
-	{
-		if (_daprd is not null)
-			await _daprd.DisposeAsync();
-		await _scheduler.DisposeAsync();
-        
-        // Cleanup the generated YAML files
-        CleanupComponents(componentsDir);
+	protected override async ValueTask OnDisposeAsync()
+    {
+        await _scheduler.DisposeAsync();
 	}
 }

@@ -48,14 +48,4 @@ public sealed class CryptographyHarness : BaseHarness
 
         return Task.CompletedTask;
     }
-	
-    /// <inheritdoc />
-	public override async ValueTask DisposeAsync()
-	{
-		if (_daprd is not null)
-			await _daprd.DisposeAsync();
-        
-        // Cleanup the generated YAML files
-        CleanupComponents(componentsDir);
-	}
 }

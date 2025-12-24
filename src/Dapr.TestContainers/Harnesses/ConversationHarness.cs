@@ -50,13 +50,8 @@ public sealed class ConversationHarness : BaseHarness
     }
 
     /// <inheritdoc />
-	public override async ValueTask DisposeAsync()
+	protected override async ValueTask OnDisposeAsync()
 	{
-		if (_daprd is not null)
-			await _daprd.DisposeAsync();
 		await _ollama.DisposeAsync();
-        
-        // Cleanup the generated YAML files
-        CleanupComponents(componentsDir);
 	}
 }

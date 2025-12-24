@@ -59,15 +59,10 @@ public sealed class ActorHarness : BaseHarness
     }
 	
     /// <inheritdoc />
-	public override async ValueTask DisposeAsync()
+	protected override async ValueTask OnDisposeAsync()
 	{
-		if (_daprd is not null)
-			await _daprd.DisposeAsync();
 		await _redis.DisposeAsync();
 		await _placement.DisposeAsync();
 		await _schedueler.DisposeAsync();
-        
-        // Cleanup the generated YAML files
-        CleanupComponents(componentsDir);
 	}
 }
