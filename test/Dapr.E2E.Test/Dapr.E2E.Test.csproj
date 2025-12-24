@@ -21,7 +21,6 @@
     <ProjectReference Include="..\Dapr.E2E.Test.App\Dapr.E2E.Test.App.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Dapr.E2E.Test.App.ReentrantActor\Dapr.E2E.Test.App.ReentrantActors.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Dapr.E2E.Test.App.Grpc\Dapr.E2E.Test.App.Grpc.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\Dapr.E2E.Test.Workflow.App\Dapr.E2E.Test.Workflow.App.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Protobuf Include="../Dapr.E2E.Test.App.Grpc/Proto/message.proto" GrpcServices="Client" />
