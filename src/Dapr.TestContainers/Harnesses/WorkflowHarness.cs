@@ -25,7 +25,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// </summary>
 public sealed class WorkflowHarness : BaseHarness
 {
-	private readonly RedisContainer _redis = new(Network);
+    private readonly RedisContainer _redis;
 	private readonly DaprPlacementContainer _placement;
     private readonly DaprSchedulerContainer _scheduler;
 
@@ -39,6 +39,7 @@ public sealed class WorkflowHarness : BaseHarness
     {
         _placement = new DaprPlacementContainer(options, Network);
         _scheduler = new DaprSchedulerContainer(options, Network);
+        _redis = new(Network);
     }
 
     /// <inheritdoc />

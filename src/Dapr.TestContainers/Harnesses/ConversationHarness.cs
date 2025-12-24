@@ -24,7 +24,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// </summary>
 public sealed class ConversationHarness : BaseHarness
 {
-	private readonly OllamaContainer _ollama = new(Network);
+    private readonly OllamaContainer _ollama;
     private readonly string componentsDir;
 
     /// <summary>
@@ -36,6 +36,7 @@ public sealed class ConversationHarness : BaseHarness
     public ConversationHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
     {
         this.componentsDir = componentsDir;
+        _ollama = new(Network);
     }
 
     /// <inheritdoc />

@@ -24,7 +24,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// </summary>
 public sealed class PubSubHarness : BaseHarness
 {
-	private readonly RabbitMqContainer _rabbitmq = new(Network);
+    private readonly RabbitMqContainer _rabbitmq;
     private readonly string componentsDir;
 
     /// <summary>
@@ -36,6 +36,7 @@ public sealed class PubSubHarness : BaseHarness
     public PubSubHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options): base(componentsDir, startApp, options)
     {
         this.componentsDir = componentsDir;
+        _rabbitmq = new(Network);
     }
 
     /// <inheritdoc />

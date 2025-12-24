@@ -36,9 +36,9 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
     private readonly TaskCompletionSource _sidecarPortsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     
     /// <summary>
-    ///  A shared Docker network that's safer for CI environments.
+    ///  A shared Docker network that's safer for CI environments - each harness instance gets its own network for isolation.
     /// </summary>
-    protected static readonly INetwork Network = new NetworkBuilder().Build();
+    protected readonly INetwork Network = new NetworkBuilder().Build();
 
     /// <summary>
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
@@ -144,6 +144,8 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
         
         if (_daprd is not null)
             await _daprd.DisposeAsync();
+        
+        // Clean up the per-instance network
         await Network.DisposeAsync();
         
         // Clean up generated YAML files

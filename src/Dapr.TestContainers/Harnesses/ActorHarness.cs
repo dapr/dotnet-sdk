@@ -25,7 +25,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// </summary>
 public sealed class ActorHarness : BaseHarness
 {
-	private readonly RedisContainer _redis = new(Network);
+    private readonly RedisContainer _redis;
 	private readonly DaprPlacementContainer _placement;
 	private readonly DaprSchedulerContainer _schedueler;
     private readonly string componentsDir;
@@ -41,6 +41,7 @@ public sealed class ActorHarness : BaseHarness
         this.componentsDir = componentsDir;
         _placement = new DaprPlacementContainer(options, Network);
         _schedueler = new DaprSchedulerContainer(options, Network);
+        _redis = new(Network);
     }
 
     /// <inheritdoc />

@@ -24,7 +24,7 @@ namespace Dapr.TestContainers.Harnesses;
 /// </summary>
 public sealed class DistributedLockHarness : BaseHarness
 {
-	private readonly RedisContainer _redis = new(Network);
+    private readonly RedisContainer _redis;
     private readonly string componentsDir;
 
     /// <summary>
@@ -36,6 +36,7 @@ public sealed class DistributedLockHarness : BaseHarness
     public DistributedLockHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
     {
         this.componentsDir = componentsDir;
+        _redis = new(Network);
     }
 
     /// <inheritdoc />

@@ -53,9 +53,6 @@ public sealed class DaprTestApplication : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        Environment.SetEnvironmentVariable("DAPR_HTTP_ENDPOINT", null);
-        Environment.SetEnvironmentVariable("DAPR_GRPC_ENDPOINT", null);
-
         if (_app is not null)
             await _app.DisposeAsync();
 
