@@ -13,6 +13,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Dapr.E2E.Test.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Harnesses;
 
@@ -74,4 +75,9 @@ public sealed class DaprHarnessBuilder(DaprRuntimeOptions options, Func<int, Tas
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
 	public ActorHarness BuildActors(string componentsDir) => new(componentsDir, startApp, options);
+
+    /// <summary>
+    /// Creates a test application builder for the specified harness.
+    /// </summary>
+    public static DaprTestApplicationBuilder ForHarness(BaseHarness harness) => new(harness);
 }

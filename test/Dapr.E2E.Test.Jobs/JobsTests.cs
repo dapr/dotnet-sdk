@@ -27,70 +27,39 @@ namespace Dapr.E2E.Test.Jobs;
 public sealed class JobsTests
 {
     [Fact]
-    public async Task ShouldScheduleAndExecuteJob()
+    public async Task ShouldScheduleAndReceiveJob()
     {
         var options = new DaprRuntimeOptions();
         var componentsDir = Path.Combine(Directory.GetCurrentDirectory(), $"jobs-components-{Guid.NewGuid():N}");
         var jobName = $"e2e-job-{Guid.NewGuid():N}";
-
-        WebApplication? app = null;
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        
-        // Build and initialize the harness
-        var harnessBuilder = new DaprHarnessBuilder(options);
-        var harness = harnessBuilder.BuildJobs(componentsDir);
 
-        try
-        {
-            await harness.InitializeAsync();
-            
-            Environment.SetEnvironmentVariable("DAPR_HTTP_ENDPOINT", $"http://127.0.0.1:{harness.DaprHttpPort}");
-            Environment.SetEnvironmentVariable("DAPR_GRPC_ENDPOINT", $"http://127.0.0.1:{harness.DaprGrpcPort}");
-            
-            var builder = WebApplication.CreateBuilder();
-            builder.Logging.ClearProviders();
-            builder.Logging.AddSimpleConsole();
-            builder.WebHost.UseUrls($"http://0.0.0.0:{harness.AppPort}");
-            // builder.Configuration.AddInMemoryCollection(new List<KeyValuePair<string, string?>>
-            // {
-            //     new("DAPR_HTTP_ENDPOINT", $"http://127.0.0.1:{harness.DaprHttpPort}"),
-            //     new("DAPR_GRPC_ENDPOINT", $"http://127.0.0.1:{harness.DaprGrpcPort}")
-            // });
-            
-            builder.Services.AddDaprJobsClient();
-            builder.Services.AddLogging();
-
-            app = builder.Build();
-
-            app.MapDaprScheduledJobHandler(async (string incomingJobName, ReadOnlyMemory<byte> payload, ILogger<JobsTests>? logger, CancellationToken ct) =>
+        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
             {
-                logger?.LogInformation("Received job {Job}", incomingJobName);
-                invocationTcs.TrySetResult(Encoding.UTF8.GetString(payload.Span));
-                await Task.CompletedTask;
-            });
+                builder.Services.AddDaprJobsClient();
+            })
+            .ConfigureApp(app =>
+            {
+                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
+                    ILogger<JobsTests>? logger, CancellationToken _) =>
+                {
+                    logger?.LogInformation("Received job {Job}", incomingJobName);
+                    invocationTcs.TrySetResult(Encoding.UTF8.GetString(payload.Span));
+                });
+            })
+            .BuildAndStartAsync();
+        
+        // Clean test logic
+        using var scope = testApp.CreateScope();
+        var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
 
-            await app.StartAsync();
+        var payload = "Hello!"u8.ToArray();
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
+            payload, repeats: 1, overwrite: true);
 
-            await using var scope = app!.Services.CreateAsyncScope();
-            var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
-
-            var payload = "Hello!"u8.ToArray();
-            await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
-                payload, repeats: 1, overwrite: true);
-            
-            // Wait for the handler to confirm execution
-            var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
-            Assert.Equal(Encoding.UTF8.GetString(payload), received);
-        }
-        finally
-        {
-            // Clean up the environment variables
-            Environment.SetEnvironmentVariable("DAPR_HTTP_ENDPOINT", null);
-            Environment.SetEnvironmentVariable("DAPR_GRPC_ENDPOINT", null);
-            
-            await harness.DisposeAsync();
-            if (app is not null)
-                await app.DisposeAsync();
-        }
+        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal(Encoding.UTF8.GetString(payload), received);
     }
 }
