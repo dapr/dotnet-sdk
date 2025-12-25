@@ -97,7 +97,7 @@ public static partial class ParallelExtensions
 
         // Create a logger to help diagnose the issue
         var logger = context.CreateReplaySafeLogger(typeof(ParallelExtensions));
-        LogStart(logger, inputList.Count, maxConcurrency);
+        logger.LogDebug("Starting with {InputCount} inputs with max concurrency {MaxConcurrency}", inputList.Count, maxConcurrency);
         
         // To maintain determinism, we map inputs to their tasks/results
         // We will fill this array as tasks complete
@@ -105,6 +105,7 @@ public static partial class ParallelExtensions
         
         // This dictionary tracks active tasks to their original index so we can place results correctly.
         var activeTasks = new Dictionary<Task<TResult>, int>(maxConcurrency);
+        var exceptions = new List<Exception>();
         
         // Use an iterator for the input list
         int nextInputIndex = 0;
@@ -112,8 +113,15 @@ public static partial class ParallelExtensions
         // Fill the initial window
         while (nextInputIndex < inputList.Count && activeTasks.Count < maxConcurrency)
         {
-            var task = taskFactory(inputList[nextInputIndex]);
-            activeTasks.Add(task, nextInputIndex);
+            try
+            {
+                var task = taskFactory(inputList[nextInputIndex]);
+                activeTasks.Add(task, nextInputIndex);
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
             nextInputIndex++;
         }
         
@@ -128,24 +136,39 @@ public static partial class ParallelExtensions
             activeTasks.Remove(completedTask);
             
             // Store result (awaiting it will propagate exceptions, if any)
-            results[completedIndex] = await completedTask;
+            try
+            {
+                results[completedIndex] = await completedTask;
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
             
             // If there are more inputs, schedule the next one immediately
             if (nextInputIndex < inputList.Count)
             {
-                var newTask = taskFactory(inputList[nextInputIndex]);
-                activeTasks.Add(newTask, nextInputIndex);
+                try
+                {
+                    var newTask = taskFactory(inputList[nextInputIndex]);
+                    activeTasks.Add(newTask, nextInputIndex);
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
                 nextInputIndex++;
             }
         }
 
-        LogComplete(logger, results.Length);
+        if (exceptions.Count > 0)
+        {
+            throw new AggregateException($"{exceptions.Count} out of {inputList.Count} tasks failed", exceptions);
+        }
+
+        logger.LogDebug("Completed processing {ResultCount} results", results.Length);
         return results;
     }
 
-    [LoggerMessage(LogLevel.Debug, "Starting with {InputCount} inputs with max concurrency {MaxConcurrency}")]
-    private static partial void LogStart(ILogger logger, int inputCount, int maxConcurrency);
-
-    [LoggerMessage(LogLevel.Debug, "Completed processing {ResultCount} results")]
-    private static partial void LogComplete(ILogger logger, int resultCount);
+    // Removed partial methods to avoid generator issues in tests
 }
