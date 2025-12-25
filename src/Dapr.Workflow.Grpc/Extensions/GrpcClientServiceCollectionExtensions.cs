@@ -13,6 +13,7 @@
 
 using Dapr.DurableTask.Protobuf;
 using Grpc.Net.ClientFactory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Workflow.Grpc.Extensions;
@@ -28,11 +29,14 @@ internal static class GrpcClientServiceCollectionExtensions
     internal static IHttpClientBuilder AddDaprWorkflowGrpcClient(
         this IServiceCollection services,
         Action<GrpcClientFactoryOptions>? configureClient = null) =>
-        services.AddGrpcClient<TaskHubSidecarService.TaskHubSidecarServiceClient>(options =>
+        services.AddGrpcClient<TaskHubSidecarService.TaskHubSidecarServiceClient>((serviceProvider, options) =>
             {
+                // Get configuration from DI to support test scenarios with dynamic ports
+                var configuration = serviceProvider.GetService<IConfiguration>();
+
                 // Use DaprDefaults for consistent sidecar address resolution
-                options.Address = new Uri(DaprDefaults.GetDefaultGrpcEndpoint());
-                
+                options.Address = new Uri(DaprDefaults.GetDefaultGrpcEndpoint(configuration));
+
                 // Configure for long-lived streaming connections
                 options.ChannelOptionsActions.Add(channelOptions =>
                 {
