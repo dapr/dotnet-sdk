@@ -55,7 +55,9 @@ public sealed class WorkflowHarness : BaseHarness
         
         // Set the service ports
         this.DaprPlacementExternalPort = _placement.ExternalPort;
+        this.DaprPlacementAlias = _placement.NetworkAlias;
         this.DaprSchedulerExternalPort = _scheduler.ExternalPort;
+        this.DaprSchedulerAlias = _scheduler.NetworkAlias;
     }
     
     /// <inheritdoc />
