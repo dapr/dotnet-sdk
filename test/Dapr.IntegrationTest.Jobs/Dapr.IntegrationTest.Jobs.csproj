@@ -4,6 +4,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <RootNamespace>Dapr.E2E.Test.Jobs</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

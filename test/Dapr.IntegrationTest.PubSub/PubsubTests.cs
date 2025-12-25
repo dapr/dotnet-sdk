@@ -21,7 +21,7 @@
 // using Microsoft.Extensions.DependencyInjection;
 // using Microsoft.Extensions.Hosting;
 //
-// namespace Dapr.E2E.Test.PubSub;
+// namespace Dapr.IntegrationTest.PubSub;
 //
 // public class PubsubTests
 // {

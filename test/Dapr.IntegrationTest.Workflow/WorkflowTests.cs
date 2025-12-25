@@ -17,7 +17,7 @@ using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Dapr.E2E.Test.Workflow;
+namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class WorkflowTests
 {
