@@ -30,9 +30,12 @@ public sealed class JobsTests
     public async Task ShouldScheduleAndReceiveJob()
     {
         var options = new DaprRuntimeOptions();
-        var componentsDir = Path.Combine(Directory.GetCurrentDirectory(), $"jobs-components-{Guid.NewGuid():N}");
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"e2e-job-{Guid.NewGuid():N}";
-        var invocationTcs = new TaskCompletionSource<(string payload, string jobName)>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var invocationTcs =
+            new TaskCompletionSource<(string payload, string jobName)>(TaskCreationOptions
+                .RunContinuationsAsynchronously);
 
         var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -44,7 +47,7 @@ public sealed class JobsTests
                     var config = sp.GetRequiredService<IConfiguration>();
                     var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
                     var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
-                
+
                     if (!string.IsNullOrEmpty(grpcEndpoint))
                         clientBuilder.UseGrpcEndpoint(grpcEndpoint);
                     if (!string.IsNullOrEmpty(httpEndpoint))
@@ -61,7 +64,7 @@ public sealed class JobsTests
                 });
             })
             .BuildAndStartAsync();
-        
+
         // Clean test logic
         using var scope = testApp.CreateScope();
         var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();

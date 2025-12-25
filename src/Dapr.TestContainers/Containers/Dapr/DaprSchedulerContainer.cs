@@ -67,10 +67,10 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
             "--etcd-data-dir", containerDataDir
         ];
 
-        _testDirectory = TestDirectoryManager.CreateTemporaryTestDirectory();
+        _testDirectory = TestDirectoryManager.CreateTestDirectory("scheduler");
         
         _container = new ContainerBuilder()
-			.WithImage(options.SchedulerImageTag)
+            .WithImage(options.SchedulerImageTag)
 			.WithName(_containerName)
             .WithNetwork(network)
             .WithCommand(cmd.ToArray())
@@ -94,7 +94,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 	public ValueTask DisposeAsync()
     {
         // Remove the data directory if it exists
-        TestDirectoryManager.CleanUpTemporaryTestDirectory(_testDirectory);
+        TestDirectoryManager.CleanUpDirectory(_testDirectory);
         
         // if (Directory.Exists(_hostDataDir))
         //     Directory.Delete(_hostDataDir, true);

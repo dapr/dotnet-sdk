@@ -149,7 +149,7 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
         await Network.DisposeAsync();
         
         // Clean up generated YAML files
-        CleanupComponents(ComponentsDirectory);
+        TestDirectoryManager.CleanUpDirectory(ComponentsDirectory);
         
         GC.SuppressFinalize(this);
     }

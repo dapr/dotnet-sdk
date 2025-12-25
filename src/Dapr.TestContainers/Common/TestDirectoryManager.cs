@@ -12,41 +12,78 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace Dapr.TestContainers.Common;
 
-internal static class TestDirectoryManager
+/// <summary>
+/// Provides test directory management utilities.
+/// </summary>
+public static class TestDirectoryManager
 {
-    private const string GlobalRoot = "/tmp/dapr-scheduler";
+    // Use the system temp path as the base for cross-platform compatibility
+    private static readonly string BasePath = Path.GetTempPath();
 
-    public static string CreateTemporaryTestDirectory()
+    /// <summary>
+    /// Creates a new test directory.
+    /// </summary>
+    /// <param name="prefix">Any optional prefix value to set on the directory name.</param>
+    /// <returns></returns>
+    public static string CreateTestDirectory(string prefix)
     {
-        var uniqueTestDir = Path.Combine(GlobalRoot, Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(uniqueTestDir);
+        var folderName = $"{prefix}-{Guid.NewGuid():N}";
+        var directoryPath = Path.Combine(BasePath, folderName);
+
+        Directory.CreateDirectory(directoryPath);
         
-        // For Linux : Ensure directory has appropriate permissions
-        if (Environment.OSVersion.Platform == PlatformID.Unix)
+        // For Linux/Unix: Ensure directory has appropriate permissions (777).
+        // This is crucial for Docker volume mounts where the container user might not match the host user.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            var processStartInfo = new System.Diagnostics.ProcessStartInfo
+            try
             {
-                FileName = "chmod",
-                Arguments = "-R 777 " + uniqueTestDir,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            System.Diagnostics.Process.Start(processStartInfo)?.WaitForExit();
+                var processStartInfo = new ProcessStartInfo
+                {
+                    FileName = "chmod",
+                    Arguments = $"-R 777 \"{directoryPath}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                using var process = Process.Start(processStartInfo);
+                process?.WaitForExit();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to set permissions on {directoryPath}: {ex.Message}");
+            }
         }
 
-        return uniqueTestDir;
+        return directoryPath;
     }
     
-    public static void CleanUpTemporaryTestDirectory(string directoryPath)
+    /// <summary>
+    /// Attempts to delete the directory and all its contents.
+    /// </summary>
+    public static void CleanUpDirectory(string directoryPath)
     {
-        if (Directory.Exists(directoryPath))
+        if (string.IsNullOrWhiteSpace(directoryPath)) return;
+
+        try
         {
-            Directory.Delete(directoryPath, true);
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log warning but don't crash; typical issue is file locking or racing containers
+            Console.WriteLine($"Warning: Failed to clean up directory {directoryPath}: {ex.Message}");
         }
     }
 }
