@@ -59,7 +59,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 	public DaprSchedulerContainer(DaprRuntimeOptions options, INetwork network)
 	{
 		// Scheduler service runs via port 51005
-        const string containerDataDir = "/tmp/dapr-scheduler";
+        const string containerDataDir = "/data/dapr-scheduler";
         string[] cmd =
         [
             "./scheduler",
