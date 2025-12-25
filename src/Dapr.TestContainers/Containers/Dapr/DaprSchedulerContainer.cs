@@ -32,8 +32,8 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 {
 	private readonly IContainer _container;
     // Contains the data directory used by this instance of the Dapr scheduler service
-    private string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
-    private string _containerName = $"scheduler-{Guid.NewGuid():N}";
+    private readonly string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
+    private readonly string _containerName = $"scheduler-{Guid.NewGuid():N}";
 
     /// <summary>
     /// The internal network alias/name of the container.
@@ -67,7 +67,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
         ];
 
         //Create a unique temp directory on the host for the test run based on this instance's data directory
-        Directory.CreateDirectory(_hostDataDir);
+        var directory = EnsureDataDirectory();
         
         _container = new ContainerBuilder()
 			.WithImage(options.SchedulerImageTag)
@@ -76,22 +76,42 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
             .WithCommand(cmd.ToArray())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
             // Mount an anonymous volume to /data to ensure the scheduler has write permissions
-            .WithBindMount(_hostDataDir, containerDataDir, AccessMode.ReadWrite)
+            .WithBindMount(directory, containerDataDir, AccessMode.ReadWrite)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("api is ready"))
 			.Build();
 	}
+
+    private static string EnsureDataDirectory()
+    {
+        var dataDir = Path.Combine(Path.GetTempPath(), "dapr-scheduler", "default-dapr-scheduler-server-0");
+        if (!Directory.Exists(dataDir))
+        {
+            // Ensuring the directory exists with appropriate permissions
+            Directory.CreateDirectory(dataDir);
+
+            // Set permissions if on Linux
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                var processStartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "chmod",
+                    Arguments = "-R 777 " + dataDir,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                System.Diagnostics.Process.Start(processStartInfo)?.WaitForExit();
+            }
+        }
+
+        return dataDir;
+    }
     
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		await _container.StartAsync(cancellationToken);
 		ExternalPort = _container.GetMappedPublicPort(InternalPort);
-		
-		// Empty dirs with 0777 inside container:
-		await _container.ExecAsync(["sh", "-c", "mkdir -p ./default-dapr-scheduler-server-0/dapr-0.1 && chmod 0777 ./default-dapr-scheduler-server-0/dapr-0.1"
-		], cancellationToken);
-		await _container.ExecAsync(["sh", "-c", "mkdir -p ./dapr-scheduler-existing-cluster && chmod 0777 ./dapr-scheduler-existing-cluster"
-		], cancellationToken);
 	}
 
     /// <inheritdoc />
