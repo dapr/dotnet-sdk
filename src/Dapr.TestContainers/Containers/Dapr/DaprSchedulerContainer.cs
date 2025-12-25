@@ -32,7 +32,8 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 {
 	private readonly IContainer _container;
     // Contains the data directory used by this instance of the Dapr scheduler service
-    private readonly string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
+    //private readonly string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
+    private readonly string _testDirectory;
     private readonly string _containerName = $"scheduler-{Guid.NewGuid():N}";
 
     /// <summary>
@@ -66,8 +67,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
             "--etcd-data-dir", containerDataDir
         ];
 
-        //Create a unique temp directory on the host for the test run based on this instance's data directory
-        var directory = EnsureDataDirectory();
+        _testDirectory = TestDirectoryManager.CreateTemporaryTestDirectory();
         
         _container = new ContainerBuilder()
 			.WithImage(options.SchedulerImageTag)
@@ -76,36 +76,10 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
             .WithCommand(cmd.ToArray())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
             // Mount an anonymous volume to /data to ensure the scheduler has write permissions
-            .WithBindMount(directory, containerDataDir, AccessMode.ReadWrite)
+            .WithBindMount(_testDirectory, containerDataDir, AccessMode.ReadWrite)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("api is ready"))
 			.Build();
 	}
-
-    private static string EnsureDataDirectory()
-    {
-        var dataDir = Path.Combine(Path.GetTempPath(), "dapr-scheduler", "default-dapr-scheduler-server-0");
-        if (!Directory.Exists(dataDir))
-        {
-            // Ensuring the directory exists with appropriate permissions
-            Directory.CreateDirectory(dataDir);
-
-            // Set permissions if on Linux
-            if (Environment.OSVersion.Platform == PlatformID.Unix)
-            {
-                var processStartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "chmod",
-                    Arguments = "-R 777 " + dataDir,
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                };
-                System.Diagnostics.Process.Start(processStartInfo)?.WaitForExit();
-            }
-        }
-
-        return dataDir;
-    }
     
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -120,8 +94,10 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 	public ValueTask DisposeAsync()
     {
         // Remove the data directory if it exists
-        if (Directory.Exists(_hostDataDir))
-            Directory.Delete(_hostDataDir, true);
+        TestDirectoryManager.CleanUpTemporaryTestDirectory(_testDirectory);
+        
+        // if (Directory.Exists(_hostDataDir))
+        //     Directory.Delete(_hostDataDir, true);
         return _container.DisposeAsync();
     }
 }
