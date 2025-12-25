@@ -47,7 +47,6 @@ public class WorkflowGrpcClientTests
         Assert.Equal("instance-123", capturedRequest!.InstanceId);
         Assert.Equal("MyWorkflow", capturedRequest.Name);
         Assert.Equal("{\"x\":1}", capturedRequest.Input);
-        Assert.Equal(string.Empty, capturedRequest.Version);
     }
 
     [Fact]

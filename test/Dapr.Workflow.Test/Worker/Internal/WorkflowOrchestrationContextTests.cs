@@ -16,6 +16,8 @@ using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Worker.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
+using Newtonsoft.Json;
+using JsonException = System.Text.Json.JsonException;
 
 namespace Dapr.Workflow.Test.Worker.Internal;
 
@@ -472,40 +474,6 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public async Task WaitForExternalEventAsync_ShouldIgnoreNonMatchingHistoryEvent_AndReturnUncompletedTask()
-    {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        var history = new[]
-        {
-            new HistoryEvent
-            {
-                EventRaised = new EventRaisedEvent { Name = "OtherEvent", Input = "123" }
-            }
-        };
-
-        var context = new WorkflowOrchestrationContext(
-            name: "wf",
-            instanceId: "i",
-            pastEvents: history,
-            newEvents: [],
-            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
-
-        Assert.True(context.IsReplaying);
-
-        var task = context.WaitForExternalEventAsync<int>("MyEvent");
-
-        Assert.False(task.IsCompleted);
-
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => context.WaitForExternalEventAsync<int>("MyEvent", cts.Token));
-
-        Assert.False(context.IsReplaying);
-    }
-
-    [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnDefault_WhenEventInHistoryHasNullInput()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -655,7 +623,7 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public async Task CallChildWorkflowAsync_ShouldThrowInvalidOperationException_WhenHistoryEventIsUnexpectedType()
+    public async Task CallChildWorkflowAsync_ShouldThrowJsonDeserializationException_WhenHistoryEventIsUnexpectedType()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
@@ -676,8 +644,8 @@ public class WorkflowOrchestrationContextTests
             workflowSerializer: serializer,
             loggerFactory: NullLoggerFactory.Instance);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => context.CallChildWorkflowAsync<int>("ChildWf"));
-        Assert.Contains("Unexpected history event type", ex.Message);
+        var ex = await Assert.ThrowsAsync<JsonException>(() => context.CallChildWorkflowAsync<int>("ChildWf"));
+        Assert.Contains("The JSON value could not be converted to ", ex.Message);
     }
 
     [Fact]

@@ -50,14 +50,14 @@ public class WorkflowServiceCollectionExtensionsTests
     public void AddDaprWorkflowBuilder_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
         IServiceCollection services = null!;
-        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowBuilder());
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowBuilder(null));
     }
 
     [Fact]
     public void WithSerializer_InstanceOverload_ShouldThrowArgumentNullException_WhenSerializerIsNull()
     {
         var services = new ServiceCollection();
-        var builder = services.AddDaprWorkflowBuilder();
+        var builder = services.AddDaprWorkflowBuilder(null);
 
         Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((IWorkflowSerializer)null!));
     }
@@ -66,7 +66,7 @@ public class WorkflowServiceCollectionExtensionsTests
     public void WithSerializer_FactoryOverload_ShouldThrowArgumentNullException_WhenFactoryIsNull()
     {
         var services = new ServiceCollection();
-        var builder = services.AddDaprWorkflowBuilder();
+        var builder = services.AddDaprWorkflowBuilder(null);
 
         Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((Func<IServiceProvider, IWorkflowSerializer>)null!));
     }
@@ -75,7 +75,7 @@ public class WorkflowServiceCollectionExtensionsTests
     public void WithJsonSerializer_ShouldThrowArgumentNullException_WhenJsonOptionsIsNull()
     {
         var services = new ServiceCollection();
-        var builder = services.AddDaprWorkflowBuilder();
+        var builder = services.AddDaprWorkflowBuilder(null);
 
         Assert.Throws<ArgumentNullException>(() => builder.WithJsonSerializer(null!));
     }

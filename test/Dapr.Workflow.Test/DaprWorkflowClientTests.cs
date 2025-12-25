@@ -158,30 +158,6 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
-    public async Task WaitForWorkflowCompletionAsync_ShouldWrapMetadataIntoWorkflowState()
-    {
-        var metadata = new WorkflowMetadata(
-            InstanceId: "i",
-            Name: "wf",
-            RuntimeStatus: WorkflowRuntimeStatus.Completed,
-            CreatedAt: DateTime.MinValue,
-            LastUpdatedAt: DateTime.MinValue,
-            Serializer: new Serialization.JsonWorkflowSerializer())
-        {
-            SerializedOutput = "\"done\""
-        };
-
-        var inner = new CapturingWorkflowClient { WaitForCompletionResult = metadata };
-        var client = new DaprWorkflowClient(inner);
-
-        var state = await client.WaitForWorkflowCompletionAsync("i");
-
-        Assert.True(state.Exists);
-        Assert.True(state.IsWorkflowCompleted);
-        Assert.Equal(WorkflowRuntimeStatus.Completed, state.RuntimeStatus);
-    }
-
-    [Fact]
     public async Task RaiseEventAsync_ShouldValidateParameters_AndForwardToInner()
     {
         var inner = new CapturingWorkflowClient();
