@@ -315,4 +315,17 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     {
         await _innerClient.DisposeAsync();
     }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (_innerClient is IDisposable innerClientDisposable)
+        {
+            innerClientDisposable.Dispose();
+        }
+        else
+        {
+            _ = _innerClient.DisposeAsync().AsTask();
+        }
+    }
 }

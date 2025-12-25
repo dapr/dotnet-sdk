@@ -14,6 +14,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Dapr.Workflow.Client;
 
 namespace Dapr.Workflow;
@@ -21,7 +22,7 @@ namespace Dapr.Workflow;
 /// <summary>
 /// Defines methods for scheduling and managing Dapr Workflow instances.
 /// </summary>
-public interface IDaprWorkflowClient: IAsyncDisposable
+public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
 {
     /// <summary>
     /// Schedules a new workflow instance for execution.
