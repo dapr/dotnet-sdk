@@ -19,13 +19,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-public sealed class WorkflowTests
+public sealed class SimpleWorkflowTests
 {
     [Fact]
     public async Task ShouldHandleSimpleWorkflow()
     {
         var options = new DaprRuntimeOptions();
-        var componentsDir = Path.Combine(Directory.GetCurrentDirectory(), $"workflow-components-{Guid.NewGuid():N}");
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
         var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
