@@ -21,7 +21,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class TaskChainingWorkflowTests
 {
-    private static readonly int[] expected = [43, 44, 46];
+    private static readonly int[] expected = [43, 45, 90];
 
     [Fact]
     public async Task ShouldHandleTaskChaining()
@@ -98,7 +98,7 @@ public sealed class TaskChainingWorkflowTests
     {
         public override Task<int> RunAsync(WorkflowActivityContext context, int input)
         {
-            return Task.FromResult(input ^ 2);
+            return Task.FromResult(input * 2);
         }
     }
 }
