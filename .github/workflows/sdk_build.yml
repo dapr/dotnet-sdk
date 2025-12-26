@@ -43,13 +43,26 @@ jobs:
         with:
           name: packages
           path: ${{ env.NUPKG_OUTDIR }}
-  integration-tests-v2:
-    name: Integration Tests (v2)
+  discover-integration-v2-tests:
     runs-on: ubuntu-latest
+    outputs: 
+      matrix: ${{ steps.set-metrix-outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v1
+      - id: set-matrix
+        run: |
+          # Find all csproj files matching the pattern recursively
+          PROJECTS=$(find test -name "Dapr.IntegrationTest.*.csproj" | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+  integration-tests-v2:
+    name: Integration Tests (gen2) - ${{ matrix.os }} - ${{ matrix.project }} # Naming includes project
+    needs: discover-integration-v2-tests
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         dotnet-version: [ '8.0', '9.0' ]
+        os: [ubuntu-latest]
         include:
           - dotnet-version: '8.0'
             display-name: '.NET 8.0'
@@ -70,25 +83,20 @@ jobs:
         with:
           dotnet-version: ${{ matrix.install-version }}
           dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
-#      - name: Build
-#        # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-#        run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
       - name: Integration Tests
         id: integration-tests-v2
         continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
         run: |
-          for project in test/Dapr.IntegrationTest.*/*.csproj; do
-            dotnet test "$project" \
-            --configuration release \
-            --framework ${{ matrix.framework }} \
-            --no-restore \
-            --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-            --logger "GitHubActions;report-warnings=false" \
-            --results-directory "${{ github.workspace }}/TestResults" \
-            /p:CollectCoverage=true \
-            /p:CoverletOutputFormat=opencover \
-            /p:GITHUB_ACTIONS=false
-          done
+          dotnet test "${{ matrix.project }}" \
+          --configuration release \
+          --framework ${{ matrix.framework }} \
+          --no-restore \
+          --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+          --logger "GitHubActions;report-warnings=false" \
+          --results-directory "${{ github.workspace }}/TestResults" \
+          /p:CollectCoverage=true \
+          /p:CoverletOutputFormat=opencover \
+          /p:GITHUB_ACTIONS=false
       - name: Upload test coverage
         uses: codecov/codecov-action@v1
         with:
@@ -100,8 +108,20 @@ jobs:
         with:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  discover-unit-test-projects:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-metrix-outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v1
+      - id: set-matrix
+        run: |
+          # Find all csproj files matching the pattern recursively
+          PROJECTS=$(find test -name "Dapr.Test.*.csproj" | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
   test:
     name: Test .NET ${{ matrix.dotnet-version }}
+    needs: discover-unit-test-projects
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -134,7 +154,7 @@ jobs:
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
       run: |
-        dotnet test  \
+        dotnet test "${{ matrix.project }}"  \
         --configuration release \
         --framework ${{ matrix.framework }} \
         --no-build \
