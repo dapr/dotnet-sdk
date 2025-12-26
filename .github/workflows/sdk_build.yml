@@ -46,7 +46,7 @@ jobs:
   discover-integration-v2-tests:
     runs-on: ubuntu-latest
     outputs: 
-      matrix: ${{ steps.set-metrix.outputs.matrix }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v1
       - id: set-matrix
@@ -112,7 +112,7 @@ jobs:
   discover-unit-test-projects:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-metrix.outputs.matrix }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v1
       - id: set-matrix
