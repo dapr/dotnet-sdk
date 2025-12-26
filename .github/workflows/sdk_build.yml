@@ -90,12 +90,12 @@ jobs:
       id: integration-tests
       continue-on-error: false
       run: |
-        dotnet test (Get-ChildItem -Recurse -Filter *.csproj | Where-Object { $_.DirectoryName -match 'Dapr\.IntegrationTest\.' }).FullName \
+        dotnet test
         --configuration release \
         --framework ${{ matrix.framework }} \
         --no-build \
         --no-restore \
-        --filter FullyQualifiedName\!~Dapr.E2E.Test \
+        --filter FullyQualifiedName\~Dapr.IntegrationTest. \
         --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
         --logger "GitHubActions;report-warnings=false" \
         --results-directory "${{ github.workspace }}/TestResults" \
@@ -106,12 +106,12 @@ jobs:
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
       run: |
-        dotnet test \
+        dotnet test
           --configuration release \
           --framework ${{ matrix.framework }} \
           --no-build \
           --no-restore \
-          --filter "FullyQualifiedName\!~Dapr.E2E.Test&FullyQualifiedName\!~Dapr.IntegrationTests" \
+          --filter "FullyQualifiedName\!~Dapr.E2E.Test&FullyQualifiedName\!~Dapr.IntegrationTest." \
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
           --logger "GitHubActions;report-warnings=false" \
           --results-directory "${{ github.workspace }}/TestResults" \
