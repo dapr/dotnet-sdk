@@ -263,8 +263,12 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             }
             
             // Create the activity context
+            var taskExecutionKey = !string.IsNullOrEmpty(request.TaskExecutionId)
+                ? request.TaskExecutionId
+                : request.TaskId.ToString();
+            
             var context = new WorkflowActivityContextImpl(activityIdentifier,
-                request.OrchestrationInstance?.InstanceId ?? string.Empty, request.TaskExecutionId);
+                request.OrchestrationInstance?.InstanceId ?? string.Empty, taskExecutionKey);
             
             // Deserialize the input
             object? input = null;
