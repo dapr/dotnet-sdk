@@ -15,7 +15,6 @@ using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
-using Dapr.Jobs.Models.Responses;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Microsoft.Extensions.Configuration;
