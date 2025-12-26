@@ -63,6 +63,7 @@ jobs:
       matrix:
         dotnet-version: [ '8.0', '9.0' ]
         os: [ubuntu-latest]
+        project: ${{ fromJson(needs.discover-integration-v2-tests.outputs.matrix) }}
         include:
           - dotnet-version: '8.0'
             display-name: '.NET 8.0'
@@ -127,6 +128,7 @@ jobs:
       fail-fast: false
       matrix:
         dotnet-version: ['8.0', '9.0']
+        project: ${{ fromJson(needs.discover-unit-test-projects.outputs.matrix) }}
         include:
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
