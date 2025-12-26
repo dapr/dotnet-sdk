@@ -55,7 +55,7 @@ jobs:
           PROJECTS=$(find test -name "Dapr.IntegrationTest.*.csproj" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
   integration-tests-v2:
-    name: Integration Tests (gen2) - ${{ matrix.os }} - ${{ matrix.project }} # Naming includes project
+    name: Integration Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
     needs: discover-integration-v2-tests
     runs-on: ${{ matrix.os }}
     strategy:
@@ -118,10 +118,9 @@ jobs:
       - id: set-matrix
         run: |
           # Find all csproj files matching the pattern recursively
-          PROJECTS=$(find test -name "Dapr.Test.*.csproj" | jq -R -s -c 'split("\n")[:-1]')
+          PROJECTS=$(find test -name "Dapr.*.Test.csproj" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
-  test:
-    name: Test .NET ${{ matrix.dotnet-version }}
+  unit-tests:
     needs: discover-unit-test-projects
     runs-on: ubuntu-latest
     strategy:
@@ -186,7 +185,7 @@ jobs:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'test', 'integration-test', 'integration-tests-v2']
+    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2']
     runs-on: ubuntu-latest
     if: |
       startswith(github.ref, 'refs/tags/v') &&
