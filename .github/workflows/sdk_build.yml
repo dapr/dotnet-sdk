@@ -43,7 +43,53 @@ jobs:
         with:
           name: packages
           path: ${{ env.NUPKG_OUTDIR }}
-
+  integration-tests-v2:
+    name: Integration Tests (v2)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        dotnet-version: [ '8.0', '9.0' ]
+        include:
+          - dotnet-version: '8.0'
+            display-name: '.NET 8.0'
+            framework: 'net8'
+            prefix: 'net8'
+            install-version: '8.0.x'
+          - dotnet-version: '9.0'
+            display-name: '.NET 9.0'
+            framework: 'net9'
+            prefix: 'net9'
+            install-version: '9.0.x'
+      steps:
+        - uses: actions/checkout@v1
+        - name: Parse release version
+          run: python ./.github/scripts/get_release_version.py
+        - name: Setup ${{ matrix.display-name }}
+          uses: actions/setup-dotnet@v3
+          with:
+            dotnet-version: ${{ matrix.install-version }}
+            dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
+        - name: Build
+          # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+          run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+        - name: Integration Tests
+          id: integration-tests-v2
+          continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
+          run: |
+            for project in test/Dapr.IntegrationTest.*/*.csproj; do
+              dotnet test "$project" \
+              --configuration release \
+              --framework ${{ matrix.framework }} \
+              --no-build \
+              --no-restore \
+              --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+              --logger "GitHubActions;report-warnings=false" \
+              --results-directory "${{ github.workspace }}/TestResults" \
+              /p:CollectCoverage=true \
+              /p:CoverletOutputFormat=opencover \
+              /p:GITHUB_ACTIONS=false
+            done
   test:
     name: Test .NET ${{ matrix.dotnet-version }}
     runs-on: ubuntu-latest
@@ -71,37 +117,9 @@ jobs:
       with:
         dotnet-version: ${{ matrix.install-version }}
         dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
-#    - name: Setup .NET 8 (required)
-#      uses: actions/setup-dotnet@v3
-#      if: ${{ matrix.install-version != '8.0.x' }}
-#      with:
-#        dotnet-version: '8.0.x'
-#        dotnet-quality: 'ga'
-#    - name: Setup .NET 9 (required)
-#      uses: actions/setup-dotnet@v3
-#      if: ${{ matrix.install-version != '9.0.x' }}
-#      with:
-#        dotnet-version: '9.0.x'
-#        dotnet-quality: 'ga'
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
-    - name: Integration Tests (gen2)
-      id: integration-tests
-      continue-on-error: false
-      run: |
-        dotnet test
-        --configuration release \
-        --framework ${{ matrix.framework }} \
-        --no-build \
-        --no-restore \
-        --filter FullyQualifiedName~Dapr.IntegrationTest. \
-        --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-        --logger "GitHubActions;report-warnings=false" \
-        --results-directory "${{ github.workspace }}/TestResults" \
-        /p:CollectCoverage=true \
-        /p:CoverletOutputFormat=opencover \
-        /p:GITHUB_ACTIONS=false
     - name: Test
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
