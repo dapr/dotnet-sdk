@@ -16,7 +16,6 @@ namespace Dapr.E2E.Test;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Linq;
 using System.Threading;
 using Xunit.Abstractions;
@@ -24,17 +23,17 @@ using Xunit.Abstractions;
 public class DaprCommand
 {
     private readonly ITestOutputHelper output;
-    private readonly CircularBuffer<string> logBuffer = new CircularBuffer<string>(1000);
+    private readonly CircularBuffer<string> logBuffer = new(1000);
 
     public DaprCommand(ITestOutputHelper output)
     {
         this.output = output;
     }
 
-    private EventWaitHandle outputReceived = new EventWaitHandle(false, EventResetMode.ManualReset);
+    private EventWaitHandle outputReceived = new(false, EventResetMode.ManualReset);
     public string DaprBinaryName { get; set; }
     public string Command { get; set; }
-    public Dictionary<string, string> EnvironmentVariables { get; set; } = new Dictionary<string, string>();
+    public Dictionary<string, string> EnvironmentVariables { get; set; } = new();
     public string[] OutputToMatch { get; set; }
     public TimeSpan Timeout { get; set; }
 

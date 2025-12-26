@@ -36,7 +36,7 @@ public static class ActorRuntimeChecker
             }
             catch (DaprApiException)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(250));
+                await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
             }
         }
     }

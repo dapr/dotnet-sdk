@@ -77,7 +77,7 @@ public class DaprTestAppFixture : IDisposable
         }
     }
 
-    private State Launch(ITestOutputHelper output, DaprRunConfiguration configuration)
+    private static State Launch(ITestOutputHelper output, DaprRunConfiguration configuration)
     {
         var app = new DaprTestApp(output, configuration.AppId);
         try

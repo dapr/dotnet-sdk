@@ -28,8 +28,8 @@ public class DaprTestApp
 {
     static string daprBinaryName = "dapr";
     private string appId;
-    private readonly string[] outputToMatchOnStart = new string[] { "dapr initialized. Status: Running.", };
-    private readonly string[] outputToMatchOnStop = new string[] { "app stopped successfully", "failed to stop app id", };
+    private readonly string[] outputToMatchOnStart = ["dapr initialized. Status: Running."];
+    private readonly string[] outputToMatchOnStop = ["app stopped successfully", "failed to stop app id"];
 
     private ITestOutputHelper testOutput;
 
@@ -63,35 +63,34 @@ public class DaprTestApp
 
         if (configuration.UseAppPort)
         {
-            arguments.AddRange(new[] { "--app-port", appPort.ToString(CultureInfo.InvariantCulture), });
+            arguments.AddRange(["--app-port", appPort.ToString(CultureInfo.InvariantCulture)]);
         }
 
         if (!string.IsNullOrEmpty(configuration.AppProtocol))
         {
-            arguments.AddRange(new[] { "--app-protocol", configuration.AppProtocol });
+            arguments.AddRange(["--app-protocol", configuration.AppProtocol]);
         }
 
-        arguments.AddRange(new[]
-        {
+        arguments.AddRange([
             // separator
             "--",
 
             // `dotnet run` args
             "dotnet", "run",
             "--project", configuration.TargetProject,
-            "--framework", GetTargetFrameworkName(),
-        });
+            "--framework", GetTargetFrameworkName()
+        ]);
 
         if (configuration.UseAppPort)
         {
             // The first argument is the port, if the application needs it.
-            arguments.AddRange(new[] { "--", $"{appPort.ToString(CultureInfo.InvariantCulture)}" });
-            arguments.AddRange(new[] { "--urls", $"http://localhost:{appPort.ToString(CultureInfo.InvariantCulture)}", });
+            arguments.AddRange(["--", $"{appPort.ToString(CultureInfo.InvariantCulture)}"]);
+            arguments.AddRange(["--urls", $"http://localhost:{appPort.ToString(CultureInfo.InvariantCulture)}"]);
         }
 
         if (configuration.AppJsonSerialization)
         {
-            arguments.AddRange(new[] { "--json-serialization" });
+            arguments.AddRange(["--json-serialization"]);
         }
 
         // TODO: we don't do any quoting right now because our paths are guaranteed not to contain spaces
@@ -135,8 +134,6 @@ public class DaprTestApp
 
         return targetFrameworkName switch
         {
-            ".NETCoreApp,Version=v6.0" => "net6",
-            ".NETCoreApp,Version=v7.0" => "net7",
             ".NETCoreApp,Version=v8.0" => "net8",
             ".NETCoreApp,Version=v9.0" => "net9",
             _ => throw new InvalidOperationException($"Unsupported target framework: {targetFrameworkName}")

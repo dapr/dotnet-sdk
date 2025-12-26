@@ -41,49 +41,41 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
         var invocationExpr = (InvocationExpressionSyntax)context.Node;
 
         if (invocationExpr.Expression is not MemberAccessExpressionSyntax memberAccessExpr)
-        {
             return;
-        }
 
         if (memberAccessExpr.Name.Identifier.Text != "ScheduleNewWorkflowAsync")
-        {
             return;
-        }
 
         var argumentList = invocationExpr.ArgumentList.Arguments;
         if (argumentList.Count == 0)
-        {
             return;
-        }
 
         var firstArgument = argumentList[0].Expression;
-        if (firstArgument is not InvocationExpressionSyntax nameofInvocation)
-        {
+        if (firstArgument is not InvocationExpressionSyntax nameofInvocation ||
+            nameofInvocation.Expression is not IdentifierNameSyntax { Identifier.Text : "nameof"} ||
+            nameofInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is not {} nameofArgExpr)
             return;
-        }
-
-        var workflowName = nameofInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression.ToString().Trim('"');
-        if (workflowName == null)
-        {
+        
+        if (context.SemanticModel.GetSymbolInfo(nameofArgExpr, context.CancellationToken).Symbol is not INamedTypeSymbol workflowTypeSymbol)
             return;
-        }
-
-        bool isRegistered = CheckIfWorkflowIsRegistered(workflowName, context.SemanticModel);
+        
+        var isRegistered = CheckIfWorkflowIsRegistered(workflowTypeSymbol, context.SemanticModel, context.CancellationToken);
         if (isRegistered)
         {
             return;
         }
-
+        
+        var workflowName = workflowTypeSymbol.Name;
         var diagnostic = Diagnostic.Create(WorkflowDiagnosticDescriptor, firstArgument.GetLocation(), workflowName);
         context.ReportDiagnostic(diagnostic);
     }
 
-    private static bool CheckIfWorkflowIsRegistered(string workflowName, SemanticModel semanticModel)
+    private static bool CheckIfWorkflowIsRegistered(INamedTypeSymbol workflowType, SemanticModel semanticModel, CancellationToken cancellationToken)
     {
         var methodInvocations = new List<InvocationExpressionSyntax>();
         foreach (var syntaxTree in semanticModel.Compilation.SyntaxTrees)
         {
-            var root = syntaxTree.GetRoot();
+            var root = syntaxTree.GetRoot(cancellationToken);
             methodInvocations.AddRange(root.DescendantNodes().OfType<InvocationExpressionSyntax>());
         }
 
@@ -94,24 +86,21 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            var methodName = memberAccess.Name.Identifier.Text;
-            if (methodName != "RegisterWorkflow")
+            if (memberAccess.Name is not GenericNameSyntax genericName ||
+                genericName.Identifier.Text != "RegisterWorkflow" ||
+                genericName.TypeArgumentList.Arguments.Count == 0)
             {
                 continue;
             }
 
-            if (memberAccess.Name is not GenericNameSyntax typeArgumentList ||
-                typeArgumentList.TypeArgumentList.Arguments.Count <= 0)
+            var typeArgSyntax = genericName.TypeArgumentList.Arguments[0];
+            var typeArgSymbol = semanticModel.GetSymbolInfo(typeArgSyntax, cancellationToken).Symbol as INamedTypeSymbol;
+            if (typeArgSymbol is null)
             {
                 continue;
             }
 
-            if (typeArgumentList.TypeArgumentList.Arguments[0] is not IdentifierNameSyntax typeArgument)
-            {
-                continue;
-            }
-
-            if (typeArgument.Identifier.Text == workflowName)
+            if (SymbolEqualityComparer.Default.Equals(typeArgSymbol, workflowType))
             {
                 return true;
             }
