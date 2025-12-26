@@ -124,19 +124,18 @@ jobs:
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
       run: |
-        for project in test/Dapr.IntegrationTest.*/*.csproj; do
-          dotnet test "$project" \
-          --configuration release \
-          --framework ${{ matrix.framework }} \
-          --no-build \
-          --no-restore \
-          --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-          --logger "GitHubActions;report-warnings=false" \
-          --results-directory "${{ github.workspace }}/TestResults" \
-          /p:CollectCoverage=true \
-          /p:CoverletOutputFormat=opencover \
-          /p:GITHUB_ACTIONS=false
-        done
+        dotnet test  \
+        --configuration release \
+        --framework ${{ matrix.framework }} \
+        --no-build \
+        --no-restore \
+        --filter FullyQualifiedName\!~Dapr.IntegrationTest.&FullyQualifiedName\!~Dapr.E2E.Test \
+        --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+        --logger "GitHubActions;report-warnings=false" \
+        --results-directory "${{ github.workspace }}/TestResults" \
+        /p:CollectCoverage=true \
+        /p:CoverletOutputFormat=opencover \
+        /p:GITHUB_ACTIONS=false
     - name: Check test failure in PR
       if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
       run: exit 1
