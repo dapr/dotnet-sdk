@@ -61,35 +61,35 @@ jobs:
             framework: 'net9'
             prefix: 'net9'
             install-version: '9.0.x'
-      steps:
-        - uses: actions/checkout@v1
-        - name: Parse release version
-          run: python ./.github/scripts/get_release_version.py
-        - name: Setup ${{ matrix.display-name }}
-          uses: actions/setup-dotnet@v3
-          with:
-            dotnet-version: ${{ matrix.install-version }}
-            dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
-        - name: Build
-          # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-          run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
-        - name: Integration Tests
-          id: integration-tests-v2
-          continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
-          run: |
-            for project in test/Dapr.IntegrationTest.*/*.csproj; do
-              dotnet test "$project" \
-              --configuration release \
-              --framework ${{ matrix.framework }} \
-              --no-build \
-              --no-restore \
-              --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-              --logger "GitHubActions;report-warnings=false" \
-              --results-directory "${{ github.workspace }}/TestResults" \
-              /p:CollectCoverage=true \
-              /p:CoverletOutputFormat=opencover \
-              /p:GITHUB_ACTIONS=false
-            done
+    steps:
+      - uses: actions/checkout@v1
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup ${{ matrix.display-name }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ matrix.install-version }}
+          dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
+      - name: Build
+        # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
+        run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+      - name: Integration Tests
+        id: integration-tests-v2
+        continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
+        run: |
+          for project in test/Dapr.IntegrationTest.*/*.csproj; do
+            dotnet test "$project" \
+            --configuration release \
+            --framework ${{ matrix.framework }} \
+            --no-build \
+            --no-restore \
+            --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+            --logger "GitHubActions;report-warnings=false" \
+            --results-directory "${{ github.workspace }}/TestResults" \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=opencover \
+            /p:GITHUB_ACTIONS=false
+          done
   test:
     name: Test .NET ${{ matrix.dotnet-version }}
     runs-on: ubuntu-latest
