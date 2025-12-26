@@ -91,7 +91,6 @@ jobs:
           dotnet test "${{ matrix.project }}" \
           --configuration release \
           --framework ${{ matrix.framework }} \
-          --no-restore \
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
           --logger "GitHubActions;report-warnings=false" \
           --results-directory "${{ github.workspace }}/TestResults" \
@@ -155,7 +154,6 @@ jobs:
         dotnet test "${{ matrix.project }}"  \
         --configuration release \
         --framework ${{ matrix.framework }} \
-        --no-restore \
         --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
         --logger "GitHubActions;report-warnings=false" \
         --results-directory "${{ github.workspace }}/TestResults" \
