@@ -95,7 +95,7 @@ jobs:
         --framework ${{ matrix.framework }} \
         --no-build \
         --no-restore \
-        --filter FullyQualifiedName\~Dapr.IntegrationTest. \
+        --filter FullyQualifiedName~Dapr.IntegrationTest. \
         --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
         --logger "GitHubActions;report-warnings=false" \
         --results-directory "${{ github.workspace }}/TestResults" \
