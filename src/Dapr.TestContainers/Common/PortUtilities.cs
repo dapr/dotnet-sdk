@@ -19,7 +19,7 @@ namespace Dapr.TestContainers.Common;
 /// <summary>
 /// Provides port-related utilities.
 /// </summary>
-internal static class PortUtilities
+public static class PortUtilities
 {
     /// <summary>
     /// Finds a port that's available to use.
