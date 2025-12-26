@@ -71,18 +71,6 @@ jobs:
       with:
         dotnet-version: ${{ matrix.install-version }}
         dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
-    - name: Setup .NET 8 (required)
-      uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version != '8.0.x' }}
-      with:
-        dotnet-version: '8.0.x'
-        dotnet-quality: 'ga'
-    - name: Setup .NET 9 (required)
-      uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version != '9.0.x' }}
-      with:
-        dotnet-version: '9.0.x'
-        dotnet-quality: 'ga'
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
@@ -106,18 +94,19 @@ jobs:
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
       run: |
-        dotnet test
+        for project in test/Dapr.IntegrationTest.*/*.csproj; do
+          dotnet test "$project" \
           --configuration release \
           --framework ${{ matrix.framework }} \
           --no-build \
           --no-restore \
-          --filter "FullyQualifiedName\!~Dapr.E2E.Test&FullyQualifiedName\!~Dapr.IntegrationTest." \
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
           --logger "GitHubActions;report-warnings=false" \
           --results-directory "${{ github.workspace }}/TestResults" \
           /p:CollectCoverage=true \
           /p:CoverletOutputFormat=opencover \
           /p:GITHUB_ACTIONS=false
+        done
     - name: Check test failure in PR
       if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
       run: exit 1
