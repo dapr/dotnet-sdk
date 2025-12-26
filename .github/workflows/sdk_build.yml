@@ -86,6 +86,22 @@ jobs:
     - name: Build
       # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
       run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
+    - name: Integration Tests (gen2)
+      id: integration-tests
+      continue-on-error: false
+      run: |
+        dotnet test (Get-ChildItem -Recurse -Filter *.csproj | Where-Object { $_.DirectoryName -match 'Dapr\.IntegrationTest\.' }).FullName \
+        --configuration release \
+        --framework ${{ matrix.framework }} \
+        --no-build \
+        --no-restore \
+        --filter FullyQualifiedName\!~Dapr.E2E.Test \
+        --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+        --logger "GitHubActions;report-warnings=false" \
+        --results-directory "${{ github.workspace }}/TestResults" \
+        /p:CollectCoverage=true \
+        /p:CoverletOutputFormat=opencover \
+        /p:GITHUB_ACTIONS=false
     - name: Test
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
@@ -95,7 +111,7 @@ jobs:
           --framework ${{ matrix.framework }} \
           --no-build \
           --no-restore \
-          --filter FullyQualifiedName\!~Dapr.E2E.Test \
+          --filter "FullyQualifiedName\!~Dapr.E2E.Test&FullyQualifiedName\!~Dapr.IntegrationTests" \
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
           --logger "GitHubActions;report-warnings=false" \
           --results-directory "${{ github.workspace }}/TestResults" \
