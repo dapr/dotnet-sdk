@@ -106,6 +106,10 @@ public class WorkflowOrchestrationContextTests
             new HistoryEvent
             {
                 TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 0, Result = "\"foo\"" }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 1, Result = "\"bar\"" }
             }
         };
 
@@ -118,27 +122,18 @@ public class WorkflowOrchestrationContextTests
 
         var fooTask = context.CallActivityAsync<string>("CallFoo");
         var barTask = context.CallActivityAsync<string>("CallBar");
+        var task = Task.WhenAny(fooTask, barTask);
         context.ProcessEvents(history, true);
 
-        Task winner = await Task.WhenAny(fooTask, barTask);
-
+        Task winner = await task;
         Assert.Equal(fooTask, winner);
 
         var value = await fooTask;
         Assert.Equal("foo", value);
-        Assert.False(barTask.IsCompleted);
+        Assert.True(barTask.IsCompleted);
         Assert.Empty(context.PendingActions);
 
-        history =
-        [
-            new HistoryEvent
-            {
-                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 1, Result = "\"bar\"" }
-            }
-        ];
-        context.ProcessEvents(history, true);
         value = await barTask;
-
         Assert.Equal("bar", value);
     }
 
@@ -168,6 +163,10 @@ public class WorkflowOrchestrationContextTests
             new HistoryEvent
             {
                 TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 1, Result = "\"bar\"" }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 0, Result = "\"foo\"" }
             }
         };
 
@@ -180,27 +179,18 @@ public class WorkflowOrchestrationContextTests
 
         var fooTask = context.CallActivityAsync<string>("CallFoo");
         var barTask = context.CallActivityAsync<string>("CallBar");
+        var task = Task.WhenAny(fooTask, barTask);
         context.ProcessEvents(history, true);
 
-        Task winner = await Task.WhenAny(fooTask, barTask);
-
+        Task winner = await task;
         Assert.Equal(barTask, winner);
 
         var value = await barTask;
         Assert.Equal("bar", value);
-        Assert.False(fooTask.IsCompleted);
+        Assert.True(fooTask.IsCompleted);
         Assert.Empty(context.PendingActions);
 
-        history =
-        [
-            new HistoryEvent
-            {
-                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 0, Result = "\"foo\"" }
-            }
-        ];
-        context.ProcessEvents(history, true);
         value = await fooTask;
-
         Assert.Equal("foo", value);
     }
 
