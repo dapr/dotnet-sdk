@@ -81,6 +81,130 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallFooTaskCompletedFirst()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallFoo",
+                }
+            },
+            new HistoryEvent
+            {
+                EventId = 1,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallBar",
+                }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 0, Result = "\"foo\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        var fooTask = context.CallActivityAsync<string>("CallFoo");
+        var barTask = context.CallActivityAsync<string>("CallBar");
+        context.ProcessEvents(history, true);
+
+        Task winner = await Task.WhenAny(fooTask, barTask);
+
+        Assert.Equal(fooTask, winner);
+
+        var value = await fooTask;
+        Assert.Equal("foo", value);
+        Assert.False(barTask.IsCompleted);
+        Assert.Empty(context.PendingActions);
+
+        history =
+        [
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 1, Result = "\"bar\"" }
+            }
+        ];
+        context.ProcessEvents(history, true);
+        value = await barTask;
+
+        Assert.Equal("bar", value);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallBarTaskCompletedFirst()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallFoo",
+                }
+            },
+            new HistoryEvent
+            {
+                EventId = 1,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallBar",
+                }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 1, Result = "\"bar\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        var fooTask = context.CallActivityAsync<string>("CallFoo");
+        var barTask = context.CallActivityAsync<string>("CallBar");
+        context.ProcessEvents(history, true);
+
+        Task winner = await Task.WhenAny(fooTask, barTask);
+
+        Assert.Equal(barTask, winner);
+
+        var value = await barTask;
+        Assert.Equal("bar", value);
+        Assert.False(fooTask.IsCompleted);
+        Assert.Empty(context.PendingActions);
+
+        history =
+        [
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 0, Result = "\"foo\"" }
+            }
+        ];
+        context.ProcessEvents(history, true);
+        value = await fooTask;
+
+        Assert.Equal("foo", value);
+    }
+
+    [Fact]
     public async Task CallActivityAsync_ShouldThrowWorkflowTaskFailedException_FromHistoryTaskFailed()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
