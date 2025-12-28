@@ -119,6 +119,12 @@ jobs:
         with:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci-integration-tests-gate:
+    runs-on: ubuntu-latest
+    needs: [integration-tests-v2, integration-tests-v2]
+    steps:
+      - name: "All integration tests passed"
+        run: echo "All unit tests passed"
   unit-tests:
     name: Unit Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
     needs: discover-unit-test-projects
@@ -175,11 +181,17 @@ jobs:
       with:
         TRX_PATH: ${{ github.workspace }}/TestResults
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci-unit-tests-gate:
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - name: "All unit tests passed"
+        run: echo "All unit tests passed"
   integration-test:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2']
+    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
     runs-on: ubuntu-latest
     if: |
       startswith(github.ref, 'refs/tags/v') &&
