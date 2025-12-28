@@ -150,6 +150,36 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task WaitForExternalEventAsync_ShouldReturnUncompletedTask_WhenEventInHistory()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "123" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
+        var task = context.WaitForExternalEventAsync<int>("myevent", cts.Token);
+        context.ProcessEvents(history, true);
+
+        Assert.True(task.IsCompleted);
+
+        var value = await task;
+        Assert.Equal(123, value);
+    }
+
+    [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnUncompletedTask_WhenEventNotInHistory()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -161,13 +191,40 @@ public class WorkflowOrchestrationContextTests
             workflowSerializer: serializer,
             loggerFactory: NullLoggerFactory.Instance);
 
-        var task = context.WaitForExternalEventAsync<int>("missing-event");
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
+        var task = context.WaitForExternalEventAsync<int>("missing-event", cts.Token);
 
         Assert.False(task.IsCompleted);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+    }
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            context.WaitForExternalEventAsync<int>("missing-event", cts.Token));
+    [Fact]
+    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldCancel_WhenEventReceived()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "123" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        var task = context.WaitForExternalEventAsync<int>("myevent", TimeSpan.FromMilliseconds(25));
+        context.ProcessEvents(history, true);
+
+        Assert.True(task.IsCompleted);
+
+        var value = await task;
+        Assert.Equal(123, value);
     }
 
     [Fact]
@@ -180,6 +237,10 @@ public class WorkflowOrchestrationContextTests
             new HistoryEvent
             {
                 TimerFired = new TimerFiredEvent()
+            },
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "123" }
             }
         };
 
