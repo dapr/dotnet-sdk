@@ -181,7 +181,29 @@ public abstract class WorkflowContext : IWorkflowContext
     /// Thrown if <paramref name="timeout"/> elapses before the external event is received.
     /// </exception>
     /// <inheritdoc cref="WaitForExternalEventAsync{T}(string, CancellationToken)"/>
-    public abstract Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout);
+    public virtual async Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
+    {
+        // Timeouts are implemented using durable timers.
+        using CancellationTokenSource timerCts = new();
+        Task timeoutTask = this.CreateTimer(timeout, timerCts.Token);
+
+        using CancellationTokenSource eventCts = new();
+        Task<T> externalEventTask = this.WaitForExternalEventAsync<T>(eventName, eventCts.Token);
+
+        // Wait for either task to complete and then cancel the one that didn't.
+        Task winner = await Task.WhenAny(timeoutTask, externalEventTask);
+        if (winner == externalEventTask)
+        {
+            timerCts.Cancel();
+        }
+        else
+        {
+            eventCts.Cancel();
+        }
+
+        // This will either return the received value or throw if the task was cancelled.
+        return await externalEventTask;
+    }
 
     /// <summary>
     /// Raises an external event for the specified workflow instance.
