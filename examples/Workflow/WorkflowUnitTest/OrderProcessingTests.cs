@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Dapr.Workflow;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WorkflowConsoleApp;
 using WorkflowConsoleApp.Activities;
@@ -25,6 +26,9 @@ public class OrderProcessingTests
         mockContext
             .Setup(ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), It.IsAny<InventoryRequest>(), It.IsAny<WorkflowTaskOptions>()))
             .Returns(Task.FromResult(inventoryResult));
+        mockContext
+            .Setup(ctx => ctx.CreateReplaySafeLogger<OrderProcessingWorkflow>())
+            .Returns(NullLogger<OrderProcessingWorkflow>.Instance);
 
         // Run the workflow directly
         OrderResult result = await new OrderProcessingWorkflow().RunAsync(mockContext.Object, order);
@@ -62,6 +66,9 @@ public class OrderProcessingTests
         mockContext
             .Setup(ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), It.IsAny<InventoryRequest>(), It.IsAny<WorkflowTaskOptions>()))
             .Returns(Task.FromResult(inventoryResult));
+        mockContext
+            .Setup(ctx => ctx.CreateReplaySafeLogger<OrderProcessingWorkflow>())
+            .Returns(NullLogger<OrderProcessingWorkflow>.Instance);
 
         // Run the workflow directly
         await new OrderProcessingWorkflow().RunAsync(mockContext.Object, order);
