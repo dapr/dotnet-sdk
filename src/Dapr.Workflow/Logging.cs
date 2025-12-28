@@ -221,8 +221,8 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Debug, "CreateTimer: Task {TaskId} is pending")]
     public static partial void LogCreateTimerPending(this ILogger logger, int taskId);
 
-    [LoggerMessage(LogLevel.Debug, "Initializing new WorkflowOrchestration context for workflow '{WorkflowName}' in instance '{InstanceId}' with {PastEventsCount} past events, {NewEventsCount} new events, {PastMapEntriesCount} past mapped entries, and {NewMapEntriesCount} new mapped entries")]
-    public static partial void LogWorkflowContextConstructorSetup(this ILogger logger, string workflowName, string instanceId, int pastEventsCount, int newEventsCount, int pastMapEntriesCount, int newMapEntriesCount);
+    [LoggerMessage(LogLevel.Debug, "Initializing new WorkflowOrchestration context for workflow '{WorkflowName}' in instance '{InstanceId}'")]
+    public static partial void LogWorkflowContextConstructorSetup(this ILogger logger, string workflowName, string instanceId);
 
     [LoggerMessage(LogLevel.Debug, "{Mode}: TaskId {TaskId} ({Name}) matched")]
     public static partial void LogHandleHistoryMatch(this ILogger logger, string mode, int taskId, string name);
