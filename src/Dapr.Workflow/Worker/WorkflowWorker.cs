@@ -51,7 +51,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         {
             // Create the protocol handler
             _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _options.MaxConcurrentWorkflows, _options.MaxConcurrentActivities);
-            
+
             // Start processing work items
             await _protocolHandler.StartAsync(HandleOrchestratorResponseAsync, HandleActivityResponseAsync, stoppingToken);
         }
@@ -78,7 +78,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // We must collect ALL past events, including those from the stream if required
             // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale
             var allPastEvents = request.PastEvents.ToList();
-            
+
             // Extract the workflow name from the ExecutionStartedEvent in the history
             string? workflowName = null;
             string? serializedInput = null;
@@ -97,7 +97,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                     allPastEvents.AddRange(chunk);
                 }
             }
-            
+
             // Identify the workflow name from the now-complete history
             foreach (var e in allPastEvents.Concat(request.NewEvents))
             {
@@ -120,15 +120,15 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
-                return new OrchestratorResponse { InstanceId = request.InstanceId};
+                return new OrchestratorResponse { InstanceId = request.InstanceId };
             }
 
             var currentUtcDateTime = allPastEvents.Count > 0 && allPastEvents[0].Timestamp != null 
                 ? allPastEvents[0].Timestamp.ToDateTime()
                 : DateTime.UtcNow;
-            
-            // Initialize the context with the FULL history            
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, allPastEvents, request.NewEvents, currentUtcDateTime, _serializer, loggerFactory);
+
+            // Initialize the context with the FULL history
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
@@ -139,13 +139,19 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
             var runTask = workflow!.RunAsync(context, input);
-            
+
+            // Replay the old history to rebuild the local state of the orchestration.
+            context.ProcessEvents(allPastEvents, true);
+
+            // Play the newly arrived events to determine the next action to take.
+            context.ProcessEvents(request.NewEvents, false);
+
             // Get all pending actions from the context
             var response = new OrchestratorResponse { InstanceId = request.InstanceId };
-            
+
             // Add all actions that were scheduled during workflow execution
             response.Actions.AddRange(context.PendingActions);
-            
+
             // Set custom status if provided
             if (context.CustomStatus != null)
                 response.CustomStatus = _serializer.Serialize(context.CustomStatus);
@@ -160,7 +166,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             if (!runTask.IsCompleted)
             {
                 _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, context.PendingActions.Count);
-                    
+
                 if (response.Actions.Count == 0 && !context.PendingActions.Any())
                 {
                     _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
@@ -181,7 +187,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 {
                     CompleteOrchestration = new CompleteOrchestrationAction
                     {
-                        Result = outputJson, 
+                        Result = outputJson,
                         OrchestrationStatus = OrchestrationStatus.Completed
                     }
                 });
@@ -242,7 +248,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         {
             // Create a scope for DI
             await using var scope = _serviceProvider.CreateAsyncScope();
-            
+
             // Try to get the activity from the factory
             var activityIdentifier = new TaskIdentifier(request.Name);
             if (!_workflowsFactory.TryCreateActivity(activityIdentifier, scope.ServiceProvider, out var activity))
@@ -261,30 +267,30 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                     }
                 };
             }
-            
+
             // Create the activity context
             var taskExecutionKey = !string.IsNullOrEmpty(request.TaskExecutionId)
                 ? request.TaskExecutionId
                 : request.TaskId.ToString();
-            
+
             var context = new WorkflowActivityContextImpl(activityIdentifier,
                 request.OrchestrationInstance?.InstanceId ?? string.Empty, taskExecutionKey);
-            
+
             // Deserialize the input
             object? input = null;
             if (!string.IsNullOrEmpty(request.Input))
             {
                 input = _serializer.Deserialize(request.Input, activity!.InputType);
             }
-            
+
             // Execute the activity
             var output = await activity!.RunAsync(context, input);
-            
+
             // Serialize output
             var outputJson = output != null
                 ? _serializer.Serialize(output)
                 : string.Empty;
-            
+
             _logger.LogWorkerWorkflowHandleActivityRequestCompleted(request.Name, request.TaskId);
 
             return new ActivityResponse
@@ -294,7 +300,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 Result = outputJson
             };
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             _logger.LogWorkerWorkflowHandleActivityRequestFailed(ex, request.Name, request.OrchestrationInstance?.InstanceId);
 
