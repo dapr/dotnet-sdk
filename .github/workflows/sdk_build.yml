@@ -121,7 +121,7 @@ jobs:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ci-integration-tests-gate:
     runs-on: ubuntu-latest
-    needs: [integration-tests-v2, integration-tests-v2]
+    needs: [integration-tests-v2, integration-test]
     steps:
       - name: "All integration tests passed"
         run: echo "All unit tests passed"
