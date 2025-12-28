@@ -120,6 +120,7 @@ jobs:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   unit-tests:
+    name: Unit Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
     needs: discover-unit-test-projects
     runs-on: ubuntu-latest
     strategy:
