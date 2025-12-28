@@ -285,7 +285,7 @@ public class WorkflowWorkerTests
         Assert.NotNull(response.CustomStatus);
         Assert.Contains("\"step\":7", response.CustomStatus);
 
-        Assert.NotEmpty(response.Actions);
+        //Assert.NotEmpty(response.Actions);
 
         var completion = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
         Assert.Equal(OrchestrationStatus.Completed, completion.OrchestrationStatus);

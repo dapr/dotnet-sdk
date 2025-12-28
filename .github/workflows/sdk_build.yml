@@ -119,7 +119,14 @@ jobs:
         with:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci-integration-tests-gate:
+    runs-on: ubuntu-latest
+    needs: [integration-tests-v2, integration-test]
+    steps:
+      - name: "All integration tests passed"
+        run: echo "All unit tests passed"
   unit-tests:
+    name: Unit Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
     needs: discover-unit-test-projects
     runs-on: ubuntu-latest
     strategy:
@@ -174,11 +181,17 @@ jobs:
       with:
         TRX_PATH: ${{ github.workspace }}/TestResults
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci-unit-tests-gate:
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - name: "All unit tests passed"
+        run: echo "All unit tests passed"
   integration-test:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2']
+    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
     runs-on: ubuntu-latest
     if: |
       startswith(github.ref, 'refs/tags/v') &&
@@ -227,32 +240,4 @@ jobs:
       - name: Publish ${{ matrix.package }} to NuGet
         run: |
           dotnet nuget push "${{ matrix.package }}" --skip-duplicate --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
-          
-#      - name: List packages (for sanity check)
-#        run: ls -R
-#        working-directory: packages
-#
-#      - name: Publish binaries to github for tags
-#        if: startswith(github.ref, 'refs/tags/v')
-#        run: |
-#          sudo npm install --silent --no-progress -g github-release-cli@1.3.1
-#
-#          OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
-#          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-#          RELEASE_ARTIFACT=(./packages/*)
-#
-#          export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
-#          echo "Uploading Nuget packages to GitHub Release"
-#          github-release upload \
-#            --owner $OWNER_NAME \
-#            --repo $REPO_NAME \
-#            --body "Release dapr dotnet SDK v${REL_VERSION}" \
-#            --tag "v${REL_VERSION}" \
-#            --name "Dapr dotnet SDK v${REL_VERSION}" \
-#            --prerelease true \
-#            ${RELEASE_ARTIFACT[*]}
-#
-#      - name: Publish nuget packages to nuget.org
-#        if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
-#        run: |
-#          dotnet nuget push "./packages/Dapr*.nupkg" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
+ 
