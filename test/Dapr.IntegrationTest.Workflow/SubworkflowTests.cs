@@ -63,6 +63,79 @@ public sealed class SubworkflowTests
         var subworkflowResultValue = subworkflowResult.ReadOutputAs<bool>();
         Assert.True(subworkflowResultValue);
     }
+    
+    [Fact]
+    public async Task ShouldHandleMultipleParallelSubworkflows()
+    {
+        var options = new DaprRuntimeOptions();
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+
+        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<ParallelSubworkflowsWorkflow>();
+                        opt.RegisterWorkflow<ProcessingSubworkflow>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(
+            nameof(ParallelSubworkflowsWorkflow), 
+            workflowInstanceId);
+
+        var workflowResult = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, workflowResult.RuntimeStatus);
+        var results = workflowResult.ReadOutputAs<int[]>();
+        Assert.NotNull(results);
+        Assert.Equal(3, results.Length);
+        Assert.Equal([10, 20, 30], results);
+    }
+
+    private sealed class ParallelSubworkflowsWorkflow : Workflow<object?, int[]>
+    {
+        public override async Task<int[]> RunAsync(WorkflowContext context, object? input)
+        {
+            var tasks = new List<Task<int>>();
+            
+            for (int i = 1; i <= 3; i++)
+            {
+                var subInstanceId = $"{context.InstanceId}-sub-{i}";
+                var options = new ChildWorkflowTaskOptions(subInstanceId);
+                var task = context.CallChildWorkflowAsync<int>(
+                    nameof(ProcessingSubworkflow), 
+                    i * 10, 
+                    options);
+                tasks.Add(task);
+            }
+
+            var results = await Task.WhenAll(tasks);
+            return results;
+        }
+    }
+
+    private sealed class ProcessingSubworkflow : Workflow<int, int>
+    {
+        public override async Task<int> RunAsync(WorkflowContext context, int input)
+        {
+            await context.CreateTimer(TimeSpan.FromSeconds(2));
+            return input;
+        }
+    }
 
     private sealed class DemoWorkflow : Workflow<string, bool>
     {

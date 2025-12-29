@@ -23,12 +23,55 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed partial class ExternalInputWorkflowTests
 {
-    private List<InventoryItem> BaseInventory =
+    private readonly List<InventoryItem> BaseInventory =
     [
         new("Paperclips", 5, 100),
         new("Cars", 15000, 100),
         new("Computers", 500, 100)
     ];
+    
+    [Fact]
+    public async Task ShouldHandleMultipleExternalEvents_Simple()
+    {
+        var options = new DaprRuntimeOptions();
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+
+        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<MultiEventWorkflow>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(MultiEventWorkflow), workflowInstanceId);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        // Raise multiple events
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event1", "FirstData");
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event2", 42);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event3", true);
+
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        var output = result.ReadOutputAs<string>();
+        Assert.Equal("FirstData-42-True", output);
+    }
     
     [Fact]
     public async Task ShouldHandleStandardWorkflowsWithDependencyInjection()
@@ -124,6 +167,61 @@ public sealed partial class ExternalInputWorkflowTests
         Unspecified = 0,
         Approved = 1,
         Rejected = 2
+    }
+    
+    [Fact]
+    public async Task ShouldHandleMultipleExternalEvents()
+    {
+        var options = new DaprRuntimeOptions();
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+
+        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<MultiEventWorkflow>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(MultiEventWorkflow), workflowInstanceId);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        // Raise multiple events
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event1", "FirstData");
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event2", 42);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event3", true);
+
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        var output = result.ReadOutputAs<string>();
+        Assert.Equal("FirstData-42-True", output);
+    }
+
+    private sealed class MultiEventWorkflow : Workflow<object?, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, object? input)
+        {
+            var event1 = await context.WaitForExternalEventAsync<string>("Event1");
+            var event2 = await context.WaitForExternalEventAsync<int>("Event2");
+            var event3 = await context.WaitForExternalEventAsync<bool>("Event3");
+
+            return $"{event1}-{event2}-{event3}";
+        }
     }
 
     internal sealed partial class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
