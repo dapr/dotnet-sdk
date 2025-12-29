@@ -97,10 +97,12 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
                 // Dispatch based on work item type
                 var workItemTask = workItem.RequestCase switch
                 {
-                    WorkItem.RequestOneofCase.OrchestratorRequest => ProcessWorkflowAsync(workItem.OrchestratorRequest,
-                        orchestratorHandler, cancellationToken),
-                    WorkItem.RequestOneofCase.ActivityRequest => ProcessActivityAsync(workItem.ActivityRequest,
-                        activityHandler, cancellationToken),
+                    WorkItem.RequestOneofCase.OrchestratorRequest => Task.Run(
+                        () => ProcessWorkflowAsync(workItem.OrchestratorRequest, orchestratorHandler, cancellationToken),
+                        cancellationToken),
+                    WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
+                        () => ProcessActivityAsync(workItem.ActivityRequest, activityHandler, cancellationToken),
+                        cancellationToken),
                     _ => Task.Run(
                         () => _logger.LogGrpcProtocolHandlerUnknownWorkItemType(workItem.RequestCase),
                         cancellationToken)
