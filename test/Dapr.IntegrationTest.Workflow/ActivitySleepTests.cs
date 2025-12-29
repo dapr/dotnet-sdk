@@ -93,9 +93,9 @@ public sealed class ActivitySleepTests
 
     private sealed class Test2Workflow : Workflow<int, int>
     {
-        public override async Task<int> RunAsync(WorkflowContext context, int input)
+        public override Task<int> RunAsync(WorkflowContext context, int input)
         {
-            return input + 1;
+            return Task.FromResult(input + 1);
         }
     }
 }
