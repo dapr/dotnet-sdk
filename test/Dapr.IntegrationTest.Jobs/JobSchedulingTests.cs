@@ -51,7 +51,7 @@ public sealed class JobSchedulingTests
             })
             .ConfigureApp(app =>
             {
-                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
+                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> _,
                     ILogger<JobSchedulingTests>? logger, CancellationToken _) =>
                 {
                     logger?.LogInformation("Received cron job {Job}", incomingJobName);
@@ -147,7 +147,7 @@ public sealed class JobSchedulingTests
             })
             .ConfigureApp(app =>
             {
-                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
+                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> _,
                     ILogger<JobSchedulingTests>? logger, CancellationToken _) =>
                 {
                     logger?.LogInformation("Received datetime job {Job}", incomingJobName);
@@ -194,7 +194,7 @@ public sealed class JobSchedulingTests
             })
             .ConfigureApp(app =>
             {
-                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
+                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> _,
                     ILogger<JobSchedulingTests>? logger, CancellationToken _) =>
                 {
                     logger?.LogInformation("Received job with startingFrom {Job}", incomingJobName);
