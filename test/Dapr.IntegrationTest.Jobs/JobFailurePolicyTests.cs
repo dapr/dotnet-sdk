@@ -14,6 +14,7 @@
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
+using Dapr.Jobs.Models.Responses;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Microsoft.Extensions.Configuration;
@@ -74,5 +75,71 @@ public sealed class JobFailurePolicyTests
         var ex = await Assert.ThrowsAnyAsync<DaprException>(() => daprJobsClient.GetJobAsync(jobName));
         Assert.NotNull(ex.InnerException);
         Assert.Contains("job not found", ex.InnerException.Message);
+    }
+    
+    [Fact]
+    public async Task ShouldScheduleJobWithConstantFailurePolicy()
+    {
+        var options = new DaprRuntimeOptions();
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
+        var jobName = $"constant-policy-job-{Guid.NewGuid():N}";
+
+        var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                    var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+
+                    if (!string.IsNullOrEmpty(grpcEndpoint))
+                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    if (!string.IsNullOrEmpty(httpEndpoint))
+                        clientBuilder.UseHttpEndpoint(httpEndpoint);
+                });
+            })
+            .ConfigureApp(app =>
+            {
+                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> _,
+                    ILogger<JobFailurePolicyTests>? logger, CancellationToken _) =>
+                {
+                    logger?.LogInformation("Received job with constant failure policy {Job}", incomingJobName);
+                    invocationTcs.TrySetResult(incomingJobName);
+                });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
+
+        const int maxRetries = 3;
+        var constantPolicy = new JobFailurePolicyConstantOptions(TimeSpan.FromSeconds(5))
+        {
+            MaxRetries = maxRetries
+        };
+
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
+            failurePolicyOptions: constantPolicy, repeats: 10, overwrite: true);
+
+        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal(jobName, received);
+
+        var jobDetails = await daprJobsClient.GetJobAsync(jobName);
+        Assert.NotNull(jobDetails.FailurePolicy);
+        Assert.Equal(JobFailurePolicy.Constant, jobDetails.FailurePolicy.Type);
+        if (jobDetails.FailurePolicy is ConfiguredConstantFailurePolicy failurePolicy)
+        {
+            Assert.True(failurePolicy.HasMaxRetries);
+            Assert.Equal(maxRetries, failurePolicy.MaxRetries);
+            Assert.Equal(TimeSpan.FromSeconds(5), failurePolicy.Duration);
+        }
+        else
+        {
+            Assert.Fail();
+        }
     }
 }
