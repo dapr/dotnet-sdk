@@ -33,7 +33,7 @@ public sealed class StartWorkflowOptions
     /// </summary>
     /// <remarks>
     /// If not specified or if a time in the past is specified, the workflow will start immediately. Setting
-    /// this alue improves throughput when creating many workflows.
+    /// this value improves throughput when creating many workflows.
     /// </remarks>
     public DateTimeOffset? StartAt { get; set; }
 }
