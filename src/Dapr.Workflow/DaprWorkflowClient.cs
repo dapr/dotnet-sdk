@@ -106,25 +106,6 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     }
     
     /// <summary>
-    /// Schedules a new workflow instance for execution using the specified workflow options.
-    /// </summary>
-    /// <param name="name">The name of the workflow to schedule.</param>
-    /// <param name="options">Options defining characteristics of the workflow to schedule.</param>
-    /// <param name="input">The optional input to pass to the workflow.</param>
-    /// <param name="cancellation">Token to cancel the scheduling operation from the client to the Dapr runtime.</param>
-    /// <returns>The instance ID of the scheduled workflow.</returns>
-    public Task<string> ScheduleNewWorkflowAsync(
-        string name,
-        StartWorkflowOptions options,
-        object? input = null, 
-        CancellationToken cancellation = default) 
-    {
-        ArgumentException.ThrowIfNullOrEmpty(name);
-        
-        return _innerClient.ScheduleNewWorkflowAsync(name, input, options, cancellation);
-    }
-    
-    /// <summary>
     /// Gets the current metadata and state of a workflow instance.
     /// </summary>
     /// <param name="instanceId">The unique ID of the workflow instance to retrieve.</param>

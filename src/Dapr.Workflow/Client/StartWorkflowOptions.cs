@@ -36,9 +36,4 @@ public sealed class StartWorkflowOptions
     /// this alue improves throughput when creating many workflows.
     /// </remarks>
     public DateTimeOffset? StartAt { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the optional identifier of the app on which the workflow should be run.
-    /// </summary>
-    public string? AppId { get; set; }
 }
