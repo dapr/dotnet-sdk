@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-
 namespace Dapr.Workflow;
 
 using Microsoft.Extensions.Logging;
@@ -86,8 +85,8 @@ public abstract class WorkflowContext : IWorkflowContext
     /// to not include any sensitive data in activity inputs or outputs. It's also recommended to not use large payloads
     /// for activity inputs and outputs, which can result in expensive serialization and network utilization. For data
     /// that cannot be cheaply or safely persisted to storage, it's recommended to instead pass <em>references</em>
-    /// (for example, a URL to a storage blob/bucket) to the data and have activities fetch the data directly as part of their
-    /// implementation.
+    /// (for example, a URL to a storage blob/bucket) to the data. Subsequently, have activities fetch the data
+    /// directly as part of their implementation.
     /// </para>
     /// </remarks>
     /// <param name="name">The name of the activity to call.</param>
