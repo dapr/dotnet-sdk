@@ -84,7 +84,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="instanceId">The unique ID for the workflow instance. Auto-generated if not specified.</param>
     /// <param name="input">The optional input to pass to the workflow.</param>
     /// <param name="startTime">The time when the workflow should start. If in the past or <c>null</c>, starts immediately.</param>
-    /// <param name="cancellation">Token to cancel the scheduling operation.</param>
+    /// <param name="cancellation">Token to cancel the scheduling operation from the client to the Dapr runtime.</param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     public Task<string> ScheduleNewWorkflowAsync(
@@ -102,6 +102,25 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
             StartAt = startTime
         };
 
+        return _innerClient.ScheduleNewWorkflowAsync(name, input, options, cancellation);
+    }
+    
+    /// <summary>
+    /// Schedules a new workflow instance for execution using the specified workflow options.
+    /// </summary>
+    /// <param name="name">The name of the workflow to schedule.</param>
+    /// <param name="options">Options defining characteristics of the workflow to schedule.</param>
+    /// <param name="input">The optional input to pass to the workflow.</param>
+    /// <param name="cancellation">Token to cancel the scheduling operation from the client to the Dapr runtime.</param>
+    /// <returns>The instance ID of the scheduled workflow.</returns>
+    public Task<string> ScheduleNewWorkflowAsync(
+        string name,
+        StartWorkflowOptions options,
+        object? input = null, 
+        CancellationToken cancellation = default) 
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        
         return _innerClient.ScheduleNewWorkflowAsync(name, input, options, cancellation);
     }
     
