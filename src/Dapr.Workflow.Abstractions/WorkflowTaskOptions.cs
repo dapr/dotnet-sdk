@@ -26,5 +26,7 @@ public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null, strin
 /// <param name="InstanceId">The instance ID to use for the child workflow.</param>
 /// <param name="RetryPolicy">The child workflow's retry policy.</param>
 /// <param name="AppId">The App ID indicating the app in which to find the named child workflow to run.</param>
-public record ChildWorkflowTaskOptions(string? InstanceId = null, WorkflowRetryPolicy? RetryPolicy = null, string? AppId = null)
-    : WorkflowTaskOptions(RetryPolicy, AppId);
+public record ChildWorkflowTaskOptions(
+    string? InstanceId = null, 
+    WorkflowRetryPolicy? RetryPolicy = null, 
+    string? AppId = null) : WorkflowTaskOptions(RetryPolicy, AppId);
