@@ -33,7 +33,8 @@ public sealed class DistributedLockHarness : BaseHarness
     /// <param name="componentsDir">The directory to Dapr components.</param>
     /// <param name="startApp">The test app to validate in the harness.</param>
     /// <param name="options">The Dapr runtime options.</param>
-    public DistributedLockHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    /// <param name="environment">The isolated environment instance.</param>
+    public DistributedLockHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
         _redis = new(Network);

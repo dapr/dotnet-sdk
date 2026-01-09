@@ -18,7 +18,6 @@ using System.Threading.Tasks;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers.Dapr;
-using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Networks;
 
 namespace Dapr.TestContainers.Harnesses;
@@ -26,19 +25,61 @@ namespace Dapr.TestContainers.Harnesses;
 /// <summary>
 /// Provides a base harness for building Dapr building block harnesses.
 /// </summary>
-public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? startApp, DaprRuntimeOptions options) : IAsyncContainerFixture
+public abstract class BaseHarness : IAsyncContainerFixture
 {
     /// <summary>
     /// The Daprd container exposed by the harness.
     /// </summary>
     private protected DaprdContainer? _daprd;
-
-    private readonly TaskCompletionSource _sidecarPortsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    
     /// <summary>
-    ///  A shared Docker network that's safer for CI environments - each harness instance gets its own network for isolation.
+    /// Indicates whether the sidecar ports are ready for use.
     /// </summary>
-    protected readonly INetwork Network = new NetworkBuilder().Build();
+    private readonly TaskCompletionSource _sidecarPortsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    /// <summary>
+    /// The isolated network and Dapr environment this harness is using.
+    /// </summary>
+    private readonly DaprTestEnvironment _environment;
+    /// <summary>
+    /// Tracks whether the environment was created implicitly (standalone mode) or is shared (controlling whether we dispose of it).
+    /// </summary>
+    private readonly bool _ownsEnvironment;
+    
+    private readonly string componentsDirectory;
+    private readonly Func<int, Task>? startApp;
+    private readonly DaprRuntimeOptions options;
+
+    /// <summary>
+    /// Provides a base harness for building Dapr building block harnesses.
+    /// </summary>
+    protected BaseHarness(string componentsDirectory, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null)
+    {
+        this.componentsDirectory = componentsDirectory;
+        this.startApp = startApp;
+        this.options = options;
+
+        if (environment is not null)
+        {
+            // Shared mode - we use an existing environment
+            _environment = environment;
+            _ownsEnvironment = false;
+        }
+        else
+        {
+            // Standalone mode - create a dedicated environment for this harness
+            _environment = new DaprTestEnvironment(options);
+            _ownsEnvironment = true;
+        }
+    }
+
+    /// <summary>
+    /// Gets the shared Docker network used by this instance.
+    /// </summary>
+    public INetwork Network => _environment.Network;
+
+    /// <summary>
+    /// Gets the shared environment instance.
+    /// </summary>
+    protected DaprTestEnvironment Environment => _environment;
 
     /// <summary>
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
@@ -103,10 +144,15 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
     /// <returns></returns>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // Run the actual container orchestration defined in the subclass to set up any pre-requisite containers before loading daprd and the start app, if specified
+        // 1. Ensure the environment infrastructure is running
+        // If we own it, we start it. If it's shared, the caller usually starts it
+        // but calling StartAsync is idempotent, so it's safe to ensure it here
+        await _environment.StartAsync(cancellationToken);
+        
+        // 2. Run the actual container orchestration defined in the subclass to set up any pre-requisite containers before loading daprd and the start app, if specified
         await OnInitializeAsync(cancellationToken);
         
-        // Configure and start daprd; point at placement & scheduler
+        // 3. Configure and start daprd; point at placement & scheduler
         _daprd = new DaprdContainer(
             appId: options.AppId,
             componentsHostFolder: ComponentsDirectory,
@@ -118,7 +164,6 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
         var daprdTask = Task.Run(async () =>
         {
             await _daprd!.StartAsync(cancellationToken);
-
             _sidecarPortsReady.TrySetResult();
         }, cancellationToken);
 
@@ -144,6 +189,13 @@ public abstract class BaseHarness(string componentsDirectory, Func<int, Task>? s
         
         if (_daprd is not null)
             await _daprd.DisposeAsync();
+        
+        // Only dispose of the environment if this harness created it (Standalone mode)
+        // If it was passed in (Shared mode), the test class is responsible for disposing it
+        if (_ownsEnvironment)
+        {
+            await _environment.DisposeAsync();
+        }
         
         // Clean up the per-instance network
         await Network.DisposeAsync();

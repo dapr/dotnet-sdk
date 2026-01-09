@@ -14,15 +14,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Dapr.TestContainers.Common.Testing;
 using Dapr.TestContainers.Harnesses;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Dapr.E2E.Test.Common;
+namespace Dapr.TestContainers.Common.Testing;
 
 /// <summary>
 /// Fluent builder for creating test applications with Dapr harnesses.
@@ -73,8 +71,6 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
             builder.Logging.ClearProviders();
             builder.Logging.AddSimpleConsole();
             builder.WebHost.UseUrls($"http://0.0.0.0:{harness.AppPort}");
-            
-            
             
             _configureServices?.Invoke(builder);
 

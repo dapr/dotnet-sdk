@@ -13,8 +13,8 @@
 
 using System;
 using System.Threading.Tasks;
-using Dapr.E2E.Test.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Common.Testing;
 using Dapr.TestContainers.Harnesses;
 
 namespace Dapr.TestContainers.Common;
@@ -23,26 +23,27 @@ namespace Dapr.TestContainers.Common;
 /// Builds the Dapr harnesses for different building blocks.
 /// </summary>
 /// <param name="options">The Dapr runtime options.</param>
+/// <param name="environment">The isolated environment instance.</param>
 /// <param name="startApp">The test app to run.</param>
-public sealed class DaprHarnessBuilder(DaprRuntimeOptions options, Func<int, Task>? startApp = null)
+public sealed class DaprHarnessBuilder(DaprRuntimeOptions options, DaprTestEnvironment? environment = null, Func<int, Task>? startApp = null)
 {
     /// <summary>
     /// Builds a workflow harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public WorkflowHarness BuildWorkflow(string componentsDir) => new(componentsDir, startApp, options);
+	public WorkflowHarness BuildWorkflow(string componentsDir) => new(componentsDir, startApp, options, environment);
 
     /// <summary>
     /// Builds a distributed lock harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public DistributedLockHarness BuildDistributedLock(string componentsDir) => new(componentsDir, startApp, options);
+	public DistributedLockHarness BuildDistributedLock(string componentsDir) => new(componentsDir, startApp, options, environment);
 
     /// <summary>
     /// Builds a conversation harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public ConversationHarness BuildConversation(string componentsDir) => new(componentsDir, startApp, options);
+	public ConversationHarness BuildConversation(string componentsDir) => new(componentsDir, startApp, options, environment);
 
     /// <summary>
     /// Builds a cryptography harness.
@@ -50,31 +51,31 @@ public sealed class DaprHarnessBuilder(DaprRuntimeOptions options, Func<int, Tas
     /// <param name="componentsDir">The path to the Dapr resources.</param>
     /// <param name="keysDir">The path to the cryptography keys.</param>
     public CryptographyHarness BuildCryptography(string componentsDir, string keysDir) =>
-        new(componentsDir, startApp, keysDir, options);
+        new(componentsDir, startApp, keysDir, options, environment);
 
     /// <summary>
     /// Builds a jobs harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public JobsHarness BuildJobs(string componentsDir) => new(componentsDir, startApp, options);
+	public JobsHarness BuildJobs(string componentsDir) => new(componentsDir, startApp, options, environment);
 
     /// <summary>
     /// Builds a PubSub harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public PubSubHarness BuildPubSub(string componentsDir) => new(componentsDir, startApp, options);
+	public PubSubHarness BuildPubSub(string componentsDir) => new(componentsDir, startApp, options, environment);
 
     /// <summary>
     /// Builds a state management harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public StateManagementHarness BuildStateManagement(string componentsDir) => new(componentsDir, startApp, options);
+	public StateManagementHarness BuildStateManagement(string componentsDir) => new(componentsDir, startApp, options, environment);
 
     /// <summary>
     /// Builds an actor harness.
     /// </summary>
     /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public ActorHarness BuildActors(string componentsDir) => new(componentsDir, startApp, options);
+	public ActorHarness BuildActors(string componentsDir) => new(componentsDir, startApp, options, environment);
 
     /// <summary>
     /// Creates a test application builder for the specified harness.

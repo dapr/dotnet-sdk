@@ -16,7 +16,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
-using Dapr.TestContainers.Containers.Dapr;
 
 namespace Dapr.TestContainers.Harnesses;
 
@@ -26,19 +25,16 @@ namespace Dapr.TestContainers.Harnesses;
 public sealed class WorkflowHarness : BaseHarness
 {
     private readonly RedisContainer _redis;
-	private readonly DaprPlacementContainer _placement;
-    private readonly DaprSchedulerContainer _scheduler;
-
+    
     /// <summary>
     /// Provides an implementation harness for Dapr's Workflow building block.
     /// </summary>
     /// <param name="componentsDir">The directory to Dapr components.</param>
     /// <param name="startApp">The test app to validate in the harness.</param>
     /// <param name="options">The Dapr runtime options.</param>
-    public WorkflowHarness(string componentsDir, Func<int, Task>? startApp,  DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    /// <param name="environment">The isolated environment instance.</param>
+    public WorkflowHarness(string componentsDir, Func<int, Task>? startApp,  DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
-        _placement = new DaprPlacementContainer(options, Network);
-        _scheduler = new DaprSchedulerContainer(options, Network);
         _redis = new(Network);
     }
 
@@ -47,24 +43,20 @@ public sealed class WorkflowHarness : BaseHarness
 	{
         // Start infrastructure
         await _redis.StartAsync(cancellationToken);
-        await _placement.StartAsync(cancellationToken);
-        await _scheduler.StartAsync(cancellationToken);
         
         // Emit component YAMLs pointing to Redis
         RedisContainer.Yaml.WriteStateStoreYamlToFolder(ComponentsDirectory, redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
         
         // Set the service ports
-        this.DaprPlacementExternalPort = _placement.ExternalPort;
-        this.DaprPlacementAlias = _placement.NetworkAlias;
-        this.DaprSchedulerExternalPort = _scheduler.ExternalPort;
-        this.DaprSchedulerAlias = _scheduler.NetworkAlias;
+        this.DaprPlacementExternalPort = Environment.PlacementExternalPort;
+        this.DaprPlacementAlias = Environment.PlacementAlias;
+        this.DaprSchedulerExternalPort = Environment.SchedulerExternalPort;
+        this.DaprSchedulerAlias = Environment.SchedulerAlias;
     }
     
     /// <inheritdoc />
 	protected override async ValueTask OnDisposeAsync()
 	{
-		await _placement.DisposeAsync();
-		await _scheduler.DisposeAsync();
 		await _redis.DisposeAsync();
     }
 }
