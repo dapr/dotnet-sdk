@@ -18,6 +18,7 @@ using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Worker;
 using Dapr.Workflow.Worker.Grpc;
+using Dapr.Workflow.Worker.Internal;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -178,6 +179,235 @@ public class WorkflowWorkerTests
         cts.Cancel();
 
         await InvokeExecuteAsync(worker, cts.Token);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionEventArrivesLater()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        var creationHistory = new[]
+        {
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                {
+                    Name = "ChildWf"
+                }
+            }
+        };
+
+        context.ProcessEvents(creationHistory, true);
+
+        Assert.False(task.IsCompleted);
+
+        var completionHistory = new[]
+        {
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "99"
+                }
+            }
+        };
+
+        context.ProcessEvents(completionHistory, false);
+        var value = await task;
+
+        Assert.Equal(99, value);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public void CallChildWorkflowAsync_ShouldPreserveRouterTargetAppId_OnScheduledAction()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance);
+
+        _ = context.CallChildWorkflowAsync<int>("ChildWf", options: new ChildWorkflowTaskOptions { AppId = "remote-app" });
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.CreateSubOrchestration);
+        Assert.NotNull(action.Router);
+        Assert.Equal("remote-app", action.Router.TargetAppID);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionArrivedBeforeCall()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance);
+
+        var completionEvent = new[]
+        {
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "13"
+                }
+            }
+        };
+
+        // Completion arrives before the call; nothing happens yet.
+        context.ProcessEvents(completionEvent, false);
+
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        context.ProcessEvents([
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+            }
+        ], false);
+
+        // Replay the completion now that the task exists.
+        context.ProcessEvents(completionEvent, false);
+
+        var value = await task;
+        Assert.Equal(13, value);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldIgnoreDuplicateCompletionEvents()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance);
+
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        context.ProcessEvents([
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+            }
+        ], true);
+
+        context.ProcessEvents([
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 999,
+                    Result = "100"
+                }
+            },
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "200"
+                }
+            }
+        ], false);
+
+        var value = await task;
+        Assert.Equal(200, value);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldOnlyCompleteAfterCreation_WhenCompletionArrivesFirst()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance);
+
+        var completionHistory = new[]
+        {
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "21"
+                }
+            }
+        };
+
+        context.ProcessEvents(completionHistory, false);
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        context.ProcessEvents([
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+            }
+        ], false);
+
+        var value = await task;
+        Assert.Equal(21, value);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldCompleteOnlyForMatchingTaskScheduledId_WhenReplaySchedulesAgain()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance);
+
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        var historyFirstCreation = new[]
+        {
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+            }
+        };
+
+        context.ProcessEvents(historyFirstCreation, true);
+
+        Assert.False(task.IsCompleted);
+
+        var historyReplayScheduling = new[]
+        {
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+            }
+        };
+
+        context.ProcessEvents(historyReplayScheduling, false);
+
+        var completionHistory = new[]
+        {
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "7"
+                }
+            }
+        };
+
+        context.ProcessEvents(completionHistory, false);
+
+        var value = await task;
+        Assert.Equal(7, value);
+        Assert.Empty(context.PendingActions);
     }
 
     [Fact]
