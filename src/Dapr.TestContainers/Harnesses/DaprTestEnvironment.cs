@@ -12,9 +12,11 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Containers;
 using Dapr.TestContainers.Containers.Dapr;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Networks;
@@ -30,25 +32,36 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
 {
     private readonly DaprPlacementContainer _placement;
     private readonly DaprSchedulerContainer _scheduler;
+    private readonly RedisContainer? _redis;
     private bool _started;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprTestEnvironment"/> class.
     /// </summary>
     /// <param name="options">Optional Dapr runtime options. If null, default options are used.</param>
-    public DaprTestEnvironment(DaprRuntimeOptions? options = null)
+    /// <param name="needsActorState">True if a </param>
+    public DaprTestEnvironment(DaprRuntimeOptions? options = null, bool needsActorState = false)
     {
         options ??= new DaprRuntimeOptions();
         Network = new NetworkBuilder().Build();
 
         _placement = new DaprPlacementContainer(options, Network);
         _scheduler = new DaprSchedulerContainer(options, Network);
+        if (needsActorState)
+        {
+            _redis = new RedisContainer(Network);
+        }
     }
 
     /// <summary>
     /// Gets the shared Docker network used by containers in this environment.
     /// </summary>
     public INetwork Network { get; }
+
+    /// <summary>
+    /// Exposes the redis container, if loaded in the environment.
+    /// </summary>
+    public RedisContainer? RedisContainer => _redis;
 
     /// <summary>
     /// Provides the external port used by the Dapr Placement service.
@@ -77,12 +90,18 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (_started) return;
+
+        List<Task> infrastructureTasks =
+        [
+            _placement.StartAsync(cancellationToken),
+            _scheduler.StartAsync(cancellationToken)
+        ];
+
+        if (_redis is not null)
+            infrastructureTasks.Add(_redis.StartAsync(cancellationToken));
         
         // Start infrastructure containers in parallel
-        await Task.WhenAll(
-            _placement.StartAsync(cancellationToken),
-            _scheduler.StartAsync(cancellationToken))
-            ;
+        await Task.WhenAll(infrastructureTasks);
 
         _started = true;
     }
@@ -94,6 +113,10 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
     {
         await _placement.DisposeAsync();
         await _scheduler.DisposeAsync();
+
+        if (_redis is not null)
+            await _redis.DisposeAsync();
+        
         await Network.DisposeAsync();
     }
 }

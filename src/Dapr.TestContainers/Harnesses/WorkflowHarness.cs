@@ -25,6 +25,7 @@ namespace Dapr.TestContainers.Harnesses;
 public sealed class WorkflowHarness : BaseHarness
 {
     private readonly RedisContainer _redis;
+    private readonly bool _isSelfHostedRedis;
     
     /// <summary>
     /// Provides an implementation harness for Dapr's Workflow building block.
@@ -35,14 +36,18 @@ public sealed class WorkflowHarness : BaseHarness
     /// <param name="environment">The isolated environment instance.</param>
     public WorkflowHarness(string componentsDir, Func<int, Task>? startApp,  DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
-        _redis = new(Network);
+        _redis = environment?.RedisContainer ?? new RedisContainer(Network);
+        _isSelfHostedRedis = environment?.RedisContainer is null;
     }
 
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
-        // Start infrastructure
-        await _redis.StartAsync(cancellationToken);
+        // If we're self-hosting Redis and it's not provided through the test environment, start it
+        if (_isSelfHostedRedis)
+        {
+            await _redis.StartAsync(cancellationToken);
+        }
         
         // Emit component YAMLs pointing to Redis
         RedisContainer.Yaml.WriteStateStoreYamlToFolder(ComponentsDirectory, redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
@@ -55,8 +60,5 @@ public sealed class WorkflowHarness : BaseHarness
     }
     
     /// <inheritdoc />
-	protected override async ValueTask OnDisposeAsync()
-	{
-		await _redis.DisposeAsync();
-    }
+	protected override ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 }
