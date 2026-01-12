@@ -111,27 +111,34 @@ public class WorkflowOrchestrationContextTests
     public void CallChildWorkflowAsync_ShouldPutRouterOnCreateSubOrchestrationAction_WhenAppIdProvided()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            appId: sourceAppId);
 
         _ = context.CallChildWorkflowAsync<int>(
             workflowName: "ChildWf",
             input: 1,
-            options: new ChildWorkflowTaskOptions(InstanceId: "child-1", TargetAppId: "remote-app"));
+            options: new ChildWorkflowTaskOptions(InstanceId: "child-1", TargetAppId: targetAppId));
 
         var action = Assert.Single(context.PendingActions);
         Assert.NotNull(action.CreateSubOrchestration);
 
         Assert.NotNull(action.CreateSubOrchestration.Router);
-        Assert.Equal("remote-app", action.CreateSubOrchestration.Router.TargetAppID);
+        Assert.Equal(targetAppId, action.CreateSubOrchestration.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.CreateSubOrchestration.Router.SourceAppID);
 
         // wrapper router may exist too (compat), but inner is the important one
         Assert.NotNull(action.Router);
-        Assert.Equal("remote-app", action.Router.TargetAppID);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
     }
     
     [Fact]
@@ -191,26 +198,33 @@ public class WorkflowOrchestrationContextTests
     public void CallActivityAsync_ShouldPutRouterOnScheduleTaskAction_WhenAppIdProvided()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            appId: sourceAppId);
 
         _ = context.CallActivityAsync<int>(
             name: "MyActivity",
             input: 2,
-            options: new WorkflowTaskOptions(TargetAppId: "remote-app"));
+            options: new WorkflowTaskOptions(TargetAppId: targetAppId));
 
         var action = Assert.Single(context.PendingActions);
         Assert.NotNull(action.ScheduleTask);
 
         Assert.NotNull(action.ScheduleTask.Router);
-        Assert.Equal("remote-app", action.ScheduleTask.Router.TargetAppID);
+        Assert.Equal(targetAppId, action.ScheduleTask.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.ScheduleTask.Router.SourceAppID);
 
         Assert.NotNull(action.Router);
-        Assert.Equal("remote-app", action.Router.TargetAppID);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
     }
     
     [Fact]
