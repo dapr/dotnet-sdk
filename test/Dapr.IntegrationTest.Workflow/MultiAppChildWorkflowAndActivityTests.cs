@@ -137,7 +137,7 @@ public sealed class MultiAppChildWorkflowAndActivityTests
         // Also verify the child workflow on App2 completed successfully
         using var scope2 = app2.CreateScope();
         var client2 = scope2.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-
+        
         cts.TryReset();
         var childResult = await client2.WaitForWorkflowCompletionAsync(childWorkflowId, cancellation: cts.Token);
         if (cts.Token.IsCancellationRequested)
