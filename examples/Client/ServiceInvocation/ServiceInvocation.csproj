@@ -2,13 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6</TargetFramework>
     <RootNamespace>Samples.Client</RootNamespace>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\..\AspNetCore\GrpcServiceSample\Protos\*.proto" ProtoRoot="..\..\AspNetCore\GrpcServiceSample\Protos\" GrpcServices="None" />
+    <Protobuf Include="..\..\AspNetCore\GrpcServiceSample\Protos\*.proto" ProtoRoot="..\..\AspNetCore\GrpcServiceSample\Protos\" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>

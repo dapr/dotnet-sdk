@@ -11,155 +11,88 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow
+using Dapr.Workflow.Client;
+using System;
+
+namespace Dapr.Workflow;
+
+/// <summary>
+/// Represents a snapshot of a workflow instance's current state, including runtime status.
+/// </summary>
+public sealed class WorkflowState
 {
-    using System;
-    using Dapr.Client;
-    using Microsoft.DurableTask.Client;
+    private readonly WorkflowMetadata? _metadata;
 
     /// <summary>
-    /// Represents a snapshot of a workflow instance's current state, including runtime status.
+    /// Initializes a new instance of the <see cref="WorkflowState"/> class from workflow metadata.
     /// </summary>
-    public class WorkflowState
+    /// <param name="metadata">The workflow metadata, or <c>null</c> if the workflow does not exist.</param>
+    internal WorkflowState(WorkflowMetadata? metadata)
     {
-        readonly OrchestrationMetadata? workflowState;
-        readonly WorkflowTaskFailureDetails? failureDetails;
-
-        internal WorkflowState(OrchestrationMetadata? orchestrationMetadata)
-        {
-            // This value will be null if the workflow doesn't exist.
-            this.workflowState = orchestrationMetadata;
-            if (orchestrationMetadata?.FailureDetails != null)
-            {
-                this.failureDetails = new WorkflowTaskFailureDetails(orchestrationMetadata.FailureDetails);
-            }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether the requested workflow instance exists.
-        /// </summary>
-        public bool Exists => this.workflowState != null;
-
-        /// <summary>
-        /// Gets a value indicating whether the requested workflow is in a running state.
-        /// </summary>
-        public bool IsWorkflowRunning => this.workflowState?.RuntimeStatus == OrchestrationRuntimeStatus.Running;
-
-        /// <summary>
-        /// Gets a value indicating whether the requested workflow is in a terminal state.
-        /// </summary>
-        public bool IsWorkflowCompleted => this.workflowState?.IsCompleted == true;
-
-        /// <summary>
-        /// Gets the time at which this workflow instance was created.
-        /// </summary>
-        public DateTimeOffset CreatedAt => this.workflowState?.CreatedAt ?? default;
-
-        /// <summary>
-        /// Gets the time at which this workflow instance last had its state updated.
-        /// </summary>
-        public DateTimeOffset LastUpdatedAt => this.workflowState?.LastUpdatedAt ?? default;
-
-        /// <summary>
-        /// Gets the execution status of the workflow.
-        /// </summary>
-        public WorkflowRuntimeStatus RuntimeStatus
-        {
-            get
-            {
-                if (this.workflowState == null)
-                {
-                    return WorkflowRuntimeStatus.Unknown;
-                }
-
-                switch (this.workflowState.RuntimeStatus)
-                {
-                    case OrchestrationRuntimeStatus.Running:
-                        return WorkflowRuntimeStatus.Running;
-                    case OrchestrationRuntimeStatus.Completed:
-                        return WorkflowRuntimeStatus.Completed;
-                    case OrchestrationRuntimeStatus.Failed:
-                        return WorkflowRuntimeStatus.Failed;
-                    case OrchestrationRuntimeStatus.Terminated:
-                        return WorkflowRuntimeStatus.Terminated;
-                    case OrchestrationRuntimeStatus.Pending:
-                        return WorkflowRuntimeStatus.Pending;
-                    case OrchestrationRuntimeStatus.Suspended:
-                        return WorkflowRuntimeStatus.Suspended;
-                    default:
-                        return WorkflowRuntimeStatus.Unknown;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the failure details, if any, for the workflow instance.
-        /// </summary>
-        /// <remarks>
-        /// This property contains data only if the workflow is in the <see cref="WorkflowRuntimeStatus.Failed"/>
-        /// state, and only if this instance metadata was fetched with the option to include output data.
-        /// </remarks>
-        /// <value>The failure details if the workflow was in a failed state; <c>null</c> otherwise.</value>
-        public WorkflowTaskFailureDetails? FailureDetails => this.failureDetails;
-
-        /// <summary>
-        /// Deserializes the workflow input into <typeparamref name="T"/>.
-        /// </summary>
-        /// <typeparam name="T">The type to deserialize the workflow input into.</typeparam>
-        /// <returns>Returns the input as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
-        public T? ReadInputAs<T>()
-        {
-            if (this.workflowState == null)
-            {
-                return default;
-            }
-
-            if (string.IsNullOrEmpty(this.workflowState.SerializedInput))
-            {
-                return default;
-            }
-
-            return this.workflowState.ReadInputAs<T>();
-        }
-
-        /// <summary>
-        /// Deserializes the workflow output into <typeparamref name="T"/>.
-        /// </summary>
-        /// <typeparam name="T">The type to deserialize the workflow output into.</typeparam>
-        /// <returns>Returns the output as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
-        public T? ReadOutputAs<T>()
-        {
-            if (this.workflowState == null)
-            {
-                return default;
-            }
-
-            if (string.IsNullOrEmpty(this.workflowState.SerializedOutput))
-            {
-                return default;
-            }
-
-            return this.workflowState.ReadOutputAs<T>();
-        }
-
-        /// <summary>
-        /// Deserializes the workflow's custom status into <typeparamref name="T"/>.
-        /// </summary>
-        /// <typeparam name="T">The type to deserialize the workflow's custom status into.</typeparam>
-        /// <returns>Returns the custom status as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
-        public T? ReadCustomStatusAs<T>()
-        {
-            if (this.workflowState == null)
-            {
-                return default;
-            }
-
-            if (string.IsNullOrEmpty(this.workflowState.SerializedCustomStatus))
-            {
-                return default;
-            }
-
-            return this.workflowState.ReadCustomStatusAs<T>();
-        }
+        _metadata = metadata;
     }
+    
+    /// <summary>
+    /// Gets a value indicating whether the requested workflow instance exists.
+    /// </summary>
+    public bool Exists => _metadata is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether the requested workflow is in a running state.
+    /// </summary>
+    public bool IsWorkflowRunning => _metadata?.RuntimeStatus == WorkflowRuntimeStatus.Running;
+
+    /// <summary>
+    /// Gets a value indicating whether the requested workflow is in a terminal state.
+    /// </summary>
+    public bool IsWorkflowCompleted => _metadata?.RuntimeStatus is
+        WorkflowRuntimeStatus.Completed or
+        WorkflowRuntimeStatus.Failed or
+        WorkflowRuntimeStatus.Terminated;
+
+    /// <summary>
+    /// Gets the time at which this workflow instance was created.
+    /// </summary>
+    public DateTimeOffset CreatedAt => _metadata?.CreatedAt ?? default;
+
+    /// <summary>
+    /// Gets the time at which this workflow instance last had its state updated.
+    /// </summary>
+    public DateTimeOffset LastUpdatedAt => _metadata?.LastUpdatedAt ?? default;
+
+    /// <summary>
+    /// Gets the execution status of the workflow.
+    /// </summary>
+    public WorkflowRuntimeStatus RuntimeStatus => _metadata?.RuntimeStatus ?? WorkflowRuntimeStatus.Unknown;
+
+    /// <summary>
+    /// Gets the failure details, if any, for the workflow instance.
+    /// </summary>
+    /// <remarks>
+    /// This property contains data only if the workflow is in the <see cref="WorkflowRuntimeStatus.Failed"/>
+    /// state, and only if this instance metadata was fetched with the option to include output data.
+    /// </remarks>
+    /// <value>The failure details if the workflow was in a failed state; <c>null</c> otherwise.</value>
+    public WorkflowTaskFailureDetails? FailureDetails => _metadata?.FailureDetails;
+
+    /// <summary>
+    /// Deserializes the workflow input into <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The type to deserialize the workflow input into.</typeparam>
+    /// <returns>Returns the input as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
+    public T? ReadInputAs<T>() => _metadata is null ? default : _metadata.ReadInputAs<T>();
+
+    /// <summary>
+    /// Deserializes the workflow output into <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The type to deserialize the workflow output into.</typeparam>
+    /// <returns>Returns the output as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
+    public T? ReadOutputAs<T>() => _metadata is null ? default : _metadata.ReadOutputAs<T>();
+
+    /// <summary>
+    /// Deserializes the workflow's custom status into <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The type to deserialize the workflow's custom status into.</typeparam>
+    /// <returns>Returns the custom status as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
+    public T? ReadCustomStatusAs<T>() => _metadata is null ? default : _metadata.ReadCustomStatusAs<T>();
 }

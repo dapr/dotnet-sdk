@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
 
 using System.Net.Mime;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+internal class Constants
 {
-    internal class Constants
-    {
-        public const string ContentTypeApplicationJson = MediaTypeNames.Application.Json;
-        public const string ContentTypeApplicationGrpc = "application/grpc";
-        public const string ContentTypeCloudEvent = "application/cloudevents+json";
-    }
+    public const string ContentTypeApplicationJson = MediaTypeNames.Application.Json;
+    public const string ContentTypeApplicationGrpc = "application/grpc";
+    public const string ContentTypeCloudEvent = "application/cloudevents+json";
+    public const string ContentTypeApplicationOctetStream = MediaTypeNames.Application.Octet;
 }

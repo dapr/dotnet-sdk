@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System;
-using Xunit;
 
 namespace Dapr.Jobs.Test.Extensions;
 

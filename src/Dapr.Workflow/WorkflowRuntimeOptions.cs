@@ -13,179 +13,143 @@
 
 using Grpc.Net.Client;
 
-namespace Dapr.Workflow
+namespace Dapr.Workflow;
+
+using Abstractions;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Worker;
+
+/// <summary>
+/// Defines runtime options for workflows.
+/// </summary>
+public sealed class WorkflowRuntimeOptions
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
-    using Microsoft.DurableTask;
-    using Microsoft.Extensions.DependencyInjection;
+    private readonly List<Action<WorkflowsFactory>> _registrationActions = [];
+    private int _maxConcurrentWorkflows = 100;
+    private int _maxConcurrentActivities = 100;
+    
+    /// <summary>
+    /// Gets the maximum number of concurrent workflow instances that can be executed at the same time.
+    /// </summary>
+    /// <remarks>
+    /// The default is 100. Setting this to a higher value can improve throughput but will also increase memory
+    /// usage.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when value is less than 1.</exception>
+    public int MaxConcurrentWorkflows
+    {
+        get => _maxConcurrentWorkflows;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            _maxConcurrentWorkflows = value;
+        }
+    }
 
     /// <summary>
-    /// Defines runtime options for workflows.
+    /// Gets the maximum number of concurrent activities that can be executed at the same time.
     /// </summary>
-    public sealed class WorkflowRuntimeOptions
+    /// <remarks>
+    /// The default value is 100. Setting this to a higher value can improve throughput, but will also increase
+    /// memory usage.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when value is less than 1.</exception>
+    public int MaxConcurrentActivities
     {
-        /// <summary>
-        /// Dictionary to name and register a workflow.
-        /// </summary>
-        readonly Dictionary<string, Action<DurableTaskRegistry>> factories = new();
+        get => _maxConcurrentActivities;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            _maxConcurrentActivities = value;
+        }
+    }
+    
+    /// <summary>
+    /// Gets or sets the gRPC channel options used for connecting to the Dapr sidecar.
+    /// </summary>
+    internal GrpcChannelOptions? GrpcChannelOptions { get; private set; }
 
-        /// <summary>
-        /// Override GrpcChannelOptions.
-        /// </summary>
-        internal GrpcChannelOptions? GrpcChannelOptions { get; private set; }
+    /// <summary>
+    /// Registers a workflow as a function that takes a specified input type and returns a specified output type.
+    /// </summary>
+    /// <typeparam name="TInput">The type of the workflow input.</typeparam>
+    /// <typeparam name="TOutput">The type of the workflow output.</typeparam>
+    /// <param name="name">Workflow name.</param>
+    /// <param name="implementation">Function implementing the workflow definition.</param>
+    public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> implementation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(implementation);
         
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WorkflowRuntimeOptions"/> class.
-        /// </summary>
-        /// <remarks>
-        /// Instances of this type are expected to be instanciated from a dependency injection container.
-        /// </remarks>
-        public WorkflowRuntimeOptions()
-        {
-        }
+        // Store as a registration action to be applied to WorkflowsFactory later
+        _registrationActions.Add(factory => factory.RegisterWorkflow(name, implementation));
+    }
 
-        /// <summary>
-        /// Registers a workflow as a function that takes a specified input type and returns a specified output type.
-        /// </summary>
-        /// <param name="name">Workflow name</param>
-        /// <param name="implementation">Function implementing the workflow definition</param>
-        public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> implementation)
-        {
-            // Dapr workflows are implemented as specialized Durable Task orchestrations
-            this.factories.Add(name, (DurableTaskRegistry registry) =>
-            {
-                registry.AddOrchestratorFunc<TInput, TOutput>(name, (innerContext, input) =>
-                {
-                    WorkflowContext workflowContext = new DaprWorkflowContext(innerContext);
-                    return implementation(workflowContext, input);
-                });
-                WorkflowLoggingService.LogWorkflowName(name);
-            });
-        }
-
-        /// <summary>
-        /// Registers a workflow class that derives from <see cref="Workflow{TInput, TOutput}"/>.
-        /// </summary>
-        /// <typeparam name="TWorkflow">The <see cref="Workflow{TInput, TOutput}"/> type to register.</typeparam>
-        public void RegisterWorkflow<TWorkflow>() where TWorkflow : class, IWorkflow, new()
-        {
-            string name = typeof(TWorkflow).Name;
-
-            // Dapr workflows are implemented as specialized Durable Task orchestrations
-            this.factories.Add(name, (DurableTaskRegistry registry) =>
-            {
-                registry.AddOrchestrator(name, () =>
-                {
-                    TWorkflow workflow = Activator.CreateInstance<TWorkflow>();
-                    return new OrchestratorWrapper(workflow);
-                });
-                WorkflowLoggingService.LogWorkflowName(name);
-            });
-        }
-
-        /// <summary>
-        /// Registers a workflow activity as a function that takes a specified input type and returns a specified output type.
-        /// </summary>
-        /// <param name="name">Activity name</param>
-        /// <param name="implementation">Activity implemetation</param>
-        public void RegisterActivity<TInput, TOutput>(string name, Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation)
-        {
-            // Dapr activities are implemented as specialized Durable Task activities
-            this.factories.Add(name, (DurableTaskRegistry registry) =>
-            {
-                registry.AddActivityFunc<TInput, TOutput>(name, (innerContext, input) =>
-                {
-                    WorkflowActivityContext activityContext = new DaprWorkflowActivityContext(innerContext);
-                    return implementation(activityContext, input);
-                });
-                WorkflowLoggingService.LogActivityName(name);
-            });
-        }
-
-        /// <summary>
-        /// Registers a workflow activity class that derives from <see cref="WorkflowActivity{TInput, TOutput}"/>.
-        /// </summary>
-        /// <typeparam name="TActivity">The <see cref="WorkflowActivity{TInput, TOutput}"/> type to register.</typeparam>
-        public void RegisterActivity<TActivity>() where TActivity : class, IWorkflowActivity
-        {
-            string name = typeof(TActivity).Name;
-
-            // Dapr workflows are implemented as specialized Durable Task orchestrations
-            this.factories.Add(name, (DurableTaskRegistry registry) =>
-            {
-                registry.AddActivity(name, serviceProvider =>
-                {
-                    // Workflow activity classes support dependency injection.
-                    TActivity activity = ActivatorUtilities.CreateInstance<TActivity>(serviceProvider);
-                    return new ActivityWrapper(activity);
-                });
-                WorkflowLoggingService.LogActivityName(name);
-            });
-        }
+    /// <summary>
+    /// Registers a workflow class that derives from <see cref="Workflow{TInput, TOutput}"/>.
+    /// </summary>
+    /// <typeparam name="TWorkflow">The <see cref="Workflow{TInput, TOutput}"/> type to register.</typeparam>
+    /// <param name="name">
+    /// Workflow name. If not specified, then the name of <typeparamref name="TWorkflow"/> is used.
+    /// </param>
+    public void RegisterWorkflow<TWorkflow>(string? name = null) where TWorkflow : class, IWorkflow
+    {
+        _registrationActions.Add(factory => factory.RegisterWorkflow<TWorkflow>(name));
+    }
+    
+    /// <summary>
+    /// Registers a workflow activity as a function that takes a specified input type and returns a specified output type.
+    /// </summary>
+    /// <typeparam name="TInput">The type of the activity input.</typeparam>
+    /// <typeparam name="TOutput">The type of the activity output.</typeparam>
+    /// <param name="name">Activity name.</param>
+    /// <param name="implementation">Activity implementation.</param>
+    public void RegisterActivity<TInput, TOutput>(string name, Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(implementation);
         
-        /// <summary>
-        /// Uses the provided <paramref name="grpcChannelOptions" /> for creating the <see cref="GrpcChannel" />.
-        /// </summary>
-        /// <param name="grpcChannelOptions">The <see cref="GrpcChannelOptions" /> to use for creating the <see cref="GrpcChannel" />.</param>
-        public void UseGrpcChannelOptions(GrpcChannelOptions grpcChannelOptions)
+        _registrationActions.Add(factory => factory.RegisterActivity(name, implementation));
+    }
+    
+    /// <summary>
+    /// Registers a workflow activity class that derives from <see cref="WorkflowActivity{TInput, TOutput}"/>.
+    /// </summary>
+    /// <typeparam name="TActivity">The <see cref="WorkflowActivity{TInput, TOutput}"/> type to register.</typeparam>
+    /// <param name="name">
+    /// Activity name. If not specified, then the name of <typeparamref name="TActivity"/> is used.
+    /// </param>
+    public void RegisterActivity<TActivity>(string? name = null)
+        where TActivity : class, IWorkflowActivity
+    {
+        _registrationActions.Add(factory => factory.RegisterActivity<TActivity>(name));
+    }
+    
+    /// <summary>
+    /// Uses the provided <paramref name="grpcChannelOptions" /> for creating the <see cref="GrpcChannel" />.
+    /// </summary>
+    /// <param name="grpcChannelOptions">
+    /// The <see cref="GrpcChannelOptions" /> to use for creating the <see cref="GrpcChannel" />.
+    /// </param>
+    public void UseGrpcChannelOptions(GrpcChannelOptions grpcChannelOptions)
+    {
+        ArgumentNullException.ThrowIfNull(grpcChannelOptions);
+        GrpcChannelOptions = grpcChannelOptions;
+    }
+    
+    /// <summary>
+    /// Applies all registrations to the provided factory.
+    /// </summary>
+    /// <param name="factory">The factory to apply registrations to.</param>
+    internal void ApplyRegistrations(WorkflowsFactory factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        
+        foreach (var action in _registrationActions)
         {
-            this.GrpcChannelOptions = grpcChannelOptions;
-        }
-
-        /// <summary>
-        /// Method to add workflows and activities to the registry.
-        /// </summary>
-        /// <param name="registry">The registry we will add workflows and activities to</param>
-        internal void AddWorkflowsAndActivitiesToRegistry(DurableTaskRegistry registry)
-        {
-            foreach (Action<DurableTaskRegistry> factory in this.factories.Values)
-            {
-                factory.Invoke(registry); // This adds workflows to the registry indirectly.
-            }
-        }
-
-        /// <summary>
-        /// Helper class that provides a Durable Task orchestrator wrapper for a workflow.
-        /// </summary>
-        class OrchestratorWrapper : ITaskOrchestrator
-        {
-            readonly IWorkflow workflow;
-
-            public OrchestratorWrapper(IWorkflow workflow)
-            {
-                this.workflow = workflow;
-            }
-
-            public Type InputType => this.workflow.InputType;
-
-            public Type OutputType => this.workflow.OutputType;
-
-            public Task<object?> RunAsync(TaskOrchestrationContext context, object? input)
-            {
-                return this.workflow.RunAsync(new DaprWorkflowContext(context), input);
-            }
-        }
-
-        class ActivityWrapper : ITaskActivity
-        {
-            readonly IWorkflowActivity activity;
-
-            public ActivityWrapper(IWorkflowActivity activity)
-            {
-                this.activity = activity;
-            }
-
-            public Type InputType => this.activity.InputType;
-
-            public Type OutputType => this.activity.OutputType;
-
-            public Task<object?> RunAsync(TaskActivityContext context, object? input)
-            {
-                return this.activity.RunAsync(new DaprWorkflowActivityContext(context), input);
-            }
+            action(factory);
         }
     }
 }
-

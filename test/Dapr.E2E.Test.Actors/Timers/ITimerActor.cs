@@ -15,14 +15,13 @@ using System;
 using System.Threading.Tasks;
 using Dapr.Actors;
 
-namespace Dapr.E2E.Test.Actors.Timers
+namespace Dapr.E2E.Test.Actors.Timers;
+
+public interface ITimerActor : IPingActor, IActor
 {
-    public interface ITimerActor : IPingActor, IActor
-    {
-        Task StartTimer(StartTimerOptions options);
+    Task StartTimer(StartTimerOptions options);
 
-        Task StartTimerWithTtl(TimeSpan ttl);
+    Task StartTimerWithTtl(TimeSpan ttl);
 
-        Task<State> GetState();
-    }
+    Task<State> GetState();
 }

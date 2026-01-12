@@ -5,13 +5,17 @@ on:
     branches:
       - master
       - release-*
+      - dev-*
+      - feature-*
     tags:
       - v*
     
   pull_request:
     branches: 
-    - master
-    - release-*
+      - master
+      - release-*
+      - dev-*
+      - feature-*
 
 jobs:
   build:
@@ -28,8 +32,10 @@ jobs:
         with:
           dotnet-version: 9.0.x
           dotnet-quality: 'ga'
+      - name: Restore dependencies
+        run: dotnet restore
       - name: Build
-        run: dotnet build --configuration release
+        run: dotnet build --configuration release --no-restore
       - name: Generate Packages
         run: dotnet pack --configuration release
       - name: Upload packages
@@ -37,25 +43,98 @@ jobs:
         with:
           name: packages
           path: ${{ env.NUPKG_OUTDIR }}
-
-  test:
-    name: Test .NET ${{ matrix.dotnet-version }}
+  discover-integration-v2-tests:
+    runs-on: ubuntu-latest
+    outputs: 
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v1
+      - id: set-matrix
+        run: |
+          # Find all csproj files matching the pattern recursively
+          PROJECTS=$(find test -name "Dapr.IntegrationTest.*.csproj" | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+  discover-unit-test-projects:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v1
+      - id: set-matrix
+        run: |
+          # Find all csproj files matching the pattern recursively
+          PROJECTS=$(find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+  integration-tests-v2:
+    name: Integration Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
+    needs: discover-integration-v2-tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        dotnet-version: [ '8.0', '9.0' ]
+        os: [ubuntu-latest]
+        project: ${{ fromJson(needs.discover-integration-v2-tests.outputs.matrix) }}
+        include:
+          - dotnet-version: '8.0'
+            display-name: '.NET 8.0'
+            framework: 'net8'
+            prefix: 'net8'
+            install-version: '8.0.x'
+          - dotnet-version: '9.0'
+            display-name: '.NET 9.0'
+            framework: 'net9'
+            prefix: 'net9'
+            install-version: '9.0.x'
+    steps:
+      - uses: actions/checkout@v1
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup ${{ matrix.display-name }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ matrix.install-version }}
+          dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
+      - name: Integration Tests
+        id: integration-tests-v2
+        continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
+        run: |
+          dotnet test "${{ matrix.project }}" \
+          --configuration release \
+          --framework ${{ matrix.framework }} \
+          --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+          --logger "GitHubActions;report-warnings=false" \
+          --results-directory "${{ github.workspace }}/TestResults" \
+          /p:CollectCoverage=true \
+          /p:CoverletOutputFormat=opencover \
+          /p:GITHUB_ACTIONS=false
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v1
+        with:
+          flags: ${{ matrix.framework }}
+      - name: Parse Trx files
+        uses: NasAmin/trx-parser@v0.2.0
+        id: trx-parser
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository # does not work on PRs from forks
+        with:
+          TRX_PATH: ${{ github.workspace }}/TestResults
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci-integration-tests-gate:
+    runs-on: ubuntu-latest
+    needs: [integration-tests-v2, integration-test]
+    steps:
+      - name: "All integration tests passed"
+        run: echo "All unit tests passed"
+  unit-tests:
+    name: Unit Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
+    needs: discover-unit-test-projects
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['6.0', '7.0', '8.0', '9.0']
+        dotnet-version: ['8.0', '9.0']
+        project: ${{ fromJson(needs.discover-unit-test-projects.outputs.matrix) }}
         include:
-        - dotnet-version: '6.0'
-          display-name: '.NET 6.0'
-          framework: 'net6'
-          prefix: 'net6'
-          install-version: '6.0.x'
-        - dotnet-version: '7.0'
-          display-name: '.NET 7.0'
-          framework: 'net7'
-          prefix: 'net7'
-          install-version: '7.0.x'
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
           framework: 'net8'
@@ -75,37 +154,19 @@ jobs:
       with:
         dotnet-version: ${{ matrix.install-version }}
         dotnet-quality: 'ga' # Prefer a GA release, but use the RC if not available
-    - name: Setup .NET 8 (required)
-      uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version != '8.0.x' }}
-      with:
-        dotnet-version: '8.0.x'
-        dotnet-quality: 'ga'
-    - name: Setup .NET 9 (required)
-      uses: actions/setup-dotnet@v3
-      if: ${{ matrix.install-version != '9.0.x' }}
-      with:
-        dotnet-version: '9.0.x'
-        dotnet-quality: 'ga'
-    - name: Build
-      # disable deterministic builds, just for test run. Deterministic builds break coverage for some reason
-      run: dotnet build --configuration release /p:GITHUB_ACTIONS=false
     - name: Test
       id: tests
       continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
       run: |
-        dotnet test \
-          --configuration release \
-          --framework ${{ matrix.framework }} \
-          --no-build \
-          --no-restore \
-          --filter FullyQualifiedName\!~Dapr.E2E.Test \
-          --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-          --logger "GitHubActions;report-warnings=false" \
-          --results-directory "${{ github.workspace }}/TestResults" \
-          /p:CollectCoverage=true \
-          /p:CoverletOutputFormat=opencover \
-          /p:GITHUB_ACTIONS=false
+        dotnet test "${{ matrix.project }}"  \
+        --configuration release \
+        --framework ${{ matrix.framework }} \
+        --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
+        --logger "GitHubActions;report-warnings=false" \
+        --results-directory "${{ github.workspace }}/TestResults" \
+        /p:CollectCoverage=true \
+        /p:CoverletOutputFormat=opencover \
+        /p:GITHUB_ACTIONS=false
     - name: Check test failure in PR
       if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
       run: exit 1
@@ -120,44 +181,63 @@ jobs:
       with:
         TRX_PATH: ${{ github.workspace }}/TestResults
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish:
-    name: Publish Packages
-    needs: ['build', 'test']
+  ci-unit-tests-gate:
     runs-on: ubuntu-latest
-    if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+    needs: [unit-tests]
     steps:
-    - name: Download release artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: packages
-        path: packages
-    - name: List packages (for sanity check)
-      run: ls -R
-      working-directory: packages
-    - name: Publish binaries to github for tags
-      if: startswith(github.ref, 'refs/tags/v')
-      run: |
-        sudo npm install --silent --no-progress -g github-release-cli@1.3.1
-        
-        # Parse repository to get owner and repo names
-        OWNER_NAME="${GITHUB_REPOSITORY%%/*}"
-        REPO_NAME="${GITHUB_REPOSITORY#*/}"
-        
-        # Get the list of files
-        RELEASE_ARTIFACT=(./packages/*)
-        
-        export GITHUB_TOKEN=${{ secrets.DAPR_BOT_TOKEN }}
-        echo "Uploading Nuget packages to GitHub Release"
-        github-release upload \
-          --owner $OWNER_NAME \
-          --repo $REPO_NAME \
-          --body "Release dapr dotnet SDK v${REL_VERSION}" \
-          --tag "v${REL_VERSION}" \
-          --name "Dapr dotnet SDK v${REL_VERSION}" \
-          --prerelease true \
-          ${RELEASE_ARTIFACT[*]}
-    - name: Publish nuget packages to nuget.org
-      if: startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
-      run: |
-        dotnet nuget push "./packages/Dapr*.nupkg" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
+      - name: "All unit tests passed"
+        run: echo "All unit tests passed"
+  integration-test:
+    uses: ./.github/workflows/itests.yml
+  discover:
+    name: 'Discover Packages'
+    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
+    runs-on: ubuntu-latest
+    if: |
+      startswith(github.ref, 'refs/tags/v') &&
+      !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: List packages
+        run: ls packages/*.nupkg
+      - name: Generate matrix
+        id: set-matrix
+        run: |
+          echo "Generating package matrix..."
+          files=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$files" >> $GITHUB_OUTPUT
+  
+  publish:
+    permissions:
+      id-token: write # Enable GitHub OIDC token issuance for this job
+    name: Publish Packages
+    needs: ['discover']
+    if: |
+      startswith(github.ref, 'refs/tags/v') &&
+      !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover.outputs.matrix) }}
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: NuGet logic (OIDC -> temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGETORG_DAPR_USER }}
+      - name: Publish ${{ matrix.package }} to NuGet
+        run: |
+          dotnet nuget push "${{ matrix.package }}" --skip-duplicate --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+ 

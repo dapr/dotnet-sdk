@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.AI.A2a</PackageId>
+        <Title>Dapr AI Agent to Agent SDK</Title>
+        <Description>Dapr SDK for implementing agent-to-agent operations.</Description>
+        <VersionSuffix>alpha</VersionSuffix>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <NoWarn>NU5104;</NoWarn>
+        <SignAssembly>false</SignAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="A2A" />
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="System.Net.ServerSentEvents" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+        <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+        <ProjectReference Include="..\Dapr.Client\Dapr.Client.csproj" />
+    </ItemGroup>
+    
+</Project>

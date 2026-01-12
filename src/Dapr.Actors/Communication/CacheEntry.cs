@@ -11,20 +11,19 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+internal class CacheEntry
 {
-    internal class CacheEntry
+    public CacheEntry(
+        IActorRequestMessageBodySerializer requestBodySerializer,
+        IActorResponseMessageBodySerializer responseBodySerializer)
     {
-        public CacheEntry(
-            IActorRequestMessageBodySerializer requestBodySerializer,
-            IActorResponseMessageBodySerializer responseBodySerializer)
-        {
-            this.RequestMessageBodySerializer = requestBodySerializer;
-            this.ResponseMessageBodySerializer = responseBodySerializer;
-        }
-
-        public IActorRequestMessageBodySerializer RequestMessageBodySerializer { get; }
-
-        public IActorResponseMessageBodySerializer ResponseMessageBodySerializer { get; }
+        this.RequestMessageBodySerializer = requestBodySerializer;
+        this.ResponseMessageBodySerializer = responseBodySerializer;
     }
+
+    public IActorRequestMessageBodySerializer RequestMessageBodySerializer { get; }
+
+    public IActorResponseMessageBodySerializer ResponseMessageBodySerializer { get; }
 }

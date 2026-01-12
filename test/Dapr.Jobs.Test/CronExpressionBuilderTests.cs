@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System;
-using Xunit;
 using ArgumentException = System.ArgumentException;
 
 namespace Dapr.Jobs.Test;

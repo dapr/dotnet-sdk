@@ -1,0 +1,57 @@
+/*
+Copyright 2025 The Dapr Authors
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package durabletask.protos.backend.v1;
+
+option csharp_namespace = "Dapr.DurableTask.Protobuf";
+option java_package = "io.dapr.durabletask.implementation.protobuf";
+option go_package = "/api/protos";
+
+import "orchestrator_service.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message RuntimeStateStalled {
+  StalledReason reason = 1;
+  optional string description = 2;
+}
+
+// OrchestrationRuntimeState holds the current state for an orchestration.
+message OrchestrationRuntimeState {
+  string instanceId = 1;
+  repeated HistoryEvent newEvents = 2;
+  repeated HistoryEvent oldEvents = 3;
+  repeated HistoryEvent pendingTasks = 4;
+  repeated HistoryEvent pendingTimers = 5;
+  repeated OrchestrationRuntimeStateMessage pendingMessages = 6;
+
+  ExecutionStartedEvent startEvent = 7;
+  ExecutionCompletedEvent completedEvent = 8;
+  google.protobuf.Timestamp createdTime = 9;
+  google.protobuf.Timestamp lastUpdatedTime = 10;
+  google.protobuf.Timestamp completedTime = 11;
+  bool continuedAsNew = 12;
+  bool isSuspended = 13;
+
+  google.protobuf.StringValue customStatus = 14;
+  optional RuntimeStateStalled stalled = 15;
+}
+
+// OrchestrationRuntimeStateMessage holds an OrchestratorMessage and the target instance ID.
+message OrchestrationRuntimeStateMessage {
+  HistoryEvent historyEvent = 1;
+  string TargetInstanceID = 2;
+}
