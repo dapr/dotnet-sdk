@@ -7,13 +7,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
+[CollectionDefinition("multi-app-workflow", DisableParallelization = true)]
 public sealed class MultiAppChildWorkflowTests
 {
     [Fact]
     public async Task ShouldScheduleChildWorkflowOnRemoteAppUsingAppId()
     {
-        const string app1Id = "workflow-app-1";
-        const string app2Id = "workflow-app-2";
+        var guid = Guid.NewGuid().ToString("N");
+        var app1Id = $"workflow-app-1-{guid}";
+        var app2Id = $"workflow-app-2-{guid}";
 
         var options1 = new DaprRuntimeOptions();
         options1.WithAppId(app1Id);
