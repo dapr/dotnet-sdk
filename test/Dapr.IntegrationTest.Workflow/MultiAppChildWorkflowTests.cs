@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-[CollectionDefinition("multi-app-workflow", DisableParallelization = true)]
+[Collection(nameof(MultiAppChildWorkflowTests))]
 public sealed class MultiAppChildWorkflowTests
 {
     [Fact]
@@ -75,8 +75,8 @@ public sealed class MultiAppChildWorkflowTests
         var client1 = scope1.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
        
         const int inputValue = 7;
-        const string initialWorkflowId = "initial-workflow-instance";
-        const string targetWorkflowId = "remote-workflow-instance";
+        var initialWorkflowId = $"initial-workflow-instance-{guid}";
+        var targetWorkflowId = $"remote-workflow-instance-{guid}";
         
         // Start the initial workflow on App1
         await client1.ScheduleNewWorkflowAsync(nameof(InitialWorkflow), initialWorkflowId,

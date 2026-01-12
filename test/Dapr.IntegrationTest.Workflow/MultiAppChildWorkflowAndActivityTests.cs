@@ -20,7 +20,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-[CollectionDefinition("multi-app-workflow-and-activity", DisableParallelization = true)]
+[Collection(nameof(MultiAppChildWorkflowAndActivityTests))]
 public sealed class MultiAppChildWorkflowAndActivityTests
 {
     [Fact]
@@ -109,10 +109,8 @@ public sealed class MultiAppChildWorkflowAndActivityTests
         var client1 = scope1.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         const int inputValue = 7;
-        var runId = Guid.NewGuid().ToString("N");
-
-        var initialWorkflowId = $"initial-workflow-instance-{runId}";
-        var childWorkflowId = $"child-workflow-instance-{runId}";
+        var initialWorkflowId = $"initial-workflow-instance-{guid}";
+        var childWorkflowId = $"child-workflow-instance-{guid}";
 
         await client1.ScheduleNewWorkflowAsync(
             nameof(InitialWorkflow),
