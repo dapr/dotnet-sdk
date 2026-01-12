@@ -29,6 +29,21 @@ public sealed class WorkflowRuntimeOptions
     private readonly List<Action<WorkflowsFactory>> _registrationActions = [];
     private int _maxConcurrentWorkflows = 100;
     private int _maxConcurrentActivities = 100;
+    private string? _currentAppId = null;
+
+    /// <summary>
+    /// The ID of the application running the workflow. This must be set to use the multi-application workflow
+    /// functionality.
+    /// </summary>
+    public string? AppId
+    {
+        get => _currentAppId;
+        set
+        {
+            ArgumentException.ThrowIfNullOrEmpty(value);
+            _currentAppId = value;
+        }
+    }
     
     /// <summary>
     /// Gets the maximum number of concurrent workflow instances that can be executed at the same time.

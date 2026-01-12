@@ -161,7 +161,7 @@ public class WorkflowWorkerTests
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
             .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetWorkItemsRequest _, Metadata? __, DateTime? ___, CancellationToken ct) =>
+            .Returns((GetWorkItemsRequest _, Metadata? _, DateTime? _, CancellationToken ct) =>
             {
                 ct.ThrowIfCancellationRequested();
                 return CreateServerStreamingCall(EmptyWorkItems());
@@ -176,7 +176,7 @@ public class WorkflowWorkerTests
             options);
 
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         await InvokeExecuteAsync(worker, cts.Token);
     }
@@ -191,7 +191,7 @@ public class WorkflowWorkerTests
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance, null);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -232,17 +232,21 @@ public class WorkflowWorkerTests
     [Fact]
     public void CallChildWorkflowAsync_ShouldPreserveRouterTargetAppId_OnScheduledAction()
     {
+        const string appId1 = "this-app";
+        const string appId2 = "remote-app";
+        
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance);
+            serializer, NullLoggerFactory.Instance, appId1);
 
-        _ = context.CallChildWorkflowAsync<int>("ChildWf", options: new ChildWorkflowTaskOptions { AppId = "remote-app" });
+        _ = context.CallChildWorkflowAsync<int>("ChildWf", options: new ChildWorkflowTaskOptions { TargetAppId = appId2 });
 
         var action = Assert.Single(context.PendingActions);
         Assert.NotNull(action.CreateSubOrchestration);
         Assert.NotNull(action.Router);
-        Assert.Equal("remote-app", action.Router.TargetAppID);
+        Assert.Equal(appId1, action.Router.SourceAppID);
+        Assert.Equal(appId2, action.Router.TargetAppID);
     }
     
     [Fact]
@@ -251,7 +255,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance);
+            serializer, NullLoggerFactory.Instance, null);
 
         var completionEvent = new[]
         {
@@ -291,7 +295,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance);
+            serializer, NullLoggerFactory.Instance, null);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -326,12 +330,91 @@ public class WorkflowWorkerTests
     }
     
     [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldAllowWorkflowToComplete_OnSecondPass_WhenChildCompletionInHistory()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+
+        // Workflow: await a child workflow, then return null (output ignored here)
+        factory.AddWorkflow("InitialWorkflow", new InlineWorkflow(
+            inputType: typeof(object),
+            run: async (ctx, _) =>
+            {
+                await ctx.CallChildWorkflowAsync<int>("TargetWorkflow", input: 7,
+                    options: new ChildWorkflowTaskOptions(InstanceId: "remote-workflow-instance", TargetAppId: "workflow-app-2"));
+                return null;
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        // Pass 1: only ExecutionStarted, so it should schedule CreateSubOrchestration and yield (not completed)
+        var pass1 = new OrchestratorRequest
+        {
+            InstanceId = "initial-workflow-instance",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "InitialWorkflow", Input = "" }
+                }
+            }
+        };
+
+        var resp1 = await InvokeHandleOrchestratorResponseAsync(worker, pass1);
+        Assert.Contains(resp1.Actions, a => a.CreateSubOrchestration != null);
+        Assert.DoesNotContain(resp1.Actions, a => a.CompleteOrchestration != null);
+
+        // Pass 2: include sub-orchestration completed with taskScheduledId=0
+        var pass2 = new OrchestratorRequest
+        {
+            InstanceId = "initial-workflow-instance",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "InitialWorkflow", Input = "" }
+                },
+                new HistoryEvent
+                {
+                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                    {
+                        InstanceId = "remote-workflow-instance",
+                        Name = "TargetWorkflow",
+                        Input = "7"
+                    }
+                },
+                new HistoryEvent
+                {
+                    SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                    {
+                        TaskScheduledId = 0,
+                        Result = "21"
+                    }
+                }
+            }
+        };
+
+        var resp2 = await InvokeHandleOrchestratorResponseAsync(worker, pass2);
+        Assert.Contains(resp2.Actions, a => a.CompleteOrchestration != null);
+        Assert.Equal(OrchestrationStatus.Completed, resp2.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!.OrchestrationStatus);
+    }
+    
+    [Fact]
     public async Task CallChildWorkflowAsync_ShouldOnlyCompleteAfterCreation_WhenCompletionArrivesFirst()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance);
+            serializer, NullLoggerFactory.Instance, null);
 
         var completionHistory = new[]
         {
@@ -365,7 +448,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance);
+            serializer, NullLoggerFactory.Instance, null);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -532,7 +615,7 @@ public class WorkflowWorkerTests
         var factory = new StubWorkflowsFactory();
         factory.AddWorkflow("wf", new InlineWorkflow(
             inputType: typeof(string),
-            run: (ctx, input) =>
+            run: (ctx, _) =>
             {
                 ctx.ContinueAsNew(new { Next = "x" }, preserveUnprocessedEvents: true);
                 return Task.FromResult<object?>(null);
@@ -608,7 +691,7 @@ public class WorkflowWorkerTests
 
         var complete = Assert.Single(response.Actions).CompleteOrchestration;
         Assert.NotNull(complete);
-        Assert.Equal(OrchestrationStatus.Failed, complete!.OrchestrationStatus);
+        Assert.Equal(OrchestrationStatus.Failed, complete.OrchestrationStatus);
         Assert.NotNull(complete.FailureDetails);
         Assert.Contains("boom", complete.FailureDetails.ErrorMessage);
     }

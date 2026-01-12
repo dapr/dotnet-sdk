@@ -121,7 +121,7 @@ public class WorkflowOrchestrationContextTests
         _ = context.CallChildWorkflowAsync<int>(
             workflowName: "ChildWf",
             input: 1,
-            options: new ChildWorkflowTaskOptions(InstanceId: "child-1", AppId: "remote-app"));
+            options: new ChildWorkflowTaskOptions(InstanceId: "child-1", TargetAppId: "remote-app"));
 
         var action = Assert.Single(context.PendingActions);
         Assert.NotNull(action.CreateSubOrchestration);
@@ -153,6 +153,39 @@ public class WorkflowOrchestrationContextTests
         Assert.Null(action.ScheduleTask.Router);
         Assert.Null(action.Router);
     }
+    
+    [Fact]
+    public async Task CallActivityAsync_ShouldComplete_WhenCompletionArrivesBeforeCall()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        // Completion arrives first (this is what can happen on replay)
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = 0,
+                        Result = "42"
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        // Now the workflow schedules/awaits the activity with taskId 0
+        var task = context.CallActivityAsync<int>("MyActivity", input: 1);
+
+        var value = await task;
+        Assert.Equal(42, value);
+    }
 
     [Fact]
     public void CallActivityAsync_ShouldPutRouterOnScheduleTaskAction_WhenAppIdProvided()
@@ -168,7 +201,7 @@ public class WorkflowOrchestrationContextTests
         _ = context.CallActivityAsync<int>(
             name: "MyActivity",
             input: 2,
-            options: new WorkflowTaskOptions(AppId: "remote-app"));
+            options: new WorkflowTaskOptions(TargetAppId: "remote-app"));
 
         var action = Assert.Single(context.PendingActions);
         Assert.NotNull(action.ScheduleTask);
