@@ -82,6 +82,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Extract the following values from the ExecutionStartedEvent in the history
             string? workflowName = null;
             string? serializedInput = null;
+            string? appId = null;
 
             if (request.RequiresHistoryStreaming)
             {
@@ -103,16 +104,20 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Identify the workflow name from the now-complete history
             foreach (var e in allPastEvents.Concat(request.NewEvents))
             {
-                if (request.InstanceId == "initial-workflow-instance")
-                {
-                    var a = 0;
-                    a++;
-                }
-                
                 if (e.ExecutionStarted != null)
                 {
                     workflowName = e.ExecutionStarted.Name;
                     serializedInput = e.ExecutionStarted.Input;
+                    
+                    // Try pulling the app ID out of the target first, then the source if not available
+                    if (!string.IsNullOrEmpty(e.Router?.TargetAppID))
+                    {
+                        appId = e.Router.TargetAppID;
+                    }
+                    else if (!string.IsNullOrEmpty(e.Router?.SourceAppID))
+                    {
+                        appId = e.Router.SourceAppID;
+                    }
                     break;
                 }
             }
@@ -136,7 +141,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 : DateTime.UtcNow;
 
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory, options.AppId);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory, appId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
