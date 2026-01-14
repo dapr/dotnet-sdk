@@ -13,6 +13,7 @@
 
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,8 +28,11 @@ public sealed class SubworkflowTests
         var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -70,8 +74,11 @@ public sealed class SubworkflowTests
         var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

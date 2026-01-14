@@ -20,7 +20,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-[Collection(nameof(MultiAppActivityTests))]
 public sealed class MultiAppActivityTests
 {
     [Fact]
@@ -40,7 +39,7 @@ public sealed class MultiAppActivityTests
         var componentsDir2 = TestDirectoryManager.CreateTestDirectory("workflow-multiapp-activity-2");
 
         // Build our shared environment (Network + Control plane)
-        await using var environment = new DaprTestEnvironment(needsActorState: true);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
         // Build and start the first application (caller)
@@ -53,7 +52,6 @@ public sealed class MultiAppActivityTests
                     {
                         // App1 only registers the initiating workflow
                         opt.RegisterWorkflow<InitialWorkflow>();
-                        opt.AppId = app1Id;
                     },
                     configureClient: (sp, clientBuilder) =>
                     {
@@ -74,7 +72,6 @@ public sealed class MultiAppActivityTests
                     {
                         // App2 only needs to register the activity that will be invoked remotely
                         opt.RegisterActivity<MultiplyByThreeActivity>();
-                        opt.AppId = app2Id;
                     },
                     configureClient: (sp, clientBuilder) =>
                     {

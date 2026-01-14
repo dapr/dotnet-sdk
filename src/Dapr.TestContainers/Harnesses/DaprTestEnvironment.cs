@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Containers;
 using Dapr.TestContainers.Containers.Dapr;
+using Dapr.TestContainers.Infrastructure;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Networks;
 
@@ -34,23 +35,45 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
     private readonly DaprSchedulerContainer _scheduler;
     private readonly RedisContainer? _redis;
     private bool _started;
+    private readonly bool _ownsNetwork;
+    private readonly DockerNetworkLease? _networkLease;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprTestEnvironment"/> class.
     /// </summary>
     /// <param name="options">Optional Dapr runtime options. If null, default options are used.</param>
     /// <param name="needsActorState">True if a </param>
-    public DaprTestEnvironment(DaprRuntimeOptions? options = null, bool needsActorState = false)
+    /// <param name="network">Optional shared Docker network. If null, a dedicated network is created.</param>
+    public DaprTestEnvironment(DaprRuntimeOptions? options = null, bool needsActorState = false, INetwork? network = null)
     {
         options ??= new DaprRuntimeOptions();
-        Network = new NetworkBuilder().Build();
 
+        if (network is null)
+        {
+            Network = new NetworkBuilder().Build();
+            _ownsNetwork = true;
+        }
+        else
+        {
+            Network = network;
+            _ownsNetwork = false;
+        }
+        
         _placement = new DaprPlacementContainer(options, Network);
         _scheduler = new DaprSchedulerContainer(options, Network);
+        
         if (needsActorState)
         {
             _redis = new RedisContainer(Network);
         }
+    }
+
+    private DaprTestEnvironment(
+        DockerNetworkLease networkLease,
+        DaprRuntimeOptions? options = null,
+        bool needsActorState = false) : this(options, needsActorState, networkLease.Network)
+    {
+        _networkLease = networkLease;
     }
 
     /// <summary>
@@ -82,6 +105,18 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
     /// Gets the alias of the Scheduler container on the shared network.
     /// </summary>
     public string SchedulerAlias => _scheduler.NetworkAlias;
+
+    /// <summary>
+    /// Creates a <see cref="DaprTestEnvironment"/> with a pooled network for testing purposes.
+    /// </summary>
+    public static async ValueTask<DaprTestEnvironment> CreateWithPooledNetworkAsync(
+        DaprRuntimeOptions? options = null,
+        bool needsActorState = false,
+        CancellationToken cancellationToken = default)
+    {
+        var lease = await DockerNetworkPool.RentAsync(cancellationToken).ConfigureAwait(false);
+        return new DaprTestEnvironment(lease, options, needsActorState);
+    }
 
     /// <summary>
     /// Starts the environment infrastructure (Network, Redis, Placement, Scheduler).
@@ -117,6 +152,10 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
         if (_redis is not null)
             await _redis.DisposeAsync();
         
-        await Network.DisposeAsync();
+        if (_ownsNetwork)
+            await Network.DisposeAsync();
+
+        if (_networkLease is not null)
+            await _networkLease.DisposeAsync();
     }
 }

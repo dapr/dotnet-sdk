@@ -16,9 +16,6 @@
 
     <ItemGroup>
         <Using Include="Xunit"/>
-        <None Update="xunit.runner.json">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
     </ItemGroup>
 
     <ItemGroup>

@@ -13,6 +13,7 @@
 
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +30,11 @@ public sealed class ActivitySleepTests
         var workflowInstanceId1 = Guid.NewGuid().ToString();
         var workflowInstanceId2 = Guid.NewGuid().ToString();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        // Build the environment
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

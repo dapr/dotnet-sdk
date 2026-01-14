@@ -197,9 +197,6 @@ public abstract class BaseHarness : IAsyncContainerFixture
             await _environment.DisposeAsync();
         }
         
-        // Clean up the per-instance network
-        await Network.DisposeAsync();
-        
         // Clean up generated YAML files
         TestDirectoryManager.CleanUpDirectory(ComponentsDirectory);
         

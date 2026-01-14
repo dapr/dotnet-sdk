@@ -20,7 +20,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-[Collection(nameof(MultiAppChildWorkflowAndActivityTests))]
 public sealed class MultiAppChildWorkflowAndActivityTests
 {
     [Fact]
@@ -39,7 +38,7 @@ public sealed class MultiAppChildWorkflowAndActivityTests
         var componentsDir2 = TestDirectoryManager.CreateTestDirectory("workflow-multiapp-chain-2");
         var componentsDir3 = TestDirectoryManager.CreateTestDirectory("workflow-multiapp-chain-3");
 
-        await using var environment = new DaprTestEnvironment(needsActorState: true);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
         // App1: initiator (calls child workflow on App2)
@@ -51,7 +50,6 @@ public sealed class MultiAppChildWorkflowAndActivityTests
                     configureRuntime: opt =>
                     {
                         opt.RegisterWorkflow<InitialWorkflow>();
-                        opt.AppId = app1Id;
                     },
                     configureClient: (sp, clientBuilder) =>
                     {
@@ -72,7 +70,6 @@ public sealed class MultiAppChildWorkflowAndActivityTests
                     configureRuntime: opt =>
                     {
                         opt.RegisterWorkflow<ChildWorkflow>();
-                        opt.AppId = app2Id;
                     },
                     configureClient: (sp, clientBuilder) =>
                     {
@@ -93,7 +90,6 @@ public sealed class MultiAppChildWorkflowAndActivityTests
                     configureRuntime: opt =>
                     {
                         opt.RegisterActivity<MultiplyByThreeActivity>();
-                        opt.AppId = app3Id;
                     },
                     configureClient: (sp, clientBuilder) =>
                     {

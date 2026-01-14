@@ -1,4 +1,17 @@
-﻿using Dapr.TestContainers.Common;
+﻿// ------------------------------------------------------------------------
+// Copyright 2026 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//  ------------------------------------------------------------------------
+
+using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
 using Dapr.TestContainers.Harnesses;
 using Dapr.Workflow;
@@ -7,7 +20,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-[Collection(nameof(MultiAppChildWorkflowTests))]
 public sealed class MultiAppChildWorkflowTests
 {
     [Fact]
@@ -26,7 +38,7 @@ public sealed class MultiAppChildWorkflowTests
         var componentsDir2 = TestDirectoryManager.CreateTestDirectory("workflow-multiapp-2");
         
         // Build our shared environment (Network + Control plane)
-        await using var environment = new DaprTestEnvironment(needsActorState: true);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
         
         // Build and start the first application
@@ -39,7 +51,6 @@ public sealed class MultiAppChildWorkflowTests
                     {
                         // App1 only registers the initiating workflow
                         opt.RegisterWorkflow<InitialWorkflow>();
-                        opt.AppId = app1Id;
                     },
                     configureClient: (sp, clientBuilder) =>
                     {
@@ -60,7 +71,6 @@ public sealed class MultiAppChildWorkflowTests
                     {
                         opt.RegisterWorkflow<TargetWorkflow>();
                         opt.RegisterActivity<MultiplyActivity>();
-                        opt.AppId = app2Id;
                     },
                     configureClient: (sp, clientBuilder) =>
                     {

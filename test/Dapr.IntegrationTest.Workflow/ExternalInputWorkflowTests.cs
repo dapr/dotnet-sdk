@@ -14,6 +14,7 @@
 using Dapr.Client;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,8 +37,11 @@ public sealed partial class ExternalInputWorkflowTests
         var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -80,7 +84,10 @@ public sealed partial class ExternalInputWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -141,11 +148,24 @@ public sealed partial class ExternalInputWorkflowTests
         // Start the workflow
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(OrderProcessingWorkflow), workflowInstanceId,
             orderInfo);
-
-
+        
         // Wait for the workflow to complete - it shouldn't ask for approval
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        WorkflowState result;
+        try
+        {
+            result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId,
+                cancellation: cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true);
+            Assert.Fail($"Timed out waiting for workflow completion. Current state: {state?.RuntimeStatus}, CustomStatus: {state?.ReadCustomStatusAs<string>()}");
+            throw;
+        }
+
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        
         var resultValue = result.ReadOutputAs<OrderResult>();
         Assert.NotNull(resultValue);
         Assert.True(resultValue.Processed);
@@ -157,8 +177,11 @@ public sealed partial class ExternalInputWorkflowTests
         var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -196,8 +219,11 @@ public sealed partial class ExternalInputWorkflowTests
         var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
