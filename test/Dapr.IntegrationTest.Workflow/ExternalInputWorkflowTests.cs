@@ -91,6 +91,8 @@ public sealed partial class ExternalInputWorkflowTests
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
+                builder.Services.AddSingleton<DoodadService>();
+                
                 // Register the DaprClient for state management purposes
                 builder.Services.AddDaprClient((sp, b) =>
                 {
@@ -253,6 +255,11 @@ public sealed partial class ExternalInputWorkflowTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<int>();
         Assert.Equal(42, output); // Default value
+    }
+
+    public sealed class DoodadService
+    {
+        public bool ReturnTrue() => true;
     }
 
     private sealed class TimeoutWorkflow : Workflow<object?, string>
@@ -515,7 +522,7 @@ public sealed partial class ExternalInputWorkflowTests
             LogInventoryCheck(request.RequestId, request.Amount, request.ItemName);
 
             // Simulate slow processing
-            await Task.Delay((TimeSpan.FromSeconds(5)));
+            await Task.Delay((TimeSpan.FromMilliseconds(100)));
 
             // Determine if there are enough items for purchase
             var item = await daprClient.GetStateAsync<InventoryItem>(
@@ -558,7 +565,7 @@ public sealed partial class ExternalInputWorkflowTests
             LogProcessing(input.RequestId, input.Amount, input.ItemName, input.Currency);
 
             // Simulate slow processing
-            await Task.Delay(TimeSpan.FromSeconds(7));
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
 
             LogProcessingSuccessful(input.RequestId);
             return null;
@@ -574,12 +581,15 @@ public sealed partial class ExternalInputWorkflowTests
 
     public sealed partial class ReserveInventoryActivity(
         ILogger<ReserveInventoryActivity> logger,
+        DoodadService doodadSvc,
         DaprClient daprClient)
         : WorkflowActivity<InventoryRequest, InventoryResult>
     {
         public override async Task<InventoryResult> RunAsync(WorkflowActivityContext context, InventoryRequest req)
         {
             LogReservation(req.RequestId, req.Quantity, req.ItemName);
+
+            var result = doodadSvc.ReturnTrue();
 
             // Ensure that the store has items
             var item = await daprClient.GetStateAsync<InventoryItem?>(
@@ -599,7 +609,7 @@ public sealed partial class ExternalInputWorkflowTests
             if (item.Quantity >= req.Quantity)
             {
                 // Simulate slow processing
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await Task.Delay(TimeSpan.FromMilliseconds(100));
                 return new InventoryResult(true, item);
             }
 
@@ -611,7 +621,7 @@ public sealed partial class ExternalInputWorkflowTests
         private partial void LogReservation(string requestId, int quantity, string itemName);
 
         [LoggerMessage(LogLevel.Information, "There are {Quantity} {ItemName} available for purchase")]
-        private partial void LogAvailability(int Quantity, string ItemName);
+        private partial void LogAvailability(int quantity, string itemName);
     }
 
     public sealed partial class RequestApprovalActivity(ILogger<RequestApprovalActivity> logger)
@@ -637,6 +647,6 @@ public sealed partial class ExternalInputWorkflowTests
         }
 
         [LoggerMessage(LogLevel.Information, "A notification message was surfaced: '{Message}'")]
-        private partial void LogNotification(string Message);
+        private partial void LogNotification(string message);
     }
 }

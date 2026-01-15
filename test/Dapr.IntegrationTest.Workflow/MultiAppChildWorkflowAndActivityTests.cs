@@ -22,17 +22,17 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class MultiAppChildWorkflowAndActivityTests
 {
+    private static readonly string UniqueId = Guid.NewGuid().ToString("N");
+    private static readonly string App1Id = $"workflow-app-1-{UniqueId}";
+    private static readonly string App2Id = $"workflow-app-2-{UniqueId}";
+    private static readonly string App3Id = $"workflow-app-3-{UniqueId}";
+    
     [Fact]
     public async Task ShouldScheduleChildWorkflowOnRemoteApp_ThatCallsActivityOnAnotherRemoteApp_UsingAppIds()
     {
-        var guid = Guid.NewGuid().ToString("N");
-        var app1Id = $"workflow-app-1-{guid}";
-        var app2Id = $"workflow-app-2-{guid}";
-        var app3Id = $"workflow-app-3-{guid}";
-
-        var options1 = new DaprRuntimeOptions().WithAppId(app1Id);
-        var options2 = new DaprRuntimeOptions().WithAppId(app2Id);
-        var options3 = new DaprRuntimeOptions().WithAppId(app3Id);
+        var options1 = new DaprRuntimeOptions().WithAppId(App1Id);
+        var options2 = new DaprRuntimeOptions().WithAppId(App2Id);
+        var options3 = new DaprRuntimeOptions().WithAppId(App3Id);
 
         var componentsDir1 = TestDirectoryManager.CreateTestDirectory("workflow-multiapp-chain-1");
         var componentsDir2 = TestDirectoryManager.CreateTestDirectory("workflow-multiapp-chain-2");
@@ -105,16 +105,16 @@ public sealed class MultiAppChildWorkflowAndActivityTests
         var client1 = scope1.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         const int inputValue = 7;
-        var initialWorkflowId = $"initial-workflow-instance-{guid}";
-        var childWorkflowId = $"child-workflow-instance-{guid}";
+        var initialWorkflowId = $"initial-workflow-instance-{UniqueId}";
+        var childWorkflowId = $"child-workflow-instance-{UniqueId}";
 
         await client1.ScheduleNewWorkflowAsync(
             nameof(InitialWorkflow),
             initialWorkflowId,
             new InitialWorkflowInput(
-                ChildWorkflowTargetAppId: app2Id,
+                ChildWorkflowTargetAppId: App2Id,
                 ChildWorkflowInstanceId: childWorkflowId,
-                ActivityTargetAppId: app3Id,
+                ActivityTargetAppId: App3Id,
                 Value: inputValue));
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
@@ -146,49 +146,39 @@ public sealed class MultiAppChildWorkflowAndActivityTests
         Assert.Equal(inputValue * 3, childOutput);
     }
 
+    // Hosted in App1
+    private sealed class InitialWorkflow : Workflow<InitialWorkflowInput, int>
+    {
+        public override Task<int> RunAsync(WorkflowContext context, InitialWorkflowInput input) =>
+            context.CallChildWorkflowAsync<int>(
+                nameof(ChildWorkflow),
+                new ChildWorkflowInput(input.ActivityTargetAppId, input.Value),
+                new ChildWorkflowTaskOptions(
+                    InstanceId: input.ChildWorkflowInstanceId,
+                    TargetAppId: input.ChildWorkflowTargetAppId));
+    }
     private sealed record InitialWorkflowInput(
         string ChildWorkflowTargetAppId,
         string ChildWorkflowInstanceId,
         string ActivityTargetAppId,
         int Value);
 
-    private sealed class InitialWorkflow : Workflow<InitialWorkflowInput, int>
+    // Hosted in App2
+    private sealed class ChildWorkflow : Workflow<ChildWorkflowInput, int>
     {
-        public override Task<int> RunAsync(WorkflowContext context, InitialWorkflowInput input) =>
-            context.CallChildWorkflowAsync<int>(
-                nameof(ChildWorkflow),
-                input.Value,
-                new ChildWorkflowTaskOptions(
-                    InstanceId: input.ChildWorkflowInstanceId,
-                    TargetAppId: input.ChildWorkflowTargetAppId));
-    }
-
-    private sealed class ChildWorkflow : Workflow<int, int>
-    {
-        public override Task<int> RunAsync(WorkflowContext context, int input) =>
+        public override Task<int> RunAsync(WorkflowContext context, ChildWorkflowInput input) =>
             context.CallActivityAsync<int>(
                 nameof(MultiplyByThreeActivity),
-                input,
-                new WorkflowTaskOptions(TargetAppId: ActivityTargetAppIdHolder.TargetAppId));
+                input.Value,
+                new WorkflowTaskOptions(TargetAppId: input.ActivityTargetAppId));
     }
-
-    private static class ActivityTargetAppIdHolder
-    {
-        // This gets set per workflow execution (see below) so the child workflow can route the activity call.
-        // The Dapr Workflow runtime invokes workflows in-process; this is safe for this test because the app hosts
-        // only this workflow and we run one instance per test method.
-        public static string TargetAppId { get; set; } = string.Empty;
-    }
-
+    private sealed record ChildWorkflowInput(
+        string ActivityTargetAppId,
+        int Value);
+    
+    // Hosted in App3
     private sealed class MultiplyByThreeActivity : WorkflowActivity<int, int>
     {
         public override Task<int> RunAsync(WorkflowActivityContext context, int input) => Task.FromResult(input * 3);
-    }
-
-    // Wire the activity target app ID into the child workflow in a deterministic way.
-    // (We avoid relying on ambient config inside the workflow itself.)
-    static MultiAppChildWorkflowAndActivityTests()
-    {
-        ActivityTargetAppIdHolder.TargetAppId = "workflow-app-3";
     }
 }
