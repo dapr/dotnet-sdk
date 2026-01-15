@@ -73,53 +73,6 @@ public sealed class JobSchedulingTests
         Assert.Equal(jobName, received);
     }
 
-    // Too long of a test
-    // [Fact]
-    // public async Task ShouldScheduleJobWithPrefixedPeriod()
-    // {
-    //     var options = new DaprRuntimeOptions();
-    //     var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
-    //     var jobName = $"hourly-job-{Guid.NewGuid():N}";
-    //
-    //     var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-    //
-    //     var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
-    //     await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-    //         .ConfigureServices(builder =>
-    //         {
-    //             builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
-    //             {
-    //                 var config = sp.GetRequiredService<IConfiguration>();
-    //                 var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
-    //                 var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
-    //
-    //                 if (!string.IsNullOrEmpty(grpcEndpoint))
-    //                     clientBuilder.UseGrpcEndpoint(grpcEndpoint);
-    //                 if (!string.IsNullOrEmpty(httpEndpoint))
-    //                     clientBuilder.UseHttpEndpoint(httpEndpoint);
-    //             });
-    //         })
-    //         .ConfigureApp(app =>
-    //         {
-    //             app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
-    //                 ILogger<JobSchedulingTests>? logger, CancellationToken _) =>
-    //             {
-    //                 logger?.LogInformation("Received prefixed period job {Job}", incomingJobName);
-    //                 invocationTcs.TrySetResult(incomingJobName);
-    //             });
-    //         })
-    //         .BuildAndStartAsync();
-    //
-    //     using var scope = testApp.CreateScope();
-    //     var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
-    //
-    //     await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.Hourly,
-    //         repeats: 1, overwrite: true);
-    //
-    //     var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
-    //     Assert.Equal(jobName, received);
-    // }
-
     [Fact]
     public async Task ShouldScheduleJobWithDateTime()
     {
