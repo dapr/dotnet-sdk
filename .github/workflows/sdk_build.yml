@@ -72,20 +72,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: [ '8.0', '9.0' ]
+        dotnet-version: [ '8.0', '9.0', '10.0' ]
         os: [ubuntu-latest]
         project: ${{ fromJson(needs.discover-integration-v2-tests.outputs.matrix) }}
         include:
           - dotnet-version: '8.0'
             display-name: '.NET 8.0'
-            framework: 'net8'
+            framework: 'net8.0'
             prefix: 'net8'
             install-version: '8.0.x'
           - dotnet-version: '9.0'
             display-name: '.NET 9.0'
-            framework: 'net9'
+            framework: 'net9.0'
             prefix: 'net9'
             install-version: '9.0.x'
+          - dotnet-version: '10.0'
+            display-name: '.NET 10.0'
+            framework: 'net10.0'
+            prefix: 'net10'
+            install-version: '10.0.x'
     steps:
       - uses: actions/checkout@v1
       - name: Parse release version
@@ -133,19 +138,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['8.0', '9.0']
+        dotnet-version: ['8.0', '9.0', '10.0']
         project: ${{ fromJson(needs.discover-unit-test-projects.outputs.matrix) }}
         include:
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
-          framework: 'net8'
+          framework: 'net8.0'
           prefix: 'net8'
           install-version: '8.0.x'
         - dotnet-version: '9.0'
           display-name: '.NET 9.0'
-          framework: 'net9'
+          framework: 'net9.0'
           prefix: 'net9'
           install-version: '9.0.x'
+        - dotnet-version: '10.0'
+          display-name: '.NET 10.0'
+          framework: 'net10.0'
+          prefix: 'net10'
+          install-version: '10.0.x'
     steps:
     - uses: actions/checkout@v1
     - name: Parse release version

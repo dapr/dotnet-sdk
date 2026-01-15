@@ -5,56 +5,56 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="A2A" Version="0.1.0-preview.2" />
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.2" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="coverlet.msbuild" Version="6.0.4" />
-    <PackageVersion Include="Dapr.DurableTask.Client.Grpc" Version="1.16.6" />
-    <PackageVersion Include="Dapr.DurableTask.Worker.Grpc" Version="1.16.6" />
-    <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
+    <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.1" />
     <PackageVersion Include="Google.Api.CommonProtos" Version="2.17.0" />
-    <PackageVersion Include="Google.Protobuf" Version="3.32.0" />
-    <PackageVersion Include="Grpc.AspNetCore" Version="2.71.0" />
+    <PackageVersion Include="Google.Protobuf" Version="3.33.4" />
+    <PackageVersion Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageVersion Include="Grpc.Core.Testing" Version="2.46.6" />
-    <PackageVersion Include="Grpc.Net.Client" Version="2.71.0" />
-    <PackageVersion Include="Grpc.Net.ClientFactory" Version="2.71.0" />
-    <PackageVersion Include="Grpc.Tools" Version="2.72.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.19" Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net8'" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.8" Condition="'$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net9'" />
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.19" Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net8'" />
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="9.0.8" Condition="'$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net9'" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.2" />
+    <PackageVersion Include="Grpc.Net.Client" Version="2.76.0" />
+    <PackageVersion Include="Grpc.Net.ClientFactory" Version="2.76.0" />
+    <PackageVersion Include="Grpc.Tools" Version="2.76.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.23" Condition="'$(TargetFramework)' == 'net8.0'" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.12" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.2" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.23" Condition="'$(TargetFramework)' == 'net8.0'" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="9.0.12" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.2" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" Version="1.1.2" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" Version="1.1.2" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" Version="1.1.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit" Version="1.1.2" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="9.8.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
-    <PackageVersion Include="MinVer" Version="6.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.2.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.102" />
+    <PackageVersion Include="MinVer" Version="7.0.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="protobuf-net.Grpc.AspNetCore" Version="1.2.2" />
-    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
-    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
-    <PackageVersion Include="System.Net.ServerSentEvents" Version="9.0.8" />
-    <PackageVersion Include="System.Text.Json" Version="9.0.8" />
+    <PackageVersion Include="System.Net.ServerSentEvents" Version="10.0.2" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.2" />
     <PackageVersion Include="Testcontainers" Version="4.9.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.extensibility.core" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
 </Project>
