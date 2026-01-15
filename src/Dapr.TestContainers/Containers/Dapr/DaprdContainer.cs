@@ -34,12 +34,10 @@ public sealed class DaprdContainer : IAsyncStartable
 	private const int InternalGrpcPort = 50001;
 	private readonly IContainer _container;
     
-    private string _containerName = $"dapr-{Guid.NewGuid():N}";
-
     /// <summary>
     /// The internal network alias/name of the container.
     /// </summary>
-    public string NetworkAlias => _containerName;
+    public static string NetworkAlias => $"dapr-{Guid.NewGuid():N}";
     /// <summary>
     /// The HTTP port of the Dapr runtime.
     /// </summary>
@@ -105,7 +103,7 @@ public sealed class DaprdContainer : IAsyncStartable
 		
 		_container = new ContainerBuilder()
 			.WithImage(options.RuntimeImageTag)
-			.WithName(_containerName)
+			.WithName(NetworkAlias)
             .WithLogger(ConsoleLogger.Instance)
 			.WithCommand(cmd.ToArray())
             .WithNetwork(network)
