@@ -136,14 +136,15 @@ public class EndpointRouteBuilderExtensionsTest
             ILogger? logger,
             CancellationToken cancellationToken) =>
         {
-            logger?.LogInformation("Received trigger invocation for job '{jobName}'", jobName);
-
-            var deserializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
-            logger?.LogInformation(
-                "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
-                jobName, deserializedPayload);
-            await Task.Delay(timeout.Add(TimeSpan.FromSeconds(10)),
-                cancellationToken); //Intentionally delay longer than the timeout allows
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                logger?.LogInformation("Task was cancelled as expected due to timeout.");
+                throw; // Re-throw so the middleware catches it, or handles it
+            }
 
             return Task.CompletedTask;
         }, timeout);
@@ -151,6 +152,7 @@ public class EndpointRouteBuilderExtensionsTest
         await app.StartAsync();
         var testServer = app.GetTestServer();
         var client = testServer.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(20);
 
         var requestContent = new ByteArrayContent(testJobPayload);
         var request = new HttpRequestMessage(HttpMethod.Post, $"/job/{testJobName}")
