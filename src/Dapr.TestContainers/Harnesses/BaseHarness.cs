@@ -46,7 +46,6 @@ public abstract class BaseHarness : IAsyncContainerFixture
     private readonly string componentsDirectory;
     private readonly Func<int, Task>? startApp;
     private readonly DaprRuntimeOptions options;
-    private IDisposable? _portReservation;
 
     /// <summary>
     /// Provides a base harness for building Dapr building block harnesses.
@@ -144,11 +143,6 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <returns></returns>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // Reserve the port actively to prevent race conditions
-        var (port, reservation) = PortUtilities.ReserveNextAvailablePort();
-        this.AppPort = port;
-        _portReservation = reservation;
-        
         // Ensure the environment infrastructure is running
         // If we own it, we start it. If it's shared, the caller usually starts it
         // but calling StartAsync is idempotent, so it's safe to ensure it here
@@ -157,6 +151,9 @@ public abstract class BaseHarness : IAsyncContainerFixture
         // Run the actual container orchestration defined in the subclass to set up any pre-requisite containers
         // before loading daprd and the start app, if specified
         await OnInitializeAsync(cancellationToken);
+        
+        // PIck a port only when we are ready to start, or use 0 to let the OS decide
+        this.AppPort = PortUtilities.GetAvailablePort();
         
         // Configure and start daprd; point at placement & scheduler
         _daprd = new DaprdContainer(
@@ -182,10 +179,6 @@ public abstract class BaseHarness : IAsyncContainerFixture
             {
                 await _sidecarPortsReady.Task.WaitAsync(cancellationToken);
                 
-                // Release the port reservation right before the app starts so it can bind to it
-                _portReservation?.Dispose();
-                _portReservation = null;
-                
                 await startApp(AppPort);
             }, cancellationToken);
         }
@@ -198,7 +191,6 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// </summary>
     public virtual async ValueTask DisposeAsync()
     {
-        _portReservation?.Dispose();
         await OnDisposeAsync();
         
         if (_daprd is not null)

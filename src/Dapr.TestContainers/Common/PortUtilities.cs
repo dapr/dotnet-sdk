@@ -11,8 +11,6 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
-using System;
-using System.Formats.Tar;
 using System.Net;
 using System.Net.Sockets;
 
@@ -24,14 +22,14 @@ namespace Dapr.TestContainers.Common;
 public static class PortUtilities
 {
     /// <summary>
-    /// Finds and reserves a port that's available to use.
+    /// Gets a port from the OS that is not in a TIME_WAIT state and is not being
+    /// shared by another process.
     /// </summary>
-    /// <returns>The available port number and a disposable that keeps the port busy.</returns>
-    public static (int port, IDisposable listener) ReserveNextAvailablePort()
+    /// <returns>The available port number.</returns>
+    public static int GetAvailablePort()
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        return (port, listener); // We return the listener so it keeps the port "taken"
+        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        return ((IPEndPoint)socket.LocalEndPoint!).Port;
     }
 }
