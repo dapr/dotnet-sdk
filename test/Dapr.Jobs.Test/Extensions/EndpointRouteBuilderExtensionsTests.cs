@@ -142,7 +142,7 @@ public class EndpointRouteBuilderExtensionsTest
             logger?.LogInformation(
                 "Received invocation for the job '{jobName}' with payload '{deserializedPayload}'",
                 jobName, deserializedPayload);
-            await Task.Delay(timeout.Add(TimeSpan.FromSeconds(3)),
+            await Task.Delay(timeout.Add(TimeSpan.FromSeconds(10)),
                 cancellationToken); //Intentionally delay longer than the timeout allows
 
             return Task.CompletedTask;
