@@ -33,7 +33,6 @@ public sealed class DaprdContainer : IAsyncStartable
 	private const int InternalHttpPort = 3500;
 	private const int InternalGrpcPort = 50001;
 	private readonly IContainer _container;
-    
     private string _containerName = $"dapr-{Guid.NewGuid():N}";
 
     /// <summary>

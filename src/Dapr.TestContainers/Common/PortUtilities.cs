@@ -22,7 +22,8 @@ namespace Dapr.TestContainers.Common;
 public static class PortUtilities
 {
     /// <summary>
-    /// Finds a port that's available to use.
+    /// Gets a port from the OS that is not in a TIME_WAIT state and is not being
+    /// shared by another process.
     /// </summary>
     /// <returns>The available port number.</returns>
     public static int GetAvailablePort()

@@ -12,7 +12,6 @@
 //  ------------------------------------------------------------------------
 
 using System;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,7 +38,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <summary>
     /// The internal network alias/name of the container.
     /// </summary>
-    public string NetworkAlias  => _containerName;
+    public string NetworkAlias => _containerName;
     /// <summary>
     /// The container's hostname.
     /// </summary>

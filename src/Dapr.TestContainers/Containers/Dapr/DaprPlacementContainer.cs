@@ -28,8 +28,7 @@ namespace Dapr.TestContainers.Containers.Dapr;
 public sealed class DaprPlacementContainer : IAsyncStartable
 {
 	private readonly IContainer _container;
-	
-    private string _containerName = $"placement-{Guid.NewGuid():N}";
+    private readonly string _containerName = $"placement-{Guid.NewGuid():N}";
 
     /// <summary>
     /// The internal network alias/name of the container.

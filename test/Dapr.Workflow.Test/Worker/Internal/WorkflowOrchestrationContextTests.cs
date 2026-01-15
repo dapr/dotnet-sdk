@@ -23,6 +23,211 @@ namespace Dapr.Workflow.Test.Worker.Internal;
 public class WorkflowOrchestrationContextTests
 {
     [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionCorrelationIdMatchesParentTaskId()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        var childTask = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+            },
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "42"
+                }
+            }
+        };
+
+        context.ProcessEvents(history, isReplaying: true);
+
+        Assert.Equal(42, await childTask);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenRuntimeUsesCreatedEventIdAsCompletionCorrelationId()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        // Force a known child instance id so we can correlate created.InstanceId -> parent task id
+        const string childInstanceId = "child-xyz";
+
+        var childTask = context.CallChildWorkflowAsync<int>(
+            workflowName: "ChildWf",
+            input: 7,
+            options: new ChildWorkflowTaskOptions(InstanceId: childInstanceId));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 100,
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                {
+                    Name = "ChildWf",
+                    InstanceId = childInstanceId
+                }
+            },
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 100,
+                    Result = "21"
+                }
+            }
+        };
+
+        context.ProcessEvents(history, isReplaying: true);
+
+        var result = await childTask.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(21, result);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public void CallChildWorkflowAsync_ShouldPutRouterOnCreateSubOrchestrationAction_WhenAppIdProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            appId: sourceAppId);
+
+        _ = context.CallChildWorkflowAsync<int>(
+            workflowName: "ChildWf",
+            input: 1,
+            options: new ChildWorkflowTaskOptions(InstanceId: "child-1", TargetAppId: targetAppId));
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.CreateSubOrchestration);
+
+        Assert.NotNull(action.CreateSubOrchestration.Router);
+        Assert.Equal(targetAppId, action.CreateSubOrchestration.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.CreateSubOrchestration.Router.SourceAppID);
+
+        // wrapper router may exist too (compat), but inner is the important one
+        Assert.NotNull(action.Router);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
+    }
+    
+    [Fact]
+    public void CallActivityAsync_ShouldNotSetRouter_WhenAppIdNotProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        _ = context.CallActivityAsync<int>(name: "MyActivity", input: 2);
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+
+        Assert.Null(action.ScheduleTask.Router);
+        Assert.Null(action.Router);
+    }
+    
+    [Fact]
+    public async Task CallActivityAsync_ShouldComplete_WhenCompletionArrivesBeforeCall()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        // Completion arrives first (this is what can happen on replay)
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = 0,
+                        Result = "42"
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        // Now the workflow schedules/awaits the activity with taskId 0
+        var task = context.CallActivityAsync<int>("MyActivity", input: 1);
+
+        var value = await task;
+        Assert.Equal(42, value);
+    }
+
+    [Fact]
+    public void CallActivityAsync_ShouldPutRouterOnScheduleTaskAction_WhenAppIdProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            appId: sourceAppId);
+
+        _ = context.CallActivityAsync<int>(
+            name: "MyActivity",
+            input: 2,
+            options: new WorkflowTaskOptions(TargetAppId: targetAppId));
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+
+        Assert.NotNull(action.ScheduleTask.Router);
+        Assert.Equal(targetAppId, action.ScheduleTask.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.ScheduleTask.Router.SourceAppID);
+
+        Assert.NotNull(action.Router);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
+    }
+    
+    [Fact]
     public void CallActivityAsync_ShouldScheduleTaskAction_WhenNotReplaying()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));

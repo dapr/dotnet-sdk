@@ -36,7 +36,8 @@ public sealed class ActorHarness : BaseHarness
     /// <param name="componentsDir">The directory to Dapr components.</param>
     /// <param name="startApp">The test app to validate in the harness.</param>
     /// <param name="options">The dapr runtime options.</param>
-    public ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    /// <param name="environment">The isolated environment instance.</param>
+    public ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
         _placement = new DaprPlacementContainer(options, Network);

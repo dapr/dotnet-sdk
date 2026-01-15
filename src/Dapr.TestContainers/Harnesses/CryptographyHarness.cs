@@ -34,7 +34,8 @@ public sealed class CryptographyHarness : BaseHarness
     /// <param name="startApp">The test app to validate in the harness.</param>
     /// <param name="options">The Dapr runtime options.</param>
     /// <param name="keyPath">The path locally to the cryptography keys to use.</param>
-    public CryptographyHarness(string componentsDir, Func<int, Task>? startApp, string keyPath, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    /// <param name="environment">The isolated environment instance.</param>
+    public CryptographyHarness(string componentsDir, Func<int, Task>? startApp, string keyPath, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
         this.keyPath = keyPath;

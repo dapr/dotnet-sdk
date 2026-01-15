@@ -15,7 +15,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.TestContainers.Common.Options;
-using Dapr.TestContainers.Containers.Dapr;
 
 namespace Dapr.TestContainers.Harnesses;
 
@@ -24,33 +23,29 @@ namespace Dapr.TestContainers.Harnesses;
 /// </summary>
 public sealed class JobsHarness : BaseHarness
 {
-	private readonly DaprSchedulerContainer _scheduler;
-    private readonly string componentsDir;
-
     /// <summary>
     /// Provides an implementation harness for the Jobs building block.
     /// </summary>
     /// <param name="componentsDir">The directory to Dapr components.</param>
     /// <param name="startApp">The test app to validate in the harness.</param>
     /// <param name="options">The Dapr runtime options.</param>
-    public JobsHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options) : base(componentsDir, startApp, options)
+    /// <param name="environment">The isolated environment instance.</param>
+    public JobsHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
-        this.componentsDir = componentsDir;
-        _scheduler = new DaprSchedulerContainer(options, Network);
     }
 
     /// <inheritdoc />
-	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
+	protected override Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
-        // Start the infrastructure
-        await _scheduler.StartAsync(cancellationToken);
-        DaprSchedulerExternalPort = _scheduler.ExternalPort;
-        DaprSchedulerAlias = _scheduler.NetworkAlias;
+        // Set the service ports
+        this.DaprPlacementExternalPort = Environment.PlacementExternalPort;
+        this.DaprPlacementAlias = Environment.PlacementAlias;
+        this.DaprSchedulerExternalPort = Environment.SchedulerExternalPort;
+        this.DaprSchedulerAlias = Environment.SchedulerAlias;
+
+        return Task.CompletedTask;
     }
-	
+
     /// <inheritdoc />
-	protected override async ValueTask OnDisposeAsync()
-    {
-        await _scheduler.DisposeAsync();
-	}
+    protected override ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 }

@@ -30,7 +30,7 @@ namespace Dapr.Workflow.Worker.Internal;
 /// Here's the intended workflow execution model:
 /// First execution: Workflow runs until first `await`, returns pending actions, task doesn't complete
 /// Subsequent executions: History is replayed, tasks complete from history, workflow advances further
-/// Completion: When no more awaitable operations exist, workflow returns final result
+/// Completion: When no more awaitable operations exist, workflow returns the final result
 /// </remarks>
 internal sealed class WorkflowOrchestrationContext : WorkflowContext
 {
@@ -40,10 +40,22 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly SortedDictionary<int, OrchestratorAction> _pendingActions = [];
     private readonly IWorkflowSerializer _workflowSerializer;
     private readonly ILogger<WorkflowOrchestrationContext> _logger;
+    // Maps runtime sub-orchestration created EventId -> parent action/task id (our local task id).
+    private readonly Dictionary<int, int> _subOrchestrationCreatedEventIdToParentTaskId = [];
+    // Maps child instance id -> parent action/task id (our local task id).
+    // Used to build the createdEventId->parentTaskId mapping when the "created" history event arrives.
+    private readonly Dictionary<string, int> _subOrchestrationInstanceIdToParentTaskId = new(StringComparer.Ordinal);
+    /// <summary>
+    /// Buffers completion events that arrive before the corresponding task is registered in _openTasks.
+    /// Key is taskedScheduledId/timerId/etc. as provided by the history event.
+    /// </summary>
+    private readonly Dictionary<int, HistoryEvent> _unmatchedCompletions = [];
+
 
     // Parse instance ID as GUID or generate one
     private readonly Guid _instanceGuid;
 
+    private readonly string? _appId;
     private int _sequenceNumber;
     private int _guidCounter;
     private object? _customStatus;
@@ -51,7 +63,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private bool _isReplaying;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
-        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory)
+        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, string? appId = null)
     {
         _workflowSerializer = workflowSerializer;
         _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
@@ -60,6 +72,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         Name = name;
         InstanceId = instanceId;
         _currentUtcDateTime = currentUtcDateTime;
+        _appId = appId; // Necessary for setting the source app ID value on the task router
 
         _logger.LogWorkflowContextConstructorSetup(name, instanceId);
     }
@@ -93,18 +106,31 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var taskId = _sequenceNumber++;
 
+        var router = CreateRouter(options?.TargetAppId);
+        
+        // If the completion arrived before we registered the task, consume it now
+        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
+        {
+            _logger.LogDebug("Found early completion in buffer for task {TaskId} ({ActivityName})", taskId, name);
+            return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
+        }
+
         _pendingActions.Add(taskId, new OrchestratorAction
         {
             Id = taskId,
-            ScheduleTask = new ScheduleTaskAction { Name = name, Input = _workflowSerializer.Serialize(input) },
-            Router = !string.IsNullOrEmpty(options?.AppId) ? new TaskRouter { TargetAppID = options.AppId } : null
+            ScheduleTask = new ScheduleTaskAction
+            {
+                Name = name, 
+                Input = _workflowSerializer.Serialize(input),
+                Router = router
+            },
+            Router = router
         });
 
         var tcs = new TaskCompletionSource<HistoryEvent>();
         _openTasks.Add(taskId, tcs);
-
+        
         var historyEvent = await tcs.Task;
-
         return await HandleHistoryMatch<T>(name, historyEvent, taskId);
     }
 
@@ -124,6 +150,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
         var tcs = new TaskCompletionSource<HistoryEvent>();
         _openTasks.Add(taskId, tcs);
+        
+        // If the timer fired before we registered the task, consume it now
+        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
+        {
+            tcs.TrySetResult(earlyCompletion);
+            _openTasks.Remove(taskId);
+        }
 
         if (cancellationToken.CanBeCanceled)
         {
@@ -220,6 +253,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var childInstanceId = options?.InstanceId ?? NewGuid().ToString();
         var taskId = _sequenceNumber++;
 
+        var router = CreateRouter(options?.TargetAppId);
+
         _pendingActions.Add(taskId, new OrchestratorAction
         {
             Id = taskId,
@@ -227,16 +262,26 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             {
                 Name = workflowName,
                 InstanceId = childInstanceId,
-                Input = _workflowSerializer.Serialize(input)
+                Input = _workflowSerializer.Serialize(input),
+                Router = router
             },
-            Router = !string.IsNullOrEmpty(options?.AppId) ? new TaskRouter { TargetAppID = options.AppId } : null
+            Router = router
         });
+        
+        // Remember which parent task is associated with this child instance id
+        _subOrchestrationInstanceIdToParentTaskId[childInstanceId] = taskId;
 
         var tcs = new TaskCompletionSource<HistoryEvent>();
         _openTasks.Add(taskId, tcs);
+        
+        // If the sub-orchestration completed before we registered the task, consume it now
+        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
+        {
+            tcs.TrySetResult(earlyCompletion);
+            _openTasks.Remove(taskId);
+        }
 
         var historyEvent = await tcs.Task;
-
         return await HandleHistoryMatch<TResult>(workflowName, historyEvent, taskId);
     }
 
@@ -297,15 +342,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     internal void ProcessEvents(IEnumerable<HistoryEvent> events, bool isReplaying)
     {
         _isReplaying = isReplaying;
+        
         foreach (HistoryEvent historyEvent in events)
         {
             switch (historyEvent)
             {
-                case { OrchestratorStarted: { } }:
+                case { OrchestratorStarted: not null }:
                     HandleOrchestratorStarted(historyEvent);
                     break;
 
-                case { TaskScheduled: { } }:
+                case { TaskScheduled: not null }:
                     HandleActionCreated(historyEvent);
                     break;
 
@@ -317,8 +363,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     HandleActionCompleted(historyEvent, failed.TaskScheduledId);
                     break;
 
-                case { SubOrchestrationInstanceCreated: { } }:
-                    HandleActionCreated(historyEvent);
+                case { SubOrchestrationInstanceCreated: {} created }:
+                    HandleSubOrchestrationCreated(historyEvent, created);
                     break;
 
                 case { SubOrchestrationInstanceCompleted: { } completed }:
@@ -329,7 +375,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     HandleActionCompleted(historyEvent, failed.TaskScheduledId);
                     break;
 
-                case { TimerCreated: { } }:
+                case { TimerCreated: not null }:
                     HandleActionCreated(historyEvent);
                     break;
 
@@ -337,7 +383,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     HandleActionCompleted(historyEvent, fired.TimerId);
                     break;
 
-                case { EventSent: { } }:
+                case { EventSent: not null }:
                     HandleActionCreated(historyEvent);
                     break;
 
@@ -358,12 +404,66 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _pendingActions.Remove(historyEvent.EventId);
     }
 
+    private void HandleSubOrchestrationCreated(HistoryEvent historyEvent,
+        SubOrchestrationInstanceCreatedEvent created)
+    {
+        // The runtime may assign an EventId that does not match our local taskId.
+        // Try to correlate using the child instance id (which we control).
+        var createdEventId = historyEvent.EventId;
+
+        // SubOrchestrationInstanceCreatedEvent should carry the child instance id.
+        // If it's missing/empty, we can't build a mapping.
+        if (!string.IsNullOrWhiteSpace(created.InstanceId) &&
+            _subOrchestrationInstanceIdToParentTaskId.TryGetValue(created.InstanceId, out var parentTaskId))
+        {
+            if (createdEventId != parentTaskId)
+            {
+                _subOrchestrationCreatedEventIdToParentTaskId[createdEventId] = parentTaskId;
+            }
+
+            // The "created" history event means the schedule action is no longer pending.
+            // Remove by parentTaskId (our action id), not by createdEventId.
+            _pendingActions.Remove(parentTaskId);
+
+            // Optional: prevent unbounded growth
+            _subOrchestrationInstanceIdToParentTaskId.Remove(created.InstanceId);
+            return;
+        }
+
+        // Fallback to old behavior if we can't correlate
+        _pendingActions.Remove(createdEventId);
+    }
+    
     private void HandleActionCompleted(HistoryEvent historyEvent, int taskId)
     {
         if (_openTasks.TryGetValue(taskId, out var tcs))
         {
             tcs.SetResult(historyEvent);
             _openTasks.Remove(taskId);
+            return;
+        }
+        
+        // Sub-orchestration completion may correlate via "created event id" rather than our local parent task id.
+        if (_subOrchestrationCreatedEventIdToParentTaskId.TryGetValue(taskId, out var parentTaskId) &&
+            _openTasks.TryGetValue(parentTaskId, out var mappedTcs))
+        {
+            mappedTcs.SetResult(historyEvent);
+            _openTasks.Remove(parentTaskId);
+            return;
+        }
+        
+        // Buffer the completion so the next replay pass can consume it when the workflow schedules/await the task.
+        // Ignore duplicates (first completion wins)
+        if (!_unmatchedCompletions.TryAdd(taskId, historyEvent))
+        {
+            // If we get here, the runtime delivered a completion for an unknown task id.
+            // This will otherwise manifest as "await never resumes".
+            _logger.LogWarning(
+                "Received completion for unknown taskId {TaskId} in instance {InstanceId}. OpenTasks=[{OpenTasks}] EventType={EventType}",
+                taskId,
+                InstanceId,
+                string.Join(",", _openTasks.Keys),
+                historyEvent.EventTypeCase);
         }
     }
 
@@ -387,6 +487,18 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             // the orchestrator wants it later.
             _externalEventBuffer.Add(historyEvent);
         }
+    }
+
+    /// <summary>
+    /// Creates a new TaskRouter in a centralized location.
+    /// </summary>
+    /// <param name="targetAppId">The app ID containing the target workflow resource.</param>
+    /// <returns>Either a <see cref="TaskRouter"/> if the requisite values are provided or a <c>null</c>.</returns>
+    private TaskRouter? CreateRouter(string? targetAppId)
+    {
+        return !string.IsNullOrWhiteSpace(targetAppId) && !string.IsNullOrWhiteSpace(_appId)
+            ? new TaskRouter { TargetAppID = targetAppId, SourceAppID = _appId }
+            : null;
     }
 
     /// <summary>

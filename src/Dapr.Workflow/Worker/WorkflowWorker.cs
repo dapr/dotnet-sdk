@@ -79,9 +79,10 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale
             var allPastEvents = request.PastEvents.ToList();
 
-            // Extract the workflow name from the ExecutionStartedEvent in the history
+            // Extract the following values from the ExecutionStartedEvent in the history
             string? workflowName = null;
             string? serializedInput = null;
+            string? appId = null;
 
             if (request.RequiresHistoryStreaming)
             {
@@ -91,7 +92,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                     ExecutionId = request.ExecutionId,
                     ForWorkItemProcessing = true
                 };
-
+                
                 using var call = _grpcClient.StreamInstanceHistory(streamRequest);
                 while (await call.ResponseStream.MoveNext(CancellationToken.None).ConfigureAwait(false))
                 {
@@ -107,10 +108,20 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 {
                     workflowName = e.ExecutionStarted.Name;
                     serializedInput = e.ExecutionStarted.Input;
+                    
+                    // Try pulling the app ID out of the target first, then the source if not available
+                    if (!string.IsNullOrEmpty(e.Router?.TargetAppID))
+                    {
+                        appId = e.Router.TargetAppID;
+                    }
+                    else if (!string.IsNullOrEmpty(e.Router?.SourceAppID))
+                    {
+                        appId = e.Router.SourceAppID;
+                    }
                     break;
                 }
             }
-
+            
             if (string.IsNullOrEmpty(workflowName))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
@@ -130,24 +141,26 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 : DateTime.UtcNow;
 
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory, appId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
+            
+            // Replay the old history to rebuild the local state of the orchestration.
+            context.ProcessEvents(allPastEvents, true);
 
             // Execute the workflow
             // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
+            // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
+            // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
             var runTask = workflow!.RunAsync(context, input);
-
-            // Replay the old history to rebuild the local state of the orchestration.
-            context.ProcessEvents(allPastEvents, true);
-
+            
             // Play the newly arrived events to determine the next action to take.
             context.ProcessEvents(request.NewEvents, false);
-
+            
             // Get all pending actions from the context
             var response = new OrchestratorResponse { InstanceId = request.InstanceId };
 
@@ -169,10 +182,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, context.PendingActions.Count);
 
-                if (response.Actions.Count == 0 && !context.PendingActions.Any())
-                {
+                if (response.Actions.Count == 0 && !context.PendingActions.Any()) 
                     _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
-                }
                 return response;
             }
 
