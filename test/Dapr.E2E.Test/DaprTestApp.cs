@@ -130,12 +130,13 @@ public class DaprTestApp
 
     private static string GetTargetFrameworkName()
     {
-        var targetFrameworkName = ((TargetFrameworkAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(TargetFrameworkAttribute), false).FirstOrDefault()).FrameworkName;
+        var targetFrameworkName = ((TargetFrameworkAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(TargetFrameworkAttribute), false).FirstOrDefault())?.FrameworkName;
 
         return targetFrameworkName switch
         {
-            ".NETCoreApp,Version=v8.0" => "net8",
-            ".NETCoreApp,Version=v9.0" => "net9",
+            ".NETCoreApp,Version=v8.0" => "net8.0",
+            ".NETCoreApp,Version=v9.0" => "net9.0",
+            ".NETCoreApp,Version=v10.0" => "net10.0",
             _ => throw new InvalidOperationException($"Unsupported target framework: {targetFrameworkName}")
         };
     }
