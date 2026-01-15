@@ -23,6 +23,8 @@ public class TimerCallbackMethodPresentAnalyzerTests
     private static readonly ReferenceAssemblies assemblies = ReferenceAssemblies.Net.Net80;
     #elif NET9_0
     private static readonly ReferenceAssemblies assemblies = ReferenceAssemblies.Net.Net90;
+    #elif NET10_0
+    private static readonly ReferenceAssemblies assemblies = ReferenceAssemblies.Net.Net100;
     #endif
     
     [Fact]
@@ -30,7 +32,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
     {
         var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
-            new ("Dapr.Actors", "1.15.3")
+            new ("Dapr.Actors", "1.16.1")
         ]);
 
         context.TestCode = """
@@ -55,7 +57,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
     {
         var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
-            new ("Dapr.Actors", "1.15.3")
+            new ("Dapr.Actors", "1.16.1")
         ]);
         
 
@@ -86,7 +88,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
     {
         var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
-            new ("Dapr.Actors", "1.15.3")
+            new ("Dapr.Actors", "1.16.1")
         ]);
         
 
@@ -117,7 +119,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
     {
         var context = new CSharpAnalyzerTest<TimerCallbackMethodPresentAnalyzer, DefaultVerifier>();
         context.ReferenceAssemblies = assemblies.AddPackages([
-            new ("Dapr.Actors", "1.15.3")
+            new ("Dapr.Actors", "1.16.1")
         ]);
 
         context.TestCode = """
