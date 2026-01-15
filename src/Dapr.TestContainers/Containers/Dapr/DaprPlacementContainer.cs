@@ -32,7 +32,7 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// <summary>
     /// The internal network alias/name of the container.
     /// </summary>
-    public static string NetworkAlias => $"placement-{Guid.NewGuid():N}";
+    public string NetworkAlias => $"placement-{Guid.NewGuid():N}";
     /// <summary>
     /// The container hostname.
     /// </summary>

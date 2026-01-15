@@ -37,7 +37,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <summary>
     /// The internal network alias/name of the container.
     /// </summary>
-    public static string NetworkAlias  => $"scheduler-{Guid.NewGuid():N}";
+    public string NetworkAlias  => $"scheduler-{Guid.NewGuid():N}";
     /// <summary>
     /// The container's hostname.
     /// </summary>
