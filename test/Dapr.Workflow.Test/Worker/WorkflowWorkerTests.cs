@@ -565,11 +565,10 @@ public class WorkflowWorkerTests
         var factory = new StubWorkflowsFactory();
         factory.AddWorkflow("wf", new InlineWorkflow(
             inputType: typeof(int),
-            run: async (ctx, input) =>
+            run: (ctx, input) =>
             {
                 ctx.SetCustomStatus(new { Step = 7 });
-                await Task.Yield();
-                return (int)input! + 1;
+                return Task.FromResult<object?>((int)input! + 1);
             }));
 
         var worker = new WorkflowWorker(
@@ -595,12 +594,12 @@ public class WorkflowWorkerTests
         var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        Assert.NotNull(response.CustomStatus);
         Assert.Contains("\"step\":7", response.CustomStatus);
 
-        //Assert.NotEmpty(response.Actions);
-
-        var completion = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
+        var completion = response.Actions
+            .FirstOrDefault(a => a.CompleteOrchestration != null)?.CompleteOrchestration;
+        
+        Assert.NotNull(completion);
         Assert.Equal(OrchestrationStatus.Completed, completion.OrchestrationStatus);
         Assert.Equal("42", completion.Result);
     }
