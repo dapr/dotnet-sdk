@@ -107,6 +107,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var taskId = _sequenceNumber++;
 
         var router = CreateRouter(options?.TargetAppId);
+        
+        // If the completion arrived before we registered the task, consume it now
+        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
+        {
+            _logger.LogDebug("Found early completion in buffer for task {TaskId} ({ActivityName})", taskId, name);
+            return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
+        }
 
         _pendingActions.Add(taskId, new OrchestratorAction
         {
@@ -123,13 +130,6 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var tcs = new TaskCompletionSource<HistoryEvent>();
         _openTasks.Add(taskId, tcs);
         
-        // If the completion arrived before we registered the task, consume it now
-        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
-        {
-            tcs.TrySetResult(earlyCompletion);
-            _openTasks.Remove(taskId);
-        }
-
         var historyEvent = await tcs.Task;
         return await HandleHistoryMatch<T>(name, historyEvent, taskId);
     }
@@ -342,6 +342,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     internal void ProcessEvents(IEnumerable<HistoryEvent> events, bool isReplaying)
     {
         _isReplaying = isReplaying;
+        
         foreach (HistoryEvent historyEvent in events)
         {
             switch (historyEvent)
