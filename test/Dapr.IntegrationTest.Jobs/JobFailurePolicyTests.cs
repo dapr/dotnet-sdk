@@ -17,6 +17,7 @@ using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,7 +35,10 @@ public sealed class JobFailurePolicyTests
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -85,8 +89,11 @@ public sealed class JobFailurePolicyTests
         var jobName = $"constant-policy-job-{Guid.NewGuid():N}";
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -121,7 +128,7 @@ public sealed class JobFailurePolicyTests
         {
             MaxRetries = maxRetries
         };
-
+        
         await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
             failurePolicyOptions: constantPolicy, repeats: 10, overwrite: true);
 

@@ -17,6 +17,7 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -114,6 +115,9 @@ public sealed class JobManagementTests
         var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"overwrite-job-{Guid.NewGuid():N}";
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
 
         var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -161,6 +165,9 @@ public sealed class JobManagementTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"ttl-job-{Guid.NewGuid():N}";
 
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+        
         var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>

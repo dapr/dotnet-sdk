@@ -11,12 +11,14 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -35,8 +37,11 @@ public sealed class JobsTests
         var invocationTcs =
             new TaskCompletionSource<(string payload, string jobName)>(TaskCreationOptions
                 .RunContinuationsAsynchronously);
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

@@ -16,6 +16,7 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.TestContainers.Common;
 using Dapr.TestContainers.Common.Options;
+using Dapr.TestContainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,10 @@ public sealed class JobSchedulingTests
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -81,8 +85,11 @@ public sealed class JobSchedulingTests
         var jobName = $"datetime-job-{Guid.NewGuid():N}";
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -129,7 +136,10 @@ public sealed class JobSchedulingTests
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -177,7 +187,10 @@ public sealed class JobSchedulingTests
         var receivedCount = 0;
         var invocationTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
