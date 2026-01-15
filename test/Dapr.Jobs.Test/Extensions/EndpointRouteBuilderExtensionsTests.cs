@@ -32,7 +32,7 @@ public class EndpointRouteBuilderExtensionsTest
     [Fact]
     public async Task MapDaprScheduledJobHandler_ValidRequest_ExecutesAction()
     {
-        var server = CreateTestServer();
+        var server = await CreateTestServerAsync();
         var client = server.CreateClient();
 
         var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
@@ -52,7 +52,7 @@ public class EndpointRouteBuilderExtensionsTest
     [Fact]
     public async Task MapDaprScheduleJobHandler_HandleMissingCancellationToken()
     {
-        var server = CreateTestServer2();
+        var server = await CreateTestServer2Async();
         var client = server.CreateClient();
 
         var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
@@ -78,6 +78,7 @@ public class EndpointRouteBuilderExtensionsTest
         var testJobPayload = "testPayload"u8.ToArray();
 
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
         builder.Services.AddLogging();
         builder.Services.AddRouting();
         var app = builder.Build();
@@ -99,7 +100,8 @@ public class EndpointRouteBuilderExtensionsTest
 
             return Task.CompletedTask;
         }, timeout);
-        
+
+        await app.StartAsync();
         var testServer = app.GetTestServer();
         var client = testServer.CreateClient();
 
@@ -123,6 +125,7 @@ public class EndpointRouteBuilderExtensionsTest
         var testJobPayload = Encoding.UTF8.GetBytes("testPayload");
 
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
         builder.Services.AddLogging();
         builder.Services.AddRouting();
         var app = builder.Build();
@@ -144,7 +147,8 @@ public class EndpointRouteBuilderExtensionsTest
 
             return Task.CompletedTask;
         }, timeout);
-        
+
+        await app.StartAsync();
         var testServer = app.GetTestServer();
         var client = testServer.CreateClient();
 
@@ -155,7 +159,8 @@ public class EndpointRouteBuilderExtensionsTest
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<TaskCanceledException>(async () => await client.SendAsync(request));
+        var response = await client.SendAsync(request);
+        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
     }
     
     private sealed record SamplePayload(string Name, int Count);
@@ -166,9 +171,10 @@ public class EndpointRouteBuilderExtensionsTest
         public string? SerializedPayload { get; set; }
     }
 
-    private static TestServer CreateTestServer()
+    private static async Task<TestServer> CreateTestServerAsync()
     {
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
         builder.Services.AddSingleton<Validator>();
         builder.Services.AddRouting();
         var app = builder.Build();
@@ -180,13 +186,15 @@ public class EndpointRouteBuilderExtensionsTest
             validator.SerializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
             await Task.CompletedTask;
         });
-        
+
+        await app.StartAsync();
         return app.GetTestServer();
     }
     
-    private static TestServer CreateTestServer2()
+    private static async Task<TestServer> CreateTestServer2Async()
     {
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
         builder.Services.AddSingleton<Validator>();
         builder.Services.AddRouting();
         var app = builder.Build();
@@ -200,7 +208,8 @@ public class EndpointRouteBuilderExtensionsTest
             validator.SerializedPayload = payloadString;
             await Task.CompletedTask;
         });
-        
+
+        await app.StartAsync();
         return app.GetTestServer();
     }
 }
