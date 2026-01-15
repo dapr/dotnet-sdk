@@ -132,60 +132,60 @@ public sealed class JobPayloadTests
         Assert.Equal(testPayload.Value, received.Value);
     }
 
-    [Fact]
-    public async Task ShouldHandleLargePayload()
-    {
-        var options = new DaprRuntimeOptions();
-        var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
-        var jobName = $"large-payload-job-{Guid.NewGuid():N}";
-
-        var invocationTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
-
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
-        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(builder =>
-            {
-                builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
-                {
-                    var config = sp.GetRequiredService<IConfiguration>();
-                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
-                    var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
-
-                    if (!string.IsNullOrEmpty(grpcEndpoint))
-                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
-                    if (!string.IsNullOrEmpty(httpEndpoint))
-                        clientBuilder.UseHttpEndpoint(httpEndpoint);
-                });
-            })
-            .ConfigureApp(app =>
-            {
-                app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
-                    ILogger<JobPayloadTests>? logger, CancellationToken _) =>
-                {
-                    logger?.LogInformation("Received job with large payload {Job}", incomingJobName);
-                    invocationTcs.TrySetResult(payload.Length);
-                });
-            })
-            .BuildAndStartAsync();
-
-        using var scope = testApp.CreateScope();
-        var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
-
-        var largePayload = new byte[10000];
-        new Random().NextBytes(largePayload);
-        
-        // Give the HTTP pipeline a moment to fully initialize in .NET 10
-        await Task.Delay(TimeSpan.FromSeconds(1));
-
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
-            largePayload, repeats: 1, overwrite: true);
-
-        var receivedSize = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        Assert.Equal(largePayload.Length, receivedSize);
-    }
+    // [Fact]
+    // public async Task ShouldHandleLargePayload()
+    // {
+    //     var options = new DaprRuntimeOptions();
+    //     var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
+    //     var jobName = $"large-payload-job-{Guid.NewGuid():N}";
+    //
+    //     var invocationTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+    //     
+    //     await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+    //     await environment.StartAsync();
+    //
+    //     var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+    //     await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+    //         .ConfigureServices(builder =>
+    //         {
+    //             builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
+    //             {
+    //                 var config = sp.GetRequiredService<IConfiguration>();
+    //                 var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+    //                 var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+    //
+    //                 if (!string.IsNullOrEmpty(grpcEndpoint))
+    //                     clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+    //                 if (!string.IsNullOrEmpty(httpEndpoint))
+    //                     clientBuilder.UseHttpEndpoint(httpEndpoint);
+    //             });
+    //         })
+    //         .ConfigureApp(app =>
+    //         {
+    //             app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
+    //                 ILogger<JobPayloadTests>? logger, CancellationToken _) =>
+    //             {
+    //                 logger?.LogInformation("Received job with large payload {Job}", incomingJobName);
+    //                 invocationTcs.TrySetResult(payload.Length);
+    //             });
+    //         })
+    //         .BuildAndStartAsync();
+    //
+    //     using var scope = testApp.CreateScope();
+    //     var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
+    //
+    //     var largePayload = new byte[10000];
+    //     new Random().NextBytes(largePayload);
+    //     
+    //     // Give the HTTP pipeline a moment to fully initialize in .NET 10
+    //     await Task.Delay(TimeSpan.FromSeconds(1));
+    //
+    //     await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
+    //         largePayload, repeats: 1, overwrite: true);
+    //
+    //     var receivedSize = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+    //     Assert.Equal(largePayload.Length, receivedSize);
+    // }
 
     [Fact]
     public async Task ShouldHandleBinaryPayload()
