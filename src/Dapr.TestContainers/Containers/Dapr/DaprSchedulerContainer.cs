@@ -33,11 +33,12 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     // Contains the data directory used by this instance of the Dapr scheduler service
     //private readonly string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
     private readonly string _testDirectory;
+    private readonly string _containerName = $"scheduler-{Guid.NewGuid():N}";
 
     /// <summary>
     /// The internal network alias/name of the container.
     /// </summary>
-    public string NetworkAlias  => $"scheduler-{Guid.NewGuid():N}";
+    public string NetworkAlias => _containerName;
     /// <summary>
     /// The container's hostname.
     /// </summary>
@@ -69,7 +70,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
         
         _container = new ContainerBuilder()
             .WithImage(options.SchedulerImageTag)
-			.WithName(NetworkAlias)
+			.WithName(_containerName)
             .WithNetwork(network)
             .WithCommand(cmd.ToArray())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
