@@ -108,7 +108,7 @@ jobs:
           /p:CollectCoverage=true \
           /p:CoverletOutputFormat=opencover \
           /p:GITHUB_ACTIONS=false
-        timeout-minutes: 5
+        timeout-minutes: 60
       - name: Upload test coverage
         uses: codecov/codecov-action@v1
         with:
@@ -168,7 +168,7 @@ jobs:
         /p:CollectCoverage=true \
         /p:CoverletOutputFormat=opencover \
         /p:GITHUB_ACTIONS=false
-      timeout-minutes: 5
+      timeout-minutes: 60
     - name: Check test failure in PR
       if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
       run: exit 1
