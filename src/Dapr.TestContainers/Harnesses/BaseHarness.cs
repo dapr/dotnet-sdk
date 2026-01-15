@@ -46,6 +46,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     private readonly string componentsDirectory;
     private readonly Func<int, Task>? startApp;
     private readonly DaprRuntimeOptions options;
+    private IDisposable? _portReservation;
 
     /// <summary>
     /// Provides a base harness for building Dapr building block harnesses.
@@ -83,7 +84,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <summary>
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
     /// </summary>
-    public int AppPort { get; } = PortUtilities.GetAvailablePort();
+    public int AppPort { get; private set; }
 
     /// <summary>
     /// The HTTP port used by the Daprd container.
@@ -143,22 +144,30 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <returns></returns>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // 1. Ensure the environment infrastructure is running
+        // Reserve the port actively to prevent race conditions
+        var (port, reservation) = PortUtilities.ReserveNextAvailablePort();
+        this.AppPort = port;
+        _portReservation = reservation;
+        
+        // Ensure the environment infrastructure is running
         // If we own it, we start it. If it's shared, the caller usually starts it
         // but calling StartAsync is idempotent, so it's safe to ensure it here
         await _environment.StartAsync(cancellationToken);
         
-        // 2. Run the actual container orchestration defined in the subclass to set up any pre-requisite containers before loading daprd and the start app, if specified
+        // Run the actual container orchestration defined in the subclass to set up any pre-requisite containers
+        // before loading daprd and the start app, if specified
         await OnInitializeAsync(cancellationToken);
         
-        // 3. Configure and start daprd; point at placement & scheduler
+        // Configure and start daprd; point at placement & scheduler
         _daprd = new DaprdContainer(
             appId: options.AppId,
             componentsHostFolder: ComponentsDirectory,
             options: options with {AppPort = this.AppPort},
             Network,
-            DaprPlacementExternalPort is null || DaprPlacementAlias is null ? null : new HostPortPair(DaprPlacementAlias, DaprPlacementContainer.InternalPort),
-            DaprSchedulerExternalPort is null || DaprSchedulerAlias is null ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort));
+            DaprPlacementExternalPort is null || DaprPlacementAlias is null 
+                ? null : new HostPortPair(DaprPlacementAlias, DaprPlacementContainer.InternalPort),
+            DaprSchedulerExternalPort is null || DaprSchedulerAlias is null 
+                ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort));
 
         var daprdTask = Task.Run(async () =>
         {
@@ -172,6 +181,11 @@ public abstract class BaseHarness : IAsyncContainerFixture
             appTask = Task.Run(async () =>
             {
                 await _sidecarPortsReady.Task.WaitAsync(cancellationToken);
+                
+                // Release the port reservation right before the app starts so it can bind to it
+                _portReservation?.Dispose();
+                _portReservation = null;
+                
                 await startApp(AppPort);
             }, cancellationToken);
         }
@@ -184,6 +198,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// </summary>
     public virtual async ValueTask DisposeAsync()
     {
+        _portReservation?.Dispose();
         await OnDisposeAsync();
         
         if (_daprd is not null)
