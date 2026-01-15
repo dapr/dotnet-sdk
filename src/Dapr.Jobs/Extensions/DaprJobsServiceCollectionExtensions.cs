@@ -34,5 +34,20 @@ public static class DaprJobsServiceCollectionExtensions
         this IServiceCollection services,
         Action<IServiceProvider, DaprJobsClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
-        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(configure, lifetime);
+        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(configure, null, lifetime);
+    
+    /// <summary>
+    /// Adds Dapr Jobs client support to the service collection.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprJobsClient"/> using injected services.</param>
+    /// <param name="configureHttpClient">Optionally allows greater configuration of the <see cref="HttpClient"/> used by the <see cref="DaprJobsClient"/>.</param>   
+    /// <param name="lifetime">The lifetime of the registered services.</param>
+    /// <returns></returns>
+    public static IDaprJobsBuilder AddDaprJobsClient(
+        this IServiceCollection services,
+        Action<IServiceProvider, DaprJobsClientBuilder>? configure = null,
+        Action<IServiceProvider, HttpClient>? configureHttpClient = null,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
+        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(configure, configureHttpClient, lifetime);
 }
