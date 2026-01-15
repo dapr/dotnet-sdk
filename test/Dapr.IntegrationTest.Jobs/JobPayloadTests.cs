@@ -22,6 +22,7 @@ using Dapr.TestContainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Xunit.Sdk;
 
 namespace Dapr.E2E.Test.Jobs;
 
@@ -175,6 +176,9 @@ public sealed class JobPayloadTests
 
         var largePayload = new byte[10000];
         new Random().NextBytes(largePayload);
+        
+        // Give the HTTP pipeline a moment to fully initialize in .NET 10
+        await Task.Delay(TimeSpan.FromSeconds(1));
 
         await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
             largePayload, repeats: 1, overwrite: true);
