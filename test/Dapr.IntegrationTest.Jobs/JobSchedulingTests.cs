@@ -28,7 +28,6 @@ public sealed class JobSchedulingTests
     [Fact]
     public async Task ShouldScheduleJobWithCronExpression()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"cron-job-{Guid.NewGuid():N}";
 
@@ -36,8 +35,10 @@ public sealed class JobSchedulingTests
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
-        
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -80,7 +81,6 @@ public sealed class JobSchedulingTests
     [Fact]
     public async Task ShouldScheduleJobWithDateTime()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"datetime-job-{Guid.NewGuid():N}";
 
@@ -89,7 +89,9 @@ public sealed class JobSchedulingTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -130,7 +132,6 @@ public sealed class JobSchedulingTests
     [Fact]
     public async Task ShouldScheduleJobWithStartingFrom()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"startingfrom-job-{Guid.NewGuid():N}";
 
@@ -138,8 +139,10 @@ public sealed class JobSchedulingTests
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
-        
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -180,7 +183,6 @@ public sealed class JobSchedulingTests
     [Fact]
     public async Task ShouldScheduleMultipleRepeatingJob()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"repeating-job-{Guid.NewGuid():N}";
 
@@ -189,8 +191,10 @@ public sealed class JobSchedulingTests
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
-        
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

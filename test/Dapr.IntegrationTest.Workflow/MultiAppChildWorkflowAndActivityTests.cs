@@ -42,7 +42,10 @@ public sealed class MultiAppChildWorkflowAndActivityTests
         await environment.StartAsync();
 
         // App1: initiator (calls child workflow on App2)
-        var harness1 = new DaprHarnessBuilder(options1, environment).BuildWorkflow(componentsDir1);
+        var harness1 = new DaprHarnessBuilder(componentsDir1)
+            .WithOptions(options1)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var app1 = await DaprHarnessBuilder.ForHarness(harness1)
             .ConfigureServices(builder =>
             {
@@ -62,7 +65,10 @@ public sealed class MultiAppChildWorkflowAndActivityTests
             .BuildAndStartAsync();
 
         // App2: child workflow host (calls activity on App3)
-        var harness2 = new DaprHarnessBuilder(options2, environment).BuildWorkflow(componentsDir2);
+        var harness2 = new DaprHarnessBuilder(componentsDir2)
+            .WithEnvironment(environment)
+            .WithOptions(options2)
+            .BuildWorkflow();
         await using var app2 = await DaprHarnessBuilder.ForHarness(harness2)
             .ConfigureServices(builder =>
             {
@@ -82,7 +88,10 @@ public sealed class MultiAppChildWorkflowAndActivityTests
             .BuildAndStartAsync();
 
         // App3: activity host
-        var harness3 = new DaprHarnessBuilder(options3, environment).BuildWorkflow(componentsDir3);
+        var harness3 = new DaprHarnessBuilder(componentsDir3)
+            .WithEnvironment(environment)
+            .WithOptions(options3)
+            .BuildWorkflow();
         await using var app3 = await DaprHarnessBuilder.ForHarness(harness3)
             .ConfigureServices(builder =>
             {
