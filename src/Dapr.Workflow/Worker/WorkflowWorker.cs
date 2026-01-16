@@ -108,7 +108,10 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             var versionTracker = new WorkflowVersionTracker(allPastEvents);
 
             // Identify the workflow name from the now-complete history
-            foreach (var e in allPastEvents.Concat(request.NewEvents))
+            
+            // Process in reverse so this finds the most recent ExecutionStarted event instead of processing
+            // such an event handled by another app.
+            foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
             {
                 if (e.ExecutionStarted != null)
                 {
