@@ -105,6 +105,54 @@ public sealed class WorkflowVersionTrackerTests
     }
 
     [Fact]
+    public void OnOrchestratorStarted_WithNullVersion_DoesNothing()
+    {
+        var tracker = new WorkflowVersionTracker([]);
+
+        tracker.OnOrchestratorStarted(null);
+
+        tracker.IsStalled.ShouldBeFalse();
+        tracker.AggregatedPatchesOrdered.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void OnOrchestratorStarted_WhenAlreadyStalled_ReturnsEarly()
+    {
+        var tracker = new WorkflowVersionTracker([]);
+        tracker.OnOrchestratorStarted(new OrchestrationVersion { Patches = { "stall-trigger" } });
+        tracker.IsStalled.ShouldBeTrue();
+
+        // Act - attempt to add a "valid" patch while stalled
+        tracker.OnOrchestratorStarted(new OrchestrationVersion { Patches = { "valid-patch" } });
+
+        // Assert - valid-patch should not have been added to aggregated history
+        tracker.AggregatedPatchesOrdered.ShouldNotContain("valid-patch");
+    }
+
+    [Fact]
+    public void RequestPatch_WithInvalidName_ThrowsArgumentException()
+    {
+        var tracker = new WorkflowVersionTracker([]);
+
+        Assert.Throws<ArgumentException>(() => tracker.RequestPatch("", isReplaying: false));
+        Assert.Throws<ArgumentException>(() => tracker.RequestPatch("   ", isReplaying: false));
+    }
+
+    [Fact]
+    public void RequestPatch_WhenAlreadyStalled_ReturnsFalse()
+    {
+        var tracker = new WorkflowVersionTracker([]);
+        tracker.RequestPatch("p1", isReplaying: false);
+        tracker.RequestPatch("p1", isReplaying: false); // Trigger stall via duplicate
+        tracker.IsStalled.ShouldBeTrue();
+
+        var result = tracker.RequestPatch("p2", isReplaying: false);
+
+        result.ShouldBeFalse();
+        tracker.AggregatedPatchesOrdered.ShouldNotContain("p2");
+    }
+
+    [Fact]
     public void BuildResponseVersion_ReturnsCurrentExecutionPath()
     {
         var tracker = new WorkflowVersionTracker([]);
