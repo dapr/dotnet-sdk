@@ -12,12 +12,14 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,6 +39,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory?.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
+    private readonly Dictionary<string, WorkflowVersionTracker> _versionTrackers = new(StringComparer.Ordinal);
 
     private GrpcProtocolHandler? _protocolHandler;
 
@@ -74,9 +77,9 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         {
             // Create a scope for DI
             await using var scope = _serviceProvider.CreateAsyncScope();
-
-            // We must collect ALL past events, including those from the stream if required
-            // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale
+            
+            // We must collect ALL past events, including those from the stream, if required.
+            // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale.
             var allPastEvents = request.PastEvents.ToList();
 
             // Extract the following values from the ExecutionStartedEvent in the history
@@ -100,6 +103,9 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                     allPastEvents.AddRange(chunk);
                 }
             }
+            
+            // Create a new version tracker for this turn
+            var versionTracker = new WorkflowVersionTracker(allPastEvents);
 
             // Identify the workflow name from the now-complete history
             foreach (var e in allPastEvents.Concat(request.NewEvents))
@@ -141,7 +147,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 : DateTime.UtcNow;
 
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory, appId);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory, versionTracker, appId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
@@ -150,7 +156,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             
             // Replay the old history to rebuild the local state of the orchestration.
             context.ProcessEvents(allPastEvents, true);
-
+            
             // Execute the workflow
             // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
@@ -161,8 +167,35 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Play the newly arrived events to determine the next action to take.
             context.ProcessEvents(request.NewEvents, false);
             
+            // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
+            if (versionTracker.IsStalled)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Stalled,
+                                Details = versionTracker.StalledEvent?.Description ??
+                                          "Workflow stalled due to patch mismatch."
+                            }
+                        }
+                    }
+                };
+            }
+            
             // Get all pending actions from the context
             var response = new OrchestratorResponse { InstanceId = request.InstanceId };
+            
+            // Stamp the version info if new patches were encountered this turn
+            if (versionTracker.IncludeVersionInNextResponse)
+            {
+                response.Version = versionTracker.BuildResponseVersion(workflowName);
+            }
 
             // Add all actions that were scheduled during workflow execution
             response.Actions.AddRange(context.PendingActions);
@@ -182,7 +215,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, context.PendingActions.Count);
 
-                if (response.Actions.Count == 0 && !context.PendingActions.Any()) 
+                if (response.Actions.Count == 0 && context.PendingActions.Count == 0) 
                     _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
                 return response;
             }
@@ -251,6 +284,26 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 }
             };
         }
+    }
+
+    /// <summary>
+    /// Retrieves all the versioning patches from the list of history events.
+    /// </summary>
+    /// <param name="events"></param>
+    /// <returns></returns>
+    private static List<string> ListAllVersioningPatches(List<HistoryEvent> events)
+    {
+        var result = new List<string>();
+        
+        foreach (var ev in events)
+        {
+            if (ev.OrchestratorStarted?.Version != null)
+            {
+                result.AddRange(ev.OrchestratorStarted.Version.Patches);
+            }
+        }
+
+        return result;
     }
 
     private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request)

@@ -19,6 +19,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.Workflow.Worker.Internal;
@@ -34,6 +35,10 @@ namespace Dapr.Workflow.Worker.Internal;
 /// </remarks>
 internal sealed class WorkflowOrchestrationContext : WorkflowContext
 {
+    /// <summary>
+    /// Used to track patch-based versioning semantics.
+    /// </summary>
+    private readonly WorkflowVersionTracker _versionTracker;
     private readonly List<HistoryEvent> _externalEventBuffer = [];
     private readonly Dictionary<string, Queue<TaskCompletionSource<HistoryEvent>>> _externalEventSources = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, TaskCompletionSource<HistoryEvent>> _openTasks = [];
@@ -63,7 +68,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private bool _isReplaying;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
-        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, string? appId = null)
+        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker, string? appId = null)
     {
         _workflowSerializer = workflowSerializer;
         _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
@@ -73,7 +78,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         InstanceId = instanceId;
         _currentUtcDateTime = currentUtcDateTime;
         _appId = appId; // Necessary for setting the source app ID value on the task router
-
+        _versionTracker = versionTracker;
+        
         _logger.LogWorkflowContextConstructorSetup(name, instanceId);
     }
 
@@ -88,6 +94,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     /// <inheritdoc />
     public override bool IsReplaying => _isReplaying;
+
+    /// <inheritdoc />
+    public override bool IsPatched(string patchName) => _versionTracker.RequestPatch(patchName, this.IsReplaying);
 
     /// <summary>
     /// Gets the list of pending orchestrator actions to be sent to the Dapr sidecar.
@@ -347,8 +356,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             switch (historyEvent)
             {
-                case { OrchestratorStarted: not null }:
-                    HandleOrchestratorStarted(historyEvent);
+                case { OrchestratorStarted: { } started }:
+                    HandleOrchestratorStarted(historyEvent, started);
                     break;
 
                 case { TaskScheduled: not null }:
@@ -394,9 +403,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
     }
 
-    private void HandleOrchestratorStarted(HistoryEvent historyEvent)
+    private void HandleOrchestratorStarted(HistoryEvent historyEvent, OrchestratorStartedEvent started)
     {
         _currentUtcDateTime = historyEvent.Timestamp.ToDateTime();
+        
+        // Notify the tracker of the versioning data provided by the runtime for this turn
+        _versionTracker.OnOrchestratorStarted(started.Version);
     }
 
     private void HandleActionCreated(HistoryEvent historyEvent)

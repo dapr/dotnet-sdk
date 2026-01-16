@@ -16,6 +16,7 @@ using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
@@ -191,7 +192,7 @@ public class WorkflowWorkerTests
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance, null);
+            loggerFactory: NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -238,7 +239,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, appId1);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), appId1);
 
         _ = context.CallChildWorkflowAsync<int>("ChildWf", options: new ChildWorkflowTaskOptions { TargetAppId = appId2 });
 
@@ -255,7 +256,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
 
         var completionEvent = new[]
         {
@@ -295,7 +296,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -414,7 +415,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
 
         var completionHistory = new[]
         {
@@ -448,7 +449,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 

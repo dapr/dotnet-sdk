@@ -67,6 +67,9 @@ public abstract class WorkflowContext : IWorkflowContext
     /// </value>
     public abstract bool IsReplaying { get; }
 
+    /// <inheritdoc />
+    public abstract bool IsPatched(string patchName);
+
     /// <summary>
     /// Asynchronously invokes an activity by name and with the specified input value.
     /// </summary>
