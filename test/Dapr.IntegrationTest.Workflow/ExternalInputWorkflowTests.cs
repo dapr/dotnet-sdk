@@ -12,9 +12,9 @@
 //  ------------------------------------------------------------------------
 
 using Dapr.Client;
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
-using Dapr.TestContainers.Harnesses;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Common.Options;
+using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -133,7 +133,7 @@ public sealed partial class ExternalInputWorkflowTests
         var daprClient = scope.ServiceProvider.GetRequiredService<DaprClient>();
         foreach (var baseInventoryItem in BaseInventory)
         {
-            await daprClient.SaveStateAsync(TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+            await daprClient.SaveStateAsync(Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 baseInventoryItem.Name.ToLowerInvariant(), baseInventoryItem);
         }
 
@@ -526,7 +526,7 @@ public sealed partial class ExternalInputWorkflowTests
 
             // Determine if there are enough items for purchase
             var item = await daprClient.GetStateAsync<InventoryItem>(
-                TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+                Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 request.ItemName.ToLowerInvariant());
             var newQuantity = item.Quantity - request.Amount;
             if (newQuantity < 0)
@@ -537,7 +537,7 @@ public sealed partial class ExternalInputWorkflowTests
             }
 
             // Update the state store with the new amount of the item
-            await daprClient.SaveStateAsync(TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+            await daprClient.SaveStateAsync(Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 request.ItemName.ToLowerInvariant(),
                 new InventoryItem(request.ItemName, item.PerItemCost, newQuantity));
 
@@ -593,7 +593,7 @@ public sealed partial class ExternalInputWorkflowTests
 
             // Ensure that the store has items
             var item = await daprClient.GetStateAsync<InventoryItem?>(
-                TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+                Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 req.ItemName.ToLowerInvariant());
 
             // Catch for the case where the statestore isn't set up

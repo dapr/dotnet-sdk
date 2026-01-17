@@ -25,12 +25,14 @@ jobs:
       NUPKG_OUTDIR: bin/Release/nugets
     steps:
       - uses: actions/checkout@v1
+        with:
+          clean: true
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
           dotnet-quality: 'ga'
       - name: Restore dependencies
         run: dotnet restore
