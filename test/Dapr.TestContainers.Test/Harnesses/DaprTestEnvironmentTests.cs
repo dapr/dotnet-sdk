@@ -1,7 +1,7 @@
 ﻿using Dapr.Testcontainers.Harnesses;
 using Xunit;
 
-namespace Dapr.TestContainers.Test.Harnesses;
+namespace Dapr.Testcontainers.Test.Harnesses;
 
 public sealed class DaprTestEnvironmentTests
 {

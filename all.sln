@@ -223,7 +223,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Abstractions"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Testcontainers", "src\Dapr.Testcontainers\Dapr.Testcontainers.csproj", "{A05D1519-6A82-498F-B7C9-3D14E08D35CA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.TestContainers.Test", "test\Dapr.TestContainers.Test\Dapr.TestContainers.Test.csproj", "{D410F7FA-BAB7-4B13-9A9D-8531FCA932AA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Testcontainers.Test", "test\Dapr.Testcontainers.Test\Dapr.Testcontainers.Test.csproj", "{D410F7FA-BAB7-4B13-9A9D-8531FCA932AA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
