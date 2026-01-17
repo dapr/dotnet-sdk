@@ -23,12 +23,10 @@ namespace Dapr.Workflow.Versioning;
 internal sealed class WorkflowVersionTracker
 {
     // Aggregated across the workflow execution in first-seen order
-    private readonly List<string> _aggregatedHistoryOrdered = [];
-    private readonly HashSet<string> _aggregatedHistorySet = new(StringComparer.Ordinal);
+    private readonly OrderedSet _aggregatedHistory = new();
 
     // Patches the current code has encountered (case-sensitive uniqueness)
-    private readonly List<string> _encounteredByCodeOrdered = [];
-    private readonly HashSet<string> _encounteredByCodeSet = new(StringComparer.Ordinal);
+    private readonly OrderedSet _encounteredByCode = new();
 
     // Per-turn flags
     private bool _includeVersionInNextResponse;
@@ -43,14 +41,18 @@ internal sealed class WorkflowVersionTracker
     /// <summary>
     /// Aggregated, ordered patches to be stamped in OrchestratorResponse.version.
     /// </summary>
-    public IReadOnlyList<string> AggregatedPatchesOrdered => _aggregatedHistoryOrdered;
+    public IReadOnlyList<string> AggregatedPatchesOrdered => _aggregatedHistory.Items;
 
     public WorkflowVersionTracker(List<HistoryEvent> events)
     {
-        _aggregatedHistoryOrdered = ListAllVersioningPatches(events);
-        foreach (var patch in _aggregatedHistoryOrdered)
+        foreach (var patch in ListAllVersioningPatches(events))
         {
-            _aggregatedHistorySet.Add(patch);
+            _aggregatedHistory.Add(patch);
+            
+            // If a patch is in the history, it is by definition "encountered"
+            // by the code in previous turns. We mark it here so that the first call
+            // to IsPatched in this turn doesn't treat it as "new"
+            _encounteredByCode.Add(patch);
         }
     }
 
@@ -88,12 +90,11 @@ internal sealed class WorkflowVersionTracker
         // merge them into the full aggregation in first-seen order
         foreach (var patch in incrementalVersionFromRuntime.Patches)
         {
-            if (_aggregatedHistorySet.Add(patch))
-                _aggregatedHistoryOrdered.Add(patch);
+            _aggregatedHistory.Add(patch);
             
             // Mismatch rule: history shows a patch enabled that our *current* code has not yet enabled
-            // up to this pointin the execution. This implies code moved or a version gap.
-            if (!_encounteredByCodeSet.Contains(patch))
+            // up to this point in the execution. This implies code moved or a version gap.
+            if (!_encounteredByCode.Contains(patch))
             {
                 this.StalledEvent = new ExecutionStalledEvent
                 {
@@ -114,44 +115,42 @@ internal sealed class WorkflowVersionTracker
     public bool RequestPatch(string patchName, bool isReplaying)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(patchName);
-
-        if (this.IsStalled)
-            // Once stalled, be conservative; caller should should-circuit this turn
-            return false;
-
-        // Replay semantics
-        if (isReplaying)
+        
+        if (_encounteredByCode.Contains(patchName))
         {
-            var hasPatch = _aggregatedHistorySet.Contains(patchName);
-            if (hasPatch)
+            // Safety: Even if it's "known", we must check if we're replaying.
+            // If we are NOT replaying, but the patch is in the _aggregatedHistorySet, it means we've successfully
+            // round-tripped it.
+            // If it are NOT replaying and it's not in the history, but IS in _encounteredByCodeSet, it means the user
+            // called IsPatched() twice in the same turn
+            if (!isReplaying && !_aggregatedHistory.Contains(patchName))
             {
-                _encounteredByCodeSet.Add(patchName);
-                _encounteredByCodeOrdered.Add(patchName);
+                this.StalledEvent = new ExecutionStalledEvent
+                {
+                    Reason = StalledReason.PatchMismatch,
+                    Description = $"Duplicate patch '{patchName}' encountered by code. Patch names must be unique in a " +
+                                  "workflow execution."
+                };
+                return false;
             }
 
-            return hasPatch;
+            return true;
         }
         
-        // Non-replay semantics: Encountering a patch means it is enabled in code now. Detect duplicate usage across
-        // the current execution to signal a stall
-        if (_encounteredByCodeSet.Contains(patchName))
+        // If we are replaying and the patch isn't in history (and wasn't seen yet this turn), it's not active
+        if (isReplaying)
         {
-            this.StalledEvent = new ExecutionStalledEvent
+            var inHistory = _aggregatedHistory.Contains(patchName);
+            if (inHistory)
             {
-                Reason = StalledReason.PatchMismatch,
-                Description = $"Duplicate patch '{patchName}' encountered by code. Patch names must be unique in a " +
-                              "workflow execution."
-            };
-            return false;
-        }
+                _encounteredByCode.Add(patchName);
+            }
 
-        _encounteredByCodeSet.Add(patchName);
-        _encounteredByCodeOrdered.Add(patchName);
+            return inHistory;
+        }
         
-        // We include version info only if at least one patch is encountered this turn
+        _encounteredByCode.Add(patchName);
         _includeVersionInNextResponse = true;
-        
-        // Non-replay scenarios always return true by design
         return true;
     }
 
@@ -163,6 +162,30 @@ internal sealed class WorkflowVersionTracker
     public OrchestrationVersion BuildResponseVersion(string workflowName) => new()
     {
         Name = workflowName,
-        Patches = { _encounteredByCodeOrdered } // Ordered, de-duplicated 
+        Patches = { _encounteredByCode.Items } // Ordered, de-duplicated 
     };
+
+    /// <summary>
+    /// Simple helper to maintain fast lookups and insertion order without repeating variables.
+    /// </summary>
+    private sealed class OrderedSet
+    {
+        private readonly HashSet<string> set = new(StringComparer.Ordinal);
+        private readonly List<string> list = [];
+
+        public IReadOnlyList<string> Items => list;
+
+        public bool Add(string item)
+        {
+            if (set.Add(item))
+            {
+                list.Add(item);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool Contains(string item) => set.Contains(item);
+    }
 }
