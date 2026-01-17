@@ -24,7 +24,8 @@ jobs:
       NUPKG_OUTDIR: bin/Release/nugets
     steps:
       - uses: actions/checkout@v1
-        clean: true
+        with:
+          clean: true
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
       - name: Setup .NET Core
