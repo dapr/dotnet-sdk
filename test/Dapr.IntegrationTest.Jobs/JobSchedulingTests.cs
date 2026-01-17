@@ -14,9 +14,9 @@
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
-using Dapr.TestContainers.Harnesses;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Common.Options;
+using Dapr.Testcontainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

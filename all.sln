@@ -221,7 +221,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "new", "new", "{8462B106-175
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Abstractions", "src\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj", "{CE5D4439-5B3C-4E97-B7E3-EB8610AEA3EF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.TestContainers", "src\Dapr.TestContainers\Dapr.TestContainers.csproj", "{A05D1519-6A82-498F-B7C9-3D14E08D35CA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Testcontainers", "src\Dapr.Testcontainers\Dapr.Testcontainers.csproj", "{A05D1519-6A82-498F-B7C9-3D14E08D35CA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.TestContainers.Test", "test\Dapr.TestContainers.Test\Dapr.TestContainers.Test.csproj", "{D410F7FA-BAB7-4B13-9A9D-8531FCA932AA}"
 EndProject

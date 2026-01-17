@@ -1,4 +1,4 @@
-﻿using Dapr.TestContainers.Harnesses;
+﻿using Dapr.Testcontainers.Harnesses;
 using Xunit;
 
 namespace Dapr.TestContainers.Test.Harnesses;
