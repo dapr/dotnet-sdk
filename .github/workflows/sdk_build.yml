@@ -20,6 +20,7 @@ on:
 jobs:
   build:
     name: Build
+    runs-on: ubuntu-latest
     env:
       NUPKG_OUTDIR: bin/Release/nugets
     steps:
