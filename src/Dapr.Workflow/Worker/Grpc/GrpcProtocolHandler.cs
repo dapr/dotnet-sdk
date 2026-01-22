@@ -26,6 +26,8 @@ namespace Dapr.Workflow.Worker.Grpc;
 /// </summary>
 internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, ILoggerFactory loggerFactory, int maxConcurrentWorkItems = 100, int maxConcurrentActivities = 100) : IAsyncDisposable
 {
+    private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
+    
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient =
@@ -49,34 +51,65 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposalCts.Token);
         var token = linkedCts.Token;
-
-        try
+        
+        // Establish the bidirectional stream
+        var request = new GetWorkItemsRequest
         {
-            _logger.LogGrpcProtocolHandlerStartStream();
+            MaxConcurrentOrchestrationWorkItems = _maxConcurrentWorkItems,
+            MaxConcurrentActivityWorkItems = _maxConcurrentActivities
+        };
 
-            // Establish the bidirectional stream
-            var request = new GetWorkItemsRequest
+        while (!token.IsCancellationRequested)
+        {
+            try
             {
-                MaxConcurrentOrchestrationWorkItems = _maxConcurrentWorkItems,
-                MaxConcurrentActivityWorkItems = _maxConcurrentActivities
-            };
-            
-            // Establish the server streaming call
-            _streamingCall = _grpcClient.GetWorkItems(request, cancellationToken: token);
-            
-            // Process work items from the stream
-            await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
-        }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
-        {
-            _logger.LogGrpcProtocolHandlerStreamCanceled();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogGrpcProtocolHandlerGenericError(ex);
-            throw;
-        }
+                _logger.LogGrpcProtocolHandlerStartStream();
+
+                // Establish the server streaming call
+                _streamingCall = _grpcClient.GetWorkItems(request, cancellationToken: token);
+
+                // Process work items from the stream
+                await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+
+                // If we get here without cancellation, the server likely closed the stream gracefully
+                if (!token.IsCancellationRequested)
+                {
+                    await Task.Delay(ReconnectDelay, token);
+                }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerStreamCanceled();
+                break;
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled & token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerStreamCanceled();
+            }
+            catch (RpcException ex) when (IsTransient(ex) && !token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerGenericError(ex);
+                await Task.Delay(ReconnectDelay, token);
+            }
+            catch (Exception ex) when (!token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerGenericError(ex);
+                await Task.Delay(ReconnectDelay, token);
+            }
+            finally
+            {
+                _streamingCall?.Dispose();
+                _streamingCall = null;
+            }
+        }        
     }
+
+    private static bool IsTransient(RpcException ex) =>
+        ex.StatusCode is StatusCode.Unavailable
+            or StatusCode.DeadlineExceeded
+            or StatusCode.ResourceExhausted
+            or StatusCode.Internal
+            or StatusCode.Aborted;
 
     /// <summary>
     /// Receives requests from the Dapr sidecar and processes them.
