@@ -30,6 +30,10 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// The Daprd container exposed by the harness.
     /// </summary>
     private protected DaprdContainer? _daprd;
+
+    private int? _daprHttpPortOverride;
+    private int? _daprGrpcPortOverride;
+    
     /// <summary>
     /// Indicates whether the sidecar ports are ready for use.
     /// </summary>
@@ -42,6 +46,14 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// Tracks whether the environment was created implicitly (standalone mode) or is shared (controlling whether we dispose of it).
     /// </summary>
     private readonly bool _ownsEnvironment;
+    /// <summary>
+    /// The HTTP port used by the Daprd container.
+    /// </summary>
+    public int DaprHttpPort => _daprd?.HttpPort ?? _daprHttpPortOverride ?? 0;
+    /// <summary>
+    /// The gRPC port used by the Daprd container.
+    /// </summary>
+    public int DaprGrpcPort => _daprd?.GrpcPort ?? _daprGrpcPortOverride ?? 0;
     
     private readonly string componentsDirectory;
     private readonly Func<int, Task>? startApp;
@@ -84,22 +96,12 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
     /// </summary>
     public int AppPort { get; private set; }
-
-    /// <summary>
-    /// The HTTP port used by the Daprd container.
-    /// </summary>
-    public int DaprHttpPort => _daprd?.HttpPort ?? 0;
-
+    
     /// <summary>
     /// The HTTP endpoint used by the Daprd container.
     /// </summary>
     public string DaprHttpEndpoint => $"http://{DaprdContainer.ContainerHostAlias}:{DaprHttpPort}";
     
-    /// <summary>
-    /// The gRPC port used by the Daprd container.
-    /// </summary>
-    public int DaprGrpcPort => _daprd?.GrpcPort ?? 0;
-
     /// <summary>
     /// The gRPC endpoint used by the Daprd container.
     /// </summary>
@@ -129,6 +131,17 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// The network alias of the scheduler container, if started.
     /// </summary>
     protected string? DaprSchedulerAlias { get; set; }
+
+    /// <summary>
+    /// Pre-assigns the Dapr ports to use. This is useful when the app starts before the Dapr container.
+    /// </summary>
+    /// <param name="httpPort">The HTTP port.</param>
+    /// <param name="grpcPort">The gRPC port.</param>
+    public void SetPorts(int httpPort, int grpcPort)
+    {
+        _daprHttpPortOverride = httpPort;
+        _daprGrpcPortOverride = grpcPort;
+    }
     
     /// <summary>
     /// The specific container startup logic for the harness.
@@ -164,7 +177,9 @@ public abstract class BaseHarness : IAsyncContainerFixture
             DaprPlacementExternalPort is null || DaprPlacementAlias is null 
                 ? null : new HostPortPair(DaprPlacementAlias, DaprPlacementContainer.InternalPort),
             DaprSchedulerExternalPort is null || DaprSchedulerAlias is null 
-                ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort));
+                ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort),
+            _daprHttpPortOverride,
+            _daprGrpcPortOverride);
 
         var daprdTask = Task.Run(async () =>
         {

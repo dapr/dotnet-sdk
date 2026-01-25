@@ -48,6 +48,9 @@ public sealed class DaprdContainer : IAsyncStartable
     /// </summary>
 	public int GrpcPort { get; private set; }
 
+    private readonly int? _requestedHttpPort;
+    private readonly int? _requestedGrpcPort;
+
     /// <summary>
     /// The hostname to locate the Dapr runtime on in the shared Docker network.
     /// </summary>
@@ -62,8 +65,22 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="network">The shared Docker network to connect to.</param>
     /// <param name="placementHostAndPort">The hostname and port of the Placement service.</param>
     /// <param name="schedulerHostAndPort">The hostname and port of the Scheduler service.</param>
-    public DaprdContainer(string appId, string componentsHostFolder, DaprRuntimeOptions options, INetwork network, HostPortPair? placementHostAndPort = null, HostPortPair? schedulerHostAndPort = null)
+    /// <param name="daprHttpPort">The host HTTP port to bind to.</param>
+    /// <param name="daprGrpcPort">The host gRPC port to bind to.</param>
+    public DaprdContainer(
+        string appId, 
+        string componentsHostFolder, 
+        DaprRuntimeOptions options, 
+        INetwork network, 
+        HostPortPair? placementHostAndPort = null, 
+        HostPortPair? schedulerHostAndPort = null,
+        int? daprHttpPort = null,
+        int? daprGrpcPort = null
+        )
     {
+        _requestedHttpPort = daprHttpPort;
+        _requestedGrpcPort = daprGrpcPort;
+        
         const string componentsPath = "/components";
 		var cmd =
 			new List<string>
@@ -102,28 +119,46 @@ public sealed class DaprdContainer : IAsyncStartable
             cmd.Add("");
         }
 		
-		_container = new ContainerBuilder()
+		var  containerBuilder = new ContainerBuilder()
 			.WithImage(options.RuntimeImageTag)
 			.WithName(_containerName)
             .WithLogger(ConsoleLogger.Instance)
 			.WithCommand(cmd.ToArray())
             .WithNetwork(network)
             .WithExtraHost(ContainerHostAlias, "host-gateway")
-			.WithPortBinding(InternalHttpPort, assignRandomHostPort: true)
-			.WithPortBinding(InternalGrpcPort, assignRandomHostPort: true)
 			.WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
 			.WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilMessageIsLogged("Internal gRPC server is running"))
+                .UntilMessageIsLogged("Internal gRPC server is running"));
                 //.UntilMessageIsLogged(@"^dapr initialized. Status: Running. Init Elapsed "))
-			.Build();
+
+            if (daprHttpPort != null)
+            {
+                containerBuilder.WithPortBinding(InternalHttpPort, daprHttpPort.Value);
+            }
+            else
+            {
+                containerBuilder.WithPortBinding(InternalHttpPort, true);
+            }
+
+            if (daprGrpcPort != null)
+            {
+                containerBuilder.WithPortBinding(InternalGrpcPort, daprGrpcPort.Value);
+            }
+            else
+            {
+                containerBuilder.WithPortBinding(InternalGrpcPort, true);
+            }
+                
+            _container = containerBuilder.Build();
 	}
 
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		await _container.StartAsync(cancellationToken);
-		HttpPort = _container.GetMappedPublicPort(InternalHttpPort);
-		GrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
+
+        HttpPort = _requestedHttpPort ?? _container.GetMappedPublicPort(InternalHttpPort);
+        GrpcPort = _requestedGrpcPort ?? _container.GetMappedPublicPort(InternalGrpcPort);
     }
 
     /// <inheritdoc />
