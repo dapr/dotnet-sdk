@@ -82,29 +82,28 @@ public sealed class RedisContainer : IAsyncStartable
         /// <summary>
         /// Writes a state store YAML component.
         /// </summary>
-		public static string WriteStateStoreYamlToFolder(string folderPath, string fileName = "redis-state.yaml",string redisHost = "localhost:6379",
+		public static void WriteStateStoreYamlToFolder(string folderPath, string fileName = "redis-state.yaml",string redisHost = "localhost:6379",
 			string? passwordSecretName = null)
 		{
 			var yaml = GetRedisStateStoreYaml(redisHost, passwordSecretName);
-			return WriteToFolder(folderPath, fileName, yaml);
-		}
+			WriteToFolder(folderPath, fileName, yaml);
+        }
 
         /// <summary>
         /// Writes a distributed lock YAML component.
         /// </summary>
-		public static string WriteDistributedLockYamlToFolder(string folderPath, string fileName = "redis-lock.yaml",
+		public static void WriteDistributedLockYamlToFolder(string folderPath, string fileName = "redis-lock.yaml",
 			string redisHost = "localhost:6379", string? passwordSecretName = null)
 		{
 			var yaml = GetDistributedLockYaml(redisHost, passwordSecretName);
-			return WriteToFolder(folderPath, fileName, yaml);
-		}
+			WriteToFolder(folderPath, fileName, yaml);
+        }
 
-		private static string WriteToFolder(string folderPath, string fileName, string yaml)
+		private static void WriteToFolder(string folderPath, string fileName, string yaml)
 		{
 			Directory.CreateDirectory(folderPath);
 			var fullPath = Path.Combine(folderPath, fileName);
 			File.WriteAllText(fullPath, yaml);
-			return fullPath;
 		}
 
 		private static string BuildSecretBlock(string? passwordSecretName) =>

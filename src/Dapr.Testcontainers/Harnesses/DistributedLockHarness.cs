@@ -28,6 +28,11 @@ public sealed class DistributedLockHarness : BaseHarness
     private readonly string componentsDir;
 
     /// <summary>
+    /// The name of the producted distributed lock component.
+    /// </summary>
+    public const string DistributedLockComponentName = Constants.DaprComponentNames.DistributedLockComponentName;
+
+    /// <summary>
     /// Provides an implementation harness for Dapr's distributed lock building block.
     /// </summary>
     /// <param name="componentsDir">The directory to Dapr components.</param>

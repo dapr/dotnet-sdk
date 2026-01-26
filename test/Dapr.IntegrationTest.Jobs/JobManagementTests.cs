@@ -21,7 +21,7 @@ using Dapr.Testcontainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Dapr.E2E.Test.Jobs;
+namespace Dapr.IntegrationTest.Jobs;
 
 public sealed class JobManagementTests
 {

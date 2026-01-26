@@ -26,6 +26,8 @@ namespace Dapr.Workflow.Worker.Grpc;
 /// </summary>
 internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, ILoggerFactory loggerFactory, int maxConcurrentWorkItems = 100, int maxConcurrentActivities = 100) : IAsyncDisposable
 {
+    private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
+    
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient =
@@ -49,32 +51,71 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposalCts.Token);
         var token = linkedCts.Token;
+        
+        // Establish the bidirectional stream
+        var request = new GetWorkItemsRequest
+        {
+            MaxConcurrentOrchestrationWorkItems = _maxConcurrentWorkItems,
+            MaxConcurrentActivityWorkItems = _maxConcurrentActivities
+        };
 
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                _logger.LogGrpcProtocolHandlerStartStream();
+
+                // Establish the server streaming call
+                _streamingCall = _grpcClient.GetWorkItems(request, cancellationToken: token);
+
+                // Process work items from the stream
+                await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+
+                // Stream ended gracefully => tradfe as an interrupted and reconnect unless shutting down
+                if (!token.IsCancellationRequested)
+                {
+                    await DelayOrStopAsync(ReconnectDelay, token);
+                }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerStreamCanceled();
+                break;
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerStreamCanceled();
+                break;
+            }
+            catch (RpcException ex) when (!token.IsCancellationRequested)
+            {
+                // Any RpcException while not shutting down -> retry indefinitely (transient or not)
+                _logger.LogGrpcProtocolHandlerGenericError(ex);
+                await DelayOrStopAsync(ReconnectDelay, token);
+            }
+            catch (Exception ex) when (!token.IsCancellationRequested)
+            {
+                // Any other interruption -> retry indefinitely
+                _logger.LogGrpcProtocolHandlerGenericError(ex);
+                await DelayOrStopAsync(ReconnectDelay, token);
+            }
+            finally
+            {
+                _streamingCall?.Dispose();
+                _streamingCall = null;
+            }
+        }        
+    }
+    
+    private static async Task DelayOrStopAsync(TimeSpan delay, CancellationToken token)
+    {
         try
         {
-            _logger.LogGrpcProtocolHandlerStartStream();
-
-            // Establish the bidirectional stream
-            var request = new GetWorkItemsRequest
-            {
-                MaxConcurrentOrchestrationWorkItems = _maxConcurrentWorkItems,
-                MaxConcurrentActivityWorkItems = _maxConcurrentActivities
-            };
-            
-            // Establish the server streaming call
-            _streamingCall = _grpcClient.GetWorkItems(request, cancellationToken: token);
-            
-            // Process work items from the stream
-            await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+            await Task.Delay(delay, token);
         }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            _logger.LogGrpcProtocolHandlerStreamCanceled();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogGrpcProtocolHandlerGenericError(ex);
-            throw;
+            // Swallow cancellation so StartAsync exits cleanly when the host/test cancels.
         }
     }
 

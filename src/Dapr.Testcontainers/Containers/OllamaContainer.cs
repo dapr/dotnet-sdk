@@ -28,7 +28,7 @@ namespace Dapr.Testcontainers.Containers;
 public sealed class OllamaContainer : IAsyncStartable
 {
 	private const int InternalPort = 11434;
-    private string _containerName = $"ollama-{Guid.NewGuid():N}";
+    private readonly string _containerName = $"ollama-{Guid.NewGuid():N}";
 
 	private readonly IContainer _container;
 
@@ -83,19 +83,18 @@ public sealed class OllamaContainer : IAsyncStartable
         /// <summary>
         /// Writes the component YAML.
         /// </summary>
-		public static string WriteConversationYamlToFolder(string folderPath, string fileName = "ollama-conversation.yaml", string model = "smollm:135m", string cacheTtl = "10m", string endpoint = "http://localhost:11434/v1")
+		public static void WriteConversationYamlToFolder(string folderPath, string fileName = "ollama-conversation.yaml", string model = "smollm:135m", string cacheTtl = "10m", string endpoint = "http://localhost:11434/v1")
 		{
 			var yaml = GetConversationYaml(model, cacheTtl, endpoint);
-			return WriteToFolder(folderPath, fileName, yaml);
-		}
+			WriteToFolder(folderPath, fileName, yaml);
+        }
 		
-		private static string WriteToFolder(string folderPath, string fileName, string yaml)
+		private static void WriteToFolder(string folderPath, string fileName, string yaml)
 		{
 			Directory.CreateDirectory(folderPath);
 			var fullPath = Path.Combine(folderPath, fileName);
 			File.WriteAllText(fullPath, yaml);
-			return fullPath;
-		}
+        }
 
 		private static string GetConversationYaml(string model, string cacheTtl, string endpoint) =>
 			$@"apiVersion: dapr.io/v1alpha

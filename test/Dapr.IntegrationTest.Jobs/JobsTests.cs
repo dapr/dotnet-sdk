@@ -11,7 +11,6 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
-using System.ComponentModel.DataAnnotations;
 using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
@@ -23,7 +22,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Dapr.E2E.Test.Jobs;
+namespace Dapr.IntegrationTest.Jobs;
 
 public sealed class JobsTests
 {
