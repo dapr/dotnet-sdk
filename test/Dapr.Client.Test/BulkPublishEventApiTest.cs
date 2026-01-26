@@ -296,7 +296,7 @@ public class BulkPublishEventApiTest
 
         // Setup the mock client to throw an Rpc Exception with the expected details info
         client.Mock
-            .Setup(m => m.BulkPublishEventAlpha1Async(
+            .Setup(m => m.BulkPublishEventAsync(
                 It.IsAny<Autogen.Grpc.v1.BulkPublishRequest>(), 
                 It.IsAny<CallOptions>()))
             .Throws(rpcException);
