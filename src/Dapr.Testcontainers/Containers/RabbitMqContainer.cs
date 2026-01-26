@@ -85,18 +85,17 @@ public sealed class RabbitMqContainer : IAsyncStartable
         /// <summary>
         /// Writes a PubSub YAML component.
         /// </summary>
-		public static string WritePubSubYamlToFolder(string folderPath, string fileName = "rabbitmq-pubsub.yaml", string rabbitmqHost = "localhost:5672")
+		public static void WritePubSubYamlToFolder(string folderPath, string fileName = "rabbitmq-pubsub.yaml", string rabbitmqHost = "localhost:5672")
 		{
 			var yaml = GetPubSubYaml(rabbitmqHost);
-			return WriteToFolder(folderPath, fileName, yaml);
-		}
+			WriteToFolder(folderPath, fileName, yaml);
+        }
 
-		private static string WriteToFolder(string folderPath, string fileName, string yaml)
+		private static void WriteToFolder(string folderPath, string fileName, string yaml)
 		{
 			Directory.CreateDirectory(folderPath);
 			var fullPath = Path.Combine(folderPath, fileName);
 			File.WriteAllText(fullPath, yaml);
-			return fullPath;
 		}
 
 		private static string GetPubSubYaml(string rabbitmqHost) =>

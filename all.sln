@@ -225,6 +225,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Testcontainers", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Testcontainers.Test", "test\Dapr.Testcontainers.Test\Dapr.Testcontainers.Test.csproj", "{5A93F96B-4D0E-479D-B540-29678A0998FA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.DistributedLock", "test\Dapr.IntegrationTest.DistributedLock\Dapr.IntegrationTest.DistributedLock.csproj", "{E958E875-8DDE-4B25-BE3A-C0760EC89376}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -591,6 +593,10 @@ Global
 		{5A93F96B-4D0E-479D-B540-29678A0998FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A93F96B-4D0E-479D-B540-29678A0998FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A93F96B-4D0E-479D-B540-29678A0998FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E958E875-8DDE-4B25-BE3A-C0760EC89376}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E958E875-8DDE-4B25-BE3A-C0760EC89376}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E958E875-8DDE-4B25-BE3A-C0760EC89376}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E958E875-8DDE-4B25-BE3A-C0760EC89376}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -700,6 +706,7 @@ Global
 		{CE5D4439-5B3C-4E97-B7E3-EB8610AEA3EF} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{A05D1519-6A82-498F-B7C9-3D14E08D35CA} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{5A93F96B-4D0E-479D-B540-29678A0998FA} = {0AF0FE8D-C234-4F04-8514-32206ACE01BD}
+		{E958E875-8DDE-4B25-BE3A-C0760EC89376} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
