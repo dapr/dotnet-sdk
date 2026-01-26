@@ -26,25 +26,20 @@ public sealed class LocalStorageCryptographyContainer
 	public static class Yaml
 	{
         /// <summary>
-        /// Writes a 
+        /// Writes the component yaml.
         /// </summary>
-        /// <param name="folderPath"></param>
-        /// <param name="keyPath"></param>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-		public static string WriteCryptoYamlToFolder(string folderPath, string keyPath, string fileName = "local-crypto.yaml")
+		public static void WriteCryptoYamlToFolder(string folderPath, string keyPath, string fileName = "local-crypto.yaml")
 		{
 			var yaml = GetLocalStorageYaml(keyPath);
-			return WriteToFolder(folderPath, fileName, yaml);
-		}
+			WriteToFolder(folderPath, fileName, yaml);
+        }
 		
-		private static string WriteToFolder(string folderPath, string fileName, string yaml)
+		private static void WriteToFolder(string folderPath, string fileName, string yaml)
 		{
 			Directory.CreateDirectory(folderPath);
 			var fullPath = Path.Combine(folderPath, fileName);
 			File.WriteAllText(fullPath, yaml);
-			return fullPath;
-		}
+        }
 
 		private static string GetLocalStorageYaml(string keyPath) =>
 			$@"apiVersion: dapr.io/v1alpha
