@@ -246,10 +246,9 @@ internal class DaprClientGrpc : DaprClient
 
         try
         {
-            var response = await client.BulkPublishEventAlpha1Async(envelope, options);
+            var response = await client.BulkPublishEventAsync(envelope, options);
 
-            List<BulkPublishResponseFailedEntry<TValue>> failedEntries =
-                new List<BulkPublishResponseFailedEntry<TValue>>();
+            List<BulkPublishResponseFailedEntry<TValue>> failedEntries = [];
 
             foreach (var entry in response.FailedEntries)
             {
