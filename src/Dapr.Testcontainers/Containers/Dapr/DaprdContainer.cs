@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
@@ -131,23 +132,8 @@ public sealed class DaprdContainer : IAsyncStartable
                 .UntilMessageIsLogged("Internal gRPC server is running"));
                 //.UntilMessageIsLogged(@"^dapr initialized. Status: Running. Init Elapsed "))
 
-            if (daprHttpPort != null)
-            {
-                containerBuilder.WithPortBinding(InternalHttpPort, daprHttpPort.Value);
-            }
-            else
-            {
-                containerBuilder.WithPortBinding(InternalHttpPort, true);
-            }
-
-            if (daprGrpcPort != null)
-            {
-                containerBuilder.WithPortBinding(InternalGrpcPort, daprGrpcPort.Value);
-            }
-            else
-            {
-                containerBuilder.WithPortBinding(InternalGrpcPort, true);
-            }
+            containerBuilder = daprHttpPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalHttpPort, hostPort: daprHttpPort.Value) : containerBuilder.WithPortBinding(port: InternalHttpPort, assignRandomHostPort: true);
+            containerBuilder = daprGrpcPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalGrpcPort, hostPort: daprGrpcPort.Value) : containerBuilder.WithPortBinding(port: InternalGrpcPort, assignRandomHostPort: true);
                 
             _container = containerBuilder.Build();
 	}
@@ -157,8 +143,66 @@ public sealed class DaprdContainer : IAsyncStartable
 	{
 		await _container.StartAsync(cancellationToken);
 
-        HttpPort = _requestedHttpPort ?? _container.GetMappedPublicPort(InternalHttpPort);
-        GrpcPort = _requestedGrpcPort ?? _container.GetMappedPublicPort(InternalGrpcPort);
+        var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
+        var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
+
+        if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
+        {
+            throw new InvalidOperationException(
+                $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
+        }
+
+        if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
+        {
+            throw new InvalidOperationException(
+                $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
+        }
+
+        HttpPort = mappedHttpPort;
+        GrpcPort = mappedGrpcPort;
+
+        // The container log wait strategy can fire before the host port is actually accepting connections
+        // (especially on Windows). Ensure the ports are reachable from the test process.
+        await WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
+        await WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken); 
+    }
+
+    private static async Task WaitForTcpPortAsync(
+        string host,
+        int port,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var start = DateTimeOffset.UtcNow;
+        Exception? lastError = null;
+
+        while (DateTimeOffset.UtcNow - start < timeout)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                using var client = new TcpClient();
+                var connectTask = client.ConnectAsync(host, port);
+
+                var completed = await Task.WhenAny(connectTask,
+                    Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken));
+                if (completed == connectTask)
+                {
+                    // Will throw if connect failed
+                    await connectTask;
+                    return;
+                }
+            }
+            catch (Exception ex) when (ex is SocketException or InvalidOperationException)
+            {
+                lastError = ex;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+        }
+
+        throw new TimeoutException($"Timed out waiting for TCP port {host}:{port} to accept connections.", lastError);
     }
 
     /// <inheritdoc />

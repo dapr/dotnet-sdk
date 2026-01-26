@@ -37,7 +37,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <summary>
     /// Indicates whether the sidecar ports are ready for use.
     /// </summary>
-    private readonly TaskCompletionSource _sidecarPortsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _sidecarPortsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     /// <summary>
     /// The isolated network and Dapr environment this harness is using.
     /// </summary>
@@ -96,6 +96,18 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
     /// </summary>
     public int AppPort { get; private set; }
+
+    /// <summary>
+    /// Pre-assigns teh application port to use. This is useful when the app is created before the Dapr container and
+    /// other resources.
+    /// </summary>
+    /// <param name="appPort">The app port.</param>
+    public void SetAppPort(int appPort)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(appPort, 0, nameof(appPort));
+
+        AppPort = appPort;
+    }
     
     /// <summary>
     /// The HTTP endpoint used by the Daprd container.
@@ -156,6 +168,16 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <returns></returns>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        // Allow InitializeAsync to be called multiple times (used by app-first retries)
+        // Reset readiness gate and dispose previous daprd if any
+        _sidecarPortsReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        if (_daprd is not null)
+        {
+            await _daprd.DisposeAsync();
+            _daprd = null;
+        }
+        
         // Ensure the environment infrastructure is running
         // If we own it, we start it. If it's shared, the caller usually starts it
         // but calling StartAsync is idempotent, so it's safe to ensure it here
@@ -164,9 +186,13 @@ public abstract class BaseHarness : IAsyncContainerFixture
         // Run the actual container orchestration defined in the subclass to set up any pre-requisite containers
         // before loading daprd and the start app, if specified
         await OnInitializeAsync(cancellationToken);
-        
-        // PIck a port only when we are ready to start, or use 0 to let the OS decide
-        this.AppPort = PortUtilities.GetAvailablePort();
+
+        // Pick a port only when we are ready to start, or use 0 to let the OS decide.
+        // If the app port was pre-assigned (app constructored/configured first), keep it.
+        if (this.AppPort <= 0)
+        {
+            this.AppPort = PortUtilities.GetAvailablePort();
+        }
         
         // Configure and start daprd; point at placement & scheduler
         _daprd = new DaprdContainer(
@@ -193,7 +219,6 @@ public abstract class BaseHarness : IAsyncContainerFixture
             appTask = Task.Run(async () =>
             {
                 await _sidecarPortsReady.Task.WaitAsync(cancellationToken);
-                
                 await startApp(AppPort);
             }, cancellationToken);
         }

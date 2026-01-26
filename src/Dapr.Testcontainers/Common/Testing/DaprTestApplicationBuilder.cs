@@ -80,25 +80,67 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                 app = CreateApp();
                 await app.StartAsync();
             }
+
+            return new DaprTestApplication(harness, app);
         }
-        else
+        
+        // App-first: start app, then start resources
+        // If daprd cannot bind the chosen ports, restart the app with new ports
+        const int maxAttempts = 5;
+        Exception? lastError = null;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            // Pre-assign prots for the app knows where Dapr will be
-            var httpPort = PortUtilities.GetAvailablePort();
-            var grpcPort = PortUtilities.GetAvailablePort();
-            harness.SetPorts(httpPort, grpcPort);
+            WebApplication? attemptApp = null;
 
-            // Load the app, then the harness and resources.
-            if (_configureServices is not null || _configureApp is not null)
+            try
             {
-                app = CreateApp();
-                await app.StartAsync();
-            }
+                // Pre-assign prots for the app knows where Dapr will be (avoid collisions)
+                var httpPort = PortUtilities.GetAvailablePort();
+                var grpcPort = PortUtilities.GetAvailablePort();
+                while (grpcPort == httpPort)
+                    grpcPort = PortUtilities.GetAvailablePort();
+                
+                var appPort = PortUtilities.GetAvailablePort();
+                while (appPort == httpPort || appPort == grpcPort)
+                    appPort = PortUtilities.GetAvailablePort();
 
-            await harness.InitializeAsync();
+                harness.SetPorts(httpPort, grpcPort);
+                harness.SetAppPort(appPort);
+
+                // Load the app (configuration/services/pipeline), but delay StartAsync until daprd is up
+                if (_configureServices is not null || _configureApp is not null)
+                {
+                    attemptApp = CreateApp();
+                    await attemptApp.StartAsync();
+                }
+
+                await harness.InitializeAsync();
+
+                return new DaprTestApplication(harness, attemptApp);
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+
+                if (attemptApp is not null)
+                {
+                    try
+                    {
+                        await attemptApp.StopAsync();
+                    }
+                    finally
+                    {
+                        await attemptApp.DisposeAsync();
+                    }
+                }
+                
+                // Try again with a frest set of ports
+            }
         }
 
-        return new DaprTestApplication(harness, app);
+        throw new InvalidOperationException(
+            $"Failed to start app-first Dapr test application after {maxAttempts} attempts.", lastError);
     }
 
     private WebApplication CreateApp()
