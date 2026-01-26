@@ -71,10 +71,10 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
                 // Process work items from the stream
                 await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
 
-                // If we get here without cancellation, the server likely closed the stream gracefully
+                // Stream ended gracefully => tradfe as an interrupted and reconnect unless shutting down
                 if (!token.IsCancellationRequested)
                 {
-                    await Task.Delay(ReconnectDelay, token);
+                    await DelayOrStopAsync(ReconnectDelay, token);
                 }
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -82,19 +82,22 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
                 _logger.LogGrpcProtocolHandlerStreamCanceled();
                 break;
             }
-            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled & token.IsCancellationRequested)
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && token.IsCancellationRequested)
             {
                 _logger.LogGrpcProtocolHandlerStreamCanceled();
+                break;
             }
-            catch (RpcException ex) when (IsTransient(ex) && !token.IsCancellationRequested)
+            catch (RpcException ex) when (!token.IsCancellationRequested)
             {
+                // Any RpcException while not shutting down -> retry indefinitely (transient or not)
                 _logger.LogGrpcProtocolHandlerGenericError(ex);
-                await Task.Delay(ReconnectDelay, token);
+                await DelayOrStopAsync(ReconnectDelay, token);
             }
             catch (Exception ex) when (!token.IsCancellationRequested)
             {
+                // Any other interruption -> retry indefinitely
                 _logger.LogGrpcProtocolHandlerGenericError(ex);
-                await Task.Delay(ReconnectDelay, token);
+                await DelayOrStopAsync(ReconnectDelay, token);
             }
             finally
             {
@@ -103,13 +106,18 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
             }
         }        
     }
-
-    private static bool IsTransient(RpcException ex) =>
-        ex.StatusCode is StatusCode.Unavailable
-            or StatusCode.DeadlineExceeded
-            or StatusCode.ResourceExhausted
-            or StatusCode.Internal
-            or StatusCode.Aborted;
+    
+    private static async Task DelayOrStopAsync(TimeSpan delay, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(delay, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // Swallow cancellation so StartAsync exits cleanly when the host/test cancels.
+        }
+    }
 
     /// <summary>
     /// Receives requests from the Dapr sidecar and processes them.
