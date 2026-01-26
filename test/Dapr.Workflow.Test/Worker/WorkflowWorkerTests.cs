@@ -133,9 +133,12 @@ public class WorkflowWorkerTests
 
         var factory = new StubWorkflowsFactory();
 
+        var startedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
             .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Callback(() => startedTcs.TrySetResult())
             .Returns(CreateServerStreamingCall(EmptyWorkItems()));
 
         var worker = new WorkflowWorker(
@@ -146,7 +149,15 @@ public class WorkflowWorkerTests
             services,
             options);
 
-        await InvokeExecuteAsync(worker, CancellationToken.None);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+        var executeTask = InvokeExecuteAsync(worker, cts.Token);
+
+        // Wait until the worker actually tries to connect, then stop it cleanly.
+        await startedTcs.Task.WaitAsync(cts.Token);
+        cts.Cancel();
+
+        await executeTask;
     }
 
     [Fact]
@@ -804,7 +815,7 @@ public class WorkflowWorkerTests
     }
     
     [Fact]
-    public async Task ExecuteAsync_ShouldRethrow_WhenGrpcProtocolHandlerStartFailsWithException()
+    public async Task ExecuteAsync_ShouldRetry_WhenGrpcProtocolHandlerStartFailsWithException()
     {
         var services = new ServiceCollection().BuildServiceProvider();
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -812,9 +823,12 @@ public class WorkflowWorkerTests
 
         var factory = new StubWorkflowsFactory();
 
+        var attemptedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
             .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Callback(() => attemptedTcs.TrySetResult())
             .Throws(new InvalidOperationException("boom"));
 
         var worker = new WorkflowWorker(
@@ -825,8 +839,19 @@ public class WorkflowWorkerTests
             services,
             options);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => InvokeExecuteAsync(worker, CancellationToken.None));
-        Assert.Contains("boom", ex.Message);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+        var executeTask = InvokeExecuteAsync(worker, cts.Token);
+
+        // Wait until we observe at least one attempt, then stop the worker.
+        await attemptedTcs.Task.WaitAsync(cts.Token);
+        cts.Cancel();
+
+        await executeTask;
+
+        grpcClientMock.Verify(
+            x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce());
     }
 
     [Fact]
