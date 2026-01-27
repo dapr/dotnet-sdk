@@ -1,0 +1,111 @@
+﻿name: PR Patch Coverage
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  patch-coverage:
+    name: Patch Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10'
+          dotnet-quality: 'ga'
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore -c Release
+      - name: Test with Cobertura coverage
+        run: |
+          # Produces coverage.cobertura.xml per test project
+          dotnet test --no-build -c Release \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=cobertura \
+            /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" \
+            /p:SkipAutoProps=true
+      - name: Install diff-cover
+        run: |
+          python3 -m pip install --user --upgrade diff-cover
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Compute patch coverage (threshold=80%)
+          id: diffcov
+          continue-on-error: true   # <— informational: job won’t block merges
+          run: |
+            # Find a Cobertura file (merge step optional, see note below)
+            COV_FILE=$(find . -type f -name "coverage.cobertura.xml" | head -n1)
+            if [ -z "$COV_FILE" ]; then
+            echo "No Cobertura coverage file found."
+            echo "result=No coverage file found" >> $GITHUB_OUTPUT
+            exit 0
+            fi
+            
+            git fetch origin ${{ github.base_ref }} --depth=1
+            
+            # Produce a human-readable summary and HTML artifact; set a non-zero exit if under threshold
+            set +e
+            diff-cover "$COV_FILE" \
+            --compare-branch origin/${{ github.base_ref }} \
+            --fail-under=80 \
+            --html-report diff_coverage.html > diff_coverage.txt
+            EXIT_CODE=$?
+            set -e
+            
+            # Save text for later steps
+            echo "result<<EOF" >> $GITHUB_OUTPUT
+            cat diff_coverage.txt >> $GITHUB_OUTPUT || true
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            # Save a short status line for the comment title
+            if [ $EXIT_CODE -eq 0 ]; then
+            echo "status=✅ Patch coverage ≥ 80%" >> $GITHUB_OUTPUT
+            else
+            echo "status=⚠️ Patch coverage < 80%" >> $GITHUB_OUTPUT
+            fi
+            
+            # Exit with original code, but step is continue-on-error so the job stays green
+            exit $EXIT_CODE
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diff_coverage_report
+          path: diff_coverage.html
+          retention-days: 30
+      - name: Post sticky PR comment
+        if: always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: patch-coverage
+          message: |
+            ### ${ { steps.diffcov.outputs.status } }
+            **Threshold:** 80% on changed lines (informational only)
+            
+            <details>
+            <summary>Details</summary>
+            
+            ```
+            ${ { steps.diffcov.outputs.result } }
+            ```
+            
+            </details>
+            
+            Download the full HTML report from the workflow artifacts.
+
+      - name: Add job summary
+        if: always()
+        run: |
+          echo "### Patch coverage report (informational)" >> $GITHUB_STEP_SUMMARY
+          echo "**Threshold:** 80% on changed lines" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.diffcov.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
