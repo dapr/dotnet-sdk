@@ -494,7 +494,7 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public async Task WaitForExternalEventAsync_ShouldReturnUncompletedTask_WhenEventInHistory()
+    public async Task WaitForExternalEventAsync_ShouldReturnCompletedTask_WhenEventInHistory()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -547,7 +547,7 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldCancel_WhenEventReceived()
+    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldReturnCompletedTask_WhenEventReceived()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
