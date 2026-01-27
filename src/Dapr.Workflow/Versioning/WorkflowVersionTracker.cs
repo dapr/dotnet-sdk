@@ -83,9 +83,13 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     /// </remarks>
     public void OnOrchestratorStarted(OrchestrationVersion? incrementalVersionFromRuntime)
     {
-        if (this.IsStalled || incrementalVersionFromRuntime is null)
+        if (this.IsStalled)
             return;
         
+        // Reset per-turn state
+        _patchesThisTurn.Clear();
+        _includeVersionInNextResponse = false;
+
         // Replay determinism is validated via RequestPatch() ordering
         // and "missing patches" are validated via ValidateReplayConsumedHistoryPatches().
     }
@@ -128,12 +132,8 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
         {
             if (_replayIndex >= _historyPatchSequence.Count)
             {
-                this.StalledEvent = new ExecutionStalledEvent
-                {
-                    Reason = StalledReason.PatchMismatch,
-                    Description =
-                        $"Replay evaluated patch '{patchName}' but history contains no patch at index {_replayIndex}."
-                };
+                // If history has no patch at this position, the patch was not taken previously.
+                // This is not a determinism failure; return false without stalling
                 return false;
             }
 

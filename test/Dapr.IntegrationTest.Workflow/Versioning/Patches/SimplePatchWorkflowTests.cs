@@ -9,7 +9,7 @@ namespace Dapr.IntegrationTest.Workflow.Versioning.Patches;
 public sealed class SimplePatchWorkflowTests
 {
     [Fact]
-    public async Task Workflow_PatchVersioning_CompleteWithPatchNotTaken_NoActivities()
+    public async Task Workflow_PatchVersioning_CompleteWithPatchTaken_NoActivities()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
         var workflowInstanceId = Guid.NewGuid().ToString();
