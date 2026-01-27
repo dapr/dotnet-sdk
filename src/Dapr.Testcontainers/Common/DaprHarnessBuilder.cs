@@ -27,7 +27,7 @@ public sealed class DaprHarnessBuilder
     /// <summary>
     /// The Dapr container runtime options.
     /// </summary>
-    private DaprRuntimeOptions _options { get; set; } = new();
+    private DaprRuntimeOptions _options { get; set; } = new("1.17.0-rc.3");
     /// <summary>
     /// The isolated test environment to use with the harness, if any.
     /// </summary>
@@ -61,16 +61,16 @@ public sealed class DaprHarnessBuilder
         return this;
     }
 
-    /// <summary>
-    /// Sets an application to run as part of startup.
-    /// </summary>
-    /// <param name="startApp">The starting application.</param>
-    /// <returns></returns>
-    public DaprHarnessBuilder WithStartUp(Func<int, Task> startApp)
-    {
-        this._startApp = startApp;
-        return this;
-    }
+    // /// <summary>
+    // /// Sets an application to run as part of startup.
+    // /// </summary>
+    // /// <param name="startApp">The starting application.</param>
+    // /// <returns></returns>
+    // public DaprHarnessBuilder WithStartUp(Func<int, Task> startApp)
+    // {
+    //     this._startApp = startApp;
+    //     return this;
+    // }
 
     /// <summary>
     /// Sets the shared test environment.
