@@ -130,7 +130,7 @@ public class SubscribeEndpointTest
                 subscriptions.ShouldContain(("pubsub", "metadata.1", "multiMetadataTopicAttr", "true", string.Empty, "n1=v1", string.Empty, 
                     "{\"enabled\":true,\"maxMessagesCount\":500,\"maxAwaitDurationMs\":2000}"));
                 subscriptions.ShouldContain(("pubsub", "splitMetadataTopicBuilder", "splitMetadataTopics", string.Empty, string.Empty, "n1=v1;n2=v1", string.Empty, String.Empty));
-                subscriptions.ShouldContain(("pubsub", "metadataseparatorbyemptytring", "topicmetadataseparatorattrbyemptytring", string.Empty, string.Empty, "n1=v1,", string.Empty, String.Empty));
+                subscriptions.ShouldContain(("pubsub", "metadataseparatorbyemptystring", "topicmetadataseparatorattrbyemptystring", string.Empty, string.Empty, "n1=v1,", string.Empty, String.Empty));
                 // Test priority route sorting
                 var eTopic = subscriptions.FindAll(e => e.Topic == "E");
                 eTopic.Count.ShouldBe(3);

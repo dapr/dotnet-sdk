@@ -1,12 +1,12 @@
 # Aspire with Dapr Service Invocation Demo
 
-This directory contains demonstration projects showcasing how to use .NET Aspire with Dapr to perform service invocation between frontend and backend applications using different approaches.
+This directory contains demonstration projects showcasing how to use Aspire with Dapr to perform service invocation between frontend and backend applications using different approaches.
 
 ## Overview
 
 The ServiceInvocationDemo demonstrates various patterns for service-to-service communication in a distributed application architecture using:
 
-- **.NET Aspire** - For application orchestration, service discovery, and observability
+- **Aspire** - For application orchestration, service discovery, and observability
 - **Dapr** - For distributed application runtime capabilities including service invocation
 - **ASP.NET Core** - For both frontend and backend services
 
@@ -40,13 +40,13 @@ The demo includes:
 
 3. The console will display the Aspire dashboard URL. Open the provided link in your browser.
 
-4. In the Aspire dashboard, click on the `http://localhost:5054/` link to access the demo application.
+4. In the Aspire dashboard, click on the "FrontendApp.csproj" link `http://localhost:5054/` to access the demo application.
 
 5. The main page will present various service invocation demonstration scenarios that you can explore.
 
 ## Key Features Demonstrated
 
-- Integration between .NET Aspire orchestration and Dapr runtime
+- Integration between Aspire orchestration and Dapr runtime
 - Service-to-service communication patterns
 - Development-time productivity with Aspire dashboard
 - Production-ready distributed application patterns

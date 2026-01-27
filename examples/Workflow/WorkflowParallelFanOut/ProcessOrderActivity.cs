@@ -13,7 +13,6 @@
 
 using Dapr.Workflow;
 using Microsoft.Extensions.Logging;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace WorkflowParallelFanOut;
 
@@ -29,7 +28,7 @@ public sealed partial class ProcessOrderActivity(ILogger<ProcessOrderActivity> l
     /// <returns>The output of the activity as a task.</returns>
     public override async Task<OrderResult> RunAsync(WorkflowActivityContext context, OrderRequest order)
     {
-        LogProcessingOrder(logger, order.OrderId, order.ProductName);
+        LogProcessingOrder(order.OrderId, order.ProductName);
         
         //Simulate processing time (between 100 and 2000ms)
         var processingTime = Random.Next(100, 2000);
@@ -40,12 +39,12 @@ public sealed partial class ProcessOrderActivity(ILogger<ProcessOrderActivity> l
 
         if (shouldFail)
         {
-            LogOrderFailed(logger, order.OrderId);
+            LogOrderFailed(order.OrderId);
             return new OrderResult(
                 order.OrderId,
                 IsProcessed: false,
                 TotalAmount: 0,
-                Status: "Failed - System Error",
+                Status: "Failed - Simulated Transient Error",
                 ProcessedAt: DateTime.UtcNow);
         }
 
@@ -53,7 +52,7 @@ public sealed partial class ProcessOrderActivity(ILogger<ProcessOrderActivity> l
         var hasInventory = Random.Next(1, 101) <= 90; // 90% chance of having inventory
         if (!hasInventory)
         {
-            LogInsufficientInventory(logger, order.OrderId);
+            LogInsufficientInventory(order.OrderId);
             return new OrderResult(
                 order.OrderId,
                 IsProcessed: false,
@@ -69,10 +68,10 @@ public sealed partial class ProcessOrderActivity(ILogger<ProcessOrderActivity> l
         if (order.Quantity >= 10)
         {
             totalAmount *= 0.9m; // 10% discount
-            LogDiscountApplied(logger, order.OrderId);
+            LogDiscountApplied(order.OrderId);
         }
         
-        LogSuccessfullyProcessedOrder(logger, order.OrderId, totalAmount);
+        LogSuccessfullyProcessedOrder(order.OrderId, totalAmount);
         return new OrderResult(
             order.OrderId, 
             IsProcessed: true,
@@ -82,17 +81,17 @@ public sealed partial class ProcessOrderActivity(ILogger<ProcessOrderActivity> l
     }
 
     [LoggerMessage(LogLevel.Information, "Processing order {OrderId} for product {ProductName}")]
-    static partial void LogProcessingOrder(ILogger logger, string orderId, string productName);
+    partial void LogProcessingOrder(string orderId, string productName);
 
     [LoggerMessage(LogLevel.Warning, "Order {OrderId} failed during processing")]
-    static partial void LogOrderFailed(ILogger logger, string orderId);
+    partial void LogOrderFailed(string orderId);
 
     [LoggerMessage(LogLevel.Warning, "Order {OrderId} failed - insufficient inventory")]
-    static partial void LogInsufficientInventory(ILogger logger, string orderId);
+    partial void LogInsufficientInventory(string orderId);
 
     [LoggerMessage(LogLevel.Information, "Applied bulk discount to order {OrderId}")]
-    static partial void LogDiscountApplied(ILogger logger, string orderId);
+    partial void LogDiscountApplied(string orderId);
 
     [LoggerMessage(LogLevel.Information, "Successfully processed order {OrderId} with total amount {TotalAmount:c}")]
-    static partial void LogSuccessfullyProcessedOrder(ILogger logger, string orderId, decimal totalAmount);
+    partial void LogSuccessfullyProcessedOrder(string orderId, decimal totalAmount);
 }

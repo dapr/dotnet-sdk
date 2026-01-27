@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,13 +28,13 @@ internal class ActorRequestMessageBody : IActorRequestMessageBody
         this.parameters = new Dictionary<string, object>(parameterInfos);
     }
 
-    public void SetParameter(int position, string paramName, object parameter)
+    public void SetParameter(int position, string parameterName, object parameter)
     {
-        this.parameters[paramName] = parameter;
+        this.parameters[parameterName] = parameter;
     }
 
-    public object GetParameter(int position, string paramName, Type paramType)
+    public object GetParameter(int position, string parameterName, Type paramType)
     {
-        return this.parameters[paramName];
+        return this.parameters[parameterName];
     }
 }

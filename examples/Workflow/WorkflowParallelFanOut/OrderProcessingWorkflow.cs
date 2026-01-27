@@ -28,10 +28,7 @@ public sealed partial class OrderProcessingWorkflow : Workflow<OrderRequest[], O
     {
         var logger = context.CreateReplaySafeLogger<OrderProcessingWorkflow>();
 
-        if (!context.IsReplaying)
-        {
-            LogStartingOrderProcessorWorkflow(logger, orders.Length);
-        }
+        LogStartingOrderProcessorWorkflow(logger, orders.Length);
         
         //Process all orders in parallel with controlled concurrency
         var orderResults = await context.ProcessInParallelAsync(
@@ -42,12 +39,9 @@ public sealed partial class OrderProcessingWorkflow : Workflow<OrderRequest[], O
         var totalProcessed = orderResults.Count(r => r.IsProcessed);
         var totalFailed = orderResults.Length - totalProcessed;
         var totalAmount = orderResults.Where(r => r.IsProcessed).Sum(r => r.TotalAmount);
-
-        if (!context.IsReplaying)
-        {
-            LogCompletedProcessingWorkflow(logger, orders.Length, totalProcessed, totalFailed, totalAmount);
-        }
-
+        
+        LogCompletedProcessingWorkflow(logger, orders.Length, totalProcessed, totalFailed, totalAmount);
+        
         return orderResults;
     }
 
