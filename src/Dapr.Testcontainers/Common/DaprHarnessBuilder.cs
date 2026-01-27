@@ -88,10 +88,10 @@ public sealed class DaprHarnessBuilder
     /// </summary>
 	public WorkflowHarness BuildWorkflow() => new(_componentsDirectory, _startApp, _options, _environment);
 
- //    /// <summary>
- //    /// Builds a distributed lock harness.
- //    /// </summary>
-	// public DistributedLockHarness BuildDistributedLock() => new(_componentsDirectory, _startApp, _options, _environment);
+    /// <summary>
+    /// Builds a distributed lock harness.
+    /// </summary>
+	public DistributedLockHarness BuildDistributedLock() => new(_componentsDirectory, _startApp, _options, _environment);
  //
  //    /// <summary>
  //    /// Builds a conversation harness.
