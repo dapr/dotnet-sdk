@@ -147,9 +147,6 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
-            
-            // Replay the old history to rebuild the local state of the orchestration.
-            context.ProcessEvents(allPastEvents, true);
 
             // Execute the workflow
             // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
@@ -157,7 +154,10 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
             // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
             var runTask = workflow!.RunAsync(context, input);
-            
+
+            // Replay the old history to rebuild the local state of the orchestration.
+            context.ProcessEvents(allPastEvents, true);
+
             // Play the newly arrived events to determine the next action to take.
             context.ProcessEvents(request.NewEvents, false);
             

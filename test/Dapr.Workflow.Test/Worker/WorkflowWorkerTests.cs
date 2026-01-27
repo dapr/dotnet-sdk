@@ -911,6 +911,246 @@ public class WorkflowWorkerTests
     }
 
     [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldAdvanceCurrentUtcDateTime_WhenTimerFires()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+        var beginDateTime = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc);
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(int),
+            run: async (ctx, input) =>
+            {
+                Assert.Equal(beginDateTime, ctx.CurrentUtcDateTime);
+                await ctx.CreateTimer(TimeSpan.FromSeconds(5));
+                Assert.Equal(beginDateTime.AddSeconds(5), ctx.CurrentUtcDateTime);
+                
+                return null;
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime),
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "wf",
+                        Input = "123"
+                    }
+                },
+                new HistoryEvent
+                {
+                    EventId = 0,
+                    TimerCreated = new TimerCreatedEvent
+                    {
+                        FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5))
+                    }
+                },
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5)),
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent
+                    {
+                        TimerId = 0,
+                        FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5))
+                    }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        Assert.Equal(string.Empty, complete.Result);
+    }
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldCompleted_WhenEventReceived()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+        var beginDateTime = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc);
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(int),
+            run: async (ctx, input) =>
+            {
+                await ctx.WaitForExternalEventAsync<object>("MyEvent", TimeSpan.FromSeconds(5));
+                return null;
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime),
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "wf",
+                        Input = "123"
+                    }
+                },
+                new HistoryEvent
+                {
+                    EventId = 0,
+                    TimerCreated = new TimerCreatedEvent
+                    {
+                        FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5))
+                    }
+                },
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(2)),
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                },
+                new HistoryEvent
+                {
+                    EventRaised = new EventRaisedEvent
+                    {
+                        Name = "myevent"
+                    }
+                },
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5)),
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent
+                    {
+                        TimerId = 0,
+                        FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5))
+                    }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        Assert.Equal(string.Empty, complete.Result);
+    }
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnFailureDetails_WhenTimerFires()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+        var beginDateTime = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc);
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(int),
+            run: async (ctx, input) =>
+            {
+                await ctx.WaitForExternalEventAsync<object>("MyEvent", TimeSpan.FromSeconds(5));
+                return null;
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime),
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "wf",
+                        Input = "123"
+                    }
+                },
+                new HistoryEvent
+                {
+                    EventId = 0,
+                    TimerCreated = new TimerCreatedEvent
+                    {
+                        FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5))
+                    }
+                },
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5)),
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent
+                    {
+                        TimerId = 0,
+                        FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(5))
+                    }
+                },
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(beginDateTime.AddSeconds(10)),
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                },
+                new HistoryEvent
+                {
+                    EventRaised = new EventRaisedEvent
+                    {
+                        Name = "myevent"
+                    }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
+        Assert.Equal(OrchestrationStatus.Failed, complete.OrchestrationStatus);
+        Assert.NotNull(complete.FailureDetails);
+    }
+
+    [Fact]
     public async Task HandleActivityResponseAsync_ShouldUseEmptyInstanceId_WhenOrchestrationInstanceIsNull_AndReturnEmptyResult_WhenOutputIsNull()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
