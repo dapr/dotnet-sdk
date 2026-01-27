@@ -20,92 +20,219 @@ jobs:
         with:
           dotnet-version: '10'
           dotnet-quality: 'ga'
+      - name: Install tools (reportgenerator + diff-cover)
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          python3 -m pip install --user --upgrade diff-cover
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Restore
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore -c Release
-      - name: Test with Cobertura coverage
+      - name: Discover Unit and Integration test projects
+        id: discover
+        shell: bash
         run: |
-          # Produces coverage.cobertura.xml per test project
-          dotnet test --no-build -c Release \
-            /p:CollectCoverage=true \
-            /p:CoverletOutputFormat=cobertura \
-            /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" \
-            /p:SkipAutoProps=true
-      - name: Install diff-cover
+          # Find csproj files by naming convention          
+          mapfile -t UNIT_PROJS < <(git ls-files '**/Dapr.*.Test.csproj' | grep -v 'Dapr\.IntegrationTest\.' || true)
+          mapfile -t INTEG_PROJS < <(git ls-files '**/Dapr.IntegrationTest.*.csproj' || true)
+                    
+          echo "Unit test projects:"
+          printf ' - %s\n' "${UNIT_PROJS[@]}"
+          echo "Integration test projects:"
+          printf ' - %s\n' "${INTEG_PROJS[@]}"
+
+          # Export as outputs (newline-separated)
+          {
+            echo "unit<<EOF"
+            printf '%s\n' "${UNIT_PROJS[@]}"
+            echo "EOF"
+            echo "integration<<EOF"
+            printf '%s\n' "${INTEG_PROJS[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # Run UNIT tests with coverage per project
+      - name: Run Unit tests with Cobertura
+        if: steps.discover.outputs.unit != ''
+        shell: bash
         run: |
-          python3 -m pip install --user --upgrade diff-cover
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Compute patch coverage (threshold=80%)
-          id: diffcov
-          continue-on-error: true   # <— informational: job won’t block merges
-          run: |
-            # Find a Cobertura file (merge step optional, see note below)
-            COV_FILE=$(find . -type f -name "coverage.cobertura.xml" | head -n1)
-            if [ -z "$COV_FILE" ]; then
-            echo "No Cobertura coverage file found."
-            echo "result=No coverage file found" >> $GITHUB_OUTPUT
-            exit 0
-            fi
-            
-            git fetch origin ${{ github.base_ref }} --depth=1
-            
-            # Produce a human-readable summary and HTML artifact; set a non-zero exit if under threshold
-            set +e
-            diff-cover "$COV_FILE" \
+          mkdir -p coverage/unit/raw
+          while IFS= read -r csproj; do
+            echo "Running unit tests for $csproj"
+            projdir=$(dirname "$csproj")
+            # Write coverage into a stable path per project
+            dotnet test "$csproj" --no-build -c Release \
+              /p:CollectCoverage=true \
+              /p:CoverletOutputFormat=cobertura \
+              /p:CoverletOutput="$PWD/coverage/unit/raw/$(basename "$projdir")-coverage.cobertura.xml" \
+              /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" \
+              /p:SkipAutoProps=true
+          done <<< "${{ steps.discover.outputs.unit }}"
+
+      # Run INTEGRATION tests with coverage per project
+      - name: Run Integration tests with Cobertura
+        if: steps.discover.outputs.integration != ''
+        shell: bash
+        run: |
+          mkdir -p coverage/integration/raw
+          while IFS= read -r csproj; do
+            echo "Running integration tests for $csproj"
+            projdir=$(dirname "$csproj")
+            dotnet test "$csproj" --no-build -c Release \
+              /p:CollectCoverage=true \
+              /p:CoverletOutputFormat=cobertura \
+              /p:CoverletOutput="$PWD/coverage/integration/raw/$(basename "$projdir")-coverage.cobertura.xml" \
+              /p:ExcludeByAttribute="Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute" \
+              /p:SkipAutoProps=true
+          done <<< "${{ steps.discover.outputs.integration }}"
+
+      # Merge coverage per group (and overall) using ReportGenerator
+      - name: Merge Unit coverage
+        if: steps.discover.outputs.unit != ''
+        run: |
+          reportgenerator \
+            -reports:"coverage/unit/raw/*.xml" \
+            -targetdir:"coverage/unit/merged" \
+            -reporttypes:"Cobertura"
+          # ReportGenerator writes Cobertura.xml in targetdir
+          mv coverage/unit/merged/Cobertura.xml coverage/unit/coverage.cobertura.xml
+
+      - name: Merge Integration coverage
+        if: steps.discover.outputs.integration != ''
+        run: |
+          reportgenerator \
+            -reports:"coverage/integration/raw/*.xml" \
+            -targetdir:"coverage/integration/merged" \
+            -reporttypes:"Cobertura"
+          mv coverage/integration/merged/Cobertura.xml coverage/integration/coverage.cobertura.xml
+
+      - name: Merge Overall coverage
+        run: |
+          mkdir -p coverage/overall
+          reports=""
+          if [ -f coverage/unit/coverage.cobertura.xml ]; then reports="$reports;coverage/unit/coverage.cobertura.xml"; fi
+          if [ -f coverage/integration/coverage.cobertura.xml ]; then reports="$reports;coverage/integration/coverage.cobertura.xml"; fi
+          reports="${reports#;}"
+          if [ -n "$reports" ]; then
+            reportgenerator \
+              -reports:"$reports" \
+              -targetdir:"coverage/overall/merged" \
+              -reporttypes:"Cobertura"
+            mv coverage/overall/merged/Cobertura.xml coverage/overall/coverage.cobertura.xml
+          fi
+          
+      # Compute patch coverage per group
+      - name: Fetch base branch for diff
+        run: git fetch origin ${{ github.base_ref }} --depth=1
+
+      - name: Patch coverage (Unit)
+        id: unitcov
+        if: always() && steps.discover.outputs.unit != ''
+        continue-on-error: true
+        run: |
+          set +e
+          diff-cover coverage/unit/coverage.cobertura.xml \
             --compare-branch origin/${{ github.base_ref }} \
             --fail-under=80 \
-            --html-report diff_coverage.html > diff_coverage.txt
-            EXIT_CODE=$?
-            set -e
-            
-            # Save text for later steps
-            echo "result<<EOF" >> $GITHUB_OUTPUT
-            cat diff_coverage.txt >> $GITHUB_OUTPUT || true
-            echo "EOF" >> $GITHUB_OUTPUT
-            
-            # Save a short status line for the comment title
-            if [ $EXIT_CODE -eq 0 ]; then
-            echo "status=✅ Patch coverage ≥ 80%" >> $GITHUB_OUTPUT
-            else
-            echo "status=⚠️ Patch coverage < 80%" >> $GITHUB_OUTPUT
-            fi
-            
-            # Exit with original code, but step is continue-on-error so the job stays green
-            exit $EXIT_CODE
-      - name: Upload HTML report
+            --html-report coverage/unit/diff_coverage.html > coverage/unit/diff_coverage.txt
+          code=$?
+          set -e
+          echo "text<<EOF" >> $GITHUB_OUTPUT
+          cat coverage/unit/diff_coverage.txt || true >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          if [ "$code" -eq 0 ]; then echo "status=✅ Unit patch coverage ≥ 80%" >> $GITHUB_OUTPUT; else echo "status=⚠️ Unit patch coverage < 80%" >> $GITHUB_OUTPUT; fi
+          exit $code
+
+      - name: Patch coverage (Integration)
+        id: intcov
+        if: always() && steps.discover.outputs.integration != ''
+        continue-on-error: true
+        run: |
+          set +e
+          diff-cover coverage/integration/coverage.cobertura.xml \
+            --compare-branch origin/${{ github.base_ref }} \
+            --fail-under=80 \
+            --html-report coverage/integration/diff_coverage.html > coverage/integration/diff_coverage.txt
+          code=$?
+          set -e
+          echo "text<<EOF" >> $GITHUB_OUTPUT
+          cat coverage/integration/diff_coverage.txt || true >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          if [ "$code" -eq 0 ]; then echo "status=✅ Integration patch coverage ≥ 80%" >> $GITHUB_OUTPUT; else echo "status=⚠️ Integration patch coverage < 80%" >> $GITHUB_OUTPUT; fi
+          exit $code
+
+      - name: Patch coverage (Overall)
+        id: overallcov
+        if: always() && (steps.discover.outputs.unit != '' || steps.discover.outputs.integration != '')
+        continue-on-error: true
+        run: |
+          set +e
+          diff-cover coverage/overall/coverage.cobertura.xml \
+            --compare-branch origin/${{ github.base_ref }} \
+            --fail-under=80 \
+            --html-report coverage/overall/diff_coverage.html > coverage/overall/diff_coverage.txt
+          code=$?
+          set -e
+          echo "text<<EOF" >> $GITHUB_OUTPUT
+          cat coverage/overall/diff_coverage.txt || true >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          if [ "$code" -eq 0 ]; then echo "status=✅ Overall patch coverage ≥ 80%" >> $GITHUB_OUTPUT; else echo "status=⚠️ Overall patch coverage < 80%" >> $GITHUB_OUTPUT; fi
+          exit $code
+
+      - name: Upload artifacts (HTML reports)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: diff_coverage_report
-          path: diff_coverage.html
-          retention-days: 30
+          name: patch-coverage-reports
+          path: |
+            coverage/**/diff_coverage.html
+            coverage/**/coverage.cobertura.xml
+          retention-days: 31
+
       - name: Post sticky PR comment
         if: always()
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: patch-coverage
           message: |
-            ### ${ { steps.diffcov.outputs.status } }
-            **Threshold:** 80% on changed lines (informational only)
-            
-            <details>
-            <summary>Details</summary>
-            
+            ## Patch coverage (informational)
+
+            - **Unit:** ${{ steps.unitcov.outputs.status || '— no unit tests detected —' }}
+            - **Integration:** ${{ steps.intcov.outputs.status || '— no integration tests detected —' }}
+            - **Overall:** ${{ steps.overallcov.outputs.status || '— n/a —' }}
+
+            <details><summary>Unit details</summary>
+
             ```
-            ${ { steps.diffcov.outputs.result } }
+            ${{ steps.unitcov.outputs.text }}
             ```
-            
+
             </details>
-            
-            Download the full HTML report from the workflow artifacts.
+
+            <details><summary>Integration details</summary>
+
+            ```
+            ${{ steps.intcov.outputs.text }}
+            ```
+
+            </details>
+
+            <details><summary>Overall details</summary>
+
+            ```
+            ${{ steps.overallcov.outputs.text }}
+            ```
+
+            </details>
+
+            Download the full HTML diff reports from the job artifacts.
 
       - name: Add job summary
         if: always()
         run: |
-          echo "### Patch coverage report (informational)" >> $GITHUB_STEP_SUMMARY
-          echo "**Threshold:** 80% on changed lines" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.diffcov.outputs.result }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## Patch coverage (informational)" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit: ${{ steps.unitcov.outputs.status || '— no unit tests detected —' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration: ${{ steps.intcov.outputs.status || '— no integration tests detected —' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Overall: ${{ steps.overallcov.outputs.status || '— n/a —' }}" >> $GITHUB_STEP_SUMMARY
