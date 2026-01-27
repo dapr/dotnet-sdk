@@ -1,5 +1,5 @@
-﻿using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Harnesses;
+﻿using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
