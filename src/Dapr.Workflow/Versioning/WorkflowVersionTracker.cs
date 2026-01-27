@@ -20,18 +20,31 @@ namespace Dapr.Workflow.Versioning;
 /// <summary>
 /// Tracks workflow patch version information across replays and orchestrator turns.
 /// </summary>
-internal sealed class WorkflowVersionTracker
+internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
 {
-    // Aggregated across the workflow execution in first-seen order
-    private readonly OrderedSet _aggregatedHistory = new();
+    /// <summary>
+    /// Full patch evaluation sequence as recorded by history (duplicates allowed, ordered).
+    /// </summary>
+    private readonly List<string> _historyPatchSequence = ListAllVersioningPatches(events);
 
-    // Patches the current code has encountered (case-sensitive uniqueness)
-    private readonly OrderedSet _encounteredByCode = new();
+    /// <summary>
+    /// Cursor into _historyPatchSequence as the workflow code replays and evaluates patches.
+    /// </summary>
+    private int _replayIndex;
 
-    // Per-turn flags
+    /// <summary>
+    /// Patches evaluated in the current non-replay execution (duplicates allowed, ordered).
+    /// </summary>
+    private readonly List<string> _patchesThisTurn = [];
+
+    /// <summary>
+    /// Per-turn flags.
+    /// </summary>
     private bool _includeVersionInNextResponse;
 
-    // Stall state (if any).
+    /// <summary>
+    /// Stall state, if any.
+    /// </summary>
     public bool IsStalled => this.StalledEvent != null;
     
     public ExecutionStalledEvent? StalledEvent { get; private set; }
@@ -39,28 +52,13 @@ internal sealed class WorkflowVersionTracker
     public bool IncludeVersionInNextResponse => _includeVersionInNextResponse;
 
     /// <summary>
-    /// Aggregated, ordered patches to be stamped in OrchestratorResponse.version.
+    /// Aggregated, ordered patches extracted from history (with duplicates preserved).
     /// </summary>
-    public IReadOnlyList<string> AggregatedPatchesOrdered => _aggregatedHistory.Items;
-
-    public WorkflowVersionTracker(List<HistoryEvent> events)
-    {
-        foreach (var patch in ListAllVersioningPatches(events))
-        {
-            _aggregatedHistory.Add(patch);
-            
-            // If a patch is in the history, it is by definition "encountered"
-            // by the code in previous turns. We mark it here so that the first call
-            // to IsPatched in this turn doesn't treat it as "new"
-            _encounteredByCode.Add(patch);
-        }
-    }
+    public IReadOnlyList<string> AggregatedPatchesOrdered => _historyPatchSequence;
 
     /// <summary>
-    /// Retrieves all the versioning patches from the list of history events.
+    /// Retrieves all the versioning patches from the list of history events, in order, preserving duplicates.
     /// </summary>
-    /// <param name="events"></param>
-    /// <returns></returns>
     private static List<string> ListAllVersioningPatches(List<HistoryEvent> events)
     {
         var result = new List<string>();
@@ -77,32 +75,39 @@ internal sealed class WorkflowVersionTracker
     }
 
     /// <summary>
-    /// Called at the start of each orchestrator turn with the OrchestratorStartedEvent.version that contains
-    /// the patches observed since the last replay.
+    /// Called at the start of each orchestrator turn with the OrchestratorStartedEvent.version.
     /// </summary>
-    /// <param name="incrementalVersionFromRuntime"></param>
+    /// <remarks>
+    /// The replay validation in this tracker is driven by the history-derived sequence and RequestPatch().
+    /// This method intentionally does not enforce additional rules.
+    /// </remarks>
     public void OnOrchestratorStarted(OrchestrationVersion? incrementalVersionFromRuntime)
     {
         if (this.IsStalled || incrementalVersionFromRuntime is null)
             return;
         
-        // The runtime sends only the *new* patches observed since the last replay. We need to 
-        // merge them into the full aggregation in first-seen order
-        foreach (var patch in incrementalVersionFromRuntime.Patches)
+        // Replay determinism is validated via RequestPatch() ordering
+        // and "missing patches" are validated via ValidateReplayConsumedHistoryPatches().
+    }
+
+    /// <summary>
+    /// Validates that the replay has evaluated every patch recorded in history up to this decision point.
+    /// If not, the workflow has changed (or code path diverged) and must stall.
+    /// </summary>
+    public void ValidateReplayConsumedHistoryPatches()
+    {
+        if (this.IsStalled)
+            return;
+
+        if (_replayIndex < _historyPatchSequence.Count)
         {
-            _aggregatedHistory.Add(patch);
-            
-            // Mismatch rule: history shows a patch enabled that our *current* code has not yet enabled
-            // up to this point in the execution. This implies code moved or a version gap.
-            if (!_encounteredByCode.Contains(patch))
+            var expectedNext = _historyPatchSequence[_replayIndex];
+            this.StalledEvent = new ExecutionStalledEvent
             {
-                this.StalledEvent = new ExecutionStalledEvent
-                {
-                    Reason = StalledReason.PatchMismatch,
-                    Description = $"History reports patch '{patch}' not yet enabled by current code path."
-                };
-                break;
-            }
+                Reason = StalledReason.PatchMismatch,
+                Description =
+                    $"Replay did not evaluate all historical patches. Next expected patch is '{expectedNext}' at index {_replayIndex} (history count={_historyPatchSequence.Count})."
+            };
         }
     }
 
@@ -115,41 +120,41 @@ internal sealed class WorkflowVersionTracker
     public bool RequestPatch(string patchName, bool isReplaying)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(patchName);
-        
-        if (_encounteredByCode.Contains(patchName))
+
+        if (this.IsStalled)
+            return false;
+
+        if (isReplaying)
         {
-            // Safety: Even if it's "known", we must check if we're replaying.
-            // If we are NOT replaying, but the patch is in the _aggregatedHistorySet, it means we've successfully
-            // round-tripped it.
-            // If it are NOT replaying and it's not in the history, but IS in _encounteredByCodeSet, it means the user
-            // called IsPatched() twice in the same turn
-            if (!isReplaying && !_aggregatedHistory.Contains(patchName))
+            if (_replayIndex >= _historyPatchSequence.Count)
             {
                 this.StalledEvent = new ExecutionStalledEvent
                 {
                     Reason = StalledReason.PatchMismatch,
-                    Description = $"Duplicate patch '{patchName}' encountered by code. Patch names must be unique in a " +
-                                  "workflow execution."
+                    Description =
+                        $"Replay evaluated patch '{patchName}' but history contains no patch at index {_replayIndex}."
                 };
                 return false;
             }
 
+            var expected = _historyPatchSequence[_replayIndex];
+            if (!string.Equals(expected, patchName, StringComparison.Ordinal))
+            {
+                this.StalledEvent = new ExecutionStalledEvent
+                {
+                    Reason = StalledReason.PatchMismatch,
+                    Description =
+                        $"Patch replay mismatch at index {_replayIndex}. Expected '{expected}' but evaluated '{patchName}'."
+                };
+                return false;
+            }
+
+            _replayIndex++;
             return true;
         }
         
-        // If we are replaying and the patch isn't in history (and wasn't seen yet this turn), it's not active
-        if (isReplaying)
-        {
-            var inHistory = _aggregatedHistory.Contains(patchName);
-            if (inHistory)
-            {
-                _encounteredByCode.Add(patchName);
-            }
-
-            return inHistory;
-        }
-        
-        _encounteredByCode.Add(patchName);
+        // Non-replay: record exactly what the code evaluated, including duplicates
+        _patchesThisTurn.Add(patchName);
         _includeVersionInNextResponse = true;
         return true;
     }
@@ -162,30 +167,6 @@ internal sealed class WorkflowVersionTracker
     public OrchestrationVersion BuildResponseVersion(string workflowName) => new()
     {
         Name = workflowName,
-        Patches = { _encounteredByCode.Items } // Ordered, de-duplicated 
+        Patches = { _patchesThisTurn } 
     };
-
-    /// <summary>
-    /// Simple helper to maintain fast lookups and insertion order without repeating variables.
-    /// </summary>
-    private sealed class OrderedSet
-    {
-        private readonly HashSet<string> set = new(StringComparer.Ordinal);
-        private readonly List<string> list = [];
-
-        public IReadOnlyList<string> Items => list;
-
-        public bool Add(string item)
-        {
-            if (set.Add(item))
-            {
-                list.Add(item);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool Contains(string item) => set.Contains(item);
-    }
 }

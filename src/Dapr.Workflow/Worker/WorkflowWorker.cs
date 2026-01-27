@@ -170,6 +170,11 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Play the newly arrived events to determine the next action to take.
             context.ProcessEvents(request.NewEvents, false);
             
+            // Validate that the replay consumed the historical patch evaluation sequence.
+            // If the workflow was modified such that a historical patch is no longer evaluated,
+            // we must stall to prevent non-deterministic execution.
+            versionTracker.ValidateReplayConsumedHistoryPatches();
+            
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)
             {
