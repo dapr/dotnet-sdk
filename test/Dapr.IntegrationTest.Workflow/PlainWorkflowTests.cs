@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-public class PlainWorkflowTests
+public sealed class PlainWorkflowTests
 {
     [Theory]
     [InlineData(true)]

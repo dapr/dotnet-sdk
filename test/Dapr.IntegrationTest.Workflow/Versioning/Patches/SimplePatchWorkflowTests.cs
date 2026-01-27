@@ -13,7 +13,6 @@ public sealed class SimplePatchWorkflowTests
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
         var workflowInstanceId = Guid.NewGuid().ToString();
-        const int startingValue = 10;
         
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
@@ -38,56 +37,22 @@ public sealed class SimplePatchWorkflowTests
         
         using var scope = testApp.CreateScope();
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+        
+        const int startingValue = 0;
     
-        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(SimpleWorkflow), workflowInstanceId, "test");
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(SimpleWorkflow), workflowInstanceId, startingValue);
         var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         
-        Assert.Equal(startingValue + 100, result.ReadOutputAs<int>());
+        Assert.Equal(startingValue + 10, result.ReadOutputAs<int>());
     }
     
-    // [Fact]
-    // public async Task Workflow_PatchVersioning_CompleteWithSuccessfulPatch_Standard()
-    // {
-    //     
-    // }
-
     private sealed class SimpleWorkflow : Workflow<int, int>
     {
         public override Task<int> RunAsync(WorkflowContext context, int input)
         {
-            int result;
-            if (context.IsPatched("v1"))
-            {
-                result = input + 10;
-            }
-            else
-            {
-                result = input + 100;
-            }
-
+            var result = context.IsPatched("v1") ? input + 10 : input + 100;
             return Task.FromResult(result);
-        }
-    }
-
-    private sealed class SimpleWorkflow2 : Workflow<int, int>
-    {
-        public override async Task<int> RunAsync(WorkflowContext context, int input)
-        {
-            if (context.IsPatched("v1"))
-            {
-                return await context.CallActivityAsync<int>(nameof(SimpleActivity), input);
-            }
-
-            return input;
-        }
-    }
-
-    private sealed class SimpleActivity : WorkflowActivity<int, int>
-    {
-        public override Task<int> RunAsync(WorkflowActivityContext context, int input)
-        {
-            return Task.FromResult(input + 10);
         }
     }
 }

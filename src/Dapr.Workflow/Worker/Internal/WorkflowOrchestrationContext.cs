@@ -96,7 +96,11 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     public override bool IsReplaying => _isReplaying;
 
     /// <inheritdoc />
-    public override bool IsPatched(string patchName) => _versionTracker.RequestPatch(patchName, this.IsReplaying);
+    public override bool IsPatched(string patchName)
+    {
+        var hasPatchHistory = _versionTracker.AggregatedPatchesOrdered.Count > 0;
+        return _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying && hasPatchHistory);
+    }
 
     /// <summary>
     /// Gets the list of pending orchestrator actions to be sent to the Dapr sidecar.
