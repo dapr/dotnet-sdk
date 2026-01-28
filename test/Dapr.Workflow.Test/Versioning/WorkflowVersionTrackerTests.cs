@@ -92,6 +92,11 @@ public sealed class WorkflowVersionTrackerTests
 
         tracker.RequestPatch("patch1", isReplaying: true).ShouldBeTrue();
         tracker.RequestPatch("patch2", isReplaying: true).ShouldBeFalse();
+
+        tracker.IsStalled.ShouldBeTrue();
+        tracker.StalledEvent.ShouldNotBeNull();
+        tracker.StalledEvent.Reason.ShouldBe(StalledReason.PatchMismatch);
+
         tracker.IncludeVersionInNextResponse.ShouldBeFalse(); // Replay shouldn't trigger response stamp
     }
     
@@ -164,7 +169,7 @@ public sealed class WorkflowVersionTrackerTests
     {
         var tracker = new WorkflowVersionTracker([]);
 
-        tracker.OnOrchestratorStarted(null);
+        tracker.OnOrchestratorStarted();
 
         tracker.IsStalled.ShouldBeFalse();
         tracker.AggregatedPatchesOrdered.ShouldBeEmpty();
