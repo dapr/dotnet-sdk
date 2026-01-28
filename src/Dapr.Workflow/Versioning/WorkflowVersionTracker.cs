@@ -62,11 +62,12 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     private static List<string> ListAllVersioningPatches(List<HistoryEvent> events)
     {
         var result = new List<string>();
-        
+
         foreach (var ev in events)
         {
             if (ev.OrchestratorStarted?.Version != null)
             {
+                // Preserve duplicates and ordering as emitted by the runtime
                 result.AddRange(ev.OrchestratorStarted.Version.Patches);
             }
         }
@@ -81,7 +82,7 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     /// The replay validation in this tracker is driven by the history-derived sequence and RequestPatch().
     /// This method intentionally does not enforce additional rules.
     /// </remarks>
-    public void OnOrchestratorStarted(OrchestrationVersion? incrementalVersionFromRuntime)
+    public void OnOrchestratorStarted()
     {
         if (this.IsStalled)
             return;
@@ -89,9 +90,9 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
         // Reset per-turn state
         _patchesThisTurn.Clear();
         _includeVersionInNextResponse = false;
-
-        // Replay determinism is validated via RequestPatch() ordering
-        // and "missing patches" are validated via ValidateReplayConsumedHistoryPatches().
+        
+        // This tracker is constructed from the full history (pastEvents) for this work item. Replay determinism
+        // is validated by RequestPatch() ordering and ValidateReplayConsumedHistoryPatches().
     }
 
     /// <summary>
@@ -130,10 +131,15 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
 
         if (isReplaying)
         {
+            // If replay evaluates more patches than history recorded, this is a determinism violation
             if (_replayIndex >= _historyPatchSequence.Count)
             {
-                // If history has no patch at this position, the patch was not taken previously.
-                // This is not a determinism failure; return false without stalling
+                this.StalledEvent = new ExecutionStalledEvent
+                {
+                    Reason = StalledReason.PatchMismatch,
+                    Description =
+                        $"Replay evaluated patch '{patchName}' but history contains no patch at index {_replayIndex}  (history count={_historyPatchSequence.Count})."
+                };
                 return false;
             }
 
@@ -153,7 +159,7 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
             return true;
         }
         
-        // Non-replay: record exactly what the code evaluated, including duplicates
+        // Non-replay: record exactly what the code evaluated as patched this turn (including duplicates)
         _patchesThisTurn.Add(patchName);
         _includeVersionInNextResponse = true;
         return true;
