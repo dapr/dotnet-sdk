@@ -408,12 +408,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
     }
 
-    private void HandleOrchestratorStarted(HistoryEvent historyEvent, OrchestratorStartedEvent started)
+    private void HandleOrchestratorStarted(HistoryEvent historyEvent, OrchestratorStartedEvent _)
     {
         _currentUtcDateTime = historyEvent.Timestamp.ToDateTime();
         
         // Notify the tracker of the versioning data provided by the runtime for this turn
-        _versionTracker.OnOrchestratorStarted(started.Version);
+        _versionTracker.OnOrchestratorStarted();
     }
 
     private void HandleActionCreated(HistoryEvent historyEvent)

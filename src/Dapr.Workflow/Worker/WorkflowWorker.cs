@@ -39,8 +39,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory?.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
-    private readonly Dictionary<string, WorkflowVersionTracker> _versionTrackers = new(StringComparer.Ordinal);
-
+    
     private GrpcProtocolHandler? _protocolHandler;
 
     /// <summary>
@@ -160,16 +159,12 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Replay the old history to rebuild the local state of the orchestration.
             context.ProcessEvents(allPastEvents, true);
             
-
             // Execute the workflow
             // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
             // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
             // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
             var runTask = workflow!.RunAsync(context, input);
-
-            // Replay the old history to rebuild the local state of the orchestration.
-            context.ProcessEvents(allPastEvents, true);
 
             // Play the newly arrived events to determine the next action to take.
             context.ProcessEvents(request.NewEvents, false);
