@@ -149,29 +149,66 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 : DateTime.UtcNow;
 
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory, versionTracker, appId);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
+                _serializer, loggerFactory, versionTracker, appId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
             
-            // Replay the old history to rebuild the local state of the orchestration.
-            context.ProcessEvents(allPastEvents, true);
+            // Explicit replay/execute boundary:
+            // Some callers/tests may include the current-turn OrchestratorStarted (and subsequent events) inside
+            // PastEvents. To make the boundary explicit and determinisitc, we split PastEvents at the last
+            // OrchestratorStarted:
+            // - events before it are replay history
+            // - the OrchestratorStarted and everything after it are treated as current turn events
+            var lastOrchestratorStartedIndex = allPastEvents.FindLastIndex(e => e.OrchestratorStarted != null);
+            List<HistoryEvent> replayEvents;
+            List<HistoryEvent> turnEvents;
+
+            if (lastOrchestratorStartedIndex >= 0)
+            {
+                replayEvents = allPastEvents.Take(lastOrchestratorStartedIndex).ToList();
+                turnEvents = allPastEvents.Skip(lastOrchestratorStartedIndex).ToList();
+            }
+            else
+            {
+                replayEvents = allPastEvents;
+                turnEvents = [];
+            }
+            
+            // Replay history phase
+            // This allows replay-safe logging and patch determinism checks to behave consistently 
+            if (replayEvents.Count > 0)
+            {
+                context.ProcessEvents(replayEvents, isReplaying: true);
+            }
             
             // Execute the workflow
-            // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
+            // IMPORTANT: Orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
             // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
             // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
-            var runTask = workflow!.RunAsync(context, input);
-
-            // Play the newly arrived events to determine the next action to take.
-            context.ProcessEvents(request.NewEvents, false);
             
-            // Validate that the replay consumed the historical patch evaluation sequence.
-            // If the workflow was modified such that a historical patch is no longer evaluated,
-            // we must stall to prevent non-deterministic execution.
+            // Note that at this point, the context may still be "replaying". Once we apply the new events below, we
+            // will explicitly switch to non-replay.
+            var runTask = workflow!.RunAsync(context, input);
+            
+            // Apply current-turn events as non-replay, plus any NewEvents supplied on the request
+            // Processing new events represents the "live" portion of the turn. This is the boundary where the
+            // workflow should stop considering itself in replay.
+            if (turnEvents.Count > 0)
+            {
+                context.ProcessEvents(turnEvents, isReplaying: false);
+            }
+
+            if (request.NewEvents.Count > 0)
+            {
+                context.ProcessEvents(request.NewEvents, isReplaying: false);
+            }
+            
+            // Validate that the replay consumed the historical patch evaluation sequence
             versionTracker.ValidateReplayConsumedHistoryPatches();
             
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
@@ -212,7 +249,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 response.CustomStatus = _serializer.Serialize(context.CustomStatus);
 
             // If the workflow issued ContinueAsNew, it already queued a completion action; just return it.
-            if (context.PendingActions.Any(a => a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
+            if (context.PendingActions.Any(a => 
+                    a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
                 return response;
@@ -220,10 +258,12 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
 
             if (!runTask.IsCompleted)
             {
-                _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, context.PendingActions.Count);
+                _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, 
+                    context.PendingActions.Count);
 
                 if (response.Actions.Count == 0 && context.PendingActions.Count == 0) 
                     _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
+                
                 return response;
             }
 
@@ -233,7 +273,6 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 // The workflow completed synchronously (either on replay or it had nothing to await).
                 // Observe exceptions if any, otherwise serialize the output and complete the orchestration.
                 var output = await runTask.ConfigureAwait(false);
-
                 var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
 
                 response.Actions.Add(new OrchestratorAction
