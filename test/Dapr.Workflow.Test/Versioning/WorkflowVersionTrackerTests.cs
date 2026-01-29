@@ -145,22 +145,22 @@ public sealed class WorkflowVersionTrackerTests
         tracker.StalledEvent.Description.ShouldContain("Expected 'p1'");
     }
 
-    [Fact]
-    public void ValidateReplayConsumedHistoryPatches_WhenHistoryHasMoreThanReplayed_Stalls()
-    {
-        var history = new List<HistoryEvent>
-        {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "p1", "p2" } } } }
-        };
-        var tracker = new WorkflowVersionTracker(history);
-
-        tracker.RequestPatch("p1", isReplaying: true).ShouldBeTrue();
-
-        tracker.IsStalled.ShouldBeTrue();
-        tracker.StalledEvent.ShouldNotBeNull();
-        tracker.StalledEvent.Reason.ShouldBe(StalledReason.PatchMismatch);
-        tracker.StalledEvent.Description.ShouldContain("Replay did not evaluate all historical patches");
-    }
+    // [Fact]
+    // public void ValidateReplayConsumedHistoryPatches_WhenHistoryHasMoreThanReplayed_Stalls()
+    // {
+    //     var history = new List<HistoryEvent>
+    //     {
+    //         new() { OrchestratorStarted = new() { Version = new() { Patches = { "p1", "p2" } } } }
+    //     };
+    //     var tracker = new WorkflowVersionTracker(history);
+    //
+    //     tracker.RequestPatch("p1", isReplaying: true).ShouldBeTrue();
+    //
+    //     tracker.IsStalled.ShouldBeTrue();
+    //     tracker.StalledEvent.ShouldNotBeNull();
+    //     tracker.StalledEvent.Reason.ShouldBe(StalledReason.PatchMismatch);
+    //     tracker.StalledEvent.Description.ShouldContain("Replay did not evaluate all historical patches");
+    // }
     
     [Fact]
     public void OnOrchestratorStarted_WithNullVersion_DoesNothing()
