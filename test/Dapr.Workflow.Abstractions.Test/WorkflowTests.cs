@@ -16,6 +16,11 @@ public class WorkflowTests
         public override string InstanceId => "id-1";
         public override DateTime CurrentUtcDateTime => new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         public override bool IsReplaying => false;
+        public override bool IsPatched(string patchName)
+        {
+            throw new NotImplementedException();
+        }
+
         public override Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null)
             => Task.FromResult(default(T)!);
         public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken) => Task.CompletedTask;
