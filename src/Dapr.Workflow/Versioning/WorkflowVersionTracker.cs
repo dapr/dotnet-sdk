@@ -26,7 +26,7 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     /// Full patch evaluation sequence as recorded by history (duplicates allowed, ordered).
     /// </summary>
     private readonly List<string> _historyPatchSequence = ListAllVersioningPatches(events);
-
+    
     /// <summary>
     /// Cursor into _historyPatchSequence as the workflow code replays and evaluates patches.
     /// </summary>
@@ -54,68 +54,17 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     /// <summary>
     /// Aggregated, ordered patches extracted from history (with duplicates preserved).
     /// </summary>
-    public IReadOnlyList<string> AggregatedPatchesOrdered => _historyPatchSequence;
+    public IReadOnlyCollection<string> AggregatedPatchesOrdered => _historyPatchSequence;
 
-    /// <summary>
-    /// Retrieves all the versioning patches from the list of history events, in order, preserving duplicates.
-    /// </summary>
-    private static List<string> ListAllVersioningPatches(List<HistoryEvent> events)
-    {
-        var result = new List<string>();
-
-        foreach (var ev in events)
-        {
-            if (ev.OrchestratorStarted?.Version != null)
-            {
-                // Preserve duplicates and ordering as emitted by the runtime
-                result.AddRange(ev.OrchestratorStarted.Version.Patches);
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Called at the start of each orchestrator turn with the OrchestratorStartedEvent.version.
-    /// </summary>
-    /// <remarks>
-    /// The replay validation in this tracker is driven by the history-derived sequence and RequestPatch().
-    /// This method intentionally does not enforce additional rules.
-    /// </remarks>
     public void OnOrchestratorStarted()
     {
         if (this.IsStalled)
             return;
-        
-        // Reset per-turn state
+
         _patchesThisTurn.Clear();
         _includeVersionInNextResponse = false;
-        
-        // This tracker is constructed from the full history (pastEvents) for this work item. Replay determinism
-        // is validated by RequestPatch() ordering and ValidateReplayConsumedHistoryPatches().
     }
-
-    /// <summary>
-    /// Validates that the replay has evaluated every patch recorded in history up to this decision point.
-    /// If not, the workflow has changed (or code path diverged) and must stall.
-    /// </summary>
-    public void ValidateReplayConsumedHistoryPatches()
-    {
-        if (this.IsStalled)
-            return;
-
-        if (_replayIndex < _historyPatchSequence.Count)
-        {
-            var expectedNext = _historyPatchSequence[_replayIndex];
-            this.StalledEvent = new ExecutionStalledEvent
-            {
-                Reason = StalledReason.PatchMismatch,
-                Description =
-                    $"Replay did not evaluate all historical patches. Next expected patch is '{expectedNext}' at index {_replayIndex} (history count={_historyPatchSequence.Count})."
-            };
-        }
-    }
-
+    
     /// <summary>
     /// Request enabling/using a patch from workflow code. Returns IsPatched result and records state.
     /// </summary>
@@ -131,38 +80,47 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
 
         if (isReplaying)
         {
-            // If replay evaluates more patches than history recorded, this is a determinism violation
+            // Strict replay semantics:
+            // - patches must be evaluated in the same order as history
+            // - duplicates must be evaluated the same number of times
             if (_replayIndex >= _historyPatchSequence.Count)
             {
-                this.StalledEvent = new ExecutionStalledEvent
-                {
-                    Reason = StalledReason.PatchMismatch,
-                    Description =
-                        $"Replay evaluated patch '{patchName}' but history contains no patch at index {_replayIndex}  (history count={_historyPatchSequence.Count})."
-                };
+                Stall(
+                    $"Replay evaluated extra patch '{patchName}' but history is already fully consumed.");
                 return false;
             }
 
             var expected = _historyPatchSequence[_replayIndex];
             if (!string.Equals(expected, patchName, StringComparison.Ordinal))
             {
-                this.StalledEvent = new ExecutionStalledEvent
-                {
-                    Reason = StalledReason.PatchMismatch,
-                    Description =
-                        $"Patch replay mismatch at index {_replayIndex}. Expected '{expected}' but evaluated '{patchName}'."
-                };
+                Stall($"Patch replay mismatch. Expected '{expected}' at index {_replayIndex}, got '{patchName}'.");
                 return false;
             }
 
             _replayIndex++;
             return true;
         }
-        
-        // Non-replay: record exactly what the code evaluated as patched this turn (including duplicates)
+
+        // Non-replay semantics: patch evaluations are treated as true and stamped (including duplicates).
         _patchesThisTurn.Add(patchName);
         _includeVersionInNextResponse = true;
         return true;
+    }
+    
+    /// <summary>
+    /// Validates that replay evaluated all historical patches.
+    /// If not, the workflow should stall.
+    /// </summary>
+    public void ValidateReplayConsumedHistoryPatches()
+    {
+        if (this.IsStalled)
+            return;
+
+        if (_replayIndex < _historyPatchSequence.Count)
+        {
+            Stall(
+                $"Replay did not evaluate all historical patches. Consumed {_replayIndex} of {_historyPatchSequence.Count}.");
+        }
     }
 
     /// <summary>
@@ -175,4 +133,29 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
         Name = workflowName,
         Patches = { _patchesThisTurn } 
     };
+    
+    private void Stall(string description)
+    {
+        this.StalledEvent = new ExecutionStalledEvent
+        {
+            Reason = StalledReason.PatchMismatch,
+            Description = description,
+        };
+    }
+
+    private static List<string> ListAllVersioningPatches(IReadOnlyList<HistoryEvent> events)
+    {
+        var result = new List<string>();
+
+        foreach (var ev in events)
+        {
+            if (ev.OrchestratorStarted?.Version is not null)
+            {
+                // IMPORTANT: keep order + duplicates
+                result.AddRange(ev.OrchestratorStarted.Version.Patches);
+            }
+        }
+
+        return result;
+    }
 }

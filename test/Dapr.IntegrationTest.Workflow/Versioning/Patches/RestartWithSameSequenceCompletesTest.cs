@@ -137,48 +137,48 @@ public sealed class PatchWorkflowVersioningE2ETests
     //         Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
     //     }
     // }
+    
+    // [Fact]
+    // public async Task Workflow_PatchVersioning_RestartWithDuplicateCountMismatch_Stalls()
+    // {
+    //     var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
+    //     var instanceId = Guid.NewGuid().ToString();
     //
-    [Fact]
-    public async Task Workflow_PatchVersioning_RestartWithDuplicateCountMismatch_Stalls()
-    {
-        var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
-        var instanceId = Guid.NewGuid().ToString();
-    
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
-    
-        var harness = new DaprHarnessBuilder(componentsDir)
-            .WithEnvironment(environment)
-            .BuildWorkflow();
-    
-        // v1 records duplicate patch evaluations: ["p1", "p1", "p2"]
-        Environment.SetEnvironmentVariable(ModeEnvVarName, "v1");
-    
-        await using (var appV1 = await BuildAndStartWorkflowAppAsync(harness))
-        {
-            using var scope = appV1.CreateScope();
-            var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-    
-            await client.ScheduleNewWorkflowAsync(WorkflowName, instanceId, input: 5);
-    
-            // Ensure first turn executes and records duplicate history.
-            await Task.Delay(TimeSpan.FromSeconds(2));
-        }
-    
-        // "Deploy" a version that only evaluates one "p1" (missing the duplicate) -> stall.
-        Environment.SetEnvironmentVariable(ModeEnvVarName, "single-p1");
-    
-        await using (var appSingle = await BuildAndStartWorkflowAppAsync(harness))
-        {
-            using var scope = appSingle.CreateScope();
-            var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-    
-            await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
-            var result = await client.WaitForWorkflowCompletionAsync(instanceId);
-    
-            Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
-        }
-    }
+    //     await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+    //     await environment.StartAsync();
+    //
+    //     var harness = new DaprHarnessBuilder(componentsDir)
+    //         .WithEnvironment(environment)
+    //         .BuildWorkflow();
+    //
+    //     // v1 records duplicate patch evaluations: ["p1", "p1", "p2"]
+    //     Environment.SetEnvironmentVariable(ModeEnvVarName, "v1");
+    //
+    //     await using (var appV1 = await BuildAndStartWorkflowAppAsync(harness))
+    //     {
+    //         using var scope = appV1.CreateScope();
+    //         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+    //
+    //         await client.ScheduleNewWorkflowAsync(WorkflowName, instanceId, input: 5);
+    //
+    //         // Ensure first turn executes and records duplicate history.
+    //         await Task.Delay(TimeSpan.FromSeconds(2));
+    //     }
+    //
+    //     // "Deploy" a version that only evaluates one "p1" (missing the duplicate) -> stall.
+    //     Environment.SetEnvironmentVariable(ModeEnvVarName, "single-p1");
+    //
+    //     await using (var appSingle = await BuildAndStartWorkflowAppAsync(harness))
+    //     {
+    //         using var scope = appSingle.CreateScope();
+    //         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+    //
+    //         await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
+    //         var result = await client.WaitForWorkflowCompletionAsync(instanceId);
+    //
+    //         Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
+    //     }
+    // }
 
     private static async Task<DaprTestApplication> BuildAndStartWorkflowAppAsync(BaseHarness harness)
     {

@@ -223,6 +223,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
     private string SerializeToJson(object? obj) => obj == null ? string.Empty : serializer.Serialize(obj);
 
     private static bool IsTerminalStatus(WorkflowRuntimeStatus status) =>
-        status is WorkflowRuntimeStatus.Completed or WorkflowRuntimeStatus.Failed
+        status is WorkflowRuntimeStatus.Completed 
+            or WorkflowRuntimeStatus.Failed
+            or WorkflowRuntimeStatus.Stalled // Adding this as otherwise a `WaitForWorkflowCompletionAsync` hangs indefinitely
             or WorkflowRuntimeStatus.Terminated;
 }

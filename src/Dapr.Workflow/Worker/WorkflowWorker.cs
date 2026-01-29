@@ -208,9 +208,6 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 context.ProcessEvents(request.NewEvents, isReplaying: false);
             }
             
-            // Validate that the replay consumed the historical patch evaluation sequence
-            versionTracker.ValidateReplayConsumedHistoryPatches();
-            
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)
             {

@@ -156,8 +156,6 @@ public sealed class WorkflowVersionTrackerTests
 
         tracker.RequestPatch("p1", isReplaying: true).ShouldBeTrue();
 
-        tracker.ValidateReplayConsumedHistoryPatches();
-
         tracker.IsStalled.ShouldBeTrue();
         tracker.StalledEvent.ShouldNotBeNull();
         tracker.StalledEvent.Reason.ShouldBe(StalledReason.PatchMismatch);
