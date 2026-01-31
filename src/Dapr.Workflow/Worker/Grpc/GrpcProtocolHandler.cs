@@ -68,10 +68,12 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
                 // Establish the server streaming call
                 _streamingCall = _grpcClient.GetWorkItems(request, cancellationToken: token);
 
+                _logger.LogGrpcProtocolHandlerStreamEstablished();
+
                 // Process work items from the stream
                 await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
 
-                // Stream ended gracefully => tradfe as an interrupted and reconnect unless shutting down
+                // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
                 if (!token.IsCancellationRequested)
                 {
                     await DelayOrStopAsync(ReconnectDelay, token);
