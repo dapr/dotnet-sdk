@@ -31,7 +31,7 @@ public sealed class WorkflowState
     {
         _metadata = metadata;
     }
-    
+
     /// <summary>
     /// Gets a value indicating whether the requested workflow instance exists.
     /// </summary>
@@ -52,13 +52,19 @@ public sealed class WorkflowState
 
     /// <summary>
     /// Gets the time at which this workflow instance was created.
+    /// Treat workflow metadata timestamps as UTC to avoid local-time conversions if null.
     /// </summary>
-    public DateTimeOffset CreatedAt => _metadata?.CreatedAt ?? default;
+    public DateTimeOffset CreatedAt => _metadata?.CreatedAt is { } dt && dt != default
+        ? new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc))
+        : default;
 
     /// <summary>
     /// Gets the time at which this workflow instance last had its state updated.
+    /// Treat workflow metadata timestamps as UTC to avoid local-time conversions if null.
     /// </summary>
-    public DateTimeOffset LastUpdatedAt => _metadata?.LastUpdatedAt ?? default;
+    public DateTimeOffset LastUpdatedAt => _metadata?.LastUpdatedAt is { } dt && dt != default
+        ? new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc))
+        : default;
 
     /// <summary>
     /// Gets the execution status of the workflow.
