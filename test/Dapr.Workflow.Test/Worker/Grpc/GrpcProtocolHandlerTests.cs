@@ -29,8 +29,8 @@ public sealed class GrpcProtocolHandlerTests
 
     private static async Task RunHandlerUntilAsync(
         GrpcProtocolHandler handler,
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> workflowHandler,
-        Func<ActivityRequest, Task<ActivityResponse>> activityHandler,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> workflowHandler,
+        Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         Task until,
         TimeSpan timeout)
     {
@@ -50,8 +50,8 @@ public sealed class GrpcProtocolHandlerTests
     
     private static async Task RunHandlerUntilAsync(
         GrpcProtocolHandler handler,
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> workflowHandler,
-        Func<ActivityRequest, Task<ActivityResponse>> activityHandler,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> workflowHandler,
+        Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         Func<bool> untilCondition,
         TimeSpan timeout,
         TimeSpan? pollInterval = null)
@@ -142,8 +142,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: req => Task.FromResult(new OrchestratorResponse { InstanceId = req.InstanceId }),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (req, _) => Task.FromResult(new OrchestratorResponse { InstanceId = req.InstanceId }),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             until: completedTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -155,6 +155,7 @@ public sealed class GrpcProtocolHandlerTests
     public async Task StartAsync_ShouldCompleteActivityTask_ForActivityWorkItem()
     {
         var grpcClientMock = CreateGrpcClientMock();
+        const string completionToken = "abc";
 
         var workItems = new[]
         {
@@ -165,7 +166,8 @@ public sealed class GrpcProtocolHandlerTests
                     Name = "act",
                     TaskId = 42,
                     OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-2" }
-                }
+                },
+                CompletionToken = completionToken
             }
         };
 
@@ -184,12 +186,13 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: req => Task.FromResult(new ActivityResponse
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (req, tok) => Task.FromResult(new ActivityResponse
             {
                 InstanceId = req.OrchestrationInstance.InstanceId,
                 TaskId = req.TaskId,
-                Result = "ok"
+                Result = "ok",
+                CompletionToken = tok
             }),
             until: completedTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
@@ -198,6 +201,7 @@ public sealed class GrpcProtocolHandlerTests
         Assert.Equal("i-2", completed.InstanceId);
         Assert.Equal(42, completed.TaskId);
         Assert.Equal("ok", completed.Result);
+        Assert.Equal(completionToken, completed.CompletionToken);
     }
 
     [Fact]
@@ -228,8 +232,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => throw new InvalidOperationException("boom"),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (_,_) => throw new InvalidOperationException("boom"),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             until: completedTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -276,8 +280,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => captured is not null,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -303,8 +307,8 @@ public sealed class GrpcProtocolHandlerTests
         cts.Cancel();
 
         await handler.StartAsync(
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             cancellationToken: cts.Token);
 
         // Since we were already canceled, we shouldn't even attempt to connect.
@@ -346,8 +350,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => throw new InvalidOperationException("boom"),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => throw new InvalidOperationException("boom"),
             until: sentTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -393,8 +397,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => throw new Exception("boom"),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => throw new Exception("boom"),
             untilCondition: () => completeAttempted,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -434,8 +438,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => throw new NullStackTraceException("boom"),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => throw new NullStackTraceException("boom"),
             until: sentTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -478,8 +482,8 @@ public sealed class GrpcProtocolHandlerTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         await handler.StartAsync(
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ =>
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) =>
             {
                 // Make StartAsync's linked token "IsCancellationRequested == true"
                 cts.Cancel();
@@ -519,12 +523,12 @@ public sealed class GrpcProtocolHandlerTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         await handler.StartAsync(
-            workflowHandler: _ =>
+            workflowHandler: (_,_) =>
             {
                 cts.Cancel();
                 throw new OperationCanceledException(cts.Token);
             },
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             cancellationToken: cts.Token);
 
         grpcClientMock.Verify(
@@ -564,8 +568,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: req => Task.FromResult(new ActivityResponse
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (req, _) => Task.FromResult(new ActivityResponse
             {
                 InstanceId = req.OrchestrationInstance.InstanceId,
                 TaskId = req.TaskId,
@@ -605,8 +609,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => throw new InvalidOperationException("boom"),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (_,_) => throw new InvalidOperationException("boom"),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => completeAttempted,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -618,10 +622,10 @@ public sealed class GrpcProtocolHandlerTests
     {
         var grpcClientMock = CreateGrpcClientMock();
 
-        var workItems = new[]
-        {
-            new WorkItem() // RequestCase = None
-        };
+        WorkItem[] workItems =
+        [
+            new() // RequestCase = None
+        ];
 
         var getWorkItemsCalled = false;
 
@@ -634,8 +638,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => getWorkItemsCalled,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -659,8 +663,8 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => Volatile.Read(ref getWorkItemsCalls) >= 1,
             timeout: TimeSpan.FromSeconds(2));
 
@@ -691,8 +695,8 @@ public sealed class GrpcProtocolHandlerTests
         // and can be canceled cleanly by the test harness.
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: _ => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: _ => Task.FromResult(new ActivityResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => Volatile.Read(ref getWorkItemsCalls) >= 1,
             timeout: TimeSpan.FromSeconds(2));
 
