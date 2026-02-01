@@ -94,9 +94,6 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     {
         // Remove the data directory if it exists
         TestDirectoryManager.CleanUpDirectory(_testDirectory);
-        
-        // if (Directory.Exists(_hostDataDir))
-        //     Directory.Delete(_hostDataDir, true);
         return _container.DisposeAsync();
     }
 }
