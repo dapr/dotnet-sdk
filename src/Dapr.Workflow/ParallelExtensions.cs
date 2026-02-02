@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Dapr.Workflow;
 
@@ -22,7 +23,7 @@ namespace Dapr.Workflow;
 /// Extension methods for <see cref="WorkflowContext"/> that provide high-level parallel processing primitives
 /// with controlled concurrency.
 /// </summary>
-public static class ParallelExtensions
+public static partial class ParallelExtensions
 {
     /// <summary>
     /// Processes a collection of inputs in parallel with controlled concurrency using a streaming execution model.
@@ -94,55 +95,80 @@ public static class ParallelExtensions
         if (inputList.Count == 0)
             return [];
 
+        // Create a logger to help diagnose the issue
+        var logger = context.CreateReplaySafeLogger(typeof(ParallelExtensions));
+        logger.LogDebug("Starting with {InputCount} inputs with max concurrency {MaxConcurrency}", inputList.Count, maxConcurrency);
+        
+        // To maintain determinism, we map inputs to their tasks/results
+        // We will fill this array as tasks complete
         var results = new TResult[inputList.Count];
-        var inFlightTasks = new Dictionary<Task<TResult>, int>(); // Task -> result index
-        var inputIndex = 0;
-        var completedCount = 0;
+        
+        // This dictionary tracks active tasks to their original index so we can place results correctly.
+        var activeTasks = new Dictionary<Task<TResult>, int>(maxConcurrency);
         var exceptions = new List<Exception>();
-
-        // Start initial batch up to maxConcurrency
-        while (inputIndex < inputList.Count && inFlightTasks.Count < maxConcurrency)
+        
+        // Use an iterator for the input list
+        int nextInputIndex = 0;
+        
+        // Fill the initial window
+        while (nextInputIndex < inputList.Count && activeTasks.Count < maxConcurrency)
         {
-            var task = taskFactory(inputList[inputIndex]);
-            inFlightTasks[task] = inputIndex;
-            inputIndex++;
-        }
-
-        // Process remaining items with streaming execution
-        while (completedCount < inputList.Count)
-        {
-            var completedTask = await Task.WhenAny(inFlightTasks.Keys);
-            var resultIndex = inFlightTasks[completedTask];
-
             try
             {
-                results[resultIndex] = await completedTask;
+                var task = taskFactory(inputList[nextInputIndex]);
+                activeTasks.Add(task, nextInputIndex);
             }
             catch (Exception ex)
             {
                 exceptions.Add(ex);
             }
-
-            inFlightTasks.Remove(completedTask);
-            completedCount++;
-
-            // Start next task if more work remains
-            if (inputIndex < inputList.Count)
+            nextInputIndex++;
+        }
+        
+        // Sliding window loop
+        while (activeTasks.Count > 0)
+        {
+            // Wait for any task in the active set to complete
+            var completedTask = await Task.WhenAny(activeTasks.Keys);
+            
+            // Retrieve the index to store the result
+            var completedIndex = activeTasks[completedTask];
+            activeTasks.Remove(completedTask);
+            
+            // Store result (awaiting it will propagate exceptions, if any)
+            try
             {
-                var nextTask = taskFactory(inputList[inputIndex]);
-                inFlightTasks[nextTask] = inputIndex;
-                inputIndex++;
+                results[completedIndex] = await completedTask;
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
+            
+            // If there are more inputs, schedule the next one immediately
+            if (nextInputIndex < inputList.Count)
+            {
+                try
+                {
+                    var newTask = taskFactory(inputList[nextInputIndex]);
+                    activeTasks.Add(newTask, nextInputIndex);
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+                nextInputIndex++;
             }
         }
 
-        // If any exceptions occurred, throw them as an aggregate
         if (exceptions.Count > 0)
         {
-            throw new AggregateException(
-                $"One or more tasks failed during parallel processing. {exceptions.Count} out of {inputList.Count} tasks failed.",
-                exceptions);
+            throw new AggregateException($"{exceptions.Count} out of {inputList.Count} tasks failed", exceptions);
         }
 
+        logger.LogDebug("Completed processing {ResultCount} results", results.Length);
         return results;
     }
+
+    // Removed partial methods to avoid generator issues in tests
 }

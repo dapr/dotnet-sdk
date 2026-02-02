@@ -9,6 +9,7 @@ public readonly record struct ToolChoice
     private readonly string _value;
     private const string NoneValue = "none";
     private const string AutoValue = "auto";
+    private const string RequiredValue = "required";
 
     /// <summary>
     /// The current value of the <see cref="ToolChoice"/> instance.
@@ -23,6 +24,10 @@ public readonly record struct ToolChoice
     /// Initializes the <see cref="ToolChoice"/> instance with the value "auto".
     /// </summary>
     public static ToolChoice Auto => new(AutoValue);
+    /// <summary>
+    /// Initializes the <see cref="ToolChoice"/> instance with the value "required".
+    /// </summary>
+    public static ToolChoice Required => new(RequiredValue);
 
     /// <summary>
     /// Validates whether the current <see cref="ToolChoice"/> instance is "none".
@@ -32,6 +37,10 @@ public readonly record struct ToolChoice
     /// Validates whether the current <see cref="ToolChoice"/> instance is "auto".
     /// </summary>
     public bool IsAuto => string.Equals(_value, AutoValue, StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Validates whether the current <see cref="ToolChoice"/> instance is "required".
+    /// </summary>
+    public bool IsRequired => string.Equals(_value, RequiredValue, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Used to initialize a new <see cref="ToolChoice"/> instance with a known value.

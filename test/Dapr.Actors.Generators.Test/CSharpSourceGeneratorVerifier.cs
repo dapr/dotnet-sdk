@@ -36,6 +36,8 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
                 8;
 #elif NET9_0
                 9;
+#elif NET10_0
+                10;
 #endif
 
             //

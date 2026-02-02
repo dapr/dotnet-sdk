@@ -2,7 +2,7 @@
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
 
   <PropertyGroup>  
-    <TargetFrameworks>net8;net9</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
       
     <!-- Set Output Path for tests-->
     <OutputPath>$(RepoRoot)bin\$(Configuration)\test\$(MSBuildProjectName)\</OutputPath>

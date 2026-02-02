@@ -36,7 +36,7 @@ await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DemoWorkflow), instance
 
 await daprWorkflowClient.WaitForWorkflowCompletionAsync(instanceId);
 var state = await daprWorkflowClient.GetWorkflowStateAsync(instanceId);
-Console.WriteLine($"Workflow {instanceId}, state: {state.RuntimeStatus}");
+Console.WriteLine($@"Workflow {instanceId}, state: {state?.RuntimeStatus}");
 
 state = await daprWorkflowClient.GetWorkflowStateAsync($"{instanceId}-sub");
-Console.WriteLine($"Workflow {instanceId}-sub, state: {state.RuntimeStatus}");
+Console.WriteLine($@"Workflow {instanceId}-sub, state: {state?.RuntimeStatus}");

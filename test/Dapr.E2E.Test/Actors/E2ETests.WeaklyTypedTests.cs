@@ -22,7 +22,6 @@ using Xunit;
 
 public partial class E2ETests : IAsyncLifetime
 {
-#if NET8_0_OR_GREATER
     [Fact]
     public async Task WeaklyTypedActorCanReturnPolymorphicResponse()
     {
@@ -36,21 +35,7 @@ public partial class E2ETests : IAsyncLifetime
 
         result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
     }
-#else
-        [Fact]
-        public async Task WeaklyTypedActorCanReturnDerivedResponse()
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
-            var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
 
-            await WaitForActorRuntimeAsync(pingProxy, cts.Token);
-
-            var result = await proxy.InvokeMethodAsync<DerivedResponse>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse));
-
-            result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
-        }
-#endif
     [Fact]
     public async Task WeaklyTypedActorCanReturnNullResponse()
     {

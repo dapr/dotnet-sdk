@@ -60,7 +60,7 @@ public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLif
                 return;
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(250));
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
         }
 
         throw new TimeoutException("Timed out waiting for daprd health check");

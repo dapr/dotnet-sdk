@@ -15,5 +15,5 @@ public record ToolFunction(string Name) : ITool
     /// <summary>
     /// The parameters the function accepts.
     /// </summary>
-    public IReadOnlyDictionary<string, object> Parameters { get; init; } = new Dictionary<string, object>();
+    public IReadOnlyDictionary<string, object?> Parameters { get; init; } = new Dictionary<string, object?>();
 }

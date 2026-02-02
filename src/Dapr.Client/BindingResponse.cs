@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,13 +20,13 @@ namespace Dapr.Client;
 /// <summary>
 /// Represents the response from invoking a binding.
 /// </summary>
-/// <param name="request">The <see cref="BindingRequest" /> assocated with this response.</param>
+/// <param name="request">The <see cref="BindingRequest" /> associated with this response.</param>
 /// <param name="data">The response payload.</param>
 /// <param name="metadata">The response metadata.</param>
 public sealed class BindingResponse(BindingRequest request, ReadOnlyMemory<byte> data, IReadOnlyDictionary<string, string> metadata)
 {
     /// <summary>
-    /// Gets the <see cref="BindingRequest" /> assocated with this response.
+    /// Gets the <see cref="BindingRequest" /> associated with this response.
     /// </summary>
     public BindingRequest Request { get; } = request ?? throw new ArgumentNullException(nameof(request));
 

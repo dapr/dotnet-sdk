@@ -111,7 +111,7 @@ public class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
         }
 
         // Let them know their payment was processed
-        logger.LogError("Order {orderId} has completed!", orderId);
+        logger.LogInformation("Order {orderId} has completed!", orderId);
         await context.CallActivityAsync(
             nameof(NotifyActivity),
             new Notification($"Order {orderId} has completed!"));

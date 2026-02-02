@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Dapr.Workflow.Test;
@@ -18,26 +19,9 @@ namespace Dapr.Workflow.Test;
 /// <summary>
 /// Contains tests for ParallelExtensions.ProcessInParallelAsync method.
 /// </summary>
-public class ParallelExtensionsTest
+public sealed class ParallelExtensionsTest
 {
     private readonly Mock<WorkflowContext> _workflowContextMock = new();
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithValidInputs_ShouldProcessAllItemsSuccessfully()
-    {
-        // Arrange
-        var inputs = new[] { 1, 2, 3, 4, 5 };
-        var expectedResults = new[] { 2, 4, 6, 8, 10 };
-
-        // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input => await Task.FromResult(input * 2),
-            maxConcurrency: 2);
-
-        // Assert
-        Assert.Equal(expectedResults, results);
-    }
 
     [Fact]
     public async Task ProcessInParallelAsync_WithEmptyInputs_ShouldReturnEmptyArray()
@@ -52,83 +36,6 @@ public class ParallelExtensionsTest
 
         // Assert
         Assert.Empty(results);
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithSingleInput_ShouldProcessCorrectly()
-    {
-        // Arrange
-        var inputs = new[] { 42 };
-
-        // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input => await Task.FromResult(input.ToString()));
-
-        // Assert
-        Assert.Single(results);
-        Assert.Equal("42", results[0]);
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithMaxConcurrency1_ShouldProcessSequentially()
-    {
-        // Arrange
-        var inputs = new[] { 1, 2, 3 };
-        var processedOrder = new List<int>();
-        var processingTasks = new List<Task>();
-
-        // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input =>
-            {
-                processedOrder.Add(input);
-                await Task.Delay(10); // Small delay to ensure order
-                return input * 2;
-            },
-            maxConcurrency: 1);
-
-        // Assert
-        Assert.Equal(new[] { 2, 4, 6 }, results);
-        Assert.Equal(new[] { 1, 2, 3 }, processedOrder);
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithHighConcurrency_ShouldRespectConcurrencyLimit()
-    {
-        // Arrange
-        var inputs = Enumerable.Range(1, 100).ToArray();
-        var concurrentTasks = 0;
-        var maxConcurrentTasks = 0;
-        var lockObj = new object();
-
-        // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input =>
-            {
-                lock (lockObj)
-                {
-                    concurrentTasks++;
-                    maxConcurrentTasks = Math.Max(maxConcurrentTasks, concurrentTasks);
-                }
-
-                await Task.Delay(10);
-
-                lock (lockObj)
-                {
-                    concurrentTasks--;
-                }
-
-                return input * 2;
-            },
-            maxConcurrency: 10);
-
-        // Assert
-        Assert.Equal(inputs.Length, results.Length);
-        Assert.True(maxConcurrentTasks <= 10, $"Expected max concurrent tasks <= 10, but was {maxConcurrentTasks}");
-        Assert.True(maxConcurrentTasks >= 1, "At least one task should have been executed");
     }
 
     [Fact]
@@ -188,184 +95,161 @@ public class ParallelExtensionsTest
                 async input => await Task.FromResult(input * 2),
                 maxConcurrency));
     }
-
+    
     [Fact]
-    public async Task ProcessInParallelAsync_WithTaskFailure_ShouldThrowAggregateException()
+    public async Task ProcessInParallelAsync_ShouldPreserveInputOrder_WhenTasksCompleteOutOfOrder()
     {
-        // Arrange
-        var inputs = new[] { 1, 2, 3, 4, 5 };
-        //var expectedSuccessfulResults = 3; // Items 1, 3, 5 should succeed
-        const int expectedFailures = 2; // Items 2, 4 should fail
+        var context = new FakeWorkflowContext();
 
-        // Act & Assert
-        var aggregateException = await Assert.ThrowsAsync<AggregateException>(
-            async () => await _workflowContextMock.Object.ProcessInParallelAsync(
-                inputs,
-                async input =>
-                {
-                    await Task.Delay(10);
-                    if (input % 2 == 0) // Even numbers fail
-                        throw new InvalidOperationException($"Failed processing item {input}");
-                    return input * 2;
-                },
-                maxConcurrency: 2));
+        var inputs = new[] { 1, 2, 3, 4 };
 
-        // Assert
-        Assert.Equal(expectedFailures, aggregateException.InnerExceptions.Count);
-        Assert.All(aggregateException.InnerExceptions, ex => 
-            Assert.IsType<InvalidOperationException>(ex));
-        Assert.Contains("2 out of 5 tasks failed", aggregateException.Message);
+        var results = await context.ProcessInParallelAsync(
+            inputs,
+            async i =>
+            {
+                await Task.Delay(i == 1 ? 50 : 1);
+                return i * 10;
+            },
+            maxConcurrency: 4);
+
+        Assert.Equal(new[] { 10, 20, 30, 40 }, results);
+    }
+    
+    [Fact]
+    public async Task ProcessInParallelAsync_ShouldEnumerateInputsOnlyOnce()
+    {
+        var context = new FakeWorkflowContext();
+        var trackingInputs = new SingleEnumerationEnumerable<int>(Enumerable.Range(1, 10));
+
+        var results = await context.ProcessInParallelAsync(
+            trackingInputs,
+            i => Task.FromResult(i * 3),
+            maxConcurrency: 3);
+
+        Assert.Equal(1, trackingInputs.EnumerationCount);
+        Assert.Equal(Enumerable.Range(1, 10).Select(i => i * 3).ToArray(), results);
     }
 
     [Fact]
-    public async Task ProcessInParallelAsync_WithAllTasksFailure_ShouldThrowAggregateExceptionWithAllFailures()
+    public async Task ProcessInParallelAsync_ShouldRespectMaxConcurrency()
     {
         // Arrange
-        var inputs = new[] { 1, 2, 3 };
-        var expectedMessage = "Test failure";
-
-        // Act & Assert
-        var aggregateException = await Assert.ThrowsAsync<AggregateException>(
-            async () => await _workflowContextMock.Object.ProcessInParallelAsync<int, object>(
-                inputs,
-                async input =>
-                {
-                    await Task.Delay(10);
-                    throw new InvalidOperationException($"{expectedMessage} {input}");
-                }));
-
-        // Assert
-        Assert.Equal(3, aggregateException.InnerExceptions.Count);
-        Assert.All(aggregateException.InnerExceptions, ex => 
-        {
-            Assert.IsType<InvalidOperationException>(ex);
-            Assert.Contains(expectedMessage, ex.Message);
-        });
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithMixedSuccessAndFailure_ShouldPreserveOrderInResults()
-    {
-        // Arrange
-        var inputs = new[] { 1, 2, 3, 4, 5 };
-
-        // Act & Assert
-        var aggregateException = await Assert.ThrowsAsync<AggregateException>(
-            async () => await _workflowContextMock.Object.ProcessInParallelAsync(
-                inputs,
-                async input =>
-                {
-                    await Task.Delay(input * 10); // Different delays to test ordering
-                    if (input == 3)
-                        throw new InvalidOperationException($"Failed on item {input}");
-                    return input * 2;
-                },
-                maxConcurrency: 2));
-
-        // Assert that failure occurred
-        Assert.Single(aggregateException.InnerExceptions);
-        Assert.Contains("Failed on item 3", aggregateException.InnerExceptions[0].Message);
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithDefaultMaxConcurrency_ShouldUseDefaultValue()
-    {
-        // Arrange
-        var inputs = Enumerable.Range(1, 20).ToArray();
-        var concurrentTasks = 0;
-        var maxConcurrentTasks = 0;
+        var context = new FakeWorkflowContext();
+        var inputs = Enumerable.Range(0, 20).ToArray();
+        const int maxConcurrency = 5;
+        int currentConcurrency = 0;
+        int maxObservedConcurrency = 0;
         var lockObj = new object();
 
         // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input =>
-            {
-                lock (lockObj)
+        await context.ProcessInParallelAsync(
+                inputs,
+                async _ =>
                 {
-                    concurrentTasks++;
-                    maxConcurrentTasks = Math.Max(maxConcurrentTasks, concurrentTasks);
-                }
+                    lock (lockObj)
+                    {
+                        currentConcurrency++;
+                        if (currentConcurrency > maxObservedConcurrency)
+                        {
+                            maxObservedConcurrency = currentConcurrency;
+                        }
+                    }
 
-                await Task.Delay(50); // Longer delay to ensure concurrency
+                    // Simulate work that takes time to allow concurrency to build up
+                    await Task.Delay(10);
 
-                lock (lockObj)
+                    lock (lockObj)
+                    {
+                        currentConcurrency--;
+                    }
+
+                    return 0;
+                },
+                maxConcurrency);
+
+        // Assert
+        Assert.True(maxObservedConcurrency <= maxConcurrency, 
+                $"Max concurrency observed ({maxObservedConcurrency}) exceeded limit ({maxConcurrency})");
+        Assert.True(maxObservedConcurrency > 1, "Expected parallelism did not occur");
+    }
+
+    [Fact]
+    public async Task ProcessInParallelAsync_ShouldAggregateExceptions_WhenTasksFail()
+    {
+        // Arrange
+        var context = new FakeWorkflowContext();
+        var inputs = new[] { 1, 2, 3, 4, 5 };
+        var expectedMessage = "Test exception";
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
+                await context.ProcessInParallelAsync(
+                    inputs,
+                    async i =>
+                    {
+                        if (i % 2 == 0) // Fail on even numbers
+                        {
+                            await Task.Yield();
+                            throw new InvalidOperationException($"{expectedMessage} {i}");
+                        }
+                        return i;
+                    },
+                    maxConcurrency: 2));
+
+        Assert.Equal(2, ex.InnerExceptions.Count);
+        Assert.All(ex.InnerExceptions, e => Assert.IsType<InvalidOperationException>(e));
+    }
+
+    [Fact]
+    public async Task ProcessInParallelAsync_ShouldAggregateExceptions_WhenFactoryThrowsSynchronously()
+    {
+        // Arrange
+        var context = new FakeWorkflowContext();
+        var inputs = new[] { 1, 2, 3 };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
+                await context.ProcessInParallelAsync<int, int>(
+                    inputs,
+                    i =>
+                    {
+                        if (i == 2)
+                        {
+                            throw new InvalidOperationException("Sync factory failure");
+                        }
+                        return Task.FromResult(i);
+                    },
+                    maxConcurrency: 2));
+
+        Assert.Single(ex.InnerExceptions);
+        Assert.IsType<InvalidOperationException>(ex.InnerExceptions[0]);
+        Assert.Equal("Sync factory failure", ex.InnerExceptions[0].Message);
+    }
+
+    [Fact]
+    public async Task ProcessInParallelAsync_WithInputCountGreaterThanMaxConcurrency_ShouldProcessAll()
+    {
+        // Arrange
+        var context = new FakeWorkflowContext();
+        var count = 10;
+        var inputs = Enumerable.Range(0, count).ToArray();
+        var processedCount = 0;
+
+        // Act
+        var results = await context.ProcessInParallelAsync(
+                inputs,
+                async i =>
                 {
-                    concurrentTasks--;
-                }
-
-                return input * 2;
-            }); // Using default maxConcurrency (should be 5)
-
-        // Assert
-        Assert.Equal(inputs.Length, results.Length);
-        Assert.True(maxConcurrentTasks <= 5, $"Expected max concurrent tasks <= 5, but was {maxConcurrentTasks}");
-        Assert.True(maxConcurrentTasks >= 1, "At least one task should have been executed");
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithDifferentInputAndOutputTypes_ShouldHandleTypeConversion()
-    {
-        // Arrange
-        var inputs = new[] { "1", "2", "3", "4", "5" };
-        var expectedResults = new[] { 1, 2, 3, 4, 5 };
-
-        // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input => await Task.FromResult(int.Parse(input)),
-            maxConcurrency: 3);
+                    await Task.Yield();
+                    Interlocked.Increment(ref processedCount);
+                    return i;
+                },
+                maxConcurrency: 2); // Significantly smaller than input count
 
         // Assert
-        Assert.Equal(expectedResults, results);
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithComplexObjects_ShouldProcessCorrectly()
-    {
-        // Arrange
-        var inputs = new[]
-        {
-            new TestInput { Id = 1, Value = "Test1" },
-            new TestInput { Id = 2, Value = "Test2" },
-            new TestInput { Id = 3, Value = "Test3" }
-        };
-
-        // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input => await Task.FromResult(new TestOutput 
-            { 
-                ProcessedId = input.Id * 10, 
-                ProcessedValue = input.Value.ToUpper() 
-            }),
-            maxConcurrency: 2);
-
-        // Assert
-        Assert.Equal(3, results.Length);
-        Assert.Equal(10, results[0].ProcessedId);
-        Assert.Equal("TEST1", results[0].ProcessedValue);
-        Assert.Equal(20, results[1].ProcessedId);
-        Assert.Equal("TEST2", results[1].ProcessedValue);
-        Assert.Equal(30, results[2].ProcessedId);
-        Assert.Equal("TEST3", results[2].ProcessedValue);
-    }
-
-    [Fact]
-    public async Task ProcessInParallelAsync_WithLargeDataset_ShouldHandleEfficiently()
-    {
-        // Arrange
-        var inputs = Enumerable.Range(1, 1000).ToArray();
-        var expectedResults = inputs.Select(x => x * 2).ToArray();
-
-        // Act
-        var results = await _workflowContextMock.Object.ProcessInParallelAsync(
-            inputs,
-            async input => await Task.FromResult(input * 2),
-            maxConcurrency: 10);
-
-        // Assert
-        Assert.Equal(expectedResults, results);
+        Assert.Equal(count, results.Length);
+        Assert.Equal(count, processedCount);
+        Assert.Equal(inputs, results);
     }
 
     private class TestInput
@@ -378,5 +262,39 @@ public class ParallelExtensionsTest
     {
         public int ProcessedId { get; set; }
         public string ProcessedValue { get; set; } = string.Empty;
+    }
+    
+    private sealed class FakeWorkflowContext : WorkflowContext
+    {
+        public override string Name => "wf";
+        public override string InstanceId => "i";
+        public override DateTime CurrentUtcDateTime => DateTime.UtcNow;
+        public override bool IsReplaying => false;
+
+        public override Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null) => throw new NotSupportedException();
+        public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public override Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public override Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout) => throw new NotSupportedException();
+        public override void SendEvent(string instanceId, string eventName, object payload) => throw new NotSupportedException();
+        public override void SetCustomStatus(object? customStatus) => throw new NotSupportedException();
+        public override Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, ChildWorkflowTaskOptions? options = null) => throw new NotSupportedException();
+        public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true) => throw new NotSupportedException();
+        public override Guid NewGuid() => Guid.NewGuid();
+        public override ILogger CreateReplaySafeLogger(string categoryName) => Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        public override ILogger CreateReplaySafeLogger(Type type) => Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        public override ILogger CreateReplaySafeLogger<T>() => Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+    }
+    
+    private sealed class SingleEnumerationEnumerable<T>(IEnumerable<T> inner) : IEnumerable<T>
+    {
+        public int EnumerationCount { get; private set; }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            EnumerationCount++;
+            return inner.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

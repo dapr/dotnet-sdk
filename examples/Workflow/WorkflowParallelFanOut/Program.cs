@@ -51,9 +51,9 @@ logger.LogInformation("Workflow {InstanceId} started, waiting for completion..."
 await daprWorkflowClient.WaitForWorkflowCompletionAsync(instanceId);
 var state = await daprWorkflowClient.GetWorkflowStateAsync(instanceId);
 
-logger.LogInformation("Workflow {InstanceId} completed with status: {Status}", instanceId, state.RuntimeStatus);
+logger.LogInformation("Workflow {InstanceId} completed with status: {Status}", instanceId, state?.RuntimeStatus);
 
-if (state.ReadOutputAs<OrderResult[]>() is { } results)
+if (state?.ReadOutputAs<OrderResult[]>() is { } results)
 {
     logger.LogInformation("Processing Results:");
     logger.LogInformation("==================");
@@ -68,7 +68,7 @@ if (state.ReadOutputAs<OrderResult[]>() is { } results)
             order.OrderId, order.TotalAmount, order.Status);
     }
 
-    if (failedOrders.Any())
+    if (failedOrders.Count != 0)
     {
         logger.LogWarning("Failed orders ({FailedCount}):", failedOrders.Count);
         foreach (var order in failedOrders)

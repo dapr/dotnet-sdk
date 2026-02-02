@@ -52,5 +52,5 @@ public sealed record DaprJobDetails(DaprJobSchedule Schedule)
     /// <summary>
     /// Defines the characteristics of the policy to apply when a job fails to trigger.
     /// </summary>
-    public JobFailurePolicy? FailurePolicy { get; init; }
+    public IFailurePolicyResponse? FailurePolicy { get; init; }
 }
