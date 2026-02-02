@@ -52,7 +52,6 @@ public sealed class WorkflowState
 
     /// <summary>
     /// Gets the time at which this workflow instance was created.
-    /// Treat workflow metadata timestamps as UTC to avoid local-time conversions if null.
     /// </summary>
     public DateTimeOffset CreatedAt => _metadata?.CreatedAt is { } dt && dt != default
         ? new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc))
@@ -60,7 +59,6 @@ public sealed class WorkflowState
 
     /// <summary>
     /// Gets the time at which this workflow instance last had its state updated.
-    /// Treat workflow metadata timestamps as UTC to avoid local-time conversions if null.
     /// </summary>
     public DateTimeOffset LastUpdatedAt => _metadata?.LastUpdatedAt is { } dt && dt != default
         ? new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc))
