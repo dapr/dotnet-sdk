@@ -56,9 +56,27 @@ public class WorkflowStateTests
         Assert.True(state.Exists);
         Assert.True(state.IsWorkflowRunning);
         Assert.False(state.IsWorkflowCompleted);
-        Assert.Equal(created, state.CreatedAt);
-        Assert.Equal(updated, state.LastUpdatedAt);
+        Assert.Equal(created, state.CreatedAt.DateTime);
+        Assert.Equal(updated, state.LastUpdatedAt.DateTime);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
+    }
+
+    [Fact]
+    public void CreatedAt_ShouldReturnDefault_WhenMetadataCreatedAtIsMinValue()
+    {
+        var serializer = new JsonWorkflowSerializer();
+        var metadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Running,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: serializer);
+
+        var state = new WorkflowState(metadata);
+
+        Assert.Equal(DateTime.MinValue, state.CreatedAt.DateTime);
+        Assert.Equal(DateTime.MinValue, state.LastUpdatedAt.DateTime);
     }
 
     [Theory]
