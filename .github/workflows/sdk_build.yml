@@ -49,34 +49,30 @@ jobs:
   discover-integration-v2-tests:
     runs-on: ubuntu-latest
     outputs: 
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      projects: ${{ steps.set-matrix.outputs.projects }}
     steps:
       - uses: actions/checkout@v1
       - id: set-matrix
         shell: bash
         run: |
           set -euo pipefail
-          
-          # Build a JSON array of { project, projectName } objects (compact, single line)
+  
           PROJECTS_JSON=$(
             find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" -print0 \
             | jq -Rs -c '
-                # Read NUL-delimited stream, split, drop trailing empty, produce compact JSON
-                split("\u0000")[:-1]
-                | map({
-                    project: .,
-                    projectName: (
-                      . 
-                      | gsub("\\\\"; "/")                # normalize \ to /
-                      | split("/") | last                # basename
-                      | sub("\\.csproj$"; "")            # strip extension
-                    )
-                  })
-              '
+              split("\u0000")[:-1]
+              | map({
+                project: .,
+                projectName: (
+                  .
+                  | gsub("\\\\"; "/")
+                  | split("/") | last
+                  | sub("\\.csproj$"; "")
+                )
+              })
+            '
           )
-          
-          # Emit as a matrix with include (single line, no extra spaces)
-          printf 'matrix=%s\n' "{\"include\":${PROJECTS_JSON}}" >> "$GITHUB_OUTPUT"
+          printf 'projects=%s\n' "${PROJECTS_JSON}" >> "$GITHUB_OUTPUT"
 
   discover-unit-test-projects:
     runs-on: ubuntu-latest
@@ -89,6 +85,7 @@ jobs:
           # Find all csproj files matching the pattern recursively
           PROJECTS=$(find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+
   get-dapr-versions:
     runs-on: ubuntu-latest
     outputs:
@@ -114,35 +111,85 @@ jobs:
       - name: Show outputs
         run: |
           echo "Matrix: ${{ steps.compute.outputs.matrix_json }}"
-  integration-tests-v2:
-    name: ${{ matrix.prefix }}-${{ matrix.dapr-runtime-versions.version }}-${{ matrix.projectName }}
+
+  compute-integration-matrix:
+    runs-on: ubuntu-latest
     needs: [discover-integration-v2-tests, get-dapr-versions]
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+  
+          # Inputs from previous jobs
+          projects='${{ needs.discover-integration-v2-tests.outputs.projects }}'
+          dapr='${{ needs.get-dapr-versions.outputs.matrix_json }}'
+  
+          # Static axes (as arrays of objects), matching your include mapping
+          dotnets='[
+            {"dotnet-version":"8.0", "display-name":".NET 8.0", "framework":"net8.0", "prefix":"net8", "install-version":"8.0.x"},
+            {"dotnet-version":"9.0", "display-name":".NET 9.0", "framework":"net9.0", "prefix":"net9", "install-version":"9.0.x"},
+            {"dotnet-version":"10.0", "display-name":".NET 10.0", "framework":"net10.0", "prefix":"net10", "install-version":"10.0.x"}
+          ]'
+  
+          os='["ubuntu-latest"]'
+  
+          # Normalize dapr to an array of objects with a "version" field, depending on your selector’s shape.
+          # If your tag-selector already outputs something like:
+          #   [{"version":"v1.17.0-rc.2"}, {"version":"v1.16.5"}]
+          # then this pass-through works. Otherwise, adapt the mapping below.
+          dapr_array=$(jq -c '
+            if type=="array" then .
+            elif type=="object" and has("include") then .include
+            else .
+            end
+          ' <<< "$dapr")
+  
+          # Build full cross product into matrix.include
+          matrix_json=$(
+            jq -c --argjson projects "$projects" \
+                  --argjson dotnets "$dotnets" \
+                  --argjson oss "$os" \
+                  --argjson dapr "$dapr_array" '
+              [
+                # Cartesian product
+                (.projects[] as $p
+                 | .dotnets[] as $d
+                 | .oss[] as $o
+                 | .dapr[] as $dv
+                 | {
+                     # from discovery
+                     project: $p.project,
+                     projectName: $p.projectName,
+                     # from dotnet axis
+                     "dotnet-version": $d["dotnet-version"],
+                     "display-name": $d["display-name"],
+                     framework: $d.framework,
+                     prefix: $d.prefix,
+                     "install-version": $d["install-version"],
+                     # from OS axis
+                     os: $o,
+                     # from dapr selector; adjust "version" path if needed
+                     "dapr-runtime-versions": $dv
+                   }
+                )
+              ] | { include: . }
+            ' <<< "{}"
+          )
+  
+          printf 'matrix=%s\n' "$matrix_json" >> "$GITHUB_OUTPUT"
+
+  integration-tests-v2:
+    name: ${{ matrix.prefix }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
+    needs: [ compute-integration-matrix ]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        dotnet-version: [ '8.0', '9.0', '10.0' ]
-        os: [ubuntu-latest]
-        project: ${{ fromJson(needs.discover-integration-v2-tests.outputs.matrix) }}
-        dapr-runtime-versions: ${{ fromJson(needs.get-dapr-versions.outputs.matrix_json) }}
-        include:
-          - dotnet-version: '8.0'
-            display-name: '.NET 8.0'
-            framework: 'net8.0'
-            prefix: 'net8'
-            install-version: '8.0.x'
-          - dotnet-version: '9.0'
-            display-name: '.NET 9.0'
-            framework: 'net9.0'
-            prefix: 'net9'
-            install-version: '9.0.x'
-          - dotnet-version: '10.0'
-            display-name: '.NET 10.0'
-            framework: 'net10.0'
-            prefix: 'net10'
-            install-version: '10.0.x'
+      matrix: ${{ fromJson(needs.compute-integration-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
       - name: Setup ${{ matrix.display-name }}
