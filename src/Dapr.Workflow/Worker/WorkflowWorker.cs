@@ -109,7 +109,7 @@ internal sealed class WorkflowWorker(
             }
             
             // Create a new version tracker for this turn
-            var versionTracker = new WorkflowVersionTracker(allPastEvents.Concat(request.NewEvents).ToList());
+            var versionTracker = new WorkflowVersionTracker(allPastEvents);
 
             // Identify the workflow name from the now-complete history
             
@@ -154,8 +154,7 @@ internal sealed class WorkflowWorker(
                 : DateTime.UtcNow;
 
             var currentTurnStartedEvent = request.NewEvents.Reverse()
-                .FirstOrDefault(e => e.OrchestratorStarted != null)
-                ?? allPastEvents.LastOrDefault(e => e.OrchestratorStarted != null);
+                .FirstOrDefault(e => e.OrchestratorStarted != null);
 
             var currentTurnTimestamp = currentTurnStartedEvent?.Timestamp?.ToDateTime()
                 ?? currentUtcDateTime;

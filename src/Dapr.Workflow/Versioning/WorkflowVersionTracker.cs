@@ -20,20 +20,20 @@ namespace Dapr.Workflow.Versioning;
 /// <summary>
 /// Tracks workflow patch version information across replays and orchestrator turns.
 /// </summary>
-internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
+internal sealed class WorkflowVersionTracker
 {
     /// <summary>
     /// Full patch evaluation sequence as recorded by history (duplicates allowed, ordered).
     /// </summary>
-    private readonly List<string> _historyPatchSequence = ListLatestVersioningPatches(events);
-    
-    /// <summary>
-    /// Cursor into _historyPatchSequence as the workflow code replays and evaluates patches.
-    /// </summary>
-    private int _replayIndex;
+    private readonly List<string> _historyPatchSequence;
 
     /// <summary>
-    /// Patches evaluated in the current non-replay execution (duplicates allowed, ordered).
+    /// Patch names recorded in history (duplicates collapsed).
+    /// </summary>
+    private readonly HashSet<string> _historyPatches;
+
+    /// <summary>
+    /// Patches evaluated in the current execution (duplicates allowed, ordered).
     /// </summary>
     private readonly List<string> _patchesThisTurn = [];
 
@@ -56,11 +56,20 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     /// </summary>
     public IReadOnlyCollection<string> AggregatedPatchesOrdered => _historyPatchSequence;
 
+    private readonly Dictionary<string, bool> _appliedPatches = new(StringComparer.Ordinal);
+
+    public WorkflowVersionTracker(List<HistoryEvent> events)
+    {
+        _historyPatchSequence = ListAllVersioningPatches(events);
+        _historyPatches = new HashSet<string>(_historyPatchSequence, StringComparer.Ordinal);
+    }
+
     public void OnOrchestratorStarted()
     {
         if (this.IsStalled)
             return;
 
+        _appliedPatches.Clear();
         _patchesThisTurn.Clear();
         _includeVersionInNextResponse = false;
     }
@@ -70,7 +79,7 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     /// </summary>
     /// <param name="patchName">Case-sensitive patch name.</param>
     /// <param name="isReplaying">Whether the workflow is currently being replayed.</param>
-    /// <returns>True/false per replay semantics; may set stall state on duplicate use.</returns>
+    /// <returns>True/false per replay semantics.</returns>
     public bool RequestPatch(string patchName, bool isReplaying)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(patchName);
@@ -78,40 +87,39 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
         if (this.IsStalled)
             return false;
 
-        var shouldRecord = !isReplaying;
-
-        if (isReplaying)
+        if (_appliedPatches.TryGetValue(patchName, out var patched))
         {
-            // Strict replay semantics while history remains:
-            // - patches must be evaluated in the same order as history
-            // - duplicates must be evaluated the same number of times
-            if (_replayIndex < _historyPatchSequence.Count)
-            {
-                var expected = _historyPatchSequence[_replayIndex];
-                if (!string.Equals(expected, patchName, StringComparison.Ordinal))
-                {
-                    Stall($"Patch replay mismatch. Expected '{expected}' at index {_replayIndex}, got '{patchName}'.");
-                    return false;
-                }
+            if (!patched)
+                return patched;
 
-                _replayIndex++;
-                shouldRecord = false;
-            }
-            else
-            {
-                // History patches have been fully consumed; treat later evaluations as non-replay.
-                shouldRecord = true;
-            }
+            _patchesThisTurn.Add(patchName);
+            _includeVersionInNextResponse = true;
+
+            return patched;
         }
-        
-        if (shouldRecord)
+
+        if (_historyPatches.Contains(patchName))
         {
-            // Patch evaluations are treated as true and stamped (including duplicates).
+            patched = true;
+        }
+        else if (isReplaying)
+        {
+            patched = false;
+        }
+        else
+        {
+            patched = true;
+        }
+
+        _appliedPatches[patchName] = patched;
+
+        if (patched)
+        {
             _patchesThisTurn.Add(patchName);
             _includeVersionInNextResponse = true;
         }
 
-        return true;
+        return patched;
     }
 
     /// <summary>
@@ -125,26 +133,19 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
         Patches = { _patchesThisTurn } 
     };
     
-    private void Stall(string description)
+    private static List<string> ListAllVersioningPatches(IReadOnlyList<HistoryEvent> events)
     {
-        this.StalledEvent = new ExecutionStalledEvent
-        {
-            Reason = StalledReason.PatchMismatch,
-            Description = description,
-        };
-    }
+        var result = new List<string>();
 
-    private static List<string> ListLatestVersioningPatches(IReadOnlyList<HistoryEvent> events)
-    {
-        for (var index = events.Count - 1; index >= 0; index--)
+        foreach (var ev in events)
         {
-            var version = events[index].OrchestratorStarted?.Version;
+            var version = ev.OrchestratorStarted?.Version;
             if (version is not null)
             {
-                return [..version.Patches];
+                result.AddRange(version.Patches);
             }
         }
 
-        return [];
+        return result;
     }
 }

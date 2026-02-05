@@ -93,11 +93,8 @@ public sealed class WorkflowVersionTrackerTests
         tracker.RequestPatch("patch1", isReplaying: true).ShouldBeTrue();
         tracker.RequestPatch("patch2", isReplaying: true).ShouldBeFalse();
 
-        tracker.IsStalled.ShouldBeTrue();
-        tracker.StalledEvent.ShouldNotBeNull();
-        tracker.StalledEvent.Reason.ShouldBe(StalledReason.PatchMismatch);
-
-        tracker.IncludeVersionInNextResponse.ShouldBeFalse(); // Replay shouldn't trigger response stamp
+        tracker.IsStalled.ShouldBeFalse();
+        tracker.StalledEvent.ShouldBeNull();
     }
     
     [Fact]
@@ -114,7 +111,7 @@ public sealed class WorkflowVersionTrackerTests
     }
 
     [Fact]
-    public void RequestPatch_Replay_ValidatesOrderAgainstHistory()
+    public void RequestPatch_Replay_UsesHistoryMembership()
     {
         var history = new List<HistoryEvent>
         {
@@ -125,11 +122,11 @@ public sealed class WorkflowVersionTrackerTests
         tracker.RequestPatch("p1", isReplaying: true).ShouldBeTrue();
         tracker.RequestPatch("p2", isReplaying: true).ShouldBeTrue();
         tracker.IsStalled.ShouldBeFalse();
-        tracker.IncludeVersionInNextResponse.ShouldBeFalse(); // Replay shouldn't trigger response stamp
+        tracker.IncludeVersionInNextResponse.ShouldBeTrue();
     }
 
     [Fact]
-    public void RequestPatch_Replay_OrderMismatch_Stalls()
+    public void RequestPatch_Replay_OrderMismatch_DoesNotStall()
     {
         var history = new List<HistoryEvent>
         {
@@ -137,12 +134,11 @@ public sealed class WorkflowVersionTrackerTests
         };
         var tracker = new WorkflowVersionTracker(history);
 
-        tracker.RequestPatch("p2", isReplaying: true).ShouldBeFalse();
+        tracker.RequestPatch("p2", isReplaying: true).ShouldBeTrue();
+        tracker.RequestPatch("p1", isReplaying: true).ShouldBeTrue();
 
-        tracker.IsStalled.ShouldBeTrue();
-        tracker.StalledEvent.ShouldNotBeNull();
-        tracker.StalledEvent.Reason.ShouldBe(StalledReason.PatchMismatch);
-        tracker.StalledEvent.Description.ShouldContain("Expected 'p1'");
+        tracker.IsStalled.ShouldBeFalse();
+        tracker.StalledEvent.ShouldBeNull();
     }
 
     // [Fact]
@@ -183,7 +179,7 @@ public sealed class WorkflowVersionTrackerTests
     }
 
     [Fact]
-    public void RequestPatch_WhenAlreadyStalled_ReturnsFalse()
+    public void RequestPatch_WhenAlreadyDeterminedFalse_ReturnsFalse()
     {
         var history = new List<HistoryEvent>
         {
@@ -191,12 +187,9 @@ public sealed class WorkflowVersionTrackerTests
         };
         var tracker = new WorkflowVersionTracker(history);
 
-        // Force stall by mismatching replay order
-        tracker.RequestPatch("not-p1", isReplaying: true).ShouldBeFalse();
-        tracker.IsStalled.ShouldBeTrue();
-
-        tracker.RequestPatch("p2", isReplaying: false).ShouldBeFalse();
         tracker.RequestPatch("p2", isReplaying: true).ShouldBeFalse();
+        tracker.RequestPatch("p2", isReplaying: false).ShouldBeFalse();
+        tracker.IsStalled.ShouldBeFalse();
     }
 
     [Fact]
