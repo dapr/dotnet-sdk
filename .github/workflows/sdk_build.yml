@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
   
           PROJECTS_JSON=$(
-            find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" -print0 \
+            find test -name "Dapr.IntegrationTest.*.csproj" ! -name "*E2E*" -print0 \
             | jq -Rs -c '
               split("\u0000")[:-1]
               | map({
