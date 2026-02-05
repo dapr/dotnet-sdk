@@ -9,9 +9,8 @@ async function run() {
         const stableCount = parseInt(core.getInput("stable_count") || "1", 10);
         const rcIdent = core.getInput("rc_identifier") || "rc";
         
-        const ctx = github.context;
-        const owner = core.getInput("owner") || ctx.repo.owner;
-        const repo = core.getInput("repo") || ctx.repo.repo;
+        const owner = core.getInput("owner") || "dapr";
+        const repo = core.getInput("repo") || "dapr";
         
         const octokit = github.getOctokit(token);
         
