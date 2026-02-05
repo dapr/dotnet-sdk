@@ -67,9 +67,31 @@ jobs:
           # Find all csproj files matching the pattern recursively
           PROJECTS=$(find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+  get-dapr-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.compute.outputs.matrix_json }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tools/tag-selector/package-log.json
+      - working-directory: tools/tag-selector
+        run: npm ci && npm test && npm run build
+      - id: compute
+        name: Run selector
+        env:
+          INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG_PREFIX: "v"
+          INPUT_STABLE_COUNT: "2"
+          INPUT_RC_IDENTIFIER: "rc"
+        run: |
+          node tools/tag-selector/dist/index.js
   integration-tests-v2:
     name: Integration Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
-    needs: discover-integration-v2-tests
+    needs: [discover-integration-v2-tests, get-dapr-versions]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -77,6 +99,7 @@ jobs:
         dotnet-version: [ '8.0', '9.0', '10.0' ]
         os: [ubuntu-latest]
         project: ${{ fromJson(needs.discover-integration-v2-tests.outputs.matrix) }}
+        dapr-runtime-versions: ${{ fromJson(needs.get-dapr-versions.outputs.matrix_json) }}
         include:
           - dotnet-version: '8.0'
             display-name: '.NET 8.0'
@@ -105,6 +128,8 @@ jobs:
       - name: Integration Tests
         id: integration-tests-v2
         continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
+        env:
+          DAPR_RUNTIME_VERSION: ${{ matrix.dapr-runtime-versions.version }}
         run: |
           dotnet test "${{ matrix.project }}" \
           --configuration release \
