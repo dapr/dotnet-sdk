@@ -89,6 +89,9 @@ jobs:
           INPUT_RC_IDENTIFIER: "rc"
         run: |
           node .github/tools/tag-selector/dist/index.js
+      - name: Show outputs
+        run: |
+          echo "Matrix: ${{ steps.compute.outputs.matrix_json }}"
   integration-tests-v2:
     name: Integration Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
     needs: [discover-integration-v2-tests, get-dapr-versions]
