@@ -65,9 +65,10 @@ jobs:
                 project: .,
                 projectName: (
                   .
-                  | gsub("\\\\"; "/")
-                  | split("/") | last
-                  | sub("\\.csproj$"; "")
+                  | gsub("\\\\"; "/")                       # normalize \ to /
+                  | split("/") | last                       # basename
+                  | sub("\\.csproj$"; "")                   # strip extension
+                  | sub("^Dapr\\.IntegrationTest\\."; "")   # drop prefix once
                 )
               })
             '
@@ -137,9 +138,9 @@ jobs:
 
           # Static axes
           dotnets='[
-            {"dotnet-version":"8.0", "display-name":".NET 8.0", "framework":"net8.0", "prefix":"net8", "install-version":"8.0.x", "tfm": "8"},
-            {"dotnet-version":"9.0", "display-name":".NET 9.0", "framework":"net9.0", "prefix":"net9", "install-version":"9.0.x", "tfm": "9"},
-            {"dotnet-version":"10.0", "display-name":".NET 10.0", "framework":"net10.0", "prefix":"net10", "install-version":"10.0.x", "tfm": "10"}
+            {"dotnet-version":"8.0", "display-name":".NET 8.0", "framework":"net8.0", "prefix":"net8", "install-version":"8.0.x"},
+            {"dotnet-version":"9.0", "display-name":".NET 9.0", "framework":"net9.0", "prefix":"net9", "install-version":"9.0.x"},
+            {"dotnet-version":"10.0", "display-name":".NET 10.0", "framework":"net10.0", "prefix":"net10", "install-version":"10.0.x"}
           ]'
           oss='["ubuntu-latest"]'
 
@@ -203,7 +204,7 @@ jobs:
           printf 'matrix=%s\n' "$matrix_json" >> "$GITHUB_OUTPUT"
 
   integration-tests-v2:
-    name: ${{ matrix.tfm }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
+    name: ${{ matrix.prefix }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
     needs: [ compute-integration-matrix ]
     runs-on: ${{ matrix.os }}
     strategy:
