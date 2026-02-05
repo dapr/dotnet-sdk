@@ -104,7 +104,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <param name="appPort">The app port.</param>
     public void SetAppPort(int appPort)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(appPort, 0, nameof(appPort));
+        ArgumentOutOfRangeException.ThrowIfLessThan(appPort, 0, nameof(appPort));
 
         AppPort = appPort;
     }

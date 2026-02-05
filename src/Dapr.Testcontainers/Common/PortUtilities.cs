@@ -22,14 +22,14 @@ namespace Dapr.Testcontainers.Common;
 public static class PortUtilities
 {
     /// <summary>
-    /// Gets a port from the OS that is not in a TIME_WAIT state and is not being
-    /// shared by another process.
+    /// Gets an available TCP port from the OS. This is a best-effort snapshot
+    /// and does not reserve the port for later use.
     /// </summary>
     /// <returns>The available port number.</returns>
     public static int GetAvailablePort()
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        socket.Bind(new IPEndPoint(IPAddress.Any, 0));
         return ((IPEndPoint)socket.LocalEndPoint!).Port;
     }
 }
