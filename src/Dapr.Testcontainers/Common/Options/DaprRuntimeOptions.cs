@@ -25,13 +25,18 @@ public sealed record DaprRuntimeOptions
     /// <summary>
     /// Initializes a new instance of the Dapr runtime options.
     /// </summary>
-    /// <param name="Version">The version of the Dapr images to use.</param>
-    public DaprRuntimeOptions(string Version = "latest")
+    /// <param name="version">The version of the Dapr images to use.</param>
+    public DaprRuntimeOptions(string version = "latest")
     {
         // Get the version from an environment variable, if set
         var envVarVersion = Environment.GetEnvironmentVariable(DEFAULT_VERSION_ENVVAR_NAME);
-        Version = !string.IsNullOrWhiteSpace(envVarVersion) ? envVarVersion : Version;
+        Version = !string.IsNullOrWhiteSpace(envVarVersion) ? envVarVersion : version;
     }
+    
+    /// <summary>
+    /// The version of the Dapr images to use.
+    /// </summary>
+    public string Version { get; }
     
     /// <summary>
     /// The application's port.

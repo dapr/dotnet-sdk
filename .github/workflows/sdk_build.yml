@@ -45,17 +45,36 @@ jobs:
         with:
           name: packages
           path: ${{ env.NUPKG_OUTDIR }}
+
   discover-integration-v2-tests:
     runs-on: ubuntu-latest
     outputs: 
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      projects: ${{ steps.set-matrix.outputs.projects }}
     steps:
       - uses: actions/checkout@v1
       - id: set-matrix
+        shell: bash
         run: |
-          # Find all csproj files matching the pattern recursively
-          PROJECTS=$(find test -name "Dapr.IntegrationTest.*.csproj" | jq -R -s -c 'split("\n")[:-1]')
-          echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+          set -euo pipefail
+  
+          PROJECTS_JSON=$(
+            find test -name "Dapr.IntegrationTest.*.csproj" ! -name "*E2E*" -print0 \
+            | jq -Rs -c '
+              split("\u0000")[:-1]
+              | map({
+                project: .,
+                projectName: (
+                  .
+                  | gsub("\\\\"; "/")                       # normalize \ to /
+                  | split("/") | last                       # basename
+                  | sub("\\.csproj$"; "")                   # strip extension
+                  | sub("^Dapr\\.IntegrationTest\\."; "")   # drop prefix once
+                )
+              })
+            '
+          )
+          printf 'projects=%s\n' "${PROJECTS_JSON}" >> "$GITHUB_OUTPUT"
+
   discover-unit-test-projects:
     runs-on: ubuntu-latest
     outputs:
@@ -67,34 +86,132 @@ jobs:
           # Find all csproj files matching the pattern recursively
           PROJECTS=$(find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+
+  get-dapr-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.compute.outputs.matrix_json }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: .github/tools/tag-selector/package-lock.json
+      - working-directory: .github/tools/tag-selector
+        run: npm ci && npm test && npm run build
+      - id: compute
+        name: Run selector
+        env:
+          INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG_PREFIX: "v"
+          INPUT_STABLE_COUNT: "2"
+          INPUT_RC_IDENTIFIER: "rc"
+        run: |
+          node .github/tools/tag-selector/dist/index.js
+      - name: Show outputs
+        run: |
+          echo "Matrix: ${{ steps.compute.outputs.matrix_json }}"
+
+  compute-integration-matrix:
+    runs-on: ubuntu-latest
+    needs: [ discover-integration-v2-tests, get-dapr-versions ]
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Pull upstream outputs (may be empty)
+          projects_raw='${{ needs.discover-integration-v2-tests.outputs.projects }}'
+          dapr_raw='${{ needs.get-dapr-versions.outputs.matrix_json }}'
+
+          # Default empty to valid JSON arrays to avoid null iteration
+          if [ -z "${projects_raw}" ] || [ "${projects_raw}" = "null" ]; then
+            projects_raw='[]'
+          fi
+          if [ -z "${dapr_raw}" ] || [ "${dapr_raw}" = "null" ]; then
+            dapr_raw='[]'
+          fi
+
+          # Static axes
+          dotnets='[
+            {"dotnet-version":"8.0", "display-name":".NET 8.0", "framework":"net8.0", "prefix":"net8", "install-version":"8.0.x"},
+            {"dotnet-version":"9.0", "display-name":".NET 9.0", "framework":"net9.0", "prefix":"net9", "install-version":"9.0.x"},
+            {"dotnet-version":"10.0", "display-name":".NET 10.0", "framework":"net10.0", "prefix":"net10", "install-version":"10.0.x"}
+          ]'
+          oss='["ubuntu-latest"]'
+
+          # Normalize dapr to an array:
+          # - if it's already an array, use as-is
+          # - if it's an object with "include", use .include
+          # - if it's a single object, wrap in an array
+          dapr_array=$(
+            jq -cn --argjson d "$dapr_raw" '
+              if ($d|type) == "array" then
+                $d
+              elif ($d|type) == "object" and ($d|has("include")) then
+                $d.include
+              elif ($d|type) == "object" then
+                [$d]
+              else
+                []
+              end
+            '
+          )
+
+          # Sanity logs (optional)
+          echo "Projects: $projects_raw"
+          echo "Dapr (normalized): $dapr_array"
+
+          # Build the full cross-product into { include: [...] }
+          matrix_json=$(
+            jq -cn \
+              --argjson projects "$projects_raw" \
+              --argjson dotnets "$dotnets" \
+              --argjson oss "$oss" \
+              --argjson dapr "$dapr_array" '
+                [
+                  $projects[] as $p
+                  | $dotnets[] as $d
+                  | $oss[] as $o
+                  | $dapr[] as $dv
+                  | {
+                      # from discovery
+                      project: $p.project,
+                      projectName: $p.projectName,
+
+                      # from dotnet axis
+                      "dotnet-version": $d["dotnet-version"],
+                      "display-name":   $d["display-name"],
+                      framework:        $d.framework,
+                      prefix:           $d.prefix,
+                      "install-version":$d["install-version"],
+
+                      # from OS axis
+                      os: $o,
+
+                      # from Dapr selector (assumes objects like { "version": "v1.17.0-rc.2", ... })
+                      "dapr-runtime-versions": $dv
+                    }
+                ]
+                | { include: . }
+              '
+          )
+
+          printf 'matrix=%s\n' "$matrix_json" >> "$GITHUB_OUTPUT"
+
   integration-tests-v2:
-    name: Integration Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
-    needs: discover-integration-v2-tests
+    name: ${{ matrix.prefix }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
+    needs: [ compute-integration-matrix ]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        dotnet-version: [ '8.0', '9.0', '10.0' ]
-        os: [ubuntu-latest]
-        project: ${{ fromJson(needs.discover-integration-v2-tests.outputs.matrix) }}
-        include:
-          - dotnet-version: '8.0'
-            display-name: '.NET 8.0'
-            framework: 'net8.0'
-            prefix: 'net8'
-            install-version: '8.0.x'
-          - dotnet-version: '9.0'
-            display-name: '.NET 9.0'
-            framework: 'net9.0'
-            prefix: 'net9'
-            install-version: '9.0.x'
-          - dotnet-version: '10.0'
-            display-name: '.NET 10.0'
-            framework: 'net10.0'
-            prefix: 'net10'
-            install-version: '10.0.x'
+      matrix: ${{ fromJson(needs.compute-integration-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
       - name: Setup ${{ matrix.display-name }}
@@ -105,6 +222,8 @@ jobs:
       - name: Integration Tests
         id: integration-tests-v2
         continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
+        env:
+          DAPR_RUNTIME_VERSION: ${{ matrix.dapr-runtime-versions.version }}
         run: |
           dotnet test "${{ matrix.project }}" \
           --configuration release \
