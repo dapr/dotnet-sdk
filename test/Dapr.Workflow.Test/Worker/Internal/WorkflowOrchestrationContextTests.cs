@@ -312,7 +312,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            new([]));
 
         var task = context.CallActivityAsync<string>("Any");
         var action = Assert.Single(context.PendingActions);
