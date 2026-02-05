@@ -45,8 +45,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <param name="activityHandler">Handler for activity work items.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task StartAsync(
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> workflowHandler,
-        Func<ActivityRequest, Task<ActivityResponse>> activityHandler,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> workflowHandler,
+        Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         CancellationToken cancellationToken)
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposalCts.Token);
@@ -126,8 +126,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// </summary>
     private async Task ReceiveLoopAsync(
         IAsyncStreamReader<WorkItem> workItemsStream,
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> orchestratorHandler,
-        Func<ActivityRequest, Task<ActivityResponse>> activityHandler,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> orchestratorHandler,
+        Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         CancellationToken cancellationToken)
     {
         // Track active work items for proper exception handling
@@ -137,14 +137,16 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             await foreach (var workItem in workItemsStream.ReadAllAsync(cancellationToken))
             {
+                var completionToken = workItem.CompletionToken;
+                
                 // Dispatch based on work item type
                 var workItemTask = workItem.RequestCase switch
                 {
                     WorkItem.RequestOneofCase.OrchestratorRequest => Task.Run(
-                        () => ProcessWorkflowAsync(workItem.OrchestratorRequest, orchestratorHandler, cancellationToken),
+                        () => ProcessWorkflowAsync(workItem.OrchestratorRequest, completionToken, orchestratorHandler, cancellationToken),
                         cancellationToken),
                     WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
-                        () => ProcessActivityAsync(workItem.ActivityRequest, activityHandler, cancellationToken),
+                        () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler, cancellationToken),
                         cancellationToken),
                     _ => Task.Run(
                         () => _logger.LogGrpcProtocolHandlerUnknownWorkItemType(workItem.RequestCase),
@@ -188,8 +190,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Processes a workflow request work item.
     /// </summary>
-    private async Task ProcessWorkflowAsync(OrchestratorRequest request,
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> handler, CancellationToken cancellationToken)
+    private async Task ProcessWorkflowAsync(OrchestratorRequest request, string completionToken,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> handler, CancellationToken cancellationToken)
     {
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
@@ -197,7 +199,7 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             _logger.LogGrpcProtocolHandlerWorkflowProcessorStart(request.InstanceId, activeCount);
 
-            var result = await handler(request);
+            var result = await handler(request, completionToken);
             
             // Send the result back to Dapr
             await _grpcClient.CompleteOrchestratorTaskAsync(result, cancellationToken: cancellationToken);
@@ -227,8 +229,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Processes an activity request work item.
     /// </summary>
-    private async Task ProcessActivityAsync(ActivityRequest request,
-        Func<ActivityRequest, Task<ActivityResponse>> handler, CancellationToken cancellationToken)
+    private async Task ProcessActivityAsync(ActivityRequest request, string completionToken,
+        Func<ActivityRequest, string, Task<ActivityResponse>> handler, CancellationToken cancellationToken)
     {
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
@@ -236,7 +238,7 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             _logger.LogGrpcProtocolHandlerActivityProcessorStart(request.OrchestrationInstance.InstanceId, request.Name,
                 request.TaskId, activeCount);
-            var result = await handler(request);
+            var result = await handler(request, completionToken);
 
             // Send the result back to Dapr
             await _grpcClient.CompleteActivityTaskAsync(result, cancellationToken: cancellationToken);
@@ -252,7 +254,7 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
 
             try
             {
-                var failureResult = CreateActivityFailureResult(request, ex);
+                var failureResult = CreateActivityFailureResult(request, completionToken, ex);
                 await _grpcClient.CompleteActivityTaskAsync(failureResult, cancellationToken: cancellationToken);
             }
             catch (Exception resultEx)
@@ -269,11 +271,12 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Creates a failure response for an activity exception.
     /// </summary>
-    private static ActivityResponse CreateActivityFailureResult(ActivityRequest request, Exception ex) =>
+    private static ActivityResponse CreateActivityFailureResult(ActivityRequest request, string completionToken, Exception ex) =>
         new()
         {
-            
             InstanceId = request.OrchestrationInstance.InstanceId,
+            TaskId = request.TaskId,
+            CompletionToken = completionToken,
             FailureDetails = new()
             {
                 ErrorType = ex.GetType().FullName ?? "Exception",

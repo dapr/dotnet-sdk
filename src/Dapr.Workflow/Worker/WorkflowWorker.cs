@@ -29,12 +29,18 @@ namespace Dapr.Workflow.Worker;
 /// <summary>
 /// Background service that processes workflow and activity work items from the Dapr sidecar.
 /// </summary>
-internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, IWorkflowsFactory workflowsFactory, ILoggerFactory loggerFactory, IWorkflowSerializer workflowSerializer, IServiceProvider serviceProvider, WorkflowRuntimeOptions options) : BackgroundService
+internal sealed class WorkflowWorker(
+    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
+    IWorkflowsFactory workflowsFactory, 
+    ILoggerFactory loggerFactory, 
+    IWorkflowSerializer workflowSerializer, 
+    IServiceProvider serviceProvider, 
+    WorkflowRuntimeOptions options) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-    private readonly ILogger<WorkflowWorker> _logger = loggerFactory?.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+    private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
 
@@ -66,7 +72,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         }
     }
 
-    private async Task<OrchestratorResponse> HandleOrchestratorResponseAsync(OrchestratorRequest request)
+    private async Task<OrchestratorResponse> HandleOrchestratorResponseAsync(OrchestratorRequest request, string completionToken)
     {
         _logger.LogWorkerWorkflowHandleOrchestratorRequestStart(request.InstanceId);
 
@@ -162,7 +168,11 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             context.ProcessEvents(request.NewEvents, false);
             
             // Get all pending actions from the context
-            var response = new OrchestratorResponse { InstanceId = request.InstanceId };
+            var response = new OrchestratorResponse
+            {
+                InstanceId = request.InstanceId,
+                CompletionToken = completionToken
+            };
 
             // Add all actions that were scheduled during workflow execution
             response.Actions.AddRange(context.PendingActions);
@@ -215,6 +225,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                         OrchestrationStatus = OrchestrationStatus.Failed,
                         FailureDetails = new()
                         {
+                            IsNonRetriable = true,
                             ErrorType = ex.GetType().FullName ?? "Exception",
                             ErrorMessage = ex.Message,
                             StackTrace = ex.StackTrace ?? string.Empty
@@ -253,7 +264,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         }
     }
 
-    private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request)
+    private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request, string completionToken)
     {
         _logger.LogWorkerWorkflowHandleActivityRequestStart(request.Name, request.OrchestrationInstance?.InstanceId, request.TaskId);
 
@@ -272,6 +283,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 {
                     InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                     TaskId = request.TaskId,
+                    CompletionToken = completionToken,
                     FailureDetails = new()
                     {
                         ErrorType = "ActivityNotFoundException",
@@ -310,7 +322,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
-                Result = outputJson
+                Result = outputJson,
+                CompletionToken = completionToken
             };
         }
         catch (Exception ex)
@@ -321,6 +334,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
+                CompletionToken = completionToken,
                 FailureDetails = new()
                 {
                     ErrorType = ex.GetType().FullName ?? "Exception",

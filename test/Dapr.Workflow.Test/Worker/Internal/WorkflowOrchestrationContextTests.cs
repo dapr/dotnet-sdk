@@ -286,6 +286,42 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task CallActivityAsync_ShouldMatchCompletion_WhenTaskScheduledIdDoesNotMatch()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance);
+
+        var task = context.CallActivityAsync<string>("Any");
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+        Assert.False(string.IsNullOrWhiteSpace(action.ScheduleTask.TaskExecutionId));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent
+                {
+                    TaskScheduledId = 123,
+                    TaskExecutionId = action.ScheduleTask.TaskExecutionId,
+                    Result = "\"ok\""
+                }
+            }
+        };
+
+        context.ProcessEvents(history, true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+    }
+
+    [Fact]
     public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallFooTaskCompletedFirst()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
