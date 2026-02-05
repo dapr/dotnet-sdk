@@ -17,7 +17,10 @@ using System.Threading.Tasks;
 using Dapr.Testcontainers.Harnesses;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.Testcontainers.Common.Testing;
@@ -68,26 +71,54 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
     /// <returns></returns>
     public async Task<DaprTestApplication> BuildAndStartAsync()
     {
-        WebApplication? app = null;
-
+        const int maxAttempts = 5;
+        Exception? lastError = null;
+        
         if (_shouldLoadResourcesFirst)
         {
             // Load the harness and resources, then the app
-            await harness.InitializeAsync();
 
-            if (_configureServices is not null || _configureApp is not null)
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                app = CreateApp();
-                await app.StartAsync();
+                WebApplication? attemptApp = null;
+
+                try
+                {
+                    harness.SetAppPort(0);
+                    await harness.InitializeAsync();
+
+                    if (_configureServices is not null || _configureApp is not null)
+                    {
+                        attemptApp = CreateApp(harness.AppPort);
+                        await attemptApp.StartAsync();
+                    }
+
+                    return new DaprTestApplication(harness, attemptApp);
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+
+                    if (attemptApp is not null)
+                    {
+                        try
+                        {
+                            await attemptApp.StopAsync();
+                        }
+                        finally
+                        {
+                            await attemptApp.DisposeAsync();
+                        }
+                    }
+                }
             }
 
-            return new DaprTestApplication(harness, app);
+            throw new InvalidOperationException(
+                $"Failed to start resource-first Dapr test application after {maxAttempts} attempts.", lastError);
         }
         
         // App-first: start app, then start resources
         // If daprd cannot bind the chosen ports, restart the app with new ports
-        const int maxAttempts = 5;
-        Exception? lastError = null;
 
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -101,18 +132,14 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                 while (grpcPort == httpPort)
                     grpcPort = PortUtilities.GetAvailablePort();
                 
-                var appPort = PortUtilities.GetAvailablePort();
-                while (appPort == httpPort || appPort == grpcPort)
-                    appPort = PortUtilities.GetAvailablePort();
-
                 harness.SetPorts(httpPort, grpcPort);
-                harness.SetAppPort(appPort);
 
                 // Load the app (configuration/services/pipeline), but delay StartAsync until daprd is up
                 if (_configureServices is not null || _configureApp is not null)
                 {
-                    attemptApp = CreateApp();
+                    attemptApp = CreateApp(0);
                     await attemptApp.StartAsync();
+                    harness.SetAppPort(GetBoundPort(attemptApp));
                 }
 
                 await harness.InitializeAsync();
@@ -143,7 +170,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
             $"Failed to start app-first Dapr test application after {maxAttempts} attempts.", lastError);
     }
 
-    private WebApplication CreateApp()
+    private WebApplication CreateApp(int appPort)
     {
         var builder = WebApplication.CreateBuilder();
         
@@ -156,7 +183,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
         
         builder.Logging.ClearProviders();
         builder.Logging.AddSimpleConsole();
-        builder.WebHost.UseUrls($"http://0.0.0.0:{harness.AppPort}");
+        builder.WebHost.UseUrls($"http://0.0.0.0:{appPort}");
         
         _configureServices?.Invoke(builder);
 
@@ -165,5 +192,24 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
         _configureApp?.Invoke(app);
 
         return app;
+    }
+
+    private static int GetBoundPort(WebApplication app)
+    {
+        var server = app.Services.GetRequiredService<IServer>();
+        var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+        if (addresses is null || addresses.Count == 0)
+            throw new InvalidOperationException("No server addresses were registered.");
+
+        foreach (var address in addresses)
+        {
+            if (!Uri.TryCreate(address, UriKind.Absolute, out var uri))
+                continue;
+
+            if (uri.Port > 0)
+                return uri.Port;
+        }
+
+        throw new InvalidOperationException($"Unable to determine bound port from addresses: {string.Join(", ", addresses)}");
     }
 }
