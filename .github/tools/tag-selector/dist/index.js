@@ -25517,7 +25517,7 @@ async function run() {
     const stableCount = parseInt(getInput("stable_count") || "1", 10);
     const rcIdent = getInput("rc_identifier") || "rc";
     const ctx = context2;
-    const owner = getInput("owner") || cx.repo.owner;
+    const owner = getInput("owner") || ctx.repo.owner;
     const repo = getInput("repo") || ctx.repo.repo;
     const octokit = getOctokit(token);
     const tags = await octokit.paginate(octokit.rest.repos.listTags, {

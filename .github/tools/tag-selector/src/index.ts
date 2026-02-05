@@ -10,7 +10,7 @@ async function run() {
         const rcIdent = core.getInput("rc_identifier") || "rc";
         
         const ctx = github.context;
-        const owner = core.getInput("owner") || cx.repo.owner;
+        const owner = core.getInput("owner") || ctx.repo.owner;
         const repo = core.getInput("repo") || ctx.repo.repo;
         
         const octokit = github.getOctokit(token);
