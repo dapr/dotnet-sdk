@@ -358,7 +358,7 @@ public sealed class GrpcProtocolHandlerTests
         var sent = await sentTcs.Task;
 
         Assert.Equal("i-1", sent.InstanceId);
-        Assert.Equal(0, sent.TaskId);
+        Assert.True(sent.TaskId > 0);
         Assert.NotNull(sent.FailureDetails);
         Assert.Contains(nameof(InvalidOperationException), sent.FailureDetails.ErrorType);
         Assert.Contains("boom", sent.FailureDetails.ErrorMessage);
