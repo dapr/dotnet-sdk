@@ -13,7 +13,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -70,6 +69,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private object? _customStatus;
     private DateTime _currentUtcDateTime;
     private bool _isReplaying;
+    private bool _turnInitialized;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
         IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker, string? appId = null)
@@ -418,10 +418,25 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     private void HandleOrchestratorStarted(HistoryEvent historyEvent, OrchestratorStartedEvent _)
     {
-        _currentUtcDateTime = historyEvent.Timestamp.ToDateTime();
-        
+        InitializeNewTurn(historyEvent.Timestamp.ToDateTime());
+    }
+
+    internal void InitializeNewTurn(DateTime timestamp)
+    {
+        _currentUtcDateTime = timestamp;
+
+        if (_turnInitialized)
+            return;
+
+        _turnInitialized = true;
+
         // Notify the tracker of the versioning data provided by the runtime for this turn
         _versionTracker.OnOrchestratorStarted();
+    }
+
+    internal void SetReplayState(bool isReplaying)
+    {
+        _isReplaying = isReplaying;
     }
 
     private void HandleActionCreated(HistoryEvent historyEvent)
@@ -590,9 +605,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     private void RemoveTaskExecutionMapping(int taskId)
     {
-        if (_taskIdToExecutionId.TryGetValue(taskId, out var executionId))
+        if (_taskIdToExecutionId.Remove(taskId, out var executionId))
         {
-            _taskIdToExecutionId.Remove(taskId);
             _executionIdToTaskId.Remove(executionId);
         }
     }

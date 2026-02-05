@@ -25,7 +25,7 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     /// <summary>
     /// Full patch evaluation sequence as recorded by history (duplicates allowed, ordered).
     /// </summary>
-    private readonly List<string> _historyPatchSequence = ListAllVersioningPatches(events);
+    private readonly List<string> _historyPatchSequence = ListLatestVersioningPatches(events);
     
     /// <summary>
     /// Cursor into _historyPatchSequence as the workflow code replays and evaluates patches.
@@ -52,7 +52,7 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
     public bool IncludeVersionInNextResponse => _includeVersionInNextResponse;
 
     /// <summary>
-    /// Aggregated, ordered patches extracted from history (with duplicates preserved).
+    /// Ordered patches extracted from history (with duplicates preserved).
     /// </summary>
     public IReadOnlyCollection<string> AggregatedPatchesOrdered => _historyPatchSequence;
 
@@ -78,49 +78,40 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
         if (this.IsStalled)
             return false;
 
+        var shouldRecord = !isReplaying;
+
         if (isReplaying)
         {
-            // Strict replay semantics:
+            // Strict replay semantics while history remains:
             // - patches must be evaluated in the same order as history
             // - duplicates must be evaluated the same number of times
-            if (_replayIndex >= _historyPatchSequence.Count)
+            if (_replayIndex < _historyPatchSequence.Count)
             {
-                Stall(
-                    $"Replay evaluated extra patch '{patchName}' but history is already fully consumed.");
-                return false;
-            }
+                var expected = _historyPatchSequence[_replayIndex];
+                if (!string.Equals(expected, patchName, StringComparison.Ordinal))
+                {
+                    Stall($"Patch replay mismatch. Expected '{expected}' at index {_replayIndex}, got '{patchName}'.");
+                    return false;
+                }
 
-            var expected = _historyPatchSequence[_replayIndex];
-            if (!string.Equals(expected, patchName, StringComparison.Ordinal))
+                _replayIndex++;
+                shouldRecord = false;
+            }
+            else
             {
-                Stall($"Patch replay mismatch. Expected '{expected}' at index {_replayIndex}, got '{patchName}'.");
-                return false;
+                // History patches have been fully consumed; treat later evaluations as non-replay.
+                shouldRecord = true;
             }
-
-            _replayIndex++;
-            return true;
         }
-
-        // Non-replay semantics: patch evaluations are treated as true and stamped (including duplicates).
-        _patchesThisTurn.Add(patchName);
-        _includeVersionInNextResponse = true;
-        return true;
-    }
-    
-    /// <summary>
-    /// Validates that replay evaluated all historical patches.
-    /// If not, the workflow should stall.
-    /// </summary>
-    public void ValidateReplayConsumedHistoryPatches()
-    {
-        if (this.IsStalled)
-            return;
-
-        if (_replayIndex < _historyPatchSequence.Count)
+        
+        if (shouldRecord)
         {
-            Stall(
-                $"Replay did not evaluate all historical patches. Consumed {_replayIndex} of {_historyPatchSequence.Count}.");
+            // Patch evaluations are treated as true and stamped (including duplicates).
+            _patchesThisTurn.Add(patchName);
+            _includeVersionInNextResponse = true;
         }
+
+        return true;
     }
 
     /// <summary>
@@ -143,19 +134,17 @@ internal sealed class WorkflowVersionTracker(List<HistoryEvent> events)
         };
     }
 
-    private static List<string> ListAllVersioningPatches(IReadOnlyList<HistoryEvent> events)
+    private static List<string> ListLatestVersioningPatches(IReadOnlyList<HistoryEvent> events)
     {
-        var result = new List<string>();
-
-        foreach (var ev in events)
+        for (var index = events.Count - 1; index >= 0; index--)
         {
-            if (ev.OrchestratorStarted?.Version is not null)
+            var version = events[index].OrchestratorStarted?.Version;
+            if (version is not null)
             {
-                // IMPORTANT: keep order + duplicates
-                result.AddRange(ev.OrchestratorStarted.Version.Patches);
+                return [..version.Patches];
             }
         }
 
-        return result;
+        return [];
     }
 }

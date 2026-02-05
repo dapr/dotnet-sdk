@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -110,7 +109,7 @@ internal sealed class WorkflowWorker(
             }
             
             // Create a new version tracker for this turn
-            var versionTracker = new WorkflowVersionTracker(allPastEvents);
+            var versionTracker = new WorkflowVersionTracker(allPastEvents.Concat(request.NewEvents).ToList());
 
             // Identify the workflow name from the now-complete history
             
@@ -154,6 +153,13 @@ internal sealed class WorkflowWorker(
                 ? allPastEvents[0].Timestamp.ToDateTime()
                 : DateTime.UtcNow;
 
+            var currentTurnStartedEvent = request.NewEvents.Reverse()
+                .FirstOrDefault(e => e.OrchestratorStarted != null)
+                ?? allPastEvents.LastOrDefault(e => e.OrchestratorStarted != null);
+
+            var currentTurnTimestamp = currentTurnStartedEvent?.Timestamp?.ToDateTime()
+                ?? currentUtcDateTime;
+
             // Initialize the context with the FULL history
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
                 _serializer, loggerFactory, versionTracker, appId);
@@ -162,6 +168,10 @@ internal sealed class WorkflowWorker(
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
+
+            // Initialize per-turn state before any workflow code runs.
+            context.InitializeNewTurn(currentTurnTimestamp);
+            context.SetReplayState(allPastEvents.Count > 0);
 
             // Execute the workflow
             // IMPORTANT: Orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
@@ -306,26 +316,6 @@ internal sealed class WorkflowWorker(
                 }
             };
         }
-    }
-    
-    /// <summary>
-    /// Retrieves all the versioning patches from the list of history events.
-    /// </summary>
-    /// <param name="events"></param>
-    /// <returns></returns>
-    private static List<string> ListAllVersioningPatches(List<HistoryEvent> events)
-    {
-        var result = new List<string>();
-        
-        foreach (var ev in events)
-        {
-            if (ev.OrchestratorStarted?.Version != null)
-            {
-                result.AddRange(ev.OrchestratorStarted.Version.Patches);
-            }
-        }
-
-        return result;
     }
 
     private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request, string completionToken)

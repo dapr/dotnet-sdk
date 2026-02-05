@@ -55,88 +55,88 @@ public sealed class PatchWorkflowVersioningE2ETests
         }
     }
 
-    // [Fact]
-    // public async Task Workflow_PatchVersioning_RestartWithReorderedPatches_Stalls()
-    // {
-    //     var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
-    //     var instanceId = Guid.NewGuid().ToString();
-    //
-    //     await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-    //     await environment.StartAsync();
-    //
-    //     var harness = new DaprHarnessBuilder(componentsDir)
-    //         .WithEnvironment(environment)
-    //         .BuildWorkflow();
-    //
-    //     Environment.SetEnvironmentVariable(ModeEnvVarName, "v1");
-    //
-    //     await using (var appV1 = await BuildAndStartWorkflowAppAsync(harness))
-    //     {
-    //         using var scope = appV1.CreateScope();
-    //         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-    //
-    //         await client.ScheduleNewWorkflowAsync(WorkflowName, instanceId, input: 5);
-    //
-    //         // Ensure the first turn executes and stamps history with patch sequence.
-    //         await Task.Delay(TimeSpan.FromSeconds(2));
-    //     }
-    //
-    //     // "Deploy" a reordered version: replay will evaluate patches in a different order -> stall.
-    //     Environment.SetEnvironmentVariable(ModeEnvVarName, "reordered");
-    //
-    //     await using (var appReordered = await BuildAndStartWorkflowAppAsync(harness))
-    //     {
-    //         using var scope = appReordered.CreateScope();
-    //         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-    //
-    //         await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
-    //         var result = await client.WaitForWorkflowCompletionAsync(instanceId);
-    //
-    //         Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
-    //     }
-    // }
-    //
-    // [Fact]
-    // public async Task Workflow_PatchVersioning_RestartWithPatchRemovedFromReplayPath_Stalls()
-    // {
-    //     var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
-    //     var instanceId = Guid.NewGuid().ToString();
-    //
-    //     await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-    //     await environment.StartAsync();
-    //
-    //     var harness = new DaprHarnessBuilder(componentsDir)
-    //         .WithEnvironment(environment)
-    //         .BuildWorkflow();
-    //
-    //     Environment.SetEnvironmentVariable(ModeEnvVarName, "v1");
-    //
-    //     await using (var appV1 = await BuildAndStartWorkflowAppAsync(harness))
-    //     {
-    //         using var scope = appV1.CreateScope();
-    //         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-    //
-    //         await client.ScheduleNewWorkflowAsync(WorkflowName, instanceId, input: 5);
-    //
-    //         // Ensure patches are evaluated and recorded.
-    //         await Task.Delay(TimeSpan.FromSeconds(2));
-    //     }
-    //
-    //     // "Deploy" a version that no longer evaluates the historical patch at all -> stall via
-    //     // ValidateReplayConsumedHistoryPatches().
-    //     Environment.SetEnvironmentVariable(ModeEnvVarName, "removed");
-    //
-    //     await using (var appRemoved = await BuildAndStartWorkflowAppAsync(harness))
-    //     {
-    //         using var scope = appRemoved.CreateScope();
-    //         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-    //
-    //         await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
-    //         var result = await client.WaitForWorkflowCompletionAsync(instanceId);
-    //
-    //         Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
-    //     }
-    // }
+    [Fact]
+    public async Task Workflow_PatchVersioning_RestartWithReorderedPatches_Stalls()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
+        var instanceId = Guid.NewGuid().ToString();
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+
+        Environment.SetEnvironmentVariable(ModeEnvVarName, "v1");
+
+        await using (var appV1 = await BuildAndStartWorkflowAppAsync(harness))
+        {
+            using var scope = appV1.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+            await client.ScheduleNewWorkflowAsync(WorkflowName, instanceId, input: 5);
+
+            // Ensure the first turn executes and stamps history with patch sequence.
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+
+        // "Deploy" a reordered version: replay will evaluate patches in a different order -> stall.
+        Environment.SetEnvironmentVariable(ModeEnvVarName, "reordered");
+
+        await using (var appReordered = await BuildAndStartWorkflowAppAsync(harness))
+        {
+            using var scope = appReordered.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+            await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
+            var result = await client.WaitForWorkflowCompletionAsync(instanceId);
+
+            Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
+        }
+    }
+
+    [Fact]
+    public async Task Workflow_PatchVersioning_RestartWithPatchRemovedFromReplayPath_Stalls()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
+        var instanceId = Guid.NewGuid().ToString();
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+
+        Environment.SetEnvironmentVariable(ModeEnvVarName, "v1");
+
+        await using (var appV1 = await BuildAndStartWorkflowAppAsync(harness))
+        {
+            using var scope = appV1.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+            await client.ScheduleNewWorkflowAsync(WorkflowName, instanceId, input: 5);
+
+            // Ensure patches are evaluated and recorded.
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+
+        // "Deploy" a version that no longer evaluates the historical patch at all -> stall via
+        // ValidateReplayConsumedHistoryPatches().
+        Environment.SetEnvironmentVariable(ModeEnvVarName, "removed");
+
+        await using (var appRemoved = await BuildAndStartWorkflowAppAsync(harness))
+        {
+            using var scope = appRemoved.CreateScope();
+            var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+            await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
+            var result = await client.WaitForWorkflowCompletionAsync(instanceId);
+
+            Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
+        }
+    }
     
     // [Fact]
     // public async Task Workflow_PatchVersioning_RestartWithDuplicateCountMismatch_Stalls()
