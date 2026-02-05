@@ -29,7 +29,13 @@ namespace Dapr.Workflow.Worker;
 /// <summary>
 /// Background service that processes workflow and activity work items from the Dapr sidecar.
 /// </summary>
-internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, IWorkflowsFactory workflowsFactory, ILoggerFactory loggerFactory, IWorkflowSerializer workflowSerializer, IServiceProvider serviceProvider, WorkflowRuntimeOptions options) : BackgroundService
+internal sealed class WorkflowWorker(
+    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
+    IWorkflowsFactory workflowsFactory, 
+    ILoggerFactory loggerFactory, 
+    IWorkflowSerializer workflowSerializer, 
+    IServiceProvider serviceProvider, 
+    WorkflowRuntimeOptions options) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
@@ -316,7 +322,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
-                Result = outputJson
+                Result = outputJson,
+                CompletionToken = completionToken
             };
         }
         catch (Exception ex)
@@ -327,6 +334,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
+                CompletionToken = completionToken,
                 FailureDetails = new()
                 {
                     ErrorType = ex.GetType().FullName ?? "Exception",
