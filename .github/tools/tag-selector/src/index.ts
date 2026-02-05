@@ -5,8 +5,8 @@ import { computeFromTags } from "./lib";
 async function run() {
     try {
         const token = core.getInput("github_token", { required: true});
-        const tagPrefix = core.getIndex("tag_prefix") || "";
-        const stableCount = parseInt(core.getInput("stable_count") || "2", 10);
+        const tagPrefix = core.getInput("tag_prefix") || "";
+        const stableCount = parseInt(core.getInput("stable_count") || "1", 10);
         const rcIdent = core.getInput("rc_identifier") || "rc";
         
         const ctx = github.context;

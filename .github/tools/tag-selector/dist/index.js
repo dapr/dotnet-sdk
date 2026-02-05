@@ -1,3 +1,4 @@
+"use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -21797,9 +21798,6 @@ function setFailed(message) {
 function error(message, properties = {}) {
   issueCommand("error", toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
-function warning(message, properties = {}) {
-  issueCommand("warning", toCommandProperties(properties), message instanceof Error ? message.toString() : message);
-}
 
 // node_modules/@actions/github/lib/context.js
 var import_fs2 = require("fs");
@@ -25426,7 +25424,7 @@ function getOctokit(token, options, ...additionalPlugins) {
   return new GitHubWithPlugins(getOctokitOptions(token, options));
 }
 
-// src/index.ts
+// src/lib.ts
 var import_semver = __toESM(require_semver2());
 function stripPrefix(tag, prefix) {
   if (!prefix)
@@ -25436,11 +25434,87 @@ function stripPrefix(tag, prefix) {
 function versionKey(major, minor) {
   return `${major}.${minor}`;
 }
+function computeFromTags(input) {
+  const tagPrefix = input.tagPrefix ?? "";
+  const stableCount = input.stableCount ?? 2;
+  const rcIdent = input.rcIdent ?? "rc";
+  const versions = [];
+  for (const t of input.tags) {
+    const raw = stripPrefix(t.replace(/^refs\/tags\//, ""), tagPrefix);
+    const cleaned = import_semver.default.valid(raw);
+    if (cleaned) versions.push(cleaned);
+  }
+  if (versions.length === 0) {
+    return {
+      matrix_json: []
+    };
+  }
+  const stable = versions.filter((v) => !import_semver.default.prerelease(v));
+  const prerelease = versions.filter((v) => !!import_semver.default.prerelease(v));
+  let stableMinor = "";
+  let stablePatches = [];
+  if (stable.length > 0) {
+    const stableSorted = [...stable].sort(import_semver.default.rcompare);
+    const newestStable = stableSorted[0];
+    const sMajor = import_semver.default.major(newestStable);
+    const sMinor = import_semver.default.minor(newestStable);
+    stableMinor = `${sMajor}.${sMinor}`;
+    stablePatches = stableSorted.filter((v) => import_semver.default.major(v) === sMajor && import_semver.default.minor(v) === sMinor).slice(0, stableCount);
+  }
+  const minorMap = /* @__PURE__ */ new Map();
+  for (const v of stable) {
+    const key = versionKey(import_semver.default.major(v), import_semver.default.minor(v));
+    const entry = minorMap.get(key) || {
+      hasStable: false,
+      rcVersions: [],
+      major: import_semver.default.major(v),
+      minor: import_semver.default.minor(v)
+    };
+    entry.hasStable = true;
+    minorMap.set(key, entry);
+  }
+  for (const v of prerelease) {
+    const pr = import_semver.default.prerelease(v) || [];
+    if (pr[0] === rcIdent) {
+      const key = versionKey(import_semver.default.major(v), import_semver.default.minor(v));
+      const entry = minorMap.get(key) || {
+        hasStable: false,
+        rcVersions: [],
+        major: import_semver.default.major(v),
+        minor: import_semver.default.minor(v)
+      };
+      entry.rcVersions.push(v);
+      minorMap.set(key, entry);
+    }
+  }
+  let rcMinor = "";
+  let latestRc = "";
+  const candidates = Array.from(minorMap.values()).filter(
+    (m) => !m.hasStable && m.rcVersions.length > 0
+  );
+  if (candidates.length > 0) {
+    candidates.sort(
+      (a, b) => a.major === b.major ? b.minor - a.minor : b.major - a.major
+    );
+    const newest = candidates[0];
+    rcMinor = `${newest.major}.${newest.minor}`;
+    latestRc = newest.rcVersions.sort(import_semver.default.rcompare)[0];
+  }
+  const matrix = [
+    ...latestRc ? [{ version: latestRc, channel: "rc" }] : [],
+    ...stablePatches.map((v) => ({ version: v, channel: "stable" }))
+  ];
+  return {
+    matrix_json: matrix
+  };
+}
+
+// src/index.ts
 async function run() {
   try {
     const token = getInput("github_token", { required: true });
-    const tagPrefix = (void 0)("tag_prefix") || "";
-    const stableCount = parseInt(getInput("stable_count") || "2", 10);
+    const tagPrefix = getInput("tag_prefix") || "";
+    const stableCount = parseInt(getInput("stable_count") || "1", 10);
     const rcIdent = getInput("rc_identifier") || "rc";
     const ctx = context2;
     const owner = getInput("owner") || cx.repo.owner;
@@ -25451,81 +25525,14 @@ async function run() {
       repo,
       per_page: 100
     });
-    const versions = [];
-    for (const t of tags) {
-      const raw = stripPrefix(t.name.replace(/^refs\/tags\//, ""), tagPrefix);
-      const cleaned = import_semver.default.valid(raw);
-      if (cleaned) {
-        versions.push(cleaned);
-      }
-    }
-    if (versions.length === 0) {
-      warning("No semver-valid tags found.");
-      setOutput("matrix_json", "[]");
-      return;
-    }
-    const stable = versions.filter((v) => !import_semver.default.prerelease(v));
-    const prerelease = versions.filter((v) => !!import_semver.default.prerelease(v));
-    let stableMinor = "";
-    let stablePatches = [];
-    if (stable.length > 0) {
-      const stableSorted = [...stable].sort(import_semver.default.rcompare);
-      const newestStable = stableSorted[0];
-      const sMajor = import_semver.default.major(newestStable);
-      const sMinor = import_semver.default.minor(newestStable);
-      stableMinor = `${sMajor}.${sMinor}`;
-      stablePatches = stableSorted.filter((v) => import_semver.default.major(v) === sMajor && import_semver.default.minor(v) === sMinor).slice(0, stableCount);
-    }
-    const minorMap = /* @__PURE__ */ new Map();
-    for (const v of stable) {
-      const key = versionKey(import_semver.default.major(v), import_semver.default.minor(v));
-      if (!minorMap.has(key)) {
-        minorMap.set(key, {
-          hasStable: true,
-          rcVersions: [],
-          major: import_semver.default.major(v),
-          minor: import_semver.default.minor(v)
-        });
-      } else {
-        minorMap.get(key).hasStable = true;
-      }
-    }
-    for (const v of prerelease) {
-      const pr = import_semver.default.prerelease(v) || [];
-      if (pr[0] === rcIdent) {
-        const key = versionKey(import_semver.default.major(v), import_semver.default.minor(v));
-        const entry = minorMap.get(key) || {
-          hasStable: false,
-          rcVersions: [],
-          major: import_semver.default.major(v),
-          minor: import_semver.default.minor(v)
-        };
-        entry.rcVersions.push(v);
-        minorMap.set(key, entry);
-      }
-    }
-    let rcMinor = "";
-    let latestRc = "";
-    if (minorMap.size > 0) {
-      const candidates = Array.from(minorMap.values()).filter(
-        (m) => !m.hasStable && m.rcVersions.length > 0
-      );
-      if (candidates.length > 0) {
-        candidates.sort((a, b) => {
-          if (a.major !== b.major) return b.major - a.major;
-          return b.minor - a.minor;
-        });
-        const newestMinor = candidates[0];
-        rcMinor = `${newestMinor.major}.${newestMinor.minor}`;
-        latestRc = newestMinor.rcVersions.sort(import_semver.default.rcompare)[0];
-      }
-    }
-    const matrix = [];
-    if (latestRc) matrix.push({ version: latestRc, channel: "rc" });
-    for (const v of stablePatches) {
-      matrix.push({ version: v, channel: "stable" });
-    }
-    setOutput("matrix_json", JSON.stringify(matrix));
+    const tagNames = tags.map((t) => t.name);
+    const result = computeFromTags({
+      tags: tagNames,
+      tagPrefix,
+      stableCount,
+      rcIdent
+    });
+    setOutput("matrix_json", JSON.stringify(result.matrix_json));
   } catch (err) {
     setFailed(err?.message ?? String(err));
   }
