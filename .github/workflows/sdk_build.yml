@@ -45,6 +45,7 @@ jobs:
         with:
           name: packages
           path: ${{ env.NUPKG_OUTDIR }}
+
   discover-integration-v2-tests:
     runs-on: ubuntu-latest
     outputs: 
@@ -55,23 +56,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-                
-          # Build a JSON array of { project, name } objects
+          
+          # Build a JSON array of { project, projectName } objects (compact, single line)
           PROJECTS_JSON=$(
             find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" -print0 \
-            | jq -Rs '
-              # Read NUL-delimited stream, split, drop trailing empty
-              split("\u0000")[:-1]
-              # Map each path to an object with "project" and "name" fields
-              | map({
-                  project: .,
-                  projectName:   (. | split("/") | last | sub("\\.csproj$"; ""))
-                })
+            | jq -Rs -c '
+                # Read NUL-delimited stream, split, drop trailing empty, produce compact JSON
+                split("\u0000")[:-1]
+                | map({
+                    project: .,
+                    projectName: (
+                      . 
+                      | gsub("\\\\"; "/")                # normalize \ to /
+                      | split("/") | last                # basename
+                      | sub("\\.csproj$"; "")            # strip extension
+                    )
+                  })
               '
-            )
-    
-            # Emit as a matrix with include
-            echo "matrix={\"include\":${PROJECTS_JSON}}" >> "$GITHUB_OUTPUT"
+          )
+          
+          # Emit as a matrix with include (single line, no extra spaces)
+          printf 'matrix=%s\n' "{\"include\":${PROJECTS_JSON}}" >> "$GITHUB_OUTPUT"
 
   discover-unit-test-projects:
     runs-on: ubuntu-latest
