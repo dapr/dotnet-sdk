@@ -77,8 +77,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: tools/tag-selector/package-log.json
-      - working-directory: tools/tag-selector
+          cache-dependency-path: ./.github/tools/tag-selector/package-log.json
+      - working-directory: ./.github/tools/tag-selector
         run: npm ci && npm test && npm run build
       - id: compute
         name: Run selector
@@ -88,7 +88,7 @@ jobs:
           INPUT_STABLE_COUNT: "1"
           INPUT_RC_IDENTIFIER: "rc"
         run: |
-          node tools/tag-selector/dist/index.js
+          node ./.github/tools/tag-selector/dist/index.js
   integration-tests-v2:
     name: Integration Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
     needs: [discover-integration-v2-tests, get-dapr-versions]
