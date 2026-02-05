@@ -114,7 +114,7 @@ jobs:
 
   compute-integration-matrix:
     runs-on: ubuntu-latest
-    needs: [discover-integration-v2-tests, get-dapr-versions]
+    needs: [ discover-integration-v2-tests, get-dapr-versions ]
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
     steps:
@@ -122,63 +122,84 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-  
-          # Inputs from previous jobs
-          projects='${{ needs.discover-integration-v2-tests.outputs.projects }}'
-          dapr='${{ needs.get-dapr-versions.outputs.matrix_json }}'
-  
-          # Static axes (as arrays of objects), matching your include mapping
+
+          # Pull upstream outputs (may be empty)
+          projects_raw='${{ needs.discover-integration-v2-tests.outputs.projects }}'
+          dapr_raw='${{ needs.get-dapr-versions.outputs.matrix_json }}'
+
+          # Default empty to valid JSON arrays to avoid null iteration
+          if [ -z "${projects_raw}" ] || [ "${projects_raw}" = "null" ]; then
+            projects_raw='[]'
+          fi
+          if [ -z "${dapr_raw}" ] || [ "${dapr_raw}" = "null" ]; then
+            dapr_raw='[]'
+          fi
+
+          # Static axes
           dotnets='[
             {"dotnet-version":"8.0", "display-name":".NET 8.0", "framework":"net8.0", "prefix":"net8", "install-version":"8.0.x"},
             {"dotnet-version":"9.0", "display-name":".NET 9.0", "framework":"net9.0", "prefix":"net9", "install-version":"9.0.x"},
             {"dotnet-version":"10.0", "display-name":".NET 10.0", "framework":"net10.0", "prefix":"net10", "install-version":"10.0.x"}
           ]'
-  
-          os='["ubuntu-latest"]'
-  
-          # Normalize dapr to an array of objects with a "version" field, depending on your selector’s shape.
-          # If your tag-selector already outputs something like:
-          #   [{"version":"v1.17.0-rc.2"}, {"version":"v1.16.5"}]
-          # then this pass-through works. Otherwise, adapt the mapping below.
-          dapr_array=$(jq -c '
-            if type=="array" then .
-            elif type=="object" and has("include") then .include
-            else .
-            end
-          ' <<< "$dapr")
-  
-          # Build full cross product into matrix.include
-          matrix_json=$(
-            jq -c --argjson projects "$projects" \
-                  --argjson dotnets "$dotnets" \
-                  --argjson oss "$os" \
-                  --argjson dapr "$dapr_array" '
-              [
-                # Cartesian product
-                (.projects[] as $p
-                 | .dotnets[] as $d
-                 | .oss[] as $o
-                 | .dapr[] as $dv
-                 | {
-                     # from discovery
-                     project: $p.project,
-                     projectName: $p.projectName,
-                     # from dotnet axis
-                     "dotnet-version": $d["dotnet-version"],
-                     "display-name": $d["display-name"],
-                     framework: $d.framework,
-                     prefix: $d.prefix,
-                     "install-version": $d["install-version"],
-                     # from OS axis
-                     os: $o,
-                     # from dapr selector; adjust "version" path if needed
-                     "dapr-runtime-versions": $dv
-                   }
-                )
-              ] | { include: . }
-            ' <<< "{}"
+          oss='["ubuntu-latest"]'
+
+          # Normalize dapr to an array:
+          # - if it's already an array, use as-is
+          # - if it's an object with "include", use .include
+          # - if it's a single object, wrap in an array
+          dapr_array=$(
+            jq -cn --argjson d "$dapr_raw" '
+              if ($d|type) == "array" then
+                $d
+              elif ($d|type) == "object" and ($d|has("include")) then
+                $d.include
+              elif ($d|type) == "object" then
+                [$d]
+              else
+                []
+              end
+            '
           )
-  
+
+          # Sanity logs (optional)
+          echo "Projects: $projects_raw"
+          echo "Dapr (normalized): $dapr_array"
+
+          # Build the full cross-product into { include: [...] }
+          matrix_json=$(
+            jq -cn \
+              --argjson projects "$projects_raw" \
+              --argjson dotnets "$dotnets" \
+              --argjson oss "$oss" \
+              --argjson dapr "$dapr_array" '
+                [
+                  $projects[] as $p
+                  | $dotnets[] as $d
+                  | $oss[] as $o
+                  | $dapr[] as $dv
+                  | {
+                      # from discovery
+                      project: $p.project,
+                      projectName: $p.projectName,
+
+                      # from dotnet axis
+                      "dotnet-version": $d["dotnet-version"],
+                      "display-name":   $d["display-name"],
+                      framework:        $d.framework,
+                      prefix:           $d.prefix,
+                      "install-version":$d["install-version"],
+
+                      # from OS axis
+                      os: $o,
+
+                      # from Dapr selector (assumes objects like { "version": "v1.17.0-rc.2", ... })
+                      "dapr-runtime-versions": $dv
+                    }
+                ]
+                | { include: . }
+              '
+          )
+
           printf 'matrix=%s\n' "$matrix_json" >> "$GITHUB_OUTPUT"
 
   integration-tests-v2:
