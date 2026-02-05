@@ -43,6 +43,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly List<HistoryEvent> _externalEventBuffer = [];
     private readonly Dictionary<string, Queue<TaskCompletionSource<HistoryEvent>>> _externalEventSources = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, TaskCompletionSource<HistoryEvent>> _openTasks = [];
+    private readonly Dictionary<int, string> _taskIdToExecutionId = [];
+    private readonly Dictionary<string, int> _executionIdToTaskId = new(StringComparer.Ordinal);
     private readonly SortedDictionary<int, OrchestratorAction> _pendingActions = [];
     private readonly IWorkflowSerializer _workflowSerializer;
     private readonly ILogger<WorkflowOrchestrationContext> _logger;
@@ -56,6 +58,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// Key is taskedScheduledId/timerId/etc. as provided by the history event.
     /// </summary>
     private readonly Dictionary<int, HistoryEvent> _unmatchedCompletions = [];
+    private readonly Dictionary<string, HistoryEvent> _unmatchedCompletionsByExecutionId = new(StringComparer.Ordinal);
 
 
     // Parse instance ID as GUID or generate one
@@ -119,11 +122,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var taskId = _sequenceNumber++;
+        var taskExecutionId = CreateTaskExecutionId(taskId, name);
 
         var router = CreateRouter(options?.TargetAppId);
         
         // If the completion arrived before we registered the task, consume it now
-        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
+        if (_unmatchedCompletionsByExecutionId.Remove(taskExecutionId, out var earlyCompletion) ||
+            _unmatchedCompletions.Remove(taskId, out earlyCompletion))
         {
             _logger.LogDebug("Found early completion in buffer for task {TaskId} ({ActivityName})", taskId, name);
             return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
@@ -136,13 +141,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             {
                 Name = name, 
                 Input = _workflowSerializer.Serialize(input),
-                Router = router
+                Router = router,
+                TaskExecutionId = taskExecutionId
             },
             Router = router
         });
 
         var tcs = new TaskCompletionSource<HistoryEvent>();
         _openTasks.Add(taskId, tcs);
+        _taskIdToExecutionId[taskId] = taskExecutionId;
+        _executionIdToTaskId[taskExecutionId] = taskId;
         
         var historyEvent = await tcs.Task;
         return await HandleHistoryMatch<T>(name, historyEvent, taskId);
@@ -457,6 +465,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             tcs.SetResult(historyEvent);
             _openTasks.Remove(taskId);
+            RemoveTaskExecutionMapping(taskId);
+            return;
+        }
+
+        if (TryGetTaskExecutionId(historyEvent, out var taskExecutionId) &&
+            _executionIdToTaskId.TryGetValue(taskExecutionId, out var executionTaskId) &&
+            _openTasks.TryGetValue(executionTaskId, out var executionTcs))
+        {
+            executionTcs.SetResult(historyEvent);
+            _openTasks.Remove(executionTaskId);
+            RemoveTaskExecutionMapping(executionTaskId);
             return;
         }
         
@@ -471,6 +490,21 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         
         // Buffer the completion so the next replay pass can consume it when the workflow schedules/await the task.
         // Ignore duplicates (first completion wins)
+        if (TryGetTaskExecutionId(historyEvent, out var unmatchedExecutionId))
+        {
+            if (!_unmatchedCompletionsByExecutionId.TryAdd(unmatchedExecutionId, historyEvent))
+            {
+                _logger.LogWarning(
+                    "Received completion for unknown taskId {TaskId} in instance {InstanceId}. OpenTasks=[{OpenTasks}] EventType={EventType}",
+                    taskId,
+                    InstanceId,
+                    string.Join(",", _openTasks.Keys),
+                    historyEvent.EventTypeCase);
+            }
+
+            return;
+        }
+
         if (!_unmatchedCompletions.TryAdd(taskId, historyEvent))
         {
             // If we get here, the runtime delivered a completion for an unknown task id.
@@ -534,6 +568,33 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         _logger.LogActivityFailedFromHistory(activityName, InstanceId);
         throw CreateTaskFailedException(failed);
+    }
+
+    private string CreateTaskExecutionId(int taskId, string name)
+    {
+        var seed = $"{InstanceId}|activity|{taskId}|{name}";
+        return CreateGuidFromName(_instanceGuid, Encoding.UTF8.GetBytes(seed)).ToString("N");
+    }
+
+    private static bool TryGetTaskExecutionId(HistoryEvent historyEvent, out string taskExecutionId)
+    {
+        taskExecutionId = historyEvent switch
+        {
+            { TaskCompleted: { } completed } => completed.TaskExecutionId,
+            { TaskFailed: { } failed } => failed.TaskExecutionId,
+            _ => string.Empty
+        };
+
+        return !string.IsNullOrWhiteSpace(taskExecutionId);
+    }
+
+    private void RemoveTaskExecutionMapping(int taskId)
+    {
+        if (_taskIdToExecutionId.TryGetValue(taskId, out var executionId))
+        {
+            _taskIdToExecutionId.Remove(taskId);
+            _executionIdToTaskId.Remove(executionId);
+        }
     }
 
     /// <summary>

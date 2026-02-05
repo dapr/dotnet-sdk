@@ -13,12 +13,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
@@ -31,12 +33,18 @@ namespace Dapr.Workflow.Worker;
 /// <summary>
 /// Background service that processes workflow and activity work items from the Dapr sidecar.
 /// </summary>
-internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, IWorkflowsFactory workflowsFactory, ILoggerFactory loggerFactory, IWorkflowSerializer workflowSerializer, IServiceProvider serviceProvider, WorkflowRuntimeOptions options) : BackgroundService
+internal sealed class WorkflowWorker(
+    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
+    IWorkflowsFactory workflowsFactory, 
+    ILoggerFactory loggerFactory, 
+    IWorkflowSerializer workflowSerializer, 
+    IServiceProvider serviceProvider, 
+    WorkflowRuntimeOptions options) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-    private readonly ILogger<WorkflowWorker> _logger = loggerFactory?.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+    private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
     
@@ -68,7 +76,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         }
     }
 
-    private async Task<OrchestratorResponse> HandleOrchestratorResponseAsync(OrchestratorRequest request)
+    private async Task<OrchestratorResponse> HandleOrchestratorResponseAsync(OrchestratorRequest request, string completionToken)
     {
         _logger.LogWorkerWorkflowHandleOrchestratorRequestStart(request.InstanceId);
 
@@ -76,9 +84,9 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         {
             // Create a scope for DI
             await using var scope = _serviceProvider.CreateAsyncScope();
-            
-            // We must collect ALL past events, including those from the stream, if required.
-            // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale.
+
+            // We must collect ALL past events, including those from the stream if required
+            // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale
             var allPastEvents = request.PastEvents.ToList();
 
             // Extract the following values from the ExecutionStartedEvent in the history
@@ -156,58 +164,26 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
-            
-            // Explicit replay/execute boundary:
-            // Some callers/tests may include the current-turn OrchestratorStarted (and subsequent events) inside
-            // PastEvents. To make the boundary explicit and determinisitc, we split PastEvents at the last
-            // OrchestratorStarted:
-            // - events before it are replay history
-            // - the OrchestratorStarted and everything after it are treated as current turn events
-            var lastOrchestratorStartedIndex = allPastEvents.FindLastIndex(e => e.OrchestratorStarted != null);
-            List<HistoryEvent> replayEvents;
-            List<HistoryEvent> turnEvents;
 
-            if (lastOrchestratorStartedIndex >= 0)
-            {
-                replayEvents = allPastEvents.Take(lastOrchestratorStartedIndex).ToList();
-                turnEvents = allPastEvents.Skip(lastOrchestratorStartedIndex).ToList();
-            }
-            else
-            {
-                replayEvents = allPastEvents;
-                turnEvents = [];
-            }
-            
-            // Replay history phase
-            // This allows replay-safe logging and patch determinism checks to behave consistently 
-            if (replayEvents.Count > 0)
-            {
-                context.ProcessEvents(replayEvents, isReplaying: true);
-            }
-            
             // Execute the workflow
             // IMPORTANT: Orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
             // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
             // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
-            
-            // Note that at this point, the context may still be "replaying". Once we apply the new events below, we
-            // will explicitly switch to non-replay.
             var runTask = workflow!.RunAsync(context, input);
-            
-            // Apply current-turn events as non-replay, plus any NewEvents supplied on the request
-            // Processing new events represents the "live" portion of the turn. This is the boundary where the
-            // workflow should stop considering itself in replay.
-            if (turnEvents.Count > 0)
+
+            // Replay the old history to rebuild the local state of the orchestration.
+            if (allPastEvents.Count > 0)
             {
-                context.ProcessEvents(turnEvents, isReplaying: false);
+                context.ProcessEvents(allPastEvents, true);
             }
 
+            // Play the newly arrived events to determine the next action to take.
             if (request.NewEvents.Count > 0)
             {
-                context.ProcessEvents(request.NewEvents, isReplaying: false);
+                context.ProcessEvents(request.NewEvents, false);
             }
-            
+
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)
             {
@@ -230,7 +206,11 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             }
             
             // Get all pending actions from the context
-            var response = new OrchestratorResponse { InstanceId = request.InstanceId };
+            var response = new OrchestratorResponse
+            {
+                InstanceId = request.InstanceId,
+                CompletionToken = completionToken
+            };
             
             // Stamp the version info if new patches were encountered this turn
             if (versionTracker.IncludeVersionInNextResponse)
@@ -291,6 +271,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                         OrchestrationStatus = OrchestrationStatus.Failed,
                         FailureDetails = new()
                         {
+                            IsNonRetriable = true,
                             ErrorType = ex.GetType().FullName ?? "Exception",
                             ErrorMessage = ex.Message,
                             StackTrace = ex.StackTrace ?? string.Empty
@@ -328,7 +309,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             };
         }
     }
-
+    
     /// <summary>
     /// Retrieves all the versioning patches from the list of history events.
     /// </summary>
@@ -349,7 +330,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         return result;
     }
 
-    private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request)
+    private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request, string completionToken)
     {
         _logger.LogWorkerWorkflowHandleActivityRequestStart(request.Name, request.OrchestrationInstance?.InstanceId, request.TaskId);
 
@@ -368,6 +349,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 {
                     InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                     TaskId = request.TaskId,
+                    CompletionToken = completionToken,
                     FailureDetails = new()
                     {
                         ErrorType = "ActivityNotFoundException",
@@ -406,7 +388,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
-                Result = outputJson
+                Result = outputJson,
+                CompletionToken = completionToken
             };
         }
         catch (Exception ex)
@@ -417,6 +400,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
+                CompletionToken = completionToken,
                 FailureDetails = new()
                 {
                     ErrorType = ex.GetType().FullName ?? "Exception",

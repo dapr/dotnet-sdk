@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,9 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
@@ -19,28 +21,27 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-public sealed class TaskExecutionKeyTests
+public sealed class ActivityCompletionAcknowledgementTests
 {
     [Fact]
-    public async Task ActivityContext_ShouldContainTaskExecutionKey()
+    public async Task ActivityCompletion_ShouldNotBeRetried_WhenAcknowledged()
     {
+        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
-        
+
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
-        
-        var harness = new DaprHarnessBuilder(componentsDir)
-            .WithEnvironment(environment)
-            .BuildWorkflow();
+
+        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
                 builder.Services.AddDaprWorkflowBuilder(
                     configureRuntime: opt =>
                     {
-                        opt.RegisterWorkflow<GetTaskExecutionKeyWorkflow>();
-                        opt.RegisterActivity<GetTaskExecutionKeyActivity>();
+                        opt.RegisterWorkflow<SingleActivityWorkflow>();
+                        opt.RegisterActivity<CountingActivity>();
                     },
                     configureClient: (sp, clientBuilder) =>
                     {
@@ -52,39 +53,40 @@ public sealed class TaskExecutionKeyTests
             })
             .BuildAndStartAsync();
 
-        // Clean test logic
+        CountingActivity.Reset(workflowInstanceId);
+
         using var scope = testApp.CreateScope();
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-        
-        // Start the workflow
-        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(GetTaskExecutionKeyWorkflow), workflowInstanceId, "start");
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(SingleActivityWorkflow), workflowInstanceId, "start");
         var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
-        
-        // Retrieve the task execution key returned by the activity
-        var taskExecutionKey = result.ReadOutputAs<string>();
-        
-        // Assert that the TaskExecutionKey is present
-        Assert.False(string.IsNullOrWhiteSpace(taskExecutionKey), "TaskExecutionKey should not be null or empty.");
+        var executionCount = result.ReadOutputAs<int>();
+
+        Assert.Equal(1, executionCount);
+        Assert.Equal(1, CountingActivity.GetCount(workflowInstanceId));
     }
 
-    private sealed class GetTaskExecutionKeyActivity : WorkflowActivity<string, string>
+    private sealed class CountingActivity : WorkflowActivity<string, int>
     {
-        public override Task<string> RunAsync(WorkflowActivityContext context, string input)
+        private static readonly ConcurrentDictionary<string, int> Counts = new(StringComparer.Ordinal);
+
+        public override Task<int> RunAsync(WorkflowActivityContext context, string input)
         {
-            // Verify we can access the TaskExecutionKey from the context
-            return Task.FromResult(context.TaskExecutionKey);
+            var count = Counts.AddOrUpdate(context.InstanceId, _ => 1, (_, current) => current + 1);
+            return Task.FromResult(count);
         }
+
+        public static void Reset(string instanceId) => Counts.TryRemove(instanceId, out _);
+
+        public static int GetCount(string instanceId) =>
+            Counts.TryGetValue(instanceId, out var count) ? count : 0;
     }
 
-    private sealed class GetTaskExecutionKeyWorkflow : Workflow<string, string>
+    private sealed class SingleActivityWorkflow : Workflow<string, int>
     {
-        public override async Task<string> RunAsync(WorkflowContext context, string input)
-        {
-            // Call the activity and return its result (the TaskExecutionKey)
-            var result = await context.CallActivityAsync<string>(nameof(GetTaskExecutionKeyActivity), input);
-            return result;
-        }
+        public override Task<int> RunAsync(WorkflowContext context, string input) =>
+            context.CallActivityAsync<int>(nameof(CountingActivity), input);
     }
 }

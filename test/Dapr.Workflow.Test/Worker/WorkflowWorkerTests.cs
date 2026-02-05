@@ -1187,6 +1187,8 @@ public class WorkflowWorkerTests
         Assert.Equal(string.Empty, response.Result);
     }
     
+    private const string CompletionTokenValue = "abc123";
+    
     private static async Task InvokeExecuteAsync(WorkflowWorker worker, CancellationToken token)
     {
         var method = typeof(WorkflowWorker).GetMethod("ExecuteAsync", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -1201,7 +1203,7 @@ public class WorkflowWorkerTests
         var method = typeof(WorkflowWorker).GetMethod("HandleOrchestratorResponseAsync", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
-        var task = (Task<OrchestratorResponse>)method!.Invoke(worker, [request])!;
+        var task = (Task<OrchestratorResponse>)method!.Invoke(worker, [request, CompletionTokenValue])!;
         return await task;
     }
 
@@ -1210,7 +1212,7 @@ public class WorkflowWorkerTests
         var method = typeof(WorkflowWorker).GetMethod("HandleActivityResponseAsync", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
-        var task = (Task<ActivityResponse>)method!.Invoke(worker, [request])!;
+        var task = (Task<ActivityResponse>)method!.Invoke(worker, [request, CompletionTokenValue])!;
         return await task;
     }
 
