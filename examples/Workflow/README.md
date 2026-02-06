@@ -35,16 +35,16 @@ The tests also verify that outputs of the workflow.
 ## Running the console app example
 
 To run the workflow web app locally, two separate terminal windows are required.
-In the first terminal window, from the `WorkflowConsoleApp` directory, run the following command to start the program itself:
-
-```sh
-dotnet run
-```
-
-Next, in a separate terminal window, start the dapr sidecar:
+In the first terminal window, start the dapr sidecar:
 
 ```sh
 dapr run --app-id wfapp --dapr-grpc-port 50001 --dapr-http-port 3500
+```
+
+Next, in a seperate terminal window, from the `WorkflowConsoleApp` directory, run the following command to start the program itself:
+
+```sh
+dotnet run
 ```
 
 Dapr listens for HTTP requests at `http://localhost:3500`.
