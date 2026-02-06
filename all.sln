@@ -229,6 +229,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Distri
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Abstractions.Test", "test\Dapr.Workflow.Abstractions.Test\Dapr.Workflow.Abstractions.Test.csproj", "{38AAD849-B59C-4011-B309-3E9F291E9B9F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Testcontainers.Xunit", "src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj", "{2D6EB9E0-C5BF-4BA4-B69F-0D2B5A0E36D5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -603,6 +605,10 @@ Global
 		{38AAD849-B59C-4011-B309-3E9F291E9B9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{38AAD849-B59C-4011-B309-3E9F291E9B9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{38AAD849-B59C-4011-B309-3E9F291E9B9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D6EB9E0-C5BF-4BA4-B69F-0D2B5A0E36D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D6EB9E0-C5BF-4BA4-B69F-0D2B5A0E36D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D6EB9E0-C5BF-4BA4-B69F-0D2B5A0E36D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D6EB9E0-C5BF-4BA4-B69F-0D2B5A0E36D5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -714,6 +720,7 @@ Global
 		{5A93F96B-4D0E-479D-B540-29678A0998FA} = {0AF0FE8D-C234-4F04-8514-32206ACE01BD}
 		{E958E875-8DDE-4B25-BE3A-C0760EC89376} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
 		{38AAD849-B59C-4011-B309-3E9F291E9B9F} = {0AF0FE8D-C234-4F04-8514-32206ACE01BD}
+		{2D6EB9E0-C5BF-4BA4-B69F-0D2B5A0E36D5} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
