@@ -13,7 +13,6 @@
 
 using System.Collections.Concurrent;
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
@@ -26,14 +25,13 @@ public sealed class ActivityCompletionAcknowledgementTests
     [Fact]
     public async Task ActivityCompletion_ShouldNotBeRetried_WhenAcknowledged()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

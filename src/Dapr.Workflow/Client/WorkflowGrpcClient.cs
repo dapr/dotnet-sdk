@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Workflow.Serialization;
@@ -106,8 +107,7 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
     }
 
     /// <inheritdoc />
-    public override async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(string instanceId, bool getInputsAndOutputs = true,
-        CancellationToken cancellationToken = default)
+    public override async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(string instanceId, bool getInputsAndOutputs = true, CancellationToken cancellationToken = default)
     {
         while (true)
         {
@@ -223,6 +223,7 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
     private string SerializeToJson(object? obj) => obj == null ? string.Empty : serializer.Serialize(obj);
 
     private static bool IsTerminalStatus(WorkflowRuntimeStatus status) =>
-        status is WorkflowRuntimeStatus.Completed or WorkflowRuntimeStatus.Failed
+        status is WorkflowRuntimeStatus.Completed 
+            or WorkflowRuntimeStatus.Failed
             or WorkflowRuntimeStatus.Terminated;
 }

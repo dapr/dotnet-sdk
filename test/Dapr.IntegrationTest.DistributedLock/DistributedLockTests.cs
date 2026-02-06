@@ -2,7 +2,6 @@
 using Dapr.DistributedLock.Extensions;
 using Dapr.DistributedLock.Models;
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +13,6 @@ public sealed class DistributedLockTests
     [Fact]
     public async Task ShouldAcquireAndReleaseLock()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("distributedlock-components");
         var resourceId = $"resource-{Guid.NewGuid():N}";
         var owner = $"owner-{Guid.NewGuid():N}";
@@ -22,7 +20,7 @@ public sealed class DistributedLockTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildDistributedLock(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir).BuildDistributedLock();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -52,7 +50,6 @@ public sealed class DistributedLockTests
     [Fact]
     public async Task ShouldEnforceExclusivityAndReturnExpectedUnlockStatuses()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("distributedlock-components");
         var resourceId = $"resource-{Guid.NewGuid():N}";
         var owner1 = $"owner-{Guid.NewGuid():N}";
@@ -61,7 +58,7 @@ public sealed class DistributedLockTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildDistributedLock(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir).BuildDistributedLock();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -104,7 +101,6 @@ public sealed class DistributedLockTests
     [Fact]
     public async Task ShouldAllowAcquireAfterExpiry()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("distributedlock-components");
         var resourceId = $"resource-{Guid.NewGuid():N}";
         var owner1 = $"owner-{Guid.NewGuid():N}";
@@ -113,7 +109,7 @@ public sealed class DistributedLockTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildDistributedLock(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir).BuildDistributedLock();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

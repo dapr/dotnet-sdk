@@ -30,7 +30,6 @@ public sealed class JobPayloadTests
     [Fact]
     public async Task ShouldHandleEmptyPayload()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"empty-payload-job-{Guid.NewGuid():N}";
 
@@ -38,8 +37,10 @@ public sealed class JobPayloadTests
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
-        
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -79,7 +80,6 @@ public sealed class JobPayloadTests
     [Fact]
     public async Task ShouldHandleJsonPayload()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"json-payload-job-{Guid.NewGuid():N}";
 
@@ -87,8 +87,10 @@ public sealed class JobPayloadTests
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
-        
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -189,7 +191,6 @@ public sealed class JobPayloadTests
     [Fact]
     public async Task ShouldHandleBinaryPayload()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"binary-payload-job-{Guid.NewGuid():N}";
 
@@ -198,7 +199,9 @@ public sealed class JobPayloadTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

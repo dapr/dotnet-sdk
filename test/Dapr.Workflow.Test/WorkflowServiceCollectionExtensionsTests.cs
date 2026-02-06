@@ -278,6 +278,7 @@ public class WorkflowServiceCollectionExtensionsTests
         public override string InstanceId => "i";
         public override DateTime CurrentUtcDateTime => DateTime.UtcNow;
         public override bool IsReplaying => false;
+        public override bool IsPatched(string patchName) => true;
 
         public override Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null) => throw new NotSupportedException();
         public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken) => throw new NotSupportedException();
