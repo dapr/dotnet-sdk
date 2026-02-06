@@ -13,7 +13,6 @@
 
 using System.Collections.Concurrent;
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
@@ -28,7 +27,6 @@ public sealed class ActivityCompletionLoadTests
     public async Task ActivityCompletions_ShouldBeAcknowledged_UnderLoad()
     {
         const int activityCount = 50;
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         var loggerProvider = new InMemoryLoggerProvider();
@@ -36,7 +34,7 @@ public sealed class ActivityCompletionLoadTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

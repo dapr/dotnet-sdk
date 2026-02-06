@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,7 +44,7 @@ internal sealed class WorkflowWorker(
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
-
+    
     private GrpcProtocolHandler? _protocolHandler;
 
     /// <summary>
@@ -106,9 +107,15 @@ internal sealed class WorkflowWorker(
                     allPastEvents.AddRange(chunk);
                 }
             }
+            
+            // Create a new version tracker for this turn
+            var versionTracker = new WorkflowVersionTracker(allPastEvents);
 
             // Identify the workflow name from the now-complete history
-            foreach (var e in allPastEvents.Concat(request.NewEvents))
+            
+            // Process in reverse so this finds the most recent ExecutionStarted event instead of processing
+            // such an event handled by another app.
+            foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
             {
                 if (e.ExecutionStarted != null)
                 {
@@ -146,26 +153,64 @@ internal sealed class WorkflowWorker(
                 ? allPastEvents[0].Timestamp.ToDateTime()
                 : DateTime.UtcNow;
 
+            var currentTurnStartedEvent = request.NewEvents.Reverse()
+                .FirstOrDefault(e => e.OrchestratorStarted != null);
+
+            var currentTurnTimestamp = currentTurnStartedEvent?.Timestamp?.ToDateTime()
+                ?? currentUtcDateTime;
+
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory, appId);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
+                _serializer, loggerFactory, versionTracker, appId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
 
+            // Initialize per-turn state before any workflow code runs.
+            context.InitializeNewTurn(currentTurnTimestamp);
+            context.SetReplayState(allPastEvents.Count > 0);
+
             // Execute the workflow
-            // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
+            // IMPORTANT: Orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
             // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
             // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
             var runTask = workflow!.RunAsync(context, input);
 
             // Replay the old history to rebuild the local state of the orchestration.
-            context.ProcessEvents(allPastEvents, true);
+            if (allPastEvents.Count > 0)
+            {
+                context.ProcessEvents(allPastEvents, true);
+            }
 
             // Play the newly arrived events to determine the next action to take.
-            context.ProcessEvents(request.NewEvents, false);
+            if (request.NewEvents.Count > 0)
+            {
+                context.ProcessEvents(request.NewEvents, false);
+            }
+
+            // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
+            if (versionTracker.IsStalled)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Stalled,
+                                Details = versionTracker.StalledEvent?.Description ??
+                                          "Workflow stalled due to patch mismatch."
+                            }
+                        }
+                    }
+                };
+            }
             
             // Get all pending actions from the context
             var response = new OrchestratorResponse
@@ -173,6 +218,12 @@ internal sealed class WorkflowWorker(
                 InstanceId = request.InstanceId,
                 CompletionToken = completionToken
             };
+            
+            // Stamp the version info if new patches were encountered this turn
+            if (versionTracker.IncludeVersionInNextResponse)
+            {
+                response.Version = versionTracker.BuildResponseVersion(workflowName);
+            }
 
             // Add all actions that were scheduled during workflow execution
             response.Actions.AddRange(context.PendingActions);
@@ -182,7 +233,8 @@ internal sealed class WorkflowWorker(
                 response.CustomStatus = _serializer.Serialize(context.CustomStatus);
 
             // If the workflow issued ContinueAsNew, it already queued a completion action; just return it.
-            if (context.PendingActions.Any(a => a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
+            if (context.PendingActions.Any(a => 
+                    a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
                 return response;
@@ -190,10 +242,12 @@ internal sealed class WorkflowWorker(
 
             if (!runTask.IsCompleted)
             {
-                _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, context.PendingActions.Count);
+                _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, 
+                    context.PendingActions.Count);
 
-                if (response.Actions.Count == 0 && !context.PendingActions.Any()) 
+                if (response.Actions.Count == 0 && context.PendingActions.Count == 0) 
                     _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
+                
                 return response;
             }
 
@@ -203,7 +257,6 @@ internal sealed class WorkflowWorker(
                 // The workflow completed synchronously (either on replay or it had nothing to await).
                 // Observe exceptions if any, otherwise serialize the output and complete the orchestration.
                 var output = await runTask.ConfigureAwait(false);
-
                 var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
 
                 response.Actions.Add(new OrchestratorAction
