@@ -1,6 +1,7 @@
 ﻿using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +15,7 @@ public sealed class PatchWorkflowVersioningE2ETests
     private const string SimpleWorkflowName = nameof(SimplePatchProbeWorkflow);
     private const string ExternalEventName = "go";
 
-    [Fact(Skip = "Runtime currently stalls even with same patch sequence; enable once fixed in runtime.")]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task Workflow_PatchVersioning_RestartWithSamePatchSequence_Completes()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
@@ -52,7 +53,7 @@ public sealed class PatchWorkflowVersioningE2ETests
         }
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task Workflow_PatchVersioning_RestartWithReorderedPatches_Stalls()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
@@ -93,7 +94,7 @@ public sealed class PatchWorkflowVersioningE2ETests
         }
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task Workflow_PatchVersioning_RestartWithPatchRemovedFromReplayPath_Stalls()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
@@ -135,7 +136,7 @@ public sealed class PatchWorkflowVersioningE2ETests
         }
     }
     
-    // [Fact]
+    // [MinimumDaprRuntimeFact("1.17.0")]
     // public async Task Workflow_PatchVersioning_RestartWithDuplicateCountMismatch_Stalls()
     // {
     //     var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
@@ -260,3 +261,4 @@ public sealed class PatchWorkflowVersioningE2ETests
         }
     }
 }
+

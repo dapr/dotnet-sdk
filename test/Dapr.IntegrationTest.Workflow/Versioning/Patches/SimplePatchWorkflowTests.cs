@@ -1,5 +1,6 @@
-﻿using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,7 +9,7 @@ namespace Dapr.IntegrationTest.Workflow.Versioning.Patches;
 
 public sealed class SimplePatchWorkflowTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task Workflow_PatchVersioning_CompleteWithPatchTaken_NoActivities()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("patch-versioning");
@@ -56,3 +57,4 @@ public sealed class SimplePatchWorkflowTests
         }
     }
 }
+

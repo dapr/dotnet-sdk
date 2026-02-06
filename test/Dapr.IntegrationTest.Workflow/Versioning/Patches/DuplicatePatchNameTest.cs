@@ -1,5 +1,6 @@
 ﻿using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,7 +9,7 @@ namespace Dapr.IntegrationTest.Workflow.Versioning.Patches;
 
 public sealed class DuplicatePatchNameTest
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task Workflow_PatchVersioning_CompleteWithDuplicatePathName_WithActivities()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory(nameof(Workflow_PatchVersioning_CompleteWithDuplicatePathName_WithActivities));
@@ -95,3 +96,4 @@ public sealed class DuplicatePatchNameTest
         }
     }
 }
+
