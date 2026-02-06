@@ -44,7 +44,7 @@ dotnet run
 Next, in a separate terminal window, start the dapr sidecar:
 
 ```sh
-dapr run --app-id wfapp --dapr-grpc-port 4001 --dapr-http-port 3500
+dapr run --app-id wfapp --dapr-grpc-port 50001 --dapr-http-port 3500
 ```
 
 Dapr listens for HTTP requests at `http://localhost:3500`.
