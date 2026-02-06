@@ -88,7 +88,7 @@ public sealed class PatchWorkflowVersioningE2ETests
             var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
             await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
-            var result = await client.WaitForWorkflowCompletionAsync(instanceId);
+            var result = await client.WaitForWorkflowCompletionOrStalledAsync(instanceId);
 
             Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
         }
@@ -130,7 +130,7 @@ public sealed class PatchWorkflowVersioningE2ETests
             var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
             await client.RaiseEventAsync(instanceId, ExternalEventName, "resume");
-            var result = await client.WaitForWorkflowCompletionAsync(instanceId);
+            var result = await client.WaitForWorkflowCompletionOrStalledAsync(instanceId);
 
             Assert.Equal(WorkflowRuntimeStatus.Stalled, result.RuntimeStatus);
         }
