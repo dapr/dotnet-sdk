@@ -73,16 +73,13 @@ public sealed class OllamaContainer : IAsyncStartable
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task EnsureModelAsync(string model, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(model))
-            throw new ArgumentException("Model name must be provided.", nameof(model));
-
+        ArgumentException.ThrowIfNullOrWhiteSpace(model);
+        
         if (Port <= 0)
             throw new InvalidOperationException("Ollama container must be started before pulling models.");
 
-        using var httpClient = new HttpClient
-        {
-            BaseAddress = new Uri($"http://127.0.0.1:{Port}")
-        };
+        using var httpClient = new HttpClient();
+        httpClient.BaseAddress = new Uri($"http://127.0.0.1:{Port}");
 
         if (await IsModelAvailableAsync(httpClient, model, cancellationToken))
             return;
@@ -162,7 +159,7 @@ public sealed class OllamaContainer : IAsyncStartable
         /// <summary>
         /// Writes the component YAML.
         /// </summary>
-		public static void WriteConversationYamlToFolder(string folderPath, string fileName = "ollama-conversation.yaml", string model = "smollm:135m", string cacheTtl = "10m", string endpoint = "http://localhost:11434/v1")
+		public static void WriteConversationYamlToFolder(string folderPath, string model, string fileName = "ollama-conversation.yaml", string cacheTtl = "10m", string endpoint = "http://localhost:11434/v1")
 		{
 			var yaml = GetConversationYaml(model, cacheTtl, endpoint);
 			WriteToFolder(folderPath, fileName, yaml);

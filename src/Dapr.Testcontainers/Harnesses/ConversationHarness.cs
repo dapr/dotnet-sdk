@@ -24,7 +24,10 @@ namespace Dapr.Testcontainers.Harnesses;
 /// </summary>
 public sealed class ConversationHarness : BaseHarness
 {
-    private const string DefaultModel = "smollm:135m";
+    /// <summary>
+    /// The name of the model to run for the test.
+    /// </summary>
+    private string ModelName = "smollm2:135m";
     private readonly OllamaContainer _ollama;
     private readonly string componentsDir;
 
@@ -35,10 +38,20 @@ public sealed class ConversationHarness : BaseHarness
     /// <param name="startApp">The test app to validate in the harness.</param>
     /// <param name="options">The Dapr runtime options.</param>
     /// <param name="environment">The isolated environment instance.</param>
-    public ConversationHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
+    public ConversationHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options,
+        DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
         _ollama = new(Network);
+    }
+
+    /// <summary>
+    /// Sets the model to run for the test.
+    /// </summary>
+    /// <param name="modelName">The name of the model to pull and use from Ollama.</param>
+    public void UseModel(string modelName)
+    {
+        ModelName = modelName;
     }
 
     /// <inheritdoc />
@@ -46,11 +59,11 @@ public sealed class ConversationHarness : BaseHarness
 	{
 		// Start infrastructure
 		await _ollama.StartAsync(cancellationToken);
-        await _ollama.EnsureModelAsync(DefaultModel, cancellationToken);
+        await _ollama.EnsureModelAsync(ModelName, cancellationToken);
 		
 		// Emit component YAMLs for Ollama (use the default tiny model)
         OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir,
-            model: DefaultModel,
+            model: ModelName,
             endpoint: $"http://{_ollama.NetworkAlias}:{OllamaContainer.ContainerPort}/v1");
     }
 

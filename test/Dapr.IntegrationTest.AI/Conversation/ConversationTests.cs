@@ -152,4 +152,89 @@ public sealed class ConversationTests
             Assert.False(string.IsNullOrWhiteSpace(output.Choices[0].Message.Content));
         }
     }
+    
+    [Fact]
+    public async Task ShouldAcceptToolsAndMetadata()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("conversation-components");
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildConversation();
+        harness.UseModel("qwen2.5:0.5b"); // SmolLM2 doesn't actually support tools
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprConversationClient((sp, clientBuilder) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                    var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+
+                    if (!string.IsNullOrEmpty(grpcEndpoint))
+                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    if (!string.IsNullOrEmpty(httpEndpoint))
+                        clientBuilder.UseHttpEndpoint(httpEndpoint);
+                });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<DaprConversationClient>();
+
+        var inputs = new[]
+        {
+            new ConversationInput(
+            [
+                new UserMessage
+                    {
+                        Content = [new MessageContent("Say hello and keep it short.")]
+                    }
+            ])
+        };
+
+        var toolSchema = new Dictionary<string, object?>
+        {
+            ["type"] = "object",
+            ["properties"] = new Dictionary<string, object?>
+            {
+                ["location"] = new Dictionary<string, object?> { ["type"] = "string" },
+                ["units"] = new Dictionary<string, object?>
+                {
+                    ["type"] = "string",
+                    ["enum"] = new[] { "c", "f" }
+                }
+            },
+            ["required"] = new[] { "location" }
+        };
+
+        var options = new ConversationOptions(Constants.DaprComponentNames.ConversationComponentName)
+        {
+            Temperature = 0,
+            ToolChoice = ToolChoice.Auto,
+            Metadata = new Dictionary<string, string>
+            {
+                ["test-run"] = "true"
+            },
+            Tools =
+            [
+                new ToolFunction("get_weather")
+                {
+                    Description = "Returns the current weather for a location.",
+                    Parameters = toolSchema
+                }
+            ]
+        };
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var response = await client.ConverseAsync(inputs, options, cts.Token);
+
+        Assert.NotNull(response);
+        Assert.NotEmpty(response.Outputs);
+        Assert.NotEmpty(response.Outputs[0].Choices);
+        Assert.False(string.IsNullOrWhiteSpace(response.Outputs[0].Choices[0].Message.Content));
+    }
 }
