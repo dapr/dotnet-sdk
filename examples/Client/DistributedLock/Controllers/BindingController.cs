@@ -18,6 +18,7 @@ public class BindingController(DaprClient client, ILogger<BindingController> log
     private string appId = Environment.GetEnvironmentVariable("APP_ID");
     
     [HttpPost("cronbinding")]
+    [Obsolete]
     public async Task<IActionResult> HandleBindingEvent()
     {
         logger.LogInformation("Received binding event on {appId}, scanning for work.", appId);
@@ -39,6 +40,7 @@ public class BindingController(DaprClient client, ILogger<BindingController> log
         return Ok();
     }
 
+    [Obsolete]
     private async Task AttemptToProcessFile(string fileName)
     {
         // Locks are Disposable and will automatically unlock at the end of a 'using' statement.
@@ -76,6 +78,7 @@ public class BindingController(DaprClient client, ILogger<BindingController> log
         }
     }
 
+    [Obsolete]
     private async Task<StateData> GetFile(string fileName)
     {
         try
