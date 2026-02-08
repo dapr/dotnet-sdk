@@ -68,4 +68,9 @@ public sealed record ConversationOptions(string ConversationComponentId)
     /// - 'auto' is the default if tools are present.
     /// </remarks>
     public ToolChoice? ToolChoice { get; init; }
+    
+    /// <summary>
+    /// Retention policy for the prompt cache.
+    /// </summary>
+    public TimeSpan? PromptCacheRetention { get; init; }
 }

@@ -101,6 +101,11 @@ public static class ConversationProtoUtilities
             request.Temperature = options.Temperature.Value;
         }
 
+        if (options.PromptCacheRetention is not null)
+        {
+            request.PromptCacheRetention = options.PromptCacheRetention.Value.ToDuration();
+        }
+
         if (options.Tools.Count > 0)
         {
             var tools = options.Tools.Select(tool =>
