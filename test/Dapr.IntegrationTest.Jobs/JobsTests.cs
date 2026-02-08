@@ -16,7 +16,6 @@ using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +28,6 @@ public sealed class JobsTests
     [Fact]
     public async Task ShouldScheduleAndReceiveJob()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"e2e-job-{Guid.NewGuid():N}";
 
@@ -40,7 +38,9 @@ public sealed class JobsTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

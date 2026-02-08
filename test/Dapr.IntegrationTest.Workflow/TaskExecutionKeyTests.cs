@@ -12,7 +12,6 @@
 //  ------------------------------------------------------------------------
 
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
@@ -25,14 +24,15 @@ public sealed class TaskExecutionKeyTests
     [Fact]
     public async Task ActivityContext_ShouldContainTaskExecutionKey()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
         
-        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -68,7 +68,7 @@ public sealed class TaskExecutionKeyTests
         // Assert that the TaskExecutionKey is present
         Assert.False(string.IsNullOrWhiteSpace(taskExecutionKey), "TaskExecutionKey should not be null or empty.");
     }
-    
+
     private sealed class GetTaskExecutionKeyActivity : WorkflowActivity<string, string>
     {
         public override Task<string> RunAsync(WorkflowActivityContext context, string input)

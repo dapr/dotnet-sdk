@@ -18,9 +18,26 @@ namespace Dapr.Testcontainers.Common.Options;
 /// <summary>
 /// The various options used to spin up the Dapr containers.
 /// </summary>
-/// <param name="Version">The version of the Dapr images to use.</param>
-public sealed record DaprRuntimeOptions(string Version = "latest")
+public sealed record DaprRuntimeOptions
 {
+    private const string DEFAULT_VERSION_ENVVAR_NAME = "DAPR_RUNTIME_VERSION";
+
+    /// <summary>
+    /// Initializes a new instance of the Dapr runtime options.
+    /// </summary>
+    /// <param name="version">The version of the Dapr images to use.</param>
+    public DaprRuntimeOptions(string version = "latest")
+    {
+        // Get the version from an environment variable, if set
+        var envVarVersion = Environment.GetEnvironmentVariable(DEFAULT_VERSION_ENVVAR_NAME);
+        Version = !string.IsNullOrWhiteSpace(envVarVersion) ? envVarVersion : version;
+    }
+    
+    /// <summary>
+    /// The version of the Dapr images to use.
+    /// </summary>
+    public string Version { get; }
+    
     /// <summary>
     /// The application's port.
     /// </summary>

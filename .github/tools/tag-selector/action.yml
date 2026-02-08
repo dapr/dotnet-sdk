@@ -1,0 +1,25 @@
+name: "Dapr Version Tag Selector"
+description: "Extracts the latest 2 stable patches and latest optional RC"
+author: "Dapr Contributors"
+runs:
+  using: "node20"
+  main: "dist/index.js"
+inputs:
+  github_token:
+    description: "GitHub token"
+    required: true
+  tag_prefix:
+    description: "Optional tag prefix (e.g., v)"
+    required: false
+    default: ""
+  stable_count:
+    description: "Number of latest stable patches to return"
+    required: false
+    default: "2"
+  rc_identifier:
+    description: "RC prerelease identifier"
+    required: false
+    default: "rc"
+outputs:
+  matrix_json:
+    description: "Output matrix"

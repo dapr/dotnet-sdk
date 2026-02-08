@@ -43,7 +43,10 @@ public sealed class MultiAppActivityTests
         await environment.StartAsync();
 
         // Build and start the first application (caller)
-        var harness1 = new DaprHarnessBuilder(options1, environment).BuildWorkflow(componentsDir1);
+        var harness1 = new DaprHarnessBuilder(componentsDir1)
+            .WithOptions(options1)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var app1 = await DaprHarnessBuilder.ForHarness(harness1)
             .ConfigureServices(builder =>
             {
@@ -63,7 +66,10 @@ public sealed class MultiAppActivityTests
             }).BuildAndStartAsync();
 
         // Build and start the second application (target activity host)
-        var harness2 = new DaprHarnessBuilder(options2, environment).BuildWorkflow(componentsDir2);
+        var harness2 = new DaprHarnessBuilder(componentsDir2)
+            .WithEnvironment(environment)
+            .WithOptions(options2)
+            .BuildWorkflow();
         await using var app2 = await DaprHarnessBuilder.ForHarness(harness2)
             .ConfigureServices(builder =>
             {

@@ -16,7 +16,6 @@ using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,11 +27,15 @@ public sealed class JobManagementTests
     [Fact]
     public async Task ShouldGetJobDetails()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"get-job-{Guid.NewGuid():N}";
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -72,11 +75,15 @@ public sealed class JobManagementTests
     [Fact]
     public async Task ShouldDeleteJob()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"delete-job-{Guid.NewGuid():N}";
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -112,14 +119,15 @@ public sealed class JobManagementTests
     [Fact]
     public async Task ShouldOverwriteExistingJob()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"overwrite-job-{Guid.NewGuid():N}";
         
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -161,14 +169,15 @@ public sealed class JobManagementTests
     [Fact]
     public async Task ShouldScheduleJobWithTTL()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"ttl-job-{Guid.NewGuid():N}";
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
         await environment.StartAsync();
-        
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

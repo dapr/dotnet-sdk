@@ -1,0 +1,28 @@
+﻿name: Patch Coverage (tests only)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patch-coverage-${{ github.run_id }}
+          path: |
+            coverage/**/*.txt
+            coverage/**/*.html
+          retention-days: 7

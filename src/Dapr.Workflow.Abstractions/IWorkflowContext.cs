@@ -31,4 +31,10 @@ public interface IWorkflowContext
     /// <c>true</c> if the orchestration or operation is currently being replayed; otherwise <c>false</c>.
     /// </value>
     bool IsReplaying { get; }
+
+    /// <summary>
+    /// Returns true/false according to patch-based versioning semantics.
+    /// </summary>
+    /// <param name="patchName">Case-sensitive patch name.</param>
+    bool IsPatched(string patchName);
 }

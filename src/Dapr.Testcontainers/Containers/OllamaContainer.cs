@@ -13,6 +13,9 @@
 
 using System;
 using System.IO;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
@@ -41,6 +44,7 @@ public sealed class OllamaContainer : IAsyncStartable
             .WithImage("ollama/ollama")
             .WithName(_containerName)
             .WithNetwork(network)
+            .WithEnvironment("CUDA_VISIBLE_DEVICES", "-1")
             .WithPortBinding(InternalPort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
             .Build();
@@ -63,6 +67,32 @@ public sealed class OllamaContainer : IAsyncStartable
     /// </summary>
 	public int Port { get; private set; }
 
+    /// <summary>
+    /// Ensures the indicated model is available in the running Ollama instance.
+    /// </summary>
+    /// <param name="model">The model name to pull if missing.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task EnsureModelAsync(string model, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(model);
+        
+        if (Port <= 0)
+            throw new InvalidOperationException("Ollama container must be started before pulling models.");
+
+        using var httpClient = new HttpClient();
+        httpClient.BaseAddress = new Uri($"http://127.0.0.1:{Port}");
+
+        if (await IsModelAvailableAsync(httpClient, model, cancellationToken))
+            return;
+
+        var payload = JsonSerializer.Serialize(new { name = model });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        using var response = await httpClient.PostAsync("/api/pull", content, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await DrainResponseAsync(response.Content, cancellationToken);
+    }
+
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
@@ -75,6 +105,53 @@ public sealed class OllamaContainer : IAsyncStartable
     /// <inheritdoc />
 	public ValueTask DisposeAsync() => _container.DisposeAsync();
 
+    private static async Task<bool> IsModelAvailableAsync(
+        HttpClient httpClient,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await httpClient.GetAsync("/api/tags", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return false;
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+            if (!document.RootElement.TryGetProperty("models", out var models))
+                return false;
+
+            foreach (var entry in models.EnumerateArray())
+            {
+                if (!entry.TryGetProperty("name", out var nameElement))
+                    continue;
+
+                if (string.Equals(nameElement.GetString(), model, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private static async Task DrainResponseAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        await using var stream = await content.ReadAsStreamAsync(cancellationToken);
+        var buffer = new byte[8192];
+
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read == 0)
+                break;
+        }
+    }
+
 	/// <summary>
 	/// Builds out the YAML components for Ollama.
 	/// </summary>
@@ -83,7 +160,7 @@ public sealed class OllamaContainer : IAsyncStartable
         /// <summary>
         /// Writes the component YAML.
         /// </summary>
-		public static void WriteConversationYamlToFolder(string folderPath, string fileName = "ollama-conversation.yaml", string model = "smollm:135m", string cacheTtl = "10m", string endpoint = "http://localhost:11434/v1")
+		public static void WriteConversationYamlToFolder(string folderPath, string model, string fileName = "ollama-conversation.yaml", string cacheTtl = "10m", string endpoint = "http://localhost:11434/v1")
 		{
 			var yaml = GetConversationYaml(model, cacheTtl, endpoint);
 			WriteToFolder(folderPath, fileName, yaml);
@@ -97,18 +174,21 @@ public sealed class OllamaContainer : IAsyncStartable
         }
 
 		private static string GetConversationYaml(string model, string cacheTtl, string endpoint) =>
-			$@"apiVersion: dapr.io/v1alpha
-kind: Component
-metadata:
-  name: {Constants.DaprComponentNames.ConversationComponentName}
-spec:
-  type: conversation.ollama
-  metadata:
-  - name: model
-    value: {model}
-  - name: cacheTTL
-    value: {cacheTtl}
-  - name: endpoint
-    value: {endpoint}";
+            $"""
+             apiVersion: dapr.io/v1alpha1
+             kind: Component
+             metadata:
+               name: {Constants.DaprComponentNames.ConversationComponentName}
+             spec:
+               type: conversation.ollama
+               version: v1
+               metadata:
+               - name: model
+                 value: {model}
+               - name: cacheTTL
+                 value: {cacheTtl}
+               - name: endpoint
+                 value: {endpoint}
+             """;
 	}
 }

@@ -42,7 +42,10 @@ public sealed class MultiAppChildWorkflowTests
         await environment.StartAsync();
         
         // Build and start the first application
-        var harness1 = new DaprHarnessBuilder(options1, environment).BuildWorkflow(componentsDir1);
+        var harness1 = new DaprHarnessBuilder(componentsDir1)
+            .WithOptions(options1)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var app1 = await DaprHarnessBuilder.ForHarness(harness1)
             .ConfigureServices(builder =>
             {
@@ -62,7 +65,10 @@ public sealed class MultiAppChildWorkflowTests
             }).BuildAndStartAsync();
         
         // Build and start the second application (target)
-        var harness2 = new DaprHarnessBuilder(options2, environment).BuildWorkflow(componentsDir2);
+        var harness2 = new DaprHarnessBuilder(componentsDir2)
+            .WithOptions(options2)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var app2 = await DaprHarnessBuilder.ForHarness(harness2)
             .ConfigureServices(builder =>
             {
@@ -126,7 +132,7 @@ public sealed class MultiAppChildWorkflowTests
             try
             {
                 // Schedule a child workflow running on another app
-                var workflowResult = await context.CallChildWorkflowAsync<int>(nameof(TargetWorkflow), input.Value,
+                await context.CallChildWorkflowAsync<int>(nameof(TargetWorkflow), input.Value,
                     new ChildWorkflowTaskOptions { InstanceId = input.TargetWorkflowId, TargetAppId = input.TargetAppId });
                 return null;
             }
