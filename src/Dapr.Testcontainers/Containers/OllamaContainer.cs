@@ -44,6 +44,7 @@ public sealed class OllamaContainer : IAsyncStartable
             .WithImage("ollama/ollama")
             .WithName(_containerName)
             .WithNetwork(network)
+            .WithEnvironment("CUDA_VISIBLE_DEVICES", "-1")
             .WithPortBinding(InternalPort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
             .Build();
