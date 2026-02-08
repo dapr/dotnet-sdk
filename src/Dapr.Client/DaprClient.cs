@@ -256,6 +256,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will complete when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task InvokeBindingAsync<TRequest>(
         string bindingName,
         string operation,
@@ -274,6 +275,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the binding. The valid metadata keys and values are determined by the type of binding used.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will complete when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task<TResponse> InvokeBindingAsync<TRequest, TResponse>(
         string bindingName,
         string operation,
@@ -288,6 +290,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="request">The <see cref="BindingRequest" /> to send.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will complete when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task<BindingResponse> InvokeBindingAsync(
         BindingRequest request,
         CancellationToken cancellationToken = default);
