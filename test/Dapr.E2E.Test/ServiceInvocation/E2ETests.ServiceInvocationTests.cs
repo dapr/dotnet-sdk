@@ -61,6 +61,7 @@ public partial class E2ETests
     }
 
     [Fact]
+    [Obsolete]
     public async Task TestHttpServiceInvocationWithTimeout()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
