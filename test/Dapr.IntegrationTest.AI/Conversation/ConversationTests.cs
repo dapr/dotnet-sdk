@@ -18,6 +18,7 @@ using Dapr.AI.Conversation.Tools;
 using Dapr.Testcontainers;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,7 +26,7 @@ namespace Dapr.IntegrationTest.AI.Conversation;
 
 public sealed class ConversationTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldProcessConversation()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("conversation-components");
@@ -85,7 +86,7 @@ public sealed class ConversationTests
         Assert.False(string.IsNullOrWhiteSpace(response.Outputs[0].Choices[0].Message.Content));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldProcessMultipleInputs()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("conversation-components");
@@ -153,7 +154,7 @@ public sealed class ConversationTests
         }
     }
     
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldAcceptToolsAndMetadata()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("conversation-components");
