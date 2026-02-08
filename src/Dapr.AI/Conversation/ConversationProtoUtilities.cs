@@ -106,6 +106,11 @@ public static class ConversationProtoUtilities
             request.PromptCacheRetention = options.PromptCacheRetention.Value.ToDuration();
         }
 
+        if (options.ResponseFormat is not null)
+        {
+            request.ResponseFormat = options.ResponseFormat;
+        }
+
         if (options.Tools.Count > 0)
         {
             var tools = options.Tools.Select(tool =>

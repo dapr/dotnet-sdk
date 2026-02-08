@@ -73,4 +73,9 @@ public sealed record ConversationOptions(string ConversationComponentId)
     /// Retention policy for the prompt cache.
     /// </summary>
     public TimeSpan? PromptCacheRetention { get; init; }
+    
+    /// <summary>
+    /// The JSON schema used to coerce the response into a specific format.
+    /// </summary>
+    public Struct? ResponseFormat { get; init; }
 }
