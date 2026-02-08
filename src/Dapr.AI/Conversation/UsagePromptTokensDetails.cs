@@ -11,15 +11,23 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Client.Autogen.Grpc.v1;
+
 namespace Dapr.AI.Conversation;
 
 /// <summary>
-/// Represents a call to a tool within the context of a conversation.
+/// Represents the breakdown of prompt tokens used in a conversation.
 /// </summary>
-public abstract record ToolCallBase
+/// <param name="AudioTokens">Audio input tokens present in the prompt.</param>
+/// <param name="CachedTokens">Cached tokens present in the prompt.</param>
+public sealed record UsagePromptTokensDetails(ulong AudioTokens, ulong CachedTokens)
 {
     /// <summary>
-    /// An optional tool identifier.
+    /// Creates an instance of <see cref="UsagePromptTokensDetails"/> from the prototype value.
     /// </summary>
-    public string? Id { get; set; }
+    /// <param name="proto">The gRPC response from the runtime to parse.</param>
+    /// <returns>A new instance of <see cref="UsagePromptTokensDetails"/>.</returns>
+    internal static UsagePromptTokensDetails?
+        FromProto(ConversationResultAlpha2CompletionUsagePromptTokensDetails? proto) =>
+        proto is null ? null : new(proto.AudioTokens, proto.CachedTokens);
 }
