@@ -173,7 +173,12 @@ public static class ConversationProtoUtilities
                 return new ConversationResultChoice(didParseReason ? parsedFinishReason : null,
                     c.Index, resultMessage);
             }).ToList();
-            return new ConversationResponseResult(choices);
+
+            return new ConversationResponseResult(choices)
+            {
+                Model = !string.IsNullOrWhiteSpace(convoResult.Model) ? convoResult.Model : null,
+                Usage = convoResult.Usage is not null ? CompletionUsage.FromProto(convoResult.Usage) : null
+            };
         }).ToList();
 
         return new ConversationResponse(conversationResults, contextId);
