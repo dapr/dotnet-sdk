@@ -44,6 +44,7 @@ public partial class DaprClientTest
     };
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_VoidVoidNoHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -65,6 +66,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_VoidVoidWithHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -86,6 +88,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_VoidResponseNoHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -113,6 +116,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_VoidResponseWithHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -139,6 +143,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_RequestVoidNoHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -168,6 +173,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_RequestVoidWithHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -197,6 +203,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_RequestResponseNoHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -227,6 +234,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_RequestResponseWithHttpMethod_Success()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -386,6 +394,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_WrapsHttpRequestException()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -408,6 +417,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_WrapsHttpRequestException_FromEnsureSuccessStatus()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -430,6 +440,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_WithBody_WrapsHttpRequestException()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -452,6 +463,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_WithBody_WrapsHttpRequestException_FromEnsureSuccessStatus()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -476,6 +488,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodAsync_WrapsHttpRequestException_FromSerialization()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -658,6 +671,7 @@ public partial class DaprClientTest
     }
         
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodWithoutResponse_WithExtraneousHeaders()
     {
         await using var client = TestClient.CreateForDaprClient(c =>
@@ -686,6 +700,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodWithResponseAsync_ReturnsMessageWithoutCheckingStatus()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -704,6 +719,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodWithResponseAsync_WrapsHttpRequestException()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
@@ -726,6 +742,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodWithResponseAsync_PreventsNonDaprRequest()
     {
         await using var client = TestClient.CreateForDaprClient(c => 
