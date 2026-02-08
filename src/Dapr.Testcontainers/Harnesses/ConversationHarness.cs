@@ -24,6 +24,7 @@ namespace Dapr.Testcontainers.Harnesses;
 /// </summary>
 public sealed class ConversationHarness : BaseHarness
 {
+    private const string DefaultModel = "smollm:135m";
     private readonly OllamaContainer _ollama;
     private readonly string componentsDir;
 
@@ -45,9 +46,11 @@ public sealed class ConversationHarness : BaseHarness
 	{
 		// Start infrastructure
 		await _ollama.StartAsync(cancellationToken);
+        await _ollama.EnsureModelAsync(DefaultModel, cancellationToken);
 		
 		// Emit component YAMLs for Ollama (use the default tiny model)
         OllamaContainer.Yaml.WriteConversationYamlToFolder(componentsDir,
+            model: DefaultModel,
             endpoint: $"http://{_ollama.NetworkAlias}:{OllamaContainer.ContainerPort}/v1");
     }
 
