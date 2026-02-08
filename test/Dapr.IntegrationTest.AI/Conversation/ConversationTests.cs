@@ -14,6 +14,7 @@
 using Dapr.AI.Conversation;
 using Dapr.AI.Conversation.ConversationRoles;
 using Dapr.AI.Conversation.Extensions;
+using Dapr.AI.Conversation.Tools;
 using Dapr.Testcontainers;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
@@ -82,5 +83,73 @@ public sealed class ConversationTests
         Assert.Single(response.Outputs);
         Assert.NotEmpty(response.Outputs[0].Choices);
         Assert.False(string.IsNullOrWhiteSpace(response.Outputs[0].Choices[0].Message.Content));
+    }
+
+    [Fact]
+    public async Task ShouldProcessMultipleInputs()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("conversation-components");
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildConversation();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprConversationClient((sp, clientBuilder) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                    var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+
+                    if (!string.IsNullOrEmpty(grpcEndpoint))
+                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    if (!string.IsNullOrEmpty(httpEndpoint))
+                        clientBuilder.UseHttpEndpoint(httpEndpoint);
+                });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<DaprConversationClient>();
+
+        var inputs = new[]
+        {
+            new ConversationInput(
+            [
+                new UserMessage
+                    {
+                        Content = [new MessageContent("Give a one-word greeting.")]
+                    }
+            ]),
+            new ConversationInput(
+            [
+                new UserMessage
+                    {
+                        Content = [new MessageContent("Reply with a short farewell.")]
+                    }
+            ])
+        };
+
+        var options = new ConversationOptions(Constants.DaprComponentNames.ConversationComponentName)
+        {
+            Temperature = 0
+        };
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var response = await client.ConverseAsync(inputs, options, cts.Token);
+
+        Assert.NotNull(response);
+        Assert.NotEmpty(response.Outputs);
+        Assert.True(response.Outputs.Count <= inputs.Length, "Received more outputs than inputs.");
+
+        foreach (var output in response.Outputs)
+        {
+            Assert.NotEmpty(output.Choices);
+            Assert.False(string.IsNullOrWhiteSpace(output.Choices[0].Message.Content));
+        }
     }
 }
