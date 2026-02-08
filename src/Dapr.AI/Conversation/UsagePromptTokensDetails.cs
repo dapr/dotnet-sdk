@@ -27,7 +27,7 @@ public sealed record UsagePromptTokensDetails(ulong AudioTokens, ulong CachedTok
     /// </summary>
     /// <param name="proto">The gRPC response from the runtime to parse.</param>
     /// <returns>A new instance of <see cref="UsagePromptTokensDetails"/>.</returns>
-    internal static UsagePromptTokensDetails
-        FromProto(ConversationResultAlpha2CompletionUsagePromptTokensDetails proto) =>
-        new(proto.AudioTokens, proto.CachedTokens);
+    internal static UsagePromptTokensDetails?
+        FromProto(ConversationResultAlpha2CompletionUsagePromptTokensDetails? proto) =>
+        proto is null ? null : new(proto.AudioTokens, proto.CachedTokens);
 }

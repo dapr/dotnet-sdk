@@ -27,23 +27,25 @@ public sealed record CompletionUsage(ulong CompletionTokens, ulong PromptTokens,
     /// Breakdown of tokens used in completion.
     /// </summary>
     public UsageCompletionTokensDetails? CompletionTokensDetails { get; init; }
-    
+
     /// <summary>
     /// Breakdown of tokens used in the prompt.
     /// </summary>
     public UsagePromptTokensDetails? PromptTokensDetails { get; init; }
-    
+
     /// <summary>
     /// Creates an instance of <see cref="CompletionUsage"/> from the prototype value.
     /// </summary>
     /// <param name="proto">The gRPC response from the runtime to parse.</param>
     /// <returns>A new instance of <see cref="CompletionUsage"/>.</returns>
-    internal static CompletionUsage FromProto(ConversationResultAlpha2CompletionUsage proto) =>
-        new(proto.CompletionTokens, proto.PromptTokens, proto.TotalTokens)
-        {
-            CompletionTokensDetails = UsageCompletionTokensDetails.FromProto(proto.CompletionTokensDetails),
-            PromptTokensDetails = UsagePromptTokensDetails.FromProto(proto.PromptTokensDetails)
-        };
+    internal static CompletionUsage? FromProto(ConversationResultAlpha2CompletionUsage? proto) =>
+        proto is null
+            ? null
+            : new(proto.CompletionTokens, proto.PromptTokens, proto.TotalTokens)
+            {
+                CompletionTokensDetails = UsageCompletionTokensDetails.FromProto(proto.CompletionTokensDetails),
+                PromptTokensDetails = UsagePromptTokensDetails.FromProto(proto.PromptTokensDetails)
+            };
 }
 
 

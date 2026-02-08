@@ -37,8 +37,12 @@ public sealed record UsageCompletionTokensDetails(
     /// </summary>
     /// <param name="proto">The gRPC response from the runtime to parse.</param>
     /// <returns>A new instance of <see cref="UsageCompletionTokensDetails"/>.</returns>
-    internal static UsageCompletionTokensDetails
-        FromProto(ConversationResultAlpha2CompletionUsageCompletionTokensDetails proto) => new(
-        proto.AcceptedPredictionTokens, proto.AudioTokens, proto.ReasoningTokens, proto.RejectedPredictionTokens);
+    internal static UsageCompletionTokensDetails?
+        FromProto(ConversationResultAlpha2CompletionUsageCompletionTokensDetails? proto) =>
+        proto is null
+            ? null
+            : new(
+                proto.AcceptedPredictionTokens, proto.AudioTokens, proto.ReasoningTokens,
+                proto.RejectedPredictionTokens);
 }
 
