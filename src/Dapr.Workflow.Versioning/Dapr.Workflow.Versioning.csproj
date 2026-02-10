@@ -14,6 +14,9 @@
         <!-- We embed children; do NOT emit dependency groups -->
         <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 
+        <!-- Aggregator package has lib assets but no dependencies -->
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+
         <!-- Avoid creating an empty .snupkg -->
         <IncludeSymbols>false</IncludeSymbols>
 
