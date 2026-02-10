@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Dapr.Workflow;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -40,6 +41,65 @@ public class OrderProcessingTests
         // Verify that ReserveInventoryActivity was called with a specific input
         mockContext.Verify(
             ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), expectedInventoryRequest, It.IsAny<WorkflowTaskOptions>()),
+            Times.Once());
+
+        // Verify that ProcessPaymentActivity was called with a specific input
+        mockContext.Verify(
+            ctx => ctx.CallActivityAsync(nameof(ProcessPaymentActivity), expectedPaymentRequest, It.IsAny<WorkflowTaskOptions>()),
+            Times.Once());
+
+        // Verify that there were two calls to NotifyActivity
+        mockContext.Verify(
+            ctx => ctx.CallActivityAsync(nameof(NotifyActivity), It.IsAny<Notification>(), It.IsAny<WorkflowTaskOptions>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task TestHighCostOrderApproved()
+    {
+        OrderPayload order = new OrderPayload(Name: "Cars", TotalCost: 100000, Quantity: 2);
+        InventoryResult inventoryResult = new(Success: true, new InventoryItem(order.Name, 50000, order.Quantity));
+        PaymentRequest expectedPaymentRequest = new(It.IsAny<string>(), order.Name, order.Quantity, order.TotalCost);
+        InventoryRequest expectedInventoryRequest = new InventoryRequest(It.IsAny<string>(), order.Name, order.Quantity);
+        
+        // Mock the call to ReserveInventoryActivity with a total cost exceeding the approval threshold
+        Mock<WorkflowContext> mockContext = new();
+        mockContext
+            .Setup(ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), It.IsAny<InventoryRequest>(), It.IsAny<WorkflowTaskOptions>()))
+            .Returns(Task.FromResult(inventoryResult));
+        // Approve any approval requests
+        mockContext
+            .Setup(ctx => ctx.WaitForExternalEventAsync<ApprovalResult>(It.IsAny<string>(), It.IsAny<TimeSpan>()))
+            .Returns(Task.FromResult(ApprovalResult.Approved));
+        mockContext
+            .Setup(ctx => ctx.CreateReplaySafeLogger<OrderProcessingWorkflow>())
+            .Returns(NullLogger<OrderProcessingWorkflow>.Instance);
+        
+        // Run the workflow directly
+        OrderResult result = await new OrderProcessingWorkflow().RunAsync(mockContext.Object, order);
+
+        // Verify that workflow result matches what we expect
+        Assert.NotNull(result);
+        Assert.True(result.Processed);
+        
+        // Verify that ReserveInventoryActivity was called with a specific input
+        mockContext.Verify(
+            ctx => ctx.CallActivityAsync<InventoryResult>(nameof(ReserveInventoryActivity), expectedInventoryRequest, It.IsAny<WorkflowTaskOptions>()),
+            Times.Once());
+        
+        // Verify that RequestApprovalActivity was called with a specific input
+        mockContext.Verify(
+            ctx => ctx.CallActivityAsync(nameof(RequestApprovalActivity), order, It.IsAny<WorkflowTaskOptions>()),
+            Times.Once());
+        
+        // Verify that the Approval Request was called with a specific input
+        mockContext.Verify(
+            ctx => ctx.WaitForExternalEventAsync<ApprovalResult>("ManagerApproval",TimeSpan.FromSeconds(30)),
+            Times.Once());
+        
+        // Verify that the Custom Status was set with a specific message
+        mockContext.Verify(
+            ctx => ctx.SetCustomStatus("Waiting for approval"),
             Times.Once());
 
         // Verify that ProcessPaymentActivity was called with a specific input
