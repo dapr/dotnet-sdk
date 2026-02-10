@@ -25431,9 +25431,6 @@ function stripPrefix(tag, prefix) {
     return tag;
   return tag.startsWith(prefix) ? tag.slice(prefix.length) : tag;
 }
-function versionKey(major, minor) {
-  return `${major}.${minor}`;
-}
 function computeFromTags(input) {
   const tagPrefix = input.tagPrefix ?? "";
   const stableCount = input.stableCount ?? 2;
@@ -25462,43 +25459,11 @@ function computeFromTags(input) {
     stableMinor = `${sMajor}.${sMinor}`;
     stablePatches = stableSorted.filter((v) => import_semver.default.major(v) === sMajor && import_semver.default.minor(v) === sMinor).slice(0, stableCount);
   }
-  const minorMap = /* @__PURE__ */ new Map();
-  for (const v of stable) {
-    const key = versionKey(import_semver.default.major(v), import_semver.default.minor(v));
-    const entry = minorMap.get(key) || {
-      hasStable: false,
-      rcVersions: [],
-      major: import_semver.default.major(v),
-      minor: import_semver.default.minor(v)
-    };
-    entry.hasStable = true;
-    minorMap.set(key, entry);
-  }
-  for (const v of prerelease) {
+  const rcVersions = prerelease.filter((v) => {
     const pr = import_semver.default.prerelease(v) || [];
-    if (pr[0] === rcIdent) {
-      const key = versionKey(import_semver.default.major(v), import_semver.default.minor(v));
-      const entry = minorMap.get(key) || {
-        hasStable: false,
-        rcVersions: [],
-        major: import_semver.default.major(v),
-        minor: import_semver.default.minor(v)
-      };
-      entry.rcVersions.push(v);
-      minorMap.set(key, entry);
-    }
-  }
-  let latestRcs = [];
-  const candidates = Array.from(minorMap.values()).filter(
-    (m) => !m.hasStable && m.rcVersions.length > 0
-  );
-  if (rcCount > 0 && candidates.length > 0) {
-    candidates.sort(
-      (a, b) => a.major === b.major ? b.minor - a.minor : b.major - a.major
-    );
-    const newest = candidates[0];
-    latestRcs = newest.rcVersions.sort(import_semver.default.rcompare).slice(0, rcCount);
-  }
+    return pr[0] === rcIdent;
+  });
+  const latestRcs = rcCount > 0 ? [...rcVersions].sort(import_semver.default.rcompare).slice(0, rcCount) : [];
   const matrix = [
     ...latestRcs.map((v) => ({ version: v, channel: "rc" })),
     ...stablePatches.map((v) => ({ version: v, channel: "stable" }))
