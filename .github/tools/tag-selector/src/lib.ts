@@ -4,6 +4,7 @@ export type ComputeInput = {
     tags: string[];         // raw tag names e.g., ["v1.16.8", "1.17.0-rc.3"]
     tagPrefix?: string;     // e.g., "v"
     stableCount?: number;   // default: 2
+    rcCount?: number;       // default: 1
     rcIdent?: string;       // default: "rc"
 }
 
@@ -26,6 +27,7 @@ function versionKey(major: number, minor: number) {
 export function computeFromTags(input: ComputeInput): ComputeOutput {
     const tagPrefix = input.tagPrefix ?? "";
     const stableCount = input.stableCount ?? 2;
+    const rcCount = input.rcCount ?? 1;
     const rcIdent = input.rcIdent ?? "rc";
 
     // Normalize tags -> semver.valid versions
@@ -95,22 +97,20 @@ export function computeFromTags(input: ComputeInput): ComputeOutput {
     }
 
     // Find newest (major.minor) with only RCs
-    let rcMinor = "";
-    let latestRc = "";
+    let latestRcs: string[] = [];
     const candidates = Array.from(minorMap.values()).filter(
         (m) => !m.hasStable && m.rcVersions.length > 0
     );
-    if (candidates.length > 0) {
+    if (rcCount > 0 && candidates.length > 0) {
         candidates.sort((a, b) =>
             a.major === b.major ? b.minor - a.minor : b.major - a.major
         );
         const newest = candidates[0];
-        rcMinor = `${newest.major}.${newest.minor}`;
-        latestRc = newest.rcVersions.sort(semver.rcompare)[0];
+        latestRcs = newest.rcVersions.sort(semver.rcompare).slice(0, rcCount);
     }
 
     const matrix = [
-        ...(latestRc ? [{ version: latestRc, channel: "rc" as const }] : []),
+        ...latestRcs.map((v) => ({ version: v, channel: "rc" as const })),
         ...stablePatches.map((v) => ({ version: v, channel: "stable" as const })),
     ];
 

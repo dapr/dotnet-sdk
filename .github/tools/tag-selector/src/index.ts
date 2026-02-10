@@ -7,6 +7,7 @@ async function run() {
         const token = core.getInput("github_token", { required: true});
         const tagPrefix = core.getInput("tag_prefix") || "";
         const stableCount = parseInt(core.getInput("stable_count") || "1", 10);
+        const rcCount = parseInt(core.getInput("rc_count") || "1", 10);
         const rcIdent = core.getInput("rc_identifier") || "rc";
         
         const owner = core.getInput("owner") || "dapr";
@@ -26,6 +27,7 @@ async function run() {
             tags: tagNames,
             tagPrefix,
             stableCount,
+            rcCount,
             rcIdent,
         });
 
