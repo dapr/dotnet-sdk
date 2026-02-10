@@ -212,7 +212,7 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             try
             {
-                var failureResult = CreateWorkflowFailureResult(request, ex);
+                var failureResult = CreateWorkflowFailureResult(request, completionToken, ex);
                 await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, cancellationToken: cancellationToken);
             }
             catch (Exception resultEx)
@@ -288,10 +288,11 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Creates a failure result for an orchestrator exception.
     /// </summary>
-    private static OrchestratorResponse CreateWorkflowFailureResult(OrchestratorRequest request, Exception ex) =>
+    private static OrchestratorResponse CreateWorkflowFailureResult(OrchestratorRequest request, string completionToken, Exception ex) =>
         new()
         {
             InstanceId = request.InstanceId,
+            CompletionToken = completionToken,
             Actions =
             {
                 new OrchestratorAction

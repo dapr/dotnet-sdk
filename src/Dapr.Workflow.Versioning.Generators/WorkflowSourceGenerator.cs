@@ -183,6 +183,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Collections.Generic;");
         sb.AppendLine("using System.Linq;");
+        sb.AppendLine("using System.Runtime.CompilerServices;");
         sb.AppendLine("using Dapr.Workflow;");
         sb.AppendLine("using Dapr.Workflow.Versioning;");
 
@@ -261,7 +262,8 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         }
         sb.AppendLine();
 
-        sb.AppendLine("            BuildRegistry(services, entries, out var latestMap);");
+        sb.AppendLine("            var registry = BuildRegistry(services, entries, out var latestMap);");
+        sb.AppendLine("            UpdateRouterRegistry(services, entries, registry);");
         sb.AppendLine("            foreach (var kvp in latestMap)");
         sb.AppendLine("            {");
         sb.AppendLine("                var canonical = kvp.Key;");
@@ -286,6 +288,28 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("            if (services is null) throw new ArgumentNullException(nameof(services));");
         sb.AppendLine("            var entries = CreateEntries();");
         sb.AppendLine("            return BuildRegistry(services, entries, out _);");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+
+        sb.AppendLine("        private static void UpdateRouterRegistry(global::System.IServiceProvider services, List<Entry> entries, IReadOnlyDictionary<string, IReadOnlyList<string>> registry)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            var routerRegistry = services.GetService(typeof(global::Dapr.Workflow.Versioning.IWorkflowRouterRegistry)) as global::Dapr.Workflow.Versioning.IWorkflowRouterRegistry;");
+        sb.AppendLine("            if (routerRegistry is null) return;");
+        sb.AppendLine();
+        sb.AppendLine("            var nameMap = new Dictionary<string, string>(StringComparer.Ordinal);");
+        sb.AppendLine("            foreach (var e in entries)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                nameMap[e.WorkflowTypeName] = e.WorkflowType.Name;");
+        sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            var routes = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);");
+        sb.AppendLine("            foreach (var kvp in registry)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                var list = kvp.Value.Select(v => nameMap.TryGetValue(v, out var n) ? n : v).ToList();");
+        sb.AppendLine("                routes[kvp.Key] = list;");
+        sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            routerRegistry.UpdateRoutes(routes);");
         sb.AppendLine("        }");
         sb.AppendLine();
 
@@ -424,6 +448,15 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("            }");
         sb.AppendLine();
         sb.AppendLine("            return registry;");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine("    internal static class GeneratedWorkflowVersionRegistryModule");
+        sb.AppendLine("    {");
+        sb.AppendLine("        [ModuleInitializer]");
+        sb.AppendLine("        internal static void Register()");
+        sb.AppendLine("        {");
+        sb.AppendLine("            global::Dapr.Workflow.Versioning.WorkflowVersioningRegistry.Register(GeneratedWorkflowVersionRegistry.RegisterGeneratedWorkflows);");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine("}");

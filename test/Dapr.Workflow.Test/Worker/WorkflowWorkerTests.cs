@@ -529,8 +529,9 @@ public class WorkflowWorkerTests
         var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        Assert.Empty(response.Actions);
-        Assert.Null(response.CustomStatus);
+        var action = Assert.Single(response.Actions);
+        Assert.NotNull(action.CompleteOrchestration);
+        Assert.Equal(OrchestrationStatus.Failed, action.CompleteOrchestration.OrchestrationStatus);
     }
 
     [Fact]
@@ -563,8 +564,9 @@ public class WorkflowWorkerTests
         var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        Assert.Empty(response.Actions);
-        Assert.Null(response.CustomStatus);
+        var action = Assert.Single(response.Actions);
+        Assert.NotNull(action.CompleteOrchestration);
+        Assert.Equal(OrchestrationStatus.Failed, action.CompleteOrchestration.OrchestrationStatus);
     }
 
     [Fact]

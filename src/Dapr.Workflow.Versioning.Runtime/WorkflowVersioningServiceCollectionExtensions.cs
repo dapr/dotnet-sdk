@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Dapr.Workflow.Versioning;
 
@@ -42,7 +43,55 @@ public static class WorkflowVersioningServiceCollectionExtensions
         services.AddSingleton<IWorkflowVersionStrategyFactory, DefaultWorkflowVersionStrategyFactory>();
         services.AddSingleton<IWorkflowVersionSelectorFactory, DefaultWorkflowVersionSelectorFactory>();
         services.AddSingleton<IWorkflowVersionResolver, WorkflowVersionResolver>();
+        services.AddSingleton<IWorkflowRouterRegistry, WorkflowRouterRegistry>();
+        AddVersioningHostedService(services);
 
         return services;
+    }
+
+    private static void AddVersioningHostedService(IServiceCollection services)
+    {
+        var alreadyRegistered = false;
+        for (var i = 0; i < services.Count; i++)
+        {
+            var existing = services[i];
+            if (existing.ServiceType == typeof(IHostedService) &&
+                existing.ImplementationType == typeof(WorkflowVersioningRegistrationHostedService))
+            {
+                alreadyRegistered = true;
+                break;
+            }
+        }
+
+        if (alreadyRegistered)
+        {
+            return;
+        }
+
+        var descriptor = ServiceDescriptor.Singleton<IHostedService, WorkflowVersioningRegistrationHostedService>();
+        var insertAt = -1;
+
+        for (var i = 0; i < services.Count; i++)
+        {
+            var existing = services[i];
+            if (existing.ServiceType != typeof(IHostedService))
+                continue;
+
+            if (string.Equals(existing.ImplementationType?.FullName, WorkflowVersioningRegistrationHostedService.WorkflowWorkerTypeName,
+                    StringComparison.Ordinal))
+            {
+                insertAt = i;
+                break;
+            }
+        }
+
+        if (insertAt >= 0)
+        {
+            services.Insert(insertAt, descriptor);
+        }
+        else
+        {
+            services.Add(descriptor);
+        }
     }
 }
