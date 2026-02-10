@@ -397,7 +397,7 @@ public sealed class VersioningIntegrationTests
     }
 
     private static bool IsTransientRpc(RpcException ex) =>
-        ex.StatusCode == StatusCode.Unavailable || ex.StatusCode == StatusCode.DeadlineExceeded;
+        ex.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded;
 
     internal sealed record VersionedPayload(string Name);
 

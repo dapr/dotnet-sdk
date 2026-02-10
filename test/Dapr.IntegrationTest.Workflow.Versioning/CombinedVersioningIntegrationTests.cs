@@ -187,7 +187,7 @@ public sealed class CombinedVersioningIntegrationTests
     }
 
     private static bool IsTransientRpc(RpcException ex) =>
-        ex.StatusCode == StatusCode.Unavailable || ex.StatusCode == StatusCode.DeadlineExceeded;
+        ex.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded;
 
     [WorkflowVersion(CanonicalName = CanonicalWorkflowName, Version = "1")]
     internal sealed class CombinedWorkflowV1 : Workflow<int, string>
