@@ -1,5 +1,7 @@
 ﻿using Dapr.Testcontainers.Common.Options;
 
+using Dapr.Testcontainers.Common;
+
 namespace Dapr.Testcontainers.Test.Common.Options;
 
 public sealed class DaprRuntimeOptionsTests : IDisposable
@@ -23,6 +25,29 @@ public sealed class DaprRuntimeOptionsTests : IDisposable
 
         var options = new DaprRuntimeOptions();
         Assert.Equal(defaultValue, options.Version);
+    }
+
+    [Fact]
+    public void ShouldEnableContainerLogsForCiDebugLogging()
+    {
+        var originalCi = Environment.GetEnvironmentVariable("CI");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("CI", "true");
+
+            var options = new DaprRuntimeOptions()
+                .WithLogLevel(DaprLogLevel.Debug);
+
+            Assert.True(options.EnableContainerLogs);
+            Assert.False(string.IsNullOrWhiteSpace(options.ContainerLogsDirectory));
+
+            TestDirectoryManager.CleanUpDirectory(options.ContainerLogsDirectory!);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CI", originalCi);
+        }
     }
 
     public void Dispose()

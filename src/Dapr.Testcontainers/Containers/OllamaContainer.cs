@@ -34,20 +34,30 @@ public sealed class OllamaContainer : IAsyncStartable
     private readonly string _containerName = $"ollama-{Guid.NewGuid():N}";
 
 	private readonly IContainer _container;
+    private readonly ContainerLogAttachment? _logAttachment;
 
     /// <summary>
     /// Provides an Ollama container.
     /// </summary>
-    public OllamaContainer(INetwork network)
+    public OllamaContainer(INetwork network, string? logDirectory = null)
     {
-        _container = new ContainerBuilder()
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "ollama", _containerName);
+
+        var containerBuilder = new ContainerBuilder()
             .WithImage("ollama/ollama")
             .WithName(_containerName)
             .WithNetwork(network)
             .WithEnvironment("CUDA_VISIBLE_DEVICES", "-1")
             .WithPortBinding(InternalPort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
-            .Build();
+            ;
+
+        if (_logAttachment is not null)
+        {
+            containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
+        }
+
+        _container = containerBuilder.Build();
     }
 
     /// <summary>
@@ -103,7 +113,20 @@ public sealed class OllamaContainer : IAsyncStartable
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
     /// <inheritdoc />
-	public ValueTask DisposeAsync() => _container.DisposeAsync();
+	public async ValueTask DisposeAsync()
+    {
+        await _container.DisposeAsync();
+
+        if (_logAttachment is not null)
+        {
+            await _logAttachment.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Gets the log file locations for this container.
+    /// </summary>
+    public ContainerLogPaths? LogPaths => _logAttachment?.Paths;
 
     private static async Task<bool> IsModelAvailableAsync(
         HttpClient httpClient,

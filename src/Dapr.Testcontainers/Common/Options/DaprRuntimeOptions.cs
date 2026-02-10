@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using Dapr.Testcontainers.Common;
 
 namespace Dapr.Testcontainers.Common.Options;
 
@@ -21,6 +22,22 @@ namespace Dapr.Testcontainers.Common.Options;
 public sealed record DaprRuntimeOptions
 {
     private const string DEFAULT_VERSION_ENVVAR_NAME = "DAPR_RUNTIME_VERSION";
+    private static readonly string[] CiEnvironmentSignals =
+    [
+        "CI",
+        "TF_BUILD",
+        "GITHUB_ACTIONS",
+        "GITLAB_CI",
+        "JENKINS_URL",
+        "TEAMCITY_VERSION",
+        "APPVEYOR",
+        "BUILDKITE",
+        "CIRCLECI",
+        "TRAVIS",
+        "BITBUCKET_BUILD_NUMBER",
+        "BUILD_BUILDID",
+        "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"
+    ];
 
     /// <summary>
     /// Initializes a new instance of the Dapr runtime options.
@@ -54,6 +71,21 @@ public sealed record DaprRuntimeOptions
     public DaprLogLevel LogLevel { get; private set; } = DaprLogLevel.Info;
 
     /// <summary>
+    /// Enables capturing container logs to files.
+    /// </summary>
+    public bool EnableContainerLogs { get; private set; }
+
+    /// <summary>
+    /// The directory used to write container logs.
+    /// </summary>
+    public string? ContainerLogsDirectory { get; private set; }
+
+    /// <summary>
+    /// Indicates whether container logs are preserved after disposal.
+    /// </summary>
+    public bool PreserveContainerLogs { get; private set; }
+
+    /// <summary>
     /// The image tag for the Dapr runtime.
     /// </summary>
 	public string RuntimeImageTag => $"daprio/daprd:{Version}";
@@ -73,6 +105,7 @@ public sealed record DaprRuntimeOptions
     public DaprRuntimeOptions WithLogLevel(DaprLogLevel logLevel)
     {
         LogLevel = logLevel;
+        TryEnableContainerLogsForCi(logLevel);
         return this;
     }
 
@@ -84,5 +117,72 @@ public sealed record DaprRuntimeOptions
     {
         AppId = appId;
         return this;
+    }
+
+    /// <summary>
+    /// Enables container log capture to files.
+    /// </summary>
+    /// <param name="directory">The directory to write logs to. If null, a temp directory is created.</param>
+    /// <param name="preserveOnDispose">Whether logs are preserved after disposing the environment.</param>
+    public DaprRuntimeOptions WithContainerLogs(string? directory = null, bool preserveOnDispose = true)
+    {
+        EnableContainerLogs = true;
+        PreserveContainerLogs = preserveOnDispose;
+        ContainerLogsDirectory = string.IsNullOrWhiteSpace(directory)
+            ? TestDirectoryManager.CreateTestDirectory("dapr-logs")
+            : directory;
+        return this;
+    }
+
+    internal string? EnsureContainerLogsDirectory()
+    {
+        if (!EnableContainerLogs)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(ContainerLogsDirectory))
+        {
+            ContainerLogsDirectory = TestDirectoryManager.CreateTestDirectory("dapr-logs");
+        }
+
+        return ContainerLogsDirectory;
+    }
+
+    private void TryEnableContainerLogsForCi(DaprLogLevel logLevel)
+    {
+        if (EnableContainerLogs || logLevel != DaprLogLevel.Debug)
+        {
+            return;
+        }
+
+        if (!IsCiEnvironment())
+        {
+            return;
+        }
+
+        WithContainerLogs();
+    }
+
+    private static bool IsCiEnvironment()
+    {
+        foreach (var key in CiEnvironmentSignals)
+        {
+            var value = Environment.GetEnvironmentVariable(key);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            if (string.Equals(key, "CI", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(value, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 }
