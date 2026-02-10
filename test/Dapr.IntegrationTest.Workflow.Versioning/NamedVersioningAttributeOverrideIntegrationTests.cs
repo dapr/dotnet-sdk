@@ -25,20 +25,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow.Versioning;
 
-public sealed class NamedVersioningWithoutAttributesIntegrationTests
+public sealed class NamedVersioningAttributeOverrideIntegrationTests
 {
-    private const string CanonicalWorkflowName = "NoAttributeWorkflow";
+    private const string CanonicalWorkflowName = "AttributeOverrideWorkflow";
     private const string ResumeEventName = "resume";
 
     [MinimumDaprRuntimeFact("1.17")]
-    public async Task ShouldRouteByNameWithoutWorkflowVersionAttributes()
+    public async Task ShouldRouteByNameUsingWorkflowVersionAttributeOverrides()
     {
         var instanceIdV1 = Guid.NewGuid().ToString("N");
         var instanceIdV2 = Guid.NewGuid().ToString("N");
-        var appId = $"workflow-versioning-noattr-{Guid.NewGuid():N}";
+        var appId = $"workflow-versioning-attr-override-{Guid.NewGuid():N}";
         var options = new DaprRuntimeOptions().WithAppId(appId);
-        var componentsDirV1 = TestDirectoryManager.CreateTestDirectory("workflow-versioning-noattr-v1");
-        var componentsDirV2 = TestDirectoryManager.CreateTestDirectory("workflow-versioning-noattr-v2");
+        var componentsDirV1 = TestDirectoryManager.CreateTestDirectory("workflow-versioning-attr-override-v1");
+        var componentsDirV2 = TestDirectoryManager.CreateTestDirectory("workflow-versioning-attr-override-v2");
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
@@ -50,7 +50,7 @@ public sealed class NamedVersioningWithoutAttributesIntegrationTests
             var client1 = scope1.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
             var latestNameV1 = GetLatestWorkflowName(scope1.ServiceProvider);
-            Assert.Equal(nameof(NoAttributeWorkflowV1), latestNameV1);
+            Assert.Equal(nameof(OverrideWorkflowAlpha), latestNameV1);
 
             await client1.ScheduleNewWorkflowAsync(latestNameV1, instanceIdV1, new Payload("first"));
             using (var startCts = new CancellationTokenSource(TimeSpan.FromMinutes(1)))
@@ -74,7 +74,7 @@ public sealed class NamedVersioningWithoutAttributesIntegrationTests
             var client2 = scope2.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
             var latestNameV2 = GetLatestWorkflowName(scope2.ServiceProvider);
-            Assert.Equal(nameof(NoAttributeWorkflowV2), latestNameV2);
+            Assert.Equal(nameof(OverrideWorkflowBeta), latestNameV2);
 
             await client2.RaiseEventAsync(instanceIdV1, ResumeEventName, "resume");
             using var resumeCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
@@ -120,7 +120,11 @@ public sealed class NamedVersioningWithoutAttributesIntegrationTests
                 });
 
                 builder.Services.AddDaprWorkflowBuilder(
-                    configureRuntime: _ => { },
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<OverrideWorkflowAlpha>();
+                        opt.RegisterWorkflow<OverrideWorkflowBeta>();
+                    },
                     configureClient: (sp, clientBuilder) =>
                     {
                         var config = sp.GetRequiredService<IConfiguration>();
@@ -188,7 +192,8 @@ public sealed class NamedVersioningWithoutAttributesIntegrationTests
 
     internal sealed record Payload(string Name);
 
-    internal sealed class NoAttributeWorkflowV1 : Workflow<Payload, string>
+    [WorkflowVersion(CanonicalName = CanonicalWorkflowName, Version = "1")]
+    internal sealed class OverrideWorkflowAlpha : Workflow<Payload, string>
     {
         public override async Task<string> RunAsync(WorkflowContext context, Payload input)
         {
@@ -197,7 +202,8 @@ public sealed class NamedVersioningWithoutAttributesIntegrationTests
         }
     }
 
-    internal sealed class NoAttributeWorkflowV2 : Workflow<Payload, string>
+    [WorkflowVersion(CanonicalName = CanonicalWorkflowName, Version = "2")]
+    internal sealed class OverrideWorkflowBeta : Workflow<Payload, string>
     {
         public override async Task<string> RunAsync(WorkflowContext context, Payload input)
         {

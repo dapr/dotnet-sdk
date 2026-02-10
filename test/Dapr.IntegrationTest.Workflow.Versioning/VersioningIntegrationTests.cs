@@ -16,6 +16,7 @@ using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Testcontainers.Common.Testing;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Dapr.Workflow.Versioning;
 using Grpc.Core;
@@ -29,7 +30,7 @@ public sealed class VersioningIntegrationTests
     private const string CanonicalWorkflowName = "VersionedWorkflow";
     private const string ResumeEventName = "resume";
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldResumeInFlightWorkflowWithOriginalVersionAndUseLatestForNew()
     {
         var instanceId = Guid.NewGuid().ToString("N");
@@ -87,7 +88,7 @@ public sealed class VersioningIntegrationTests
         }
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldFailWorkflowWhenVersionMissing()
     {
         var instanceId = Guid.NewGuid().ToString("N");

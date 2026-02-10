@@ -19,6 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
