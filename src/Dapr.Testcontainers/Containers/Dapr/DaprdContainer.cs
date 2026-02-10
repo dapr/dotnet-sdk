@@ -34,6 +34,7 @@ public sealed class DaprdContainer : IAsyncStartable
 	private const int InternalHttpPort = 3500;
 	private const int InternalGrpcPort = 50001;
 	private readonly IContainer _container;
+    private readonly ContainerLogAttachment? _logAttachment;
     private string _containerName = $"dapr-{Guid.NewGuid():N}";
 
     /// <summary>
@@ -47,7 +48,7 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <summary>
     /// The gRPC port of the Dapr runtime.
     /// </summary>
-	public int GrpcPort { get; private set; }
+    public int GrpcPort { get; private set; }
 
     private readonly int? _requestedHttpPort;
     private readonly int? _requestedGrpcPort;
@@ -68,6 +69,7 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="schedulerHostAndPort">The hostname and port of the Scheduler service.</param>
     /// <param name="daprHttpPort">The host HTTP port to bind to.</param>
     /// <param name="daprGrpcPort">The host gRPC port to bind to.</param>
+    /// <param name="logDirectory">The directory to write container logs to.</param>
     public DaprdContainer(
         string appId, 
         string componentsHostFolder, 
@@ -76,11 +78,13 @@ public sealed class DaprdContainer : IAsyncStartable
         HostPortPair? placementHostAndPort = null, 
         HostPortPair? schedulerHostAndPort = null,
         int? daprHttpPort = null,
-        int? daprGrpcPort = null
+        int? daprGrpcPort = null,
+        string? logDirectory = null
         )
     {
         _requestedHttpPort = daprHttpPort;
         _requestedGrpcPort = daprGrpcPort;
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "daprd", _containerName);
         
         const string componentsPath = "/components";
 		var cmd =
@@ -131,6 +135,11 @@ public sealed class DaprdContainer : IAsyncStartable
 			.WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilMessageIsLogged("Internal gRPC server is running"));
                 //.UntilMessageIsLogged(@"^dapr initialized. Status: Running. Init Elapsed "))
+
+        if (_logAttachment is not null)
+        {
+            containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
+        }
 
             containerBuilder = daprHttpPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalHttpPort, hostPort: daprHttpPort.Value) : containerBuilder.WithPortBinding(port: InternalHttpPort, assignRandomHostPort: true);
             containerBuilder = daprGrpcPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalGrpcPort, hostPort: daprGrpcPort.Value) : containerBuilder.WithPortBinding(port: InternalGrpcPort, assignRandomHostPort: true);
@@ -208,5 +217,18 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
     /// <inheritdoc />
-	public ValueTask DisposeAsync() => _container.DisposeAsync();
+	public async ValueTask DisposeAsync()
+    {
+        await _container.DisposeAsync();
+
+        if (_logAttachment is not null)
+        {
+            await _logAttachment.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Gets the log file locations for this container.
+    /// </summary>
+    public ContainerLogPaths? LogPaths => _logAttachment?.Paths;
 }

@@ -40,9 +40,9 @@ public sealed class ActorHarness : BaseHarness
     public ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
-        _placement = new DaprPlacementContainer(options, Network);
-        _schedueler = new DaprSchedulerContainer(options, Network);
-        _redis = new(Network);
+        _placement = new DaprPlacementContainer(options, Network, ContainerLogsDirectory);
+        _schedueler = new DaprSchedulerContainer(options, Network, ContainerLogsDirectory);
+        _redis = new RedisContainer(Network, ContainerLogsDirectory);
     }
 
     /// <inheritdoc />

@@ -28,6 +28,7 @@ namespace Dapr.Testcontainers.Containers.Dapr;
 public sealed class DaprPlacementContainer : IAsyncStartable
 {
 	private readonly IContainer _container;
+    private readonly ContainerLogAttachment? _logAttachment;
     private readonly string _containerName = $"placement-{Guid.NewGuid():N}";
 
     /// <summary>
@@ -52,17 +53,27 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// </summary>
     /// <param name="options">The Dapr runtime options.</param>
     /// <param name="network">The shared Docker network to connect to.</param>
-    public DaprPlacementContainer(DaprRuntimeOptions options, INetwork network)
+    /// <param name="logDirectory">The directory to write container logs to.</param>
+    public DaprPlacementContainer(DaprRuntimeOptions options, INetwork network, string? logDirectory = null)
 	{
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "placement", _containerName);
+
 		//Placement service runs via port 50006
-		_container = new ContainerBuilder()
+		var containerBuilder = new ContainerBuilder()
 			.WithImage(options.PlacementImageTag)
 			.WithName(_containerName)
             .WithNetwork(network)
 			.WithCommand("./placement", "-port", InternalPort.ToString())
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("placement server leadership acquired"))
-			.Build();
+			;
+
+        if (_logAttachment is not null)
+        {
+            containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
+        }
+
+        _container = containerBuilder.Build();
 	}
 
     /// <inheritdoc />
@@ -75,5 +86,18 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
     /// <inheritdoc />
-	public ValueTask DisposeAsync() => _container.DisposeAsync();
+	public async ValueTask DisposeAsync()
+    {
+        await _container.DisposeAsync();
+
+        if (_logAttachment is not null)
+        {
+            await _logAttachment.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Gets the log file locations for this container.
+    /// </summary>
+    public ContainerLogPaths? LogPaths => _logAttachment?.Paths;
 }

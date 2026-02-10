@@ -30,6 +30,7 @@ namespace Dapr.Testcontainers.Containers.Dapr;
 public sealed class DaprSchedulerContainer : IAsyncStartable
 {
 	private readonly IContainer _container;
+    private readonly ContainerLogAttachment? _logAttachment;
     // Contains the data directory used by this instance of the Dapr scheduler service
     //private readonly string _hostDataDir = Path.Combine(Path.GetTempPath(), $"dapr-scheduler-{Guid.NewGuid():N}");
     private readonly string _testDirectory;
@@ -55,8 +56,10 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <summary>
     /// Creates a new instance of a <see cref="DaprSchedulerContainer"/>.
     /// </summary>
-	public DaprSchedulerContainer(DaprRuntimeOptions options, INetwork network)
+	public DaprSchedulerContainer(DaprRuntimeOptions options, INetwork network, string? logDirectory = null)
 	{
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "scheduler", _containerName);
+
 		// Scheduler service runs via port 51005
         const string containerDataDir = "/data/dapr-scheduler";
         string[] cmd =
@@ -68,7 +71,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 
         _testDirectory = TestDirectoryManager.CreateTestDirectory("scheduler");
         
-        _container = new ContainerBuilder()
+        var containerBuilder = new ContainerBuilder()
             .WithImage(options.SchedulerImageTag)
 			.WithName(_containerName)
             .WithNetwork(network)
@@ -77,7 +80,14 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
             // Mount an anonymous volume to /data to ensure the scheduler has write permissions
             .WithBindMount(_testDirectory, containerDataDir, AccessMode.ReadWrite)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("api is ready"))
-			.Build();
+			;
+
+        if (_logAttachment is not null)
+        {
+            containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
+        }
+
+        _container = containerBuilder.Build();
 	}
     
     /// <inheritdoc />
@@ -90,10 +100,21 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
     /// <inheritdoc />
-	public ValueTask DisposeAsync()
+	public async ValueTask DisposeAsync()
     {
         // Remove the data directory if it exists
         TestDirectoryManager.CleanUpDirectory(_testDirectory);
-        return _container.DisposeAsync();
+
+        await _container.DisposeAsync();
+
+        if (_logAttachment is not null)
+        {
+            await _logAttachment.DisposeAsync();
+        }
     }
+
+    /// <summary>
+    /// Gets the log file locations for this container.
+    /// </summary>
+    public ContainerLogPaths? LogPaths => _logAttachment?.Paths;
 }
