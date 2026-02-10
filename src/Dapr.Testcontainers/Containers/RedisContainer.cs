@@ -31,19 +31,29 @@ public sealed class RedisContainer : IAsyncStartable
     private readonly string _containerName = $"redis-{Guid.NewGuid():N}";
     
 	private readonly IContainer _container;
+    private readonly ContainerLogAttachment? _logAttachment;
 
     /// <summary>
     /// Provides a Redis container.
     /// </summary>
-    public RedisContainer(INetwork network)
+    public RedisContainer(INetwork network, string? logDirectory = null)
     {
-        _container = new ContainerBuilder()
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "redis", _containerName);
+
+        var containerBuilder = new ContainerBuilder()
             .WithImage("redis:alpine")
             .WithName(_containerName)
             .WithNetwork(network)
             .WithPortBinding(InternalPort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
-            .Build();
+            ;
+
+        if (_logAttachment is not null)
+        {
+            containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
+        }
+
+        _container = containerBuilder.Build();
     }
 
     /// <summary>
@@ -72,7 +82,20 @@ public sealed class RedisContainer : IAsyncStartable
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
     /// <inheritdoc />
-    public ValueTask DisposeAsync() => _container.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        await _container.DisposeAsync();
+
+        if (_logAttachment is not null)
+        {
+            await _logAttachment.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Gets the log file locations for this container.
+    /// </summary>
+    public ContainerLogPaths? LogPaths => _logAttachment?.Paths;
 
 	/// <summary>
 	/// Builds out each of the YAML components for Redis

@@ -31,21 +31,31 @@ public sealed class RabbitMqContainer : IAsyncStartable
 	private const int InternalPort = 5672;
 
 	private readonly IContainer _container;
+    private readonly ContainerLogAttachment? _logAttachment;
     private string _containerName = $"rabbitmq-{Guid.NewGuid():N}";
 
     /// <summary>
     /// Provides a RabbitMQ container.
     /// </summary>
-    public RabbitMqContainer(INetwork network)
+    public RabbitMqContainer(INetwork network, string? logDirectory = null)
     {
-        _container = new ContainerBuilder()
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "rabbitmq", _containerName);
+
+        var containerBuilder = new ContainerBuilder()
             .WithImage("rabbitmq:alpine")
             .WithName(_containerName)
             .WithNetwork(network)
             .WithLogger(ConsoleLogger.Instance)
             .WithPortBinding(InternalPort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(InternalPort))
-            .Build();
+            ;
+
+        if (_logAttachment is not null)
+        {
+            containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
+        }
+
+        _container = containerBuilder.Build();
     }
 
     /// <summary>
@@ -75,7 +85,20 @@ public sealed class RabbitMqContainer : IAsyncStartable
     /// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken = default) => _container.StopAsync(cancellationToken);
     /// <inheritdoc />
-	public ValueTask DisposeAsync() => _container.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        await _container.DisposeAsync();
+
+        if (_logAttachment is not null)
+        {
+            await _logAttachment.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Gets the log file locations for this container.
+    /// </summary>
+    public ContainerLogPaths? LogPaths => _logAttachment?.Paths;
 
 	/// <summary>
 	/// Builds out the YAML components for RabbitMQ.

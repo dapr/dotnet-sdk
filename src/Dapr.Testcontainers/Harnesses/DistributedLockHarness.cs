@@ -42,7 +42,7 @@ public sealed class DistributedLockHarness : BaseHarness
     public DistributedLockHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
-        _redis = new(Network);
+        _redis = new RedisContainer(Network, ContainerLogsDirectory);
     }
 
     /// <inheritdoc />
