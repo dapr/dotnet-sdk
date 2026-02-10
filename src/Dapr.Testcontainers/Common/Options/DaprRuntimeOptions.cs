@@ -22,6 +22,7 @@ namespace Dapr.Testcontainers.Common.Options;
 public sealed record DaprRuntimeOptions
 {
     private const string DEFAULT_VERSION_ENVVAR_NAME = "DAPR_RUNTIME_VERSION";
+    private const string DEFAULT_LOGLEVEL_ENVVAR_NAME = "DAPR_LOG_LEVEL";
     private static readonly string[] CiEnvironmentSignals =
     [
         "CI",
@@ -48,6 +49,15 @@ public sealed record DaprRuntimeOptions
         // Get the version from an environment variable, if set
         var envVarVersion = Environment.GetEnvironmentVariable(DEFAULT_VERSION_ENVVAR_NAME);
         Version = !string.IsNullOrWhiteSpace(envVarVersion) ? envVarVersion : version;
+
+        var envLogLevel = Environment.GetEnvironmentVariable(DEFAULT_LOGLEVEL_ENVVAR_NAME);
+        if (TryParseLogLevel(envLogLevel, out var parsedLogLevel))
+        {
+            LogLevel = parsedLogLevel;
+        }
+
+        TryEnableContainerLogsForCi(LogLevel);
+        TryEnableGitHubContainerLogStreaming(LogLevel);
     }
     
     /// <summary>
@@ -216,5 +226,39 @@ public sealed record DaprRuntimeOptions
     {
         var value = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
         return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryParseLogLevel(string? value, out DaprLogLevel logLevel)
+    {
+        logLevel = default;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "debug":
+                logLevel = DaprLogLevel.Debug;
+                return true;
+            case "info":
+                logLevel = DaprLogLevel.Info;
+                return true;
+            case "warn":
+            case "warning":
+                logLevel = DaprLogLevel.Warn;
+                return true;
+            case "error":
+                logLevel = DaprLogLevel.Error;
+                return true;
+            case "fatal":
+                logLevel = DaprLogLevel.Fatal;
+                return true;
+            case "panic":
+                logLevel = DaprLogLevel.Panic;
+                return true;
+            default:
+                return false;
+        }
     }
 }

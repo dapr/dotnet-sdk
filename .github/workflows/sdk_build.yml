@@ -224,6 +224,7 @@ jobs:
         continue-on-error: false # proceed if tests fail to allow for the report generation in master or next step failure in PR
         env:
           DAPR_RUNTIME_VERSION: ${{ matrix.dapr-runtime-versions.version }}
+          DAPR_LOG_LEVEL: debug
         run: |
           dotnet test "${{ matrix.project }}" \
           --configuration release \

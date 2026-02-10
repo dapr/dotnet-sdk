@@ -132,6 +132,7 @@ public sealed class DaprdContainer : IAsyncStartable
             .WithLogger(ConsoleLogger.Instance)
 			.WithCommand(cmd.ToArray())
             .WithNetwork(network)
+            .WithEnvironment("DAPR_HOST", "127.0.0.1")
             .WithExtraHost(ContainerHostAlias, "host-gateway")
 			.WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
 			.WithWaitStrategy(Wait.ForUnixContainer()

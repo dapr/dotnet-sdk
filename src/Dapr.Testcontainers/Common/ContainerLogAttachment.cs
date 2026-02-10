@@ -159,6 +159,7 @@ internal sealed class ContainerLogAttachment : IAsyncDisposable
                 foreach (var stream in _streams)
                 {
                     stream.Write(buffer, offset, count);
+                    stream.Flush();
                 }
             }
         }
@@ -170,6 +171,7 @@ internal sealed class ContainerLogAttachment : IAsyncDisposable
                 foreach (var stream in _streams)
                 {
                     stream.Write(buffer);
+                    stream.Flush();
                 }
             }
         }
