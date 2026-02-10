@@ -48,6 +48,9 @@ public sealed record DaprRuntimeOptions
         // Get the version from an environment variable, if set
         var envVarVersion = Environment.GetEnvironmentVariable(DEFAULT_VERSION_ENVVAR_NAME);
         Version = !string.IsNullOrWhiteSpace(envVarVersion) ? envVarVersion : version;
+
+        // Automatically enable container logs in CI environments
+        TryEnableContainerLogsForCi();
     }
     
     /// <summary>
@@ -105,7 +108,7 @@ public sealed record DaprRuntimeOptions
     public DaprRuntimeOptions WithLogLevel(DaprLogLevel logLevel)
     {
         LogLevel = logLevel;
-        TryEnableContainerLogsForCi(logLevel);
+        TryEnableContainerLogsForCi();
         return this;
     }
 
@@ -149,9 +152,9 @@ public sealed record DaprRuntimeOptions
         return ContainerLogsDirectory;
     }
 
-    private void TryEnableContainerLogsForCi(DaprLogLevel logLevel)
+    private void TryEnableContainerLogsForCi()
     {
-        if (EnableContainerLogs || logLevel != DaprLogLevel.Debug)
+        if (EnableContainerLogs)
         {
             return;
         }

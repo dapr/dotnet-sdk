@@ -235,7 +235,15 @@ jobs:
           /p:CollectCoverage=true \
           /p:CoverletOutputFormat=opencover \
           /p:GITHUB_ACTIONS=false
-        timeout-minutes: 60
+        timeout-minutes: 15
+      - name: Upload container logs
+        if: always() # Run even if tests fail or timeout
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-logs-${{ matrix.prefix }}-${{ matrix.dapr-runtime-versions.version }}-${{ matrix.projectName }}
+          path: /tmp/dapr-logs-*/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload test coverage
         uses: codecov/codecov-action@v1
         with:
