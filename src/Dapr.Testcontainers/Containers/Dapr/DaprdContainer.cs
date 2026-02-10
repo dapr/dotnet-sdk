@@ -70,6 +70,7 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="daprHttpPort">The host HTTP port to bind to.</param>
     /// <param name="daprGrpcPort">The host gRPC port to bind to.</param>
     /// <param name="logDirectory">The directory to write container logs to.</param>
+    /// <param name="emitToConsole">Whether to stream container logs to the console.</param>
     public DaprdContainer(
         string appId, 
         string componentsHostFolder, 
@@ -79,12 +80,13 @@ public sealed class DaprdContainer : IAsyncStartable
         HostPortPair? schedulerHostAndPort = null,
         int? daprHttpPort = null,
         int? daprGrpcPort = null,
-        string? logDirectory = null
+        string? logDirectory = null,
+        bool emitToConsole = false
         )
     {
         _requestedHttpPort = daprHttpPort;
         _requestedGrpcPort = daprGrpcPort;
-        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "daprd", _containerName);
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "daprd", _containerName, emitToConsole);
         
         const string componentsPath = "/components";
 		var cmd =

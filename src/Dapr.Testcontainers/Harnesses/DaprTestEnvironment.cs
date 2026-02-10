@@ -69,14 +69,14 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
             _ownsNetwork = false;
         }
         
-        _placement = new DaprPlacementContainer(options, Network, _logDirectory);
-        _scheduler = new DaprSchedulerContainer(options, Network, _logDirectory);
+        _placement = new DaprPlacementContainer(options, Network, _logDirectory, options.EmitContainerLogsToConsole);
+        _scheduler = new DaprSchedulerContainer(options, Network, _logDirectory, options.EmitContainerLogsToConsole);
         RegisterContainerLogs(_placement.LogPaths);
         RegisterContainerLogs(_scheduler.LogPaths);
         
         if (needsActorState)
         {
-            _redis = new RedisContainer(Network, _logDirectory);
+            _redis = new RedisContainer(Network, _logDirectory, options.EmitContainerLogsToConsole);
             RegisterContainerLogs(_redis.LogPaths);
         }
     }

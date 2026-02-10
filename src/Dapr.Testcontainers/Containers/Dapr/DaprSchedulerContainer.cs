@@ -56,9 +56,13 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// <summary>
     /// Creates a new instance of a <see cref="DaprSchedulerContainer"/>.
     /// </summary>
-	public DaprSchedulerContainer(DaprRuntimeOptions options, INetwork network, string? logDirectory = null)
+	public DaprSchedulerContainer(
+        DaprRuntimeOptions options,
+        INetwork network,
+        string? logDirectory = null,
+        bool emitToConsole = false)
 	{
-        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "scheduler", _containerName);
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "scheduler", _containerName, emitToConsole);
 
 		// Scheduler service runs via port 51005
         const string containerDataDir = "/data/dapr-scheduler";

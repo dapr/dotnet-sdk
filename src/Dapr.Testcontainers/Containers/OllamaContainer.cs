@@ -39,9 +39,9 @@ public sealed class OllamaContainer : IAsyncStartable
     /// <summary>
     /// Provides an Ollama container.
     /// </summary>
-    public OllamaContainer(INetwork network, string? logDirectory = null)
+    public OllamaContainer(INetwork network, string? logDirectory = null, bool emitToConsole = false)
     {
-        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "ollama", _containerName);
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "ollama", _containerName, emitToConsole);
 
         var containerBuilder = new ContainerBuilder()
             .WithImage("ollama/ollama")

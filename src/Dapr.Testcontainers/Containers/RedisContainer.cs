@@ -36,9 +36,9 @@ public sealed class RedisContainer : IAsyncStartable
     /// <summary>
     /// Provides a Redis container.
     /// </summary>
-    public RedisContainer(INetwork network, string? logDirectory = null)
+    public RedisContainer(INetwork network, string? logDirectory = null, bool emitToConsole = false)
     {
-        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "redis", _containerName);
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "redis", _containerName, emitToConsole);
 
         var containerBuilder = new ContainerBuilder()
             .WithImage("redis:alpine")

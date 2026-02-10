@@ -222,7 +222,8 @@ public abstract class BaseHarness : IAsyncContainerFixture
                 ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort),
             _daprHttpPortOverride,
             _daprGrpcPortOverride,
-            _logDirectory);
+            _logDirectory,
+            options.EmitContainerLogsToConsole);
 
         var daprdTask = Task.Run(async () =>
         {

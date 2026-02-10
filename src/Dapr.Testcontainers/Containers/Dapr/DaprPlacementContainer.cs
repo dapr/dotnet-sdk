@@ -54,9 +54,14 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// <param name="options">The Dapr runtime options.</param>
     /// <param name="network">The shared Docker network to connect to.</param>
     /// <param name="logDirectory">The directory to write container logs to.</param>
-    public DaprPlacementContainer(DaprRuntimeOptions options, INetwork network, string? logDirectory = null)
+    /// <param name="emitToConsole">Whether to stream container logs to the console.</param>
+    public DaprPlacementContainer(
+        DaprRuntimeOptions options,
+        INetwork network,
+        string? logDirectory = null,
+        bool emitToConsole = false)
 	{
-        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "placement", _containerName);
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "placement", _containerName, emitToConsole);
 
 		//Placement service runs via port 50006
 		var containerBuilder = new ContainerBuilder()

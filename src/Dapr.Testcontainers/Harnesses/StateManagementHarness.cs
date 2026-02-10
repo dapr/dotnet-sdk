@@ -37,7 +37,7 @@ public sealed class StateManagementHarness : BaseHarness
     public StateManagementHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
-        _redis = new RedisContainer(Network, ContainerLogsDirectory);
+        _redis = new RedisContainer(Network, ContainerLogsDirectory, options.EmitContainerLogsToConsole);
     }
 
     /// <inheritdoc />

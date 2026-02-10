@@ -37,7 +37,7 @@ public sealed class PubSubHarness : BaseHarness
     public PubSubHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null): base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
-        _rabbitmq = new RabbitMqContainer(Network, ContainerLogsDirectory);
+        _rabbitmq = new RabbitMqContainer(Network, ContainerLogsDirectory, options.EmitContainerLogsToConsole);
     }
 
     /// <inheritdoc />

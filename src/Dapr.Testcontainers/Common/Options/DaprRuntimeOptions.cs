@@ -86,6 +86,11 @@ public sealed record DaprRuntimeOptions
     public bool PreserveContainerLogs { get; private set; }
 
     /// <summary>
+    /// Indicates whether container logs should be streamed to the console.
+    /// </summary>
+    public bool EmitContainerLogsToConsole { get; private set; }
+
+    /// <summary>
     /// The image tag for the Dapr runtime.
     /// </summary>
 	public string RuntimeImageTag => $"daprio/daprd:{Version}";
@@ -106,6 +111,7 @@ public sealed record DaprRuntimeOptions
     {
         LogLevel = logLevel;
         TryEnableContainerLogsForCi(logLevel);
+        TryEnableGitHubContainerLogStreaming(logLevel);
         return this;
     }
 
@@ -164,6 +170,26 @@ public sealed record DaprRuntimeOptions
         WithContainerLogs();
     }
 
+    private void TryEnableGitHubContainerLogStreaming(DaprLogLevel logLevel)
+    {
+        if (EmitContainerLogsToConsole || logLevel != DaprLogLevel.Debug)
+        {
+            return;
+        }
+
+        if (!IsGitHubActions())
+        {
+            return;
+        }
+
+        EmitContainerLogsToConsole = true;
+
+        if (!EnableContainerLogs)
+        {
+            WithContainerLogs();
+        }
+    }
+
     private static bool IsCiEnvironment()
     {
         foreach (var key in CiEnvironmentSignals)
@@ -184,5 +210,11 @@ public sealed record DaprRuntimeOptions
         }
 
         return false;
+    }
+
+    private static bool IsGitHubActions()
+    {
+        var value = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
+        return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -37,9 +37,9 @@ public sealed class RabbitMqContainer : IAsyncStartable
     /// <summary>
     /// Provides a RabbitMQ container.
     /// </summary>
-    public RabbitMqContainer(INetwork network, string? logDirectory = null)
+    public RabbitMqContainer(INetwork network, string? logDirectory = null, bool emitToConsole = false)
     {
-        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "rabbitmq", _containerName);
+        _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "rabbitmq", _containerName, emitToConsole);
 
         var containerBuilder = new ContainerBuilder()
             .WithImage("rabbitmq:alpine")

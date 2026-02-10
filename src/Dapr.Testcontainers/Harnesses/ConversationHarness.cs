@@ -42,7 +42,7 @@ public sealed class ConversationHarness : BaseHarness
         DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
         this.componentsDir = componentsDir;
-        _ollama = new OllamaContainer(Network, ContainerLogsDirectory);
+        _ollama = new OllamaContainer(Network, ContainerLogsDirectory, options.EmitContainerLogsToConsole);
     }
 
     /// <summary>
