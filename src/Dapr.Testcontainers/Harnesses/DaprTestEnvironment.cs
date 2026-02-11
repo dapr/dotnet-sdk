@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Containers;
 using Dapr.Testcontainers.Containers.Dapr;
@@ -34,6 +35,9 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
     private readonly DaprPlacementContainer _placement;
     private readonly DaprSchedulerContainer _scheduler;
     private readonly RedisContainer? _redis;
+    private readonly string? _logDirectory;
+    private readonly bool _preserveContainerLogs;
+    private readonly List<ContainerLogPaths> _containerLogs = [];
     private bool _started;
     private readonly bool _ownsNetwork;
     private readonly DockerNetworkLease? _networkLease;
@@ -48,6 +52,12 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
     {
         options ??= new DaprRuntimeOptions();
 
+        if (options.EnableContainerLogs)
+        {
+            _logDirectory = options.EnsureContainerLogsDirectory();
+            _preserveContainerLogs = options.PreserveContainerLogs;
+        }
+
         if (network is null)
         {
             Network = new NetworkBuilder().Build();
@@ -59,12 +69,15 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
             _ownsNetwork = false;
         }
         
-        _placement = new DaprPlacementContainer(options, Network);
-        _scheduler = new DaprSchedulerContainer(options, Network);
+        _placement = new DaprPlacementContainer(options, Network, _logDirectory);
+        _scheduler = new DaprSchedulerContainer(options, Network, _logDirectory);
+        RegisterContainerLogs(_placement.LogPaths);
+        RegisterContainerLogs(_scheduler.LogPaths);
         
         if (needsActorState)
         {
-            _redis = new RedisContainer(Network);
+            _redis = new RedisContainer(Network, _logDirectory);
+            RegisterContainerLogs(_redis.LogPaths);
         }
     }
 
@@ -80,6 +93,16 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
     /// Gets the shared Docker network used by containers in this environment.
     /// </summary>
     public INetwork Network { get; }
+
+    /// <summary>
+    /// Gets the directory used to write container logs.
+    /// </summary>
+    public string? ContainerLogsDirectory => _logDirectory;
+
+    /// <summary>
+    /// Gets the log file locations for environment containers.
+    /// </summary>
+    public IReadOnlyList<ContainerLogPaths> ContainerLogs => _containerLogs;
 
     /// <summary>
     /// Exposes the redis container, if loaded in the environment.
@@ -157,5 +180,18 @@ public sealed class DaprTestEnvironment : IAsyncDisposable
 
         if (_networkLease is not null)
             await _networkLease.DisposeAsync();
+
+        if (_logDirectory is not null && !_preserveContainerLogs)
+        {
+            TestDirectoryManager.CleanUpDirectory(_logDirectory);
+        }
+    }
+
+    private void RegisterContainerLogs(ContainerLogPaths? logPaths)
+    {
+        if (logPaths is not null)
+        {
+            _containerLogs.Add(logPaths);
+        }
     }
 }

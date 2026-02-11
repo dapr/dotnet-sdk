@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#pragma warning disable CS0618 // Type or member is obsolete
 namespace Dapr.Client.Test;
 
 using System;

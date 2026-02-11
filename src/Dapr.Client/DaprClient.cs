@@ -445,6 +445,7 @@ public abstract class DaprClient : IDisposable
     /// </param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
     
     /// <summary>
@@ -479,6 +480,7 @@ public abstract class DaprClient : IDisposable
     /// </param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task InvokeMethodAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -493,6 +495,7 @@ public abstract class DaprClient : IDisposable
     /// </param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task<TResponse> InvokeMethodAsync<TResponse>(HttpRequestMessage request, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -504,6 +507,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task InvokeMethodAsync(
         string appId,
         string methodName,
@@ -523,6 +527,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task InvokeMethodAsync(
         HttpMethod httpMethod,
         string appId,
@@ -545,6 +550,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task InvokeMethodAsync<TRequest>(
         string appId,
         string methodName,
@@ -568,6 +574,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task InvokeMethodAsync<TRequest>(
         HttpMethod httpMethod,
         string appId,
@@ -591,6 +598,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task<TResponse> InvokeMethodAsync<TResponse>(
         string appId,
         string methodName,
@@ -613,6 +621,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task<TResponse> InvokeMethodAsync<TResponse>(
         HttpMethod httpMethod,
         string appId,
@@ -637,6 +646,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
         string appId,
         string methodName,
@@ -662,6 +672,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="data">The data that will be JSON serialized and provided as the request body.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(
         HttpMethod httpMethod,
         string appId,
@@ -682,6 +693,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task InvokeMethodGrpcAsync(
         string appId,
         string methodName,
@@ -698,6 +710,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="data">The data that will be Protobuf serialized and provided as the request body.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task" /> that will return when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task InvokeMethodGrpcAsync<TRequest>(
         string appId,
         string methodName,
@@ -716,6 +729,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task<TResponse> InvokeMethodGrpcAsync<TResponse>(
         string appId,
         string methodName,
@@ -735,6 +749,7 @@ public abstract class DaprClient : IDisposable
     /// <param name="data">The data that will be Protobuf serialized and provided as the request body.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken" /> that can be used to cancel the operation.</param>
     /// <returns>A <see cref="Task{T}" /> that will return the value when the operation has completed.</returns>
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public abstract Task<TResponse> InvokeMethodGrpcAsync<TRequest, TResponse>(
         string appId,
         string methodName,

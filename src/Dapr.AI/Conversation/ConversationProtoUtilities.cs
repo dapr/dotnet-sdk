@@ -101,6 +101,16 @@ public static class ConversationProtoUtilities
             request.Temperature = options.Temperature.Value;
         }
 
+        if (options.PromptCacheRetention is not null)
+        {
+            request.PromptCacheRetention = options.PromptCacheRetention.Value.ToDuration();
+        }
+
+        if (options.ResponseFormat is not null)
+        {
+            request.ResponseFormat = options.ResponseFormat;
+        }
+
         if (options.Tools.Count > 0)
         {
             var tools = options.Tools.Select(tool =>
@@ -163,7 +173,12 @@ public static class ConversationProtoUtilities
                 return new ConversationResultChoice(didParseReason ? parsedFinishReason : null,
                     c.Index, resultMessage);
             }).ToList();
-            return new ConversationResponseResult(choices);
+
+            return new ConversationResponseResult(choices)
+            {
+                Model = !string.IsNullOrWhiteSpace(convoResult.Model) ? convoResult.Model : null,
+                Usage = convoResult.Usage is not null ? CompletionUsage.FromProto(convoResult.Usage) : null
+            };
         }).ToList();
 
         return new ConversationResponse(conversationResults, contextId);

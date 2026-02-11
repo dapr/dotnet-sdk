@@ -58,6 +58,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
     private readonly string componentsDirectory;
     private readonly Func<int, Task>? startApp;
     private readonly DaprRuntimeOptions options;
+    private readonly string? _logDirectory;
 
     /// <summary>
     /// Provides a base harness for building Dapr building block harnesses.
@@ -80,6 +81,11 @@ public abstract class BaseHarness : IAsyncContainerFixture
             _environment = new DaprTestEnvironment(options);
             _ownsEnvironment = true;
         }
+
+        if (options.EnableContainerLogs)
+        {
+            _logDirectory = _environment.ContainerLogsDirectory ?? options.EnsureContainerLogsDirectory();
+        }
     }
 
     /// <summary>
@@ -91,6 +97,16 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// Gets the shared environment instance.
     /// </summary>
     protected DaprTestEnvironment Environment => _environment;
+
+    /// <summary>
+    /// The directory used to write container logs, if enabled.
+    /// </summary>
+    public string? ContainerLogsDirectory => _logDirectory;
+
+    /// <summary>
+    /// Gets the log file locations for the Dapr sidecar container.
+    /// </summary>
+    public ContainerLogPaths? DaprdLogPaths => _daprd?.LogPaths;
 
     /// <summary>
     /// Gets the port that the Dapr sidecar is configured to talk to - this is the port the test application should use.
@@ -205,14 +221,15 @@ public abstract class BaseHarness : IAsyncContainerFixture
             DaprSchedulerExternalPort is null || DaprSchedulerAlias is null 
                 ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort),
             _daprHttpPortOverride,
-            _daprGrpcPortOverride);
+            _daprGrpcPortOverride,
+            _logDirectory);
 
         var daprdTask = Task.Run(async () =>
         {
             await _daprd!.StartAsync(cancellationToken);
             _sidecarPortsReady.TrySetResult();
         }, cancellationToken);
-
+        
         Task? appTask = null;
         if (startApp is not null)
         {

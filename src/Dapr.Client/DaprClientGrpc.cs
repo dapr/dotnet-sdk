@@ -436,6 +436,7 @@ internal class DaprClientGrpc : DaprClient
         return request;
     }
 
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public override async Task<HttpResponseMessage> InvokeMethodWithResponseAsync(HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
@@ -491,7 +492,8 @@ internal class DaprClientGrpc : DaprClient
     public override HttpClient CreateInvokableHttpClient(string? appId = null) =>
         DaprClient.CreateInvokeHttpClient(appId, this.httpEndpoint?.AbsoluteUri, this.apiTokenHeader?.Value);
 #nullable disable
-
+    
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public async override Task InvokeMethodAsync(HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
@@ -516,7 +518,8 @@ internal class DaprClientGrpc : DaprClient
                 response: response);
         }
     }
-
+    
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public async override Task<TResponse> InvokeMethodAsync<TResponse>(HttpRequestMessage request,
         CancellationToken cancellationToken = default)
     {
@@ -570,7 +573,8 @@ internal class DaprClientGrpc : DaprClient
                 response: response);
         }
     }
-
+    
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public override async Task InvokeMethodGrpcAsync(string appId, string methodName,
         CancellationToken cancellationToken = default)
     {
@@ -594,6 +598,7 @@ internal class DaprClientGrpc : DaprClient
         }
     }
 
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public override async Task InvokeMethodGrpcAsync<TRequest>(string appId, string methodName, TRequest data,
         CancellationToken cancellationToken = default)
     {
@@ -622,6 +627,7 @@ internal class DaprClientGrpc : DaprClient
         }
     }
 
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public override async Task<TResponse> InvokeMethodGrpcAsync<TResponse>(string appId, string methodName,
         CancellationToken cancellationToken = default)
     {
@@ -646,6 +652,7 @@ internal class DaprClientGrpc : DaprClient
         }
     }
 
+    [Obsolete("Recommended guidance is to use a native HTTP or gRPC client for service invocation")]
     public override async Task<TResponse> InvokeMethodGrpcAsync<TRequest, TResponse>(string appId, string methodName,
         TRequest data, CancellationToken cancellationToken = default)
     {
@@ -2283,7 +2290,7 @@ internal class DaprClientGrpc : DaprClient
         {
             options.Headers.Add("User-Agent", UserAgent().ToString());
 
-            // add token for dapr api token based authentication
+            // add token for dapr api token-based authentication
             if (this.apiTokenHeader is not null)
             {
                 options.Headers.Add(this.apiTokenHeader.Value.Key, this.apiTokenHeader.Value.Value);

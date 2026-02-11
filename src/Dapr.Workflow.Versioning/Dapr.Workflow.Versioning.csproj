@@ -1,0 +1,172 @@
+﻿<Project Sdk="Microsoft.Build.NoTargets/3.7.0">
+
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Dapr.Workflow.Versioning</PackageId>
+        <Description>Provides named versioning capability (registry + strategies + source generator) for Dapr .NET Workflows</Description>
+
+        <!-- Create the package on build -->
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+        <!-- This aggregator produces no own binaries -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+
+        <!-- We embed children; do NOT emit dependency groups -->
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+
+        <!-- Aggregator package has lib assets but no dependencies -->
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+        <!-- Avoid creating an empty .snupkg -->
+        <IncludeSymbols>false</IncludeSymbols>
+
+        <!-- Per-TFM content hook (runs once per TFM) -->
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);
+            _BuildChildrenForCurrentTFM;
+            _CollectChildOutputsForCurrentTFM;
+            _AddAnalyzerOnce
+        </TargetsForTfmSpecificContentInPackage>
+
+        <!-- One-shot (outer build) hook for non-TFM content, e.g., analyzer -->
+        <TargetsForPack>$(TargetsForPack);_BuildGeneratorOnce;_AddAnalyzer</TargetsForPack>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Build children but do NOT turn them into NuGet dependencies -->
+        <ProjectReference Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj"
+                          PrivateAssets="all" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Dapr.Workflow.Versioning.Runtime\Dapr.Workflow.Versioning.Runtime.csproj"
+                          PrivateAssets="all" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <!-- Build child libs for the current TFM -->
+    <Target Name="_BuildChildrenForCurrentTFM">
+        <MSBuild Projects="@(ProjectReference)"
+                 Targets="Build"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)"
+                 BuildInParallel="true" />
+    </Target>
+
+    <!-- Create per-TFM content items mapped to lib/<tfm>/ -->
+
+    <Target Name="_CollectChildOutputsForCurrentTFM" DependsOnTargets="_BuildChildrenForCurrentTFM">
+        <!-- Ask children for their TargetPath for THIS TFM -->
+        <MSBuild Projects="@(ProjectReference)"
+                 Targets="GetTargetPath"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_BuiltChildOutputs" />
+        </MSBuild>
+
+        <!-- Derive a reliable folder name for lib/<tfm>. Use NuGet's name when available, else fall back to $(TargetFramework). -->
+        <PropertyGroup>
+            <_EffectiveTfmFolder>$(NuGetTargetFrameworkFolderName)</_EffectiveTfmFolder>
+            <_EffectiveTfmFolder Condition="'$(_EffectiveTfmFolder)'==''">$(TargetFramework)</_EffectiveTfmFolder>
+        </PropertyGroup>
+
+        <!-- Instrumentation: confirm the resolved folder name -->
+        <Message Importance="high" Text="[ContentHook] TFM=$(TargetFramework); Folder=$(_EffectiveTfmFolder); outputs: @(_BuiltChildOutputs->'%(Identity)')" />
+
+        <ItemGroup>
+            <!-- Only DLLs -->
+            <_ChildDll Include="@(_BuiltChildOutputs)" Condition="'%(_BuiltChildOutputs.Extension)'=='.dll'" />
+
+            <!-- Optional XML/PDB alongside -->
+            <_ChildXml Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml')" />
+            <_ChildPdb Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb')" />
+
+            <!-- Map to lib/<resolved-tfm>/... -->
+            <TfmSpecificPackageFile Include="@(_ChildDll)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildDll.Filename)%(_ChildDll.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+
+            <TfmSpecificPackageFile Include="@(_ChildXml)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildXml.Filename).xml</PackagePath>
+            </TfmSpecificPackageFile>
+
+            <TfmSpecificPackageFile Include="@(_ChildPdb)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildPdb.Filename).pdb</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
+
+    <!-- Build the generator once (on the first TFM) and capture its real output path -->
+    <Target Name="_BuildAndResolveGeneratorIfFirstTFM">
+        <!-- gate so we don’t add the analyzer 3x -->
+        <PropertyGroup>
+            <_IsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_IsFirstTfm>
+        </PropertyGroup>
+
+        <!-- Build -->
+        <MSBuild Condition="'$(_IsFirstTfm)' == 'true'"
+                 Projects="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
+
+        <!-- Resolve TargetPath (respects your Directory.Build.props OutputPath) -->
+        <MSBuild Condition="'$(_IsFirstTfm)' == 'true'"
+                 Projects="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
+                 Targets="GetTargetPath"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
+            <Output TaskParameter="TargetOutputs" ItemName="_AnalyzerOut" />
+        </MSBuild>
+
+        <Message Condition="'$(_IsFirstTfm)' == 'true'"
+                 Importance="high"
+                 Text="[Analyzer] Resolved generator path(s): @(_AnalyzerOut->'%(Identity)')" />
+    </Target>
+
+    <!-- Add the analyzer once under analyzers/dotnet/cs/ -->
+    <Target Name="_AddAnalyzerOnce" DependsOnTargets="_BuildAndResolveGeneratorIfFirstTFM">
+        <PropertyGroup>
+            <_AddAnalyzer Condition="'$(TargetFramework)' == 'net8.0'">true</_AddAnalyzer>
+        </PropertyGroup>
+
+        <ItemGroup Condition="'$(_AddAnalyzer)' == 'true'">
+            <TfmSpecificPackageFile Include="@(_AnalyzerOut)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>analyzers/dotnet/cs/%(_AnalyzerOut.Filename)%(_AnalyzerOut.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+
+        <Message Condition="'$(_AddAnalyzer)' == 'true'"
+                 Importance="high"
+                 Text="[Analyzer] Added @(_AnalyzerOut->'%(Filename)%(Extension)') to analyzers/dotnet/cs/" />
+    </Target>
+
+
+    <!-- Build the source generator once (outer build) -->
+    <Target Name="_BuildGeneratorOnce">
+        <MSBuild Projects="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
+    </Target>
+
+
+    <!-- Build the source generator once (we'll do it only on the first TFM to avoid duplicates) -->
+    <Target Name="_BuildGeneratorIfFirstTFM">
+        <!-- Gate: only for the first TFM (your Directory.Build.props lists net8.0 first) -->
+        <PropertyGroup>
+            <_IsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_IsFirstTfm>
+        </PropertyGroup>
+
+        <MSBuild Condition="'$(_IsFirstTfm)' == 'true'"
+                 Projects="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
+
+        <!-- Helpful log -->
+        <Message Condition="'$(_IsFirstTfm)' == 'true'"
+                 Importance="high"
+                 Text="[Analyzer] Built generator for inclusion." />
+    </Target>
+
+    <ItemGroup>
+        <Folder Include="Properties\" />
+    </ItemGroup>
+</Project>
