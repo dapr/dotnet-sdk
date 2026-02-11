@@ -13,6 +13,8 @@
 
 using System;
 using System.Linq;
+using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
@@ -52,6 +54,10 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// The container's internal port.
     /// </summary>
     public const int InternalPort = 51005;
+    /// <summary>
+    /// The container's internal health port.
+    /// </summary>
+    private const int HealthPort = 8080;
 
     /// <summary>
     /// Creates a new instance of a <see cref="DaprSchedulerContainer"/>.
@@ -70,17 +76,27 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
         ];
 
         _testDirectory = TestDirectoryManager.CreateTestDirectory("scheduler");
-        
+
         var containerBuilder = new ContainerBuilder()
             .WithImage(options.SchedulerImageTag)
-			.WithName(_containerName)
+            .WithName(_containerName)
             .WithNetwork(network)
             .WithCommand(cmd.ToArray())
-			.WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithPortBinding(HealthPort, assignRandomHostPort: true) // Allows probes to reach healthz
             // Mount an anonymous volume to /data to ensure the scheduler has write permissions
             .WithBindMount(_testDirectory, containerDataDir, AccessMode.ReadWrite)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("api is ready"))
-			;
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(endpoint =>
+                        endpoint
+                            .ForPort(HealthPort)
+                            .ForPath("/healthz")
+                            .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
+                    mod =>
+                        mod
+                            .WithTimeout(TimeSpan.FromMinutes(2))
+                            .WithInterval(TimeSpan.FromSeconds(5))
+                            .WithMode(WaitStrategyMode.Running)));
 
         if (_logAttachment is not null)
         {
