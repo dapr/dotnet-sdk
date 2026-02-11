@@ -34,6 +34,7 @@ public sealed class DaprdContainer : IAsyncStartable
 {
 	private const int InternalHttpPort = 3500;
 	private const int InternalGrpcPort = 50001;
+    private const int InternalHealthPort = 8080;
 	private readonly IContainer _container;
     private readonly ContainerLogAttachment? _logAttachment;
     private readonly string _containerName = $"dapr-{Guid.NewGuid():N}";
@@ -135,9 +136,10 @@ public sealed class DaprdContainer : IAsyncStartable
             .WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(endpoint =>
-                    endpoint.ForPort(InternalHttpPort)
+                    endpoint
+                        .ForPort(InternalHttpPort)
                         .ForPath("/v1.0/healthz")
-                        .ForStatusCode(HttpStatusCode.OK)));
+                        .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300)));
 
         if (_logAttachment is not null)
         {
