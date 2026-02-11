@@ -14,6 +14,7 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
@@ -53,6 +54,10 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
     /// The container's internal port.
     /// </summary>
     public const int InternalPort = 51005;
+    /// <summary>
+    /// The container's internal health port.
+    /// </summary>
+    private const int HealthPort = 8080;
 
     /// <summary>
     /// Creates a new instance of a <see cref="DaprSchedulerContainer"/>.
@@ -78,14 +83,15 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
             .WithNetwork(network)
             .WithCommand(cmd.ToArray())
             .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithPortBinding(HealthPort, assignRandomHostPort: true) // Allows probes to reach healthz
             // Mount an anonymous volume to /data to ensure the scheduler has write permissions
             .WithBindMount(_testDirectory, containerDataDir, AccessMode.ReadWrite)
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(endpoint =>
                     endpoint
-                        .ForPort(InternalPort)
-                        .ForPath("/v1.0/healthz")
-                        .ForStatusCode(HttpStatusCode.OK)));
+                        .ForPort(HealthPort)
+                        .ForPath("/healthz")
+                        .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300)));
 
         if (_logAttachment is not null)
         {

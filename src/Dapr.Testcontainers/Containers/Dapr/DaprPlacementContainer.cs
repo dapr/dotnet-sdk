@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
+using Docker.DotNet.Models;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
@@ -45,9 +46,13 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// </summary>
 	public int ExternalPort { get; private set; }
     /// <summary>
-    /// THe contains' internal port.
+    /// The container's internal port.
     /// </summary>
     public const int InternalPort = 50006;
+    /// <summary>
+    /// The container's internal health port.
+    /// </summary>
+    private const int HealthPort = 8080;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprPlacementContainer"/>.
@@ -66,14 +71,13 @@ public sealed class DaprPlacementContainer : IAsyncStartable
             .WithNetwork(network)
             .WithCommand("./placement", "-port", InternalPort.ToString())
             .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithPortBinding(HealthPort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(endpoint =>
-
                     endpoint
-                        .ForPort(InternalPort)
-                        .ForPath("/v1.0/healthz")
-                        .ForStatusCode(HttpStatusCode.OK)
-                ));
+                        .ForPort(HealthPort)
+                        .ForPath("/healthz")
+                        .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300)));
 
         if (_logAttachment is not null)
         {
