@@ -135,16 +135,17 @@ public sealed class DaprdContainer : IAsyncStartable
             .WithExtraHost(ContainerHostAlias, "host-gateway")
             .WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
             .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(endpoint =>
-                    endpoint
-                        .ForPort(InternalHttpPort)
-                        .ForPath("/v1.0/healthz")
-                        .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
-                    mod => 
-                        mod
-                            .WithTimeout(TimeSpan.FromMinutes(2))
-                            .WithInterval(TimeSpan.FromSeconds(5))
-                            .WithMode(WaitStrategyMode.Running)));
+                .UntilMessageIsLogged("Internal gRPC server is running"));
+                // .UntilHttpRequestIsSucceeded(endpoint =>
+                //     endpoint
+                //         .ForPort(InternalHttpPort)
+                //         .ForPath("/healthz")
+                //         .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
+                //     mod => 
+                //         mod
+                //             .WithTimeout(TimeSpan.FromMinutes(2))
+                //             .WithInterval(TimeSpan.FromSeconds(5))
+                //             .WithMode(WaitStrategyMode.Running)));
 
         if (_logAttachment is not null)
         {
@@ -160,30 +161,38 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
-		await _container.StartAsync(cancellationToken);
-
-        var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
-        var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
-
-        if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
+        try
         {
-            throw new InvalidOperationException(
-                $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
-        }
+            await _container.StartAsync(cancellationToken);
 
-        if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
+            var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
+            var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
+
+            if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
+            {
+                throw new InvalidOperationException(
+                    $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
+            }
+
+            if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
+            {
+                throw new InvalidOperationException(
+                    $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
+            }
+
+            HttpPort = mappedHttpPort;
+            GrpcPort = mappedGrpcPort;
+
+            // The container log wait strategy can fire before the host port is actually accepting connections
+            // (especially on Windows). Ensure the ports are reachable from the test process.
+            await WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
+            await WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
+        }
+        catch (Exception ex)
         {
-            throw new InvalidOperationException(
-                $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
+            var msg = ex.Message;
+            throw;
         }
-
-        HttpPort = mappedHttpPort;
-        GrpcPort = mappedGrpcPort;
-
-        // The container log wait strategy can fire before the host port is actually accepting connections
-        // (especially on Windows). Ensure the ports are reachable from the test process.
-        await WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
-        await WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken); 
     }
 
     private static async Task WaitForTcpPortAsync(
