@@ -71,40 +71,47 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="daprGrpcPort">The host gRPC port to bind to.</param>
     /// <param name="logDirectory">The directory to write container logs to.</param>
     public DaprdContainer(
-        string appId, 
-        string componentsHostFolder, 
-        DaprRuntimeOptions options, 
-        INetwork network, 
-        HostPortPair? placementHostAndPort = null, 
+        string appId,
+        string componentsHostFolder,
+        DaprRuntimeOptions options,
+        INetwork network,
+        HostPortPair? placementHostAndPort = null,
         HostPortPair? schedulerHostAndPort = null,
         int? daprHttpPort = null,
         int? daprGrpcPort = null,
         string? logDirectory = null
-        )
+    )
     {
         _requestedHttpPort = daprHttpPort;
         _requestedGrpcPort = daprGrpcPort;
         _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "daprd", _containerName);
-        
-        const string componentsPath = "/components";
-		var cmd =
-			new List<string>
-			{
-                "/daprd",
-				"-app-id", appId,
-				"-app-port", options.AppPort.ToString(),
-                "-app-channel-address", "host.docker.internal",
-				"-dapr-http-port", InternalHttpPort.ToString(),
-				"-dapr-grpc-port", InternalGrpcPort.ToString(),
-				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),
-				"-resources-path", componentsPath
-			};
 
-		if (placementHostAndPort is not null)
-		{
-			cmd.Add("-placement-host-address");
-			cmd.Add(placementHostAndPort.ToString());
-		}
+        const string componentsPath = "/components";
+        var cmd =
+            new List<string>
+            {
+                "/daprd",
+                "-app-id",
+                appId,
+                "-app-port",
+                options.AppPort.ToString(),
+                "-app-channel-address",
+                "host.docker.internal",
+                "-dapr-http-port",
+                InternalHttpPort.ToString(),
+                "-dapr-grpc-port",
+                InternalGrpcPort.ToString(),
+                "-log-level",
+                options.LogLevel.ToString().ToLowerInvariant(),
+                "-resources-path",
+                componentsPath
+            };
+
+        if (placementHostAndPort is not null)
+        {
+            cmd.Add("-placement-host-address");
+            cmd.Add(placementHostAndPort.ToString());
+        }
         else
         {
             // Explicitly disable placement if not provided to speed up startup
@@ -112,40 +119,44 @@ public sealed class DaprdContainer : IAsyncStartable
             cmd.Add("");
         }
 
-		if (schedulerHostAndPort is not null)
-		{
-			cmd.Add("-scheduler-host-address");
-			cmd.Add(schedulerHostAndPort.ToString());
-		}
+        if (schedulerHostAndPort is not null)
+        {
+            cmd.Add("-scheduler-host-address");
+            cmd.Add(schedulerHostAndPort.ToString());
+        }
         else
         {
             // Explicitly disable scheduler if not provider
             cmd.Add("-scheduler-host-address");
             cmd.Add("");
         }
-		
-		var  containerBuilder = new ContainerBuilder()
-			.WithImage(options.RuntimeImageTag)
-			.WithName(_containerName)
+
+        var containerBuilder = new ContainerBuilder()
+            .WithImage(options.RuntimeImageTag)
+            .WithName(_containerName)
             .WithLogger(ConsoleLogger.Instance)
-			.WithCommand(cmd.ToArray())
+            .WithCommand(cmd.ToArray())
             .WithNetwork(network)
             .WithExtraHost(ContainerHostAlias, "host-gateway")
-			.WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
-			.WithWaitStrategy(Wait.ForUnixContainer()
+            .WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
+            .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilMessageIsLogged("Internal gRPC server is running"));
-                //.UntilMessageIsLogged(@"^dapr initialized. Status: Running. Init Elapsed "))
+        //.UntilMessageIsLogged(@"^dapr initialized. Status: Running. Init Elapsed "))
 
         if (_logAttachment is not null)
         {
             containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
         }
 
-            containerBuilder = daprHttpPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalHttpPort, hostPort: daprHttpPort.Value) : containerBuilder.WithPortBinding(port: InternalHttpPort, assignRandomHostPort: true);
-            containerBuilder = daprGrpcPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalGrpcPort, hostPort: daprGrpcPort.Value) : containerBuilder.WithPortBinding(port: InternalGrpcPort, assignRandomHostPort: true);
-                
-            _container = containerBuilder.Build();
-	}
+        containerBuilder = daprHttpPort is not null
+            ? containerBuilder.WithPortBinding(containerPort: InternalHttpPort, hostPort: daprHttpPort.Value)
+            : containerBuilder.WithPortBinding(port: InternalHttpPort, assignRandomHostPort: true);
+        containerBuilder = daprGrpcPort is not null
+            ? containerBuilder.WithPortBinding(containerPort: InternalGrpcPort, hostPort: daprGrpcPort.Value)
+            : containerBuilder.WithPortBinding(port: InternalGrpcPort, assignRandomHostPort: true);
+
+        _container = containerBuilder.Build();
+    }
 
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)

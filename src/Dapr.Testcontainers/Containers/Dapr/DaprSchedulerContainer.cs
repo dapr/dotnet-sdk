@@ -79,8 +79,7 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
 			.WithPortBinding(InternalPort, assignRandomHostPort: true)
             // Mount an anonymous volume to /data to ensure the scheduler has write permissions
             .WithBindMount(_testDirectory, containerDataDir, AccessMode.ReadWrite)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("api is ready"))
-			;
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("api is ready"));
 
         if (_logAttachment is not null)
         {
