@@ -231,6 +231,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Testcontainers.Xunit",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.AI", "test\Dapr.IntegrationTest.AI\Dapr.IntegrationTest.AI.csproj", "{AD9F25C7-7BBD-459A-B3EF-1BE75C25E80A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Versioning.Abstractions", "src\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj", "{FB92C5BC-BEAB-465F-8976-CF2866A2D699}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Versioning.Runtime", "src\Dapr.Workflow.Versioning.Runtime\Dapr.Workflow.Versioning.Runtime.csproj", "{B46E7964-03F5-450E-BF16-C3518EBF36CB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Versioning.Generators", "src\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj", "{BD1FA767-AC6D-429D-8BC0-3C0B52AA11FF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Workflow.Versioning", "src\Dapr.Workflow.Versioning\Dapr.Workflow.Versioning.csproj", "{CB619F1E-B90C-4BCB-9DDA-A5A4F5967661}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Workflow.Versioning", "test\Dapr.IntegrationTest.Workflow.Versioning\Dapr.IntegrationTest.Workflow.Versioning.csproj", "{1AD32297-630E-4DFB-B3E4-CAFCE993F27F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -609,6 +619,26 @@ Global
 		{AD9F25C7-7BBD-459A-B3EF-1BE75C25E80A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AD9F25C7-7BBD-459A-B3EF-1BE75C25E80A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AD9F25C7-7BBD-459A-B3EF-1BE75C25E80A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB92C5BC-BEAB-465F-8976-CF2866A2D699}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB92C5BC-BEAB-465F-8976-CF2866A2D699}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB92C5BC-BEAB-465F-8976-CF2866A2D699}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB92C5BC-BEAB-465F-8976-CF2866A2D699}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B46E7964-03F5-450E-BF16-C3518EBF36CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B46E7964-03F5-450E-BF16-C3518EBF36CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B46E7964-03F5-450E-BF16-C3518EBF36CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B46E7964-03F5-450E-BF16-C3518EBF36CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD1FA767-AC6D-429D-8BC0-3C0B52AA11FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD1FA767-AC6D-429D-8BC0-3C0B52AA11FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD1FA767-AC6D-429D-8BC0-3C0B52AA11FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD1FA767-AC6D-429D-8BC0-3C0B52AA11FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CB619F1E-B90C-4BCB-9DDA-A5A4F5967661}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB619F1E-B90C-4BCB-9DDA-A5A4F5967661}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB619F1E-B90C-4BCB-9DDA-A5A4F5967661}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB619F1E-B90C-4BCB-9DDA-A5A4F5967661}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AD32297-630E-4DFB-B3E4-CAFCE993F27F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AD32297-630E-4DFB-B3E4-CAFCE993F27F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AD32297-630E-4DFB-B3E4-CAFCE993F27F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AD32297-630E-4DFB-B3E4-CAFCE993F27F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -721,6 +751,11 @@ Global
 		{38AAD849-B59C-4011-B309-3E9F291E9B9F} = {0AF0FE8D-C234-4F04-8514-32206ACE01BD}
 		{2D6EB9E0-C5BF-4BA4-B69F-0D2B5A0E36D5} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{AD9F25C7-7BBD-459A-B3EF-1BE75C25E80A} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
+		{FB92C5BC-BEAB-465F-8976-CF2866A2D699} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{B46E7964-03F5-450E-BF16-C3518EBF36CB} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{BD1FA767-AC6D-429D-8BC0-3C0B52AA11FF} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{CB619F1E-B90C-4BCB-9DDA-A5A4F5967661} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
+		{1AD32297-630E-4DFB-B3E4-CAFCE993F27F} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}

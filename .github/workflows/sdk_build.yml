@@ -106,8 +106,8 @@ jobs:
           INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_TAG_PREFIX: "v"
           INPUT_STABLE_COUNT: "2"
-          INPUT_RC_IDENTIFIER: "rc"
           INPUT_RC_COUNT: "2"
+          INPUT_RC_IDENTIFIER: "rc"
         run: |
           node .github/tools/tag-selector/dist/index.js
       - name: Show outputs

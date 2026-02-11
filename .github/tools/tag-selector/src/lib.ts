@@ -15,10 +15,8 @@ export type ComputeOutput = {
 export function stripPrefix(tag: string, prefix?: string): string {
     if (!prefix)
         return tag;
-
     return tag.startsWith(prefix) ? tag.slice(prefix.length) : tag;
 }
-
 /** Compute outputs from a set of tag names */
 export function computeFromTags(input: ComputeInput): ComputeOutput {
     const tagPrefix = input.tagPrefix ?? "";
