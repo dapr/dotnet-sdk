@@ -139,7 +139,12 @@ public sealed class DaprdContainer : IAsyncStartable
                     endpoint
                         .ForPort(InternalHttpPort)
                         .ForPath("/v1.0/healthz")
-                        .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300)));
+                        .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
+                    mod => 
+                        mod
+                            .WithTimeout(TimeSpan.FromMinutes(2))
+                            .WithInterval(TimeSpan.FromSeconds(5))
+                            .WithMode(WaitStrategyMode.Running)));
 
         if (_logAttachment is not null)
         {

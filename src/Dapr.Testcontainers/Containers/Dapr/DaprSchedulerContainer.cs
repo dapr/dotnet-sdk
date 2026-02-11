@@ -88,10 +88,15 @@ public sealed class DaprSchedulerContainer : IAsyncStartable
             .WithBindMount(_testDirectory, containerDataDir, AccessMode.ReadWrite)
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(endpoint =>
-                    endpoint
-                        .ForPort(HealthPort)
-                        .ForPath("/healthz")
-                        .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300)));
+                        endpoint
+                            .ForPort(HealthPort)
+                            .ForPath("/healthz")
+                            .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
+                    mod =>
+                        mod
+                            .WithTimeout(TimeSpan.FromMinutes(2))
+                            .WithInterval(TimeSpan.FromSeconds(5))
+                            .WithMode(WaitStrategyMode.Running)));
 
         if (_logAttachment is not null)
         {
