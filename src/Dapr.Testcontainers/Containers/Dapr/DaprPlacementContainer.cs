@@ -12,11 +12,14 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
+using Docker.DotNet.Models;
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
 
@@ -44,9 +47,13 @@ public sealed class DaprPlacementContainer : IAsyncStartable
     /// </summary>
 	public int ExternalPort { get; private set; }
     /// <summary>
-    /// THe contains' internal port.
+    /// The container's internal port.
     /// </summary>
     public const int InternalPort = 50006;
+    /// <summary>
+    /// The container's internal health port.
+    /// </summary>
+    private const int HealthPort = 8080;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprPlacementContainer"/>.
@@ -59,13 +66,24 @@ public sealed class DaprPlacementContainer : IAsyncStartable
         _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "placement", _containerName);
 
 		//Placement service runs via port 50006
-		var containerBuilder = new ContainerBuilder()
-			.WithImage(options.PlacementImageTag)
-			.WithName(_containerName)
+        var containerBuilder = new ContainerBuilder()
+            .WithImage(options.PlacementImageTag)
+            .WithName(_containerName)
             .WithNetwork(network)
-			.WithCommand("./placement", "-port", InternalPort.ToString())
-			.WithPortBinding(InternalPort, assignRandomHostPort: true)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("placement server leadership acquired"));
+            .WithCommand("./placement", "-port", InternalPort.ToString())
+            .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithPortBinding(HealthPort, assignRandomHostPort: true)
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(endpoint =>
+                        endpoint
+                            .ForPort(HealthPort)
+                            .ForPath("/healthz")
+                            .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
+                    mod =>
+                        mod
+                            .WithTimeout(TimeSpan.FromMinutes(2))
+                            .WithInterval(TimeSpan.FromSeconds(5))
+                            .WithMode(WaitStrategyMode.Running)));
 
         if (_logAttachment is not null)
         {

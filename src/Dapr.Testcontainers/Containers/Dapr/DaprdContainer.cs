@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,9 +34,10 @@ public sealed class DaprdContainer : IAsyncStartable
 {
 	private const int InternalHttpPort = 3500;
 	private const int InternalGrpcPort = 50001;
+    private const int InternalHealthPort = 8080;
 	private readonly IContainer _container;
     private readonly ContainerLogAttachment? _logAttachment;
-    private string _containerName = $"dapr-{Guid.NewGuid():N}";
+    private readonly string _containerName = $"dapr-{Guid.NewGuid():N}";
 
     /// <summary>
     /// The internal network alias/name of the container.
@@ -71,47 +73,40 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="daprGrpcPort">The host gRPC port to bind to.</param>
     /// <param name="logDirectory">The directory to write container logs to.</param>
     public DaprdContainer(
-        string appId,
-        string componentsHostFolder,
-        DaprRuntimeOptions options,
-        INetwork network,
-        HostPortPair? placementHostAndPort = null,
+        string appId, 
+        string componentsHostFolder, 
+        DaprRuntimeOptions options, 
+        INetwork network, 
+        HostPortPair? placementHostAndPort = null, 
         HostPortPair? schedulerHostAndPort = null,
         int? daprHttpPort = null,
         int? daprGrpcPort = null,
         string? logDirectory = null
-    )
+        )
     {
         _requestedHttpPort = daprHttpPort;
         _requestedGrpcPort = daprGrpcPort;
         _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "daprd", _containerName);
-
+        
         const string componentsPath = "/components";
-        var cmd =
-            new List<string>
-            {
+		var cmd =
+			new List<string>
+			{
                 "/daprd",
-                "-app-id",
-                appId,
-                "-app-port",
-                options.AppPort.ToString(),
-                "-app-channel-address",
-                "host.docker.internal",
-                "-dapr-http-port",
-                InternalHttpPort.ToString(),
-                "-dapr-grpc-port",
-                InternalGrpcPort.ToString(),
-                "-log-level",
-                options.LogLevel.ToString().ToLowerInvariant(),
-                "-resources-path",
-                componentsPath
-            };
+				"-app-id", appId,
+				"-app-port", options.AppPort.ToString(),
+                "-app-channel-address", "host.docker.internal",
+				"-dapr-http-port", InternalHttpPort.ToString(),
+				"-dapr-grpc-port", InternalGrpcPort.ToString(),
+				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),
+				"-resources-path", componentsPath
+			};
 
-        if (placementHostAndPort is not null)
-        {
-            cmd.Add("-placement-host-address");
-            cmd.Add(placementHostAndPort.ToString());
-        }
+		if (placementHostAndPort is not null)
+		{
+			cmd.Add("-placement-host-address");
+			cmd.Add(placementHostAndPort.ToString());
+		}
         else
         {
             // Explicitly disable placement if not provided to speed up startup
@@ -119,11 +114,11 @@ public sealed class DaprdContainer : IAsyncStartable
             cmd.Add("");
         }
 
-        if (schedulerHostAndPort is not null)
-        {
-            cmd.Add("-scheduler-host-address");
-            cmd.Add(schedulerHostAndPort.ToString());
-        }
+		if (schedulerHostAndPort is not null)
+		{
+			cmd.Add("-scheduler-host-address");
+			cmd.Add(schedulerHostAndPort.ToString());
+		}
         else
         {
             // Explicitly disable scheduler if not provider
@@ -141,50 +136,63 @@ public sealed class DaprdContainer : IAsyncStartable
             .WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilMessageIsLogged("Internal gRPC server is running"));
-        //.UntilMessageIsLogged(@"^dapr initialized. Status: Running. Init Elapsed "))
+                // .UntilHttpRequestIsSucceeded(endpoint =>
+                //     endpoint
+                //         .ForPort(InternalHttpPort)
+                //         .ForPath("/healthz")
+                //         .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
+                //     mod => 
+                //         mod
+                //             .WithTimeout(TimeSpan.FromMinutes(2))
+                //             .WithInterval(TimeSpan.FromSeconds(5))
+                //             .WithMode(WaitStrategyMode.Running)));
 
         if (_logAttachment is not null)
         {
             containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
         }
 
-        containerBuilder = daprHttpPort is not null
-            ? containerBuilder.WithPortBinding(containerPort: InternalHttpPort, hostPort: daprHttpPort.Value)
-            : containerBuilder.WithPortBinding(port: InternalHttpPort, assignRandomHostPort: true);
-        containerBuilder = daprGrpcPort is not null
-            ? containerBuilder.WithPortBinding(containerPort: InternalGrpcPort, hostPort: daprGrpcPort.Value)
-            : containerBuilder.WithPortBinding(port: InternalGrpcPort, assignRandomHostPort: true);
-
+        containerBuilder = daprHttpPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalHttpPort, hostPort: daprHttpPort.Value) : containerBuilder.WithPortBinding(port: InternalHttpPort, assignRandomHostPort: true);
+        containerBuilder = daprGrpcPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalGrpcPort, hostPort: daprGrpcPort.Value) : containerBuilder.WithPortBinding(port: InternalGrpcPort, assignRandomHostPort: true);
+                
         _container = containerBuilder.Build();
-    }
+	}
 
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
-		await _container.StartAsync(cancellationToken);
-
-        var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
-        var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
-
-        if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
+        try
         {
-            throw new InvalidOperationException(
-                $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
-        }
+            await _container.StartAsync(cancellationToken);
 
-        if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
+            var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
+            var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
+
+            if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
+            {
+                throw new InvalidOperationException(
+                    $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
+            }
+
+            if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
+            {
+                throw new InvalidOperationException(
+                    $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
+            }
+
+            HttpPort = mappedHttpPort;
+            GrpcPort = mappedGrpcPort;
+
+            // The container log wait strategy can fire before the host port is actually accepting connections
+            // (especially on Windows). Ensure the ports are reachable from the test process.
+            await WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
+            await WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
+        }
+        catch (Exception ex)
         {
-            throw new InvalidOperationException(
-                $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
+            var msg = ex.Message;
+            throw;
         }
-
-        HttpPort = mappedHttpPort;
-        GrpcPort = mappedGrpcPort;
-
-        // The container log wait strategy can fire before the host port is actually accepting connections
-        // (especially on Windows). Ensure the ports are reachable from the test process.
-        await WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
-        await WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken); 
     }
 
     private static async Task WaitForTcpPortAsync(

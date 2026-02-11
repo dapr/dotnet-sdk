@@ -229,7 +229,7 @@ public abstract class BaseHarness : IAsyncContainerFixture
             await _daprd!.StartAsync(cancellationToken);
             _sidecarPortsReady.TrySetResult();
         }, cancellationToken);
-
+        
         Task? appTask = null;
         if (startApp is not null)
         {
