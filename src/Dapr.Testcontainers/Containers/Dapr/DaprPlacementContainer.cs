@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
@@ -59,14 +60,20 @@ public sealed class DaprPlacementContainer : IAsyncStartable
         _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "placement", _containerName);
 
 		//Placement service runs via port 50006
-		var containerBuilder = new ContainerBuilder()
-			.WithImage(options.PlacementImageTag)
-			.WithName(_containerName)
+        var containerBuilder = new ContainerBuilder()
+            .WithImage(options.PlacementImageTag)
+            .WithName(_containerName)
             .WithNetwork(network)
-			.WithCommand("./placement", "-port", InternalPort.ToString())
-			.WithPortBinding(InternalPort, assignRandomHostPort: true)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("placement server leadership acquired"))
-			;
+            .WithCommand("./placement", "-port", InternalPort.ToString())
+            .WithPortBinding(InternalPort, assignRandomHostPort: true)
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(endpoint =>
+
+                    endpoint
+                        .ForPort(InternalPort)
+                        .ForPath("/v1.0/healthz")
+                        .ForStatusCode(HttpStatusCode.OK)
+                ));
 
         if (_logAttachment is not null)
         {
