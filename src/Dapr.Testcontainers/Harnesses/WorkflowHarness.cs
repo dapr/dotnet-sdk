@@ -36,7 +36,7 @@ public sealed class WorkflowHarness : BaseHarness
     /// <param name="environment">The isolated environment instance.</param>
     public WorkflowHarness(string componentsDir, Func<int, Task>? startApp,  DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
     {
-        _redis = environment?.RedisContainer ?? new RedisContainer(Network);
+        _redis = environment?.RedisContainer ?? new RedisContainer(Network, ContainerLogsDirectory);
         _isSelfHostedRedis = environment?.RedisContainer is null;
     }
 

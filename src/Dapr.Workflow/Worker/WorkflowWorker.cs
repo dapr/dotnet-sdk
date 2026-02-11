@@ -21,6 +21,7 @@ using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
+using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -111,9 +112,11 @@ internal sealed class WorkflowWorker(
             // Create a new version tracker for this turn
             var versionTracker = new WorkflowVersionTracker(allPastEvents);
 
+            var routerRegistry = scope.ServiceProvider.GetService<IWorkflowRouterRegistry>();
+            var resolvedFromRouter = false;
+
             // Identify the workflow name from the now-complete history
-            
-            // Process in reverse so this finds the most recent ExecutionStarted event instead of processing
+            // Process in reverse so this finds the most recent event instead of processing
             // such an event handled by another app.
             foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
             {
@@ -121,7 +124,7 @@ internal sealed class WorkflowWorker(
                 {
                     workflowName = e.ExecutionStarted.Name;
                     serializedInput = e.ExecutionStarted.Input;
-                    
+
                     // Try pulling the app ID out of the target first, then the source if not available
                     if (!string.IsNullOrEmpty(e.Router?.TargetAppID))
                     {
@@ -134,11 +137,97 @@ internal sealed class WorkflowWorker(
                     break;
                 }
             }
-            
+
             if (string.IsNullOrEmpty(workflowName))
             {
-                _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
-                return new OrchestratorResponse { InstanceId = request.InstanceId };
+                foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
+                {
+                    var state = e.HistoryState?.OrchestrationState;
+                    if (state is null || string.IsNullOrEmpty(state.Name))
+                        continue;
+
+                    workflowName = state.Name;
+                    if (string.IsNullOrEmpty(serializedInput) && !string.IsNullOrEmpty(state.Input))
+                    {
+                        serializedInput = state.Input;
+                    }
+
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(workflowName))
+            {
+                foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
+                {
+                    var versionName = e.OrchestratorStarted?.Version?.Name;
+                    if (!string.IsNullOrEmpty(versionName))
+                    {
+                        workflowName = versionName;
+                        break;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(workflowName))
+            {
+                if (routerRegistry is not null && routerRegistry.TryResolveLatest(out workflowName))
+                {
+                    resolvedFromRouter = true;
+                }
+                else
+                {
+                    _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
+                    return new OrchestratorResponse
+                    {
+                        InstanceId = request.InstanceId,
+                        CompletionToken = completionToken,
+                        Actions =
+                        {
+                            new OrchestratorAction
+                            {
+                                CompleteOrchestration = new CompleteOrchestrationAction
+                                {
+                                    OrchestrationStatus = OrchestrationStatus.Failed,
+                                    FailureDetails = new()
+                                    {
+                                        IsNonRetriable = true,
+                                        ErrorType = "WorkflowNameMissing",
+                                        ErrorMessage = "Workflow name missing and no routable workflow could be resolved.",
+                                        StackTrace = string.Empty
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }
+            }
+
+            if (routerRegistry is not null && !routerRegistry.Contains(workflowName))
+            {
+                _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Failed,
+                                FailureDetails = new()
+                                {
+                                    IsNonRetriable = true,
+                                    ErrorType = "WorkflowNotFound",
+                                    ErrorMessage = $"Workflow '{workflowName}' is not registered in this app.",
+                                    StackTrace = string.Empty
+                                }
+                            }
+                        }
+                    }
+                };
             }
 
             // Try to get the workflow from the factory
@@ -146,7 +235,29 @@ internal sealed class WorkflowWorker(
             if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
-                return new OrchestratorResponse { InstanceId = request.InstanceId };
+
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Failed,
+                                FailureDetails = new()
+                                {
+                                    IsNonRetriable = true,
+                                    ErrorType = "WorkflowNotFound",
+                                    ErrorMessage = $"Workflow '{workflowName}' is not registered in this app.",
+                                    StackTrace = string.Empty
+                                }
+                            }
+                        }
+                    }
+                };
             }
 
             var currentUtcDateTime = allPastEvents.Count > 0 && allPastEvents[0].Timestamp != null
@@ -197,6 +308,7 @@ internal sealed class WorkflowWorker(
                 return new OrchestratorResponse
                 {
                     InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
                     Actions =
                     {
                         new OrchestratorAction
@@ -220,7 +332,7 @@ internal sealed class WorkflowWorker(
             };
             
             // Stamp the version info if new patches were encountered this turn
-            if (versionTracker.IncludeVersionInNextResponse)
+            if (versionTracker.IncludeVersionInNextResponse || resolvedFromRouter)
             {
                 response.Version = versionTracker.BuildResponseVersion(workflowName);
             }
@@ -297,6 +409,7 @@ internal sealed class WorkflowWorker(
             return new OrchestratorResponse
             {
                 InstanceId = request.InstanceId,
+                CompletionToken = completionToken,
                 Actions =
                 {
                     new OrchestratorAction

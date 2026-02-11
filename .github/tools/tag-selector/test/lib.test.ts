@@ -38,6 +38,70 @@ describe("computeFromTags - core scenarios", () => {
         ]);
     });
 
+    test("rc_count returns latest N RCs from newest RC minor", () => {
+        const tags = [
+            "v1.16.7",
+            "v1.16.8",
+            "v1.17.0-rc.1",
+            "v1.17.0-rc.2",
+            "v1.17.0-rc.3",
+        ];
+        const out = computeFromTags({
+            tags,
+            tagPrefix: "v",
+            stableCount: 2,
+            rcCount: 2,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.17.0-rc.3", channel: "rc" },
+            { version: "1.17.0-rc.2", channel: "rc" },
+            { version: "1.16.8", channel: "stable" },
+            { version: "1.16.7", channel: "stable" },
+        ]);
+    });
+
+    test("rc_count returns available RCs when fewer exist", () => {
+        const tags = [
+            "v1.16.8",
+            "v1.17.0-rc.1",
+        ];
+        const out = computeFromTags({
+            tags,
+            tagPrefix: "v",
+            stableCount: 1,
+            rcCount: 2,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.17.0-rc.1", channel: "rc" },
+            { version: "1.16.8", channel: "stable" },
+        ]);
+    });
+
+    test("rc_count returns latest RCs regardless of stable availability", () => {
+        const tags = [
+            "1.18.0",
+            "1.18.1-rc.1",
+            "1.17.0-rc.2",
+            "1.17.0-rc.1",
+        ];
+        const out = computeFromTags({
+            tags,
+            stableCount: 1,
+            rcCount: 2,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.18.1-rc.1", channel: "rc" },
+            { version: "1.17.0-rc.2", channel: "rc" },
+            { version: "1.18.0", channel: "stable" },
+        ]);
+    });
+
     test("no RC-only newest minor -> only stable outputs", () => {
         const tags = ["1.16.7", "1.16.8", "1.17.0"]; // 1.17 has a stable, so not RC-only
         const out = computeFromTags({ tags, stableCount: 2 });

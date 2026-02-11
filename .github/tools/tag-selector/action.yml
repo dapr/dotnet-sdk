@@ -16,6 +16,10 @@ inputs:
     description: "Number of latest stable patches to return"
     required: false
     default: "2"
+  rc_count:
+    description: "Number of latest RC versions to return"
+    required: false
+    default: "2"
   rc_identifier:
     description: "RC prerelease identifier"
     required: false
