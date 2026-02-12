@@ -84,7 +84,7 @@ public class DateSuffixVersionStrategyTests
         var services = new ServiceCollection();
         const string optionsName = "workflow-defaults";
         services.AddOptions<DateSuffixVersionStrategyOptions>(optionsName)
-            .Configure(o => o.DateFormat = "yyyyMMddhhmmss");
+            .Configure(o => o.DateFormat = "yyyyMMddHHmmss");
 
         using var provider = services.BuildServiceProvider();
         var factory = new DefaultWorkflowVersionStrategyFactory();
@@ -94,9 +94,9 @@ public class DateSuffixVersionStrategyTests
             optionsName: optionsName,
             services: provider);
         
-        Assert.True(strategy.TryParse("VacationApprovalWorkflow20260212103700", out var canonical, out var version));
+        Assert.True(strategy.TryParse("VacationApprovalWorkflow20260212153700", out var canonical, out var version));
         Assert.Equal("VacationApprovalWorkflow", canonical);
-        Assert.Equal("20260212103700", version);
+        Assert.Equal("20260212153700", version);
     }
 
     [Fact]

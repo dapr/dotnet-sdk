@@ -4,11 +4,11 @@ using WorkflowVersioning.Workflows.VacationApproval.Models;
 
 namespace WorkflowVersioning.Workflows.VacationApproval;
 
-public sealed class VacationApprovalWorkflow2 : Workflow<VacationRequest, bool>
+public sealed class VacationApprovalWorkflowV2 : Workflow<VacationRequest, bool>
 {
     public override async Task<bool> RunAsync(WorkflowContext context, VacationRequest input)
     {
-        var logger = context.CreateReplaySafeLogger<VacationApprovalWorkflow2>();
+        var logger = context.CreateReplaySafeLogger<VacationApprovalWorkflowV2>();
         
         // Only send the approval if this is at least two weeks out
         var now = context.CurrentUtcDateTime;
