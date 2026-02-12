@@ -13,7 +13,6 @@
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
         <ProjectReference Include="..\..\..\src\Dapr.Workflow.Versioning.Runtime\Dapr.Workflow.Versioning.Runtime.csproj" />
-        <ProjectReference Include="..\..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
         <ProjectReference Include="..\..\..\src\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
                           OutputItemType="Analyzer"
                           ReferenceOutputAssembly="false" />
