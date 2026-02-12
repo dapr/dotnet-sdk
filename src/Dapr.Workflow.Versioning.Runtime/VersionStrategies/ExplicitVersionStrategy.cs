@@ -18,7 +18,7 @@ namespace Dapr.Workflow.Versioning;
 /// <summary>
 /// Strategy that requires versions to be supplied explicitly via <see cref="WorkflowVersionAttribute"/>.
 /// </summary>
-public sealed class ExplicitVersionStrategy(IOptionsMonitor<ExplicitVersionStrategyOptions>? optionsMonitor)
+public sealed class ExplicitVersionStrategy(IOptionsMonitor<ExplicitVersionStrategyOptions>? optionsMonitor = null)
     : IWorkflowVersionStrategy, IWorkflowVersionStrategyContextConsumer
 {
     private ExplicitVersionStrategyOptions _options = new();
