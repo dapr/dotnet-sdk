@@ -42,26 +42,77 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                 WorkflowBase: c.GetTypeByMetadataName(WorkflowBaseMetadataName),
                 WorkflowVersionAttribute: c.GetTypeByMetadataName(WorkflowVersionAttributeFullName)));
 
+        // Report diagnostic about base type resolution
+        context.RegisterSourceOutput(known, (spc, ks) =>
+        {
+            if (ks.WorkflowBase is null)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DAPRWFVER001",
+                        "Workflow base type not found",
+                        $"The source generator could not find the type '{WorkflowBaseMetadataName}'. Ensure that Dapr.Workflow.Abstractions is properly referenced.",
+                        "Dapr.Workflow.Versioning",
+                        DiagnosticSeverity.Warning,
+                        isEnabledByDefault: true),
+                    Location.None));
+            }
+            else
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DAPRWFVER003",
+                        "Workflow base type found",
+                        $"Source generator successfully found workflow base type '{WorkflowBaseMetadataName}'",
+                        "Dapr.Workflow.Versioning",
+                        DiagnosticSeverity.Info,
+                        isEnabledByDefault: true),
+                    Location.None));
+            }
+        });
+
         // Discover candidate class symbols
         var candidates = context.SyntaxProvider.CreateSyntaxProvider(
             static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
             static (ctx, _) =>
                 (INamedTypeSymbol?)ctx.SemanticModel.GetDeclaredSymbol((ClassDeclarationSyntax)ctx.Node));
 
+        // Count candidates for diagnostics
+        var candidatesWithCount = candidates.Collect();
+        context.RegisterSourceOutput(candidatesWithCount, (spc, candidateArray) =>
+        {
+            var nonNullCount = candidateArray.Count(x => x is not null);
+            spc.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "DAPRWFVER004",
+                    "Candidate classes found",
+                    $"Source generator found {nonNullCount} candidate class(es) with base lists (out of {candidateArray.Length} total)",
+                    "Dapr.Workflow.Versioning",
+                    DiagnosticSeverity.Info,
+                    isEnabledByDefault: true),
+                Location.None));
+        });
+
         // Combine the attribute symbol with each candidate symbol
         var inputs = candidates.Combine(known);
 
-        // Filter and transform with proper symbol equality checks
-        var discovered = inputs
+        // Filter and transform with proper symbol equality checks, tracking each step
+        var discoveredWithDiagnostics = inputs
             .Select((pair, _) =>
             {
                 var (symbol, ks) = pair;
                 if (symbol is null)
-                    return null;
+                    return (Workflow: null, Diagnostic: null);
+
+                var symbolName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
                 // Check derives from Dapr.Workflow.Workflow<,>
                 if (!InheritsFromWorkflow(symbol, ks.WorkflowBase))
-                    return null;
+                {
+                    // Report why this candidate was rejected
+                    var baseTypeInfo = symbol.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "null";
+                    return (Workflow: null, Diagnostic: $"Rejected '{symbolName}': does not inherit from Workflow<,> (base type: {baseTypeInfo})");
+                }
 
                 // Look for [WorkflowVersion] by symbol identity
                 AttributeData? attrData = null;
@@ -76,12 +127,96 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                     string.Equals(a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         $"global::{WorkflowVersionAttributeFullName}", StringComparison.Ordinal));
 
-                return BuildDiscoveredWorkflow(symbol, attrData);
-            })
+                var workflow = BuildDiscoveredWorkflow(symbol, attrData);
+                return (Workflow: workflow, Diagnostic: $"Discovered workflow: '{symbolName}'");
+            });
+
+        // Separate workflows from diagnostics
+        var discovered = discoveredWithDiagnostics
+            .Select((item, _) => item.Workflow)
             .Where(x => x is not null);
 
+        // Report diagnostics about filtering
+        context.RegisterSourceOutput(discoveredWithDiagnostics.Collect(), (spc, items) =>
+        {
+            foreach (var item in items)
+            {
+                if (item.Diagnostic is not null)
+                {
+                    const DiagnosticSeverity severity = DiagnosticSeverity.Info;
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "DAPRWFVER005",
+                            "Workflow filtering",
+                            item.Diagnostic,
+                            "Dapr.Workflow.Versioning",
+                            severity,
+                            isEnabledByDefault: true),
+                        Location.None));
+                }
+            }
+        });
+
         // Collect and emit
-        context.RegisterSourceOutput(discovered.Collect(), EmitRegistry);
+        context.RegisterSourceOutput(discovered.Collect(), (spc, items) =>
+        {
+            var workflows = items.Where(x => x is not null).ToList();
+
+            // Always show a visible message about workflow discovery (Info level to avoid build warnings)
+            if (workflows.Count > 0)
+            {
+                var workflowNames = string.Join(", ", workflows.Select(w => w!.WorkflowTypeName.Split('.').Last()));
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DAPRWFVER008",
+                        "Workflow versioning active",
+                        $"Dapr Workflow Versioning: Discovered {workflows.Count} workflow(s): {workflowNames}. Build with -v:n to see this message.",
+                        "Dapr.Workflow.Versioning",
+                        DiagnosticSeverity.Info,
+                        isEnabledByDefault: true,
+                        helpLinkUri: "https://docs.dapr.io/developing-applications/building-blocks/workflow/"),
+                    Location.None));
+            }
+
+            // Detailed info for verbose builds
+            spc.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    "DAPRWFVER002",
+                    "Final workflow count",
+                    $"Source generator will generate registry for {workflows.Count} workflow(s). To view generated code, add <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles> to your project file.",
+                    "Dapr.Workflow.Versioning",
+                    DiagnosticSeverity.Info,
+                    isEnabledByDefault: true),
+                Location.None));
+
+            if (workflows.Count > 0)
+            {
+                foreach (var wf in workflows)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "DAPRWFVER006",
+                            "Generating for workflow",
+                            $"Generating registration code for workflow: {wf!.WorkflowTypeName}",
+                            "Dapr.Workflow.Versioning",
+                            DiagnosticSeverity.Info,
+                            isEnabledByDefault: true),
+                        Location.None));
+                }
+
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DAPRWFVER007",
+                        "Generated file info",
+                        $"Generated 'Dapr_Workflow_Versioning.g.cs' with workflow registration code. Set EmitCompilerGeneratedFiles=true in your project to write generated files to disk at obj/$(Configuration)/$(TargetFramework)/generated/",
+                        "Dapr.Workflow.Versioning",
+                        DiagnosticSeverity.Info,
+                        isEnabledByDefault: true),
+                    Location.None));
+            }
+
+            EmitRegistry(spc, items);
+        });
     }
 
     private static bool InheritsFromWorkflow(INamedTypeSymbol symbol, INamedTypeSymbol? workflowBase)
@@ -255,10 +390,11 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
 
         sb.AppendLine("            var entries = CreateEntries();");
         sb.AppendLine();
-        sb.AppendLine("            // Register concrete workflow implementations.");
+        sb.AppendLine("            // Register concrete workflow implementations with internal names to avoid collisions.");
+        sb.AppendLine("            // These registrations use the fully-qualified type name as the workflow name.");
         foreach (var wf in discovered)
         {
-            sb.AppendLine($"            options.RegisterWorkflow<{wf.WorkflowTypeName}>();");
+            sb.AppendLine($"            options.RegisterWorkflow<{wf.WorkflowTypeName}>({CodeLiteral(wf.WorkflowTypeName)});");
         }
         sb.AppendLine();
 
@@ -334,8 +470,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("        }");
         sb.AppendLine();
 
-        sb.AppendLine(
-            "        private static IReadOnlyDictionary<string, IReadOnlyList<string>> BuildRegistry(global::System.IServiceProvider services, List<Entry> entries, out Dictionary<string, string> latestMap)");
+        sb.AppendLine("        private static IReadOnlyDictionary<string, IReadOnlyList<string>> BuildRegistry(global::System.IServiceProvider services, List<Entry> entries, out Dictionary<string, string> latestMap)");
         sb.AppendLine("        {");
         sb.AppendLine("            latestMap = new Dictionary<string, string>(StringComparer.Ordinal);");
         sb.AppendLine();
