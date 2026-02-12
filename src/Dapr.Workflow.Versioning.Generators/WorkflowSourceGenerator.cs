@@ -274,6 +274,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
 
         return new DiscoveredWorkflow(
             WorkflowTypeName: workflowSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            WorkflowSimpleName: workflowSymbol.Name,
             DeclaredCanonicalName: string.IsNullOrWhiteSpace(canonical) ? null : canonical,
             DeclaredVersion: string.IsNullOrWhiteSpace(version) ? null : version,
             StrategyTypeName: strategyTypeName,
@@ -299,6 +300,10 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
             .Select(x => x!)
             .Distinct(new DiscoveredWorkflowComparer())
             .OrderBy(x => x.WorkflowTypeName, StringComparer.Ordinal)
+            .ThenBy(x => x.DeclaredCanonicalName ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(x => x.DeclaredVersion ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(x => x.StrategyTypeName ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(x => x.OptionsName ?? string.Empty, StringComparer.Ordinal)
             .ToList();
 
         if (list.Count == 0)
@@ -406,6 +411,17 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("                var latestName = kvp.Value;");
         sb.AppendLine("                RegisterAlias(options, canonical, latestName);");
         sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            // Register simple-name aliases for convenience. Collisions are resolved deterministically");
+        sb.AppendLine("            // by generator ordering (first registration wins).");
+        var simpleAliasNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var wf in discovered)
+        {
+            if (simpleAliasNames.Add(wf.WorkflowSimpleName))
+            {
+                sb.AppendLine($"            options.RegisterWorkflow<{wf.WorkflowTypeName}>({CodeLiteral(wf.WorkflowSimpleName)});");
+            }
+        }
         sb.AppendLine("        }");
         sb.AppendLine();
 
@@ -603,6 +619,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
 
     private sealed record DiscoveredWorkflow(
         string WorkflowTypeName,
+        string WorkflowSimpleName,
         string? DeclaredCanonicalName,
         string? DeclaredVersion,
         string? StrategyTypeName,
@@ -612,9 +629,30 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
     private sealed class DiscoveredWorkflowComparer : IEqualityComparer<DiscoveredWorkflow>
     {
         public bool Equals(DiscoveredWorkflow? x, DiscoveredWorkflow? y)
-            => StringComparer.Ordinal.Equals(x?.WorkflowTypeName, y?.WorkflowTypeName);
+        {
+            if (ReferenceEquals(x, y))
+                return true;
+            if (x is null || y is null)
+                return false;
+
+            return StringComparer.Ordinal.Equals(x.WorkflowTypeName, y.WorkflowTypeName)
+                && StringComparer.Ordinal.Equals(x.DeclaredCanonicalName ?? string.Empty, y.DeclaredCanonicalName ?? string.Empty)
+                && StringComparer.Ordinal.Equals(x.DeclaredVersion ?? string.Empty, y.DeclaredVersion ?? string.Empty)
+                && StringComparer.Ordinal.Equals(x.StrategyTypeName ?? string.Empty, y.StrategyTypeName ?? string.Empty)
+                && StringComparer.Ordinal.Equals(x.OptionsName ?? string.Empty, y.OptionsName ?? string.Empty);
+        }
 
         public int GetHashCode(DiscoveredWorkflow obj)
-            => StringComparer.Ordinal.GetHashCode(obj.WorkflowTypeName);
+        {
+            unchecked
+            {
+                var hash = StringComparer.Ordinal.GetHashCode(obj.WorkflowTypeName);
+                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(obj.DeclaredCanonicalName ?? string.Empty);
+                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(obj.DeclaredVersion ?? string.Empty);
+                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(obj.StrategyTypeName ?? string.Empty);
+                hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(obj.OptionsName ?? string.Empty);
+                return hash;
+            }
+        }
     }
 }
