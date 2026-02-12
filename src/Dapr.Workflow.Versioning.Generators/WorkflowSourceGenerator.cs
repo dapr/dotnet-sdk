@@ -102,7 +102,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
             {
                 var (symbol, ks) = pair;
                 if (symbol is null)
-                    return (Workflow: null, Diagnostic: null);
+                    return (Workflow: (DiscoveredWorkflow?)null, Diagnostic: (string?)null);
 
                 var symbolName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
@@ -111,7 +111,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                 {
                     // Report why this candidate was rejected
                     var baseTypeInfo = symbol.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "null";
-                    return (Workflow: null, Diagnostic: $"Rejected '{symbolName}': does not inherit from Workflow<,> (base type: {baseTypeInfo})");
+                    return (Workflow: (DiscoveredWorkflow?)null, Diagnostic: (string?)$"Rejected '{symbolName}': does not inherit from Workflow<,> (base type: {baseTypeInfo})");
                 }
 
                 // Look for [WorkflowVersion] by symbol identity
@@ -128,7 +128,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                         $"global::{WorkflowVersionAttributeFullName}", StringComparison.Ordinal));
 
                 var workflow = BuildDiscoveredWorkflow(symbol, attrData);
-                return (Workflow: workflow, Diagnostic: $"Discovered workflow: '{symbolName}'");
+                return (Workflow: (DiscoveredWorkflow?)workflow, Diagnostic: (string?)$"Discovered workflow: '{symbolName}'");
             });
 
         // Separate workflows from diagnostics
