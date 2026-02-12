@@ -16,91 +16,10 @@ using Microsoft.Extensions.Options;
 
 namespace Dapr.Workflow.Versioning.Runtime.Test;
 
-public class VersionStrategyTests
+public class DateSuffixVersionStrategyTests
 {
     [Fact]
-    public void NumericStrategy_ShouldParseWithDefaultPrefix()
-    {
-        var strategy = new NumericVersionStrategy();
-
-        var parsed = strategy.TryParse("MyWorkflowV1", out var canonical, out var version);
-
-        Assert.True(parsed);
-        Assert.Equal("MyWorkflow", canonical);
-        Assert.Equal("1", version);
-    }
-
-    [Fact]
-    public void NumericStrategy_ShouldParseDefaultVersion_WhenNoSuffix()
-    {
-        var strategy = new NumericVersionStrategy();
-
-        var parsed = strategy.TryParse("MyWorkflow", out var canonical, out var version);
-
-        Assert.True(parsed);
-        Assert.Equal("MyWorkflow", canonical);
-        Assert.Equal("0", version);
-    }
-
-    [Fact]
-    public void NumericStrategy_ShouldRejectMissingPrefix_WhenDigitsPresent()
-    {
-        var strategy = new NumericVersionStrategy();
-
-        var parsed = strategy.TryParse("MyWorkflow1", out _, out _);
-
-        Assert.False(parsed);
-    }
-
-    [Theory]
-    [InlineData("0", "10")]
-    [InlineData("1", "2")]
-    [InlineData("9", "10")]
-    public void NumericStrategy_Compare_ShouldOrderNumerically(string older, string newer)
-    {
-        var strategy = new NumericVersionStrategy();
-
-        Assert.True(strategy.Compare(older, newer) < 0);
-        Assert.True(strategy.Compare(newer, older) > 0);
-    }
-
-    [Fact]
-    public void NumericStrategy_Compare_ShouldPreferNumericOverNonNumeric()
-    {
-        var strategy = new NumericVersionStrategy();
-
-        Assert.True(strategy.Compare("2", "beta") > 0);
-        Assert.True(strategy.Compare("alpha", "3") < 0);
-    }
-
-    [Fact]
-    public void NumericStrategy_ShouldUseNamedOptionsFromFactory()
-    {
-        var services = new ServiceCollection();
-        services.AddOptions<NumericVersionStrategyOptions>("custom")
-            .Configure(o =>
-            {
-                o.SuffixPrefix = "v";
-                o.IgnorePrefixCase = true;
-                o.AllowNoSuffix = false;
-            });
-
-        using var provider = services.BuildServiceProvider();
-        var factory = new DefaultWorkflowVersionStrategyFactory();
-        var strategy = (NumericVersionStrategy)factory.Create(
-            typeof(NumericVersionStrategy),
-            canonicalName: "Orders",
-            optionsName: "custom",
-            services: provider);
-
-        Assert.True(strategy.TryParse("Ordersv2", out var canonical, out var version));
-        Assert.Equal("Orders", canonical);
-        Assert.Equal("2", version);
-        Assert.False(strategy.TryParse("Orders2", out _, out _));
-    }
-
-    [Fact]
-    public void DateStrategy_ShouldParseDefaultFormat()
+    public void TryParse_ShouldParseDefaultFormat()
     {
         var strategy = new DateSuffixVersionStrategy();
 
@@ -112,7 +31,7 @@ public class VersionStrategyTests
     }
 
     [Fact]
-    public void DateStrategy_ShouldRejectNoSuffix_ByDefault()
+    public void TryParse_ShouldRejectNoSuffix_ByDefault()
     {
         var strategy = new DateSuffixVersionStrategy();
 
@@ -120,7 +39,7 @@ public class VersionStrategyTests
     }
 
     [Fact]
-    public void DateStrategy_ShouldAllowNoSuffix_WhenEnabled()
+    public void TryParse_ShouldAllowNoSuffix_WhenEnabled()
     {
         var services = new ServiceCollection();
         services.AddOptions<DateSuffixVersionStrategyOptions>(Options.DefaultName)
@@ -140,7 +59,7 @@ public class VersionStrategyTests
     }
 
     [Fact]
-    public void DateStrategy_ShouldUseNamedFormatFromFactory()
+    public void TryParse_ShouldUseNamedFormatFromFactory()
     {
         var services = new ServiceCollection();
         services.AddOptions<DateSuffixVersionStrategyOptions>("custom")
@@ -160,7 +79,7 @@ public class VersionStrategyTests
     }
 
     [Fact]
-    public void DateStrategy_Compare_ShouldOrderByDate()
+    public void Compare_ShouldOrderByDate()
     {
         var strategy = new DateSuffixVersionStrategy();
 
@@ -169,7 +88,7 @@ public class VersionStrategyTests
     }
 
     [Fact]
-    public void DateStrategy_Compare_ShouldPreferValidDateOverInvalid()
+    public void Compare_ShouldPreferValidDateOverInvalid()
     {
         var strategy = new DateSuffixVersionStrategy();
 

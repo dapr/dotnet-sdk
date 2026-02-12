@@ -17,13 +17,13 @@ using Microsoft.Extensions.Options;
 namespace Dapr.Workflow.Versioning;
 
 /// <summary>
-/// Strategy that derives a date-based version from a trailing suffix
-/// (for example, <c>MyWorkflow20260212</c> with format <c>yyyyMMdd</c>).
+/// Strategy that derives the version from a delimiter-separated suffix (for example, <c>MyWorkflow-1</c>).
 /// </summary>
-public sealed class DateSuffixVersionStrategy(IOptionsMonitor<DateSuffixVersionStrategyOptions>? optionsMonitor = null)
+public sealed class DelimitedSuffixVersionStrategy(
+    IOptionsMonitor<DelimitedSuffixVersionStrategyOptions>? optionsMonitor = null)
     : IWorkflowVersionStrategy, IWorkflowVersionStrategyContextConsumer
 {
-    private DateSuffixVersionStrategyOptions _options = new();
+    private DelimitedSuffixVersionStrategyOptions _options = new();
 
     /// <inheritdoc />
     public void Configure(WorkflowVersionStrategyContext context)
@@ -47,20 +47,33 @@ public sealed class DateSuffixVersionStrategy(IOptionsMonitor<DateSuffixVersionS
         if (string.IsNullOrWhiteSpace(typeName))
             return false;
 
-        var format = string.IsNullOrWhiteSpace(_options.DateFormat) ? "yyyyMMdd" : _options.DateFormat;
-        if (typeName.Length <= format.Length)
-            return ApplyNoSuffix(typeName, out canonicalName, out version);
-
-        var suffix = typeName.Substring(typeName.Length - format.Length);
-        if (!TryParseDate(suffix, format, out _))
-            return ApplyNoSuffix(typeName, out canonicalName, out version);
-
-        canonicalName = typeName.Substring(0, typeName.Length - format.Length);
-        if (string.IsNullOrEmpty(canonicalName))
+        var delimiter = _options.Delimiter ?? string.Empty;
+        if (delimiter.Length == 0)
             return false;
 
-        version = suffix;
-        return true;
+        var comparison = _options.IgnoreDelimiterCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var delimiterIndex = typeName.LastIndexOf(delimiter, comparison);
+
+        if (delimiterIndex < 0)
+        {
+            if (_options.AllowNoSuffix)
+            {
+                canonicalName = typeName;
+                version = string.IsNullOrWhiteSpace(_options.DefaultVersion) ? "0" : _options.DefaultVersion;
+                return true;
+            }
+
+            return false;
+        }
+
+        var versionStart = delimiterIndex + delimiter.Length;
+        if (delimiterIndex == 0 || versionStart >= typeName.Length)
+            return false;
+
+        canonicalName = typeName[..delimiterIndex];
+        version = typeName[versionStart..];
+
+        return !string.IsNullOrEmpty(canonicalName) && !string.IsNullOrEmpty(version);
     }
 
     /// <inheritdoc />
@@ -70,43 +83,22 @@ public sealed class DateSuffixVersionStrategy(IOptionsMonitor<DateSuffixVersionS
         if (v1 is null) return -1;
         if (v2 is null) return 1;
 
-        var format = string.IsNullOrWhiteSpace(_options.DateFormat) ? "yyyyMMdd" : _options.DateFormat;
-        var ok1 = TryParseDate(v1.Trim(), format, out var d1);
-        var ok2 = TryParseDate(v2.Trim(), format, out var d2);
+        var s1 = v1.Trim();
+        var s2 = v2.Trim();
+
+        var ok1 = long.TryParse(s1, NumberStyles.None, CultureInfo.InvariantCulture, out var n1);
+        var ok2 = long.TryParse(s2, NumberStyles.None, CultureInfo.InvariantCulture, out var n2);
 
         switch (ok1)
         {
             case true when ok2:
-                return d1.CompareTo(d2);
+                return n1.CompareTo(n2);
             case true:
                 return 1;
         }
 
         if (ok2) return -1;
 
-        return StringComparer.Ordinal.Compare(v1, v2);
-    }
-
-    private bool ApplyNoSuffix(string typeName, out string canonicalName, out string version)
-    {
-        canonicalName = string.Empty;
-        version = string.Empty;
-
-        if (!_options.AllowNoSuffix)
-            return false;
-
-        canonicalName = typeName;
-        version = string.IsNullOrWhiteSpace(_options.DefaultVersion) ? "0" : _options.DefaultVersion;
-        return true;
-    }
-
-    private static bool TryParseDate(string value, string format, out DateTime date)
-    {
-        return DateTime.TryParseExact(
-            value,
-            format,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.None,
-            out date);
+        return StringComparer.Ordinal.Compare(s1, s2);
     }
 }

@@ -13,34 +13,16 @@
 
 namespace Dapr.Workflow.Versioning.Runtime.Test;
 
-public class StrategyContextAndOptionsTests
+public class ZeroPaddedNumericVersionStrategyOptionsTests
 {
     [Fact]
-    public void WorkflowVersionStrategyContext_ShouldStoreValues()
+    public void Defaults_ShouldMatchExpectedValues()
     {
-        var context = new WorkflowVersionStrategyContext("Orders", "options");
+        var options = new ZeroPaddedNumericVersionStrategyOptions();
 
-        Assert.Equal("Orders", context.CanonicalName);
-        Assert.Equal("options", context.OptionsName);
-    }
-
-    [Fact]
-    public void NumericVersionStrategyOptions_ShouldHaveExpectedDefaults()
-    {
-        var options = new NumericVersionStrategyOptions();
-
-        Assert.Equal("V", options.SuffixPrefix);
+        Assert.Equal(string.Empty, options.SuffixPrefix);
         Assert.False(options.IgnorePrefixCase);
-        Assert.True(options.AllowNoSuffix);
-        Assert.Equal("0", options.DefaultVersion);
-    }
-
-    [Fact]
-    public void DateSuffixVersionStrategyOptions_ShouldHaveExpectedDefaults()
-    {
-        var options = new DateSuffixVersionStrategyOptions();
-
-        Assert.Equal("yyyyMMdd", options.DateFormat);
+        Assert.Equal(4, options.Width);
         Assert.False(options.AllowNoSuffix);
         Assert.Equal("0", options.DefaultVersion);
     }
