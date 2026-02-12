@@ -22,19 +22,6 @@ builder.Services.AddDaprWorkflow(w =>
 
 var app = builder.Build();
 
-// Debug: Check if versioning registry was applied
-var registry = Dapr.Workflow.Versioning.GeneratedWorkflowVersionRegistry.GetWorkflowVersionRegistry(app.Services);
-Console.WriteLine($"=== Workflow Version Registry ===");
-foreach (var kvp in registry)
-{
-    Console.WriteLine($"Canonical: {kvp.Key}");
-    foreach (var v in kvp.Value)
-    {
-        Console.WriteLine($"  - {v}");
-    }
-}
-Console.WriteLine($"=================================");
-
 app.MapGet("/start/{workflowId}",
     async (DaprWorkflowClient workflowClient, [AsParameters] VacationRequest request, string workflowId) =>
     {
