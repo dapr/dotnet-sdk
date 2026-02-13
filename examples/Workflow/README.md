@@ -30,7 +30,25 @@ The `OrderProcessingWorkflow.cs` in `Workflows` directory implements the running
 
 This sample also contains a [WorkflowUnitTest](./WorkflowUnitTest) .NET project that utilizes [xUnit](https://xunit.net/) and [Moq](https://github.com/moq/moq) to test the workflow logic.
 It works by creating an instance of the `OrderProcessingWorkflow` (defined in the `WorkflowConsoleApp` project), mocking activity calls, and testing the inputs and outputs.
-The tests also verify that outputs of the workflow.
+The tests verify the outputs of the workflow without requiring a Dapr sidecar, since the `WorkflowContext` itself is mocked.
+
+### Test scenarios
+
+| Test | Concept |
+|------|---------|
+| `TestSuccessfulOrder` | Mock activity calls, verify inputs and call counts |
+| `TestHighCostOrderApproved` | Mock external events (`WaitForExternalEventAsync`) and verify custom status |
+| `TestHighCostOrderApprovalTimeout` | Simulate timeouts with `TaskCanceledException` |
+| `TestInsufficientInventory` | Branch on activity return value, verify early termination |
+| `TestActivityException` | Simulate activity failures with `WorkflowTaskFailedException` |
+
+### Running unit tests
+
+No Dapr sidecar is required. From the repository root:
+
+```sh
+dotnet test examples/Workflow/WorkflowUnitTest
+```
 
 ## Running the console app example
 
