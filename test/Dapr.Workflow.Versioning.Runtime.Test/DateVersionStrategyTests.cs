@@ -85,7 +85,8 @@ public class DateVersionStrategyTests
         services.AddOptions<DateVersionStrategyOptions>("custom")
             .Configure(o =>
             {
-                o.DateFormat = "'v'yyyyMMdd";
+                o.DateFormat = "yyyyMMdd";
+                o.Prefix = "v";
                 o.IgnorePrefixCase = true;
             });
 
@@ -99,7 +100,32 @@ public class DateVersionStrategyTests
 
         Assert.True(strategy.TryParse("OrdersV20260212", out var canonical, out var version));
         Assert.Equal("Orders", canonical);
-        Assert.Equal("V20260212", version);
+        Assert.Equal("20260212", version);
+    }
+
+    [Fact]
+    public void TryParse_ShouldRequirePrefix_WhenConfigured()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<DateVersionStrategyOptions>("custom")
+            .Configure(o =>
+            {
+                o.DateFormat = "yyyyMMdd";
+                o.Prefix = "v";
+            });
+
+        using var provider = services.BuildServiceProvider();
+        var factory = new DefaultWorkflowVersionStrategyFactory();
+        var strategy = (DateVersionStrategy)factory.Create(
+            typeof(DateVersionStrategy),
+            canonicalName: "Orders",
+            optionsName: "custom",
+            services: provider);
+
+        Assert.False(strategy.TryParse("Orders20260212", out _, out _));
+        Assert.True(strategy.TryParse("Ordersv20260212", out var canonical, out var version));
+        Assert.Equal("Orders", canonical);
+        Assert.Equal("20260212", version);
     }
 
     [Fact]

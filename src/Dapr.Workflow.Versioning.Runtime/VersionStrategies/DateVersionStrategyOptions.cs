@@ -25,6 +25,12 @@ public sealed class DateVersionStrategyOptions
     public string DateFormat { get; set; } = "yyyyMMdd";
 
     /// <summary>
+    /// Gets or sets the prefix expected before the date suffix (for example, <c>"V"</c> in <c>MyWorkflowV20260212</c>).
+    /// Set to an empty string to require no prefix.
+    /// </summary>
+    public string Prefix { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets a value indicating whether prefix matching ignores case.
     /// </summary>
     public bool IgnorePrefixCase { get; set; }

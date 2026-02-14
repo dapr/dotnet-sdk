@@ -21,6 +21,7 @@ public class DateVersionStrategyOptionsTests
         var options = new DateVersionStrategyOptions();
 
         Assert.Equal("yyyyMMdd", options.DateFormat);
+        Assert.Equal(string.Empty, options.Prefix);
         Assert.False(options.IgnorePrefixCase);
         Assert.False(options.AllowNoSuffix);
         Assert.Equal("0", options.DefaultVersion);

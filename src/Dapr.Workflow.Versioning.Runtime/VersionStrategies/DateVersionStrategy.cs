@@ -49,18 +49,38 @@ public sealed class DateVersionStrategy(IOptionsMonitor<DateVersionStrategyOptio
 
         var format = string.IsNullOrWhiteSpace(_options.DateFormat) ? "yyyyMMdd" : _options.DateFormat;
         var suffixLength = GetFormattedLength(format);
-        if (typeName.Length <= suffixLength)
-            return ApplyNoSuffix(typeName, out canonicalName, out version);
+        var prefix = _options.Prefix ?? string.Empty;
+        var comparison = _options.IgnorePrefixCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var totalSuffixLength = suffixLength + prefix.Length;
+        if (typeName.Length <= totalSuffixLength)
+            return ApplyNoSuffix(typeName, prefix, comparison, out canonicalName, out version);
 
-        var suffix = typeName.Substring(typeName.Length - suffixLength);
-        if (!TryParseDate(suffix, format, _options.IgnorePrefixCase, out _))
-            return ApplyNoSuffix(typeName, out canonicalName, out version);
+        var suffixStart = typeName.Length - suffixLength;
+        var dateSuffix = typeName.Substring(suffixStart, suffixLength);
+        if (!TryParseDate(dateSuffix, format, _options.IgnorePrefixCase, out _))
+            return ApplyNoSuffix(typeName, prefix, comparison, out canonicalName, out version);
 
-        canonicalName = typeName.Substring(0, typeName.Length - suffixLength);
+        if (!string.IsNullOrEmpty(prefix))
+        {
+            var prefixStart = suffixStart - prefix.Length;
+            if (prefixStart < 1)
+                return false;
+
+            var candidatePrefix = typeName.Substring(prefixStart, prefix.Length);
+            if (!string.Equals(candidatePrefix, prefix, comparison))
+                return false;
+
+            canonicalName = typeName.Substring(0, prefixStart);
+        }
+        else
+        {
+            canonicalName = typeName.Substring(0, suffixStart);
+        }
+
         if (string.IsNullOrEmpty(canonicalName))
             return false;
 
-        version = suffix;
+        version = dateSuffix;
         return true;
     }
 
@@ -88,12 +108,20 @@ public sealed class DateVersionStrategy(IOptionsMonitor<DateVersionStrategyOptio
         return StringComparer.Ordinal.Compare(v1, v2);
     }
 
-    private bool ApplyNoSuffix(string typeName, out string canonicalName, out string version)
+    private bool ApplyNoSuffix(
+        string typeName,
+        string prefix,
+        StringComparison comparison,
+        out string canonicalName,
+        out string version)
     {
         canonicalName = string.Empty;
         version = string.Empty;
 
         if (!_options.AllowNoSuffix)
+            return false;
+
+        if (!string.IsNullOrEmpty(prefix) && typeName.EndsWith(prefix, comparison))
             return false;
 
         canonicalName = typeName;
