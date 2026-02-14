@@ -345,7 +345,12 @@ jobs:
         id: set-matrix
         run: |
           echo "Generating package matrix..."
-          files=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
+          files=$(ls packages/*.nupkg | jq -R -s -c '
+            split("\n")[:-1]
+            | map(select(
+                (test("/Dapr\\.Workflow\\.Versioning\\.(Abstractions|Generators|Runtime)\\.")) | not
+              ))
+          ')
           echo "matrix=$files" >> $GITHUB_OUTPUT
   
   publish:
