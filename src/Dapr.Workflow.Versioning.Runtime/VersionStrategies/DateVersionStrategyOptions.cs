@@ -14,15 +14,20 @@
 namespace Dapr.Workflow.Versioning;
 
 /// <summary>
-/// Options for <see cref="DateSuffixVersionStrategy"/>.
+/// Options for <see cref="DateVersionStrategy"/>.
 /// </summary>
-public sealed class DateSuffixVersionStrategyOptions
+public sealed class DateVersionStrategyOptions
 {
     /// <summary>
     /// Gets or sets the date format expected at the end of the workflow type name.
     /// Defaults to <c>yyyyMMdd</c>.
     /// </summary>
     public string DateFormat { get; set; } = "yyyyMMdd";
+
+    /// <summary>
+    /// Gets or sets a value indicating whether prefix matching ignores case.
+    /// </summary>
+    public bool IgnorePrefixCase { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether names without a date suffix are allowed.

@@ -18,7 +18,7 @@ namespace Dapr.Workflow.Versioning;
 
 /// <summary>
 /// Strategy that derives a numeric version from a trailing suffix with an optional prefix
-/// (for example, <c>MyWorkflowV1</c> with prefix <c>V</c>).
+/// (for example, <c>MyWorkflowV1</c> with prefix <c>V</c>), with optional zero-padding.
 /// </summary>
 public sealed class NumericVersionStrategy : IWorkflowVersionStrategy, IWorkflowVersionStrategyContextConsumer
 {
@@ -71,6 +71,10 @@ public sealed class NumericVersionStrategy : IWorkflowVersionStrategy, IWorkflow
 
             return false;
         }
+
+        var digitsLength = typeName.Length - digitsStart;
+        if (_options.ZeroPad && _options.Width > 0 && digitsLength != _options.Width)
+            return false;
 
         if (!string.IsNullOrEmpty(prefix))
         {

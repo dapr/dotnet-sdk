@@ -16,12 +16,12 @@ using Microsoft.Extensions.Options;
 
 namespace Dapr.Workflow.Versioning.Runtime.Test;
 
-public class DateSuffixVersionStrategyTests
+public class DateVersionStrategyTests
 {
     [Fact]
     public void TryParse_ShouldParseDefaultFormat()
     {
-        var strategy = new DateSuffixVersionStrategy();
+        var strategy = new DateVersionStrategy();
 
         var parsed = strategy.TryParse("MyWorkflow20260212", out var canonical, out var version);
 
@@ -33,7 +33,7 @@ public class DateSuffixVersionStrategyTests
     [Fact]
     public void TryParse_ShouldRejectNoSuffix_ByDefault()
     {
-        var strategy = new DateSuffixVersionStrategy();
+        var strategy = new DateVersionStrategy();
 
         Assert.False(strategy.TryParse("MyWorkflow", out _, out _));
     }
@@ -42,13 +42,13 @@ public class DateSuffixVersionStrategyTests
     public void TryParse_ShouldAllowNoSuffix_WhenEnabled()
     {
         var services = new ServiceCollection();
-        services.AddOptions<DateSuffixVersionStrategyOptions>(Options.DefaultName)
+        services.AddOptions<DateVersionStrategyOptions>(Options.DefaultName)
             .Configure(o => o.AllowNoSuffix = true);
 
         using var provider = services.BuildServiceProvider();
         var factory = new DefaultWorkflowVersionStrategyFactory();
-        var strategy = (DateSuffixVersionStrategy)factory.Create(
-            typeof(DateSuffixVersionStrategy),
+        var strategy = (DateVersionStrategy)factory.Create(
+            typeof(DateVersionStrategy),
             canonicalName: "Orders",
             optionsName: null,
             services: provider);
@@ -62,13 +62,13 @@ public class DateSuffixVersionStrategyTests
     public void TryParse_ShouldUseNamedFormatFromFactory()
     {
         var services = new ServiceCollection();
-        services.AddOptions<DateSuffixVersionStrategyOptions>("custom")
+        services.AddOptions<DateVersionStrategyOptions>("custom")
             .Configure(o => o.DateFormat = "yyyy-MM-dd");
 
         using var provider = services.BuildServiceProvider();
         var factory = new DefaultWorkflowVersionStrategyFactory();
-        var strategy = (DateSuffixVersionStrategy)factory.Create(
-            typeof(DateSuffixVersionStrategy),
+        var strategy = (DateVersionStrategy)factory.Create(
+            typeof(DateVersionStrategy),
             canonicalName: "Orders",
             optionsName: "custom",
             services: provider);
@@ -79,17 +79,41 @@ public class DateSuffixVersionStrategyTests
     }
 
     [Fact]
+    public void TryParse_ShouldIgnorePrefixCase_WhenConfigured()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<DateVersionStrategyOptions>("custom")
+            .Configure(o =>
+            {
+                o.DateFormat = "'v'yyyyMMdd";
+                o.IgnorePrefixCase = true;
+            });
+
+        using var provider = services.BuildServiceProvider();
+        var factory = new DefaultWorkflowVersionStrategyFactory();
+        var strategy = (DateVersionStrategy)factory.Create(
+            typeof(DateVersionStrategy),
+            canonicalName: "Orders",
+            optionsName: "custom",
+            services: provider);
+
+        Assert.True(strategy.TryParse("OrdersV20260212", out var canonical, out var version));
+        Assert.Equal("Orders", canonical);
+        Assert.Equal("V20260212", version);
+    }
+
+    [Fact]
     public void TryParse_ShouldReadFromDate()
     {
         var services = new ServiceCollection();
         const string optionsName = "workflow-defaults";
-        services.AddOptions<DateSuffixVersionStrategyOptions>(optionsName)
+        services.AddOptions<DateVersionStrategyOptions>(optionsName)
             .Configure(o => o.DateFormat = "yyyyMMddHHmmss");
 
         using var provider = services.BuildServiceProvider();
         var factory = new DefaultWorkflowVersionStrategyFactory();
-        var strategy = (DateSuffixVersionStrategy)factory.Create(
-            typeof(DateSuffixVersionStrategy),
+        var strategy = (DateVersionStrategy)factory.Create(
+            typeof(DateVersionStrategy),
             canonicalName: "",
             optionsName: optionsName,
             services: provider);
@@ -102,7 +126,7 @@ public class DateSuffixVersionStrategyTests
     [Fact]
     public void Compare_ShouldOrderByDate()
     {
-        var strategy = new DateSuffixVersionStrategy();
+        var strategy = new DateVersionStrategy();
 
         Assert.True(strategy.Compare("20260101", "20261231") < 0);
         Assert.True(strategy.Compare("20261231", "20260101") > 0);
@@ -111,7 +135,7 @@ public class DateSuffixVersionStrategyTests
     [Fact]
     public void Compare_ShouldPreferValidDateOverInvalid()
     {
-        var strategy = new DateSuffixVersionStrategy();
+        var strategy = new DateVersionStrategy();
 
         Assert.True(strategy.Compare("20261231", "not-a-date") > 0);
         Assert.True(strategy.Compare("bad", "20260101") < 0);

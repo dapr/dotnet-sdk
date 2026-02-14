@@ -36,6 +36,18 @@ public sealed class NumericVersionStrategyOptions
     public bool AllowNoSuffix { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether numeric suffixes must use zero-padding.
+    /// When enabled, the numeric suffix must match the configured <see cref="Width"/>.
+    /// </summary>
+    public bool ZeroPad { get; set; }
+
+    /// <summary>
+    /// Gets or sets the required width for the numeric suffix when zero-padding is enabled.
+    /// Set to 0 to allow any width.
+    /// </summary>
+    public int Width { get; set; } = 4;
+
+    /// <summary>
     /// Gets or sets the default version used when no suffix is present.
     /// </summary>
     public string DefaultVersion { get; set; } = "0";

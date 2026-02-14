@@ -13,16 +13,15 @@
 
 namespace Dapr.Workflow.Versioning.Runtime.Test;
 
-public class ZeroPaddedNumericVersionStrategyOptionsTests
+public class DateVersionStrategyOptionsTests
 {
     [Fact]
     public void Defaults_ShouldMatchExpectedValues()
     {
-        var options = new ZeroPaddedNumericVersionStrategyOptions();
+        var options = new DateVersionStrategyOptions();
 
-        Assert.Equal(string.Empty, options.SuffixPrefix);
+        Assert.Equal("yyyyMMdd", options.DateFormat);
         Assert.False(options.IgnorePrefixCase);
-        Assert.Equal(4, options.Width);
         Assert.False(options.AllowNoSuffix);
         Assert.Equal("0", options.DefaultVersion);
     }

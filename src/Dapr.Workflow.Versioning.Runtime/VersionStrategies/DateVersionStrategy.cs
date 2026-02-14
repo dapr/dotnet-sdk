@@ -20,10 +20,10 @@ namespace Dapr.Workflow.Versioning;
 /// Strategy that derives a date-based version from a trailing suffix
 /// (for example, <c>MyWorkflow20260212</c> with format <c>yyyyMMdd</c>).
 /// </summary>
-public sealed class DateSuffixVersionStrategy(IOptionsMonitor<DateSuffixVersionStrategyOptions>? optionsMonitor = null)
+public sealed class DateVersionStrategy(IOptionsMonitor<DateVersionStrategyOptions>? optionsMonitor = null)
     : IWorkflowVersionStrategy, IWorkflowVersionStrategyContextConsumer
 {
-    private DateSuffixVersionStrategyOptions _options = new();
+    private DateVersionStrategyOptions _options = new();
 
     /// <inheritdoc />
     public void Configure(WorkflowVersionStrategyContext context)
@@ -48,14 +48,15 @@ public sealed class DateSuffixVersionStrategy(IOptionsMonitor<DateSuffixVersionS
             return false;
 
         var format = string.IsNullOrWhiteSpace(_options.DateFormat) ? "yyyyMMdd" : _options.DateFormat;
-        if (typeName.Length <= format.Length)
+        var suffixLength = GetFormattedLength(format);
+        if (typeName.Length <= suffixLength)
             return ApplyNoSuffix(typeName, out canonicalName, out version);
 
-        var suffix = typeName.Substring(typeName.Length - format.Length);
-        if (!TryParseDate(suffix, format, out _))
+        var suffix = typeName.Substring(typeName.Length - suffixLength);
+        if (!TryParseDate(suffix, format, _options.IgnorePrefixCase, out _))
             return ApplyNoSuffix(typeName, out canonicalName, out version);
 
-        canonicalName = typeName.Substring(0, typeName.Length - format.Length);
+        canonicalName = typeName.Substring(0, typeName.Length - suffixLength);
         if (string.IsNullOrEmpty(canonicalName))
             return false;
 
@@ -71,8 +72,8 @@ public sealed class DateSuffixVersionStrategy(IOptionsMonitor<DateSuffixVersionS
         if (v2 is null) return 1;
 
         var format = string.IsNullOrWhiteSpace(_options.DateFormat) ? "yyyyMMdd" : _options.DateFormat;
-        var ok1 = TryParseDate(v1.Trim(), format, out var d1);
-        var ok2 = TryParseDate(v2.Trim(), format, out var d2);
+        var ok1 = TryParseDate(v1.Trim(), format, _options.IgnorePrefixCase, out var d1);
+        var ok2 = TryParseDate(v2.Trim(), format, _options.IgnorePrefixCase, out var d2);
 
         switch (ok1)
         {
@@ -100,13 +101,49 @@ public sealed class DateSuffixVersionStrategy(IOptionsMonitor<DateSuffixVersionS
         return true;
     }
 
-    private static bool TryParseDate(string value, string format, out DateTime date)
+    private static bool TryParseDate(string value, string format, bool ignorePrefixCase, out DateTime date)
     {
-        return DateTime.TryParseExact(
-            value,
-            format,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.None,
-            out date);
+        if (DateTime.TryParseExact(
+                value,
+                format,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out date))
+        {
+            return true;
+        }
+
+        if (!ignorePrefixCase)
+            return false;
+
+        var upper = value.ToUpperInvariant();
+        if (!string.Equals(upper, value, StringComparison.Ordinal) &&
+            DateTime.TryParseExact(
+                upper,
+                format,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out date))
+        {
+            return true;
+        }
+
+        var lower = value.ToLowerInvariant();
+        if (!string.Equals(lower, value, StringComparison.Ordinal))
+        {
+            return DateTime.TryParseExact(
+                lower,
+                format,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out date);
+        }
+
+        return false;
+    }
+
+    private static int GetFormattedLength(string format)
+    {
+        return DateTime.UnixEpoch.ToString(format, CultureInfo.InvariantCulture).Length;
     }
 }
