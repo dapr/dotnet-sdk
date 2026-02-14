@@ -32,10 +32,15 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
 {
     private const string WorkflowBaseMetadataName = "Dapr.Workflow.Workflow`2";
     private const string WorkflowVersionAttributeFullName = "Dapr.Workflow.Versioning.WorkflowVersionAttribute";
+    private const string ScanReferencesPropertyName = "build_property.DaprWorkflowVersioningScanReferences";
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        var scanReferences = context.AnalyzerConfigOptionsProvider.Select((options, _) =>
+            options.GlobalOptions.TryGetValue(ScanReferencesPropertyName, out var value) &&
+            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
+
         // Cache the attribute symbol
         var known = context.CompilationProvider.Select((c, _) =>
             new KnownSymbols(
@@ -157,8 +162,43 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
             }
         });
 
+        var referenced = context.CompilationProvider
+            .Combine(known)
+            .Combine(scanReferences)
+            .Select((input, _) =>
+            {
+                var ((compilation, ks), scan) = input;
+                if (!scan)
+                    return ImmutableArray<DiscoveredWorkflow?>.Empty;
+
+                if (ks.WorkflowBase is null)
+                    return ImmutableArray<DiscoveredWorkflow?>.Empty;
+
+                var list = new List<DiscoveredWorkflow?>();
+                foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+                {
+                    list.AddRange(DiscoverReferencedWorkflows(assembly, ks, compilation.Assembly));
+                }
+
+                return list.ToImmutableArray();
+            });
+
         // Collect and emit
-        context.RegisterSourceOutput(discovered.Collect(), (spc, items) =>
+        var discoveredAll = discovered.Collect()
+            .Combine(referenced)
+            .Select((input, _) =>
+            {
+                var (current, extra) = input;
+                if (extra.IsDefaultOrEmpty)
+                    return current;
+
+                var list = new List<DiscoveredWorkflow?>(current.Length + extra.Length);
+                list.AddRange(current);
+                list.AddRange(extra);
+                return list.ToImmutableArray();
+            });
+
+        context.RegisterSourceOutput(discoveredAll, (spc, items) =>
         {
             var workflows = items.Where(x => x is not null).ToList();
 
@@ -280,6 +320,87 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
             StrategyTypeName: strategyTypeName,
             OptionsName: string.IsNullOrWhiteSpace(optionsName) ? null : optionsName
         );
+    }
+
+    private static IEnumerable<DiscoveredWorkflow> DiscoverReferencedWorkflows(
+        IAssemblySymbol assemblySymbol,
+        KnownSymbols knownSymbols,
+        IAssemblySymbol currentAssembly)
+    {
+        foreach (var type in EnumerateTypes(assemblySymbol.GlobalNamespace))
+        {
+            if (!IsAccessibleFromAssembly(type, currentAssembly))
+                continue;
+
+            if (!InheritsFromWorkflow(type, knownSymbols.WorkflowBase))
+                continue;
+
+            AttributeData? attrData = null;
+            if (knownSymbols.WorkflowVersionAttribute is not null)
+            {
+                attrData = type.GetAttributes()
+                    .FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, knownSymbols.WorkflowVersionAttribute));
+            }
+
+            attrData ??= type.GetAttributes().FirstOrDefault(a =>
+                string.Equals(a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    $"global::{WorkflowVersionAttributeFullName}", StringComparison.Ordinal));
+
+            yield return BuildDiscoveredWorkflow(type, attrData);
+        }
+    }
+
+    private static IEnumerable<INamedTypeSymbol> EnumerateTypes(INamespaceSymbol root)
+    {
+        foreach (var member in root.GetMembers())
+        {
+            switch (member)
+            {
+                case INamespaceSymbol ns:
+                    foreach (var type in EnumerateTypes(ns))
+                        yield return type;
+                    break;
+                case INamedTypeSymbol type:
+                    foreach (var nested in EnumerateNestedTypes(type))
+                        yield return nested;
+                    break;
+            }
+        }
+    }
+
+    private static IEnumerable<INamedTypeSymbol> EnumerateNestedTypes(INamedTypeSymbol type)
+    {
+        yield return type;
+        foreach (var nested in type.GetTypeMembers())
+        {
+            foreach (var child in EnumerateNestedTypes(nested))
+                yield return child;
+        }
+    }
+
+    private static bool IsAccessibleFromAssembly(INamedTypeSymbol type, IAssemblySymbol currentAssembly)
+    {
+        for (var containing = type; containing is not null; containing = containing.ContainingType)
+        {
+            if (!IsAccessibleCore(containing, currentAssembly))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsAccessibleCore(INamedTypeSymbol type, IAssemblySymbol currentAssembly)
+    {
+        switch (type.DeclaredAccessibility)
+        {
+            case Accessibility.Public:
+                return true;
+            case Accessibility.Internal:
+            case Accessibility.ProtectedOrInternal:
+                return type.ContainingAssembly.GivesAccessTo(currentAssembly);
+            default:
+                return false;
+        }
     }
 
     /// <summary>
