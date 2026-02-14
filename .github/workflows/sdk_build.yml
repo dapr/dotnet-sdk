@@ -326,11 +326,8 @@ jobs:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
+    needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
     runs-on: ubuntu-latest
-    if: |
-      startswith(github.ref, 'refs/tags/v') &&
-      !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
