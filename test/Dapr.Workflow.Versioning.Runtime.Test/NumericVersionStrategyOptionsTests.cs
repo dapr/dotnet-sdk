@@ -23,6 +23,8 @@ public class NumericVersionStrategyOptionsTests
         Assert.Equal("V", options.SuffixPrefix);
         Assert.False(options.IgnorePrefixCase);
         Assert.True(options.AllowNoSuffix);
+        Assert.False(options.ZeroPad);
+        Assert.Equal(4, options.Width);
         Assert.Equal("0", options.DefaultVersion);
     }
 }
