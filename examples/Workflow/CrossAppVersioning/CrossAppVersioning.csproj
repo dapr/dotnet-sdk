@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DaprWorkflowVersioningScanReferences>true</DaprWorkflowVersioningScanReferences>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <CompilerVisibleProperty Include="DaprWorkflowVersioningScanReferences" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\WorkflowVersioning\WorkflowVersioning.csproj" />
+        <ProjectReference Include="..\..\..\src\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>
