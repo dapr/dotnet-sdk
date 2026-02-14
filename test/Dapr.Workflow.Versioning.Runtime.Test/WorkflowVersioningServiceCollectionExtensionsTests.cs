@@ -24,8 +24,8 @@ public class WorkflowVersioningServiceCollectionExtensionsTests
         services.AddDaprWorkflowVersioning();
 
         const string optionsName = "workflow-defaults";
-        services.UseDefaultWorkflowStrategy<DateSuffixVersionStrategy>(optionsName);
-        services.ConfigureStrategyOptions<DateSuffixVersionStrategyOptions>(optionsName, o =>
+        services.UseDefaultWorkflowStrategy<DateVersionStrategy>(optionsName);
+        services.ConfigureStrategyOptions<DateVersionStrategyOptions>(optionsName, o =>
         {
             o.DateFormat = "yyyyMMddHHmmss";
         });
