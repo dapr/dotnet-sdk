@@ -20,6 +20,8 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Threading;
+using System;
 using Shouldly;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -477,5 +479,35 @@ public class CloudEventsMiddlewareTest
 #endif
         var str = encoding.GetString(bytes);
         return str;
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SwallowsCancellation_WhenResponseHasStarted()
+    {
+        var serviceCollection = new ServiceCollection();
+        var provider = serviceCollection.BuildServiceProvider();
+            
+        var app = new ApplicationBuilder(provider);
+        app.UseCloudEvents();
+
+        var pipeline = app.Build();
+
+        using var cts = new CancellationTokenSource();
+        var context = new DefaultHttpContext
+        {
+            Request = { ContentType = "application/cloudevents+json", Body = MakeBody("{ \"data\": { \"name\":\"jimmy\" } }") },
+            RequestAborted = cts.Token
+        };
+
+        app.Run(async httpContext =>
+        {
+            await httpContext.Response.WriteAsync("Starting response...");
+            httpContext.Response.HasStarted.ShouldBe(true);
+            cts.Cancel(); // Cancel after writing starts
+            throw new OperationCanceledException(httpContext.RequestAborted);
+        });
+
+        // This should NOT throw
+        await pipeline.Invoke(context);
     }
 }
