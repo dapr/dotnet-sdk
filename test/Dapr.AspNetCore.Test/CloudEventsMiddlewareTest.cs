@@ -25,6 +25,7 @@ using System;
 using Shouldly;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Xunit;
 
 public class CloudEventsMiddlewareTest
@@ -484,30 +485,79 @@ public class CloudEventsMiddlewareTest
     [Fact]
     public async Task InvokeAsync_SwallowsCancellation_WhenResponseHasStarted()
     {
+        using var cts = new CancellationTokenSource();
+
         var serviceCollection = new ServiceCollection();
         var provider = serviceCollection.BuildServiceProvider();
-            
+
         var app = new ApplicationBuilder(provider);
         app.UseCloudEvents();
 
-        var pipeline = app.Build();
-
-        using var cts = new CancellationTokenSource();
-        var context = new DefaultHttpContext
+        // Register terminal middleware BEFORE building the pipeline
+        app.Run(httpContext =>
         {
-            Request = { ContentType = "application/cloudevents+json", Body = MakeBody("{ \"data\": { \"name\":\"jimmy\" } }") },
-            RequestAborted = cts.Token
-        };
+            // Simulate that the response has already started by replacing the response feature
+            httpContext.Features.Set<IHttpResponseFeature>(new TestHttpResponseFeature { HasStarted = true });
 
-        app.Run(async httpContext =>
-        {
-            await httpContext.Response.WriteAsync("Starting response...");
-            httpContext.Response.HasStarted.ShouldBe(true);
-            cts.Cancel(); // Cancel after writing starts
-            throw new OperationCanceledException(httpContext.RequestAborted);
+            // Simulate the client disconnecting after the response started
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
         });
 
-        // This should NOT throw
+        var pipeline = app.Build();
+
+        var context = new DefaultHttpContext();
+        context.Request.ContentType = "application/cloudevents+json";
+        context.Request.Body = MakeBody("{ \"data\": { \"name\":\"jimmy\" } }");
+        context.RequestAborted = cts.Token;
+
+        // The middleware should catch and swallow the OperationCanceledException
+        // because the response has already started and the request was aborted
         await pipeline.Invoke(context);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_PropagatesCancellation_WhenResponseHasNotStarted()
+    {
+        using var cts = new CancellationTokenSource();
+
+        var serviceCollection = new ServiceCollection();
+        var provider = serviceCollection.BuildServiceProvider();
+
+        var app = new ApplicationBuilder(provider);
+        app.UseCloudEvents();
+
+        // Register terminal middleware that cancels BEFORE the response starts
+        app.Run(httpContext =>
+        {
+            // Response has NOT started (default), client disconnects
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        });
+
+        var pipeline = app.Build();
+
+        var context = new DefaultHttpContext();
+        context.Request.ContentType = "application/cloudevents+json";
+        context.Request.Body = MakeBody("{ \"data\": { \"name\":\"jimmy\" } }");
+        context.RequestAborted = cts.Token;
+
+        // The middleware should NOT swallow the exception when the response has not started
+        await Should.ThrowAsync<OperationCanceledException>(() => pipeline.Invoke(context));
+    }
+
+    /// <summary>
+    /// A test implementation of <see cref="IHttpResponseFeature"/> that allows controlling
+    /// the <see cref="HasStarted"/> property for unit testing.
+    /// </summary>
+    private sealed class TestHttpResponseFeature : IHttpResponseFeature
+    {
+        public int StatusCode { get; set; } = 200;
+        public string ReasonPhrase { get; set; }
+        public IHeaderDictionary Headers { get; set; } = new HeaderDictionary();
+        public Stream Body { get; set; } = new MemoryStream();
+        public bool HasStarted { get; set; }
+        public void OnStarting(Func<object, Task> callback, object state) { }
+        public void OnCompleted(Func<object, Task> callback, object state) { }
     }
 }
