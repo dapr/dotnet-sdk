@@ -117,7 +117,7 @@
                  Targets="Build"
                  Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
 
-        <!-- Resolve TargetPath (respects your Directory.Build.props OutputPath) -->
+        <!-- Resolve TargetPath (respects the Directory.Build.props OutputPath) -->
         <MSBuild Condition="'$(_IsFirstTfm)' == 'true'"
                  Projects="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
                  Targets="GetTargetPath"
