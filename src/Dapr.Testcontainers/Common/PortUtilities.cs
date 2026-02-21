@@ -11,10 +11,37 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System;
 using System.Net;
 using System.Net.Sockets;
 
 namespace Dapr.Testcontainers.Common;
+
+/// <summary>
+/// Represents a temporary reservation for a TCP port.
+/// </summary>
+public sealed class PortReservation : IDisposable
+{
+    private Socket? _socket;
+
+    internal PortReservation(Socket socket)
+    {
+        _socket = socket;
+        Port = ((IPEndPoint)socket.LocalEndPoint!).Port;
+    }
+
+    /// <summary>
+    /// The reserved port number.
+    /// </summary>
+    public int Port { get; }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _socket?.Dispose();
+        _socket = null;
+    }
+}
 
 /// <summary>
 /// Provides port-related utilities.
@@ -22,14 +49,25 @@ namespace Dapr.Testcontainers.Common;
 public static class PortUtilities
 {
     /// <summary>
+    /// Reserves an available TCP port until the returned reservation is disposed.
+    /// </summary>
+    /// <returns>A <see cref="PortReservation"/> representing the reserved port.</returns>
+    public static PortReservation ReserveTcpPort()
+    {
+        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, true);
+        socket.Bind(new IPEndPoint(IPAddress.Any, 0));
+        return new PortReservation(socket);
+    }
+
+    /// <summary>
     /// Gets an available TCP port from the OS. This is a best-effort snapshot
     /// and does not reserve the port for later use.
     /// </summary>
     /// <returns>The available port number.</returns>
     public static int GetAvailablePort()
     {
-        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        socket.Bind(new IPEndPoint(IPAddress.Any, 0));
-        return ((IPEndPoint)socket.LocalEndPoint!).Port;
+        using var reservation = ReserveTcpPort();
+        return reservation.Port;
     }
 }
