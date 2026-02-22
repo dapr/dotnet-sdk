@@ -324,7 +324,7 @@ public sealed class ActorSerializationCodeFixProvider : CodeFixProvider
     {
         if (root is CompilationUnitSyntax compilationUnit && !HasUsingDirective(compilationUnit, namespaceName))
         {
-            var usingDirective = SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(namespaceName));
+            var usingDirective = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(namespaceName));
             return compilationUnit.AddUsings(usingDirective);
         }
 
