@@ -59,7 +59,7 @@ In the first terminal window, start the dapr sidecar:
 dapr run --app-id wfapp --dapr-grpc-port 50001 --dapr-http-port 3500
 ```
 
-Next, in a seperate terminal window, from the `WorkflowConsoleApp` directory, run the following command to start the program itself:
+Next, in a separate terminal window, from the `WorkflowConsoleApp` directory, run the following command to start the program itself:
 
 ```sh
 dotnet run
