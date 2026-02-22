@@ -133,8 +133,6 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
             EnumMissingEnumMemberAttribute,
             WeaklyTypedActorJsonPropertyRecommendation,
             ComplexTypeInActorNeedsAttributes,
-            ActorMethodParameterNeedsValidation,
-            ActorMethodReturnTypeNeedsValidation,
             CollectionTypeInActorNeedsElementValidation,
             RecordTypeNeedsDataContractAttributes,
             ActorClassMissingInterface,
