@@ -537,22 +537,28 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         if (_externalEventSources.TryGetValue(eventName, out Queue<TaskCompletionSource<HistoryEvent>>? waiters))
         {
-            var tcs = waiters.Dequeue();
-
-            // Events are completed in FIFO order. Remove the key if the last event was delivered.
-            if (waiters.Count is 0)
+            while (waiters.Count > 0)
             {
-                _externalEventSources.Remove(eventName);
+                var tcs = waiters.Dequeue();
+                if (tcs.TrySetResult(historyEvent))
+                {
+                    // Events are completed in FIFO order. Remove the key if the last event was delivered.
+                    if (waiters.Count is 0)
+                    {
+                        _externalEventSources.Remove(eventName);
+                    }
+
+                    return;
+                }
             }
 
-            tcs.TrySetResult(historyEvent);
+            // All waiters were already completed/canceled. Remove and treat as unhandled.
+            _externalEventSources.Remove(eventName);
         }
-        else
-        {
-            // The orchestrator isn't waiting for this event (yet?). Save it in case
-            // the orchestrator wants it later.
-            _externalEventBuffer.Add(historyEvent);
-        }
+
+        // The orchestrator isn't waiting for this event (yet?) or all waiters were canceled.
+        // Save it in case the orchestrator wants it later.
+        _externalEventBuffer.Add(historyEvent);
     }
 
     /// <summary>
