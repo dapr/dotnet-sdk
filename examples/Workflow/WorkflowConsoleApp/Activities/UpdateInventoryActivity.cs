@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace WorkflowConsoleApp.Activities;
 
-class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, object>
+public class UpdateInventoryActivity : WorkflowActivity<PaymentRequest, object>
 {
     static readonly string storeName = "statestore";
     readonly ILogger logger;
