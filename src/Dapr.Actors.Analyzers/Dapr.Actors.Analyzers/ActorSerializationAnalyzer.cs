@@ -27,7 +27,7 @@ namespace Dapr.Actors.Analyzers;
 public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>Actor interface should inherit from IActor.</summary>
-    public static readonly DiagnosticDescriptor ActorInterfaceMissingIActor = new(
+    internal static readonly DiagnosticDescriptor ActorInterfaceMissingIActor = new(
         "DAPR1405",
         "Actor interface should inherit from IActor",
         "Interface '{0}' used by Actor class should inherit from IActor",
@@ -37,7 +37,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Interfaces implemented by Actor classes should inherit from IActor interface.");
 
     /// <summary>Enum members in Actor types should use EnumMember attribute.</summary>
-    public static readonly DiagnosticDescriptor EnumMissingEnumMemberAttribute = new(
+    internal static readonly DiagnosticDescriptor EnumMissingEnumMemberAttribute = new(
         "DAPR1406",
         "Enum members in Actor types should use EnumMember attribute",
         "Enum member '{0}' in enum '{1}' should be decorated with [EnumMember] attribute for proper serialization",
@@ -47,7 +47,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Enum members used in Actor types should use [EnumMember] attribute for consistent serialization.");
 
     /// <summary>Consider using JsonPropertyName for property name consistency.</summary>
-    public static readonly DiagnosticDescriptor WeaklyTypedActorJsonPropertyRecommendation = new(
+    internal static readonly DiagnosticDescriptor WeaklyTypedActorJsonPropertyRecommendation = new(
         "DAPR1407",
         "Consider using JsonPropertyName for property name consistency",
         "Property '{0}' in Actor class '{1}' should consider using [JsonPropertyName] attribute for consistent naming",
@@ -57,7 +57,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Properties in Actor classes used with weakly-typed clients should consider [JsonPropertyName] attribute for consistent property naming.");
 
     /// <summary>Complex types used in Actor methods need serialization attributes.</summary>
-    public static readonly DiagnosticDescriptor ComplexTypeInActorNeedsAttributes = new(
+    internal static readonly DiagnosticDescriptor ComplexTypeInActorNeedsAttributes = new(
         "DAPR1408",
         "Complex types used in Actor methods need serialization attributes",
         "Type '{0}' used in Actor method should be decorated with [DataContract] and have [DataMember] on serializable properties",
@@ -67,7 +67,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Complex types used as parameters or return types in Actor methods should have proper serialization attributes.");
 
     /// <summary>Actor method parameter needs proper serialization attributes.</summary>
-    public static readonly DiagnosticDescriptor ActorMethodParameterNeedsValidation = new(
+    internal static readonly DiagnosticDescriptor ActorMethodParameterNeedsValidation = new(
         "DAPR1409",
         "Actor method parameter needs proper serialization attributes",
         "Parameter '{0}' of type '{1}' in method '{2}' should have proper serialization attributes",
@@ -77,7 +77,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Parameters in Actor methods should use types with proper serialization attributes for reliable data transfer.");
 
     /// <summary>Actor method return type needs proper serialization attributes.</summary>
-    public static readonly DiagnosticDescriptor ActorMethodReturnTypeNeedsValidation = new(
+    internal static readonly DiagnosticDescriptor ActorMethodReturnTypeNeedsValidation = new(
         "DAPR1410",
         "Actor method return type needs proper serialization attributes",
         "Return type '{0}' in method '{1}' should have proper serialization attributes",
@@ -87,7 +87,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Return types in Actor methods should have proper serialization attributes for reliable data transfer.");
 
     /// <summary>Collection types in Actor methods need element type validation.</summary>
-    public static readonly DiagnosticDescriptor CollectionTypeInActorNeedsElementValidation = new(
+    internal static readonly DiagnosticDescriptor CollectionTypeInActorNeedsElementValidation = new(
         "DAPR1411",
         "Collection types in Actor methods need element type validation",
         "Collection type '{0}' in Actor method contains elements of type '{1}' which needs proper serialization attributes",
@@ -97,7 +97,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Collection types used in Actor methods should contain elements with proper serialization attributes.");
 
     /// <summary>Record types should use DataContract and DataMember attributes for Actor serialization.</summary>
-    public static readonly DiagnosticDescriptor RecordTypeNeedsDataContractAttributes = new(
+    internal static readonly DiagnosticDescriptor RecordTypeNeedsDataContractAttributes = new(
         "DAPR1412",
         "Record types should use DataContract and DataMember attributes for Actor serialization",
         "Record '{0}' should be decorated with [DataContract] and have [DataMember] attributes on properties for proper Actor serialization",
@@ -107,7 +107,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Record types used in Actor methods should have [DataContract] attribute and [DataMember] attributes on all properties for reliable serialization.");
 
     /// <summary>Actor class implementation should implement an interface that inherits from IActor.</summary>
-    public static readonly DiagnosticDescriptor ActorClassMissingInterface = new(
+    internal static readonly DiagnosticDescriptor ActorClassMissingInterface = new(
         "DAPR1413",
         "Actor class implementation should implement an interface that inherits from IActor",
         "Actor class '{0}' should implement an interface that inherits from IActor",
@@ -117,7 +117,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
         description: "Actor class implementations should implement an interface that inherits from IActor for proper Actor pattern implementation.");
 
     /// <summary>All types must either expose a public parameterless constructor or be decorated with the DataContractAttribute attribute.</summary>
-    public static readonly DiagnosticDescriptor TypeMissingParameterlessConstructorOrDataContract = new(
+    internal static readonly DiagnosticDescriptor TypeMissingParameterlessConstructorOrDataContract = new(
         "DAPR1414",
         "All types must either expose a public parameterless constructor or be decorated with the DataContractAttribute attribute",
         "Type '{0}' must either have a public parameterless constructor or be decorated with [DataContract] attribute for proper serialization",
@@ -184,7 +184,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (interfaceDeclaration.Identifier.ValueText.EndsWith("Actor") && !InheritsFromIActor(interfaceSymbol))
+        if (interfaceDeclaration.Identifier.ValueText.StartsWith("I") && interfaceDeclaration.Identifier.ValueText.EndsWith("Actor") && !InheritsFromIActor(interfaceSymbol))
         {
             var diagnostic = Diagnostic.Create(
                 ActorInterfaceMissingIActor,
@@ -260,7 +260,7 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
     {
         foreach (var interfaceType in classSymbol.Interfaces)
         {
-            if (interfaceType.Name.EndsWith("Actor") && !InheritsFromIActor(interfaceType))
+            if (interfaceType.Name.StartsWith("I") && interfaceType.Name.EndsWith("Actor") && !InheritsFromIActor(interfaceType))
             {
                 var diagnostic = Diagnostic.Create(
                     ActorInterfaceMissingIActor,
