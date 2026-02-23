@@ -48,28 +48,22 @@ internal class CloudEventsMiddleware
         this.options = options;
     }
 
-    public Task InvokeAsync(HttpContext httpContext)
+    public async Task InvokeAsync(HttpContext httpContext)
     {
-        // This middleware unwraps any requests with a cloud events (JSON) content type
-        // and replaces the request body + request content type so that it can be read by a
-        // non-cloud-events-aware piece of code.
-        //
-        // This corresponds to cloud events in the *structured* format:
-        // https://github.com/cloudevents/spec/blob/master/http-transport-binding.md#13-content-modes
-        //
-        // For *binary* format, we don't have to do anything
-        //
-        // We don't support batching.
-        //
-        // The philosophy here is that we don't report an error for things we don't support, because
-        // that would block someone from implementing their own support for it. We only report an error
-        // when something we do support isn't correct.
         if (!MatchesContentType(httpContext, out var charSet))
         {
-            return this.next(httpContext);
+            await this.next(httpContext);
+            return;
         }
 
-        return this.ProcessBodyAsync(httpContext, charSet);
+        try
+        {
+            await this.ProcessBodyAsync(httpContext, charSet);
+        }
+        catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested && httpContext.Response.HasStarted)
+        {
+            // Swallow
+        }
     }
 
     private async Task ProcessBodyAsync(HttpContext httpContext, string charSet)
@@ -77,7 +71,7 @@ internal class CloudEventsMiddleware
         JsonElement json;
         if (string.Equals(charSet, Encoding.UTF8.WebName, StringComparison.OrdinalIgnoreCase))
         {
-            json = await JsonSerializer.DeserializeAsync<JsonElement>(httpContext.Request.Body);
+            json = await JsonSerializer.DeserializeAsync<JsonElement>(httpContext.Request.Body, cancellationToken: httpContext.RequestAborted);
         }
         else
         {
@@ -142,7 +136,7 @@ internal class CloudEventsMiddleware
             if (isJson || options.SuppressJsonDecodingOfTextPayloads)
             {
                 // Rehydrate body from JSON payload
-                await JsonSerializer.SerializeAsync<JsonElement>(body, data);
+                await JsonSerializer.SerializeAsync<JsonElement>(body, data, cancellationToken: httpContext.RequestAborted);
             }
             else
             {
