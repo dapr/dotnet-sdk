@@ -326,11 +326,8 @@ jobs:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'unit-tests', 'integration-test', 'integration-tests-v2', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
+    needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
     runs-on: ubuntu-latest
-    if: |
-      startswith(github.ref, 'refs/tags/v') &&
-      !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -345,7 +342,12 @@ jobs:
         id: set-matrix
         run: |
           echo "Generating package matrix..."
-          files=$(ls packages/*.nupkg | jq -R -s -c 'split("\n")[:-1]')
+          files=$(ls packages/*.nupkg | jq -R -s -c '
+            split("\n")[:-1]
+            | map(select(
+                (test("/Dapr\\.Workflow\\.Versioning\\.(Abstractions|Generators|Runtime)\\.")) | not
+              ))
+          ')
           echo "matrix=$files" >> $GITHUB_OUTPUT
   
   publish:
