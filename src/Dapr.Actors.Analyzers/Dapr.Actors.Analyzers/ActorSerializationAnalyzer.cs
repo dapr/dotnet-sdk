@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 //  Copyright 2025 The Dapr Authors
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -128,16 +128,19 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(
+        [
             ActorInterfaceMissingIActor,
             EnumMissingEnumMemberAttribute,
             WeaklyTypedActorJsonPropertyRecommendation,
             ComplexTypeInActorNeedsAttributes,
+            ActorMethodParameterNeedsValidation,
+            ActorMethodReturnTypeNeedsValidation,
             CollectionTypeInActorNeedsElementValidation,
             RecordTypeNeedsDataContractAttributes,
             ActorClassMissingInterface,
             TypeMissingParameterlessConstructorOrDataContract
-        );
+,
+        ];
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
