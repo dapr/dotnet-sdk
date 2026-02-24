@@ -47,6 +47,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly SortedDictionary<int, OrchestratorAction> _pendingActions = [];
     private readonly IWorkflowSerializer _workflowSerializer;
     private readonly ILogger<WorkflowOrchestrationContext> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     // Maps runtime sub-orchestration created EventId -> parent action/task id (our local task id).
     private readonly Dictionary<int, int> _subOrchestrationCreatedEventIdToParentTaskId = [];
     // Maps child instance id -> parent action/task id (our local task id).
@@ -75,6 +76,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker, string? appId = null)
     {
         _workflowSerializer = workflowSerializer;
+        _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
                   throw new ArgumentNullException(nameof(loggerFactory));
         _instanceGuid = Guid.TryParse(instanceId, out var guid) ? guid : Guid.NewGuid();
@@ -339,13 +341,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <inheritdoc />
-    public override ILogger CreateReplaySafeLogger(string categoryName) => new ReplaySafeLogger(_logger, () => IsReplaying);
+    public override ILogger CreateReplaySafeLogger(string categoryName) =>
+        new ReplaySafeLogger(_loggerFactory.CreateLogger(categoryName), () => IsReplaying);
 
     /// <inheritdoc />
-    public override ILogger CreateReplaySafeLogger(Type type) => CreateReplaySafeLogger(type.FullName ?? type.Name);
+    public override ILogger CreateReplaySafeLogger(Type type) =>
+        new ReplaySafeLogger(_loggerFactory.CreateLogger(type), () => IsReplaying);
 
     /// <inheritdoc />
-    public override ILogger CreateReplaySafeLogger<T>() => CreateReplaySafeLogger(typeof(T));
+    public override ILogger CreateReplaySafeLogger<T>() =>
+        new ReplaySafeLogger(_loggerFactory.CreateLogger<T>(), () => IsReplaying);
 
     private Task<T> HandleHistoryMatch<T>(string name, HistoryEvent e, int taskId)
     {
