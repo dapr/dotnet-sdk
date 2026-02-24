@@ -16,6 +16,7 @@ using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Internal;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using JsonException = System.Text.Json.JsonException;
 
@@ -795,6 +796,84 @@ public class WorkflowOrchestrationContextTests
         Assert.False(context.IsReplaying);
         Assert.True(logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
     }
+    
+    [Fact]
+    public void CreateReplaySafeLogger_StringOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            versionTracker: tracker);
+        
+        const string categoryName = "test";
+        var logger = context.CreateReplaySafeLogger(categoryName);
+
+        Assert.NotNull(logger);
+        Assert.IsType<ReplaySafeLogger>(logger);
+        
+        // Unfortunately, this is as far as we can take this since this creates a NullLogger and it doesn't expose the
+        // category name
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_TypeOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var recordingFactory = new RecordingLoggerFactory();
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: recordingFactory,
+            versionTracker: tracker);
+        
+        var logger = context.CreateReplaySafeLogger(typeof(MyExampleType));
+
+        Assert.NotNull(logger);
+
+        var replaySafeLogger = Assert.IsType<ReplaySafeLogger>(logger);
+
+        // The inner logger's category name must match the type passed to CreateReplaySafeLogger
+        var innerLogger = Assert.IsType<RecordingLogger>(replaySafeLogger._innerLogger);
+        var expectedCategoryName = typeof(MyExampleType).FullName!.Replace('+', '.');
+        Assert.Equal(expectedCategoryName, innerLogger.CategoryName);
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_GenericOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var recordingFactory = new RecordingLoggerFactory();
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            versionTracker: tracker);
+
+        var logger = context.CreateReplaySafeLogger<MyExampleType>();
+
+        Assert.NotNull(logger);
+
+        var replaySafeLogger = Assert.IsType<ReplaySafeLogger>(logger);
+
+        // CreateLogger<T>() returns a Logger<T> wrapper — verify the generic type argument is correct
+        var innerLoggerType = replaySafeLogger._innerLogger.GetType();
+        Assert.True(innerLoggerType.IsGenericType, "Inner logger should be a generic type");
+        Assert.Equal(typeof(MyExampleType), innerLoggerType.GetGenericArguments()[0]);
+    }
 
     [Fact]
     public void ContinueAsNew_ShouldAddCompleteOrchestrationAction_WithCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
@@ -1154,6 +1233,56 @@ public class WorkflowOrchestrationContextTests
         Assert.False(context.IsReplaying);
         Assert.True(typeLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
         Assert.True(genericLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+    }
+
+    private sealed class MyExampleType
+    {
+    }
+    
+    private sealed class RecordingLoggerFactory : ILoggerFactory
+    {
+        public string? LastCategoryName { get; private set; }
+        public ILogger? LastCreatedLogger { get; private set; }
+
+        public void AddProvider(ILoggerProvider provider) { }
+        
+        public void Reset()
+        {
+            LastCategoryName = null;
+            LastCreatedLogger = null;
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            LastCategoryName = categoryName;
+            LastCreatedLogger = new RecordingLogger(categoryName);
+            return LastCreatedLogger;
+        }
+
+        public void Dispose() { }
+    }
+
+    private sealed class RecordingLogger(string categoryName) : ILogger
+    {
+        public string CategoryName { get; } = categoryName;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
     }
 
     private sealed class AlwaysEnabledLoggerFactory : Microsoft.Extensions.Logging.ILoggerFactory
