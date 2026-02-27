@@ -19,6 +19,7 @@ using Dapr.Workflow.Grpc.Extensions;
 using Dapr.Workflow.Registration;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Worker;
+using Grpc.Net.ClientFactory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -51,6 +52,17 @@ public static class WorkflowServiceCollectionExtensions
         {
             ArgumentNullException.ThrowIfNull(serializer);
             Services.Replace(ServiceDescriptor.Singleton(typeof(IWorkflowSerializer), serializer));
+            return this;
+        }
+        
+        /// <summary>
+        /// Configures gRPC message size limits for the workflow sidecar client.
+        /// </summary>
+        /// <param name="maxReceiveMessageSize">Maximum receive message size in bytes. Must be greater than 0 when provided.</param>
+        /// <param name="maxSendMessageSize">Maximum send message size in bytes. Must be greater than 0 when provided.</param>
+        public DaprWorkflowBuilder WithGrpcMessageSizeLimits(int? maxReceiveMessageSize = null, int? maxSendMessageSize = null)
+        {
+            ConfigureWorkflowGrpcMessageSizeLimits(Services, maxReceiveMessageSize, maxSendMessageSize);
             return this;
         }
 
@@ -127,7 +139,7 @@ public static class WorkflowServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddHttpClient();
+        EnsureWorkflowGrpcClientRegistered(services);
 
         var registration = new Func<IServiceProvider, DaprWorkflowClient>(provider =>
         {
@@ -177,9 +189,6 @@ public static class WorkflowServiceCollectionExtensions
             return factory;
         });
 
-        // Necessary for the gRPC client factory
-        serviceCollection.AddHttpClient();
-
         // Register the internal WorkflowClient implementation
         serviceCollection.TryAddSingleton<WorkflowClient>(sp =>
         {
@@ -191,7 +200,7 @@ public static class WorkflowServiceCollectionExtensions
         });
 
         // Register gRPC client for communicating with Dapr sidecar
-        serviceCollection.AddDaprWorkflowGrpcClient(grpcOptions =>
+        EnsureWorkflowGrpcClientRegistered(serviceCollection, grpcOptions =>
         {
             if (options.GrpcChannelOptions != null)
             {
@@ -228,6 +237,16 @@ public static class WorkflowServiceCollectionExtensions
         Action<WorkflowRuntimeOptions> configure, ServiceLifetime lifetime)
     {
         AddDaprWorkflowCore(serviceCollection, configure, configureClient: null, lifetime);
+    }
+    
+    private static void EnsureWorkflowGrpcClientRegistered(IServiceCollection services, Action<GrpcClientFactoryOptions>? configureClient = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // Required by gRPC client factory internals
+        services.AddHttpClient();
+
+        services.AddDaprWorkflowGrpcClient(configureClient);
     }
     
     private static void RegisterWorkflowClientWithBuilder(
@@ -279,6 +298,62 @@ public static class WorkflowServiceCollectionExtensions
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
+        }
+    }
+    
+    private static void ConfigureWorkflowGrpcMessageSizeLimits(
+        IServiceCollection services,
+        int? maxReceiveMessageSize,
+        int? maxSendMessageSize)
+    {
+        if (!maxReceiveMessageSize.HasValue && !maxSendMessageSize.HasValue)
+        {
+            return;
+        }
+
+        ValidateGrpcMessageSize(maxReceiveMessageSize, nameof(maxReceiveMessageSize));
+        ValidateGrpcMessageSize(maxSendMessageSize, nameof(maxSendMessageSize));
+
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        services.PostConfigure<GrpcClientFactoryOptions>(clientType.FullName!, options =>
+        {
+            options.ChannelOptionsActions.Add(channelOptions =>
+            {
+                if (maxReceiveMessageSize.HasValue)
+                {
+                    channelOptions.MaxReceiveMessageSize = maxReceiveMessageSize.Value;
+                }
+
+                if (maxSendMessageSize.HasValue)
+                {
+                    channelOptions.MaxSendMessageSize = maxSendMessageSize.Value;
+                }
+            });
+        });
+
+        services.PostConfigure<GrpcClientFactoryOptions>(clientType.Name, options =>
+        {
+            options.ChannelOptionsActions.Add(channelOptions =>
+            {
+                if (maxReceiveMessageSize.HasValue)
+                {
+                    channelOptions.MaxReceiveMessageSize = maxReceiveMessageSize.Value;
+                }
+
+                if (maxSendMessageSize.HasValue)
+                {
+                    channelOptions.MaxSendMessageSize = maxSendMessageSize.Value;
+                }
+            });
+        });
+    }
+
+    private static void ValidateGrpcMessageSize(int? value, string paramName)
+    {
+        if (value.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value.Value, 0, paramName);
         }
     }
 }
