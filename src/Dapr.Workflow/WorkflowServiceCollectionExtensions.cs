@@ -19,6 +19,7 @@ using Dapr.Workflow.Grpc.Extensions;
 using Dapr.Workflow.Registration;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Worker;
+using Grpc.Net.ClientFactory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -51,6 +52,17 @@ public static class WorkflowServiceCollectionExtensions
         {
             ArgumentNullException.ThrowIfNull(serializer);
             Services.Replace(ServiceDescriptor.Singleton(typeof(IWorkflowSerializer), serializer));
+            return this;
+        }
+        
+        /// <summary>
+        /// Configures gRPC message size limits for the workflow sidecar client.
+        /// </summary>
+        /// <param name="maxReceiveMessageSize">Maximum receive message size in bytes. Must be greater than 0 when provided.</param>
+        /// <param name="maxSendMessageSize">Maximum send message size in bytes. Must be greater than 0 when provided.</param>
+        public DaprWorkflowBuilder WithGrpcMessageSizeLimits(int? maxReceiveMessageSize = null, int? maxSendMessageSize = null)
+        {
+            ConfigureWorkflowGrpcMessageSizeLimits(Services, maxReceiveMessageSize, maxSendMessageSize);
             return this;
         }
 
@@ -279,6 +291,62 @@ public static class WorkflowServiceCollectionExtensions
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
+        }
+    }
+    
+    private static void ConfigureWorkflowGrpcMessageSizeLimits(
+        IServiceCollection services,
+        int? maxReceiveMessageSize,
+        int? maxSendMessageSize)
+    {
+        if (!maxReceiveMessageSize.HasValue && !maxSendMessageSize.HasValue)
+        {
+            return;
+        }
+
+        ValidateGrpcMessageSize(maxReceiveMessageSize, nameof(maxReceiveMessageSize));
+        ValidateGrpcMessageSize(maxSendMessageSize, nameof(maxSendMessageSize));
+
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        services.PostConfigure<GrpcClientFactoryOptions>(clientType.FullName!, options =>
+        {
+            options.ChannelOptionsActions.Add(channelOptions =>
+            {
+                if (maxReceiveMessageSize.HasValue)
+                {
+                    channelOptions.MaxReceiveMessageSize = maxReceiveMessageSize.Value;
+                }
+
+                if (maxSendMessageSize.HasValue)
+                {
+                    channelOptions.MaxSendMessageSize = maxSendMessageSize.Value;
+                }
+            });
+        });
+
+        services.PostConfigure<GrpcClientFactoryOptions>(clientType.Name, options =>
+        {
+            options.ChannelOptionsActions.Add(channelOptions =>
+            {
+                if (maxReceiveMessageSize.HasValue)
+                {
+                    channelOptions.MaxReceiveMessageSize = maxReceiveMessageSize.Value;
+                }
+
+                if (maxSendMessageSize.HasValue)
+                {
+                    channelOptions.MaxSendMessageSize = maxSendMessageSize.Value;
+                }
+            });
+        });
+    }
+
+    private static void ValidateGrpcMessageSize(int? value, string paramName)
+    {
+        if (value.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value.Value, 0, paramName);
         }
     }
 }
