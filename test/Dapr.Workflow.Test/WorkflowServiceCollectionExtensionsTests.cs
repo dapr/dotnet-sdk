@@ -313,6 +313,20 @@ public class WorkflowServiceCollectionExtensionsTests
         Assert.Equal(lifetime, descriptor!.Lifetime);
     }
     
+    [Fact]
+    public void AddDaprWorkflowClient_ShouldResolve_GrpcTypedClient()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddDaprWorkflowClient();
+
+        var sp = services.BuildServiceProvider();
+        var grpcClient = sp.GetService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
+
+        Assert.NotNull(grpcClient);
+    }
+    
     private sealed record SerializerDependency(string Value);
 
     private sealed class DependencyBasedSerializer(SerializerDependency dep) : IWorkflowSerializer

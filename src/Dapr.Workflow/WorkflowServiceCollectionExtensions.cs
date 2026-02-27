@@ -139,7 +139,7 @@ public static class WorkflowServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddHttpClient();
+        EnsureWorkflowGrpcClientRegistered(services);
 
         var registration = new Func<IServiceProvider, DaprWorkflowClient>(provider =>
         {
@@ -189,9 +189,6 @@ public static class WorkflowServiceCollectionExtensions
             return factory;
         });
 
-        // Necessary for the gRPC client factory
-        serviceCollection.AddHttpClient();
-
         // Register the internal WorkflowClient implementation
         serviceCollection.TryAddSingleton<WorkflowClient>(sp =>
         {
@@ -203,7 +200,7 @@ public static class WorkflowServiceCollectionExtensions
         });
 
         // Register gRPC client for communicating with Dapr sidecar
-        serviceCollection.AddDaprWorkflowGrpcClient(grpcOptions =>
+        EnsureWorkflowGrpcClientRegistered(serviceCollection, grpcOptions =>
         {
             if (options.GrpcChannelOptions != null)
             {
@@ -240,6 +237,16 @@ public static class WorkflowServiceCollectionExtensions
         Action<WorkflowRuntimeOptions> configure, ServiceLifetime lifetime)
     {
         AddDaprWorkflowCore(serviceCollection, configure, configureClient: null, lifetime);
+    }
+    
+    private static void EnsureWorkflowGrpcClientRegistered(IServiceCollection services, Action<GrpcClientFactoryOptions>? configureClient = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // Required by gRPC client factory internals
+        services.AddHttpClient();
+
+        services.AddDaprWorkflowGrpcClient(configureClient);
     }
     
     private static void RegisterWorkflowClientWithBuilder(
