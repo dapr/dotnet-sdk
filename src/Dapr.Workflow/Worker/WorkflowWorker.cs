@@ -21,7 +21,6 @@ using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
-using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -107,6 +106,29 @@ internal sealed class WorkflowWorker(
                     var chunk = call.ResponseStream.Current.Events;
                     allPastEvents.AddRange(chunk);
                 }
+            }
+            
+            //If the most recent event is `ExecutionTerminated`, acknowledge termination immediately
+            var timelineEvents = allPastEvents.Concat(request.NewEvents).ToList();
+            var latestEvent = timelineEvents.Count > 0 ? timelineEvents[^1] : null;
+
+            if (latestEvent?.ExecutionTerminated != null)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Terminated
+                            }
+                        }
+                    }
+                };
             }
             
             // Create a new version tracker for this turn
