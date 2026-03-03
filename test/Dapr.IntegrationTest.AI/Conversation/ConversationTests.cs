@@ -165,7 +165,7 @@ public sealed class ConversationTests
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
             .BuildConversation();
-        harness.UseModel("qwen2.5:0.5b"); // SmolLM2 doesn't actually support tools
+        harness.UseModel("granite4:350m"); // SmolLM2 doesn't actually support tools
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
