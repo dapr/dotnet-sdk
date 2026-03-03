@@ -25459,7 +25459,11 @@ function computeFromTags(input) {
     stableMinor = `${sMajor}.${sMinor}`;
     stablePatches = stableSorted.filter((v) => import_semver.default.major(v) === sMajor && import_semver.default.minor(v) === sMinor).slice(0, stableCount);
   }
+  const stablePatchSet = new Set(stable.map((v) => `${import_semver.default.major(v)}.${import_semver.default.minor(v)}.${import_semver.default.patch(v)}`));
   const rcVersions = prerelease.filter((v) => {
+    if (stablePatchSet.has(`${import_semver.default.major(v)}.${import_semver.default.minor(v)}.${import_semver.default.patch(v)}`)) {
+      return false;
+    }
     const pr = import_semver.default.prerelease(v) || [];
     return pr[0] === rcIdent;
   });

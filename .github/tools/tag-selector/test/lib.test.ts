@@ -103,6 +103,7 @@ describe("computeFromTags - core scenarios", () => {
     test("rc_count returns latest RCs regardless of stable availability", () => {
         const tags = [
             "1.18.0",
+            "1.18.0-rc.1",
             "1.18.1-rc.1",
             "1.17.0-rc.2",
             "1.17.0-rc.1",

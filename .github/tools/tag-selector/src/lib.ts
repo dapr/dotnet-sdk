@@ -55,10 +55,10 @@ export function computeFromTags(input: ComputeInput): ComputeOutput {
             .slice(0, stableCount);
     }
 
-    // Pick latest RC versions across all minors, excluding RCs for minors that already have a stable release
-    const stableMinors = new Set(stable.map((v) => `${semver.major(v)}.${semver.minor(v)}`));
+    // Pick latest RC versions across all minors, excluding RCs for patch versions that already have a stable release
+    const stablePatchSet = new Set(stable.map((v) => `${semver.major(v)}.${semver.minor(v)}.${semver.patch(v)}`));
     const rcVersions = prerelease.filter((v) => {
-        if (stableMinors.has(`${semver.major(v)}.${semver.minor(v)}`)) {
+        if (stablePatchSet.has(`${semver.major(v)}.${semver.minor(v)}.${semver.patch(v)}`)) {
             return false;
         }
         const pr = semver.prerelease(v) || [];
