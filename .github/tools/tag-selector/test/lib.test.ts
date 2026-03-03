@@ -13,6 +13,25 @@ describe("stripPrefix", () => {
 });
 
 describe("computeFromTags - core scenarios", () => {
+    test("stable latest minor has two patches; no RCs", () => {
+        const tags = [
+            "v1.16.7",
+            "v1.16.8",
+            "v1.17.0",
+            "v1.17.0-rc.1"
+        ]
+        const out = computeFromTags({
+            tags,
+            tagPrefix: "v",
+            stableCount: 2, 
+            rcIdent: "rc"
+        });
+        
+        expect(out.matrix_json).toEqual([
+            { version: "1.17.0", channel: "stable" }
+        ]);
+    });
+    
     test("stable latest minor has two patches; latest RC for next minor", () => {
         const tags = [
             "v1.16.7",
