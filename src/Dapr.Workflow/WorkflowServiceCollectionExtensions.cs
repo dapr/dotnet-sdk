@@ -165,6 +165,10 @@ public static class WorkflowServiceCollectionExtensions
         Action<IServiceProvider, DaprWorkflowClientBuilder>? configureClient,
         ServiceLifetime lifetime)
     {
+        // Validate that we have a valid service lifetime
+        if (lifetime is not (ServiceLifetime.Scoped or ServiceLifetime.Singleton or ServiceLifetime.Transient))
+            throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
+        
         // Configure workflow runtime options
         var options = new WorkflowRuntimeOptions();
         configure(options);
@@ -222,15 +226,8 @@ public static class WorkflowServiceCollectionExtensions
         // Register the workflow worker as a hosted service
         serviceCollection.AddHostedService<WorkflowWorker>();
 
-        // Register the workflow client - use builder pattern if custom configuration provided
-        if (configureClient != null)
-        {
-            RegisterWorkflowClientWithBuilder(serviceCollection, configureClient, lifetime);
-        }
-        else
-        {
-            RegisterWorkflowClient(serviceCollection, lifetime);
-        }
+        // Register the workflow client
+        RegisterWorkflowClientWithBuilder(serviceCollection, configureClient, lifetime);
     }
     
     private static void AddDaprWorkflowCore(IServiceCollection serviceCollection,
@@ -251,7 +248,7 @@ public static class WorkflowServiceCollectionExtensions
     
     private static void RegisterWorkflowClientWithBuilder(
         IServiceCollection serviceCollection,
-        Action<IServiceProvider, DaprWorkflowClientBuilder> configureClient,
+        Action<IServiceProvider, DaprWorkflowClientBuilder>? configureClient,
         ServiceLifetime lifetime)
     {
         var registration = new Func<IServiceProvider, DaprWorkflowClient>(provider =>
@@ -263,42 +260,12 @@ public static class WorkflowServiceCollectionExtensions
             builder.UseServiceProvider(provider);
 
             // Apply custom client configuration (endpoints, etc.)
-            configureClient(provider, builder);
+            configureClient?.Invoke(provider, builder);
 
             return builder.Build();
         });
 
         serviceCollection.Add(new ServiceDescriptor(typeof(DaprWorkflowClient), registration, lifetime));
-    }
-    
-    private static void RegisterWorkflowClient(IServiceCollection serviceCollection, ServiceLifetime lifetime)
-    {
-        switch (lifetime)
-        {
-            case ServiceLifetime.Singleton:
-                serviceCollection.TryAddSingleton<DaprWorkflowClient>(sp =>
-                {
-                    var inner = sp.GetRequiredService<WorkflowClient>();
-                    return new DaprWorkflowClient(inner);
-                });
-                break;
-            case ServiceLifetime.Scoped:
-                serviceCollection.TryAddScoped<DaprWorkflowClient>(sp =>
-                {
-                    var inner = sp.GetRequiredService<WorkflowClient>();
-                    return new DaprWorkflowClient(inner);
-                });
-                break;
-            case ServiceLifetime.Transient:
-                serviceCollection.TryAddTransient<DaprWorkflowClient>(sp =>
-                {
-                    var inner = sp.GetRequiredService<WorkflowClient>();
-                    return new DaprWorkflowClient(inner);
-                });
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
-        }
     }
     
     private static void ConfigureWorkflowGrpcMessageSizeLimits(
