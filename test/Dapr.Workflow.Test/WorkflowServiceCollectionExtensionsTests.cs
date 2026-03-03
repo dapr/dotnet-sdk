@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Collections.Generic;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Client;
@@ -7,6 +8,7 @@ using Dapr.Workflow.Worker;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Grpc.Net.ClientFactory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -325,6 +327,62 @@ public class WorkflowServiceCollectionExtensionsTests
         var grpcClient = sp.GetService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
 
         Assert.NotNull(grpcClient);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_ShouldApplyDaprApiToken_FromConfiguration()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DAPR_API_TOKEN"] = "workflow-test-token"
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(configuration);
+
+        string? observedToken = null;
+        services.AddDaprWorkflowBuilder(_ => { }, (_, builder) =>
+        {
+            observedToken = builder.DaprApiToken;
+        });
+
+        var sp = services.BuildServiceProvider();
+        _ = sp.GetRequiredService<DaprWorkflowClient>();
+
+        Assert.Equal("workflow-test-token", observedToken);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_ShouldApplyDaprApiToken_FromEnvironmentVariable()
+    {
+        var originalToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "workflow-env-token");
+
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+            string? observedToken = null;
+            services.AddDaprWorkflowBuilder(_ => { }, (_, builder) =>
+            {
+                observedToken = builder.DaprApiToken;
+            });
+
+            var sp = services.BuildServiceProvider();
+            _ = sp.GetRequiredService<DaprWorkflowClient>();
+
+            Assert.Equal("workflow-env-token", observedToken);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
+        }
     }
     
     private sealed record SerializerDependency(string Value);
