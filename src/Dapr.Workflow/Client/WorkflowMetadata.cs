@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Text.Json;
 using Dapr.Workflow.Serialization;
 
 namespace Dapr.Workflow.Client;
