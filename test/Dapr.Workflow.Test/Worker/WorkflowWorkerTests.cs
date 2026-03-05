@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,7 +138,7 @@ public class WorkflowWorkerTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => startedTcs.TrySetResult())
             .Returns(CreateServerStreamingCall(EmptyWorkItems()));
 
@@ -265,10 +265,10 @@ public class WorkflowWorkerTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetWorkItemsRequest _, Metadata? _, DateTime? _, CancellationToken ct) =>
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns((GetWorkItemsRequest _, CallOptions options) =>
             {
-                ct.ThrowIfCancellationRequested();
+                options.CancellationToken.ThrowIfCancellationRequested();
                 return CreateServerStreamingCall(EmptyWorkItems());
             });
 
@@ -923,7 +923,7 @@ public class WorkflowWorkerTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => attemptedTcs.TrySetResult())
             .Throws(new InvalidOperationException("boom"));
 
@@ -946,7 +946,7 @@ public class WorkflowWorkerTests
         await executeTask;
 
         grpcClientMock.Verify(
-            x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()),
+            x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()),
             Times.AtLeastOnce());
     }
 

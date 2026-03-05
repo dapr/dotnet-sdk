@@ -127,7 +127,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
             logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
         }
 
-        var innerClient = new WorkflowGrpcClient(grpcClient, logger, serializer);
+        var innerClient = new WorkflowGrpcClient(grpcClient, logger, serializer, DaprApiToken);
         return new DaprWorkflowClient(innerClient, DaprApiToken);
     }
 }

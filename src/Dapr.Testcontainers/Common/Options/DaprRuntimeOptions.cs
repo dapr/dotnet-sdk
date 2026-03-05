@@ -12,7 +12,6 @@
 //  ------------------------------------------------------------------------
 
 using System;
-using Dapr.Testcontainers.Common;
 
 namespace Dapr.Testcontainers.Common.Options;
 
@@ -64,6 +63,11 @@ public sealed record DaprRuntimeOptions
     /// The ID of the test application.
     /// </summary>
     public string AppId { get; private set; } = $"test-app-{Guid.NewGuid():N}";
+
+    /// <summary>
+    /// The Dapr API token used to secure communications with the sidecar.
+    /// </summary>
+    public string? DaprApiToken { get; private set; }
     
     /// <summary>
     /// The level of Dapr logs to show.
@@ -116,6 +120,16 @@ public sealed record DaprRuntimeOptions
     public DaprRuntimeOptions WithAppId(string appId)
     {
         AppId = appId;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the Dapr API token used to secure communications with the sidecar.
+    /// </summary>
+    /// <param name="daprApiToken">The API token to use.</param>
+    public DaprRuntimeOptions WithDaprApiToken(string daprApiToken)
+    {
+        DaprApiToken = daprApiToken;
         return this;
     }
 

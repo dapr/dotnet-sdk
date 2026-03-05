@@ -197,10 +197,12 @@ public static class WorkflowServiceCollectionExtensions
         serviceCollection.TryAddSingleton<WorkflowClient>(sp =>
         {
             var grpcClient = sp.GetRequiredService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
+            var configuration = sp.GetService<IConfiguration>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
             var serializer = sp.GetRequiredService<IWorkflowSerializer>();
-            return new WorkflowGrpcClient(grpcClient, logger, serializer);
+            var daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+            return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken);
         });
 
         // Register gRPC client for communicating with Dapr sidecar
