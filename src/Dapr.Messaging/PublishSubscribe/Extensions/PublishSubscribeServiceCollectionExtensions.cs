@@ -1,4 +1,5 @@
 ﻿using Dapr.Common.Extensions;
+using Dapr.Common.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Messaging.PublishSubscribe.Extensions;
@@ -12,7 +13,7 @@ public static class PublishSubscribeServiceCollectionExtensions
     /// Adds Dapr Publish/Subscribe support to the service collection.
     /// </summary>
     /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprPublishSubscribeClient"/> using injected services.</param>
+    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprPublishSubscribeClient"/> using injected services.</param> 
     /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns></returns>
     public static IDaprPubSubBuilder AddDaprPubSubClient(
@@ -20,5 +21,21 @@ public static class PublishSubscribeServiceCollectionExtensions
         Action<IServiceProvider, DaprPublishSubscribeClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
         services.AddDaprClient<DaprPublishSubscribeClient, DaprPublishSubscribeGrpcClient, DaprPubSubBuilder, DaprPublishSubscribeClientBuilder>(
-            configure, lifetime);
+            configure, null, lifetime);
+    
+    /// <summary>
+    /// Adds Dapr Publish/Subscribe support to the service collection.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+    /// <param name="configure">Optionally allows greater configuration of the <see cref="DaprPublishSubscribeClient"/> using injected services.</param>
+    /// <param name="configureHttpClient">Optionally allows greater configuration of the <see cref="HttpClient"/> used by the <see cref="DaprPublishSubscribeClient"/>.</param> 
+    /// <param name="lifetime">The lifetime of the registered services.</param>
+    /// <returns></returns>
+    public static IDaprPubSubBuilder AddDaprPubSubClient(
+        this IServiceCollection services,
+        Action<IServiceProvider, DaprPublishSubscribeClientBuilder>? configure = null,
+        Action<IServiceProvider, HttpClient>? configureHttpClient = null,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
+        services.AddDaprClient<DaprPublishSubscribeClient, DaprPublishSubscribeGrpcClient, DaprPubSubBuilder, DaprPublishSubscribeClientBuilder>(
+            configure, configureHttpClient, lifetime);
 }
