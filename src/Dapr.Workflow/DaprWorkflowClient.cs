@@ -28,15 +28,22 @@ namespace Dapr.Workflow;
 public sealed class DaprWorkflowClient : IDaprWorkflowClient
 {
     private readonly WorkflowClient _innerClient;
+    
+    /// <summary>
+    /// Exposed only for testing.
+    /// </summary>
+    internal string? DaprApiToken { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprWorkflowClient"/> class.
     /// </summary>
     /// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
+    /// <param name="daprApiToken">The API token used for validating requests to Dapr.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
-    internal DaprWorkflowClient(WorkflowClient innerClient)
+    internal DaprWorkflowClient(WorkflowClient innerClient,  string? daprApiToken = null)
     {
         _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
+        DaprApiToken = daprApiToken;
     }
     
     /// <summary>

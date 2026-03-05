@@ -384,6 +384,31 @@ public class WorkflowServiceCollectionExtensionsTests
             Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
         }
     }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldApplyDaprApiToken_FromEnvironmentVariable()
+    {
+        var originalToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "workflow-env-token");
+
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+            services.AddDaprWorkflow(_ => { });
+
+            var sp = services.BuildServiceProvider();
+            var client = sp.GetRequiredService<DaprWorkflowClient>();
+
+            Assert.Equal("workflow-env-token", client.DaprApiToken);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
+        }
+    }
     
     private sealed record SerializerDependency(string Value);
 
