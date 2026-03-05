@@ -32,6 +32,15 @@
         <TargetsForPack>$(TargetsForPack);_BuildGeneratorOnce;_AddAnalyzer</TargetsForPack>
     </PropertyGroup>
 
+    <!-- Fail fast if TargetFrameworks from src/Directory.Build.props is not applied -->
+    <Target Name="_EnsureTargetFrameworks" BeforeTargets="Pack">
+        <PropertyGroup>
+            <_ExpectedDirectoryBuildProps>$(MSBuildProjectDirectory)\..\Directory.Build.props</_ExpectedDirectoryBuildProps>
+        </PropertyGroup>
+        <Error Condition="'$(TargetFrameworks)' == ''"
+               Text="TargetFrameworks is empty. This project relies on $(_ExpectedDirectoryBuildProps) for its TFM list. Ensure ImportDirectoryBuildProps is enabled and the file is imported." />
+    </Target>
+
     <ItemGroup>
         <!-- Build children but do NOT turn them into NuGet dependencies -->
         <ProjectReference Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj"
@@ -108,7 +117,7 @@
                  Targets="Build"
                  Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
 
-        <!-- Resolve TargetPath (respects your Directory.Build.props OutputPath) -->
+        <!-- Resolve TargetPath (respects the Directory.Build.props OutputPath) -->
         <MSBuild Condition="'$(_IsFirstTfm)' == 'true'"
                  Projects="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
                  Targets="GetTargetPath"

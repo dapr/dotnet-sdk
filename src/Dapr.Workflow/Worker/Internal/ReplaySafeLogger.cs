@@ -21,7 +21,7 @@ namespace Dapr.Workflow.Worker.Internal;
 /// </summary>
 internal sealed class ReplaySafeLogger(ILogger innerLogger, Func<bool> isReplaying) : ILogger
 {
-    private readonly ILogger _innerLogger = innerLogger ?? throw new ArgumentNullException(nameof(innerLogger));
+    internal readonly ILogger _innerLogger = innerLogger ?? throw new ArgumentNullException(nameof(innerLogger));
     private readonly Func<bool> _isReplaying = isReplaying ?? throw new ArgumentNullException(nameof(isReplaying));
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => _innerLogger.BeginScope(state);

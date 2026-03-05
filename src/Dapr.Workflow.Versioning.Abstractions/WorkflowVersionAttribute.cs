@@ -40,7 +40,12 @@ public sealed class WorkflowVersionAttribute : Attribute
     
     /// <summary>
     /// Gets or sets an optional strategy type to use for this workflow, overriding the globally configured strategy.
-    /// The type must implement <see cref="IWorkflowVersionStrategy"/> and expose a public parameterless constructor.
+    /// The type must implement <see cref="IWorkflowVersionStrategy"/> and be constructible by the active
     /// </summary>
     public Type? StrategyType { get; init; }
+
+    /// <summary>
+    /// Gets or sets an optional named options scope to use when configuring the strategy for this workflow.
+    /// </summary>
+    public string? OptionsName { get; init; }
 }

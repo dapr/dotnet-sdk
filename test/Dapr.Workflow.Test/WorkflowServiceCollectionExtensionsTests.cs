@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Collections.Generic;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Client;
@@ -7,6 +8,7 @@ using Dapr.Workflow.Worker;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Grpc.Net.ClientFactory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -245,6 +247,58 @@ public class WorkflowServiceCollectionExtensionsTests
         Assert.Contains(hostedDescriptors, d => d.ImplementationType == typeof(WorkflowWorker));
     }
     
+    [Fact]
+    public void AddDaprWorkflowClient_WithGrpcMessageSizeLimits_ShouldApplyIntoGrpcClientFactoryOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits(maxReceiveMessageSize: 4321, maxSendMessageSize: 8765);
+
+        var sp = services.BuildServiceProvider();
+
+        var monitor = sp.GetRequiredService<IOptionsMonitor<GrpcClientFactoryOptions>>();
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        var grpcOptions =
+            monitor.Get(clientType.FullName!)
+            ?? monitor.Get(clientType.Name);
+
+        if (grpcOptions.ChannelOptionsActions.Count == 0)
+        {
+            grpcOptions = monitor.Get(clientType.Name);
+        }
+
+        Assert.NotNull(grpcOptions);
+        Assert.NotEmpty(grpcOptions.ChannelOptionsActions);
+
+        var channelOptions = new GrpcChannelOptions();
+        foreach (var action in grpcOptions.ChannelOptionsActions)
+        {
+            action(channelOptions);
+        }
+
+        Assert.Equal(4321, channelOptions.MaxReceiveMessageSize);
+        Assert.Equal(8765, channelOptions.MaxSendMessageSize);
+    }
+
+    [Theory]
+    [InlineData(0, 1024)]
+    [InlineData(1024, 0)]
+    [InlineData(-1, 1024)]
+    [InlineData(1024, -1)]
+    public void WithGrpcMessageSizeLimits_ShouldThrowArgumentOutOfRangeException_ForNonPositiveValues(int receive, int send)
+    {
+        var services = new ServiceCollection();
+        services.AddDaprWorkflowClient();
+
+        var builder = new WorkflowServiceCollectionExtensions.DaprWorkflowBuilder(services);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => builder.WithGrpcMessageSizeLimits(receive, send));
+    }
+    
     [Theory]
     [InlineData(ServiceLifetime.Singleton)]
     [InlineData(ServiceLifetime.Scoped)]
@@ -259,6 +313,76 @@ public class WorkflowServiceCollectionExtensionsTests
         var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DaprWorkflowClient));
         Assert.NotNull(descriptor);
         Assert.Equal(lifetime, descriptor!.Lifetime);
+    }
+    
+    [Fact]
+    public void AddDaprWorkflowClient_ShouldResolve_GrpcTypedClient()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddDaprWorkflowClient();
+
+        var sp = services.BuildServiceProvider();
+        var grpcClient = sp.GetService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
+
+        Assert.NotNull(grpcClient);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_ShouldApplyDaprApiToken_FromConfiguration()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DAPR_API_TOKEN"] = "workflow-test-token"
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(configuration);
+
+        string? observedToken = null;
+        services.AddDaprWorkflowBuilder(_ => { }, (_, builder) =>
+        {
+            observedToken = builder.DaprApiToken;
+        });
+
+        var sp = services.BuildServiceProvider();
+        _ = sp.GetRequiredService<DaprWorkflowClient>();
+
+        Assert.Equal("workflow-test-token", observedToken);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_ShouldApplyDaprApiToken_FromEnvironmentVariable()
+    {
+        var originalToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "workflow-env-token");
+
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+            string? observedToken = null;
+            services.AddDaprWorkflowBuilder(_ => { }, (_, builder) =>
+            {
+                observedToken = builder.DaprApiToken;
+            });
+
+            var sp = services.BuildServiceProvider();
+            _ = sp.GetRequiredService<DaprWorkflowClient>();
+
+            Assert.Equal("workflow-env-token", observedToken);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
+        }
     }
     
     private sealed record SerializerDependency(string Value);

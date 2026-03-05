@@ -14,6 +14,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
         <ProjectReference Include="..\Dapr.Workflow\Dapr.Workflow.csproj" />
+        <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
     </ItemGroup>
 
 </Project>

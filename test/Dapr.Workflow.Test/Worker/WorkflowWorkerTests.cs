@@ -160,6 +160,99 @@ public class WorkflowWorkerTests
 
         await executeTask;
     }
+    
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnTerminatedCompletion_WhenReplayLatestEventIsExecutionTerminated()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        // Intentionally no workflow registrations: this verifies the termination path
+        // is acknowledged before workflow lookup/instantiation.
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf-not-registered", Input = "" }
+                }
+            },
+            NewEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionTerminated = new ExecutionTerminatedEvent()
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var action = Assert.Single(response.Actions);
+        Assert.NotNull(action.CompleteOrchestration);
+        Assert.Equal(OrchestrationStatus.Terminated, action.CompleteOrchestration!.OrchestrationStatus);
+    }
+    
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldNotReturnTerminatedCompletion_WhenReplayLatestEventIsNotExecutionTerminated()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        // Intentionally no workflow registrations. If the termination short-circuit does NOT trigger,
+        // normal path should fail with WorkflowNotFound-style completion.
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf-not-registered", Input = "" }
+                }
+            },
+            NewEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionTerminated = new ExecutionTerminatedEvent()
+                },
+                new HistoryEvent
+                {
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var action = Assert.Single(response.Actions);
+        Assert.NotNull(action.CompleteOrchestration);
+        Assert.NotEqual(OrchestrationStatus.Terminated, action.CompleteOrchestration!.OrchestrationStatus);
+        Assert.Equal(OrchestrationStatus.Failed, action.CompleteOrchestration.OrchestrationStatus);
+    }
 
     [Fact]
     public async Task ExecuteAsync_ShouldSwallowOperationCanceledException_WhenStoppingTokenIsCanceled()

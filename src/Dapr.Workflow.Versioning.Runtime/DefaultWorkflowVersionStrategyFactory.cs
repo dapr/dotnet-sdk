@@ -42,6 +42,11 @@ public sealed class DefaultWorkflowVersionStrategyFactory : IWorkflowVersionStra
             throw new InvalidOperationException(
                 $"Could not construct strategy of type '{strategyType.FullName}'.");
 
+        if (instance is IWorkflowVersionStrategyContextConsumer contextConsumer)
+        {
+            contextConsumer.Configure(new WorkflowVersionStrategyContext(canonicalName, optionsName));
+        }
+
         return instance;
     }
 }

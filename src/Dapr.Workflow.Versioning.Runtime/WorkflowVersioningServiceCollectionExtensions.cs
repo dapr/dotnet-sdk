@@ -33,12 +33,35 @@ public static class WorkflowVersioningServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         
-        // Options container for defaults
-        var opts = new WorkflowVersioningOptions();
-        configure?.Invoke(opts);
+        services.AddOptions<WorkflowVersioningOptions>();
+        if (configure is not null)
+        {
+            services.Configure(configure);
+        }
+
+        services.PostConfigure<WorkflowVersioningOptions>(opts =>
+        {
+            if (opts.DefaultStrategy is null)
+            {
+                opts.DefaultStrategy = sp =>
+                {
+                    var factory = sp.GetRequiredService<IWorkflowVersionStrategyFactory>();
+                    return factory.Create(typeof(NumericVersionStrategy), canonicalName: "DEFAULT", optionsName: null, services: sp);
+                };
+            }
+
+            if (opts.DefaultSelector is null)
+            {
+                opts.DefaultSelector = sp =>
+                {
+                    var factory = sp.GetRequiredService<IWorkflowVersionSelectorFactory>();
+                    return factory.Create(typeof(MaxVersionSelector), canonicalName: "DEFAULT", optionsName: null, services: sp);
+                };
+            }
+        });
         
         // Register singletons for options, diagnostics, factories and resolver
-        services.AddSingleton(opts);
+        services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WorkflowVersioningOptions>>().Value);
         services.AddSingleton<IWorkflowVersionDiagnostics, DefaultWorkflowVersioningDiagnostics>();
         services.AddSingleton<IWorkflowVersionStrategyFactory, DefaultWorkflowVersionStrategyFactory>();
         services.AddSingleton<IWorkflowVersionSelectorFactory, DefaultWorkflowVersionSelectorFactory>();
