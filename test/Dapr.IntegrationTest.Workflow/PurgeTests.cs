@@ -70,14 +70,13 @@ public sealed class PurgeTests
     [Fact]
     public async Task ShouldPurgeSuspendedWorkflowInstance()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -115,14 +114,13 @@ public sealed class PurgeTests
     [Fact]
     public async Task ShouldPurgeTerminatedWorkflowInstance()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options, environment).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
