@@ -132,7 +132,7 @@ public static class WorkflowServiceCollectionExtensions
     /// <param name="configure">Optional configuration for the workflow client (e.g., setting gRPC/HTTP endpoints).</param>
     /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns>A builder for additional workflow configuration.</returns>
-    public static DaprWorkflowBuilder AddDaprWorkflowClient(
+    internal static DaprWorkflowBuilder AddDaprWorkflowClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprWorkflowClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
