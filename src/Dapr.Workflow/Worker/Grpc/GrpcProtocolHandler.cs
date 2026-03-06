@@ -221,7 +221,8 @@ internal sealed class GrpcProtocolHandler(
             try
             {
                 var failureResult = CreateWorkflowFailureResult(request, completionToken, ex);
-                await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, cancellationToken: cancellationToken);
+                var grpcCallOptions = CreateCallOptions(cancellationToken);
+                await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, grpcCallOptions);
             }
             catch (Exception resultEx)
             {
@@ -264,7 +265,8 @@ internal sealed class GrpcProtocolHandler(
             try
             {
                 var failureResult = CreateActivityFailureResult(request, completionToken, ex);
-                await _grpcClient.CompleteActivityTaskAsync(failureResult, cancellationToken: cancellationToken);
+                var grpcCallOptions = CreateCallOptions(cancellationToken);
+                await _grpcClient.CompleteActivityTaskAsync(failureResult, grpcCallOptions);
             }
             catch (Exception resultEx)
             {
