@@ -52,4 +52,42 @@ internal static class ProtoConverters
             OrchestrationStatus.Stalled => WorkflowRuntimeStatus.Stalled,
             _ => WorkflowRuntimeStatus.Unknown
         };
+
+    /// <summary>
+    /// Converts a proto <see cref="HistoryEvent"/> to <see cref="WorkflowHistoryEvent"/>.
+    /// </summary>
+    public static WorkflowHistoryEvent ToWorkflowHistoryEvent(HistoryEvent historyEvent) =>
+        new(historyEvent.EventId,
+            ToHistoryEventType(historyEvent.EventTypeCase),
+            historyEvent.Timestamp?.ToDateTime() ?? DateTime.MinValue);
+
+    /// <summary>
+    /// Converts the proto history event type to <see cref="WorkflowHistoryEventType"/>.
+    /// </summary>
+    public static WorkflowHistoryEventType ToHistoryEventType(HistoryEvent.EventTypeOneofCase eventType)
+        => eventType switch
+        {
+            HistoryEvent.EventTypeOneofCase.ExecutionStarted => WorkflowHistoryEventType.ExecutionStarted,
+            HistoryEvent.EventTypeOneofCase.ExecutionCompleted => WorkflowHistoryEventType.ExecutionCompleted,
+            HistoryEvent.EventTypeOneofCase.ExecutionTerminated => WorkflowHistoryEventType.ExecutionTerminated,
+            HistoryEvent.EventTypeOneofCase.TaskScheduled => WorkflowHistoryEventType.TaskScheduled,
+            HistoryEvent.EventTypeOneofCase.TaskCompleted => WorkflowHistoryEventType.TaskCompleted,
+            HistoryEvent.EventTypeOneofCase.TaskFailed => WorkflowHistoryEventType.TaskFailed,
+            HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCreated => WorkflowHistoryEventType.SubOrchestrationInstanceCreated,
+            HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCompleted => WorkflowHistoryEventType.SubOrchestrationInstanceCompleted,
+            HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceFailed => WorkflowHistoryEventType.SubOrchestrationInstanceFailed,
+            HistoryEvent.EventTypeOneofCase.TimerCreated => WorkflowHistoryEventType.TimerCreated,
+            HistoryEvent.EventTypeOneofCase.TimerFired => WorkflowHistoryEventType.TimerFired,
+            HistoryEvent.EventTypeOneofCase.OrchestratorStarted => WorkflowHistoryEventType.OrchestratorStarted,
+            HistoryEvent.EventTypeOneofCase.OrchestratorCompleted => WorkflowHistoryEventType.OrchestratorCompleted,
+            HistoryEvent.EventTypeOneofCase.EventSent => WorkflowHistoryEventType.EventSent,
+            HistoryEvent.EventTypeOneofCase.EventRaised => WorkflowHistoryEventType.EventRaised,
+            HistoryEvent.EventTypeOneofCase.GenericEvent => WorkflowHistoryEventType.GenericEvent,
+            HistoryEvent.EventTypeOneofCase.HistoryState => WorkflowHistoryEventType.HistoryState,
+            HistoryEvent.EventTypeOneofCase.ContinueAsNew => WorkflowHistoryEventType.ContinueAsNew,
+            HistoryEvent.EventTypeOneofCase.ExecutionSuspended => WorkflowHistoryEventType.ExecutionSuspended,
+            HistoryEvent.EventTypeOneofCase.ExecutionResumed => WorkflowHistoryEventType.ExecutionResumed,
+            HistoryEvent.EventTypeOneofCase.ExecutionStalled => WorkflowHistoryEventType.ExecutionStalled,
+            _ => WorkflowHistoryEventType.Unknown
+        };
 }
