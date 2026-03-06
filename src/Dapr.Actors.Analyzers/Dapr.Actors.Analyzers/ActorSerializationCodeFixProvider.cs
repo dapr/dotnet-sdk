@@ -34,6 +34,8 @@ public sealed class ActorSerializationCodeFixProvider : CodeFixProvider
             ActorSerializationAnalyzer.EnumMissingEnumMemberAttribute.Id,
             ActorSerializationAnalyzer.WeaklyTypedActorJsonPropertyRecommendation.Id,
             ActorSerializationAnalyzer.ComplexTypeInActorNeedsAttributes.Id,
+            "DAPR1409",
+            "DAPR1410",
             ActorSerializationAnalyzer.RecordTypeNeedsDataContractAttributes.Id
         );
 
