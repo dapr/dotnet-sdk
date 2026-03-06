@@ -441,31 +441,36 @@ public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
 
     private static void CheckCollectionElementType(SyntaxNodeAnalysisContext context, ITypeSymbol collectionType, Location location, string methodName, bool isParameter, string? parameterName)
     {
-        ITypeSymbol? elementType = null;
+        IEnumerable<ITypeSymbol> elementTypes = Enumerable.Empty<ITypeSymbol>();
 
         if (collectionType.TypeKind == TypeKind.Array && collectionType is IArrayTypeSymbol arrayType)
         {
-            elementType = arrayType.ElementType;
+            elementTypes = new[] { arrayType.ElementType };
         }
         else if (collectionType is INamedTypeSymbol namedType && namedType.IsGenericType)
         {
-            elementType = namedType.TypeArguments.FirstOrDefault();
+            // For generic collections (including Dictionary<TKey, TValue> and IDictionary<TKey, TValue>),
+            // validate all type arguments, not just the first one.
+            elementTypes = namedType.TypeArguments;
         }
 
-        if (elementType == null || IsPrimitiveOrKnownType(elementType))
+        foreach (var elementType in elementTypes)
         {
-            return;
-        }
+            if (elementType == null || IsPrimitiveOrKnownType(elementType))
+            {
+                continue;
+            }
 
-        if (elementType is INamedTypeSymbol namedElementType &&
-            (namedElementType.TypeKind == TypeKind.Class || namedElementType.TypeKind == TypeKind.Struct) &&
-            !HasProperSerializationAttributes(namedElementType))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                CollectionTypeInActorNeedsElementValidation,
-                location,
-                collectionType.Name,
-                elementType.Name));
+            if (elementType is INamedTypeSymbol namedElementType &&
+                (namedElementType.TypeKind == TypeKind.Class || namedElementType.TypeKind == TypeKind.Struct) &&
+                !HasProperSerializationAttributes(namedElementType))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    CollectionTypeInActorNeedsElementValidation,
+                    location,
+                    collectionType.Name,
+                    elementType.Name));
+            }
         }
     }
 
