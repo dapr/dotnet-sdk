@@ -26,65 +26,89 @@ namespace Dapr.Actors.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ActorSerializationAnalyzer : DiagnosticAnalyzer
 {
+    private static readonly LocalizableString ActorInterfaceMissingIActorTitle = new LocalizableResourceString(nameof(Resources.ActorInterfaceMissingIActorTitle), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ActorInterfaceMissingIActorMessageFormat = new LocalizableResourceString(nameof(Resources.ActorInterfaceMissingIActorMessageFormat), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ActorInterfaceMissingIActorDescription = new LocalizableResourceString(nameof(Resources.ActorInterfaceMissingIActorDescription), Resources.ResourceManager, typeof(Resources));
+
     /// <summary>Actor interface should inherit from IActor.</summary>
-    internal static readonly DiagnosticDescriptor ActorInterfaceMissingIActor = new(
+    public static readonly DiagnosticDescriptor ActorInterfaceMissingIActor = new(
         "DAPR1405",
-        "Actor interface should inherit from IActor",
-        "Interface '{0}' used by Actor class should inherit from IActor",
+        ActorInterfaceMissingIActorTitle,
+        ActorInterfaceMissingIActorMessageFormat,
         "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Interfaces implemented by Actor classes should inherit from IActor interface.");
+        description: ActorInterfaceMissingIActorDescription);
+
+    private static readonly LocalizableString EnumMissingEnumMemberAttributeTitle = new LocalizableResourceString(nameof(Resources.EnumMissingEnumMemberAttributeTitle), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString EnumMissingEnumMemberAttributeMessageFormat = new LocalizableResourceString(nameof(Resources.EnumMissingEnumMemberAttributeMessageFormat), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString EnumMissingEnumMemberAttributeDescription = new LocalizableResourceString(nameof(Resources.EnumMissingEnumMemberAttributeDescription), Resources.ResourceManager, typeof(Resources));
 
     /// <summary>Enum members in Actor types should use EnumMember attribute.</summary>
-    internal static readonly DiagnosticDescriptor EnumMissingEnumMemberAttribute = new(
+    public static readonly DiagnosticDescriptor EnumMissingEnumMemberAttribute = new(
         "DAPR1406",
-        "Enum members in Actor types should use EnumMember attribute",
-        "Enum member '{0}' in enum '{1}' should be decorated with [EnumMember] attribute for proper serialization",
+        EnumMissingEnumMemberAttributeTitle,
+        EnumMissingEnumMemberAttributeMessageFormat,
         "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Enum members used in Actor types should use [EnumMember] attribute for consistent serialization.");
+        description: EnumMissingEnumMemberAttributeDescription);
+
+    private static readonly LocalizableString WeaklyTypedActorJsonPropertyRecommendationTitle = new LocalizableResourceString(nameof(Resources.WeaklyTypedActorJsonPropertyRecommendationTitle), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString WeaklyTypedActorJsonPropertyRecommendationMessageFormat = new LocalizableResourceString(nameof(Resources.WeaklyTypedActorJsonPropertyRecommendationMessageFormat), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString WeaklyTypedActorJsonPropertyRecommendationDescription = new LocalizableResourceString(nameof(Resources.WeaklyTypedActorJsonPropertyRecommendationDescription), Resources.ResourceManager, typeof(Resources));
 
     /// <summary>Consider using JsonPropertyName for property name consistency.</summary>
-    internal static readonly DiagnosticDescriptor WeaklyTypedActorJsonPropertyRecommendation = new(
+    public static readonly DiagnosticDescriptor WeaklyTypedActorJsonPropertyRecommendation = new(
         "DAPR1407",
-        "Consider using JsonPropertyName for property name consistency",
-        "Property '{0}' in Actor class '{1}' should consider using [JsonPropertyName] attribute for consistent naming",
+        WeaklyTypedActorJsonPropertyRecommendationTitle,
+        WeaklyTypedActorJsonPropertyRecommendationMessageFormat,
         "Usage",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: "Properties in Actor classes used with weakly-typed clients should consider [JsonPropertyName] attribute for consistent property naming.");
+        description: WeaklyTypedActorJsonPropertyRecommendationDescription);
+
+    private static readonly LocalizableString ComplexTypeInActorNeedsAttributesTitle = new LocalizableResourceString(nameof(Resources.ComplexTypeInActorNeedsAttributesTitle), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ComplexTypeInActorNeedsAttributesMessageFormat = new LocalizableResourceString(nameof(Resources.ComplexTypeInActorNeedsAttributesMessageFormat), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ComplexTypeInActorNeedsAttributesDescription = new LocalizableResourceString(nameof(Resources.ComplexTypeInActorNeedsAttributesDescription), Resources.ResourceManager, typeof(Resources));
 
     /// <summary>Complex types used in Actor methods need serialization attributes.</summary>
-    internal static readonly DiagnosticDescriptor ComplexTypeInActorNeedsAttributes = new(
+    public static readonly DiagnosticDescriptor ComplexTypeInActorNeedsAttributes = new(
         "DAPR1408",
-        "Complex types used in Actor methods need serialization attributes",
-        "Type '{0}' used in Actor method should be decorated with [DataContract] and have [DataMember] on serializable properties",
+        ComplexTypeInActorNeedsAttributesTitle,
+        ComplexTypeInActorNeedsAttributesMessageFormat,
         "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Complex types used as parameters or return types in Actor methods should have proper serialization attributes.");
+        description: ComplexTypeInActorNeedsAttributesDescription);
+
+    private static readonly LocalizableString ActorMethodParameterNeedsValidationTitle = new LocalizableResourceString(nameof(Resources.ActorMethodParameterNeedsValidationTitle), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ActorMethodParameterNeedsValidationMessageFormat = new LocalizableResourceString(nameof(Resources.ActorMethodParameterNeedsValidationMessageFormat), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ActorMethodParameterNeedsValidationDescription = new LocalizableResourceString(nameof(Resources.ActorMethodParameterNeedsValidationDescription), Resources.ResourceManager, typeof(Resources));
 
     /// <summary>Actor method parameter needs proper serialization attributes.</summary>
-    internal static readonly DiagnosticDescriptor ActorMethodParameterNeedsValidation = new(
+    public static readonly DiagnosticDescriptor ActorMethodParameterNeedsValidation = new(
         "DAPR1409",
-        "Actor method parameter needs proper serialization attributes",
-        "Parameter '{0}' of type '{1}' in method '{2}' should have proper serialization attributes",
+        ActorMethodParameterNeedsValidationTitle,
+        ActorMethodParameterNeedsValidationMessageFormat,
         "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Parameters in Actor methods should use types with proper serialization attributes for reliable data transfer.");
+        description: ActorMethodParameterNeedsValidationDescription);
+
+    private static readonly LocalizableString ActorMethodReturnTypeNeedsValidationTitle = new LocalizableResourceString(nameof(Resources.ActorMethodReturnTypeNeedsValidationTitle), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ActorMethodReturnTypeNeedsValidationMessageFormat = new LocalizableResourceString(nameof(Resources.ActorMethodReturnTypeNeedsValidationMessageFormat), Resources.ResourceManager, typeof(Resources));
+    private static readonly LocalizableString ActorMethodReturnTypeNeedsValidationDescription = new LocalizableResourceString(nameof(Resources.ActorMethodReturnTypeNeedsValidationDescription), Resources.ResourceManager, typeof(Resources));
 
     /// <summary>Actor method return type needs proper serialization attributes.</summary>
-    internal static readonly DiagnosticDescriptor ActorMethodReturnTypeNeedsValidation = new(
+    public static readonly DiagnosticDescriptor ActorMethodReturnTypeNeedsValidation = new(
         "DAPR1410",
-        "Actor method return type needs proper serialization attributes",
-        "Return type '{0}' in method '{1}' should have proper serialization attributes",
+        ActorMethodReturnTypeNeedsValidationTitle,
+        ActorMethodReturnTypeNeedsValidationMessageFormat,
         "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Return types in Actor methods should have proper serialization attributes for reliable data transfer.");
+        description: ActorMethodReturnTypeNeedsValidationDescription);
 
     /// <summary>Collection types in Actor methods need element type validation.</summary>
     internal static readonly DiagnosticDescriptor CollectionTypeInActorNeedsElementValidation = new(
