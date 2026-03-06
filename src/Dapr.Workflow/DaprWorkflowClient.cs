@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Workflow.Client;
@@ -313,6 +314,67 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
         return await _innerClient.PurgeInstanceAsync(instanceId, cancellation);
+    }
+
+    /// <summary>
+    /// Lists workflow instance IDs with optional pagination.
+    /// </summary>
+    /// <param name="continuationToken">
+    /// The continuation token from a previous call, or <c>null</c> to retrieve the first page.
+    /// </param>
+    /// <param name="pageSize">
+    /// The maximum number of instance IDs to return per page, or <c>null</c> for no limit.
+    /// </param>
+    /// <param name="cancellation">Token to cancel the list operation.</param>
+    /// <returns>
+    /// A page containing the instance IDs and an optional continuation token for the next page.
+    /// </returns>
+    public async Task<WorkflowInstancePage> ListInstanceIDsAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellation = default)
+    {
+        if (pageSize.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize.Value);
+        }
+
+        return await _innerClient.ListInstanceIDsAsync(continuationToken, pageSize, cancellation);
+    }
+
+    /// <summary>
+    /// Gets the full execution history of a workflow instance.
+    /// </summary>
+    /// <param name="instanceId">The unique ID of the workflow instance to get history for.</param>
+    /// <param name="cancellation">Token to cancel the retrieval operation.</param>
+    /// <returns>A read-only list of history events for the workflow instance.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    public async Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(
+        string instanceId,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return await _innerClient.GetInstanceHistoryAsync(instanceId, cancellation);
+    }
+
+    /// <summary>
+    /// Reruns a workflow from a specific event ID, creating a new workflow instance that replays
+    /// the source workflow's history up to the specified event.
+    /// </summary>
+    /// <param name="sourceInstanceId">The instance ID of the source workflow to rerun from.</param>
+    /// <param name="eventId">The event ID in the source workflow's history to rerun from.</param>
+    /// <param name="options">Optional configuration for the rerun operation.</param>
+    /// <param name="cancellation">Token to cancel the rerun operation.</param>
+    /// <returns>The instance ID of the newly created workflow instance.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="sourceInstanceId"/> is null or empty.</exception>
+    public async Task<string> RerunWorkflowFromEventAsync(
+        string sourceInstanceId,
+        uint eventId,
+        RerunWorkflowFromEventOptions? options = null,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceInstanceId);
+        return await _innerClient.RerunWorkflowFromEventAsync(sourceInstanceId, eventId, options, cancellation);
     }
 
     /// <summary>
