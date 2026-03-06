@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,12 @@ namespace Dapr.Workflow.Worker.Grpc;
 /// <summary>
 /// Handles the bidirectional gRPC streaming protocol with the Dapr sidecar.
 /// </summary>
-internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, ILoggerFactory loggerFactory, int maxConcurrentWorkItems = 100, int maxConcurrentActivities = 100) : IAsyncDisposable
+internal sealed class GrpcProtocolHandler(
+    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
+    ILoggerFactory loggerFactory,
+    int maxConcurrentWorkItems = 100,
+    int maxConcurrentActivities = 100,
+    string? daprApiToken = null) : IAsyncDisposable
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     
@@ -66,7 +72,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
                 _logger.LogGrpcProtocolHandlerStartStream();
 
                 // Establish the server streaming call
-                _streamingCall = _grpcClient.GetWorkItems(request, cancellationToken: token);
+                var grpcCallOptions = CreateCallOptions(token);
+                _streamingCall = _grpcClient.GetWorkItems(request, grpcCallOptions);
 
                 _logger.LogGrpcProtocolHandlerStreamEstablished();
 
@@ -202,7 +209,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
             var result = await handler(request, completionToken);
             
             // Send the result back to Dapr
-            await _grpcClient.CompleteOrchestratorTaskAsync(result, cancellationToken: cancellationToken);
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            await _grpcClient.CompleteOrchestratorTaskAsync(result, grpcCallOptions);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -213,7 +221,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
             try
             {
                 var failureResult = CreateWorkflowFailureResult(request, completionToken, ex);
-                await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, cancellationToken: cancellationToken);
+                var grpcCallOptions = CreateCallOptions(cancellationToken);
+                await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, grpcCallOptions);
             }
             catch (Exception resultEx)
             {
@@ -241,7 +250,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
             var result = await handler(request, completionToken);
 
             // Send the result back to Dapr
-            await _grpcClient.CompleteActivityTaskAsync(result, cancellationToken: cancellationToken);
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            await _grpcClient.CompleteActivityTaskAsync(result, grpcCallOptions);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -255,7 +265,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
             try
             {
                 var failureResult = CreateActivityFailureResult(request, completionToken, ex);
-                await _grpcClient.CompleteActivityTaskAsync(failureResult, cancellationToken: cancellationToken);
+                var grpcCallOptions = CreateCallOptions(cancellationToken);
+                await _grpcClient.CompleteActivityTaskAsync(failureResult, grpcCallOptions);
             }
             catch (Exception resultEx)
             {
@@ -325,4 +336,7 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         
         _logger.LogGrpcProtocolHandlerDisposed();
     }
+
+    private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
+        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(GrpcProtocolHandler).Assembly, daprApiToken, cancellationToken);
 }
