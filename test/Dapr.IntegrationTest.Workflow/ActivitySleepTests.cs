@@ -11,8 +11,8 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,12 +24,17 @@ public sealed class ActivitySleepTests
     [Fact]
     public async Task ShouldHandleActivitySleep()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId1 = Guid.NewGuid().ToString();
         var workflowInstanceId2 = Guid.NewGuid().ToString();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        // Build the environment
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

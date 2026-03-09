@@ -11,8 +11,8 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,11 +25,15 @@ public sealed partial class ReplaySafetyTests
     [Fact]
     public async Task ReplaySafeLogger_ShouldNotDuplicateLogsOnReplay()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -63,11 +67,15 @@ public sealed partial class ReplaySafetyTests
     [Fact]
     public async Task Workflow_ShouldUseDeterministicGuidGeneration()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

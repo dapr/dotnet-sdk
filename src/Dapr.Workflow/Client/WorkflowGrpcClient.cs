@@ -14,6 +14,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Dapr.Workflow.Serialization;
 using Grpc.Core;
 using grpc = Dapr.DurableTask.Protobuf;
@@ -24,7 +25,11 @@ namespace Dapr.Workflow.Client;
 /// <summary>
 /// The gRPC-based implementation of the Workflow client.
 /// </summary>
-internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, ILogger<WorkflowGrpcClient> logger, IWorkflowSerializer serializer) : WorkflowClient
+internal sealed class WorkflowGrpcClient(
+    grpc.TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
+    ILogger<WorkflowGrpcClient> logger,
+    IWorkflowSerializer serializer,
+    string? daprApiToken = null) : WorkflowClient
 {
     /// <inheritdoc />
     public override async Task<string> ScheduleNewWorkflowAsync(string workflowName, object? input = null, StartWorkflowOptions? options = null,
@@ -45,7 +50,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
             request.ScheduledStartTimestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(startAt);
         }
 
-        var response = await grpcClient.StartInstanceAsync(request, cancellationToken: cancellationToken);
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        var response = await grpcClient.StartInstanceAsync(request, grpcCallOptions);
         logger.LogScheduleWorkflowSuccess(workflowName, instanceId);
         return response.InstanceId;
     }
@@ -62,7 +68,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
 
         try
         {
-            var response = await grpcClient.GetInstanceAsync(request, cancellationToken: cancellationToken);
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            var response = await grpcClient.GetInstanceAsync(request, grpcCallOptions);
 
             if (!response.Exists)
             {
@@ -106,8 +113,7 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
     }
 
     /// <inheritdoc />
-    public override async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(string instanceId, bool getInputsAndOutputs = true,
-        CancellationToken cancellationToken = default)
+    public override async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(string instanceId, bool getInputsAndOutputs = true, CancellationToken cancellationToken = default)
     {
         while (true)
         {
@@ -142,7 +148,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
             InstanceId = instanceId, Name = eventName, Input = SerializeToJson(eventPayload)
         };
 
-        await grpcClient.RaiseEventAsync(request, cancellationToken: cancellationToken);
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        await grpcClient.RaiseEventAsync(request, grpcCallOptions);
         logger.LogRaisedEvent(eventName, instanceId);
     }
 
@@ -157,7 +164,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
             Recursive = true // Terminate child workflows too
         };
 
-        await grpcClient.TerminateInstanceAsync(request, cancellationToken: cancellationToken);
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        await grpcClient.TerminateInstanceAsync(request, grpcCallOptions);
         logger.LogTerminateWorkflow(instanceId);
     }
 
@@ -168,7 +176,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
 
         var request = new grpc.SuspendRequest { InstanceId = instanceId, Reason = reason ?? string.Empty };
 
-        await grpcClient.SuspendInstanceAsync(request, cancellationToken: cancellationToken);
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        await grpcClient.SuspendInstanceAsync(request, grpcCallOptions);
         logger.LogSuspendWorkflow(instanceId);
     }
 
@@ -183,7 +192,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
             Reason = reason ?? string.Empty
         };
 
-        await grpcClient.ResumeInstanceAsync(request, cancellationToken: cancellationToken);
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        await grpcClient.ResumeInstanceAsync(request, grpcCallOptions);
         logger.LogResumedWorkflow(instanceId);
     }
 
@@ -198,7 +208,8 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
             Recursive = true // Purge child workflows too
         };
 
-        var response = await grpcClient.PurgeInstancesAsync(request, cancellationToken: cancellationToken);
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        var response = await grpcClient.PurgeInstancesAsync(request, grpcCallOptions);
         var purged = response.DeletedInstanceCount > 0;
 
         if (purged)
@@ -222,7 +233,11 @@ internal sealed class WorkflowGrpcClient(grpc.TaskHubSidecarService.TaskHubSidec
 
     private string SerializeToJson(object? obj) => obj == null ? string.Empty : serializer.Serialize(obj);
 
+    private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
+        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(DaprWorkflowClient).Assembly, daprApiToken, cancellationToken);
+
     private static bool IsTerminalStatus(WorkflowRuntimeStatus status) =>
-        status is WorkflowRuntimeStatus.Completed or WorkflowRuntimeStatus.Failed
+        status is WorkflowRuntimeStatus.Completed 
+            or WorkflowRuntimeStatus.Failed
             or WorkflowRuntimeStatus.Terminated;
 }

@@ -11,8 +11,8 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,14 +21,20 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class SimpleWorkflowTests
 {
-    [Fact]
-    public async Task ShouldHandleSimpleWorkflow()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldHandleSimpleWorkflow(bool loadResourcesFirst)
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -46,6 +52,7 @@ public sealed class SimpleWorkflowTests
                             clientBuilder.UseGrpcEndpoint(grpcEndpoint);
                     });
             })
+            .WithDaprStartupOrder(loadResourcesFirst) // Used to change the startup order of Dapr and the app
             .BuildAndStartAsync();
 
         // Clean test logic

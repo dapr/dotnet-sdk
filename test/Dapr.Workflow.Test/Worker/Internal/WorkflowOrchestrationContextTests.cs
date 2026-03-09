@@ -14,7 +14,9 @@
 using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Internal;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using JsonException = System.Text.Json.JsonException;
 
@@ -23,16 +25,235 @@ namespace Dapr.Workflow.Test.Worker.Internal;
 public class WorkflowOrchestrationContextTests
 {
     [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionCorrelationIdMatchesParentTaskId()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var childTask = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+            },
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "42"
+                }
+            }
+        };
+
+        context.ProcessEvents(history, isReplaying: true);
+
+        Assert.Equal(42, await childTask);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenRuntimeUsesCreatedEventIdAsCompletionCorrelationId()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        // Force a known child instance id so we can correlate created.InstanceId -> parent task id
+        const string childInstanceId = "child-xyz";
+
+        var childTask = context.CallChildWorkflowAsync<int>(
+            workflowName: "ChildWf",
+            input: 7,
+            options: new ChildWorkflowTaskOptions(InstanceId: childInstanceId));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 100,
+                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                {
+                    Name = "ChildWf",
+                    InstanceId = childInstanceId
+                }
+            },
+            new HistoryEvent
+            {
+                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                {
+                    TaskScheduledId = 100,
+                    Result = "21"
+                }
+            }
+        };
+
+        context.ProcessEvents(history, isReplaying: true);
+
+        var result = await childTask.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(21, result);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public void CallChildWorkflowAsync_ShouldPutRouterOnCreateSubOrchestrationAction_WhenAppIdProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker,
+            appId: sourceAppId);
+
+        _ = context.CallChildWorkflowAsync<int>(
+            workflowName: "ChildWf",
+            input: 1,
+            options: new ChildWorkflowTaskOptions(InstanceId: "child-1", TargetAppId: targetAppId));
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.CreateSubOrchestration);
+
+        Assert.NotNull(action.CreateSubOrchestration.Router);
+        Assert.Equal(targetAppId, action.CreateSubOrchestration.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.CreateSubOrchestration.Router.SourceAppID);
+
+        // wrapper router may exist too (compat), but inner is the important one
+        Assert.NotNull(action.Router);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
+    }
+    
+    [Fact]
+    public void CallActivityAsync_ShouldNotSetRouter_WhenAppIdNotProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        _ = context.CallActivityAsync<int>(name: "MyActivity", input: 2);
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+
+        Assert.Null(action.ScheduleTask.Router);
+        Assert.Null(action.Router);
+    }
+    
+    [Fact]
+    public async Task CallActivityAsync_ShouldComplete_WhenCompletionArrivesBeforeCall()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        // Completion arrives first (this is what can happen on replay)
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = 0,
+                        Result = "42"
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        // Now the workflow schedules/awaits the activity with taskId 0
+        var task = context.CallActivityAsync<int>("MyActivity", input: 1);
+
+        var value = await task;
+        Assert.Equal(42, value);
+    }
+
+    [Fact]
+    public void CallActivityAsync_ShouldPutRouterOnScheduleTaskAction_WhenAppIdProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker,
+            appId: sourceAppId);
+
+        _ = context.CallActivityAsync<int>(
+            name: "MyActivity",
+            input: 2,
+            options: new WorkflowTaskOptions(TargetAppId: targetAppId));
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+
+        Assert.NotNull(action.ScheduleTask.Router);
+        Assert.Equal(targetAppId, action.ScheduleTask.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.ScheduleTask.Router.SourceAppID);
+
+        Assert.NotNull(action.Router);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
+    }
+    
+    [Fact]
     public void CallActivityAsync_ShouldScheduleTaskAction_WhenNotReplaying()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallActivityAsync<string>("DoWork", input: new { Value = 3 });
 
@@ -49,6 +270,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CallActivityAsync_ShouldReturnCompletedResult_FromHistoryTaskCompleted()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -70,7 +292,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallActivityAsync<string>("Any");
         context.ProcessEvents(history, true);
@@ -81,9 +304,47 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task CallActivityAsync_ShouldMatchCompletion_WhenTaskScheduledIdDoesNotMatch()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            new([]));
+
+        var task = context.CallActivityAsync<string>("Any");
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+        Assert.False(string.IsNullOrWhiteSpace(action.ScheduleTask.TaskExecutionId));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent
+                {
+                    TaskScheduledId = 123,
+                    TaskExecutionId = action.ScheduleTask.TaskExecutionId,
+                    Result = "\"ok\""
+                }
+            }
+        };
+
+        context.ProcessEvents(history, true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+    }
+
+    [Fact]
     public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallFooTaskCompletedFirst()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -118,7 +379,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var fooTask = context.CallActivityAsync<string>("CallFoo");
         var barTask = context.CallActivityAsync<string>("CallBar");
@@ -141,6 +403,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallBarTaskCompletedFirst()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -175,7 +438,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var fooTask = context.CallActivityAsync<string>("CallFoo");
         var barTask = context.CallActivityAsync<string>("CallBar");
@@ -198,6 +462,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CallActivityAsync_ShouldThrowWorkflowTaskFailedException_FromHistoryTaskFailed()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -227,7 +492,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallActivityAsync<string>("Any");
         context.ProcessEvents(history, true);
@@ -240,6 +506,7 @@ public class WorkflowOrchestrationContextTests
     public async Task WaitForExternalEventAsync_ShouldReturnDeserializedValue_WhenEventInHistory_IgnoringCase()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -254,7 +521,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.WaitForExternalEventAsync<int>("myevent");
         context.ProcessEvents(history, true);
@@ -264,9 +532,10 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public async Task WaitForExternalEventAsync_ShouldReturnUncompletedTask_WhenEventInHistory()
+    public async Task WaitForExternalEventAsync_ShouldReturnCompletedTask_WhenEventInHistory()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -281,7 +550,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
         var task = context.WaitForExternalEventAsync<int>("myevent", cts.Token);
@@ -297,13 +567,15 @@ public class WorkflowOrchestrationContextTests
     public async Task WaitForExternalEventAsync_ShouldReturnUncompletedTask_WhenEventNotInHistory()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
         var task = context.WaitForExternalEventAsync<int>("missing-event", cts.Token);
@@ -313,9 +585,10 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldCancel_WhenEventReceived()
+    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldReturnCompletedTask_WhenEventReceived()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -330,7 +603,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.WaitForExternalEventAsync<int>("myevent", TimeSpan.FromMilliseconds(25));
         context.ProcessEvents(history, true);
@@ -345,6 +619,7 @@ public class WorkflowOrchestrationContextTests
     public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldCancel_WhenEventNotReceived()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -363,7 +638,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.WaitForExternalEventAsync<int>("missing-event", TimeSpan.FromMilliseconds(25));
         context.ProcessEvents(history, true);
@@ -375,13 +651,15 @@ public class WorkflowOrchestrationContextTests
     public void SetCustomStatus_ShouldUpdateCustomStatusProperty()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         Assert.Null(context.CustomStatus);
 
@@ -399,6 +677,7 @@ public class WorkflowOrchestrationContextTests
     public void IsReplaying_ShouldBeTrue_WhenHistoryHasUnconsumedEvents_AndFalseAfterConsumption()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -413,7 +692,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
 
         _ = context.CallActivityAsync<string>("Any");
@@ -428,6 +708,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CreateTimer_ShouldReturnCompletedTask_WhenTimerFiredInHistory()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -446,7 +727,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CreateTimer(DateTime.UtcNow.AddMinutes(1), CancellationToken.None);
         context.ProcessEvents(history, true);
@@ -456,46 +738,19 @@ public class WorkflowOrchestrationContextTests
         Assert.Empty(context.PendingActions);
     }
 
-    // [Fact]
-    // public async Task CreateTimer_ShouldScheduleAction_AndRemoveItOnCancellation()
-    // {
-    //     var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-    //
-    //     var context = new WorkflowOrchestrationContext(
-    //         name: "wf",
-    //         instanceId: "i",
-    //         pastEvents: [],
-    //         newEvents: [],
-    //         currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-    //         workflowSerializer: serializer,
-    //         loggerFactory: NullLoggerFactory.Instance);
-    //
-    //     using var cts = new CancellationTokenSource();
-    //
-    //     var timerTask = context.CreateTimer(DateTime.UtcNow.AddSeconds(3), cts.Token);
-    //
-    //     Assert.Single(context.PendingActions);
-    //     Assert.NotNull(context.PendingActions[0].CreateTimer);
-    //     Assert.False(timerTask.IsCompleted);
-    //
-    //     await cts.CancelAsync();
-    //
-    //     await Assert.ThrowsAnyAsync<OperationCanceledException>(() => timerTask);
-    //
-    //     Assert.Empty(context.PendingActions);
-    // }
-
     [Fact]
     public void SendEvent_ShouldAddSendEventAction_WithSerializedPayload()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         context.SendEvent("child-1", "evt", new { A = 1 });
 
@@ -512,6 +767,7 @@ public class WorkflowOrchestrationContextTests
     public void CreateReplaySafeLogger_ShouldReturnLoggerThatIsDisabledDuringReplay()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -526,7 +782,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: new AlwaysEnabledLoggerFactory());
+            loggerFactory: new AlwaysEnabledLoggerFactory(),
+            tracker);
 
         var logger = context.CreateReplaySafeLogger("cat");
 
@@ -539,11 +796,90 @@ public class WorkflowOrchestrationContextTests
         Assert.False(context.IsReplaying);
         Assert.True(logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
     }
+    
+    [Fact]
+    public void CreateReplaySafeLogger_StringOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            versionTracker: tracker);
+        
+        const string categoryName = "test";
+        var logger = context.CreateReplaySafeLogger(categoryName);
+
+        Assert.NotNull(logger);
+        Assert.IsType<ReplaySafeLogger>(logger);
+        
+        // Unfortunately, this is as far as we can take this since this creates a NullLogger and it doesn't expose the
+        // category name
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_TypeOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var recordingFactory = new RecordingLoggerFactory();
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: recordingFactory,
+            versionTracker: tracker);
+        
+        var logger = context.CreateReplaySafeLogger(typeof(MyExampleType));
+
+        Assert.NotNull(logger);
+
+        var replaySafeLogger = Assert.IsType<ReplaySafeLogger>(logger);
+
+        // The inner logger's category name must match the type passed to CreateReplaySafeLogger
+        var innerLogger = Assert.IsType<RecordingLogger>(replaySafeLogger._innerLogger);
+        var expectedCategoryName = typeof(MyExampleType).FullName!.Replace('+', '.');
+        Assert.Equal(expectedCategoryName, innerLogger.CategoryName);
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_GenericOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var recordingFactory = new RecordingLoggerFactory();
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            versionTracker: tracker);
+
+        var logger = context.CreateReplaySafeLogger<MyExampleType>();
+
+        Assert.NotNull(logger);
+
+        var replaySafeLogger = Assert.IsType<ReplaySafeLogger>(logger);
+
+        // CreateLogger<T>() returns a Logger<T> wrapper — verify the generic type argument is correct
+        var innerLoggerType = replaySafeLogger._innerLogger.GetType();
+        Assert.True(innerLoggerType.IsGenericType, "Inner logger should be a generic type");
+        Assert.Equal(typeof(MyExampleType), innerLoggerType.GetGenericArguments()[0]);
+    }
 
     [Fact]
     public void ContinueAsNew_ShouldAddCompleteOrchestrationAction_WithCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -556,7 +892,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         context.ProcessEvents(history, true);
         context.ContinueAsNew(newInput: new { V = 9 }, preserveUnprocessedEvents: true);
@@ -574,6 +911,7 @@ public class WorkflowOrchestrationContextTests
     public void ContinueAsNew_ShouldNotCarryOverEvents_WhenPreserveUnprocessedEventsIsFalse()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -586,7 +924,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         context.ProcessEvents(history, true);
         context.ContinueAsNew(newInput: null, preserveUnprocessedEvents: false);
@@ -604,12 +943,13 @@ public class WorkflowOrchestrationContextTests
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var tracker = new WorkflowVersionTracker([]);
 
         var c1 = new WorkflowOrchestrationContext("wf", "00000000-0000-0000-0000-000000000001",
-            now, serializer, NullLoggerFactory.Instance);
+            now, serializer, NullLoggerFactory.Instance, tracker);
 
         var c2 = new WorkflowOrchestrationContext("wf", "00000000-0000-0000-0000-000000000001",
-            now, serializer, NullLoggerFactory.Instance);
+            now, serializer, NullLoggerFactory.Instance, tracker);
 
         var g1 = c1.NewGuid();
         var g2 = c2.NewGuid();
@@ -621,13 +961,14 @@ public class WorkflowOrchestrationContextTests
     public async Task CallActivityAsync_ShouldThrowArgumentException_WhenNameIsNullOrWhitespace()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance, tracker);
 
         await Assert.ThrowsAsync<ArgumentException>(() => context.CallActivityAsync<int>(""));
         await Assert.ThrowsAsync<ArgumentException>(() => context.CallActivityAsync<int>("   "));
@@ -637,6 +978,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CallActivityAsync_ShouldThrowInvalidOperationException_WhenHistoryEventIsUnexpectedType()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -651,7 +993,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallActivityAsync<int>("Act");
         context.ProcessEvents(history, true);
@@ -664,6 +1007,7 @@ public class WorkflowOrchestrationContextTests
     public async Task WaitForExternalEventAsync_ShouldReturnDefault_WhenEventInHistoryHasNullInput()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -678,7 +1022,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance, 
+            tracker);
 
         var task = context.WaitForExternalEventAsync<int>("MyEvent");
         context.ProcessEvents(history, true);
@@ -691,6 +1036,7 @@ public class WorkflowOrchestrationContextTests
     public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldReturnResult_WhenEventIsInHistory()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -705,7 +1051,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.WaitForExternalEventAsync<int>("MyEvent", TimeSpan.FromSeconds(10));
         context.ProcessEvents(history, true);
@@ -718,13 +1065,15 @@ public class WorkflowOrchestrationContextTests
     public void CallChildWorkflowAsync_ShouldScheduleSubOrchestration_WhenNotReplaying_AndUseProvidedInstanceId()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallChildWorkflowAsync<int>(
             workflowName: "ChildWf",
@@ -746,6 +1095,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CallChildWorkflowAsync_ShouldReturnCompletedResult_FromHistorySubOrchestrationCompleted()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -764,7 +1114,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
         context.ProcessEvents(history, true);
@@ -778,6 +1129,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CallChildWorkflowAsync_ShouldThrowWorkflowTaskFailedException_FromHistorySubOrchestrationFailed()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -804,7 +1156,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
         context.ProcessEvents(history, true);
@@ -820,6 +1173,7 @@ public class WorkflowOrchestrationContextTests
     public async Task CallChildWorkflowAsync_ShouldThrowJsonDeserializationException_WhenHistoryEventIsUnexpectedType()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -834,7 +1188,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance);
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
         context.ProcessEvents(history, true);
@@ -847,6 +1202,7 @@ public class WorkflowOrchestrationContextTests
     public void CreateReplaySafeLogger_TypeAndGenericOverloads_ShouldBehaveLikeCategoryOverload()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
         {
@@ -861,8 +1217,8 @@ public class WorkflowOrchestrationContextTests
             instanceId: "i",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: new AlwaysEnabledLoggerFactory());
-
+            loggerFactory: new AlwaysEnabledLoggerFactory(),
+            tracker);
 
         var typeLogger = context.CreateReplaySafeLogger(typeof(WorkflowOrchestrationContextTests));
         var genericLogger = context.CreateReplaySafeLogger<WorkflowOrchestrationContextTests>();
@@ -877,6 +1233,56 @@ public class WorkflowOrchestrationContextTests
         Assert.False(context.IsReplaying);
         Assert.True(typeLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
         Assert.True(genericLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+    }
+
+    private sealed class MyExampleType
+    {
+    }
+    
+    private sealed class RecordingLoggerFactory : ILoggerFactory
+    {
+        public string? LastCategoryName { get; private set; }
+        public ILogger? LastCreatedLogger { get; private set; }
+
+        public void AddProvider(ILoggerProvider provider) { }
+        
+        public void Reset()
+        {
+            LastCategoryName = null;
+            LastCreatedLogger = null;
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            LastCategoryName = categoryName;
+            LastCreatedLogger = new RecordingLogger(categoryName);
+            return LastCreatedLogger;
+        }
+
+        public void Dispose() { }
+    }
+
+    private sealed class RecordingLogger(string categoryName) : ILogger
+    {
+        public string CategoryName { get; } = categoryName;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
     }
 
     private sealed class AlwaysEnabledLoggerFactory : Microsoft.Extensions.Logging.ILoggerFactory

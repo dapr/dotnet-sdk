@@ -19,6 +19,7 @@ using Dapr.Workflow.Grpc.Extensions;
 using Dapr.Workflow.Registration;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Worker;
+using Grpc.Net.ClientFactory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -51,6 +52,17 @@ public static class WorkflowServiceCollectionExtensions
         {
             ArgumentNullException.ThrowIfNull(serializer);
             Services.Replace(ServiceDescriptor.Singleton(typeof(IWorkflowSerializer), serializer));
+            return this;
+        }
+        
+        /// <summary>
+        /// Configures gRPC message size limits for the workflow sidecar client.
+        /// </summary>
+        /// <param name="maxReceiveMessageSize">Maximum receive message size in bytes. Must be greater than 0 when provided.</param>
+        /// <param name="maxSendMessageSize">Maximum send message size in bytes. Must be greater than 0 when provided.</param>
+        public DaprWorkflowBuilder WithGrpcMessageSizeLimits(int? maxReceiveMessageSize = null, int? maxSendMessageSize = null)
+        {
+            ConfigureWorkflowGrpcMessageSizeLimits(Services, maxReceiveMessageSize, maxSendMessageSize);
             return this;
         }
 
@@ -120,14 +132,14 @@ public static class WorkflowServiceCollectionExtensions
     /// <param name="configure">Optional configuration for the workflow client (e.g., setting gRPC/HTTP endpoints).</param>
     /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns>A builder for additional workflow configuration.</returns>
-    public static DaprWorkflowBuilder AddDaprWorkflowClient(
+    internal static DaprWorkflowBuilder AddDaprWorkflowClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprWorkflowClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddHttpClient();
+        EnsureWorkflowGrpcClientRegistered(services);
 
         var registration = new Func<IServiceProvider, DaprWorkflowClient>(provider =>
         {
@@ -153,6 +165,10 @@ public static class WorkflowServiceCollectionExtensions
         Action<IServiceProvider, DaprWorkflowClientBuilder>? configureClient,
         ServiceLifetime lifetime)
     {
+        // Validate that we have a valid service lifetime
+        if (lifetime is not (ServiceLifetime.Scoped or ServiceLifetime.Singleton or ServiceLifetime.Transient))
+            throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
+        
         // Configure workflow runtime options
         var options = new WorkflowRuntimeOptions();
         configure(options);
@@ -177,21 +193,20 @@ public static class WorkflowServiceCollectionExtensions
             return factory;
         });
 
-        // Necessary for the gRPC client factory
-        serviceCollection.AddHttpClient();
-
         // Register the internal WorkflowClient implementation
         serviceCollection.TryAddSingleton<WorkflowClient>(sp =>
         {
             var grpcClient = sp.GetRequiredService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
+            var configuration = sp.GetService<IConfiguration>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
             var serializer = sp.GetRequiredService<IWorkflowSerializer>();
-            return new WorkflowGrpcClient(grpcClient, logger, serializer);
+            var daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+            return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken);
         });
 
         // Register gRPC client for communicating with Dapr sidecar
-        serviceCollection.AddDaprWorkflowGrpcClient(grpcOptions =>
+        EnsureWorkflowGrpcClientRegistered(serviceCollection, grpcOptions =>
         {
             if (options.GrpcChannelOptions != null)
             {
@@ -213,15 +228,8 @@ public static class WorkflowServiceCollectionExtensions
         // Register the workflow worker as a hosted service
         serviceCollection.AddHostedService<WorkflowWorker>();
 
-        // Register the workflow client - use builder pattern if custom configuration provided
-        if (configureClient != null)
-        {
-            RegisterWorkflowClientWithBuilder(serviceCollection, configureClient, lifetime);
-        }
-        else
-        {
-            RegisterWorkflowClient(serviceCollection, lifetime);
-        }
+        // Register the workflow client
+        RegisterWorkflowClientWithBuilder(serviceCollection, configureClient, lifetime);
     }
     
     private static void AddDaprWorkflowCore(IServiceCollection serviceCollection,
@@ -230,9 +238,19 @@ public static class WorkflowServiceCollectionExtensions
         AddDaprWorkflowCore(serviceCollection, configure, configureClient: null, lifetime);
     }
     
+    private static void EnsureWorkflowGrpcClientRegistered(IServiceCollection services, Action<GrpcClientFactoryOptions>? configureClient = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // Required by gRPC client factory internals
+        services.AddHttpClient();
+
+        services.AddDaprWorkflowGrpcClient(configureClient);
+    }
+    
     private static void RegisterWorkflowClientWithBuilder(
         IServiceCollection serviceCollection,
-        Action<IServiceProvider, DaprWorkflowClientBuilder> configureClient,
+        Action<IServiceProvider, DaprWorkflowClientBuilder>? configureClient,
         ServiceLifetime lifetime)
     {
         var registration = new Func<IServiceProvider, DaprWorkflowClient>(provider =>
@@ -244,7 +262,7 @@ public static class WorkflowServiceCollectionExtensions
             builder.UseServiceProvider(provider);
 
             // Apply custom client configuration (endpoints, etc.)
-            configureClient(provider, builder);
+            configureClient?.Invoke(provider, builder);
 
             return builder.Build();
         });
@@ -252,33 +270,59 @@ public static class WorkflowServiceCollectionExtensions
         serviceCollection.Add(new ServiceDescriptor(typeof(DaprWorkflowClient), registration, lifetime));
     }
     
-    private static void RegisterWorkflowClient(IServiceCollection serviceCollection, ServiceLifetime lifetime)
+    private static void ConfigureWorkflowGrpcMessageSizeLimits(
+        IServiceCollection services,
+        int? maxReceiveMessageSize,
+        int? maxSendMessageSize)
     {
-        switch (lifetime)
+        if (!maxReceiveMessageSize.HasValue && !maxSendMessageSize.HasValue)
         {
-            case ServiceLifetime.Singleton:
-                serviceCollection.TryAddSingleton<DaprWorkflowClient>(sp =>
+            return;
+        }
+
+        ValidateGrpcMessageSize(maxReceiveMessageSize, nameof(maxReceiveMessageSize));
+        ValidateGrpcMessageSize(maxSendMessageSize, nameof(maxSendMessageSize));
+
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        services.PostConfigure<GrpcClientFactoryOptions>(clientType.FullName!, options =>
+        {
+            options.ChannelOptionsActions.Add(channelOptions =>
+            {
+                if (maxReceiveMessageSize.HasValue)
                 {
-                    var inner = sp.GetRequiredService<WorkflowClient>();
-                    return new DaprWorkflowClient(inner);
-                });
-                break;
-            case ServiceLifetime.Scoped:
-                serviceCollection.TryAddScoped<DaprWorkflowClient>(sp =>
+                    channelOptions.MaxReceiveMessageSize = maxReceiveMessageSize.Value;
+                }
+
+                if (maxSendMessageSize.HasValue)
                 {
-                    var inner = sp.GetRequiredService<WorkflowClient>();
-                    return new DaprWorkflowClient(inner);
-                });
-                break;
-            case ServiceLifetime.Transient:
-                serviceCollection.TryAddTransient<DaprWorkflowClient>(sp =>
+                    channelOptions.MaxSendMessageSize = maxSendMessageSize.Value;
+                }
+            });
+        });
+
+        services.PostConfigure<GrpcClientFactoryOptions>(clientType.Name, options =>
+        {
+            options.ChannelOptionsActions.Add(channelOptions =>
+            {
+                if (maxReceiveMessageSize.HasValue)
                 {
-                    var inner = sp.GetRequiredService<WorkflowClient>();
-                    return new DaprWorkflowClient(inner);
-                });
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "Invalid service lifetime");
+                    channelOptions.MaxReceiveMessageSize = maxReceiveMessageSize.Value;
+                }
+
+                if (maxSendMessageSize.HasValue)
+                {
+                    channelOptions.MaxSendMessageSize = maxSendMessageSize.Value;
+                }
+            });
+        });
+    }
+
+    private static void ValidateGrpcMessageSize(int? value, string paramName)
+    {
+        if (value.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value.Value, 0, paramName);
         }
     }
 }

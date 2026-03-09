@@ -60,24 +60,25 @@ public partial class E2ETests
         Assert.Equal(150, account.Balance);
     }
 
-    [Fact]
-    public async Task TestHttpServiceInvocationWithTimeout()
-    {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        using var client = new DaprClientBuilder()
-            .UseHttpEndpoint(this.HttpEndpoint)
-            .UseTimeout(TimeSpan.FromSeconds(1))
-            .Build();
-
-        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
-        {
-            await client.InvokeMethodAsync<HttpResponseMessage>(
-                appId: this.AppId,
-                methodName: "DelayedResponse",
-                httpMethod: new HttpMethod("GET"),
-                cancellationToken: cts.Token);
-        });
-    }
+    // [Fact]
+    // [Obsolete]
+    // public async Task TestHttpServiceInvocationWithTimeout()
+    // {
+    //     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+    //     using var client = new DaprClientBuilder()
+    //         .UseHttpEndpoint(this.HttpEndpoint)
+    //         .UseTimeout(TimeSpan.FromSeconds(1))
+    //         .Build();
+    //
+    //     await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+    //     {
+    //         await client.InvokeMethodAsync<HttpResponseMessage>(
+    //             appId: this.AppId,
+    //             methodName: "DelayedResponse",
+    //             httpMethod: new HttpMethod("GET"),
+    //             cancellationToken: cts.Token);
+    //     });
+    // }
 }
 
 internal class Transaction

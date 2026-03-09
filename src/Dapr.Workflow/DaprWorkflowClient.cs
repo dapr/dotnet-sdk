@@ -28,15 +28,22 @@ namespace Dapr.Workflow;
 public sealed class DaprWorkflowClient : IDaprWorkflowClient
 {
     private readonly WorkflowClient _innerClient;
+    
+    /// <summary>
+    /// Exposed only for testing.
+    /// </summary>
+    internal string? DaprApiToken { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprWorkflowClient"/> class.
     /// </summary>
     /// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
+    /// <param name="daprApiToken">The API token used for validating requests to Dapr.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
-    internal DaprWorkflowClient(WorkflowClient innerClient)
+    internal DaprWorkflowClient(WorkflowClient innerClient,  string? daprApiToken = null)
     {
         _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
+        DaprApiToken = daprApiToken;
     }
     
     /// <summary>
@@ -84,7 +91,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="instanceId">The unique ID for the workflow instance. Auto-generated if not specified.</param>
     /// <param name="input">The optional input to pass to the workflow.</param>
     /// <param name="startTime">The time when the workflow should start. If in the past or <c>null</c>, starts immediately.</param>
-    /// <param name="cancellation">Token to cancel the scheduling operation.</param>
+    /// <param name="cancellation">Token to cancel the scheduling operation from the client to the Dapr runtime.</param>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     public Task<string> ScheduleNewWorkflowAsync(

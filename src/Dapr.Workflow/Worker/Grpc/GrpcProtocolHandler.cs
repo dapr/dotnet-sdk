@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -24,8 +25,15 @@ namespace Dapr.Workflow.Worker.Grpc;
 /// <summary>
 /// Handles the bidirectional gRPC streaming protocol with the Dapr sidecar.
 /// </summary>
-internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, ILoggerFactory loggerFactory, int maxConcurrentWorkItems = 100, int maxConcurrentActivities = 100) : IAsyncDisposable
+internal sealed class GrpcProtocolHandler(
+    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
+    ILoggerFactory loggerFactory,
+    int maxConcurrentWorkItems = 100,
+    int maxConcurrentActivities = 100,
+    string? daprApiToken = null) : IAsyncDisposable
 {
+    private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
+    
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient =
@@ -43,38 +51,80 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <param name="activityHandler">Handler for activity work items.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task StartAsync(
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> workflowHandler,
-        Func<ActivityRequest, Task<ActivityResponse>> activityHandler,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> workflowHandler,
+        Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         CancellationToken cancellationToken)
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposalCts.Token);
         var token = linkedCts.Token;
+        
+        // Establish the bidirectional stream
+        var request = new GetWorkItemsRequest
+        {
+            MaxConcurrentOrchestrationWorkItems = _maxConcurrentWorkItems,
+            MaxConcurrentActivityWorkItems = _maxConcurrentActivities
+        };
 
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                _logger.LogGrpcProtocolHandlerStartStream();
+
+                // Establish the server streaming call
+                var grpcCallOptions = CreateCallOptions(token);
+                _streamingCall = _grpcClient.GetWorkItems(request, grpcCallOptions);
+
+                _logger.LogGrpcProtocolHandlerStreamEstablished();
+
+                // Process work items from the stream
+                await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+
+                // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
+                if (!token.IsCancellationRequested)
+                {
+                    await DelayOrStopAsync(ReconnectDelay, token);
+                }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerStreamCanceled();
+                break;
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && token.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerStreamCanceled();
+                break;
+            }
+            catch (RpcException ex) when (!token.IsCancellationRequested)
+            {
+                // Any RpcException while not shutting down -> retry indefinitely (transient or not)
+                _logger.LogGrpcProtocolHandlerGenericError(ex);
+                await DelayOrStopAsync(ReconnectDelay, token);
+            }
+            catch (Exception ex) when (!token.IsCancellationRequested)
+            {
+                // Any other interruption -> retry indefinitely
+                _logger.LogGrpcProtocolHandlerGenericError(ex);
+                await DelayOrStopAsync(ReconnectDelay, token);
+            }
+            finally
+            {
+                _streamingCall?.Dispose();
+                _streamingCall = null;
+            }
+        }        
+    }
+    
+    private static async Task DelayOrStopAsync(TimeSpan delay, CancellationToken token)
+    {
         try
         {
-            _logger.LogGrpcProtocolHandlerStartStream();
-
-            // Establish the bidirectional stream
-            var request = new GetWorkItemsRequest
-            {
-                MaxConcurrentOrchestrationWorkItems = _maxConcurrentWorkItems,
-                MaxConcurrentActivityWorkItems = _maxConcurrentActivities
-            };
-            
-            // Establish the server streaming call
-            _streamingCall = _grpcClient.GetWorkItems(request, cancellationToken: token);
-            
-            // Process work items from the stream
-            await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+            await Task.Delay(delay, token);
         }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            _logger.LogGrpcProtocolHandlerStreamCanceled();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogGrpcProtocolHandlerGenericError(ex);
-            throw;
+            // Swallow cancellation so StartAsync exits cleanly when the host/test cancels.
         }
     }
 
@@ -83,8 +133,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// </summary>
     private async Task ReceiveLoopAsync(
         IAsyncStreamReader<WorkItem> workItemsStream,
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> orchestratorHandler,
-        Func<ActivityRequest, Task<ActivityResponse>> activityHandler,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> orchestratorHandler,
+        Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         CancellationToken cancellationToken)
     {
         // Track active work items for proper exception handling
@@ -94,14 +144,16 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             await foreach (var workItem in workItemsStream.ReadAllAsync(cancellationToken))
             {
+                var completionToken = workItem.CompletionToken;
+                
                 // Dispatch based on work item type
                 var workItemTask = workItem.RequestCase switch
                 {
                     WorkItem.RequestOneofCase.OrchestratorRequest => Task.Run(
-                        () => ProcessWorkflowAsync(workItem.OrchestratorRequest, orchestratorHandler, cancellationToken),
+                        () => ProcessWorkflowAsync(workItem.OrchestratorRequest, completionToken, orchestratorHandler, cancellationToken),
                         cancellationToken),
                     WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
-                        () => ProcessActivityAsync(workItem.ActivityRequest, activityHandler, cancellationToken),
+                        () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler, cancellationToken),
                         cancellationToken),
                     _ => Task.Run(
                         () => _logger.LogGrpcProtocolHandlerUnknownWorkItemType(workItem.RequestCase),
@@ -145,8 +197,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Processes a workflow request work item.
     /// </summary>
-    private async Task ProcessWorkflowAsync(OrchestratorRequest request,
-        Func<OrchestratorRequest, Task<OrchestratorResponse>> handler, CancellationToken cancellationToken)
+    private async Task ProcessWorkflowAsync(OrchestratorRequest request, string completionToken,
+        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> handler, CancellationToken cancellationToken)
     {
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
@@ -154,10 +206,11 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             _logger.LogGrpcProtocolHandlerWorkflowProcessorStart(request.InstanceId, activeCount);
 
-            var result = await handler(request);
+            var result = await handler(request, completionToken);
             
             // Send the result back to Dapr
-            await _grpcClient.CompleteOrchestratorTaskAsync(result, cancellationToken: cancellationToken);
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            await _grpcClient.CompleteOrchestratorTaskAsync(result, grpcCallOptions);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -167,8 +220,9 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             try
             {
-                var failureResult = CreateWorkflowFailureResult(request, ex);
-                await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, cancellationToken: cancellationToken);
+                var failureResult = CreateWorkflowFailureResult(request, completionToken, ex);
+                var grpcCallOptions = CreateCallOptions(cancellationToken);
+                await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, grpcCallOptions);
             }
             catch (Exception resultEx)
             {
@@ -184,8 +238,8 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Processes an activity request work item.
     /// </summary>
-    private async Task ProcessActivityAsync(ActivityRequest request,
-        Func<ActivityRequest, Task<ActivityResponse>> handler, CancellationToken cancellationToken)
+    private async Task ProcessActivityAsync(ActivityRequest request, string completionToken,
+        Func<ActivityRequest, string, Task<ActivityResponse>> handler, CancellationToken cancellationToken)
     {
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
@@ -193,10 +247,11 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         {
             _logger.LogGrpcProtocolHandlerActivityProcessorStart(request.OrchestrationInstance.InstanceId, request.Name,
                 request.TaskId, activeCount);
-            var result = await handler(request);
+            var result = await handler(request, completionToken);
 
             // Send the result back to Dapr
-            await _grpcClient.CompleteActivityTaskAsync(result, cancellationToken: cancellationToken);
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            await _grpcClient.CompleteActivityTaskAsync(result, grpcCallOptions);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -209,8 +264,9 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
 
             try
             {
-                var failureResult = CreateActivityFailureResult(request, ex);
-                await _grpcClient.CompleteActivityTaskAsync(failureResult, cancellationToken: cancellationToken);
+                var failureResult = CreateActivityFailureResult(request, completionToken, ex);
+                var grpcCallOptions = CreateCallOptions(cancellationToken);
+                await _grpcClient.CompleteActivityTaskAsync(failureResult, grpcCallOptions);
             }
             catch (Exception resultEx)
             {
@@ -226,11 +282,12 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Creates a failure response for an activity exception.
     /// </summary>
-    private static ActivityResponse CreateActivityFailureResult(ActivityRequest request, Exception ex) =>
+    private static ActivityResponse CreateActivityFailureResult(ActivityRequest request, string completionToken, Exception ex) =>
         new()
         {
-            
             InstanceId = request.OrchestrationInstance.InstanceId,
+            TaskId = request.TaskId,
+            CompletionToken = completionToken,
             FailureDetails = new()
             {
                 ErrorType = ex.GetType().FullName ?? "Exception",
@@ -242,10 +299,11 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
     /// <summary>
     /// Creates a failure result for an orchestrator exception.
     /// </summary>
-    private static OrchestratorResponse CreateWorkflowFailureResult(OrchestratorRequest request, Exception ex) =>
+    private static OrchestratorResponse CreateWorkflowFailureResult(OrchestratorRequest request, string completionToken, Exception ex) =>
         new()
         {
             InstanceId = request.InstanceId,
+            CompletionToken = completionToken,
             Actions =
             {
                 new OrchestratorAction
@@ -278,4 +336,7 @@ internal sealed class GrpcProtocolHandler(TaskHubSidecarService.TaskHubSidecarSe
         
         _logger.LogGrpcProtocolHandlerDisposed();
     }
+
+    private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
+        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(GrpcProtocolHandler).Assembly, daprApiToken, cancellationToken);
 }

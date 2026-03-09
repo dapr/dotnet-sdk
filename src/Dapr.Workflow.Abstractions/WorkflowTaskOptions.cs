@@ -17,14 +17,16 @@ namespace Dapr.Workflow;
 /// Options that can be used to control the behavior of workflow task execution.
 /// </summary>
 /// <param name="RetryPolicy">The workflow retry policy.</param>
-/// <param name="AppId">The App ID indicating the app in which to find the named activity to run.</param>
-public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null, string? AppId = null);
+/// <param name="TargetAppId">The App ID indicating the app in which to find the named activity to run.</param>
+public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null, string? TargetAppId = null);
 
 /// <summary>
 /// Options for controlling the behavior of child workflow execution.
 /// </summary>
 /// <param name="InstanceId">The instance ID to use for the child workflow.</param>
 /// <param name="RetryPolicy">The child workflow's retry policy.</param>
-/// <param name="AppId">The App ID indicating the app in which to find the named child workflow to run.</param>
-public record ChildWorkflowTaskOptions(string? InstanceId = null, WorkflowRetryPolicy? RetryPolicy = null, string? AppId = null)
-    : WorkflowTaskOptions(RetryPolicy, AppId);
+/// <param name="TargetAppId">The App ID indicating the app in which to find the named child workflow to run.</param>
+public record ChildWorkflowTaskOptions(
+    string? InstanceId = null, 
+    WorkflowRetryPolicy? RetryPolicy = null, 
+    string? TargetAppId = null) : WorkflowTaskOptions(RetryPolicy, TargetAppId);

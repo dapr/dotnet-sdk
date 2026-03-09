@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Title>XUnit extensions for Dapr.Testcontainers</Title>
+        <Description>Provides XUnit-specific extension capabilities for testing with Dapr.Testcontainers</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="xunit.extensibility.core" />
+    </ItemGroup>
+
+</Project>

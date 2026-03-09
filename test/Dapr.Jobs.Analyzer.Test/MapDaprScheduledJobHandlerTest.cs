@@ -10,6 +10,8 @@ public class DaprJobsAnalyzerAnalyzerTests
     private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net80;
 #elif NET9_0
     private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net90;
+#elif NET10_0
+    private static readonly ReferenceAssemblies referenceAssemblies = ReferenceAssemblies.Net.Net100;
 #endif
 
     [Fact]

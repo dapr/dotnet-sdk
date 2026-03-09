@@ -10,6 +10,10 @@ public class WorkflowContextDelegationTests
         public override string InstanceId => "inst-1";
         public override DateTime CurrentUtcDateTime => _now;
         public override bool IsReplaying => false;
+        public override bool IsPatched(string patchName)
+        {
+            throw new NotImplementedException();
+        }
 
         private DateTime _now = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 

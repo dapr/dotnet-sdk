@@ -7,7 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="coverlet.collector" />
+        <PackageReference Include="coverlet.collector">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.extensibility.core" />
@@ -21,7 +24,8 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Client\Dapr.Client.csproj" />
-      <ProjectReference Include="..\..\src\Dapr.TestContainers\Dapr.TestContainers.csproj" />
+      <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
+      <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
     </ItemGroup>

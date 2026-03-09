@@ -31,6 +31,7 @@ namespace Dapr.Client.Test;
 public partial class DaprClientTest
 {
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_WithCancelledToken()
     {
         await using var client = TestClient.CreateForDaprClient(c =>
@@ -48,6 +49,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData()
     {
         await using var client = TestClient.CreateForDaprClient(c =>
@@ -79,6 +81,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeAndData_ThrowsExceptionForNonSuccess()
     {
         var client = new MockClient();
@@ -112,6 +115,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData()
     {
         await using var client = TestClient.CreateForDaprClient(c =>
@@ -143,6 +147,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithReturnTypeNoData_ThrowsExceptionNonSuccess()
     {
         var client = new MockClient();
@@ -176,6 +181,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData()
     {
         var request = new Request() { RequestParameter = "Hello " };
@@ -199,6 +205,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_CanInvokeMethodWithNoReturnTypeAndData_ThrowsErrorNonSuccess()
     {
         var client = new MockClient();
@@ -233,6 +240,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_WithNoReturnTypeAndData()
     {
         await using var client = TestClient.CreateForDaprClient(c =>
@@ -259,6 +267,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_WithReturnTypeAndData()
     {
         await using var client = TestClient.CreateForDaprClient(c =>
@@ -295,6 +304,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_AppCallback_SayHello()
     {
         // Configure Client
@@ -312,6 +322,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_AppCallback_RepeatedField()
     {
         // Configure Client
@@ -335,6 +346,7 @@ public partial class DaprClientTest
     }
 
     [Fact]
+    [Obsolete]
     public async Task InvokeMethodGrpcAsync_AppCallback_UnexpectedMethod()
     {
         // Configure Client

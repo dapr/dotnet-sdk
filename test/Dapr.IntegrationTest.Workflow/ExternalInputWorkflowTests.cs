@@ -12,8 +12,8 @@
 //  ------------------------------------------------------------------------
 
 using Dapr.Client;
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,11 +33,15 @@ public sealed partial class ExternalInputWorkflowTests
     [Fact]
     public async Task ShouldHandleMultipleExternalEvents_Simple()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -76,14 +80,20 @@ public sealed partial class ExternalInputWorkflowTests
     [Fact]
     public async Task ShouldHandleStandardWorkflowsWithDependencyInjection()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
+                builder.Services.AddSingleton<DoodadService>();
+                
                 // Register the DaprClient for state management purposes
                 builder.Services.AddDaprClient((sp, b) =>
                 {
@@ -124,7 +134,7 @@ public sealed partial class ExternalInputWorkflowTests
         var daprClient = scope.ServiceProvider.GetRequiredService<DaprClient>();
         foreach (var baseInventoryItem in BaseInventory)
         {
-            await daprClient.SaveStateAsync(TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+            await daprClient.SaveStateAsync(Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 baseInventoryItem.Name.ToLowerInvariant(), baseInventoryItem);
         }
 
@@ -141,11 +151,24 @@ public sealed partial class ExternalInputWorkflowTests
         // Start the workflow
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(OrderProcessingWorkflow), workflowInstanceId,
             orderInfo);
-
-
+        
         // Wait for the workflow to complete - it shouldn't ask for approval
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        WorkflowState result;
+        try
+        {
+            result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId,
+                cancellation: cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true);
+            Assert.Fail($"Timed out waiting for workflow completion. Current state: {state?.RuntimeStatus}, CustomStatus: {state?.ReadCustomStatusAs<string>()}");
+            throw;
+        }
+
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        
         var resultValue = result.ReadOutputAs<OrderResult>();
         Assert.NotNull(resultValue);
         Assert.True(resultValue.Processed);
@@ -154,11 +177,15 @@ public sealed partial class ExternalInputWorkflowTests
     [Fact]
     public async Task ShouldHandleExternalEventTimeout()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -193,11 +220,15 @@ public sealed partial class ExternalInputWorkflowTests
     [Fact]
     public async Task ShouldHandleExternalEventWithDefaultValue()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -227,6 +258,11 @@ public sealed partial class ExternalInputWorkflowTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<int>();
         Assert.Equal(42, output); // Default value
+    }
+
+    public sealed class DoodadService
+    {
+        public bool ReturnTrue() => true;
     }
 
     private sealed class TimeoutWorkflow : Workflow<object?, string>
@@ -285,11 +321,15 @@ public sealed partial class ExternalInputWorkflowTests
     [Fact]
     public async Task ShouldHandleMultipleExternalEvents()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -489,11 +529,11 @@ public sealed partial class ExternalInputWorkflowTests
             LogInventoryCheck(request.RequestId, request.Amount, request.ItemName);
 
             // Simulate slow processing
-            await Task.Delay((TimeSpan.FromSeconds(5)));
+            await Task.Delay((TimeSpan.FromMilliseconds(100)));
 
             // Determine if there are enough items for purchase
             var item = await daprClient.GetStateAsync<InventoryItem>(
-                TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+                Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 request.ItemName.ToLowerInvariant());
             var newQuantity = item.Quantity - request.Amount;
             if (newQuantity < 0)
@@ -504,7 +544,7 @@ public sealed partial class ExternalInputWorkflowTests
             }
 
             // Update the state store with the new amount of the item
-            await daprClient.SaveStateAsync(TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+            await daprClient.SaveStateAsync(Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 request.ItemName.ToLowerInvariant(),
                 new InventoryItem(request.ItemName, item.PerItemCost, newQuantity));
 
@@ -532,7 +572,7 @@ public sealed partial class ExternalInputWorkflowTests
             LogProcessing(input.RequestId, input.Amount, input.ItemName, input.Currency);
 
             // Simulate slow processing
-            await Task.Delay(TimeSpan.FromSeconds(7));
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
 
             LogProcessingSuccessful(input.RequestId);
             return null;
@@ -548,6 +588,7 @@ public sealed partial class ExternalInputWorkflowTests
 
     public sealed partial class ReserveInventoryActivity(
         ILogger<ReserveInventoryActivity> logger,
+        DoodadService doodadSvc,
         DaprClient daprClient)
         : WorkflowActivity<InventoryRequest, InventoryResult>
     {
@@ -555,9 +596,11 @@ public sealed partial class ExternalInputWorkflowTests
         {
             LogReservation(req.RequestId, req.Quantity, req.ItemName);
 
+            doodadSvc.ReturnTrue();
+
             // Ensure that the store has items
             var item = await daprClient.GetStateAsync<InventoryItem?>(
-                TestContainers.Constants.DaprComponentNames.StateManagementComponentName,
+                Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
                 req.ItemName.ToLowerInvariant());
 
             // Catch for the case where the statestore isn't set up
@@ -573,7 +616,7 @@ public sealed partial class ExternalInputWorkflowTests
             if (item.Quantity >= req.Quantity)
             {
                 // Simulate slow processing
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await Task.Delay(TimeSpan.FromMilliseconds(100));
                 return new InventoryResult(true, item);
             }
 
@@ -585,7 +628,7 @@ public sealed partial class ExternalInputWorkflowTests
         private partial void LogReservation(string requestId, int quantity, string itemName);
 
         [LoggerMessage(LogLevel.Information, "There are {Quantity} {ItemName} available for purchase")]
-        private partial void LogAvailability(int Quantity, string ItemName);
+        private partial void LogAvailability(int quantity, string itemName);
     }
 
     public sealed partial class RequestApprovalActivity(ILogger<RequestApprovalActivity> logger)
@@ -611,6 +654,6 @@ public sealed partial class ExternalInputWorkflowTests
         }
 
         [LoggerMessage(LogLevel.Information, "A notification message was surfaced: '{Message}'")]
-        private partial void LogNotification(string Message);
+        private partial void LogNotification(string message);
     }
 }

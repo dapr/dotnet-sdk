@@ -88,6 +88,9 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Information, "Starting gRPC bidirectional stream with Dapr sidecar")]
     public static partial void LogGrpcProtocolHandlerStartStream(this ILogger logger);
 
+    [LoggerMessage(LogLevel.Information, "Established gRPC bidirectional stream with Dapr sidecar")]
+    public static partial void LogGrpcProtocolHandlerStreamEstablished(this ILogger logger);
+
     [LoggerMessage(LogLevel.Information, "gRPC stream canceled")]
     public static partial void LogGrpcProtocolHandlerStreamCanceled(this ILogger logger);
 

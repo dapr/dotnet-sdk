@@ -11,8 +11,8 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,13 +22,59 @@ namespace Dapr.IntegrationTest.Workflow;
 public sealed class PauseResumeTests
 {
     [Fact]
-    public async Task ShouldPauseAndResumeWorkflow()
+    public async Task ShouldReportPausedStatusWhenWorkflowIsSuspended()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildWorkflow(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    opt => opt.RegisterWorkflow<WaitingWorkflow>(),
+                    configureClient: (sp, cb) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            cb.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(WaitingWorkflow), workflowInstanceId);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        // Pause the workflow
+        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        var pausedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        Assert.NotNull(pausedState);
+        Assert.Equal(WorkflowRuntimeStatus.Suspended, pausedState.RuntimeStatus);
+    }
+
+    [Fact]
+    public async Task ShouldPauseAndResumeWorkflow()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {

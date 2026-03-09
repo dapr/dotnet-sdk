@@ -15,26 +15,30 @@ using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
-using Dapr.TestContainers.Common;
-using Dapr.TestContainers.Common.Options;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Dapr.E2E.Test.Jobs;
+namespace Dapr.IntegrationTest.Jobs;
 
 public sealed class JobFailurePolicyTests
 {
     [Fact]
     public async Task ShouldScheduleJobWithDropFailurePolicy()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"drop-policy-job-{Guid.NewGuid():N}";
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
+        
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -80,13 +84,17 @@ public sealed class JobFailurePolicyTests
     [Fact]
     public async Task ShouldScheduleJobWithConstantFailurePolicy()
     {
-        var options = new DaprRuntimeOptions();
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"constant-policy-job-{Guid.NewGuid():N}";
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
+        await environment.StartAsync();
 
-        var harness = new DaprHarnessBuilder(options).BuildJobs(componentsDir);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -121,7 +129,7 @@ public sealed class JobFailurePolicyTests
         {
             MaxRetries = maxRetries
         };
-
+        
         await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
             failurePolicyOptions: constantPolicy, repeats: 10, overwrite: true);
 

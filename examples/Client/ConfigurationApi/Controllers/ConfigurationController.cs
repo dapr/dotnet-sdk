@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using ControllerSample;
 using Dapr;
@@ -54,6 +55,7 @@ public class ConfigurationController : ControllerBase
 
 #nullable enable
     [HttpPost("withdraw")]
+    [Obsolete]
     public async Task<ActionResult<Account>> CreateAccountHandler(Transaction transaction)
     {
         // Check if the V2 method is enabled.

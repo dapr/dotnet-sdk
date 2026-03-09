@@ -15,11 +15,15 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
+using Grpc.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -29,15 +33,23 @@ namespace Dapr.Workflow.Worker;
 /// <summary>
 /// Background service that processes workflow and activity work items from the Dapr sidecar.
 /// </summary>
-internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, IWorkflowsFactory workflowsFactory, ILoggerFactory loggerFactory, IWorkflowSerializer workflowSerializer, IServiceProvider serviceProvider, WorkflowRuntimeOptions options) : BackgroundService
+internal sealed class WorkflowWorker(
+    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
+    IWorkflowsFactory workflowsFactory, 
+    ILoggerFactory loggerFactory, 
+    IWorkflowSerializer workflowSerializer, 
+    IServiceProvider serviceProvider, 
+    WorkflowRuntimeOptions options,
+    IConfiguration? configuration = null) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-    private readonly ILogger<WorkflowWorker> _logger = loggerFactory?.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+    private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
-
+    private readonly string? _daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+    
     private GrpcProtocolHandler? _protocolHandler;
 
     /// <summary>
@@ -50,7 +62,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         try
         {
             // Create the protocol handler
-            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _options.MaxConcurrentWorkflows, _options.MaxConcurrentActivities);
+            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _options.MaxConcurrentWorkflows, _options.MaxConcurrentActivities, _daprApiToken);
 
             // Start processing work items
             await _protocolHandler.StartAsync(HandleOrchestratorResponseAsync, HandleActivityResponseAsync, stoppingToken);
@@ -66,7 +78,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         }
     }
 
-    private async Task<OrchestratorResponse> HandleOrchestratorResponseAsync(OrchestratorRequest request)
+    private async Task<OrchestratorResponse> HandleOrchestratorResponseAsync(OrchestratorRequest request, string completionToken)
     {
         _logger.LogWorkerWorkflowHandleOrchestratorRequestStart(request.InstanceId);
 
@@ -79,9 +91,10 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale
             var allPastEvents = request.PastEvents.ToList();
 
-            // Extract the workflow name from the ExecutionStartedEvent in the history
+            // Extract the following values from the ExecutionStartedEvent in the history
             string? workflowName = null;
             string? serializedInput = null;
+            string? appId = null;
 
             if (request.RequiresHistoryStreaming)
             {
@@ -91,30 +104,168 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                     ExecutionId = request.ExecutionId,
                     ForWorkItemProcessing = true
                 };
-
-                using var call = _grpcClient.StreamInstanceHistory(streamRequest);
+                
+                using var call = _grpcClient.StreamInstanceHistory(streamRequest, CreateCallOptions(CancellationToken.None));
                 while (await call.ResponseStream.MoveNext(CancellationToken.None).ConfigureAwait(false))
                 {
                     var chunk = call.ResponseStream.Current.Events;
                     allPastEvents.AddRange(chunk);
                 }
             }
+            
+            // If the most recent event is `ExecutionTerminated`, acknowledge termination immediately.
+            var timelineEvents = allPastEvents.Concat(request.NewEvents).ToList();
+            var latestEvent = timelineEvents.Count > 0 ? timelineEvents[^1] : null;
+            
+            if (latestEvent?.ExecutionTerminated != null)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Terminated
+                            }
+                        }
+                    }
+                };
+            }
+
+            // If the instance is suspended, acknowledge the work item without running the orchestrator.
+            // This keeps the workflow paused while still committing the suspension event.
+            if (latestEvent?.ExecutionSuspended != null)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken
+                };
+            }
+            
+            // Create a new version tracker for this turn
+            var versionTracker = new WorkflowVersionTracker(allPastEvents);
+
+            var routerRegistry = scope.ServiceProvider.GetService<IWorkflowRouterRegistry>();
+            var resolvedFromRouter = false;
 
             // Identify the workflow name from the now-complete history
-            foreach (var e in allPastEvents.Concat(request.NewEvents))
+            // Process in reverse so this finds the most recent event instead of processing
+            // such an event handled by another app.
+            foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
             {
                 if (e.ExecutionStarted != null)
                 {
                     workflowName = e.ExecutionStarted.Name;
                     serializedInput = e.ExecutionStarted.Input;
+
+                    // Try pulling the app ID out of the target first, then the source if not available
+                    if (!string.IsNullOrEmpty(e.Router?.TargetAppID))
+                    {
+                        appId = e.Router.TargetAppID;
+                    }
+                    else if (!string.IsNullOrEmpty(e.Router?.SourceAppID))
+                    {
+                        appId = e.Router.SourceAppID;
+                    }
                     break;
                 }
             }
 
             if (string.IsNullOrEmpty(workflowName))
             {
-                _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
-                return new OrchestratorResponse { InstanceId = request.InstanceId };
+                foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
+                {
+                    var state = e.HistoryState?.OrchestrationState;
+                    if (state is null || string.IsNullOrEmpty(state.Name))
+                        continue;
+
+                    workflowName = state.Name;
+                    if (string.IsNullOrEmpty(serializedInput) && !string.IsNullOrEmpty(state.Input))
+                    {
+                        serializedInput = state.Input;
+                    }
+
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(workflowName))
+            {
+                foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
+                {
+                    var versionName = e.OrchestratorStarted?.Version?.Name;
+                    if (!string.IsNullOrEmpty(versionName))
+                    {
+                        workflowName = versionName;
+                        break;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(workflowName))
+            {
+                if (routerRegistry is not null && routerRegistry.TryResolveLatest(out workflowName))
+                {
+                    resolvedFromRouter = true;
+                }
+                else
+                {
+                    _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
+                    return new OrchestratorResponse
+                    {
+                        InstanceId = request.InstanceId,
+                        CompletionToken = completionToken,
+                        Actions =
+                        {
+                            new OrchestratorAction
+                            {
+                                CompleteOrchestration = new CompleteOrchestrationAction
+                                {
+                                    OrchestrationStatus = OrchestrationStatus.Failed,
+                                    FailureDetails = new()
+                                    {
+                                        IsNonRetriable = true,
+                                        ErrorType = "WorkflowNameMissing",
+                                        ErrorMessage = "Workflow name missing and no routable workflow could be resolved.",
+                                        StackTrace = string.Empty
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }
+            }
+
+            if (routerRegistry is not null && !routerRegistry.Contains(workflowName))
+            {
+                _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Failed,
+                                FailureDetails = new()
+                                {
+                                    IsNonRetriable = true,
+                                    ErrorType = "WorkflowNotFound",
+                                    ErrorMessage = $"Workflow '{workflowName}' is not registered in this app.",
+                                    StackTrace = string.Empty
+                                }
+                            }
+                        }
+                    }
+                };
             }
 
             // Try to get the workflow from the factory
@@ -122,34 +273,107 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
-                return new OrchestratorResponse { InstanceId = request.InstanceId };
+
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Failed,
+                                FailureDetails = new()
+                                {
+                                    IsNonRetriable = true,
+                                    ErrorType = "WorkflowNotFound",
+                                    ErrorMessage = $"Workflow '{workflowName}' is not registered in this app.",
+                                    StackTrace = string.Empty
+                                }
+                            }
+                        }
+                    }
+                };
             }
 
             var currentUtcDateTime = allPastEvents.Count > 0 && allPastEvents[0].Timestamp != null
                 ? allPastEvents[0].Timestamp.ToDateTime()
                 : DateTime.UtcNow;
 
+            var currentTurnStartedEvent = request.NewEvents.Reverse()
+                .FirstOrDefault(e => e.OrchestratorStarted != null);
+
+            var currentTurnTimestamp = currentTurnStartedEvent?.Timestamp?.ToDateTime()
+                ?? currentUtcDateTime;
+
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, _serializer, loggerFactory);
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
+                _serializer, loggerFactory, versionTracker, appId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
 
+            // Initialize per-turn state before any workflow code runs.
+            context.InitializeNewTurn(currentTurnTimestamp);
+            context.SetReplayState(allPastEvents.Count > 0);
+
             // Execute the workflow
-            // IMPORTANT: Durable orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
+            // IMPORTANT: Orchestrations intentionally "block" on incomplete tasks (activities, timers, events)
             // during the first execution pass. We must NOT await indefinitely here; we need to return the pending actions.
+            // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
+            // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
             var runTask = workflow!.RunAsync(context, input);
 
             // Replay the old history to rebuild the local state of the orchestration.
-            context.ProcessEvents(allPastEvents, true);
+            if (allPastEvents.Count > 0)
+            {
+                context.ProcessEvents(allPastEvents, true);
+            }
 
             // Play the newly arrived events to determine the next action to take.
-            context.ProcessEvents(request.NewEvents, false);
+            if (request.NewEvents.Count > 0)
+            {
+                context.ProcessEvents(request.NewEvents, false);
+            }
 
+            // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
+            if (versionTracker.IsStalled)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Stalled,
+                                Details = versionTracker.StalledEvent?.Description ??
+                                          "Workflow stalled due to patch mismatch."
+                            }
+                        }
+                    }
+                };
+            }
+            
             // Get all pending actions from the context
-            var response = new OrchestratorResponse { InstanceId = request.InstanceId };
+            var response = new OrchestratorResponse
+            {
+                InstanceId = request.InstanceId,
+                CompletionToken = completionToken
+            };
+            
+            // Stamp the version info if new patches were encountered this turn
+            if (versionTracker.IncludeVersionInNextResponse || resolvedFromRouter)
+            {
+                response.Version = versionTracker.BuildResponseVersion(workflowName);
+            }
 
             // Add all actions that were scheduled during workflow execution
             response.Actions.AddRange(context.PendingActions);
@@ -159,7 +383,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 response.CustomStatus = _serializer.Serialize(context.CustomStatus);
 
             // If the workflow issued ContinueAsNew, it already queued a completion action; just return it.
-            if (context.PendingActions.Any(a => a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
+            if (context.PendingActions.Any(a => 
+                    a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
                 return response;
@@ -167,12 +392,12 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
 
             if (!runTask.IsCompleted)
             {
-                _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, context.PendingActions.Count);
+                _logger.LogWorkflowWorkerOrchestratorYield(request.InstanceId, response.Actions.Count, 
+                    context.PendingActions.Count);
 
-                if (response.Actions.Count == 0 && !context.PendingActions.Any())
-                {
+                if (response.Actions.Count == 0 && context.PendingActions.Count == 0) 
                     _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
-                }
+                
                 return response;
             }
 
@@ -182,7 +407,6 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 // The workflow completed synchronously (either on replay or it had nothing to await).
                 // Observe exceptions if any, otherwise serialize the output and complete the orchestration.
                 var output = await runTask.ConfigureAwait(false);
-
                 var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
 
                 response.Actions.Add(new OrchestratorAction
@@ -204,6 +428,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                         OrchestrationStatus = OrchestrationStatus.Failed,
                         FailureDetails = new()
                         {
+                            IsNonRetriable = true,
                             ErrorType = ex.GetType().FullName ?? "Exception",
                             ErrorMessage = ex.Message,
                             StackTrace = ex.StackTrace ?? string.Empty
@@ -222,6 +447,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             return new OrchestratorResponse
             {
                 InstanceId = request.InstanceId,
+                CompletionToken = completionToken,
                 Actions =
                 {
                     new OrchestratorAction
@@ -242,7 +468,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
         }
     }
 
-    private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request)
+    private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request, string completionToken)
     {
         _logger.LogWorkerWorkflowHandleActivityRequestStart(request.Name, request.OrchestrationInstance?.InstanceId, request.TaskId);
 
@@ -261,6 +487,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
                 {
                     InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                     TaskId = request.TaskId,
+                    CompletionToken = completionToken,
                     FailureDetails = new()
                     {
                         ErrorType = "ActivityNotFoundException",
@@ -299,7 +526,8 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
-                Result = outputJson
+                Result = outputJson,
+                CompletionToken = completionToken
             };
         }
         catch (Exception ex)
@@ -310,6 +538,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
             {
                 InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
+                CompletionToken = completionToken,
                 FailureDetails = new()
                 {
                     ErrorType = ex.GetType().FullName ?? "Exception",
@@ -332,4 +561,7 @@ internal sealed class WorkflowWorker(TaskHubSidecarService.TaskHubSidecarService
 
         await base.StopAsync(cancellationToken);
     }
+
+    private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
+        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(WorkflowWorker).Assembly, _daprApiToken, cancellationToken);
 }

@@ -37,6 +37,8 @@ internal class VerifyAnalyzer(IReadOnlyList<MetadataReference> metadataReference
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net80;
 #elif NET9_0
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
+#elif NET10_0
+        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net100;
 #endif
 
         if (program != null)
