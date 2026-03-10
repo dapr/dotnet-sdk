@@ -209,15 +209,15 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
-    public async Task ListInstanceIDsAsync_ShouldForwardToInnerClient()
+    public async Task ListInstanceIdsAsync_ShouldForwardToInnerClient()
     {
         var expectedPage = new WorkflowInstancePage(
             new ReadOnlyCollection<string>(new[] { "id1", "id2" }),
             "next-token");
-        var inner = new CapturingWorkflowClient { ListInstanceIDsResult = expectedPage };
+        var inner = new CapturingWorkflowClient { ListInstanceIdsResult = expectedPage };
         var client = new DaprWorkflowClient(inner);
 
-        var result = await client.ListInstanceIDsAsync(continuationToken: "token", pageSize: 10);
+        var result = await client.ListInstanceIdsAsync(continuationToken: "token", pageSize: 10);
 
         Assert.Equal(expectedPage, result);
         Assert.Equal("token", inner.LastListContinuationToken);
@@ -311,7 +311,7 @@ public class DaprWorkflowClientTests
 
         public string? LastListContinuationToken { get; private set; }
         public int? LastListPageSize { get; private set; }
-        public WorkflowInstancePage ListInstanceIDsResult { get; set; } =
+        public WorkflowInstancePage ListInstanceIdsResult { get; set; } =
             new(new ReadOnlyCollection<string>(Array.Empty<string>()), null);
 
         public string? LastGetHistoryInstanceId { get; private set; }
@@ -412,14 +412,14 @@ public class DaprWorkflowClientTests
             return Task.FromResult(PurgeResult);
         }
 
-        public override Task<WorkflowInstancePage> ListInstanceIDsAsync(
+        public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
             string? continuationToken = null,
             int? pageSize = null,
             CancellationToken cancellationToken = default)
         {
             LastListContinuationToken = continuationToken;
             LastListPageSize = pageSize;
-            return Task.FromResult(ListInstanceIDsResult);
+            return Task.FromResult(ListInstanceIdsResult);
         }
 
         public override Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(

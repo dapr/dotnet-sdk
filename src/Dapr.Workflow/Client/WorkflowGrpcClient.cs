@@ -227,7 +227,7 @@ internal sealed class WorkflowGrpcClient(
     }
 
     /// <inheritdoc />
-    public override async Task<WorkflowInstancePage> ListInstanceIDsAsync(
+    public override async Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
         CancellationToken cancellationToken = default)
@@ -248,7 +248,7 @@ internal sealed class WorkflowGrpcClient(
         var grpcCallOptions = CreateCallOptions(cancellationToken);
         var response = await grpcClient.ListInstanceIDsAsync(request, grpcCallOptions);
 
-        logger.LogListInstanceIDs(response.InstanceIds.Count);
+        logger.LogListInstanceIds(response.InstanceIds.Count);
 
         return new WorkflowInstancePage(
             response.InstanceIds.ToList().AsReadOnly(),
@@ -288,6 +288,13 @@ internal sealed class WorkflowGrpcClient(
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(sourceInstanceId);
+
+        if (options is { Input: not null, OverwriteInput: false })
+        {
+            throw new ArgumentException(
+                $"{nameof(RerunWorkflowFromEventOptions.OverwriteInput)} must be true when {nameof(RerunWorkflowFromEventOptions.Input)} is set.",
+                nameof(options));
+        }
 
         var request = new grpc.RerunWorkflowFromEventRequest
         {

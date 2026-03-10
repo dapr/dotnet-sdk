@@ -329,7 +329,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <returns>
     /// A page containing the instance IDs and an optional continuation token for the next page.
     /// </returns>
-    public async Task<WorkflowInstancePage> ListInstanceIDsAsync(
+    public async Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
         CancellationToken cancellation = default)
@@ -339,7 +339,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize.Value);
         }
 
-        return await _innerClient.ListInstanceIDsAsync(continuationToken, pageSize, cancellation);
+        return await _innerClient.ListInstanceIdsAsync(continuationToken, pageSize, cancellation);
     }
 
     /// <summary>

@@ -14,7 +14,7 @@
 namespace Dapr.Workflow.Client;
 
 /// <summary>
-/// Options for the <see cref="IDaprWorkflowClient.RerunWorkflowFromEventAsync"/> operation.
+/// Options for the <see cref="Dapr.Workflow.IDaprWorkflowClient.RerunWorkflowFromEventAsync"/> operation.
 /// </summary>
 public sealed class RerunWorkflowFromEventOptions
 {

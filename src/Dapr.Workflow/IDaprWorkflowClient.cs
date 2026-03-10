@@ -249,7 +249,7 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// <returns>
     /// A page containing the instance IDs and an optional continuation token for the next page.
     /// </returns>
-    Task<WorkflowInstancePage> ListInstanceIDsAsync(
+    Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
         CancellationToken cancellation = default);

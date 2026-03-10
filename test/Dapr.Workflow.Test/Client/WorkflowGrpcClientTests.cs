@@ -359,7 +359,7 @@ public class WorkflowGrpcClientTests
     }
 
     [Fact]
-    public async Task ListInstanceIDsAsync_ShouldSendRequestAndReturnPage()
+    public async Task ListInstanceIdsAsync_ShouldSendRequestAndReturnPage()
     {
         var serializer = new StubSerializer();
         ListInstanceIDsRequest? captured = null;
@@ -376,7 +376,7 @@ public class WorkflowGrpcClientTests
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.ListInstanceIDsAsync(continuationToken: "prev-token", pageSize: 3);
+        var result = await client.ListInstanceIdsAsync(continuationToken: "prev-token", pageSize: 3);
 
         Assert.NotNull(captured);
         Assert.Equal("prev-token", captured!.ContinuationToken);
@@ -387,7 +387,7 @@ public class WorkflowGrpcClientTests
     }
 
     [Fact]
-    public async Task ListInstanceIDsAsync_ShouldReturnNullContinuationToken_WhenNoneInResponse()
+    public async Task ListInstanceIdsAsync_ShouldReturnNullContinuationToken_WhenNoneInResponse()
     {
         var serializer = new StubSerializer();
 
@@ -401,7 +401,7 @@ public class WorkflowGrpcClientTests
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.ListInstanceIDsAsync();
+        var result = await client.ListInstanceIdsAsync();
 
         Assert.Single(result.InstanceIds);
         Assert.Null(result.ContinuationToken);

@@ -190,7 +190,7 @@ internal abstract class WorkflowClient : IAsyncDisposable
     /// <param name="pageSize">The maximum number of instance IDs to return, or <c>null</c> for no limit.</param>
     /// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
     /// <returns>A page of instance IDs and an optional continuation token for the next page.</returns>
-    public abstract Task<WorkflowInstancePage> ListInstanceIDsAsync(
+    public abstract Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
         CancellationToken cancellationToken = default);

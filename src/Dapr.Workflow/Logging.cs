@@ -237,7 +237,7 @@ internal static partial class Logging
     public static partial void LogWorkflowWorkerOrchestratorStall(this ILogger logger, string instanceId);
 
     [LoggerMessage(LogLevel.Debug, "Listed workflow instance IDs: {Count} instance(s) returned")]
-    public static partial void LogListInstanceIDs(this ILogger logger, int count);
+    public static partial void LogListInstanceIds(this ILogger logger, int count);
 
     [LoggerMessage(LogLevel.Debug, "Retrieved history for workflow '{InstanceId}': {EventCount} event(s)")]
     public static partial void LogGetInstanceHistory(this ILogger logger, string instanceId, int eventCount);
