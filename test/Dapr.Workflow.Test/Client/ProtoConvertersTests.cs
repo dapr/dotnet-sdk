@@ -163,4 +163,66 @@ public class ProtoConvertersTests
 
         Assert.Equal(WorkflowRuntimeStatus.ContinuedAsNew, metadata.RuntimeStatus);
     }
+
+    [Theory]
+    [InlineData(HistoryEvent.EventTypeOneofCase.ExecutionStarted, WorkflowHistoryEventType.ExecutionStarted)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.ExecutionCompleted, WorkflowHistoryEventType.ExecutionCompleted)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.ExecutionTerminated, WorkflowHistoryEventType.ExecutionTerminated)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.TaskScheduled, WorkflowHistoryEventType.TaskScheduled)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.TaskCompleted, WorkflowHistoryEventType.TaskCompleted)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.TaskFailed, WorkflowHistoryEventType.TaskFailed)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.TimerCreated, WorkflowHistoryEventType.TimerCreated)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.TimerFired, WorkflowHistoryEventType.TimerFired)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.EventRaised, WorkflowHistoryEventType.EventRaised)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.ExecutionSuspended, WorkflowHistoryEventType.ExecutionSuspended)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.ExecutionResumed, WorkflowHistoryEventType.ExecutionResumed)]
+    public void ToHistoryEventType_ShouldMapKnownEventTypes(
+        HistoryEvent.EventTypeOneofCase protoEventType,
+        WorkflowHistoryEventType expected)
+    {
+        var actual = ProtoConverters.ToHistoryEventType(protoEventType);
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void ToHistoryEventType_ShouldReturnUnknown_WhenEventTypeIsNone()
+    {
+        var actual = ProtoConverters.ToHistoryEventType(HistoryEvent.EventTypeOneofCase.None);
+
+        Assert.Equal(WorkflowHistoryEventType.Unknown, actual);
+    }
+
+    [Fact]
+    public void ToWorkflowHistoryEvent_ShouldMapAllFields()
+    {
+        var timestamp = Timestamp.FromDateTime(new DateTime(2025, 6, 15, 10, 30, 0, DateTimeKind.Utc));
+
+        var protoEvent = new HistoryEvent
+        {
+            EventId = 42,
+            Timestamp = timestamp,
+            ExecutionStarted = new ExecutionStartedEvent { Name = "MyWorkflow" }
+        };
+
+        var result = ProtoConverters.ToWorkflowHistoryEvent(protoEvent);
+
+        Assert.Equal(42, result.EventId);
+        Assert.Equal(WorkflowHistoryEventType.ExecutionStarted, result.EventType);
+        Assert.Equal(new DateTime(2025, 6, 15, 10, 30, 0, DateTimeKind.Utc), result.Timestamp);
+    }
+
+    [Fact]
+    public void ToWorkflowHistoryEvent_ShouldUseMinValue_WhenTimestampIsNull()
+    {
+        var protoEvent = new HistoryEvent
+        {
+            EventId = 1,
+            TaskScheduled = new TaskScheduledEvent { Name = "MyActivity" }
+        };
+
+        var result = ProtoConverters.ToWorkflowHistoryEvent(protoEvent);
+
+        Assert.Equal(DateTime.MinValue, result.Timestamp);
+    }
 }
