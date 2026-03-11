@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
@@ -77,8 +78,23 @@ internal sealed class GrpcProtocolHandler(
 
                 _logger.LogGrpcProtocolHandlerStreamEstablished();
 
-                // Process work items from the stream
-                await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+                // Start the background keepalive loop to keep the connection alive
+                using var keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                var keepaliveTask = KeepaliveLoopAsync(keepaliveCts.Token);
+
+                try
+                {
+                    // Process work items from the stream
+                    await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+                }
+                finally
+                {
+                    // Stop the keepalive loop when the receive loop ends (reconnect or shutdown)
+                    await keepaliveCts.CancelAsync();
+                    try { await keepaliveTask; }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex) { _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex); }
+                }
 
                 // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
                 if (!token.IsCancellationRequested)
@@ -321,6 +337,26 @@ internal sealed class GrpcProtocolHandler(
                 }
             }
         };
+
+    /// <summary>
+    /// Periodically calls Hello on the sidecar to prevent idle HTTP/2 connections from being
+    /// closed by intermediary load balancers (e.g. AWS ALB).
+    /// </summary>
+    private async Task KeepaliveLoopAsync(CancellationToken cancellation)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        while (await timer.WaitForNextTickAsync(cancellation))
+        {
+            try
+            {
+                await _grpcClient.HelloAsync(new Empty(), CreateCallOptions(cancellation));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex);
+            }
+        }
+    }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
