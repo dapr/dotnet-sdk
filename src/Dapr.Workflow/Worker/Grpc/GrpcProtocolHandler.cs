@@ -34,6 +34,7 @@ internal sealed class GrpcProtocolHandler(
     string? daprApiToken = null) : IAsyncDisposable
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
     
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -68,6 +69,9 @@ internal sealed class GrpcProtocolHandler(
 
         while (!token.IsCancellationRequested)
         {
+            CancellationTokenSource? keepaliveCts = null;
+            Task? keepaliveTask = null;
+
             try
             {
                 _logger.LogGrpcProtocolHandlerStartStream();
@@ -79,22 +83,11 @@ internal sealed class GrpcProtocolHandler(
                 _logger.LogGrpcProtocolHandlerStreamEstablished();
 
                 // Start the background keepalive loop to keep the connection alive
-                using var keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                var keepaliveTask = KeepaliveLoopAsync(keepaliveCts.Token);
+                keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                keepaliveTask = KeepaliveLoopAsync(keepaliveCts.Token);
 
-                try
-                {
-                    // Process work items from the stream
-                    await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
-                }
-                finally
-                {
-                    // Stop the keepalive loop when the receive loop ends (reconnect or shutdown)
-                    await keepaliveCts.CancelAsync();
-                    try { await keepaliveTask; }
-                    catch (OperationCanceledException) { }
-                    catch (Exception ex) { _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex); }
-                }
+                // Process work items from the stream
+                await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
 
                 // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
                 if (!token.IsCancellationRequested)
@@ -126,6 +119,18 @@ internal sealed class GrpcProtocolHandler(
             }
             finally
             {
+                // Stop the keepalive loop when the receive loop ends (reconnect or shutdown).
+                // This runs after catch filters evaluate, avoiding a race where teardown delay
+                // allows external cancellation to change filter outcomes.
+                if (keepaliveCts != null)
+                {
+                    await keepaliveCts.CancelAsync();
+                    try { await keepaliveTask!; }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex) { _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex); }
+                    keepaliveCts.Dispose();
+                }
+
                 _streamingCall?.Dispose();
                 _streamingCall = null;
             }
@@ -344,7 +349,7 @@ internal sealed class GrpcProtocolHandler(
     /// </summary>
     private async Task KeepaliveLoopAsync(CancellationToken cancellation)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        using var timer = new PeriodicTimer(KeepaliveInterval);
         while (await timer.WaitForNextTickAsync(cancellation))
         {
             try
