@@ -61,8 +61,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly Dictionary<string, HistoryEvent> _unmatchedCompletionsByExecutionId = new(StringComparer.Ordinal);
 
 
-    // Parse instance ID as GUID or generate one
+    // Parse execution/instance ID as GUID or derive a deterministic namespace from the ID
     private readonly Guid _instanceGuid;
+    private static readonly Guid InstanceIdNamespace = new("6f927a2e-9c7e-4a1d-9b8d-7a86f2e7f62f");
 
     private readonly string? _appId;
     private int _sequenceNumber;
@@ -73,13 +74,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private bool _turnInitialized;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
-        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker, string? appId = null)
+        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
+        string? appId = null, string? executionId = null)
     {
         _workflowSerializer = workflowSerializer;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
                   throw new ArgumentNullException(nameof(loggerFactory));
-        _instanceGuid = Guid.TryParse(instanceId, out var guid) ? guid : Guid.NewGuid();
+        var guidSeed = !string.IsNullOrWhiteSpace(executionId) ? executionId : instanceId;
+        _instanceGuid = Guid.TryParse(guidSeed, out var guid)
+            ? guid
+            : CreateGuidFromName(InstanceIdNamespace, Encoding.UTF8.GetBytes(guidSeed));
         Name = name;
         InstanceId = instanceId;
         _currentUtcDateTime = currentUtcDateTime;
@@ -334,9 +339,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override Guid NewGuid()
     {
-        // Create deterministic Guid based on instance ID and counter
         var guidCounter = _guidCounter++;
-        var name = $"{InstanceId}_{guidCounter}"; // Stable name
+        var name = $"{InstanceId}_{guidCounter}"; // Stable per execution and replay
         return CreateGuidFromName(_instanceGuid, Encoding.UTF8.GetBytes(name));
     }
 

@@ -132,7 +132,7 @@ public static class WorkflowServiceCollectionExtensions
     /// <param name="configure">Optional configuration for the workflow client (e.g., setting gRPC/HTTP endpoints).</param>
     /// <param name="lifetime">The lifetime of the registered services.</param>
     /// <returns>A builder for additional workflow configuration.</returns>
-    public static DaprWorkflowBuilder AddDaprWorkflowClient(
+    internal static DaprWorkflowBuilder AddDaprWorkflowClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprWorkflowClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
@@ -197,10 +197,12 @@ public static class WorkflowServiceCollectionExtensions
         serviceCollection.TryAddSingleton<WorkflowClient>(sp =>
         {
             var grpcClient = sp.GetRequiredService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
+            var configuration = sp.GetService<IConfiguration>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
             var serializer = sp.GetRequiredService<IWorkflowSerializer>();
-            return new WorkflowGrpcClient(grpcClient, logger, serializer);
+            var daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
+            return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken);
         });
 
         // Register gRPC client for communicating with Dapr sidecar

@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -128,14 +128,14 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var completedTcs = CreateTcs<OrchestratorResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<OrchestratorResponse, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => completedTcs.TrySetResult(r))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
+            .Callback<OrchestratorResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -172,14 +172,14 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var completedTcs = CreateTcs<ActivityResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<ActivityResponse, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => completedTcs.TrySetResult(r))
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -218,14 +218,14 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var completedTcs = CreateTcs<OrchestratorResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<OrchestratorResponse, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => completedTcs.TrySetResult(r))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
+            .Callback<OrchestratorResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -265,8 +265,8 @@ public sealed class GrpcProtocolHandlerTests
         GetWorkItemsRequest? captured = null;
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetWorkItemsRequest r, Metadata? _, DateTime? __, CancellationToken ___) =>
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns((GetWorkItemsRequest r, CallOptions _) =>
             {
                 captured = r;
                 return CreateServerStreamingCall(Array.Empty<WorkItem>());
@@ -296,7 +296,7 @@ public sealed class GrpcProtocolHandlerTests
         var grpcClientMock = CreateGrpcClientMock();
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Throws(new RpcException(new Status(StatusCode.Cancelled, "cancelled")));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -313,7 +313,7 @@ public sealed class GrpcProtocolHandlerTests
 
         // Since we were already canceled, we shouldn't even attempt to connect.
         grpcClientMock.Verify(
-            x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()),
+            x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()),
             Times.Never());
     }
 
@@ -336,14 +336,14 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var sentTcs = CreateTcs<ActivityResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<ActivityResponse, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => sentTcs.TrySetResult(r))
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((r, _) => sentTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -383,13 +383,13 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var completeAttempted = false;
 
         grpcClientMock
-            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
             .Callback(() => completeAttempted = true)
             .Throws(new RpcException(new Status(StatusCode.Unavailable, "nope")));
 
@@ -424,14 +424,14 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var sentTcs = CreateTcs<ActivityResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<ActivityResponse, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => sentTcs.TrySetResult(r))
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((r, _) => sentTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -469,11 +469,11 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCallIgnoringCancellation(workItems));
 
         grpcClientMock
-            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -492,7 +492,7 @@ public sealed class GrpcProtocolHandlerTests
             cancellationToken: cts.Token);
 
         grpcClientMock.Verify(
-            x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), null, null, It.IsAny<CancellationToken>()),
+            x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()),
             Times.Never());
     }
 
@@ -510,11 +510,11 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCallIgnoringCancellation(workItems));
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -532,7 +532,7 @@ public sealed class GrpcProtocolHandlerTests
             cancellationToken: cts.Token);
 
         grpcClientMock.Verify(
-            x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), null, null, It.IsAny<CancellationToken>()),
+            x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()),
             Times.Never());
     }
 
@@ -551,12 +551,12 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var completedCount = 0;
         grpcClientMock
-            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
             .Callback(() => Interlocked.Increment(ref completedCount))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
@@ -595,13 +595,13 @@ public sealed class GrpcProtocolHandlerTests
         };
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
         var completeAttempted = false;
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
             .Callback(() => completeAttempted = true)
             .Throws(new RpcException(new Status(StatusCode.Unavailable, "nope")));
 
@@ -630,7 +630,7 @@ public sealed class GrpcProtocolHandlerTests
         var getWorkItemsCalled = false;
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => getWorkItemsCalled = true)
             .Returns(CreateServerStreamingCall(workItems));
 
@@ -654,7 +654,7 @@ public sealed class GrpcProtocolHandlerTests
         var getWorkItemsCalls = 0;
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => Interlocked.Increment(ref getWorkItemsCalls))
             .Returns(CreateServerStreamingCallFromReader(
                 new ThrowingAsyncStreamReader(new InvalidOperationException("boom"))));
@@ -683,7 +683,7 @@ public sealed class GrpcProtocolHandlerTests
         var getWorkItemsCalls = 0;
 
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => Interlocked.Increment(ref getWorkItemsCalls))
             .Returns(CreateServerStreamingCallFromReader(reader));
 

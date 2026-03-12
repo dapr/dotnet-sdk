@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,7 +138,7 @@ public class WorkflowWorkerTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => startedTcs.TrySetResult())
             .Returns(CreateServerStreamingCall(EmptyWorkItems()));
 
@@ -253,6 +253,88 @@ public class WorkflowWorkerTests
         Assert.NotEqual(OrchestrationStatus.Terminated, action.CompleteOrchestration!.OrchestrationStatus);
         Assert.Equal(OrchestrationStatus.Failed, action.CompleteOrchestration.OrchestrationStatus);
     }
+    
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnEmptyResponse_WhenLatestEventIsExecutionSuspended()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf-not-registered", Input = "" }
+                }
+            },
+            NewEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionSuspended = new ExecutionSuspendedEvent()
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        Assert.Empty(response.Actions);
+    }
+    
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldNotShortCircuit_WhenLatestEventIsExecutionResumed()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf-not-registered", Input = "" }
+                }
+            },
+            NewEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionResumed = new ExecutionResumedEvent()
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var action = Assert.Single(response.Actions);
+        Assert.NotNull(action.CompleteOrchestration);
+        Assert.Equal(OrchestrationStatus.Failed, action.CompleteOrchestration!.OrchestrationStatus);
+    }
 
     [Fact]
     public async Task ExecuteAsync_ShouldSwallowOperationCanceledException_WhenStoppingTokenIsCanceled()
@@ -265,10 +347,10 @@ public class WorkflowWorkerTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetWorkItemsRequest _, Metadata? _, DateTime? _, CancellationToken ct) =>
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns((GetWorkItemsRequest _, CallOptions options) =>
             {
-                ct.ThrowIfCancellationRequested();
+                options.CancellationToken.ThrowIfCancellationRequested();
                 return CreateServerStreamingCall(EmptyWorkItems());
             });
 
@@ -923,7 +1005,7 @@ public class WorkflowWorkerTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => attemptedTcs.TrySetResult())
             .Throws(new InvalidOperationException("boom"));
 
@@ -946,7 +1028,7 @@ public class WorkflowWorkerTests
         await executeTask;
 
         grpcClientMock.Verify(
-            x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), null, null, It.IsAny<CancellationToken>()),
+            x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()),
             Times.AtLeastOnce());
     }
 
