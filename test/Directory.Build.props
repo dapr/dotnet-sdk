@@ -9,6 +9,8 @@
 
     <IsPackable>false</IsPackable>
     <NoWarn>$(NoWarn);DAPR_CONVERSATION;DAPR_JOBS;DAPR_DISTRIBUTEDLOCK;DAPR_CRYPTOGRAPHY</NoWarn>
+    <!-- Test assemblies don't need strong names; avoid unsigned dependency errors. -->
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
   <!-- Used to annotate PR with test failures: https://github.com/Tyrrrz/GitHubActionsTestLogger -->

@@ -39,8 +39,8 @@ public sealed class CombinedVersioningIntegrationTests
         var componentsDirV1 = TestDirectoryManager.CreateTestDirectory("workflow-versioning-combined-v1");
         var componentsDirV2 = TestDirectoryManager.CreateTestDirectory("workflow-versioning-combined-v2");
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         await using (var appV1 =
                      await StartVersionedAppAsync(componentsDirV1, _ => new MinVersionSelector(), environment, options))
@@ -60,7 +60,7 @@ public sealed class CombinedVersioningIntegrationTests
                 }
                 catch (OperationCanceledException)
                 {
-                    var state = await client1.GetWorkflowStateAsync(instanceIdV1, getInputsAndOutputs: false);
+                    var state = await client1.GetWorkflowStateAsync(instanceIdV1, getInputsAndOutputs: false, cancellation: startCts.Token);
                     Assert.Fail($"Timed out waiting for workflow start. Current status: {state?.RuntimeStatus}.");
                 }
             }
@@ -75,14 +75,14 @@ public sealed class CombinedVersioningIntegrationTests
             var latestNameV2 = GetLatestWorkflowName(scope2.ServiceProvider);
             Assert.Equal(nameof(CombinedWorkflowV2), latestNameV2);
 
-            await client2.RaiseEventAsync(instanceIdV1, ResumeEventName, "resume");
+            await client2.RaiseEventAsync(instanceIdV1, ResumeEventName, "resume", TestContext.Current.CancellationToken);
             using var resumeCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var resumed = await client2.WaitForWorkflowCompletionAsync(instanceIdV1, cancellation: resumeCts.Token);
             Assert.Equal(WorkflowRuntimeStatus.Completed, resumed.RuntimeStatus);
             Assert.Equal("v1:6:resume", resumed.ReadOutputAs<string>());
 
             await client2.ScheduleNewWorkflowAsync(latestNameV2, instanceIdV2, 5);
-            await client2.RaiseEventAsync(instanceIdV2, ResumeEventName, "resume");
+            await client2.RaiseEventAsync(instanceIdV2, ResumeEventName, "resume", resumeCts.Token);
             using var latestCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var latest = await client2.WaitForWorkflowCompletionAsync(instanceIdV2, cancellation: latestCts.Token);
             Assert.Equal(WorkflowRuntimeStatus.Completed, latest.RuntimeStatus);

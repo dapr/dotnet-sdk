@@ -27,8 +27,8 @@ public sealed class TaskExecutionKeyTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
         
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -58,7 +58,7 @@ public sealed class TaskExecutionKeyTests
         
         // Start the workflow
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(GetTaskExecutionKeyWorkflow), workflowInstanceId, "start");
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true, TestContext.Current.CancellationToken);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         

@@ -30,8 +30,8 @@ public sealed class JobManagementTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"get-job-{Guid.NewGuid():N}";
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -59,11 +59,10 @@ public sealed class JobManagementTests
         var payload = "Test Payload"u8.ToArray();
         var schedule = DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(10));
         var startingFrom = DateTimeOffset.UtcNow.AddMinutes(1);
-        await daprJobsClient.ScheduleJobAsync(jobName, schedule, payload, startingFrom: startingFrom,
-            repeats: 10, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, schedule, payload, startingFrom: startingFrom, repeats: 10, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
         var expected = startingFrom.ToLocalTime();
 
-        var jobDetails = await daprJobsClient.GetJobAsync(jobName);
+        var jobDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
 
         Assert.NotNull(jobDetails);
         Assert.Equal(expected.ToString("O"), jobDetails.Schedule.ExpressionValue);
@@ -78,8 +77,8 @@ public sealed class JobManagementTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"delete-job-{Guid.NewGuid():N}";
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -104,16 +103,15 @@ public sealed class JobManagementTests
         using var scope = testApp.CreateScope();
         var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
 
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromHours(1)),
-            overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromHours(1)), overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var jobDetails = await daprJobsClient.GetJobAsync(jobName);
+        var jobDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
         Assert.NotNull(jobDetails);
 
-        await daprJobsClient.DeleteJobAsync(jobName);
+        await daprJobsClient.DeleteJobAsync(jobName, TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<DaprException>(async () => 
-            await daprJobsClient.GetJobAsync(jobName));
+            await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -122,8 +120,8 @@ public sealed class JobManagementTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"overwrite-job-{Guid.NewGuid():N}";
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -149,21 +147,19 @@ public sealed class JobManagementTests
         var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
 
         var originalPayload = "Original"u8.ToArray();
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromHours(1)),
-            originalPayload, repeats: 5, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromHours(1)), originalPayload, repeats: 5, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var originalDetails = await daprJobsClient.GetJobAsync(jobName);
+        var originalDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
         Assert.Equal(5, originalDetails.RepeatCount);
 
         var newPayload = "Updated"u8.ToArray();
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromMinutes(30)),
-            newPayload, repeats: 10, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromMinutes(30)), newPayload, repeats: 10, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var updatedDetails = await daprJobsClient.GetJobAsync(jobName);
+        var updatedDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
         Assert.Equal(10, updatedDetails.RepeatCount);
         Assert.Equal(Encoding.UTF8.GetString(newPayload), Encoding.UTF8.GetString(updatedDetails.Payload!));
         
-        await daprJobsClient.DeleteJobAsync(jobName);
+        await daprJobsClient.DeleteJobAsync(jobName, TestContext.Current.CancellationToken);
     }
     
     [Fact]
@@ -172,8 +168,8 @@ public sealed class JobManagementTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
         var jobName = $"ttl-job-{Guid.NewGuid():N}";
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -201,13 +197,12 @@ public sealed class JobManagementTests
         var startTime = DateTimeOffset.UtcNow.AddSeconds(2);
         var ttl = DateTimeOffset.UtcNow.AddMinutes(5);
 
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(1)),
-            startingFrom: startTime, ttl: ttl, repeats: 100, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(1)), startingFrom: startTime, ttl: ttl, repeats: 100, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var jobDetails = await daprJobsClient.GetJobAsync(jobName);
+        var jobDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
         Assert.NotNull(jobDetails);
         Assert.NotNull(jobDetails.Ttl);
         
-        await daprJobsClient.DeleteJobAsync(jobName);
+        await daprJobsClient.DeleteJobAsync(jobName, TestContext.Current.CancellationToken);
     }
 }
