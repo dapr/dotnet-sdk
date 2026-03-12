@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -181,6 +182,42 @@ internal abstract class WorkflowClient : IAsyncDisposable
     /// be <c>true</c> if the workflow state was found and purged successfully; otherwise it will return
     /// <c>false</c>.</returns>
     public abstract Task<bool> PurgeInstanceAsync(string instanceId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists workflow instance IDs with optional pagination.
+    /// </summary>
+    /// <param name="continuationToken">The continuation token from a previous call, or <c>null</c> for the first page.</param>
+    /// <param name="pageSize">The maximum number of instance IDs to return, or <c>null</c> for no limit.</param>
+    /// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
+    /// <returns>A page of instance IDs and an optional continuation token for the next page.</returns>
+    public abstract Task<WorkflowInstancePage> ListInstanceIdsAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the full history of a workflow instance.
+    /// </summary>
+    /// <param name="instanceId">The instance ID of the workflow to get history for.</param>
+    /// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
+    /// <returns>The list of history events for the workflow instance.</returns>
+    public abstract Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(
+        string instanceId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reruns a workflow from a specific event ID, creating a new workflow instance.
+    /// </summary>
+    /// <param name="sourceInstanceId">The instance ID of the source workflow to rerun from.</param>
+    /// <param name="eventId">The event ID to rerun from.</param>
+    /// <param name="options">Optional configuration for the rerun operation.</param>
+    /// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
+    /// <returns>The instance ID of the new workflow instance.</returns>
+    public abstract Task<string> RerunWorkflowFromEventAsync(
+        string sourceInstanceId,
+        uint eventId,
+        RerunWorkflowFromEventOptions? options = null,
+        CancellationToken cancellationToken = default);
 
     /// <inheritdoc />
     public abstract ValueTask DisposeAsync();

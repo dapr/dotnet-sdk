@@ -12,6 +12,8 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
@@ -222,6 +224,101 @@ internal sealed class WorkflowGrpcClient(
         }
 
         return purged;
+    }
+
+    /// <inheritdoc />
+    public override async Task<WorkflowInstancePage> ListInstanceIdsAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new grpc.ListInstanceIDsRequest();
+
+        if (continuationToken is not null)
+        {
+            request.ContinuationToken = continuationToken;
+        }
+
+        if (pageSize.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(pageSize.Value, 0, nameof(pageSize));
+            request.PageSize = (uint)pageSize.Value;
+        }
+
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        var response = await grpcClient.ListInstanceIDsAsync(request, grpcCallOptions);
+
+        logger.LogListInstanceIds(response.InstanceIds.Count);
+
+        return new WorkflowInstancePage(
+            response.InstanceIds.ToList().AsReadOnly(),
+            response.HasContinuationToken ? response.ContinuationToken : null);
+    }
+
+    /// <inheritdoc />
+    public override async Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(
+        string instanceId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+
+        var request = new grpc.GetInstanceHistoryRequest
+        {
+            InstanceId = instanceId
+        };
+
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        var response = await grpcClient.GetInstanceHistoryAsync(request, grpcCallOptions);
+
+        var events = response.Events
+            .Select(ProtoConverters.ToWorkflowHistoryEvent)
+            .ToList()
+            .AsReadOnly();
+
+        logger.LogGetInstanceHistory(instanceId, events.Count);
+
+        return events;
+    }
+
+    /// <inheritdoc />
+    public override async Task<string> RerunWorkflowFromEventAsync(
+        string sourceInstanceId,
+        uint eventId,
+        RerunWorkflowFromEventOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceInstanceId);
+
+        if (options is { Input: not null, OverwriteInput: false })
+        {
+            throw new ArgumentException(
+                $"{nameof(RerunWorkflowFromEventOptions.OverwriteInput)} must be true when {nameof(RerunWorkflowFromEventOptions.Input)} is set.",
+                nameof(options));
+        }
+
+        var request = new grpc.RerunWorkflowFromEventRequest
+        {
+            SourceInstanceID = sourceInstanceId,
+            EventID = eventId,
+            OverwriteInput = options?.OverwriteInput ?? false
+        };
+
+        if (options?.NewInstanceId is not null)
+        {
+            request.NewInstanceID = options.NewInstanceId;
+        }
+
+        if (options is { OverwriteInput: true })
+        {
+            request.Input = SerializeToJson(options.Input);
+        }
+
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        var response = await grpcClient.RerunWorkflowFromEventAsync(request, grpcCallOptions);
+
+        logger.LogRerunWorkflowFromEvent(sourceInstanceId, eventId, response.NewInstanceID);
+
+        return response.NewInstanceID;
     }
 
     /// <inheritdoc />

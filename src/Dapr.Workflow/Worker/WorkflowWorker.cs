@@ -113,10 +113,10 @@ internal sealed class WorkflowWorker(
                 }
             }
             
-            //If the most recent event is `ExecutionTerminated`, acknowledge termination immediately
+            // If the most recent event is `ExecutionTerminated`, acknowledge termination immediately.
             var timelineEvents = allPastEvents.Concat(request.NewEvents).ToList();
             var latestEvent = timelineEvents.Count > 0 ? timelineEvents[^1] : null;
-
+            
             if (latestEvent?.ExecutionTerminated != null)
             {
                 return new OrchestratorResponse
@@ -133,6 +133,17 @@ internal sealed class WorkflowWorker(
                             }
                         }
                     }
+                };
+            }
+
+            // If the instance is suspended, acknowledge the work item without running the orchestrator.
+            // This keeps the workflow paused while still committing the suspension event.
+            if (latestEvent?.ExecutionSuspended != null)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken
                 };
             }
             

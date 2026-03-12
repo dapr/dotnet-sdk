@@ -235,4 +235,13 @@ internal static partial class Logging
 
     [LoggerMessage(LogLevel.Debug, "Potential stall: Instance {InstanceId} yielded but scheduled 0 new actions and matched 0 history events")]
     public static partial void LogWorkflowWorkerOrchestratorStall(this ILogger logger, string instanceId);
+
+    [LoggerMessage(LogLevel.Debug, "Listed workflow instance IDs: {Count} instance(s) returned")]
+    public static partial void LogListInstanceIds(this ILogger logger, int count);
+
+    [LoggerMessage(LogLevel.Debug, "Retrieved history for workflow '{InstanceId}': {EventCount} event(s)")]
+    public static partial void LogGetInstanceHistory(this ILogger logger, string instanceId, int eventCount);
+
+    [LoggerMessage(LogLevel.Information, "Rerun workflow from event: source='{SourceInstanceId}', eventId={EventId}, newInstanceId='{NewInstanceId}'")]
+    public static partial void LogRerunWorkflowFromEvent(this ILogger logger, string sourceInstanceId, uint eventId, string newInstanceId);
 }

@@ -1,5 +1,5 @@
-﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// ------------------------------------------------------------------------
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,19 +14,19 @@
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
+using Dapr.Workflow.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.Workflow;
 
-public sealed class PauseResumeTests
+public sealed class WorkflowRpcTests
 {
     [Fact]
-    public async Task ShouldReportPausedStatusWhenWorkflowIsSuspended()
+    public async Task ListInstanceIds_ShouldReturnScheduledWorkflowInstances()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
-        var workflowInstanceId = Guid.NewGuid().ToString();
-        
+
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
@@ -37,7 +37,7 @@ public sealed class PauseResumeTests
             .ConfigureServices(builder =>
             {
                 builder.Services.AddDaprWorkflowBuilder(
-                    opt => opt.RegisterWorkflow<WaitingWorkflow>(),
+                    opt => opt.RegisterWorkflow<SimpleWorkflow>(),
                     configureClient: (sp, cb) =>
                     {
                         var config = sp.GetRequiredService<IConfiguration>();
@@ -49,26 +49,25 @@ public sealed class PauseResumeTests
             .BuildAndStartAsync();
 
         using var scope = testApp.CreateScope();
-        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+        var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
-        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(WaitingWorkflow), workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        // Schedule a workflow and wait for completion
+        var instanceId = Guid.NewGuid().ToString();
+        await client.ScheduleNewWorkflowAsync(nameof(SimpleWorkflow), instanceId, "hello");
+        await client.WaitForWorkflowCompletionAsync(instanceId);
 
-        // Pause the workflow
-        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        // List instance IDs and verify our workflow appears
+        var page = await client.ListInstanceIdsAsync();
 
-        var pausedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
-        Assert.NotNull(pausedState);
-        Assert.Equal(WorkflowRuntimeStatus.Suspended, pausedState.RuntimeStatus);
+        Assert.NotNull(page);
+        Assert.Contains(instanceId, page.InstanceIds);
     }
 
     [Fact]
-    public async Task ShouldPauseAndResumeWorkflow()
+    public async Task GetInstanceHistory_ShouldReturnHistoryForCompletedWorkflow()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
-        var workflowInstanceId = Guid.NewGuid().ToString();
-        
+
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
         await environment.StartAsync();
 
@@ -79,7 +78,11 @@ public sealed class PauseResumeTests
             .ConfigureServices(builder =>
             {
                 builder.Services.AddDaprWorkflowBuilder(
-                    opt => opt.RegisterWorkflow<WaitingWorkflow>(),
+                    opt =>
+                    {
+                        opt.RegisterWorkflow<WorkflowWithActivity>();
+                        opt.RegisterActivity<EchoActivity>();
+                    },
                     configureClient: (sp, cb) =>
                     {
                         var config = sp.GetRequiredService<IConfiguration>();
@@ -91,34 +94,44 @@ public sealed class PauseResumeTests
             .BuildAndStartAsync();
 
         using var scope = testApp.CreateScope();
-        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+        var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
-        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(WaitingWorkflow), workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        // Schedule a workflow with an activity and wait for completion
+        var instanceId = Guid.NewGuid().ToString();
+        await client.ScheduleNewWorkflowAsync(nameof(WorkflowWithActivity), instanceId, "test-input");
+        var result = await client.WaitForWorkflowCompletionAsync(instanceId);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
 
-        // Pause the workflow
-        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        // Get history and verify it has events
+        var history = await client.GetInstanceHistoryAsync(instanceId);
 
-        var pausedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
-        Assert.NotNull(pausedState);
-        Assert.Equal(WorkflowRuntimeStatus.Suspended, pausedState.RuntimeStatus);
-
-        // Resume the workflow
-        await daprWorkflowClient.ResumeWorkflowAsync(workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
-
-        var resumedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
-        Assert.NotNull(resumedState);
-        Assert.Equal(WorkflowRuntimeStatus.Running, resumedState.RuntimeStatus);
+        Assert.NotNull(history);
+        Assert.NotEmpty(history);
+        // Should contain at least an ExecutionStarted event
+        Assert.Contains(history, e => e.EventType == WorkflowHistoryEventType.ExecutionStarted);
     }
 
-    private sealed class WaitingWorkflow : Workflow<object?, string>
+    private sealed class SimpleWorkflow : Workflow<string, string>
     {
-        public override async Task<string> RunAsync(WorkflowContext context, object? input)
+        public override Task<string> RunAsync(WorkflowContext context, string input)
         {
-            await context.CreateTimer(TimeSpan.FromMinutes(5));
-            return "Completed";
+            return Task.FromResult($"Processed: {input}");
+        }
+    }
+
+    private sealed class WorkflowWithActivity : Workflow<string, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, string input)
+        {
+            return await context.CallActivityAsync<string>(nameof(EchoActivity), input);
+        }
+    }
+
+    private sealed class EchoActivity : WorkflowActivity<string, string>
+    {
+        public override Task<string> RunAsync(WorkflowActivityContext context, string input)
+        {
+            return Task.FromResult($"Echo: {input}");
         }
     }
 }

@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.ObjectModel;
 using Dapr.Workflow.Client;
 
 namespace Dapr.Workflow.Test;
@@ -207,6 +208,71 @@ public class DaprWorkflowClientTests
         Assert.True(inner.DisposeCalled);
     }
 
+    [Fact]
+    public async Task ListInstanceIdsAsync_ShouldForwardToInnerClient()
+    {
+        var expectedPage = new WorkflowInstancePage(
+            new ReadOnlyCollection<string>(new[] { "id1", "id2" }),
+            "next-token");
+        var inner = new CapturingWorkflowClient { ListInstanceIdsResult = expectedPage };
+        var client = new DaprWorkflowClient(inner);
+
+        var result = await client.ListInstanceIdsAsync(continuationToken: "token", pageSize: 10);
+
+        Assert.Equal(expectedPage, result);
+        Assert.Equal("token", inner.LastListContinuationToken);
+        Assert.Equal(10, inner.LastListPageSize);
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetInstanceHistoryAsync(""));
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldForwardToInnerClient()
+    {
+        var events = new ReadOnlyCollection<WorkflowHistoryEvent>(new[]
+        {
+            new WorkflowHistoryEvent(1, WorkflowHistoryEventType.ExecutionStarted, DateTime.MinValue)
+        });
+        var inner = new CapturingWorkflowClient { GetInstanceHistoryResult = events };
+        var client = new DaprWorkflowClient(inner);
+
+        var result = await client.GetInstanceHistoryAsync("i");
+
+        Assert.Single(result);
+        Assert.Equal("i", inner.LastGetHistoryInstanceId);
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldThrowArgumentException_WhenSourceInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RerunWorkflowFromEventAsync("", 1));
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldForwardToInnerClient()
+    {
+        var inner = new CapturingWorkflowClient { RerunWorkflowFromEventResult = "new-id" };
+        var client = new DaprWorkflowClient(inner);
+
+        var options = new RerunWorkflowFromEventOptions { NewInstanceId = "custom-id" };
+        var result = await client.RerunWorkflowFromEventAsync("source-id", 42, options);
+
+        Assert.Equal("new-id", result);
+        Assert.Equal("source-id", inner.LastRerunSourceInstanceId);
+        Assert.Equal(42u, inner.LastRerunEventId);
+        Assert.Equal(options, inner.LastRerunOptions);
+    }
+
     private sealed class CapturingWorkflowClient : WorkflowClient
     {
         public string? LastScheduleName { get; private set; }
@@ -242,6 +308,20 @@ public class DaprWorkflowClientTests
 
         public string? LastPurgeInstanceId { get; private set; }
         public bool PurgeResult { get; set; }
+
+        public string? LastListContinuationToken { get; private set; }
+        public int? LastListPageSize { get; private set; }
+        public WorkflowInstancePage ListInstanceIdsResult { get; set; } =
+            new(new ReadOnlyCollection<string>(Array.Empty<string>()), null);
+
+        public string? LastGetHistoryInstanceId { get; private set; }
+        public IReadOnlyList<WorkflowHistoryEvent> GetInstanceHistoryResult { get; set; } =
+            new ReadOnlyCollection<WorkflowHistoryEvent>(Array.Empty<WorkflowHistoryEvent>());
+
+        public string? LastRerunSourceInstanceId { get; private set; }
+        public uint LastRerunEventId { get; private set; }
+        public RerunWorkflowFromEventOptions? LastRerunOptions { get; private set; }
+        public string RerunWorkflowFromEventResult { get; set; } = "new-id";
 
         public bool DisposeCalled { get; private set; }
 
@@ -330,6 +410,36 @@ public class DaprWorkflowClientTests
         {
             LastPurgeInstanceId = instanceId;
             return Task.FromResult(PurgeResult);
+        }
+
+        public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
+            string? continuationToken = null,
+            int? pageSize = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastListContinuationToken = continuationToken;
+            LastListPageSize = pageSize;
+            return Task.FromResult(ListInstanceIdsResult);
+        }
+
+        public override Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(
+            string instanceId,
+            CancellationToken cancellationToken = default)
+        {
+            LastGetHistoryInstanceId = instanceId;
+            return Task.FromResult(GetInstanceHistoryResult);
+        }
+
+        public override Task<string> RerunWorkflowFromEventAsync(
+            string sourceInstanceId,
+            uint eventId,
+            RerunWorkflowFromEventOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastRerunSourceInstanceId = sourceInstanceId;
+            LastRerunEventId = eventId;
+            LastRerunOptions = options;
+            return Task.FromResult(RerunWorkflowFromEventResult);
         }
 
         public override ValueTask DisposeAsync()
