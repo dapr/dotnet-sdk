@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+﻿﻿﻿// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -949,6 +949,45 @@ public class WorkflowOrchestrationContextTests
             now, serializer, NullLoggerFactory.Instance, tracker);
 
         var c2 = new WorkflowOrchestrationContext("wf", "00000000-0000-0000-0000-000000000001",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var g1 = c1.NewGuid();
+        var g2 = c2.NewGuid();
+
+        Assert.Equal(g1, g2);
+    }
+
+    [Fact]
+    public void NewGuid_ShouldVary_ForDifferentExecutionIds()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var c1 = new WorkflowOrchestrationContext("wf", "same-instance",
+            new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, tracker, executionId: "exec-1");
+
+        var c2 = new WorkflowOrchestrationContext("wf", "same-instance",
+            new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, tracker, executionId: "exec-2");
+
+        var g1 = c1.NewGuid();
+        var g2 = c2.NewGuid();
+
+        Assert.NotEqual(g1, g2);
+    }
+
+    [Fact]
+    public void NewGuid_ShouldBeDeterministic_ForNonGuidInstanceId()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var tracker = new WorkflowVersionTracker([]);
+
+        var c1 = new WorkflowOrchestrationContext("wf", "order-123",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var c2 = new WorkflowOrchestrationContext("wf", "order-123",
             now, serializer, NullLoggerFactory.Instance, tracker);
 
         var g1 = c1.NewGuid();
