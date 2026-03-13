@@ -20,7 +20,7 @@ using Xunit;
 
 namespace Dapr.E2E.Test;
 
-public partial class E2ETests : IAsyncLifetime
+public partial class E2ETests
 {
     [Fact]
     public async Task ActorSuccessfullyClearsStateAfterErrorWithRemoting()
@@ -97,19 +97,19 @@ public partial class E2ETests : IAsyncLifetime
         };
 
         // We attempt to delete it on the unlikely chance it's already there.
-        await proxy.InvokeMethodAsync("RemoveState", throwingCall.Key);
+        await proxy.InvokeMethodAsync("RemoveState", throwingCall.Key, TestContext.Current.CancellationToken);
 
         // Initiate a call that will set the state, then throw.
-        await Assert.ThrowsAsync<DaprApiException>(async () => await proxy.InvokeMethodAsync("SaveState", throwingCall));
+        await Assert.ThrowsAsync<DaprApiException>(async () => await proxy.InvokeMethodAsync("SaveState", throwingCall, TestContext.Current.CancellationToken));
                 
         // Save the state and assert that the old value was not persisted.
-        await proxy.InvokeMethodAsync("SaveState", savingCall);
-        var errorResp = await proxy.InvokeMethodAsync<string, string>("GetState", key);
+        await proxy.InvokeMethodAsync("SaveState", savingCall, TestContext.Current.CancellationToken);
+        var errorResp = await proxy.InvokeMethodAsync<string, string>("GetState", key, TestContext.Current.CancellationToken);
         Assert.Equal(string.Empty, errorResp);
 
         // Persist normally and ensure it works.
-        await proxy.InvokeMethodAsync("SaveState", setCall);
-        var resp = await proxy.InvokeMethodAsync<string, string>("GetState", key);
+        await proxy.InvokeMethodAsync("SaveState", setCall, TestContext.Current.CancellationToken);
+        var resp = await proxy.InvokeMethodAsync<string, string>("GetState", key, TestContext.Current.CancellationToken);
         Assert.Equal("Real value", resp);
     }
 }

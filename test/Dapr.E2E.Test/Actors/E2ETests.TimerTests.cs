@@ -19,7 +19,7 @@ using Dapr.Actors;
 using Dapr.E2E.Test.Actors.Timers;
 using Xunit;
 
-public partial class E2ETests : IAsyncLifetime
+public partial class E2ETests
 {
     [Fact]
     public async Task ActorCanStartAndStopTimer()
@@ -62,7 +62,7 @@ public partial class E2ETests : IAsyncLifetime
 
         // Record the start time and wait for longer than the reminder should exist for.
         var start = DateTime.Now;
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         var state = await proxy.GetState();
 
