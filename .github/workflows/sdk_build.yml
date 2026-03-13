@@ -233,6 +233,7 @@ jobs:
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
           --logger "GitHubActions;report-warnings=false" \
           --results-directory "${{ github.workspace }}/TestResults" \
+          /p:RuntimeIdentifier=linux-x64 \
           /p:CollectCoverage=true \
           /p:CoverletOutputFormat=opencover \
           /p:GITHUB_ACTIONS=false
@@ -298,6 +299,7 @@ jobs:
         --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
         --logger "GitHubActions;report-warnings=false" \
         --results-directory "${{ github.workspace }}/TestResults" \
+        /p:RuntimeIdentifier=linux-x64 \
         /p:CollectCoverage=true \
         /p:CoverletOutputFormat=opencover \
         /p:GITHUB_ACTIONS=false

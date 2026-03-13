@@ -12,8 +12,6 @@
   <PropertyGroup>
       <!-- Required for InternalsVisibleTo with PublicKey in target project -->
       <SignAssembly>true</SignAssembly>
-      <!-- Avoid apphost generation in CI/Linux for test projects -->
-      <UseAppHost>false</UseAppHost>
       <NoWarn>$(NoWarn);CS8002;DAPR_CONVERSATION;DAPR_JOBS;DAPR_DISTRIBUTEDLOCK;DAPR_CRYPTOGRAPHY</NoWarn>
   </PropertyGroup>
 
