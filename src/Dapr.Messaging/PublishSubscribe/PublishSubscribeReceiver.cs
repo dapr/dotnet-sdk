@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Threading.Channels;
+using Dapr;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
@@ -118,18 +119,36 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             return;
         }
 
-        var stream = await GetStreamAsync(cancellationToken);
+        AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1> stream;
+        try
+        {
+            stream = await GetStreamAsync(cancellationToken);
+        }
+        catch (RpcException ex)
+        {
+            // Reset so the caller can retry after the sidecar becomes available
+            Interlocked.Exchange(ref hasInitialized, 0);
+            throw new DaprException(
+                $"Unable to subscribe to topic '{topicName}' on pubsub '{pubSubName}'. The Dapr sidecar may be unavailable.",
+                ex);
+        }
+        catch (Exception)
+        {
+            // Reset so the caller can retry regardless of the exception type
+            Interlocked.Exchange(ref hasInitialized, 0);
+            throw;
+        }
 
         //Retrieve the messages from the sidecar and write to the messages channel - start without awaiting so this isn't blocking
         _ = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken)
-            .ContinueWith(HandleTaskCompletion, null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted,
+            .ContinueWith(HandleTaskCompletion, null, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
 
         //Process the messages as they're written to either channel
         _ = ProcessAcknowledgementChannelMessagesAsync(stream, cancellationToken).ContinueWith(HandleTaskCompletion,
-            null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            null, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
         _ = ProcessTopicChannelMessagesAsync(cancellationToken).ContinueWith(HandleTaskCompletion, null,
-            cancellationToken,
+            CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
 
@@ -149,11 +168,28 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     }
 
     //Exposed for testing purposes only
-    internal static void HandleTaskCompletion(Task task, object? state)
+    internal void HandleTaskCompletion(Task task, object? state)
     {
-        if (task.Exception != null)
+        if (task.Exception is null)
         {
-            throw task.Exception;
+            return;
+        }
+
+        // Allow the caller to retry after a background task failure
+        Interlocked.Exchange(ref hasInitialized, 0);
+
+        var innerException = task.Exception.InnerException ?? task.Exception;
+        var daprException = new DaprException(
+            $"An error occurred during an active subscription to topic '{topicName}' on pubsub '{pubSubName}'.",
+            innerException);
+
+        try
+        {
+            options.ErrorHandler?.Invoke(daprException);
+        }
+        catch (Exception)
+        {
+            // Prevent a faulty error handler from becoming an unobserved task exception
         }
     }
 
