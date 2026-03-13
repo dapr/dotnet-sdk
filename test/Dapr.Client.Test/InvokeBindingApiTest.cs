@@ -191,7 +191,7 @@ public class InvokeBindingApiTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () => 
         {
-            await client.DaprClient.InvokeBindingAsync("test", "test", new InvokeRequest() { RequestParameter = "Hello " });
+            await client.DaprClient.InvokeBindingAsync("test", "test", new InvokeRequest() { RequestParameter = "Hello " }, cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -283,7 +283,7 @@ public class InvokeBindingApiTest
 
         var ex = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
-            await client.InnerClient.InvokeBindingAsync<InvokeRequest, Widget>(null, "operation", null);
+            await client.InnerClient.InvokeBindingAsync<InvokeRequest, Widget>(null, "operation", null, cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.IsType<ArgumentNullException>(ex);
     }
@@ -295,7 +295,7 @@ public class InvokeBindingApiTest
 
         var ex = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
-            await client.InnerClient.InvokeBindingAsync<InvokeRequest, Widget>("binding", null, null);
+            await client.InnerClient.InvokeBindingAsync<InvokeRequest, Widget>("binding", null, null, cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.IsType<ArgumentNullException>(ex);
     }

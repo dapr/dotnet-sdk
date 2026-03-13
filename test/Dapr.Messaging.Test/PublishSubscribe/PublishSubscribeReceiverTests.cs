@@ -53,7 +53,7 @@ public class PublishSubscribeReceiverTests
         
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, mockDaprClient.Object);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var subscribeTask = receiver.SubscribeAsync();
+        var subscribeTask = receiver.SubscribeAsync(TestContext.Current.CancellationToken);
         stopwatch.Stop();
 
         Assert.True(stopwatch.ElapsedMilliseconds < 100, "SubscribeAsync should return immediately and not block");
@@ -109,14 +109,14 @@ public class PublishSubscribeReceiverTests
             .Returns(mockCall);
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, mockMessageHandler.Object, mockDaprClient.Object);
 
-        await receiver.SubscribeAsync();
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
         
         //Write a message to the channel
         var message = new TopicMessage("id", "source", "type", "specVersion", "dataContentType", topicName, pubSubName);
         await receiver.WriteMessageToChannelAsync(message);
 
         //Allow some time for the message to be processed
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         mockMessageHandler.Verify(handler => handler(It.IsAny<TopicMessage>(), It.IsAny<CancellationToken>()),
             Times.Once);
@@ -153,7 +153,7 @@ public class PublishSubscribeReceiverTests
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, mockMessageHandler.Object, mockDaprClient.Object);
 
-        await receiver.SubscribeAsync();
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
 
         // Use reflection to access the private acknowledgementsChannel and write an acknowledgement
         var acknowledgementsChannelField = typeof(PublishSubscribeReceiver).GetField("acknowledgementsChannel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -162,10 +162,10 @@ public class PublishSubscribeReceiverTests
         var acknowledgementsChannel = (Channel<PublishSubscribeReceiver.TopicAcknowledgement>)acknowledgementsChannelField.GetValue(receiver)!;
 
         var acknowledgement = new PublishSubscribeReceiver.TopicAcknowledgement("id", TopicEventResponse.Types.TopicEventResponseStatus.Success);
-        await acknowledgementsChannel.Writer.WriteAsync(acknowledgement);
+        await acknowledgementsChannel.Writer.WriteAsync(acknowledgement, TestContext.Current.CancellationToken);
 
         // Allow some time for the acknowledgement to be processed
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Verify that the request stream's WriteAsync method was called twice (initial request + acknowledgement)
         mockRequestStream.Verify(stream => stream.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()), Times.Exactly(2));

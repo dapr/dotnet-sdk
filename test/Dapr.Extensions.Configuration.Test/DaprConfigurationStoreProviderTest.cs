@@ -134,7 +134,7 @@ public class DaprConfigurationStoreProviderTest
             .AddDaprConfigurationStore("store", new List<string>(), daprClient, TimeSpan.FromSeconds(5))
             .Build();
 
-        await Task.Delay(TimeSpan.FromMilliseconds(500));
+        await Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
 
         Assert.Equal(item.Value, config["testKey"]);
     }
@@ -165,7 +165,7 @@ public class DaprConfigurationStoreProviderTest
             .AddStreamingDaprConfigurationStore("store", new List<string>(), daprClient, TimeSpan.FromSeconds(5))
             .Build();
 
-        await Task.Delay(TimeSpan.FromMilliseconds(500));
+        await Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
 
         Assert.Equal(item.Value, config["testKey"]);
     }

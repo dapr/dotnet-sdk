@@ -108,7 +108,7 @@ public class WorkflowOrchestrationContextTests
 
         context.ProcessEvents(history, isReplaying: true);
 
-        var result = await childTask.WaitAsync(TimeSpan.FromSeconds(2));
+        var result = await childTask.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         Assert.Equal(21, result);
         Assert.Empty(context.PendingActions);
     }
@@ -524,7 +524,7 @@ public class WorkflowOrchestrationContextTests
             loggerFactory: NullLoggerFactory.Instance,
             tracker);
 
-        var task = context.WaitForExternalEventAsync<int>("myevent");
+        var task = context.WaitForExternalEventAsync<int>("myevent", TestContext.Current.CancellationToken);
         context.ProcessEvents(history, true);
 
         var value = await task;
@@ -790,11 +790,11 @@ public class WorkflowOrchestrationContextTests
         _ = context.CallActivityAsync<string>("Any"); // consumes 1 history event
         context.ProcessEvents(history, true);
         Assert.True(context.IsReplaying);
-        Assert.False(logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.False(logger.IsEnabled(LogLevel.Information));
 
         context.ProcessEvents([], false);
         Assert.False(context.IsReplaying);
-        Assert.True(logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.True(logger.IsEnabled(LogLevel.Information));
     }
     
     [Fact]
@@ -1064,7 +1064,7 @@ public class WorkflowOrchestrationContextTests
             loggerFactory: NullLoggerFactory.Instance, 
             tracker);
 
-        var task = context.WaitForExternalEventAsync<int>("MyEvent");
+        var task = context.WaitForExternalEventAsync<int>("MyEvent", TestContext.Current.CancellationToken);
         context.ProcessEvents(history, true);
         var value = await task;
 
@@ -1265,13 +1265,13 @@ public class WorkflowOrchestrationContextTests
         _ = context.CallActivityAsync<string>("Any"); // consumes 1 history event
         context.ProcessEvents(history, true);
         Assert.True(context.IsReplaying);
-        Assert.False(typeLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
-        Assert.False(genericLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.False(typeLogger.IsEnabled(LogLevel.Information));
+        Assert.False(genericLogger.IsEnabled(LogLevel.Information));
 
         context.ProcessEvents([], false);
         Assert.False(context.IsReplaying);
-        Assert.True(typeLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
-        Assert.True(genericLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.True(typeLogger.IsEnabled(LogLevel.Information));
+        Assert.True(genericLogger.IsEnabled(LogLevel.Information));
     }
 
     private sealed class MyExampleType
@@ -1324,20 +1324,20 @@ public class WorkflowOrchestrationContextTests
         }
     }
 
-    private sealed class AlwaysEnabledLoggerFactory : Microsoft.Extensions.Logging.ILoggerFactory
+    private sealed class AlwaysEnabledLoggerFactory : ILoggerFactory
     {
-        public void AddProvider(Microsoft.Extensions.Logging.ILoggerProvider provider) { }
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new AlwaysEnabledLogger();
+        public void AddProvider(ILoggerProvider provider) { }
+        public ILogger CreateLogger(string categoryName) => new AlwaysEnabledLogger();
         public void Dispose() { }
     }
 
-    private sealed class AlwaysEnabledLogger : Microsoft.Extensions.Logging.ILogger
+    private sealed class AlwaysEnabledLogger : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public bool IsEnabled(LogLevel logLevel) => true;
         public void Log<TState>(
-            Microsoft.Extensions.Logging.LogLevel logLevel,
-            Microsoft.Extensions.Logging.EventId eventId,
+            LogLevel logLevel,
+            EventId eventId,
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)

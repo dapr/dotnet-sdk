@@ -49,7 +49,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
                            """;
 
         context.ExpectedDiagnostics.Clear();
-        await context.RunAsync();
+        await context.RunAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
                            """;
 
         context.ExpectedDiagnostics.Clear();
-        await context.RunAsync();
+        await context.RunAsync(TestContext.Current.CancellationToken);
     }
     
     [Fact]
@@ -111,7 +111,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
                            """;
 
         context.ExpectedDiagnostics.Clear();
-        await context.RunAsync();
+        await context.RunAsync(TestContext.Current.CancellationToken);
     }
     
     [Fact]
@@ -138,7 +138,7 @@ public class TimerCallbackMethodPresentAnalyzerTests
         context.ExpectedDiagnostics.Add(new DiagnosticResult(TimerCallbackMethodPresentAnalyzer.DaprTimerCallbackMethodRule)
             .WithSpan(8, 45, 8, 60)
             .WithArguments("TimerCallback", "TestActorTimerRegistrationTimerCallbackNotPresent"));
-        await context.RunAsync();
+        await context.RunAsync(TestContext.Current.CancellationToken);
     }
 }
 

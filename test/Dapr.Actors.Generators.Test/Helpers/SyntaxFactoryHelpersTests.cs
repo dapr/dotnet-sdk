@@ -10,18 +10,16 @@ public class SyntaxFactoryHelpersTests
     public void ThrowArgumentNullException_GenerateThrowArgumentNullExceptionSyntaxWithGivenArgumentName()
     {
         // Arrange
-        var argumentName = "arg0";
-        var expectedSource = $@"throw new System.ArgumentNullException(nameof(arg0));";
-        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
-            .GetRoot()
+        const string argumentName = "arg0";
+        const string expectedSource = $@"throw new System.ArgumentNullException(nameof(arg0));";
+        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource, cancellationToken: TestContext.Current.CancellationToken).GetRoot(TestContext.Current.CancellationToken)
             .NormalizeWhitespace()
             .ToFullString();
 
         // Act
         var generatedSource = SyntaxFactory.ExpressionStatement(SyntaxFactoryHelpers.ThrowArgumentNullException(argumentName))
             .SyntaxTree
-            .GetRoot()
-            .NormalizeWhitespace()
+            .GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString();
 
         // Assert
@@ -32,21 +30,18 @@ public class SyntaxFactoryHelpersTests
     public void ThrowIfArgumentNullException_GivesNullCheckSyntaxWithGivenArgumentName()
     {
         // Arrange
-        var argumentName = "arg0";
-        var expectedSource = $@"if (arg0 is null)
+        const string argumentName = "arg0";
+        const string expectedSource = @"if (arg0 is null)
 {{
     throw new System.ArgumentNullException(nameof(arg0));
 }}";
-        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
-            .GetRoot()
-            .NormalizeWhitespace()
+        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource, cancellationToken: TestContext.Current.CancellationToken).GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString();
 
         // Act
         var generatedSource = SyntaxFactoryHelpers.ThrowIfArgumentNull(argumentName)
             .SyntaxTree
-            .GetRoot()
-            .NormalizeWhitespace()
+            .GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString();
 
         // Assert
@@ -57,7 +52,7 @@ public class SyntaxFactoryHelpersTests
     public void ActorProxyInvokeMethodAsync_WithoutReturnTypeAndParamters_ReturnNonGenericInvokeMethodAsync()
     {
         // Arrange
-        var remoteMethodName = "RemoteMethodToCall";
+        const string remoteMethodName = "RemoteMethodToCall";
         var remoteMethodParameters = Array.Empty<IParameterSymbol>();
         var remoteMethodReturnTypes = Array.Empty<ITypeSymbol>();
         var actorProxMemberAccessSyntax = SyntaxFactory.MemberAccessExpression(
@@ -65,10 +60,8 @@ public class SyntaxFactoryHelpersTests
             SyntaxFactory.ThisExpression(),
             SyntaxFactory.IdentifierName("actorProxy")
         );
-        var expectedSource = $@"this.actorProxy.InvokeMethodAsync(""RemoteMethodToCall"")";
-        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
-            .GetRoot()
-            .NormalizeWhitespace()
+        const string expectedSource = @"this.actorProxy.InvokeMethodAsync(""RemoteMethodToCall"")";
+        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource, cancellationToken: TestContext.Current.CancellationToken).GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString();
 
         // Act
@@ -78,8 +71,7 @@ public class SyntaxFactoryHelpersTests
                 remoteMethodParameters,
                 remoteMethodReturnTypes)
             .SyntaxTree
-            .GetRoot()
-            .NormalizeWhitespace()
+            .GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString(); ;
 
         // Assert
@@ -90,18 +82,15 @@ public class SyntaxFactoryHelpersTests
     public void NameOfExpression()
     {
         // Arrange
-        var argumentName = "arg0";
-        var expectedSource = $@"nameof(arg0)";
-        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource)
-            .GetRoot()
-            .NormalizeWhitespace()
+        const string argumentName = "arg0";
+        const string expectedSource = $@"nameof(arg0)";
+        var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource, cancellationToken: TestContext.Current.CancellationToken).GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString();
 
         // Act
         var generatedSource = SyntaxFactoryHelpers.NameOfExpression(argumentName)
             .SyntaxTree
-            .GetRoot()
-            .NormalizeWhitespace()
+            .GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString();
 
         // Assert
