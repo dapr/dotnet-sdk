@@ -32,9 +32,9 @@ public class SyntaxFactoryHelpersTests
         // Arrange
         const string argumentName = "arg0";
         const string expectedSource = @"if (arg0 is null)
-{{
+{
     throw new System.ArgumentNullException(nameof(arg0));
-}}";
+}";
         var expectedSourceNormalized = SyntaxFactory.ParseSyntaxTree(expectedSource, cancellationToken: TestContext.Current.CancellationToken).GetRoot(TestContext.Current.CancellationToken).NormalizeWhitespace()
             .ToFullString();
 
