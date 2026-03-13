@@ -32,12 +32,14 @@ public static class DaprSecretStoreConfigurationExtensions
     /// <param name="store">Dapr secret store name.</param>
     /// <param name="secretDescriptors">The secrets to retrieve.</param>
     /// <param name="client">The Dapr client</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Secrets are loaded in the background once the sidecar becomes available.</param>
     /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
     public static IConfigurationBuilder AddDaprSecretStore(
         this IConfigurationBuilder configurationBuilder,
         string store,
         IEnumerable<DaprSecretDescriptor> secretDescriptors,
-        DaprClient client)
+        DaprClient client,
+        bool optional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
@@ -47,7 +49,8 @@ public static class DaprSecretStoreConfigurationExtensions
         {
             Store = store,
             SecretDescriptors = secretDescriptors,
-            Client = client
+            Client = client,
+            IsOptional = optional
         });
 
         return configurationBuilder;
@@ -61,13 +64,15 @@ public static class DaprSecretStoreConfigurationExtensions
     /// <param name="secretDescriptors">The secrets to retrieve.</param>
     /// <param name="client">The Dapr client.</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Secrets are loaded in the background once the sidecar becomes available.</param>
     /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
     public static IConfigurationBuilder AddDaprSecretStore(
         this IConfigurationBuilder configurationBuilder,
         string store,
         IEnumerable<DaprSecretDescriptor> secretDescriptors,
         DaprClient client,
-        TimeSpan sidecarWaitTimeout)
+        TimeSpan sidecarWaitTimeout,
+        bool optional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
@@ -78,7 +83,8 @@ public static class DaprSecretStoreConfigurationExtensions
             Store = store,
             SecretDescriptors = secretDescriptors,
             Client = client,
-            SidecarWaitTimeout = sidecarWaitTimeout
+            SidecarWaitTimeout = sidecarWaitTimeout,
+            IsOptional = optional
         });
 
         return configurationBuilder;
@@ -89,43 +95,16 @@ public static class DaprSecretStoreConfigurationExtensions
     /// </summary>
     /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
     /// <param name="store">Dapr secret store name.</param>
-    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
     /// <param name="client">The Dapr client</param>
+    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Secrets are loaded in the background once the sidecar becomes available.</param>
     /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
     public static IConfigurationBuilder AddDaprSecretStore(
         this IConfigurationBuilder configurationBuilder,
         string store,
         DaprClient client,
-        IReadOnlyDictionary<string, string>? metadata = null)
-    {
-        ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
-        ArgumentVerifier.ThrowIfNull(client, nameof(client));
-
-        configurationBuilder.Add(new DaprSecretStoreConfigurationSource()
-        {
-            Store = store,
-            Metadata = metadata,
-            Client = client
-        });
-
-        return configurationBuilder;
-    }
-
-    /// <summary>
-    /// Adds an <see cref="IConfigurationProvider"/> that reads configuration values from the Dapr Secret Store.
-    /// </summary>
-    /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
-    /// <param name="store">Dapr secret store name.</param>
-    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
-    /// <param name="client">The Dapr client</param>
-    /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
-    /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
-    public static IConfigurationBuilder AddDaprSecretStore(
-        this IConfigurationBuilder configurationBuilder,
-        string store,
-        DaprClient client,
-        TimeSpan sidecarWaitTimeout,
-        IReadOnlyDictionary<string, string>? metadata = null)
+        IReadOnlyDictionary<string, string>? metadata = null,
+        bool optional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(client, nameof(client));
@@ -135,7 +114,7 @@ public static class DaprSecretStoreConfigurationExtensions
             Store = store,
             Metadata = metadata,
             Client = client,
-            SidecarWaitTimeout = sidecarWaitTimeout
+            IsOptional = optional
         });
 
         return configurationBuilder;
@@ -146,14 +125,49 @@ public static class DaprSecretStoreConfigurationExtensions
     /// </summary>
     /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
     /// <param name="store">Dapr secret store name.</param>
-    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
     /// <param name="client">The Dapr client</param>
+    /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Secrets are loaded in the background once the sidecar becomes available.</param>
     /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
     public static IConfigurationBuilder AddDaprSecretStore(
         this IConfigurationBuilder configurationBuilder,
         string store,
         DaprClient client,
-        IEnumerable<string>? keyDelimiters)
+        TimeSpan sidecarWaitTimeout,
+        IReadOnlyDictionary<string, string>? metadata = null,
+        bool optional = false)
+    {
+        ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
+        ArgumentVerifier.ThrowIfNull(client, nameof(client));
+
+        configurationBuilder.Add(new DaprSecretStoreConfigurationSource()
+        {
+            Store = store,
+            Metadata = metadata,
+            Client = client,
+            SidecarWaitTimeout = sidecarWaitTimeout,
+            IsOptional = optional
+        });
+
+        return configurationBuilder;
+    }
+
+    /// <summary>
+    /// Adds an <see cref="IConfigurationProvider"/> that reads configuration values from the Dapr Secret Store.
+    /// </summary>
+    /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
+    /// <param name="store">Dapr secret store name.</param>
+    /// <param name="client">The Dapr client</param>
+    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Secrets are loaded in the background once the sidecar becomes available.</param>
+    /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
+    public static IConfigurationBuilder AddDaprSecretStore(
+        this IConfigurationBuilder configurationBuilder,
+        string store,
+        DaprClient client,
+        IEnumerable<string>? keyDelimiters,
+        bool optional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(client, nameof(client));
@@ -161,7 +175,8 @@ public static class DaprSecretStoreConfigurationExtensions
         var source = new DaprSecretStoreConfigurationSource
         {
             Store = store,
-            Client = client
+            Client = client,
+            IsOptional = optional
         };
 
         if (keyDelimiters != null)
@@ -179,16 +194,18 @@ public static class DaprSecretStoreConfigurationExtensions
     /// </summary>
     /// <param name="configurationBuilder">The <see cref="IConfigurationBuilder"/> to add to.</param>
     /// <param name="store">Dapr secret store name.</param>
-    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
     /// <param name="client">The Dapr client</param>
+    /// <param name="keyDelimiters">A collection of delimiters that will be replaced by ':' in the key of every secret.</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Secrets are loaded in the background once the sidecar becomes available.</param>
     /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
     public static IConfigurationBuilder AddDaprSecretStore(
         this IConfigurationBuilder configurationBuilder,
         string store,
         DaprClient client,
         IEnumerable<string>? keyDelimiters,
-        TimeSpan sidecarWaitTimeout)
+        TimeSpan sidecarWaitTimeout,
+        bool optional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(client, nameof(client));
@@ -197,7 +214,8 @@ public static class DaprSecretStoreConfigurationExtensions
         {
             Store = store,
             Client = client,
-            SidecarWaitTimeout = sidecarWaitTimeout
+            SidecarWaitTimeout = sidecarWaitTimeout,
+            IsOptional = optional
         };
 
         if (keyDelimiters != null)
