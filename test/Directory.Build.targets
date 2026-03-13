@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <!-- Ensure SDK/targets can't re-enable apphost for test executables -->
+    <UseAppHost>false</UseAppHost>
+    <GenerateAppHost>false</GenerateAppHost>
+  </PropertyGroup>
+</Project>
