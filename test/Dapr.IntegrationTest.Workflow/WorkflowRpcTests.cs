@@ -27,8 +27,8 @@ public sealed class WorkflowRpcTests
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -54,10 +54,10 @@ public sealed class WorkflowRpcTests
         // Schedule a workflow and wait for completion
         var instanceId = Guid.NewGuid().ToString();
         await client.ScheduleNewWorkflowAsync(nameof(SimpleWorkflow), instanceId, "hello");
-        await client.WaitForWorkflowCompletionAsync(instanceId);
+        await client.WaitForWorkflowCompletionAsync(instanceId, cancellation: TestContext.Current.CancellationToken);
 
         // List instance IDs and verify our workflow appears
-        var page = await client.ListInstanceIdsAsync();
+        var page = await client.ListInstanceIdsAsync(cancellation: TestContext.Current.CancellationToken);
 
         Assert.NotNull(page);
         Assert.Contains(instanceId, page.InstanceIds);
@@ -68,8 +68,8 @@ public sealed class WorkflowRpcTests
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -99,11 +99,11 @@ public sealed class WorkflowRpcTests
         // Schedule a workflow with an activity and wait for completion
         var instanceId = Guid.NewGuid().ToString();
         await client.ScheduleNewWorkflowAsync(nameof(WorkflowWithActivity), instanceId, "test-input");
-        var result = await client.WaitForWorkflowCompletionAsync(instanceId);
+        var result = await client.WaitForWorkflowCompletionAsync(instanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
 
         // Get history and verify it has events
-        var history = await client.GetInstanceHistoryAsync(instanceId);
+        var history = await client.GetInstanceHistoryAsync(instanceId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(history);
         Assert.NotEmpty(history);
