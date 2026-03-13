@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
 using Grpc.Net.Client;
@@ -895,6 +896,166 @@ public class DaprSecretStoreConfigurationProviderTest
         Assert.Throws<TaskCanceledException>(() => CreateBuilder()
             .AddDaprSecretStore("store", daprClient, TimeSpan.FromMilliseconds(1))
             .Build());
+    }
+
+    [Fact]
+    public void LoadSecrets_OptionalAndSidecarUnavailable_ReturnsEmptyConfig()
+    {
+        var daprClient = new Mock<DaprClient>();
+        daprClient
+            .Setup(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct =>
+                Task.Delay(Timeout.Infinite, ct));
+
+        var config = CreateBuilder()
+            .AddDaprSecretStore("store", daprClient.Object, optional: true)
+            .Build();
+
+        // Build() should succeed immediately with no values
+        config["anyKey"].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task LoadSecrets_OptionalAndSidecarBecomesAvailable_PopulatesConfig()
+    {
+        var callCount = 0;
+
+        var daprClient = new Mock<DaprClient>();
+        daprClient
+            .Setup(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct =>
+            {
+                var current = Interlocked.Increment(ref callCount);
+                if (current <= 1)
+                {
+                    // First call: simulate sidecar not ready by waiting until timeout cancels
+                    return Task.Delay(Timeout.Infinite, ct);
+                }
+                // Subsequent calls: sidecar is ready
+                return Task.CompletedTask;
+            });
+
+        daprClient
+            .Setup(c => c.GetBulkSecretAsync("store", null, default))
+            .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>
+            {
+                ["secret1"] = new Dictionary<string, string> { ["secret1"] = "value1" }
+            });
+
+        var config = CreateBuilder()
+            .AddDaprSecretStore("store", daprClient.Object, TimeSpan.FromMilliseconds(100), optional: true)
+            .Build();
+
+        // Initially empty
+        config["secret1"].ShouldBeNull();
+
+        // Wait for the reload token to fire, indicating background load completed
+        var reloaded = new TaskCompletionSource<bool>();
+        config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        config["secret1"].ShouldBe("value1");
+    }
+
+    [Fact]
+    public async Task LoadSecrets_OptionalWithDescriptors_PopulatesConfig()
+    {
+        var storeName = "store";
+        var secretKey = "mySecret";
+        var secretValue = "myValue";
+
+        var daprClient = new Mock<DaprClient>();
+        // Sidecar ready immediately
+        daprClient
+            .Setup(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        daprClient
+            .Setup(c => c.GetSecretAsync(storeName, secretKey, It.IsAny<Dictionary<string, string>>(), default))
+            .ReturnsAsync(new Dictionary<string, string> { { secretKey, secretValue } });
+
+        var secretDescriptors = new[] { new DaprSecretDescriptor(secretKey) };
+
+        var config = CreateBuilder()
+            .AddDaprSecretStore(storeName, secretDescriptors, daprClient.Object, TimeSpan.FromSeconds(1), optional: true)
+            .Build();
+
+        // Wait for the reload token to fire, indicating background load completed
+        var reloaded = new TaskCompletionSource<bool>();
+        config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        config[secretKey].ShouldBe(secretValue);
+    }
+
+    [Fact]
+    public async Task LoadSecrets_OptionalAndFetchThrowsTransientError_RetriesAndSucceeds()
+    {
+        var callCount = 0;
+
+        var daprClient = new Mock<DaprClient>();
+        daprClient
+            .Setup(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        daprClient
+            .Setup(c => c.GetBulkSecretAsync("store", null, default))
+            .Returns(() =>
+            {
+                var current = Interlocked.Increment(ref callCount);
+                if (current <= 1)
+                {
+                    throw new DaprException("transient error");
+                }
+                return Task.FromResult<Dictionary<string, Dictionary<string, string>>>(
+                    new Dictionary<string, Dictionary<string, string>>
+                    {
+                        ["secret1"] = new Dictionary<string, string> { ["secret1"] = "value1" }
+                    });
+            });
+
+        var config = CreateBuilder()
+            .AddDaprSecretStore("store", daprClient.Object, TimeSpan.FromMilliseconds(100), optional: true)
+            .Build();
+
+        // Initially empty
+        config["secret1"].ShouldBeNull();
+
+        // Wait for the reload token to fire after retry succeeds
+        var reloaded = new TaskCompletionSource<bool>();
+        config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        config["secret1"].ShouldBe("value1");
+    }
+
+    [Fact]
+    public async Task LoadSecrets_OptionalAndDisposed_ExitsCleanly()
+    {
+        var waitCalled = new TaskCompletionSource<bool>();
+
+        var daprClient = new Mock<DaprClient>();
+        daprClient
+            .Setup(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct =>
+            {
+                waitCalled.TrySetResult(true);
+                return Task.Delay(Timeout.Infinite, ct);
+            });
+
+        var config = CreateBuilder()
+            .AddDaprSecretStore("store", daprClient.Object, TimeSpan.FromSeconds(1), optional: true)
+            .Build();
+
+        // Ensure background task has started
+        await waitCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Dispose the provider to cancel the background task
+        (config as IDisposable)?.Dispose();
+
+        // Verify the mock was called with a token that is now cancelled
+        daprClient.Verify(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+        config["anyKey"].ShouldBeNull();
     }
 
     private IConfigurationBuilder CreateBuilder()

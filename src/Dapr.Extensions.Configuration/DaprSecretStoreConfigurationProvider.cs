@@ -24,7 +24,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore;
 /// <summary>
 /// A Dapr Secret Store based <see cref="ConfigurationProvider"/>.
 /// </summary>
-internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
+internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDisposable
 {
     internal static readonly TimeSpan DefaultSidecarWaitTimeout = TimeSpan.FromSeconds(5);
 
@@ -41,6 +41,10 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     private readonly DaprClient client;
 
     private readonly TimeSpan sidecarWaitTimeout;
+
+    private readonly bool isOptional;
+
+    private readonly CancellationTokenSource cts = new();
 
     /// <summary>
     /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
@@ -83,13 +87,15 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     /// <param name="secretDescriptors">The secrets to retrieve.</param>
     /// <param name="client">Dapr client used to retrieve Secrets</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="isOptional">When true, does not block startup waiting for the sidecar.</param>
     public DaprSecretStoreConfigurationProvider(
         string store,
         bool normalizeKey,
         IList<string>? keyDelimiters,
         IEnumerable<DaprSecretDescriptor> secretDescriptors,
         DaprClient client,
-        TimeSpan sidecarWaitTimeout)
+        TimeSpan sidecarWaitTimeout,
+        bool isOptional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
@@ -106,6 +112,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
         this.secretDescriptors = secretDescriptors;
         this.client = client;
         this.sidecarWaitTimeout = sidecarWaitTimeout;
+        this.isOptional = isOptional;
     }
 
     /// <summary>
@@ -149,13 +156,15 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
     /// <param name="client">Dapr client used to retrieve Secrets</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="isOptional">When true, does not block startup waiting for the sidecar.</param>
     public DaprSecretStoreConfigurationProvider(
         string store,
         bool normalizeKey,
         IList<string>? keyDelimiters,
         IReadOnlyDictionary<string, string>? metadata,
         DaprClient client,
-        TimeSpan sidecarWaitTimeout)
+        TimeSpan sidecarWaitTimeout,
+        bool isOptional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(client, nameof(client));
@@ -166,6 +175,14 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
         this.metadata = metadata;
         this.client = client;
         this.sidecarWaitTimeout = sidecarWaitTimeout;
+        this.isOptional = isOptional;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        cts.Cancel();
+        cts.Dispose();
     }
 
     private string NormalizeKey(string key)
@@ -185,17 +202,71 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     /// Loads the configuration by calling the asynchronous LoadAsync method and blocking the calling
     /// thread until the operation is completed.
     /// </summary>
-    public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+    public override void Load()
+    {
+        if (isOptional)
+        {
+            Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            _ = Task.Run(() => LoadInBackgroundAsync());
+        }
+        else
+        {
+            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    private async Task LoadInBackgroundAsync()
+    {
+        while (!cts.Token.IsCancellationRequested)
+        {
+            try
+            {
+                using var tokenSource = new CancellationTokenSource(sidecarWaitTimeout);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cts.Token);
+                await client.WaitForSidecarAsync(linked.Token);
+
+                await FetchSecretsAsync();
+                OnReload();
+                return;
+            }
+            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                // Sidecar wait timed out — retry after delay.
+            }
+            catch (DaprException)
+            {
+                // Transient Dapr error — retry after delay.
+            }
+
+            try
+            {
+                await Task.Delay(sidecarWaitTimeout, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
 
     private async Task LoadAsync()
     {
-        var data = new Dictionary<string, string?>(StringComparer.InvariantCultureIgnoreCase);
-
         // Wait for the Dapr Sidecar to report healthy before attempting to fetch secrets.
         using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
         {
             await client.WaitForSidecarAsync(tokenSource.Token);
         }
+
+        await FetchSecretsAsync();
+    }
+
+    private async Task FetchSecretsAsync()
+    {
+        var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         if (secretDescriptors != null)
         {

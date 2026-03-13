@@ -53,9 +53,16 @@ public class DaprConfigurationStoreSource : IConfigurationSource
     /// </summary>
     public IReadOnlyDictionary<string, string>? Metadata { get; set; } = default;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether this configuration source is optional.
+    /// When <c>true</c>, the provider will not block startup waiting for the Dapr sidecar and will
+    /// instead load configuration in the background once the sidecar becomes available.
+    /// </summary>
+    public bool IsOptional { get; set; }
+
     /// <inheritdoc/>
     public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
-        return new DaprConfigurationStoreProvider(Store, Keys, Client, SidecarWaitTimeout, IsStreaming, Metadata);
+        return new DaprConfigurationStoreProvider(Store, Keys, Client, SidecarWaitTimeout, IsStreaming, Metadata, IsOptional);
     }
 }

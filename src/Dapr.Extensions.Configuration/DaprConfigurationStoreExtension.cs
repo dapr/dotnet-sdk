@@ -34,6 +34,7 @@ public static class DaprConfigurationStoreExtension
     /// <param name="client">The <see cref="DaprClient"/> used for the request.</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
     /// <param name="metadata">Optional metadata sent to the configuration store.</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Configuration is loaded in the background once the sidecar becomes available.</param>
     /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
     public static IConfigurationBuilder AddDaprConfigurationStore(
         this IConfigurationBuilder configurationBuilder,
@@ -41,7 +42,8 @@ public static class DaprConfigurationStoreExtension
         IReadOnlyList<string> keys,
         DaprClient client,
         TimeSpan sidecarWaitTimeout,
-        IReadOnlyDictionary<string, string>? metadata = default)
+        IReadOnlyDictionary<string, string>? metadata = default,
+        bool optional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(keys, nameof(keys));
@@ -54,7 +56,8 @@ public static class DaprConfigurationStoreExtension
             Client = client,
             SidecarWaitTimeout = sidecarWaitTimeout,
             IsStreaming = false,
-            Metadata = metadata
+            Metadata = metadata,
+            IsOptional = optional
         });
 
         return configurationBuilder;
@@ -71,6 +74,7 @@ public static class DaprConfigurationStoreExtension
     /// <param name="client">The <see cref="DaprClient"/> used for the request.</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
     /// <param name="metadata">Optional metadata sent to the configuration store.</param>
+    /// <param name="optional">When true, does not block startup waiting for the sidecar. Configuration is loaded in the background once the sidecar becomes available.</param>
     /// <returns>The <see cref="IConfigurationBuilder"/>.</returns>
     public static IConfigurationBuilder AddStreamingDaprConfigurationStore(
         this IConfigurationBuilder configurationBuilder,
@@ -78,7 +82,8 @@ public static class DaprConfigurationStoreExtension
         IReadOnlyList<string> keys,
         DaprClient client,
         TimeSpan sidecarWaitTimeout,
-        IReadOnlyDictionary<string, string>? metadata = default)
+        IReadOnlyDictionary<string, string>? metadata = default,
+        bool optional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(keys, nameof(keys));
@@ -91,7 +96,8 @@ public static class DaprConfigurationStoreExtension
             Client = client,
             SidecarWaitTimeout = sidecarWaitTimeout,
             IsStreaming = true,
-            Metadata = metadata
+            Metadata = metadata,
+            IsOptional = optional
         });
 
         return configurationBuilder;
