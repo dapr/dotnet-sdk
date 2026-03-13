@@ -39,8 +39,8 @@ public sealed class DaprApiTokenWorkflowTests
 
             var options = new DaprRuntimeOptions().WithDaprApiToken(daprApiToken);
 
-            await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(options, needsActorState: true);
-            await environment.StartAsync();
+            await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(options, needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+            await environment.StartAsync(TestContext.Current.CancellationToken);
 
             var harness = new DaprHarnessBuilder(componentsDir)
                 .WithEnvironment(environment)
@@ -71,7 +71,7 @@ public sealed class DaprApiTokenWorkflowTests
             const int startingValue = 8;
 
             await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(TestWorkflow), workflowInstanceId, startingValue);
-            var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true);
+            var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true, TestContext.Current.CancellationToken);
 
             Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
             var resultValue = result.ReadOutputAs<int>();

@@ -27,8 +27,8 @@ public sealed class ErrorHandlingTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -56,7 +56,7 @@ public sealed class ErrorHandlingTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(RetryWorkflow), workflowInstanceId, 0);
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
     
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<string>();
@@ -69,8 +69,8 @@ public sealed class ErrorHandlingTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
         
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -95,12 +95,12 @@ public sealed class ErrorHandlingTests
 
         var startTime = DateTime.UtcNow;
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(CancellableTimerWorkflow), workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         // Cancel the timer by raising an event
-        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "CancelTimer");
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "CancelTimer", cancellation: TestContext.Current.CancellationToken);
 
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         var duration = DateTime.UtcNow - startTime;
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);

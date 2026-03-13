@@ -21,7 +21,6 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.E2E.Test.Actors;
 using Xunit;
-using Xunit.Abstractions;
 
 public class CustomSerializerTests : DaprTestAppLifecycle
 {

@@ -27,8 +27,8 @@ public sealed class ParallelExecutionTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -57,7 +57,7 @@ public sealed class ParallelExecutionTests
 
         var startTime = DateTime.UtcNow;
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(ParallelWorkflow), workflowInstanceId);
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         var endTime = DateTime.UtcNow;
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
@@ -76,8 +76,8 @@ public sealed class ParallelExecutionTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -106,7 +106,7 @@ public sealed class ParallelExecutionTests
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(FanOutFanInWorkflow), workflowInstanceId, (int[])[1, 2, 3, 4
         ]);
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var sum = result.ReadOutputAs<int>();

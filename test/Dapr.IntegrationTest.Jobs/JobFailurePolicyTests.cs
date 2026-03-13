@@ -33,8 +33,8 @@ public sealed class JobFailurePolicyTests
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
         
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -70,13 +70,12 @@ public sealed class JobFailurePolicyTests
 
         var dropPolicy = new JobFailurePolicyDropOptions();
 
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
-            failurePolicyOptions: dropPolicy, repeats: 1, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)), failurePolicyOptions: dropPolicy, repeats: 1, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal(jobName, received);
 
-        var ex = await Assert.ThrowsAnyAsync<DaprException>(() => daprJobsClient.GetJobAsync(jobName));
+        var ex = await Assert.ThrowsAnyAsync<DaprException>(() => daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken));
         Assert.NotNull(ex.InnerException);
         Assert.Contains("job not found", ex.InnerException.Message);
     }
@@ -89,8 +88,8 @@ public sealed class JobFailurePolicyTests
 
         var invocationTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -130,13 +129,12 @@ public sealed class JobFailurePolicyTests
             MaxRetries = maxRetries
         };
         
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
-            failurePolicyOptions: constantPolicy, repeats: 10, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)), failurePolicyOptions: constantPolicy, repeats: 10, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal(jobName, received);
 
-        var jobDetails = await daprJobsClient.GetJobAsync(jobName);
+        var jobDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
         Assert.NotNull(jobDetails.FailurePolicy);
         Assert.Equal(JobFailurePolicy.Constant, jobDetails.FailurePolicy.Type);
         if (jobDetails.FailurePolicy is ConfiguredConstantFailurePolicy failurePolicy)

@@ -18,7 +18,6 @@ using System.Threading.Tasks;
 using Dapr.Actors.Client;
 using Dapr.E2E.Test.Actors;
 using Xunit;
-using Xunit.Abstractions;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
@@ -63,7 +62,7 @@ public partial class E2ETests : IClassFixture<DaprTestAppFixture>, IAsyncLifetim
 
     public IActorProxyFactory ProxyFactory => this.HttpEndpoint == null ? null : this.proxyFactory.Value;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         this.state = await this.fixture.StartAsync(this.Output, this.Configuration);
 
@@ -86,9 +85,9 @@ public partial class E2ETests : IClassFixture<DaprTestAppFixture>, IAsyncLifetim
         throw new TimeoutException("Timed out waiting for daprd health check");
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     protected async Task WaitForActorRuntimeAsync(IPingActor proxy, CancellationToken cancellationToken)

@@ -34,8 +34,8 @@ public sealed class JobPayloadTests
 
         var invocationTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -69,10 +69,9 @@ public sealed class JobPayloadTests
         using var scope = testApp.CreateScope();
         var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
 
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
-            payload: null, repeats: 1, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)), payload: null, repeats: 1, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var isEmpty = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        var isEmpty = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.True(isEmpty);
     }
 
@@ -84,8 +83,8 @@ public sealed class JobPayloadTests
 
         var invocationTcs = new TaskCompletionSource<TestPayload>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -124,10 +123,9 @@ public sealed class JobPayloadTests
         var testPayload = new TestPayload("Test Message", 42, DateTimeOffset.UtcNow);
         var jsonPayload = JsonSerializer.SerializeToUtf8Bytes(testPayload);
 
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
-            jsonPayload, repeats: 1, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)), jsonPayload, repeats: 1, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal(testPayload.Message, received.Message);
         Assert.Equal(testPayload.Value, received.Value);
     }
@@ -195,8 +193,8 @@ public sealed class JobPayloadTests
 
         var invocationTcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -232,10 +230,9 @@ public sealed class JobPayloadTests
 
         var binaryPayload = new byte[] { 0x00, 0xFF, 0x42, 0xAB, 0xCD, 0xEF };
 
-        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
-            binaryPayload, repeats: 1, overwrite: true);
+        await daprJobsClient.ScheduleJobAsync(jobName, DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)), binaryPayload, repeats: 1, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
 
-        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal(binaryPayload, received);
     }
 

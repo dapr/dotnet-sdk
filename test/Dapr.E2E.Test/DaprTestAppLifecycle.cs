@@ -16,7 +16,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Dapr.E2E.Test;
 
@@ -43,7 +42,7 @@ public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLif
 
     public ITestOutputHelper Output => this.output;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         this.state = await this.fixture.StartAsync(this.output, this.Configuration);
 
@@ -66,8 +65,8 @@ public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLif
         throw new TimeoutException("Timed out waiting for daprd health check");
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 }

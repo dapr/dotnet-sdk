@@ -18,13 +18,13 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Dapr.AspNetCore.IntegrationTest.App;
+using App;
 using Shouldly;
 using Xunit;
 
 public class CloudEventsIntegrationTest
 {
-    private readonly JsonSerializerOptions options = new JsonSerializerOptions()
+    private readonly JsonSerializerOptions options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
@@ -33,109 +33,101 @@ public class CloudEventsIntegrationTest
     [Fact]
     public async Task CanSendEmptyStructuredCloudEvent()
     {
-        using (var factory = new AppWebApplicationFactory())
+        await using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/B")
         {
-            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+            Content = new StringContent("{}", Encoding.UTF8)
+        };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/B")
-            {
-                Content = new StringContent("{}", Encoding.UTF8)
-            };
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
-
-            var response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-        }
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 
 
     [Fact]
     public async Task CanSendStructuredCloudEvent()
     {
-        using (var factory = new AppWebApplicationFactory())
+        await using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
         {
-            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
-            {
-                Content = new StringContent(
-                    JsonSerializer.Serialize(
-                        new
+            Content = new StringContent(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        data = new
                         {
-                            data = new
-                            {
-                                name = "jimmy",
-                            },
-                        }),
-                    Encoding.UTF8)
-            };
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
+                            name = "jimmy",
+                        },
+                    }),
+                Encoding.UTF8)
+        };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
 
-            var response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
 
-            var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-            userInfo.Name.ShouldBe("jimmy");
-        }
+        var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), this.options, TestContext.Current.CancellationToken);
+        userInfo.Name.ShouldBe("jimmy");
     }
 
     [Fact]
     public async Task CanSendStructuredCloudEvent_WithContentType()
     {
-        using (var factory = new AppWebApplicationFactory())
+        await using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
         {
-            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
-            {
-                Content = new StringContent(
-                    JsonSerializer.Serialize(
-                        new
+            Content = new StringContent(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        data = new
                         {
-                            data = new
-                            {
-                                name = "jimmy",
-                            },
-                            datacontenttype = "text/json",
-                        }),
-                    Encoding.UTF8)
-            };
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
+                            name = "jimmy",
+                        },
+                        datacontenttype = "text/json",
+                    }),
+                Encoding.UTF8)
+        };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
 
-            var response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
 
-            var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-            userInfo.Name.ShouldBe("jimmy");
-        }
+        var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), this.options, TestContext.Current.CancellationToken);
+        userInfo.Name.ShouldBe("jimmy");
     }
 
     [Fact]
     public async Task CanSendStructuredCloudEvent_WithNonJsonContentType()
     {
-        using (var factory = new AppWebApplicationFactory())
+        await using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user-plaintext")
         {
-            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+            Content = new StringContent(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        data = "jimmy \"the cool guy\" smith",
+                        datacontenttype = "text/plain",
+                    }),
+                Encoding.UTF8)
+        };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user-plaintext")
-            {
-                Content = new StringContent(
-                    JsonSerializer.Serialize(
-                        new
-                        {
-                            data = "jimmy \"the cool guy\" smith",
-                            datacontenttype = "text/plain",
-                        }),
-                    Encoding.UTF8)
-            };
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/cloudevents+json");
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
 
-            var response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
-            var user = await response.Content.ReadAsStringAsync();
-            user.ShouldBe("jimmy \"the cool guy\" smith");
-        }
+        var user = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        user.ShouldBe("jimmy \"the cool guy\" smith");
     }
 
     // Yeah, I know, binary isn't a great term for this, it's what the cloudevents spec uses.
@@ -144,27 +136,25 @@ public class CloudEventsIntegrationTest
     [Fact]
     public async Task CanSendBinaryCloudEvent_WithContentType()
     {
-        using (var factory = new AppWebApplicationFactory())
+        await using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+            
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
         {
-            var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+            Content = new StringContent(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        name = "jimmy",
+                    }),
+                Encoding.UTF8)
+        };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/register-user")
-            {
-                Content = new StringContent(
-                    JsonSerializer.Serialize(
-                        new
-                        {
-                            name = "jimmy",
-                        }),
-                    Encoding.UTF8)
-            };
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
             
-            var response = await httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            
-            var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(), this.options);
-            userInfo.Name.ShouldBe("jimmy");
-        }
+        var userInfo = await JsonSerializer.DeserializeAsync<UserInfo>(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken), this.options, TestContext.Current.CancellationToken);
+        userInfo.Name.ShouldBe("jimmy");
     }
 }

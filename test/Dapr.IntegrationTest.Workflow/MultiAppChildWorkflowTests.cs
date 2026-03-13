@@ -38,8 +38,8 @@ public sealed class MultiAppChildWorkflowTests
         var componentsDir2 = TestDirectoryManager.CreateTestDirectory("workflow-multiapp-2");
         
         // Build our shared environment (Network + Control plane)
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
         
         // Build and start the first application
         var harness1 = new DaprHarnessBuilder(componentsDir1)

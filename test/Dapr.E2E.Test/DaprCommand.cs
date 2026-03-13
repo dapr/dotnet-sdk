@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Xunit;
+
 namespace Dapr.E2E.Test;
 
 using System;
@@ -18,7 +20,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using Xunit.Abstractions;
 
 public class DaprCommand
 {

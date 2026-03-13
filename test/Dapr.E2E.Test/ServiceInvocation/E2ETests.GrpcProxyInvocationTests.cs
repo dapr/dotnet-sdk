@@ -18,7 +18,6 @@ using Dapr.Client;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Dapr.E2E.Test;
 
@@ -67,11 +66,11 @@ public class GrpcProxyTests : DaprTestAppLifecycle
                 {
                     Assert.Equal($"Hello: {messageReceived++}", response.Message);
                 }
-            });
+            }, TestContext.Current.CancellationToken);
 
             for (var i = 0; i < messageCount; i++)
             {
-                await call.RequestStream.WriteAsync(new Broadcast { Message = $"Hello: {i}" });
+                await call.RequestStream.WriteAsync(new Broadcast { Message = $"Hello: {i}" }, TestContext.Current.CancellationToken);
             }
             await call.RequestStream.CompleteAsync();
 

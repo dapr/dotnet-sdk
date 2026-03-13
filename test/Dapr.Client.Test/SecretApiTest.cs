@@ -197,7 +197,7 @@ public class SecretApiTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () => 
         {
-            await client.DaprClient.GetSecretAsync("test", "test");
+            await client.DaprClient.GetSecretAsync("test", "test", cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -323,7 +323,7 @@ public class SecretApiTest
     {
         var client = new MockClient();
 
-        var rpcStatus = new Grpc.Core.Status(StatusCode.Internal, "not gonna work");
+        var rpcStatus = new Status(StatusCode.Internal, "not gonna work");
         var rpcException = new RpcException(rpcStatus, new Metadata(), "not gonna work");
 
         // Setup the mock client to throw an Rpc Exception with the expected details info
@@ -333,7 +333,7 @@ public class SecretApiTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () => 
         {
-            await client.DaprClient.GetBulkSecretAsync("test");
+            await client.DaprClient.GetBulkSecretAsync("test", cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }

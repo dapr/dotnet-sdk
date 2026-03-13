@@ -15,7 +15,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.E2E.Test.Actors;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace Dapr.E2E.Test;
 

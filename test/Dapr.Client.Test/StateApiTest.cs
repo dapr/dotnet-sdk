@@ -796,7 +796,7 @@ public class StateApiTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "someETag");
+            await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "someETag", cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -815,7 +815,7 @@ public class StateApiTest
             .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
             .Throws(rpcException);
 
-        var operationResult = await client.DaprClient.TrySaveStateAsync("testStore", "test", "testValue", "invalidETag");
+        var operationResult = await client.DaprClient.TrySaveStateAsync("testStore", "test", "testValue", "invalidETag", cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(operationResult);
     }
 
@@ -842,7 +842,7 @@ public class StateApiTest
             .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
             .Returns(response);
 
-        var result = await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "");
+        var result = await client.DaprClient.TrySaveStateAsync("test", "test", "testValue", "", cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result);
     }
 
@@ -863,7 +863,7 @@ public class StateApiTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            await client.DaprClient.TryDeleteStateAsync("test", "test", "badEtag");
+            await client.DaprClient.TryDeleteStateAsync("test", "test", "badEtag", cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -891,7 +891,7 @@ public class StateApiTest
             .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
             .Returns(response);
 
-        var result = await client.DaprClient.TryDeleteStateAsync("test", "test", "");
+        var result = await client.DaprClient.TryDeleteStateAsync("test", "test", "", cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result);
     }
 
@@ -909,7 +909,7 @@ public class StateApiTest
             .Setup(m => m.DeleteStateAsync(It.IsAny<Autogen.Grpc.v1.DeleteStateRequest>(), It.IsAny<CallOptions>()))
             .Throws(rpcException);
 
-        var operationResult = await client.DaprClient.TryDeleteStateAsync("test", "test", "invalidETag");
+        var operationResult = await client.DaprClient.TryDeleteStateAsync("test", "test", "invalidETag", cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(operationResult);
     }
 
@@ -1297,7 +1297,7 @@ public class StateApiTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            await client.DaprClient.TrySaveByteStateAsync("test", "test", stateBytes.AsMemory(), "someETag");
+            await client.DaprClient.TrySaveByteStateAsync("test", "test", stateBytes.AsMemory(), "someETag", cancellationToken: TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -1317,7 +1317,7 @@ public class StateApiTest
             .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
             .Throws(rpcException);
 
-        var operationResult = await client.DaprClient.TrySaveByteStateAsync("testStore", "test", stateBytes.AsMemory(), "invalidETag");
+        var operationResult = await client.DaprClient.TrySaveByteStateAsync("testStore", "test", stateBytes.AsMemory(), "invalidETag", cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(operationResult);
     }
 
@@ -1347,7 +1347,7 @@ public class StateApiTest
             .Setup(m => m.SaveStateAsync(It.IsAny<Autogen.Grpc.v1.SaveStateRequest>(), It.IsAny<CallOptions>()))
             .Returns(response);
 
-        var result = await client.DaprClient.TrySaveByteStateAsync("test", "test", stateBytes.AsMemory(), "");
+        var result = await client.DaprClient.TrySaveByteStateAsync("test", "test", stateBytes.AsMemory(), "", cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result);
     }
     [Fact]

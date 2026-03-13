@@ -15,7 +15,7 @@ namespace Dapr.AspNetCore.IntegrationTest;
 
 using System.Net.Http;
 using System.Threading.Tasks;
-using Dapr.AspNetCore.IntegrationTest.App;
+using App;
 using Shouldly;
 using Xunit;
 
@@ -29,13 +29,13 @@ public class RoutingIntegrationTest
             var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
             var daprClient = factory.DaprClient;
 
-            await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, });
+            await daprClient.SaveStateAsync("testStore", "test", new Widget() { Size = "small", Count = 17, }, cancellationToken: TestContext.Current.CancellationToken);
 
             var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/routingwithstateentry/test");
-            var response = await httpClient.SendAsync(request);
+            var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var widget = await daprClient.GetStateAsync<Widget>("testStore", "test");
+            var widget = await daprClient.GetStateAsync<Widget>("testStore", "test", cancellationToken: TestContext.Current.CancellationToken);
             widget.Count.ShouldBe(18);
         }
     }

@@ -32,7 +32,7 @@ public class ActivationTests
     [Fact]
     public async Task CanActivateActorWithDependencyInjection()
     {
-        using var factory = new AppWebApplicationFactory();
+        await using var factory = new AppWebApplicationFactory();
         var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
 
         // Doing this twice verifies that the Actor stays active and retains state using DI.
@@ -47,8 +47,8 @@ public class ActivationTests
 
     private async Task<string> IncrementCounterAsync(HttpClient httpClient, string actorId)
     {
-        var actorTypeName = nameof(DependencyInjectionActor);
-        var methodName = nameof(DependencyInjectionActor.IncrementAsync);
+        const string actorTypeName = nameof(DependencyInjectionActor);
+        const string methodName = nameof(DependencyInjectionActor.IncrementAsync);
 
         var request = new HttpRequestMessage(HttpMethod.Put, $"http://localhost/actors/{actorTypeName}/{actorId}/method/{methodName}");
         var response = await httpClient.SendAsync(request);
@@ -59,7 +59,7 @@ public class ActivationTests
 
     private async Task DeactivateActor(HttpClient httpClient, string actorId)
     {
-        var actorTypeName = nameof(DependencyInjectionActor);
+        const string actorTypeName = nameof(DependencyInjectionActor);
 
         var request = new HttpRequestMessage(HttpMethod.Delete, $"http://localhost/actors/{actorTypeName}/{actorId}");
         var response = await httpClient.SendAsync(request);
