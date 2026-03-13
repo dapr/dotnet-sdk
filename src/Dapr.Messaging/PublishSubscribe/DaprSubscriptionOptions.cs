@@ -40,5 +40,11 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     /// been signaled.
     /// </summary>
     public TimeSpan MaximumCleanupTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// An optional callback invoked when errors occur during an active subscription.
+    /// If not set, runtime errors from background tasks will be silently swallowed.
+    /// </summary>
+    public SubscriptionErrorHandler? ErrorHandler { get; init; }
 }
 
