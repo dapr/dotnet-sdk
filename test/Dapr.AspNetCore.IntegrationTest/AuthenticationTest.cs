@@ -24,7 +24,7 @@ namespace Dapr.AspNetCore.IntegrationTest;
 
 public class AuthenticationTest
 {
-    private JsonSerializerOptions serializerOptions = new JsonSerializerOptions
+    private JsonSerializerOptions serializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
@@ -32,7 +32,7 @@ public class AuthenticationTest
     [Fact]
     public async Task ValidToken_ShouldBeAuthenticatedAndAuthorized()
     {
-        using (var factory = new AppWebApplicationFactory())
+        await using (var factory = new AppWebApplicationFactory())
         {
             var userInfo = new UserInfo
             {
@@ -44,9 +44,9 @@ public class AuthenticationTest
                 Content = new StringContent(JsonSerializer.Serialize(userInfo), Encoding.UTF8, "application/json")
             };
             request.Headers.Add("Dapr-Api-Token", "abcdefg");
-            var response = await httpClient.SendAsync(request);
+            var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
             response.EnsureSuccessStatusCode();
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var responseContent = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var responseUserInfo = JsonSerializer.Deserialize<UserInfo>(responseContent, serializerOptions);
             responseUserInfo.Name.ShouldBe(userInfo.Name);
         }
@@ -55,7 +55,7 @@ public class AuthenticationTest
     [Fact]
     public async Task InvalidToken_ShouldBeUnauthorized()
     {
-        using (var factory = new AppWebApplicationFactory())
+        await using (var factory = new AppWebApplicationFactory())
         {
             var userInfo = new UserInfo
             {
@@ -67,7 +67,7 @@ public class AuthenticationTest
                 Content = new StringContent(JsonSerializer.Serialize(userInfo, serializerOptions), Encoding.UTF8, "application/json")
             };
             request.Headers.Add("Dapr-Api-Token", "asdfgh");
-            var response = await httpClient.SendAsync(request);
+            var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
 
             response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         }
