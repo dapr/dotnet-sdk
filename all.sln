@@ -1,5 +1,4 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -296,6 +295,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.Common.Generators.Tests", "test\Dapr.Common.Generators.Tests\Dapr.Common.Generators.Tests.csproj", "{E015C5ED-F93F-4DB6-BA01-BC59B7859A60}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.DaprClient", "test\Dapr.IntegrationTest.DaprClient\Dapr.IntegrationTest.DaprClient.csproj", "{7DB95C53-19C1-49D2-B0BA-116DAEFC83DB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Configuration", "test\Dapr.IntegrationTest.Configuration\Dapr.IntegrationTest.Configuration.csproj", "{193BBE09-E261-4D65-B4CC-18B88DB049D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -1495,6 +1496,22 @@ Global
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|x64.Build.0 = Release|Any CPU
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|x86.ActiveCfg = Release|Any CPU
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|x86.Build.0 = Release|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Debug|x64.Build.0 = Debug|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Debug|x86.Build.0 = Debug|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Release|x64.ActiveCfg = Release|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Release|x64.Build.0 = Release|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Release|x86.ActiveCfg = Release|Any CPU
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7}.Release|x86.Build.0 = Release|Any CPU
+		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|x64.ActiveCfg = Release|Any CPU
+		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|x64.Build.0 = Release|Any CPU
+		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|x86.ActiveCfg = Release|Any CPU
+		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|x86.Build.0 = Release|Any CPU
 		{01A20A89-53A1-4D5B-B563-89E157718474}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{01A20A89-53A1-4D5B-B563-89E157718474}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01A20A89-53A1-4D5B-B563-89E157718474}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -1905,6 +1922,7 @@ Global
 		{DA1F9FE7-6041-4581-B9AD-685034869CE8} = {27C5D71D-0721-4221-9286-B94AB07B58CF}
 		{E015C5ED-F93F-4DB6-BA01-BC59B7859A60} = {0AF0FE8D-C234-4F04-8514-32206ACE01BD}
 		{7DB95C53-19C1-49D2-B0BA-116DAEFC83DB} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
+		{193BBE09-E261-4D65-B4CC-18B88DB049D7} = {DD020B34-460F-455F-8D17-CF4A949F100B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
