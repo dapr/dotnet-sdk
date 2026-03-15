@@ -42,8 +42,9 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     public TimeSpan MaximumCleanupTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// An optional callback invoked when errors occur during an active subscription.
-    /// If not set, runtime errors from background tasks will be silently swallowed.
+    /// An optional callback invoked when errors occur in background tasks during an active subscription.
+    /// Errors during the initial subscription attempt are thrown directly to the caller.
+    /// If not set, background task errors surface as unobserved task exceptions (default .NET behavior).
     /// </summary>
     public SubscriptionErrorHandler? ErrorHandler { get; init; }
 }

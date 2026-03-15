@@ -17,4 +17,8 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// A delegate that handles errors occurring during an active subscription.
 /// </summary>
 /// <param name="exception">The <see cref="DaprException"/> wrapping the original error.</param>
+/// <remarks>
+/// This handler is invoked on a thread pool thread. Implementations should be thread-safe
+/// and should not throw exceptions, as thrown exceptions will be suppressed.
+/// </remarks>
 public delegate void SubscriptionErrorHandler(DaprException exception);

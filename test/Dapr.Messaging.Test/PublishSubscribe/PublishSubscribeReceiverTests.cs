@@ -221,7 +221,7 @@ public class PublishSubscribeReceiverTests
     }
 
     [Fact]
-    public void HandleTaskCompletion_ShouldNotThrow_WhenNoErrorHandler()
+    public void HandleTaskCompletion_ShouldThrow_WhenNoErrorHandler()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -234,9 +234,10 @@ public class PublishSubscribeReceiverTests
 
         var task = Task.FromException(new InvalidOperationException("Test exception"));
 
-        var exception = Record.Exception(() => receiver.HandleTaskCompletion(task, null));
+        var exception = Assert.Throws<DaprException>(() => receiver.HandleTaskCompletion(task, null));
 
-        Assert.Null(exception);
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+        Assert.Equal("Test exception", exception.InnerException.Message);
     }
 
     [Fact]
@@ -259,6 +260,30 @@ public class PublishSubscribeReceiverTests
         var exception = Record.Exception(() => receiver.HandleTaskCompletion(task, null));
 
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public void HandleTaskCompletion_ShouldNotInvokeErrorHandler_WhenOperationCanceled()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var handlerInvoked = false;
+        var options =
+            new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+            {
+                ErrorHandler = _ => handlerInvoked = true
+            };
+
+        var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, mockDaprClient.Object);
+
+        var task = Task.FromException(new OperationCanceledException("Canceled"));
+
+        var exception = Record.Exception(() => receiver.HandleTaskCompletion(task, null));
+
+        Assert.Null(exception);
+        Assert.False(handlerInvoked);
     }
 
     [Fact]
