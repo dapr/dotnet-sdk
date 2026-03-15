@@ -170,7 +170,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <summary>
     /// Handles faulted background tasks by resetting the initialization flag and invoking the configured error handler, if any.
     /// </summary>
-    internal void HandleTaskCompletion(Task task, object? state)
+    internal async Task HandleTaskCompletion(Task task, object? state)
     {
         if (task.Exception is null)
         {
@@ -199,7 +199,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 
         try
         {
-            options.ErrorHandler.Invoke(daprException);
+            await options.ErrorHandler.Invoke(daprException);
         }
         catch (Exception)
         {

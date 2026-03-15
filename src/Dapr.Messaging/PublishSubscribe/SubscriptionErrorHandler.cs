@@ -18,7 +18,7 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// </summary>
 /// <param name="exception">The <see cref="DaprException"/> wrapping the original error.</param>
 /// <remarks>
-/// This handler is invoked on a thread pool thread. Implementations should be thread-safe
-/// and should not throw exceptions, as thrown exceptions will be suppressed.
+/// This handler is invoked on a thread pool thread. Implementations should be thread-safe.
+/// If the returned task faults, the exception will be suppressed.
 /// </remarks>
-public delegate void SubscriptionErrorHandler(DaprException exception);
+public delegate Task SubscriptionErrorHandler(DaprException exception);

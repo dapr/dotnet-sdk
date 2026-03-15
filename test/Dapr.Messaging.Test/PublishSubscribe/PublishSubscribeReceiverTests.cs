@@ -194,7 +194,7 @@ public class PublishSubscribeReceiverTests
     }
     
     [Fact]
-    public void HandleTaskCompletion_ShouldInvokeErrorHandler_WhenTaskHasException()
+    public async Task HandleTaskCompletion_ShouldInvokeErrorHandler_WhenTaskHasException()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -202,7 +202,7 @@ public class PublishSubscribeReceiverTests
         var options =
             new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
             {
-                ErrorHandler = ex => receivedException = ex
+                ErrorHandler = ex => { receivedException = ex; return Task.CompletedTask; }
             };
 
         var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
@@ -211,7 +211,7 @@ public class PublishSubscribeReceiverTests
 
         var task = Task.FromException(new InvalidOperationException("Test exception"));
 
-        receiver.HandleTaskCompletion(task, null);
+        await receiver.HandleTaskCompletion(task, null);
 
         Assert.NotNull(receivedException);
         Assert.IsType<InvalidOperationException>(receivedException.InnerException);
@@ -221,7 +221,7 @@ public class PublishSubscribeReceiverTests
     }
 
     [Fact]
-    public void HandleTaskCompletion_ShouldThrow_WhenNoErrorHandler()
+    public async Task HandleTaskCompletion_ShouldThrow_WhenNoErrorHandler()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -234,14 +234,14 @@ public class PublishSubscribeReceiverTests
 
         var task = Task.FromException(new InvalidOperationException("Test exception"));
 
-        var exception = Assert.Throws<DaprException>(() => receiver.HandleTaskCompletion(task, null));
+        var exception = await Assert.ThrowsAsync<DaprException>(() => receiver.HandleTaskCompletion(task, null));
 
         Assert.IsType<InvalidOperationException>(exception.InnerException);
         Assert.Equal("Test exception", exception.InnerException.Message);
     }
 
     [Fact]
-    public void HandleTaskCompletion_ShouldNotThrow_WhenErrorHandlerThrows()
+    public async Task HandleTaskCompletion_ShouldNotThrow_WhenErrorHandlerThrows()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -257,13 +257,13 @@ public class PublishSubscribeReceiverTests
 
         var task = Task.FromException(new InvalidOperationException("Test exception"));
 
-        var exception = Record.Exception(() => receiver.HandleTaskCompletion(task, null));
+        var exception = await Record.ExceptionAsync(() => receiver.HandleTaskCompletion(task, null));
 
         Assert.Null(exception);
     }
 
     [Fact]
-    public void HandleTaskCompletion_ShouldNotInvokeErrorHandler_WhenOperationCanceled()
+    public async Task HandleTaskCompletion_ShouldNotInvokeErrorHandler_WhenOperationCanceled()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -271,7 +271,7 @@ public class PublishSubscribeReceiverTests
         var options =
             new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
             {
-                ErrorHandler = _ => handlerInvoked = true
+                ErrorHandler = _ => { handlerInvoked = true; return Task.CompletedTask; }
             };
 
         var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
@@ -280,14 +280,14 @@ public class PublishSubscribeReceiverTests
 
         var task = Task.FromException(new OperationCanceledException("Canceled"));
 
-        var exception = Record.Exception(() => receiver.HandleTaskCompletion(task, null));
+        var exception = await Record.ExceptionAsync(() => receiver.HandleTaskCompletion(task, null));
 
         Assert.Null(exception);
         Assert.False(handlerInvoked);
     }
 
     [Fact]
-    public void HandleTaskCompletion_ShouldNotInvokeErrorHandler_WhenTaskSucceeded()
+    public async Task HandleTaskCompletion_ShouldNotInvokeErrorHandler_WhenTaskSucceeded()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -295,14 +295,14 @@ public class PublishSubscribeReceiverTests
         var options =
             new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
             {
-                ErrorHandler = _ => handlerInvoked = true
+                ErrorHandler = _ => { handlerInvoked = true; return Task.CompletedTask; }
             };
 
         var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
         var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, mockDaprClient.Object);
 
-        receiver.HandleTaskCompletion(Task.CompletedTask, null);
+        await receiver.HandleTaskCompletion(Task.CompletedTask, null);
 
         Assert.False(handlerInvoked);
     }
