@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System.Diagnostics;
+using System.Reflection;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Worker.Grpc;
 using Grpc.Core;
@@ -701,6 +702,19 @@ public sealed class GrpcProtocolHandlerTests
             timeout: TimeSpan.FromSeconds(2));
 
         Assert.True(Volatile.Read(ref getWorkItemsCalls) >= 1);
+    }
+
+    [Fact]
+    public async Task DelayOrStopAsync_ShouldSwallowCancellation_WhenTokenIsCanceled()
+    {
+        var method = typeof(GrpcProtocolHandler).GetMethod("DelayOrStopAsync", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var task = (Task)method!.Invoke(null, new object?[] { TimeSpan.FromMilliseconds(1), cts.Token })!;
+        await task;
     }
     
     private static AsyncServerStreamingCall<WorkItem> CreateServerStreamingCallFromReader(IAsyncStreamReader<WorkItem> reader)
