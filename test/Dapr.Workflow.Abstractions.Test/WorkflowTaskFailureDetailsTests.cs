@@ -53,6 +53,13 @@ public class WorkflowTaskFailureDetailsTests
     }
 
     [Fact]
+    public void IsCausedBy_Returns_False_When_ErrorType_Is_Empty()
+    {
+        var details = new WorkflowTaskFailureDetails(string.Empty, "boom");
+        Assert.False(details.IsCausedBy<Exception>());
+    }
+
+    [Fact]
     public void IsCausedBy_Catches_When_ErrorType_Getter_Throws()
     {
         var details = new WorkflowTaskFailureDetails(null!, "boom");
@@ -81,5 +88,24 @@ public class WorkflowTaskFailureDetailsTests
         Assert.Equal("oops", details.ErrorMessage);
         Assert.False(string.IsNullOrEmpty(details.StackTrace));
         Assert.Contains(nameof(FromException_Produces_Details), details.StackTrace!);
+    }
+
+    [Fact]
+    public void FromException_Throws_On_Null()
+    {
+        var method = typeof(WorkflowTaskFailureDetails)
+            .GetMethod("FromException", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+
+        var ex = Assert.Throws<System.Reflection.TargetInvocationException>(() =>
+            method.Invoke(null, new object?[] { null }));
+        Assert.IsType<ArgumentNullException>(ex.InnerException);
+    }
+
+    [Fact]
+    public void ToString_Handles_Null_StackTrace()
+    {
+        var details = new WorkflowTaskFailureDetails(typeof(Exception).FullName!, "boom");
+        Assert.Null(details.StackTrace);
+        Assert.Equal($"{typeof(Exception).FullName}: boom", details.ToString());
     }
 }
