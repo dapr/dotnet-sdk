@@ -1,4 +1,4 @@
-﻿﻿﻿// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -499,6 +499,188 @@ public class WorkflowOrchestrationContextTests
         context.ProcessEvents(history, true);
 
         await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldRetry_WhenRetryPolicyProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var options = new WorkflowTaskOptions
+        {
+            RetryPolicy = new WorkflowRetryPolicy(
+                maxNumberOfAttempts: 2,
+                firstRetryInterval: TimeSpan.FromSeconds(1))
+        };
+
+        var task = context.CallActivityAsync<string>("DoWork", options: options);
+
+        var firstAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(firstAction.ScheduleTask);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = firstAction.Id,
+                    TaskScheduled = new TaskScheduledEvent { Name = "DoWork" }
+                },
+                new HistoryEvent
+                {
+                    TaskFailed = new TaskFailedEvent
+                    {
+                        TaskScheduledId = firstAction.Id,
+                        FailureDetails = new TaskFailureDetails
+                        {
+                            ErrorType = "Failure",
+                            ErrorMessage = "boom"
+                        }
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var timerAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(timerAction.CreateTimer);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = timerAction.Id,
+                    TimerCreated = new TimerCreatedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent { TimerId = timerAction.Id }
+                }
+            ],
+            isReplaying: true);
+
+        var retryAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(retryAction.ScheduleTask);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = retryAction.Id,
+                    TaskScheduled = new TaskScheduledEvent { Name = "DoWork" }
+                },
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = retryAction.Id,
+                        Result = "\"ok\""
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldRetry_WhenRetryPolicyProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var options = new ChildWorkflowTaskOptions
+        {
+            RetryPolicy = new WorkflowRetryPolicy(
+                maxNumberOfAttempts: 2,
+                firstRetryInterval: TimeSpan.FromSeconds(1))
+        };
+
+        var task = context.CallChildWorkflowAsync<string>("ChildWf", options: options);
+
+        var firstAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(firstAction.CreateSubOrchestration);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = firstAction.Id,
+                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                },
+                new HistoryEvent
+                {
+                    SubOrchestrationInstanceFailed = new SubOrchestrationInstanceFailedEvent
+                    {
+                        TaskScheduledId = firstAction.Id,
+                        FailureDetails = new TaskFailureDetails
+                        {
+                            ErrorType = "Failure",
+                            ErrorMessage = "boom"
+                        }
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var timerAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(timerAction.CreateTimer);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = timerAction.Id,
+                    TimerCreated = new TimerCreatedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent { TimerId = timerAction.Id }
+                }
+            ],
+            isReplaying: true);
+
+        var retryAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(retryAction.CreateSubOrchestration);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = retryAction.Id,
+                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                },
+                new HistoryEvent
+                {
+                    SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                    {
+                        TaskScheduledId = retryAction.Id,
+                        Result = "\"ok\""
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
         Assert.Empty(context.PendingActions);
     }
 
