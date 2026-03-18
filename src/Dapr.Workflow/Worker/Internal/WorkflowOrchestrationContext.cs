@@ -18,6 +18,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Workflow.Client;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Microsoft.Extensions.Logging;
@@ -126,6 +127,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override async Task<T> CallActivityAsync<T>(string name, object? input = null,
         WorkflowTaskOptions? options = null)
+    {
+        if (options?.RetryPolicy is { } retryPolicy)
+        {
+            var attemptOptions = options with { RetryPolicy = null };
+            var interceptor = new RetryInterceptor<T>(this, retryPolicy,
+                () => CallActivityInternalAsync<T>(name, input, attemptOptions));
+            var result = await interceptor.Invoke();
+            return result!;
+        }
+
+        return await CallActivityInternalAsync<T>(name, input, options);
+    }
+
+    private async Task<T> CallActivityInternalAsync<T>(string name, object? input, WorkflowTaskOptions? options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var taskId = _sequenceNumber++;
@@ -274,6 +289,23 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     public override async Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null,
         ChildWorkflowTaskOptions? options = null)
+    {
+        if (options?.RetryPolicy is { } retryPolicy)
+        {
+            var attemptOptions = options with { RetryPolicy = null };
+            var interceptor = new RetryInterceptor<TResult>(this, retryPolicy,
+                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions));
+            var result = await interceptor.Invoke();
+            return result!;
+        }
+
+        return await CallChildWorkflowInternalAsync<TResult>(workflowName, input, options);
+    }
+
+    private async Task<TResult> CallChildWorkflowInternalAsync<TResult>(
+        string workflowName,
+        object? input,
+        ChildWorkflowTaskOptions? options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
 

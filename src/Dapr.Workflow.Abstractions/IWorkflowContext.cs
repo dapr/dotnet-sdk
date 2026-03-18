@@ -19,7 +19,7 @@ namespace Dapr.Workflow;
 public interface IWorkflowContext
 {
     /// <summary>
-    /// Gets a value indicating whether the orchestration or operation is currently replaying itself.
+    /// Gets a value indicating whether the workflow is currently replaying a previous execution.
     /// </summary>
     /// <remarks>
     /// This property is useful when there is logic that needs to run only when *not* replaying. For example,
@@ -28,7 +28,7 @@ public interface IWorkflowContext
     /// the log statements when this value is <c>false</c>.
     /// </remarks>
     /// <value>
-    /// <c>true</c> if the orchestration or operation is currently being replayed; otherwise <c>false</c>.
+    /// <c>true</c> if the workflow is currently replaying a previous execution; otherwise <c>false</c>.
     /// </value>
     bool IsReplaying { get; }
 
@@ -37,4 +37,16 @@ public interface IWorkflowContext
     /// </summary>
     /// <param name="patchName">Case-sensitive patch name.</param>
     bool IsPatched(string patchName);
+    
+    /// <summary>
+    /// Gets the current workflow time in UTC.
+    /// </summary>
+    /// <remarks>
+    /// The current workflow time is stored in the workflow history and this API will
+    /// return the same value each time it is called from a particular point in the workflow's
+    /// execution. It is a deterministic, replay-safe replacement for existing .NET APIs for getting
+    /// the current time, such as <see cref="DateTime.UtcNow"/> and <see cref="DateTimeOffset.UtcNow"/>
+    /// (which should not be used).
+    /// </remarks>
+    DateTime CurrentUtcDateTime { get; }
 }
