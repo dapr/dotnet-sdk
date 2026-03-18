@@ -18,8 +18,9 @@ public class TaskIdentifierTests
     [Fact]
     public void Implicit_String_To_TaskIdentifier_Works()
     {
-        TaskIdentifier id = "my-task";
-        Assert.Equal("my-task", id.Name);
+        const string test = "my-task";
+        TaskIdentifier id = test;
+        Assert.Equal(test, id.Name);
     }
 
     [Fact]
@@ -28,6 +29,15 @@ public class TaskIdentifierTests
         var id = new TaskIdentifier("activity-1");
         string s = id;
         Assert.Equal("activity-1", s);
+    }
+
+    [Fact]
+    public void Validate_ToString_EqualsV_alue()
+    {
+        const string test = "my-task";
+        var id = new TaskIdentifier(test);
+        var result = id.ToString();
+        Assert.Equal(test, result);
     }
 
     [Fact]
