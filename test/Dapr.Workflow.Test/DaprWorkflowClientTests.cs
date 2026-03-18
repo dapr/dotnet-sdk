@@ -113,7 +113,7 @@ public class DaprWorkflowClientTests
         var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
 
         Assert.NotNull(state);
-        Assert.True(state!.Exists);
+        Assert.True(state.Exists);
         Assert.True(state.IsWorkflowRunning);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
     }
@@ -156,6 +156,63 @@ public class DaprWorkflowClientTests
         var client = new DaprWorkflowClient(inner);
 
         await Assert.ThrowsAsync<ArgumentException>(() => client.WaitForWorkflowCompletionAsync("", cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldFetchInputsAndOutputs_WhenRequested()
+    {
+        var completionMetadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Serialization.JsonWorkflowSerializer());
+
+        var metadataWithInputs = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Serialization.JsonWorkflowSerializer());
+
+        var inner = new CapturingWorkflowClient
+        {
+            WaitForCompletionResult = completionMetadata,
+            GetWorkflowMetadataResult = metadataWithInputs
+        };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.True(state.Exists);
+        Assert.Equal("i", inner.LastWaitForCompletionInstanceId);
+        Assert.False(inner.LastWaitForCompletionGetInputsAndOutputs);
+        Assert.Equal("i", inner.LastGetMetadataInstanceId);
+        Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldNotFetchInputsAndOutputs_WhenNotRequested()
+    {
+        var completionMetadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Serialization.JsonWorkflowSerializer());
+
+        var inner = new CapturingWorkflowClient { WaitForCompletionResult = completionMetadata };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: false, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.True(state.Exists);
+        Assert.Equal("i", inner.LastWaitForCompletionInstanceId);
+        Assert.False(inner.LastWaitForCompletionGetInputsAndOutputs);
+        Assert.Null(inner.LastGetMetadataInstanceId);
     }
 
     [Fact]
@@ -290,6 +347,9 @@ public class DaprWorkflowClientTests
         public WorkflowMetadata WaitForStartResult { get; set; } =
             new("i", "wf", WorkflowRuntimeStatus.Running, DateTime.MinValue, DateTime.MinValue, new Serialization.JsonWorkflowSerializer());
 
+        public string? LastWaitForCompletionInstanceId { get; private set; }
+        public bool LastWaitForCompletionGetInputsAndOutputs { get; private set; }
+        public CancellationToken LastWaitForCompletionCancellationToken { get; private set; }
         public WorkflowMetadata WaitForCompletionResult { get; set; } =
             new("i", "wf", WorkflowRuntimeStatus.Completed, DateTime.MinValue, DateTime.MinValue, new Serialization.JsonWorkflowSerializer());
 
@@ -362,7 +422,12 @@ public class DaprWorkflowClientTests
             string instanceId,
             bool getInputsAndOutputs = true,
             CancellationToken cancellationToken = default)
-            => Task.FromResult(WaitForCompletionResult);
+        {
+            LastWaitForCompletionInstanceId = instanceId;
+            LastWaitForCompletionGetInputsAndOutputs = getInputsAndOutputs;
+            LastWaitForCompletionCancellationToken = cancellationToken;
+            return Task.FromResult(WaitForCompletionResult);
+        }
 
         public override Task RaiseEventAsync(
             string instanceId,

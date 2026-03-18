@@ -21,6 +21,7 @@ using Dapr.Workflow.Worker;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
 using Grpc.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -348,9 +349,9 @@ public class WorkflowWorkerTests
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
             .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
-            .Returns((GetWorkItemsRequest _, CallOptions options) =>
+            .Returns((GetWorkItemsRequest _, CallOptions opt) =>
             {
-                options.CancellationToken.ThrowIfCancellationRequested();
+                opt.CancellationToken.ThrowIfCancellationRequested();
                 return CreateServerStreamingCall(EmptyWorkItems());
             });
 
@@ -367,6 +368,91 @@ public class WorkflowWorkerTests
 
         await InvokeExecuteAsync(worker, cts.Token);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldRethrow_WhenOptionsHaveInvalidConcurrency()
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        // Bypass property validation to simulate corrupted configuration.
+        typeof(WorkflowRuntimeOptions)
+            .GetField("_maxConcurrentWorkflows", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(options, 0);
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            services,
+            options);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => InvokeExecuteAsync(worker, CancellationToken.None));
+    }
+
+    [Fact]
+    public void CreateCallOptions_ShouldIncludeUserAgentAndApiToken_WhenConfigured()
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DAPR_API_TOKEN"] = "workflow-token"
+            })
+            .Build();
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            services,
+            options,
+            configuration);
+
+        using var cts = new CancellationTokenSource();
+        var callOptions = InvokeCreateCallOptions(worker, cts.Token);
+
+        Assert.Equal(cts.Token, callOptions.CancellationToken);
+        Assert.True(HasHeader(callOptions, "User-Agent", out var userAgent));
+        Assert.Contains("dapr-sdk-dotnet", userAgent, StringComparison.OrdinalIgnoreCase);
+        Assert.True(HasHeader(callOptions, "dapr-api-token", out var tokenValue));
+        Assert.Equal("workflow-token", tokenValue);
+    }
+
+    [Fact]
+    public void CreateCallOptions_ShouldNotIncludeApiTokenHeader_WhenTokenIsEmpty()
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DAPR_API_TOKEN"] = ""
+            })
+            .Build();
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            services,
+            options,
+            configuration);
+
+        var callOptions = InvokeCreateCallOptions(worker, CancellationToken.None);
+
+        Assert.False(HasHeader(callOptions, "dapr-api-token", out _));
+        Assert.True(HasHeader(callOptions, "User-Agent", out _));
+    }
     
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionEventArrivesLater()
@@ -378,7 +464,7 @@ public class WorkflowWorkerTests
             instanceId: "parent",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
-            loggerFactory: NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
+            loggerFactory: NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -442,7 +528,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
 
         var completionEvent = new[]
         {
@@ -482,7 +568,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -601,7 +687,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
 
         var completionHistory = new[]
         {
@@ -635,7 +721,7 @@ public class WorkflowWorkerTests
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), null);
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
 
         var task = context.CallChildWorkflowAsync<int>("ChildWf");
 
@@ -1099,7 +1185,7 @@ public class WorkflowWorkerTests
         var factory = new StubWorkflowsFactory();
         factory.AddWorkflow("wf", new InlineWorkflow(
             inputType: typeof(int),
-            run: async (ctx, input) =>
+            run: async (ctx, _) =>
             {
                 Assert.Equal(beginDateTime, ctx.CurrentUtcDateTime);
                 await ctx.CreateTimer(TimeSpan.FromSeconds(5));
@@ -1173,7 +1259,7 @@ public class WorkflowWorkerTests
         var factory = new StubWorkflowsFactory();
         factory.AddWorkflow("wf", new InlineWorkflow(
             inputType: typeof(int),
-            run: async (ctx, input) =>
+            run: async (ctx, _) =>
             {
                 await ctx.WaitForExternalEventAsync<object>("MyEvent", TimeSpan.FromSeconds(5));
                 return null;
@@ -1256,7 +1342,7 @@ public class WorkflowWorkerTests
         var factory = new StubWorkflowsFactory();
         factory.AddWorkflow("wf", new InlineWorkflow(
             inputType: typeof(int),
-            run: async (ctx, input) =>
+            run: async (ctx, _) =>
             {
                 await ctx.WaitForExternalEventAsync<object>("MyEvent", TimeSpan.FromSeconds(5));
                 return null;
@@ -1338,7 +1424,7 @@ public class WorkflowWorkerTests
         var factory = new StubWorkflowsFactory();
         factory.AddActivity("act", new InlineActivity(
             inputType: typeof(int),
-            run: (_, __) => Task.FromResult<object?>(null))); // null output -> empty string result
+            run: (_, _) => Task.FromResult<object?>(null))); // null output -> empty string result
 
         var worker = new WorkflowWorker(
             CreateGrpcClientMock().Object,
@@ -1371,8 +1457,22 @@ public class WorkflowWorkerTests
         var method = typeof(WorkflowWorker).GetMethod("ExecuteAsync", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
-        var task = (Task)method!.Invoke(worker, [token])!;
+        var task = (Task)method.Invoke(worker, [token])!;
         await task;
+    }
+
+    private static CallOptions InvokeCreateCallOptions(WorkflowWorker worker, CancellationToken token)
+    {
+        var method = typeof(WorkflowWorker).GetMethod("CreateCallOptions", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        return (CallOptions)method.Invoke(worker, [token])!;
+    }
+
+    private static bool HasHeader(CallOptions options, string key, out string? value)
+    {
+        var entry = options.Headers?.FirstOrDefault(header => string.Equals(header.Key, key, StringComparison.OrdinalIgnoreCase));
+        value = entry?.Value;
+        return entry is not null;
     }
 
     private static async Task<OrchestratorResponse> InvokeHandleOrchestratorResponseAsync(WorkflowWorker worker, OrchestratorRequest request)
@@ -1380,7 +1480,7 @@ public class WorkflowWorkerTests
         var method = typeof(WorkflowWorker).GetMethod("HandleOrchestratorResponseAsync", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
-        var task = (Task<OrchestratorResponse>)method!.Invoke(worker, [request, CompletionTokenValue])!;
+        var task = (Task<OrchestratorResponse>)method.Invoke(worker, [request, CompletionTokenValue])!;
         return await task;
     }
 
@@ -1389,7 +1489,7 @@ public class WorkflowWorkerTests
         var method = typeof(WorkflowWorker).GetMethod("HandleActivityResponseAsync", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
-        var task = (Task<ActivityResponse>)method!.Invoke(worker, [request, CompletionTokenValue])!;
+        var task = (Task<ActivityResponse>)method.Invoke(worker, [request, CompletionTokenValue])!;
         return await task;
     }
 

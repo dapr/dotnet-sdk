@@ -734,8 +734,8 @@ public class WorkflowGrpcClientTests
 
         public string Serialize(object? value, Type? inputType = null) => value is null ? string.Empty : SerializeResult;
 
-        public T? Deserialize<T>(string? data) => throw new NotSupportedException();
+        public T Deserialize<T>(string? data) => throw new NotSupportedException();
 
-        public object? Deserialize(string? data, Type returnType) => throw new NotSupportedException();
+        public object Deserialize(string? data, Type returnType) => throw new NotSupportedException();
     }
 }
