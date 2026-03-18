@@ -20,7 +20,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, default]
     env:
       NUPKG_OUTDIR: bin/Release/nugets
     steps:
@@ -143,7 +143,7 @@ jobs:
             {"dotnet-version":"9.0", "display-name":".NET 9.0", "framework":"net9.0", "prefix":"net9", "install-version":"9.0.x"},
             {"dotnet-version":"10.0", "display-name":".NET 10.0", "framework":"net10.0", "prefix":"net10", "install-version":"10.0.x"}
           ]'
-          oss='["ubuntu-latest"]'
+          tags='["ubuntu-latest", "default"]'
 
           # Normalize dapr to an array:
           # - if it's already an array, use as-is
@@ -172,12 +172,12 @@ jobs:
             jq -cn \
               --argjson projects "$projects_raw" \
               --argjson dotnets "$dotnets" \
-              --argjson oss "$oss" \
+              --argjson tags "$oss" \
               --argjson dapr "$dapr_array" '
                 [
                   $projects[] as $p
                   | $dotnets[] as $d
-                  | $oss[] as $o
+                  | tags[] as $t
                   | $dapr[] as $dv
                   | {
                       # from discovery
@@ -191,8 +191,8 @@ jobs:
                       prefix:           $d.prefix,
                       "install-version":$d["install-version"],
 
-                      # from OS axis
-                      os: $o,
+                      # from CI tags axis
+                      tags: $t,
 
                       # from Dapr selector (assumes objects like { "version": "v1.17.0-rc.2", ... })
                       "dapr-runtime-versions": $dv
@@ -207,7 +207,7 @@ jobs:
   integration-tests-v2:
     name: ${{ matrix.prefix }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
     needs: [ compute-integration-matrix ]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.tags }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -258,7 +258,7 @@ jobs:
   unit-tests:
     name: Unit Tests ${{ matrix.display-name }} / ${{ matrix.os }} - ${{ matrix.project}}
     needs: discover-unit-test-projects
-    runs-on: ubuntu-latest
+    runs-on: ['ubuntu-latest', 'default']
     strategy:
       fail-fast: false
       matrix:
