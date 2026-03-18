@@ -23,9 +23,6 @@ namespace Dapr.Workflow.Test.Worker.Grpc;
 
 public sealed class GrpcProtocolHandlerTests
 {
-    private static TaskCompletionSource CreateTcs() =>
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
-
     private static TaskCompletionSource<T> CreateTcs<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private static async Task RunHandlerUntilAsync(
@@ -149,7 +146,7 @@ public sealed class GrpcProtocolHandlerTests
             timeout: TimeSpan.FromSeconds(2));
 
         var completed = await completedTcs.Task;
-        Assert.Equal("i-1", completed!.InstanceId);
+        Assert.Equal("i-1", completed.InstanceId);
     }
 
     [Fact]
@@ -713,7 +710,7 @@ public sealed class GrpcProtocolHandlerTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var task = (Task)method!.Invoke(null, new object?[] { TimeSpan.FromMilliseconds(1), cts.Token })!;
+        var task = (Task)method.Invoke(null, new object?[] { TimeSpan.FromMilliseconds(1), cts.Token })!;
         await task;
     }
     

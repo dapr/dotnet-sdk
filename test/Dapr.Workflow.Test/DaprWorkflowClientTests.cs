@@ -113,7 +113,7 @@ public class DaprWorkflowClientTests
         var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
 
         Assert.NotNull(state);
-        Assert.True(state!.Exists);
+        Assert.True(state.Exists);
         Assert.True(state.IsWorkflowRunning);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
     }
