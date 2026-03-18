@@ -172,7 +172,7 @@ jobs:
             jq -cn \
               --argjson projects "$projects_raw" \
               --argjson dotnets "$dotnets" \
-              --argjson tags "$oss" \
+              --argjson tags "$tags" \
               --argjson dapr "$dapr_array" '
                 [
                   $projects[] as $p
