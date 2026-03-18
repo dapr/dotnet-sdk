@@ -25,6 +25,15 @@ using System.Threading.Tasks;
 public interface IActorStateManager
 {
     /// <summary>
+    /// Unloads the specified state from the in-memory cache/tracker, but does not remove it from the underlying store.
+    /// </summary>
+    /// <param name="stateName">Name of the actor state to unload.</param>
+    /// <param name="options">Options for unloading state (e.g., allow unloading modified state).</param>
+    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous unload operation.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the state is modified and not yet persisted, unless allowed by options.</exception>
+    Task UnloadStateAsync(string stateName, UnloadStateOptions options = null, CancellationToken cancellationToken = default);
+    /// <summary>
     /// Adds an actor state with given state name.
     /// </summary>
     /// <typeparam name="T">Type of value associated with given state name.</typeparam>
