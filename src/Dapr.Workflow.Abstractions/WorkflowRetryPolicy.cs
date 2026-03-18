@@ -50,9 +50,9 @@ public class WorkflowRetryPolicy
         TimeSpan? maxRetryInterval = null,
         TimeSpan? retryTimeout = null)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxNumberOfAttempts, 0, nameof(maxNumberOfAttempts));
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(firstRetryInterval, TimeSpan.Zero, nameof(firstRetryInterval));
-        ArgumentOutOfRangeException.ThrowIfLessThan(backoffCoefficient, 1.0, nameof(backoffCoefficient));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxNumberOfAttempts, 0);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(firstRetryInterval, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThan(backoffCoefficient, 1.0);
 
         var resolvedMaxRetryInterval = maxRetryInterval ?? TimeSpan.FromHours(1);
         ArgumentOutOfRangeException.ThrowIfLessThan(resolvedMaxRetryInterval, firstRetryInterval, nameof(maxRetryInterval));
