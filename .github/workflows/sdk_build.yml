@@ -177,7 +177,7 @@ jobs:
                 [
                   $projects[] as $p
                   | $dotnets[] as $d
-                  | tags[] as $t
+                  | $tags[] as $t
                   | $dapr[] as $dv
                   | {
                       # from discovery
