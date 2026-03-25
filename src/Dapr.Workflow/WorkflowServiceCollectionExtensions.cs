@@ -178,7 +178,7 @@ public static class WorkflowServiceCollectionExtensions
 
         // Register default JSON serializer if no custom serializer is registered
         serviceCollection.TryAddSingleton<IWorkflowSerializer>(
-            new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            new JsonWorkflowSerializer());
 
         // Register the workflow factory
         serviceCollection.TryAddSingleton<IWorkflowsFactory>(sp =>
