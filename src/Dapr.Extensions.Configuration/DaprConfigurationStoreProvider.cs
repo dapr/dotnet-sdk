@@ -26,13 +26,14 @@ namespace Dapr.Extensions.Configuration;
 /// </summary>
 internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposable
 {
-    private string store;
-    private IReadOnlyList<string> keys;
-    private DaprClient daprClient;
-    private TimeSpan sidecarWaitTimeout;
-    private bool isStreaming;
-    private IReadOnlyDictionary<string, string>? metadata;
-    private CancellationTokenSource cts;
+    private readonly string store;
+    private readonly IReadOnlyList<string> keys;
+    private readonly DaprClient daprClient;
+    private readonly TimeSpan sidecarWaitTimeout;
+    private readonly bool isStreaming;
+    private readonly bool isOptional;
+    private readonly IReadOnlyDictionary<string, string>? metadata;
+    private readonly CancellationTokenSource cts;
     private Task subscribeTask = Task.CompletedTask;
 
     /// <summary>
@@ -44,19 +45,22 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
     /// <param name="isStreaming">Determines if the source is streaming or not.</param>
     /// <param name="metadata">Optional metadata sent to the configuration store.</param>
+    /// <param name="isOptional">When true, does not block startup waiting for the sidecar.</param>
     public DaprConfigurationStoreProvider(
         string store,
         IReadOnlyList<string> keys,
         DaprClient daprClient,
         TimeSpan sidecarWaitTimeout,
         bool isStreaming = false,
-        IReadOnlyDictionary<string, string>? metadata = default)
+        IReadOnlyDictionary<string, string>? metadata = default,
+        bool isOptional = false)
     {
         this.store = store;
         this.keys = keys;
         this.daprClient = daprClient;
         this.sidecarWaitTimeout = sidecarWaitTimeout;
         this.isStreaming = isStreaming;
+        this.isOptional = isOptional;
         this.metadata = metadata ?? new Dictionary<string, string>();
         this.cts = new CancellationTokenSource();
     }
@@ -64,10 +68,60 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
     public void Dispose()
     {
         cts.Cancel();
+        cts.Dispose();
     }
 
     /// <inheritdoc/>
-    public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+    public override void Load()
+    {
+        if (isOptional)
+        {
+            Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            _ = Task.Run(() => LoadInBackgroundAsync());
+        }
+        else
+        {
+            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    private async Task LoadInBackgroundAsync()
+    {
+        while (!cts.Token.IsCancellationRequested)
+        {
+            try
+            {
+                using var tokenSource = new CancellationTokenSource(sidecarWaitTimeout);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cts.Token);
+                await daprClient.WaitForSidecarAsync(linked.Token);
+
+                await FetchDataAsync();
+                OnReload();
+                return;
+            }
+            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                // Sidecar wait timed out — retry after delay.
+            }
+            catch (DaprException)
+            {
+                // Transient Dapr error — retry after delay.
+            }
+
+            try
+            {
+                await Task.Delay(sidecarWaitTimeout, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
 
     private async Task LoadAsync()
     {
@@ -77,6 +131,11 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
             await daprClient.WaitForSidecarAsync(tokenSource.Token);
         }
 
+        await FetchDataAsync();
+    }
+
+    private async Task FetchDataAsync()
+    {
         if (isStreaming)
         {
             subscribeTask = Task.Run(async () =>
