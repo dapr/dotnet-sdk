@@ -92,16 +92,18 @@ public sealed class DaprHarnessBuilder
     /// Builds a distributed lock harness.
     /// </summary>
 	public DistributedLockHarness BuildDistributedLock() => new(_componentsDirectory, _startApp, _options, _environment);
+    
     /// <summary>
     /// Builds a conversation harness.
     /// </summary>
 	public ConversationHarness BuildConversation() => new(_componentsDirectory, _startApp, _options, _environment);
- //    /// <summary>
- //    /// Builds a cryptography harness.
- //    /// </summary>
- //    /// <param name="keysDir">The path to the cryptography keys.</param>
- //    public CryptographyHarness BuildCryptography(string keysDir) =>
- //        new(_componentsDirectory, _startApp, keysDir, _options, _environment);
+    
+     /// <summary>
+     /// Builds a cryptography harness.
+     /// </summary>
+     /// <param name="keysDir">The path to the cryptography keys.</param>
+     public CryptographyHarness BuildCryptography(string keysDir) =>
+         new(_componentsDirectory, _startApp, keysDir, _options, _environment);
 
     /// <summary>
     /// Builds a jobs harness.

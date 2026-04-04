@@ -247,6 +247,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkflowVersioning", "examp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows", "test\Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows\Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows.csproj", "{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Cryptography", "test\Dapr.IntegrationTest.Cryptography\Dapr.IntegrationTest.Cryptography.csproj", "{7B14879F-156B-417E-ACA3-0B5A69CC2F39}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -657,6 +659,10 @@ Global
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B14879F-156B-417E-ACA3-0B5A69CC2F39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B14879F-156B-417E-ACA3-0B5A69CC2F39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B14879F-156B-417E-ACA3-0B5A69CC2F39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B14879F-156B-417E-ACA3-0B5A69CC2F39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -777,6 +783,7 @@ Global
 		{4FF7F075-2818-41E4-A88F-743417EA0A99} = {0AF0FE8D-C234-4F04-8514-32206ACE01BD}
 		{837E02A5-D1C0-4F60-AF93-71117BF3B6DC} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
+		{7B14879F-156B-417E-ACA3-0B5A69CC2F39} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {65220BF2-EAE1-4CB2-AA58-EBE80768CB40}
