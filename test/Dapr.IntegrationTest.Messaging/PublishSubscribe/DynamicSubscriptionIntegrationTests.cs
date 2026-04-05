@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Concurrent;
-using System.Net.Http;
 using System.Text;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Testcontainers;
@@ -101,7 +100,7 @@ public sealed class DynamicSubscriptionIntegrationTests : IAsyncLifetime
         // Allow the subscription to register with Dapr before publishing
         await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
 
-        var payload = """{"text":"hello world"}""";
+        const string payload = """{"text":"hello world"}""";
         await PublishMessageAsync(TestTopic, payload, cts.Token);
 
         var message = await received.Task.WaitAsync(cts.Token);
@@ -479,10 +478,6 @@ public sealed class DynamicSubscriptionIntegrationTests : IAsyncLifetime
             Assert.Contains(i, received);
         }
     }
-
-    // ---------------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------------
 
     /// <summary>
     /// Publishes a message to the specified topic via the Dapr HTTP API.
