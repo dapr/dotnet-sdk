@@ -35,13 +35,15 @@ internal sealed class GrpcProtocolHandler(
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
-    
+
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient =
         grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly int _maxConcurrentWorkItems =  maxConcurrentWorkItems > 0 ? maxConcurrentWorkItems : throw new ArgumentOutOfRangeException(nameof(maxConcurrentWorkItems));
     private readonly int _maxConcurrentActivities = maxConcurrentActivities > 0 ? maxConcurrentActivities : throw new ArgumentOutOfRangeException(nameof(maxConcurrentActivities));
+    private readonly SemaphoreSlim _orchestrationSemaphore = new(maxConcurrentWorkItems, maxConcurrentWorkItems);
+    private readonly SemaphoreSlim _activitySemaphore = new(maxConcurrentActivities, maxConcurrentActivities);
 
     private AsyncServerStreamingCall<WorkItem>? _streamingCall;
     private int _activeWorkItemCount;
@@ -221,6 +223,7 @@ internal sealed class GrpcProtocolHandler(
     private async Task ProcessWorkflowAsync(OrchestratorRequest request, string completionToken,
         Func<OrchestratorRequest, string, Task<OrchestratorResponse>> handler, CancellationToken cancellationToken)
     {
+        await _orchestrationSemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
         try
@@ -252,6 +255,7 @@ internal sealed class GrpcProtocolHandler(
         }
         finally
         {
+            _orchestrationSemaphore.Release();
             Interlocked.Decrement(ref _activeWorkItemCount);
         }
     }
@@ -262,6 +266,7 @@ internal sealed class GrpcProtocolHandler(
     private async Task ProcessActivityAsync(ActivityRequest request, string completionToken,
         Func<ActivityRequest, string, Task<ActivityResponse>> handler, CancellationToken cancellationToken)
     {
+        await _activitySemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
         try
@@ -296,6 +301,7 @@ internal sealed class GrpcProtocolHandler(
         }
         finally
         {
+            _activitySemaphore.Release();
             Interlocked.Decrement(ref _activeWorkItemCount);
         }
     }
@@ -368,13 +374,15 @@ internal sealed class GrpcProtocolHandler(
     {
         if (_disposalCts.IsCancellationRequested)
             return;
-        
+
         _logger.LogGrpcProtocolHandlerDisposing();
-        
+
         await _disposalCts.CancelAsync();
         _streamingCall?.Dispose();
         _disposalCts.Dispose();
-        
+        _orchestrationSemaphore.Dispose();
+        _activitySemaphore.Dispose();
+
         _logger.LogGrpcProtocolHandlerDisposed();
     }
 

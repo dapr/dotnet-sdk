@@ -702,6 +702,151 @@ public sealed class GrpcProtocolHandlerTests
     }
 
     [Fact]
+    public async Task StartAsync_ShouldNotExceedMaxConcurrentOrchestrationWorkItems()
+    {
+        const int maxConcurrent = 2;
+        const int totalItems = 3;
+
+        var grpcClientMock = CreateGrpcClientMock();
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(Enumerable.Range(1, totalItems)
+                .Select(i => new WorkItem
+                {
+                    OrchestratorRequest = new OrchestratorRequest { InstanceId = $"i-{i}" }
+                })));
+
+        grpcClientMock
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var activeCount = 0;
+        var completedCount = 0;
+        using var releaseGate = new SemaphoreSlim(0);
+        var maxConcurrentReachedTcs = CreateTcs<bool>();
+
+        var handler = new GrpcProtocolHandler(
+            grpcClientMock.Object,
+            NullLoggerFactory.Instance,
+            maxConcurrentWorkItems: maxConcurrent,
+            maxConcurrentActivities: 1);
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(5));
+
+        var startTask = handler.StartAsync(
+            workflowHandler: async (req, _) =>
+            {
+                var count = Interlocked.Increment(ref activeCount);
+                if (count == maxConcurrent)
+                    maxConcurrentReachedTcs.TrySetResult(true);
+
+                await releaseGate.WaitAsync(TestContext.Current.CancellationToken);
+
+                Interlocked.Decrement(ref activeCount);
+                Interlocked.Increment(ref completedCount);
+                return new OrchestratorResponse { InstanceId = req.InstanceId };
+            },
+            activityHandler: (_, _) => Task.FromResult(new ActivityResponse()),
+            cancellationToken: cts.Token);
+
+        // Wait for maxConcurrent handlers to be simultaneously active
+        await maxConcurrentReachedTcs.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+
+        // The orchestration semaphore prevents a 3rd handler from starting
+        Assert.Equal(maxConcurrent, Volatile.Read(ref activeCount));
+
+        // Release all handlers (including the one queued behind the semaphore)
+        releaseGate.Release(totalItems);
+
+        // Wait for all to finish
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (Volatile.Read(ref completedCount) < totalItems && DateTime.UtcNow < deadline)
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+
+        cts.Cancel();
+        await startTask;
+
+        Assert.Equal(totalItems, Volatile.Read(ref completedCount));
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldNotExceedMaxConcurrentActivityWorkItems()
+    {
+        const int maxConcurrent = 2;
+        const int totalItems = 3;
+
+        var grpcClientMock = CreateGrpcClientMock();
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(Enumerable.Range(1, totalItems)
+                .Select(i => new WorkItem
+                {
+                    ActivityRequest = new ActivityRequest
+                    {
+                        Name = $"act-{i}",
+                        TaskId = i,
+                        OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
+                    }
+                })));
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var activeCount = 0;
+        var completedCount = 0;
+        using var releaseGate = new SemaphoreSlim(0);
+        var maxConcurrentReachedTcs = CreateTcs<bool>();
+
+        var handler = new GrpcProtocolHandler(
+            grpcClientMock.Object,
+            NullLoggerFactory.Instance,
+            maxConcurrentWorkItems: 1,
+            maxConcurrentActivities: maxConcurrent);
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(5));
+
+        var startTask = handler.StartAsync(
+            workflowHandler: (_, _) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: async (req, _) =>
+            {
+                var count = Interlocked.Increment(ref activeCount);
+                if (count == maxConcurrent)
+                    maxConcurrentReachedTcs.TrySetResult(true);
+
+                await releaseGate.WaitAsync(TestContext.Current.CancellationToken);
+
+                Interlocked.Decrement(ref activeCount);
+                Interlocked.Increment(ref completedCount);
+                return new ActivityResponse { InstanceId = req.OrchestrationInstance.InstanceId, TaskId = req.TaskId };
+            },
+            cancellationToken: cts.Token);
+
+        // Wait for maxConcurrent handlers to be simultaneously active
+        await maxConcurrentReachedTcs.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+
+        // The activity semaphore prevents a 3rd handler from starting
+        Assert.Equal(maxConcurrent, Volatile.Read(ref activeCount));
+
+        // Release all handlers (including the one queued behind the semaphore)
+        releaseGate.Release(totalItems);
+
+        // Wait for all to finish
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (Volatile.Read(ref completedCount) < totalItems && DateTime.UtcNow < deadline)
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+
+        cts.Cancel();
+        await startTask;
+
+        Assert.Equal(totalItems, Volatile.Read(ref completedCount));
+    }
+
+    [Fact]
     public async Task DelayOrStopAsync_ShouldSwallowCancellation_WhenTokenIsCanceled()
     {
         var method = typeof(GrpcProtocolHandler).GetMethod("DelayOrStopAsync", BindingFlags.NonPublic | BindingFlags.Static);
