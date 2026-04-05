@@ -128,6 +128,7 @@ metadata:
   name: {Constants.DaprComponentNames.PubSubComponentName}
 spec:
   type: pubsub.rabbitmq
+  version: v1
   metadata:
   - name: protocol
     value: amqp
@@ -136,6 +137,8 @@ spec:
   - name: username
     value: guest
   - name: password
-    value: guest";
+    value: guest
+  - name: requeueInFailure
+    value: true";
 	}
 }
