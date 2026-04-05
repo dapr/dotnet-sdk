@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Threading.Channels;
+using Dapr;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
@@ -109,7 +110,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// Dynamically subscribes to messages on a PubSub topic provided by the Dapr sidecar.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>An <see cref="IAsyncEnumerable{TopicMessage}"/> containing messages provided by the sidecar.</returns>
+    /// <returns>A task representing the asynchronous subscribe operation.</returns>
     internal async Task SubscribeAsync(CancellationToken cancellationToken = default)
     {
         //Prevents the receiver from performing the subscribe operation more than once (as the multiple initialization messages would cancel the stream).
@@ -118,25 +119,43 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             return;
         }
 
-        var stream = await GetStreamAsync(cancellationToken);
+        AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1> stream;
+        try
+        {
+            stream = await GetStreamAsync(cancellationToken);
+        }
+        catch (RpcException ex)
+        {
+            // Reset so the caller can retry after the sidecar becomes available
+            Interlocked.Exchange(ref hasInitialized, 0);
+            throw new DaprException(
+                $"Unable to subscribe to topic '{topicName}' on pubsub '{pubSubName}'. The Dapr sidecar may be unavailable.",
+                ex);
+        }
+        catch (Exception)
+        {
+            // Reset so the caller can retry regardless of the exception type
+            Interlocked.Exchange(ref hasInitialized, 0);
+            throw;
+        }
 
         //Retrieve the messages from the sidecar and write to the messages channel - start without awaiting so this isn't blocking
         _ = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken)
-            .ContinueWith(HandleTaskCompletion, null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted,
+            .ContinueWith(HandleTaskCompletion, null, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
 
-        //Process the messages as they're written to either channel
+        // Start background processors for acknowledgements and topic messages
         _ = ProcessAcknowledgementChannelMessagesAsync(stream, cancellationToken).ContinueWith(HandleTaskCompletion,
-            null, cancellationToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            null, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
         _ = ProcessTopicChannelMessagesAsync(cancellationToken).ContinueWith(HandleTaskCompletion, null,
-            cancellationToken,
+            CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
     }
 
     /// <summary>
     /// Exposed for testing purposes only.
     /// </summary>
-    /// <param name="message">The test message to write.</param>
+    /// <param name="message">The topic message to write.</param>
     internal async Task WriteMessageToChannelAsync(TopicMessage message)
     {
         await topicMessagesChannel.Writer.WriteAsync(message);
@@ -148,12 +167,43 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         await acknowledgementsChannel.Writer.WriteAsync(acknowledgement);
     }
 
-    //Exposed for testing purposes only
-    internal static void HandleTaskCompletion(Task task, object? state)
+    /// <summary>
+    /// Handles faulted background tasks by resetting the initialization flag and invoking the configured error handler, if any.
+    /// </summary>
+    internal async Task HandleTaskCompletion(Task task, object? state)
     {
-        if (task.Exception != null)
+        if (task.Exception is null)
         {
-            throw task.Exception;
+            return;
+        }
+
+        // Reset initialization flag so a future SubscribeAsync call can re-establish the subscription
+        Interlocked.Exchange(ref hasInitialized, 0);
+        clientStream = null;
+
+        var innerException = task.Exception.InnerException ?? task.Exception;
+
+        if (innerException is OperationCanceledException)
+        {
+            return;
+        }
+
+        var daprException = new DaprException(
+            $"An error occurred during an active subscription to topic '{topicName}' on pubsub '{pubSubName}'.",
+            innerException);
+
+        if (options.ErrorHandler is null)
+        {
+            throw daprException;
+        }
+
+        try
+        {
+            await options.ErrorHandler.Invoke(daprException);
+        }
+        catch (Exception)
+        {
+            // No logger available; prevent a faulty error handler from becoming an unobserved task exception
         }
     }
 
