@@ -27,7 +27,7 @@ public sealed class DaprHarnessBuilder
     /// <summary>
     /// The Dapr container runtime options.
     /// </summary>
-    private DaprRuntimeOptions _options { get; set; } = new("1.17.0-rc.3");
+    private DaprRuntimeOptions _options { get; set; } = new("1.17.0");
     /// <summary>
     /// The isolated test environment to use with the harness, if any.
     /// </summary>
@@ -92,28 +92,30 @@ public sealed class DaprHarnessBuilder
     /// Builds a distributed lock harness.
     /// </summary>
 	public DistributedLockHarness BuildDistributedLock() => new(_componentsDirectory, _startApp, _options, _environment);
+    
     /// <summary>
     /// Builds a conversation harness.
     /// </summary>
 	public ConversationHarness BuildConversation() => new(_componentsDirectory, _startApp, _options, _environment);
- //    /// <summary>
- //    /// Builds a cryptography harness.
- //    /// </summary>
- //    /// <param name="keysDir">The path to the cryptography keys.</param>
- //    public CryptographyHarness BuildCryptography(string keysDir) =>
- //        new(_componentsDirectory, _startApp, keysDir, _options, _environment);
+    
+     /// <summary>
+     /// Builds a cryptography harness.
+     /// </summary>
+     /// <param name="keysDir">The path to the cryptography keys.</param>
+     public CryptographyHarness BuildCryptography(string keysDir) =>
+         new(_componentsDirectory, _startApp, keysDir, _options, _environment);
 
     /// <summary>
     /// Builds a jobs harness.
     /// </summary>
 	public JobsHarness BuildJobs() => new(_componentsDirectory, _startApp, _options, _environment);
 
- //    /// <summary>
- //    /// Builds a PubSub harness.
- //    /// </summary>
- //    /// <param name="componentsDir">The path to the Dapr resources.</param>
-	// public PubSubHarness BuildPubSub(string componentsDir) => new(_componentsDirectory, _startApp, _options, _environment);
- //
+    /// <summary>
+    /// Builds a PubSub harness.
+    /// </summary>
+    /// <param name="componentsDir">The path to the Dapr resources.</param>
+	public PubSubHarness BuildPubSub(string componentsDir) => new(_componentsDirectory, _startApp, _options, _environment);
+ 
  //    /// <summary>
  //    /// Builds a state management harness.
  //    /// </summary>
