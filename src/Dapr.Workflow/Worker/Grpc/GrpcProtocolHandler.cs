@@ -34,6 +34,7 @@ internal sealed class GrpcProtocolHandler(
     string? daprApiToken = null) : IAsyncDisposable
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
 
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
