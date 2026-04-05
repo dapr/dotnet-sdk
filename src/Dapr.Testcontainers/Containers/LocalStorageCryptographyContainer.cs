@@ -42,7 +42,7 @@ public sealed class LocalStorageCryptographyContainer
         }
 
 		private static string GetLocalStorageYaml(string keyPath) =>
-			$@"apiVersion: dapr.io/v1alpha
+			$@"apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
   name: {Constants.DaprComponentNames.CryptographyComponentName}
