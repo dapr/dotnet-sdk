@@ -164,8 +164,7 @@ public sealed class ParallelExtensionsTest
                     }
 
                     return 0;
-                },
-                maxConcurrency);
+                });
 
         // Assert
         Assert.True(maxObservedConcurrency <= maxConcurrency, 
@@ -178,8 +177,8 @@ public sealed class ParallelExtensionsTest
     {
         // Arrange
         var context = new FakeWorkflowContext();
-        var inputs = new[] { 1, 2, 3, 4, 5 };
-        var expectedMessage = "Test exception";
+        int[] inputs = [1, 2, 3, 4, 5];
+        const string expectedMessage = "Test exception";
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
@@ -205,11 +204,11 @@ public sealed class ParallelExtensionsTest
     {
         // Arrange
         var context = new FakeWorkflowContext();
-        var inputs = new[] { 1, 2, 3 };
+        int[] inputs = [1, 2, 3];
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
-                await context.ProcessInParallelAsync<int, int>(
+                await context.ProcessInParallelAsync(
                     inputs,
                     i =>
                     {
@@ -250,18 +249,6 @@ public sealed class ParallelExtensionsTest
         Assert.Equal(count, results.Length);
         Assert.Equal(count, processedCount);
         Assert.Equal(inputs, results);
-    }
-
-    private class TestInput
-    {
-        public int Id { get; set; }
-        public string Value { get; set; } = string.Empty;
-    }
-
-    private class TestOutput
-    {
-        public int ProcessedId { get; set; }
-        public string ProcessedValue { get; set; } = string.Empty;
     }
     
     private sealed class FakeWorkflowContext : WorkflowContext

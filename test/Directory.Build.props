@@ -6,9 +6,14 @@
       
     <!-- Set Output Path for tests-->
     <OutputPath>$(RepoRoot)bin\$(Configuration)\test\$(MSBuildProjectName)\</OutputPath>
-
     <IsPackable>false</IsPackable>
-    <NoWarn>$(NoWarn);DAPR_CONVERSATION;DAPR_JOBS;DAPR_DISTRIBUTEDLOCK;DAPR_CRYPTOGRAPHY</NoWarn>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <PropertyGroup>
+      <!-- Required for InternalsVisibleTo with PublicKey in target project -->
+      <SignAssembly>true</SignAssembly>
+      <NoWarn>$(NoWarn);CS8002;DAPR_CONVERSATION;DAPR_JOBS;DAPR_DISTRIBUTEDLOCK;DAPR_CRYPTOGRAPHY</NoWarn>
   </PropertyGroup>
 
   <!-- Used to annotate PR with test failures: https://github.com/Tyrrrz/GitHubActionsTestLogger -->

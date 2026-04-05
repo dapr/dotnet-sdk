@@ -102,7 +102,7 @@ public sealed class ActorRuntimeTests
         Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
 
         var output = new MemoryStream();
-        await runtime.DispatchWithoutRemotingAsync(actorType.Name, "abc", nameof(MyActor.MyMethod), new MemoryStream(), output);
+        await runtime.DispatchWithoutRemotingAsync(actorType.Name, "abc", nameof(MyActor.MyMethod), new MemoryStream(), output, TestContext.Current.CancellationToken);
         var text = Encoding.UTF8.GetString(output.ToArray());
 
         Assert.Equal("\"hi\"", text);
@@ -229,7 +229,7 @@ public sealed class ActorRuntimeTests
         Assert.Contains(actorType.Name, runtime.RegisteredActors.Select(a => a.Type.ActorTypeName), StringComparer.InvariantCulture);
 
         var output = new MemoryStream();
-        await runtime.DispatchWithoutRemotingAsync(actorType.Name, "abc", nameof(MyActor.MyMethod), new MemoryStream(), output);
+        await runtime.DispatchWithoutRemotingAsync(actorType.Name, "abc", nameof(MyActor.MyMethod), new MemoryStream(), output, TestContext.Current.CancellationToken);
 
         var text = Encoding.UTF8.GetString(output.ToArray());
         Assert.Equal("\"hi\"", text);

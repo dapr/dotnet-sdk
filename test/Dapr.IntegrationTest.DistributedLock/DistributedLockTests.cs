@@ -17,8 +17,8 @@ public sealed class DistributedLockTests
         var resourceId = $"resource-{Guid.NewGuid():N}";
         var owner = $"owner-{Guid.NewGuid():N}";
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildDistributedLock();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -40,10 +40,10 @@ public sealed class DistributedLockTests
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprDistributedLockClient>();
 
-        var acquired = await client.TryLockAsync(componentName, resourceId, owner, expiryInSeconds: 10);
+        var acquired = await client.TryLockAsync(componentName, resourceId, owner, expiryInSeconds: 10, cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotNull(acquired);
 
-        var unlock = await client.TryUnlockAsync(componentName, resourceId, owner);
+        var unlock = await client.TryUnlockAsync(componentName, resourceId, owner, TestContext.Current.CancellationToken);
         Assert.Equal(LockStatus.Success, unlock.Status);
     }
 
@@ -55,8 +55,8 @@ public sealed class DistributedLockTests
         var owner1 = $"owner-{Guid.NewGuid():N}";
         var owner2 = $"owner-{Guid.NewGuid():N}";
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildDistributedLock();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -78,23 +78,23 @@ public sealed class DistributedLockTests
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprDistributedLockClient>();
 
-        var lock1 = await client.TryLockAsync(componentName, resourceId, owner1, expiryInSeconds: 20);
+        var lock1 = await client.TryLockAsync(componentName, resourceId, owner1, expiryInSeconds: 20, cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotNull(lock1);
 
         // While owner1 holds the lock, owner2 should not be able to acquire it.
-        var lock2 = await client.TryLockAsync(componentName, resourceId, owner2, expiryInSeconds: 20);
+        var lock2 = await client.TryLockAsync(componentName, resourceId, owner2, expiryInSeconds: 20, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Null(lock2);
 
         // Wrong owner tries to unlock -> should indicate ownership mismatch.
-        var wrongUnlock = await client.TryUnlockAsync(componentName, resourceId, owner2);
+        var wrongUnlock = await client.TryUnlockAsync(componentName, resourceId, owner2, TestContext.Current.CancellationToken);
         Assert.Equal(LockStatus.LockBelongsToOthers, wrongUnlock.Status);
 
         // Correct owner unlocks -> success.
-        var correctUnlock = await client.TryUnlockAsync(componentName, resourceId, owner1);
+        var correctUnlock = await client.TryUnlockAsync(componentName, resourceId, owner1, TestContext.Current.CancellationToken);
         Assert.Equal(LockStatus.Success, correctUnlock.Status);
 
         // Unlocking again after release -> lock does not exist.
-        var secondUnlock = await client.TryUnlockAsync(componentName, resourceId, owner1);
+        var secondUnlock = await client.TryUnlockAsync(componentName, resourceId, owner1, TestContext.Current.CancellationToken);
         Assert.Equal(LockStatus.LockDoesNotExist, secondUnlock.Status);
     }
 
@@ -106,8 +106,8 @@ public sealed class DistributedLockTests
         var owner1 = $"owner-{Guid.NewGuid():N}";
         var owner2 = $"owner-{Guid.NewGuid():N}";
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync();
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildDistributedLock();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -130,7 +130,7 @@ public sealed class DistributedLockTests
         var client = scope.ServiceProvider.GetRequiredService<DaprDistributedLockClient>();
 
         // Acquire a short-lived lock and *do not* unlock it.
-        var first = await client.TryLockAsync(componentName, resourceId, owner1, expiryInSeconds: 2);
+        var first = await client.TryLockAsync(componentName, resourceId, owner1, expiryInSeconds: 2, cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotNull(first);
 
         // Poll until the lock becomes available and owner2 can acquire it.
@@ -142,7 +142,7 @@ public sealed class DistributedLockTests
 
         Assert.NotNull(acquiredByOwner2);
 
-        var unlock2 = await client.TryUnlockAsync(componentName, resourceId, owner2);
+        var unlock2 = await client.TryUnlockAsync(componentName, resourceId, owner2, TestContext.Current.CancellationToken);
         Assert.Equal(LockStatus.Success, unlock2.Status);
     }
 

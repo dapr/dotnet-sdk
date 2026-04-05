@@ -263,7 +263,7 @@ public class PublishEventApiTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            await client.DaprClient.PublishEventAsync("test", "test");
+            await client.DaprClient.PublishEventAsync("test", "test", TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }

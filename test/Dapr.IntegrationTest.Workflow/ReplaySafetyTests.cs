@@ -28,8 +28,8 @@ public sealed partial class ReplaySafetyTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -57,7 +57,7 @@ public sealed partial class ReplaySafetyTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LoggingWorkflow), workflowInstanceId, "test");
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<string>();
@@ -70,8 +70,8 @@ public sealed partial class ReplaySafetyTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -98,7 +98,7 @@ public sealed partial class ReplaySafetyTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DeterministicGuidWorkflow), workflowInstanceId);
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var guids = result.ReadOutputAs<Guid[]>();
@@ -108,6 +108,74 @@ public sealed partial class ReplaySafetyTests
         // All GUIDs should be different but deterministic
         Assert.Equal(guids.Length, guids.Distinct().Count());
         Assert.All(guids, g => Assert.NotEqual(Guid.Empty, g));
+    }
+
+    [Fact]
+    public async Task NewGuid_ShouldRemainStableAcrossReplays()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<ReplayGuidWorkflow>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(ReplayGuidWorkflow), workflowInstanceId);
+
+        using var statusCts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+        var initialStatus = await WaitForGuidStatusAsync(daprWorkflowClient, workflowInstanceId, phase: 0, statusCts.Token);
+        var expectedGuid = initialStatus.Guid;
+
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, ReplayGuidWorkflow.Event1Name, "go", statusCts.Token);
+        var replayStatus = await WaitForGuidStatusAsync(daprWorkflowClient, workflowInstanceId, phase: 1, statusCts.Token);
+        Assert.Equal(expectedGuid, replayStatus.Guid);
+
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, ReplayGuidWorkflow.Event2Name, "go", statusCts.Token);
+
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: statusCts.Token);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        Assert.Equal(expectedGuid, result.ReadOutputAs<string>());
+    }
+
+    private static async Task<ReplayGuidStatus> WaitForGuidStatusAsync(
+        DaprWorkflowClient client,
+        string instanceId,
+        int phase,
+        CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var state = await client.GetWorkflowStateAsync(instanceId, getInputsAndOutputs: true, cancellation: cancellationToken);
+            var status = state?.ReadCustomStatusAs<ReplayGuidStatus>();
+            if (status is not null && status.Phase == phase && !string.IsNullOrWhiteSpace(status.Guid))
+                return status;
+
+            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+        }
     }
 
     private sealed partial class LoggingWorkflow : Workflow<string, string>
@@ -146,6 +214,28 @@ public sealed partial class ReplaySafetyTests
             return Task.FromResult(guids);
         }
     }
+
+    private sealed class ReplayGuidWorkflow : Workflow<object?, string>
+    {
+        public const string Event1Name = "ReplayGuidStep1";
+        public const string Event2Name = "ReplayGuidStep2";
+
+        public override async Task<string> RunAsync(WorkflowContext context, object? input)
+        {
+            var guid = context.NewGuid().ToString();
+            context.SetCustomStatus(new ReplayGuidStatus(0, guid));
+
+            await context.WaitForExternalEventAsync<string>(Event1Name);
+            context.SetCustomStatus(new ReplayGuidStatus(1, guid));
+
+            await context.WaitForExternalEventAsync<string>(Event2Name);
+            context.SetCustomStatus(new ReplayGuidStatus(2, guid));
+
+            return guid;
+        }
+    }
+
+    private sealed record ReplayGuidStatus(int Phase, string Guid);
 
     private sealed class SimpleActivity : WorkflowActivity<string, string>
     {

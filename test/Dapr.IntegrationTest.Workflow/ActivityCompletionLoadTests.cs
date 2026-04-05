@@ -31,8 +31,8 @@ public sealed class ActivityCompletionLoadTests
         var workflowInstanceId = Guid.NewGuid().ToString();
         var loggerProvider = new InMemoryLoggerProvider();
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -61,7 +61,7 @@ public sealed class ActivityCompletionLoadTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(FanOutWorkflow), workflowInstanceId, activityCount);
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true, TestContext.Current.CancellationToken);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var completedCount = result.ReadOutputAs<int>();

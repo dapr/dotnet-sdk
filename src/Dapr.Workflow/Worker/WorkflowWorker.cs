@@ -310,7 +310,7 @@ internal sealed class WorkflowWorker(
 
             // Initialize the context with the FULL history
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
-                _serializer, loggerFactory, versionTracker, appId);
+                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
@@ -318,7 +318,12 @@ internal sealed class WorkflowWorker(
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
 
             // Initialize per-turn state before any workflow code runs.
-            context.InitializeNewTurn(currentTurnTimestamp);
+            // On first execution (no past events) use the current turn's OrchestratorStarted timestamp.
+            // On replay use the first past event's timestamp so the workflow sees the same
+            // CurrentUtcDateTime at its start as it did on the very first execution.
+            // ProcessEvents will advance the clock naturally via OrchestratorStarted history events.
+            var initialTimestamp = allPastEvents.Count > 0 ? currentUtcDateTime : currentTurnTimestamp;
+            context.InitializeNewTurn(initialTimestamp);
             context.SetReplayState(allPastEvents.Count > 0);
 
             // Execute the workflow

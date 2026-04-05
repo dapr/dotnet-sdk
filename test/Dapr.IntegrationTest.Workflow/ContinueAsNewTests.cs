@@ -27,8 +27,8 @@ public sealed class ContinueAsNewTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -52,7 +52,7 @@ public sealed class ContinueAsNewTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(CounterWorkflow), workflowInstanceId, 0);
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var finalCount = result.ReadOutputAs<int>();

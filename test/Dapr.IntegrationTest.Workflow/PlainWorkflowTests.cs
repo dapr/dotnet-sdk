@@ -16,8 +16,8 @@ public sealed class PlainWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -49,7 +49,7 @@ public sealed class PlainWorkflowTests
         const int startingValue = 0;
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(TestWorkflow), workflowInstanceId, startingValue);
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, true, TestContext.Current.CancellationToken);
         
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var resultValue = result.ReadOutputAs<int>();

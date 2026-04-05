@@ -108,7 +108,7 @@ public class WorkflowOrchestrationContextTests
 
         context.ProcessEvents(history, isReplaying: true);
 
-        var result = await childTask.WaitAsync(TimeSpan.FromSeconds(2));
+        var result = await childTask.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         Assert.Equal(21, result);
         Assert.Empty(context.PendingActions);
     }
@@ -503,6 +503,188 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task CallActivityAsync_ShouldRetry_WhenRetryPolicyProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var options = new WorkflowTaskOptions
+        {
+            RetryPolicy = new WorkflowRetryPolicy(
+                maxNumberOfAttempts: 2,
+                firstRetryInterval: TimeSpan.FromSeconds(1))
+        };
+
+        var task = context.CallActivityAsync<string>("DoWork", options: options);
+
+        var firstAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(firstAction.ScheduleTask);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = firstAction.Id,
+                    TaskScheduled = new TaskScheduledEvent { Name = "DoWork" }
+                },
+                new HistoryEvent
+                {
+                    TaskFailed = new TaskFailedEvent
+                    {
+                        TaskScheduledId = firstAction.Id,
+                        FailureDetails = new TaskFailureDetails
+                        {
+                            ErrorType = "Failure",
+                            ErrorMessage = "boom"
+                        }
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var timerAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(timerAction.CreateTimer);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = timerAction.Id,
+                    TimerCreated = new TimerCreatedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent { TimerId = timerAction.Id }
+                }
+            ],
+            isReplaying: true);
+
+        var retryAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(retryAction.ScheduleTask);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = retryAction.Id,
+                    TaskScheduled = new TaskScheduledEvent { Name = "DoWork" }
+                },
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = retryAction.Id,
+                        Result = "\"ok\""
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldRetry_WhenRetryPolicyProvided()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var options = new ChildWorkflowTaskOptions
+        {
+            RetryPolicy = new WorkflowRetryPolicy(
+                maxNumberOfAttempts: 2,
+                firstRetryInterval: TimeSpan.FromSeconds(1))
+        };
+
+        var task = context.CallChildWorkflowAsync<string>("ChildWf", options: options);
+
+        var firstAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(firstAction.CreateSubOrchestration);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = firstAction.Id,
+                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                },
+                new HistoryEvent
+                {
+                    SubOrchestrationInstanceFailed = new SubOrchestrationInstanceFailedEvent
+                    {
+                        TaskScheduledId = firstAction.Id,
+                        FailureDetails = new TaskFailureDetails
+                        {
+                            ErrorType = "Failure",
+                            ErrorMessage = "boom"
+                        }
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var timerAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(timerAction.CreateTimer);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = timerAction.Id,
+                    TimerCreated = new TimerCreatedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent { TimerId = timerAction.Id }
+                }
+            ],
+            isReplaying: true);
+
+        var retryAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(retryAction.CreateSubOrchestration);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = retryAction.Id,
+                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                },
+                new HistoryEvent
+                {
+                    SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                    {
+                        TaskScheduledId = retryAction.Id,
+                        Result = "\"ok\""
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnDeserializedValue_WhenEventInHistory_IgnoringCase()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -524,7 +706,7 @@ public class WorkflowOrchestrationContextTests
             loggerFactory: NullLoggerFactory.Instance,
             tracker);
 
-        var task = context.WaitForExternalEventAsync<int>("myevent");
+        var task = context.WaitForExternalEventAsync<int>("myevent", TestContext.Current.CancellationToken);
         context.ProcessEvents(history, true);
 
         var value = await task;
@@ -790,11 +972,11 @@ public class WorkflowOrchestrationContextTests
         _ = context.CallActivityAsync<string>("Any"); // consumes 1 history event
         context.ProcessEvents(history, true);
         Assert.True(context.IsReplaying);
-        Assert.False(logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.False(logger.IsEnabled(LogLevel.Information));
 
         context.ProcessEvents([], false);
         Assert.False(context.IsReplaying);
-        Assert.True(logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.True(logger.IsEnabled(LogLevel.Information));
     }
     
     [Fact]
@@ -958,6 +1140,45 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public void NewGuid_ShouldVary_ForDifferentExecutionIds()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var c1 = new WorkflowOrchestrationContext("wf", "same-instance",
+            new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, tracker, executionId: "exec-1");
+
+        var c2 = new WorkflowOrchestrationContext("wf", "same-instance",
+            new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, tracker, executionId: "exec-2");
+
+        var g1 = c1.NewGuid();
+        var g2 = c2.NewGuid();
+
+        Assert.NotEqual(g1, g2);
+    }
+
+    [Fact]
+    public void NewGuid_ShouldBeDeterministic_ForNonGuidInstanceId()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var tracker = new WorkflowVersionTracker([]);
+
+        var c1 = new WorkflowOrchestrationContext("wf", "order-123",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var c2 = new WorkflowOrchestrationContext("wf", "order-123",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var g1 = c1.NewGuid();
+        var g2 = c2.NewGuid();
+
+        Assert.Equal(g1, g2);
+    }
+
+    [Fact]
     public async Task CallActivityAsync_ShouldThrowArgumentException_WhenNameIsNullOrWhitespace()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -1025,7 +1246,7 @@ public class WorkflowOrchestrationContextTests
             loggerFactory: NullLoggerFactory.Instance, 
             tracker);
 
-        var task = context.WaitForExternalEventAsync<int>("MyEvent");
+        var task = context.WaitForExternalEventAsync<int>("MyEvent", TestContext.Current.CancellationToken);
         context.ProcessEvents(history, true);
         var value = await task;
 
@@ -1226,13 +1447,13 @@ public class WorkflowOrchestrationContextTests
         _ = context.CallActivityAsync<string>("Any"); // consumes 1 history event
         context.ProcessEvents(history, true);
         Assert.True(context.IsReplaying);
-        Assert.False(typeLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
-        Assert.False(genericLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.False(typeLogger.IsEnabled(LogLevel.Information));
+        Assert.False(genericLogger.IsEnabled(LogLevel.Information));
 
         context.ProcessEvents([], false);
         Assert.False(context.IsReplaying);
-        Assert.True(typeLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
-        Assert.True(genericLogger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.True(typeLogger.IsEnabled(LogLevel.Information));
+        Assert.True(genericLogger.IsEnabled(LogLevel.Information));
     }
 
     private sealed class MyExampleType
@@ -1285,20 +1506,20 @@ public class WorkflowOrchestrationContextTests
         }
     }
 
-    private sealed class AlwaysEnabledLoggerFactory : Microsoft.Extensions.Logging.ILoggerFactory
+    private sealed class AlwaysEnabledLoggerFactory : ILoggerFactory
     {
-        public void AddProvider(Microsoft.Extensions.Logging.ILoggerProvider provider) { }
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new AlwaysEnabledLogger();
+        public void AddProvider(ILoggerProvider provider) { }
+        public ILogger CreateLogger(string categoryName) => new AlwaysEnabledLogger();
         public void Dispose() { }
     }
 
-    private sealed class AlwaysEnabledLogger : Microsoft.Extensions.Logging.ILogger
+    private sealed class AlwaysEnabledLogger : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public bool IsEnabled(LogLevel logLevel) => true;
         public void Log<TState>(
-            Microsoft.Extensions.Logging.LogLevel logLevel,
-            Microsoft.Extensions.Logging.EventId eventId,
+            LogLevel logLevel,
+            EventId eventId,
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)
