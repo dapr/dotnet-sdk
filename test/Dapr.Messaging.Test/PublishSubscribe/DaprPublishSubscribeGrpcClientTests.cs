@@ -159,4 +159,41 @@ public class DaprPublishSubscribeGrpcClientTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             client.SubscribeAsync(PubSubName, TopicName, DefaultOptions(), SuccessHandler(), cts.Token));
     }
+
+    // -------------------------------------------------------------------------
+    // Dispose tests (DaprPublishSubscribeClient / DaprPublishSubscribeGrpcClient)
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Calling Dispose() on a DaprPublishSubscribeGrpcClient must dispose the underlying HttpClient.
+    /// After disposal any attempt to use the HttpClient throws ObjectDisposedException.
+    /// </summary>
+    [Fact]
+    public void Dispose_DisposesUnderlyingHttpClient()
+    {
+        var httpClient = new HttpClient();
+        var client = new DaprPublishSubscribeGrpcClient(
+            BuildMockDaprClient().Object, httpClient, daprApiToken: null);
+
+        client.Dispose();
+
+        // The HttpClient stored on the base class is the exact instance we passed in.
+        Assert.ThrowsAny<ObjectDisposedException>(() => httpClient.Send(new HttpRequestMessage(), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
+    /// The base-class Dispose() guard must prevent double-disposal: calling Dispose() a second time
+    /// must not throw even though the underlying HttpClient is already disposed.
+    /// </summary>
+    [Fact]
+    public void Dispose_CalledTwice_DoesNotThrow()
+    {
+        var client = CreateGrpcClient(BuildMockDaprClient());
+
+        client.Dispose();
+
+        // Second call must be a silent no-op.
+        var ex = Record.Exception(() => client.Dispose());
+        Assert.Null(ex);
+    }
 }
