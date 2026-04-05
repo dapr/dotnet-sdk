@@ -247,6 +247,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkflowVersioning", "examp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows", "test\Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows\Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows.csproj", "{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Messaging", "test\Dapr.IntegrationTest.Messaging\Dapr.IntegrationTest.Messaging.csproj", "{01A20A89-53A1-4D5B-B563-89E157718474}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.Cryptography", "test\Dapr.IntegrationTest.Cryptography\Dapr.IntegrationTest.Cryptography.csproj", "{7B14879F-156B-417E-ACA3-0B5A69CC2F39}"
 EndProject
 Global
@@ -659,6 +661,10 @@ Global
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01A20A89-53A1-4D5B-B563-89E157718474}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01A20A89-53A1-4D5B-B563-89E157718474}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01A20A89-53A1-4D5B-B563-89E157718474}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01A20A89-53A1-4D5B-B563-89E157718474}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7B14879F-156B-417E-ACA3-0B5A69CC2F39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7B14879F-156B-417E-ACA3-0B5A69CC2F39}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7B14879F-156B-417E-ACA3-0B5A69CC2F39}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -783,6 +789,7 @@ Global
 		{4FF7F075-2818-41E4-A88F-743417EA0A99} = {0AF0FE8D-C234-4F04-8514-32206ACE01BD}
 		{837E02A5-D1C0-4F60-AF93-71117BF3B6DC} = {BF3ED6BF-ADF3-4D25-8E89-02FB8D945CA9}
 		{97CAEE0B-4020-4A86-97DA-9900FDF4DFC6} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
+		{01A20A89-53A1-4D5B-B563-89E157718474} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
 		{7B14879F-156B-417E-ACA3-0B5A69CC2F39} = {8462B106-175A-423A-BA94-BE0D39D0BD8E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
