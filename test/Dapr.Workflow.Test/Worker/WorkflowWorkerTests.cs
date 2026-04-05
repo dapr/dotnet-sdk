@@ -1248,6 +1248,109 @@ public class WorkflowWorkerTests
         Assert.Equal(string.Empty, complete.Result);
     }
 
+    /// <summary>
+    /// Regression test: CurrentUtcDateTime must equal the workflow's initial start time before the first
+    /// await on every replay, not the current turn's timestamp.
+    ///
+    /// The bug: WorkflowWorker initialised _currentUtcDateTime with the *current turn's*
+    /// OrchestratorStarted timestamp (T3) instead of the *first* history event's timestamp (T1).
+    /// The workflow code ran before ProcessEvents and read the wrong time.
+    /// </summary>
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_CurrentUtcDateTime_IsConsistentBeforeFirstAwait_OnReplay()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var t1 = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc); // workflow started
+        var t2 = t1.AddSeconds(5);                                         // activity completed
+        var t3 = t2.AddSeconds(5);                                         // current turn start
+
+        DateTime capturedBeforeAwait = default;
+        DateTime capturedAfterActivityAwait = default;
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: async (ctx, _) =>
+            {
+                capturedBeforeAwait = ctx.CurrentUtcDateTime; // must equal T1 on every replay
+                await ctx.CallActivityAsync<string>("act");
+                capturedAfterActivityAwait = ctx.CurrentUtcDateTime; // must equal T2
+                return null;
+            }));
+        factory.AddActivity("act", new InlineActivity(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>("result")));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        // Simulate a replay turn: PastEvents contain the first turn's history (activity scheduled
+        // and completed), NewEvents hold the current turn's OrchestratorStarted at the later time T3.
+        // Before the fix, CurrentUtcDateTime before the first await would be T3, not T1.
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(t1),
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf" }
+                },
+                new HistoryEvent
+                {
+                    EventId = 0,
+                    TaskScheduled = new TaskScheduledEvent { Name = "act" }
+                },
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(t2),
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                },
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = 0,
+                        Result = "\"result\""
+                    }
+                }
+            },
+            NewEvents =
+            {
+                // Current turn starts at T3 — this is what the bug incorrectly used as
+                // the initial CurrentUtcDateTime before any workflow code ran.
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(t3),
+                    OrchestratorStarted = new OrchestratorStartedEvent()
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+
+        // Before the fix this was T3 (the current turn's timestamp). It must be T1 so that
+        // the value the workflow observes before its first await is consistent across replays.
+        Assert.Equal(t1, capturedBeforeAwait);
+
+        // After the activity completes the clock should have advanced to T2, as recorded
+        // by the OrchestratorStarted event that preceded the TaskCompleted event.
+        Assert.Equal(t2, capturedAfterActivityAwait);
+    }
+
     [Fact]
     public async Task HandleOrchestratorResponseAsync_ShouldCompleted_WhenEventReceived()
     {
