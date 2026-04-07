@@ -1079,6 +1079,10 @@ public class WorkflowOrchestrationContextTests
 
         context.ProcessEvents(history, true);
         context.ContinueAsNew(newInput: new { V = 9 }, preserveUnprocessedEvents: true);
+        // FinalizeCarryoverEvents must be called after all ProcessEvents calls are done;
+        // CarryoverEvents is populated here rather than inside ContinueAsNew so that events
+        // arriving later in the same NewEvents batch are not missed.
+        context.FinalizeCarryoverEvents();
 
         Assert.Single(context.PendingActions);
         var action = context.PendingActions.First();
