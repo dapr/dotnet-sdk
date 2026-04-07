@@ -34,37 +34,10 @@ public abstract class WorkflowContext : IWorkflowContext
     /// </summary>
     public abstract string InstanceId { get; }
 
-    /// <summary>
-    /// Gets the current workflow time in UTC.
-    /// </summary>
-    /// <remarks>
-    /// The current workflow time is stored in the workflow history and this API will
-    /// return the same value each time it is called from a particular point in the workflow's
-    /// execution. It is a deterministic, replay-safe replacement for existing .NET APIs for getting
-    /// the current time, such as <see cref="DateTime.UtcNow"/> and <see cref="DateTimeOffset.UtcNow"/>
-    /// (which should not be used).
-    /// </remarks>
+    /// <inheritdoc />
     public abstract DateTime CurrentUtcDateTime { get; }
-
-    /// <summary>
-    /// Gets a value indicating whether the workflow is currently replaying a previous execution.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Workflow functions are "replayed" after being unloaded from memory to reconstruct local variable state.
-    /// During a replay, previously executed tasks will be completed automatically with previously seen values
-    /// that are stored in the workflow history. One the workflow reaches the point in the workflow logic
-    /// where it's no longer replaying existing history, the <see cref="IsReplaying"/> property will return <c>false</c>.
-    /// </para><para>
-    /// You can use this property if you have logic that needs to run only when <em>not</em> replaying. For example,
-    /// certain types of application logging may become too noisy when duplicated as part of replay. The
-    /// application code could check to see whether the function is being replayed and then issue the log statements
-    /// when this value is <c>false</c>.
-    /// </para>
-    /// </remarks>
-    /// <value>
-    /// <c>true</c> if the workflow is currently replaying a previous execution; otherwise <c>false</c>.
-    /// </value>
+    
+    /// <inheritdoc />
     public abstract bool IsReplaying { get; }
 
     /// <inheritdoc />

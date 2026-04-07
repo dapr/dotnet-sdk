@@ -18,6 +18,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Workflow.Client;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Microsoft.Extensions.Logging;
@@ -61,8 +62,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly Dictionary<string, HistoryEvent> _unmatchedCompletionsByExecutionId = new(StringComparer.Ordinal);
 
 
-    // Parse instance ID as GUID or generate one
+    // Parse execution/instance ID as GUID or derive a deterministic namespace from the ID
     private readonly Guid _instanceGuid;
+    private static readonly Guid InstanceIdNamespace = new("6f927a2e-9c7e-4a1d-9b8d-7a86f2e7f62f");
 
     private readonly string? _appId;
     private int _sequenceNumber;
@@ -71,15 +73,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private DateTime _currentUtcDateTime;
     private bool _isReplaying;
     private bool _turnInitialized;
+    private bool _preserveUnprocessedEvents;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
-        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker, string? appId = null)
+        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
+        string? appId = null, string? executionId = null)
     {
         _workflowSerializer = workflowSerializer;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
                   throw new ArgumentNullException(nameof(loggerFactory));
-        _instanceGuid = Guid.TryParse(instanceId, out var guid) ? guid : Guid.NewGuid();
+        var guidSeed = !string.IsNullOrWhiteSpace(executionId) ? executionId : instanceId;
+        _instanceGuid = Guid.TryParse(guidSeed, out var guid)
+            ? guid
+            : CreateGuidFromName(InstanceIdNamespace, Encoding.UTF8.GetBytes(guidSeed));
         Name = name;
         InstanceId = instanceId;
         _currentUtcDateTime = currentUtcDateTime;
@@ -121,6 +128,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override async Task<T> CallActivityAsync<T>(string name, object? input = null,
         WorkflowTaskOptions? options = null)
+    {
+        if (options?.RetryPolicy is { } retryPolicy)
+        {
+            var attemptOptions = options with { RetryPolicy = null };
+            var interceptor = new RetryInterceptor<T>(this, retryPolicy,
+                () => CallActivityInternalAsync<T>(name, input, attemptOptions));
+            var result = await interceptor.Invoke();
+            return result!;
+        }
+
+        return await CallActivityInternalAsync<T>(name, input, options);
+    }
+
+    private async Task<T> CallActivityInternalAsync<T>(string name, object? input, WorkflowTaskOptions? options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var taskId = _sequenceNumber++;
@@ -270,6 +291,23 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     public override async Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null,
         ChildWorkflowTaskOptions? options = null)
     {
+        if (options?.RetryPolicy is { } retryPolicy)
+        {
+            var attemptOptions = options with { RetryPolicy = null };
+            var interceptor = new RetryInterceptor<TResult>(this, retryPolicy,
+                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions));
+            var result = await interceptor.Invoke();
+            return result!;
+        }
+
+        return await CallChildWorkflowInternalAsync<TResult>(workflowName, input, options);
+    }
+
+    private async Task<TResult> CallChildWorkflowInternalAsync<TResult>(
+        string workflowName,
+        object? input,
+        ChildWorkflowTaskOptions? options)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
 
         // CRITICAL: Child instance IDs must be deterministic across replays
@@ -322,21 +360,40 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         };
 
-        if (preserveUnprocessedEvents)
-        {
-            // all EventRaised events that were not consumed via WaitForExternalEventAsync
-            action.CompleteOrchestration.CarryoverEvents.AddRange(_externalEventBuffer);
-        }
-
+        // Do NOT snapshot _externalEventBuffer here. ContinueAsNew is called from within
+        // workflow execution, which happens during ProcessEvents. Events arriving later in
+        // the same NewEvents batch will be buffered AFTER this point and would be missed.
+        // FinalizeCarryoverEvents() is called after all ProcessEvents calls are complete.
+        _preserveUnprocessedEvents = preserveUnprocessedEvents;
         _pendingActions.Add(action.Id, action);
+    }
+
+    /// <summary>
+    /// Populates <c>CarryoverEvents</c> on any pending <c>ContinuedAsNew</c> action using the
+    /// final state of <c>_externalEventBuffer</c>. Must be called after all <c>ProcessEvents</c>
+    /// calls for the current turn are complete, so that events arriving later in the same
+    /// <c>NewEvents</c> batch are included.
+    /// </summary>
+    internal void FinalizeCarryoverEvents()
+    {
+        if (!_preserveUnprocessedEvents || _externalEventBuffer.Count == 0)
+            return;
+
+        foreach (var action in _pendingActions.Values)
+        {
+            if (action.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew)
+            {
+                action.CompleteOrchestration.CarryoverEvents.AddRange(_externalEventBuffer);
+                return;
+            }
+        }
     }
 
     /// <inheritdoc />
     public override Guid NewGuid()
     {
-        // Create deterministic Guid based on instance ID and counter
         var guidCounter = _guidCounter++;
-        var name = $"{InstanceId}_{guidCounter}"; // Stable name
+        var name = $"{InstanceId}_{guidCounter}"; // Stable per execution and replay
         return CreateGuidFromName(_instanceGuid, Encoding.UTF8.GetBytes(name));
     }
 

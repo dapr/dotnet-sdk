@@ -54,10 +54,10 @@ public class HostingTests
     [Fact]
     public async Task MapActorsHandlers_IncludesHealthChecks()
     {
-        using var factory = new AppWebApplicationFactory();
+        await using var factory = new AppWebApplicationFactory();
 
         var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
-        var response = await httpClient.GetAsync("/healthz");
+        var response = await httpClient.GetAsync("/healthz", TestContext.Current.CancellationToken);
         await Assert2XXStatusAsync(response);
     }
 
@@ -68,7 +68,7 @@ public class HostingTests
         var server = host.GetTestServer();
 
         var httpClient = server.CreateClient();
-        var response = await httpClient.GetAsync("/healthz");
+        var response = await httpClient.GetAsync("/healthz", TestContext.Current.CancellationToken);
         await Assert2XXStatusAsync(response);
     }
 
@@ -82,10 +82,10 @@ public class HostingTests
         var server = host.GetTestServer();
 
         var httpClient = server.CreateClient();
-        var response = await httpClient.GetAsync("/healthz");
+        var response = await httpClient.GetAsync("/healthz", TestContext.Current.CancellationToken);
         await Assert2XXStatusAsync(response);
 
-        var text = await response.Content.ReadAsStringAsync();
+        var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Equal("Ice Cold, Solid Gold!", text);
     }
 
@@ -97,7 +97,7 @@ public class HostingTests
         var server = host.GetTestServer();
 
         var httpClient = server.CreateClient();
-        var response = await httpClient.GetAsync("/dapr/config");
+        var response = await httpClient.GetAsync("/dapr/config", TestContext.Current.CancellationToken);
         await Assert2XXStatusAsync(response);
     }
 

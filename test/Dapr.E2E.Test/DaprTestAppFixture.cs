@@ -12,7 +12,7 @@
 // ------------------------------------------------------------------------
 using System;
 using System.Threading.Tasks;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace Dapr.E2E.Test;
 

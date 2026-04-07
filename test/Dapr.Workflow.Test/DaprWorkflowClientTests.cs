@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.ObjectModel;
 using Dapr.Workflow.Client;
 
 namespace Dapr.Workflow.Test;
@@ -79,7 +80,7 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient();
         var client = new DaprWorkflowClient(inner);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.GetWorkflowStateAsync(""));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetWorkflowStateAsync("", cancellation: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -88,7 +89,7 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient { GetWorkflowMetadataResult = null };
         var client = new DaprWorkflowClient(inner);
 
-        var state = await client.GetWorkflowStateAsync("missing");
+        var state = await client.GetWorkflowStateAsync("missing", cancellation: TestContext.Current.CancellationToken);
 
         Assert.Null(state);
         Assert.Equal("missing", inner.LastGetMetadataInstanceId);
@@ -109,10 +110,10 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient { GetWorkflowMetadataResult = metadata };
         var client = new DaprWorkflowClient(inner);
 
-        var state = await client.GetWorkflowStateAsync("i");
+        var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
 
         Assert.NotNull(state);
-        Assert.True(state!.Exists);
+        Assert.True(state.Exists);
         Assert.True(state.IsWorkflowRunning);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
     }
@@ -123,7 +124,7 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient();
         var client = new DaprWorkflowClient(inner);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.WaitForWorkflowStartAsync(""));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.WaitForWorkflowStartAsync("", cancellation: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -140,7 +141,7 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient { WaitForStartResult = metadata };
         var client = new DaprWorkflowClient(inner);
 
-        var state = await client.WaitForWorkflowStartAsync("i", getInputsAndOutputs: false);
+        var state = await client.WaitForWorkflowStartAsync("i", getInputsAndOutputs: false, cancellation: TestContext.Current.CancellationToken);
 
         Assert.True(state.Exists);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
@@ -154,7 +155,64 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient();
         var client = new DaprWorkflowClient(inner);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.WaitForWorkflowCompletionAsync(""));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.WaitForWorkflowCompletionAsync("", cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldFetchInputsAndOutputs_WhenRequested()
+    {
+        var completionMetadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Serialization.JsonWorkflowSerializer());
+
+        var metadataWithInputs = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Serialization.JsonWorkflowSerializer());
+
+        var inner = new CapturingWorkflowClient
+        {
+            WaitForCompletionResult = completionMetadata,
+            GetWorkflowMetadataResult = metadataWithInputs
+        };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.True(state.Exists);
+        Assert.Equal("i", inner.LastWaitForCompletionInstanceId);
+        Assert.False(inner.LastWaitForCompletionGetInputsAndOutputs);
+        Assert.Equal("i", inner.LastGetMetadataInstanceId);
+        Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldNotFetchInputsAndOutputs_WhenNotRequested()
+    {
+        var completionMetadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Serialization.JsonWorkflowSerializer());
+
+        var inner = new CapturingWorkflowClient { WaitForCompletionResult = completionMetadata };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: false, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.True(state.Exists);
+        Assert.Equal("i", inner.LastWaitForCompletionInstanceId);
+        Assert.False(inner.LastWaitForCompletionGetInputsAndOutputs);
+        Assert.Null(inner.LastGetMetadataInstanceId);
     }
 
     [Fact]
@@ -163,10 +221,10 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient();
         var client = new DaprWorkflowClient(inner);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("", "evt"));
-        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("i", ""));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("", "evt", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("i", "", cancellation: TestContext.Current.CancellationToken));
 
-        await client.RaiseEventAsync("i", "evt", new { P = 1 });
+        await client.RaiseEventAsync("i", "evt", new { P = 1 }, TestContext.Current.CancellationToken);
 
         Assert.Equal("i", inner.LastRaiseEventInstanceId);
         Assert.Equal("evt", inner.LastRaiseEventName);
@@ -179,15 +237,15 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient { PurgeResult = true };
         var client = new DaprWorkflowClient(inner);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.TerminateWorkflowAsync(""));
-        await Assert.ThrowsAsync<ArgumentException>(() => client.SuspendWorkflowAsync(""));
-        await Assert.ThrowsAsync<ArgumentException>(() => client.ResumeWorkflowAsync(""));
-        await Assert.ThrowsAsync<ArgumentException>(() => client.PurgeInstanceAsync(""));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.TerminateWorkflowAsync("", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.SuspendWorkflowAsync("", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.ResumeWorkflowAsync("", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.PurgeInstanceAsync("", TestContext.Current.CancellationToken));
 
-        await client.TerminateWorkflowAsync("i", output: "o");
-        await client.SuspendWorkflowAsync("i", reason: "r1");
-        await client.ResumeWorkflowAsync("i", reason: "r2");
-        var purged = await client.PurgeInstanceAsync("i");
+        await client.TerminateWorkflowAsync("i", output: "o", cancellation: TestContext.Current.CancellationToken);
+        await client.SuspendWorkflowAsync("i", reason: "r1", cancellation: TestContext.Current.CancellationToken);
+        await client.ResumeWorkflowAsync("i", reason: "r2", cancellation: TestContext.Current.CancellationToken);
+        var purged = await client.PurgeInstanceAsync("i", TestContext.Current.CancellationToken);
 
         Assert.Equal("i", inner.LastTerminateInstanceId);
         Assert.Equal("i", inner.LastSuspendInstanceId);
@@ -207,6 +265,71 @@ public class DaprWorkflowClientTests
         Assert.True(inner.DisposeCalled);
     }
 
+    [Fact]
+    public async Task ListInstanceIdsAsync_ShouldForwardToInnerClient()
+    {
+        var expectedPage = new WorkflowInstancePage(
+            new ReadOnlyCollection<string>(new[] { "id1", "id2" }),
+            "next-token");
+        var inner = new CapturingWorkflowClient { ListInstanceIdsResult = expectedPage };
+        var client = new DaprWorkflowClient(inner);
+
+        var result = await client.ListInstanceIdsAsync(continuationToken: "token", pageSize: 10, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(expectedPage, result);
+        Assert.Equal("token", inner.LastListContinuationToken);
+        Assert.Equal(10, inner.LastListPageSize);
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetInstanceHistoryAsync("", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldForwardToInnerClient()
+    {
+        var events = new ReadOnlyCollection<WorkflowHistoryEvent>(new[]
+        {
+            new WorkflowHistoryEvent(1, WorkflowHistoryEventType.ExecutionStarted, DateTime.MinValue)
+        });
+        var inner = new CapturingWorkflowClient { GetInstanceHistoryResult = events };
+        var client = new DaprWorkflowClient(inner);
+
+        var result = await client.GetInstanceHistoryAsync("i", TestContext.Current.CancellationToken);
+
+        Assert.Single(result);
+        Assert.Equal("i", inner.LastGetHistoryInstanceId);
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldThrowArgumentException_WhenSourceInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RerunWorkflowFromEventAsync("", 1, cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldForwardToInnerClient()
+    {
+        var inner = new CapturingWorkflowClient { RerunWorkflowFromEventResult = "new-id" };
+        var client = new DaprWorkflowClient(inner);
+
+        var options = new RerunWorkflowFromEventOptions { NewInstanceId = "custom-id" };
+        var result = await client.RerunWorkflowFromEventAsync("source-id", 42, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal("new-id", result);
+        Assert.Equal("source-id", inner.LastRerunSourceInstanceId);
+        Assert.Equal(42u, inner.LastRerunEventId);
+        Assert.Equal(options, inner.LastRerunOptions);
+    }
+
     private sealed class CapturingWorkflowClient : WorkflowClient
     {
         public string? LastScheduleName { get; private set; }
@@ -224,6 +347,9 @@ public class DaprWorkflowClientTests
         public WorkflowMetadata WaitForStartResult { get; set; } =
             new("i", "wf", WorkflowRuntimeStatus.Running, DateTime.MinValue, DateTime.MinValue, new Serialization.JsonWorkflowSerializer());
 
+        public string? LastWaitForCompletionInstanceId { get; private set; }
+        public bool LastWaitForCompletionGetInputsAndOutputs { get; private set; }
+        public CancellationToken LastWaitForCompletionCancellationToken { get; private set; }
         public WorkflowMetadata WaitForCompletionResult { get; set; } =
             new("i", "wf", WorkflowRuntimeStatus.Completed, DateTime.MinValue, DateTime.MinValue, new Serialization.JsonWorkflowSerializer());
 
@@ -242,6 +368,20 @@ public class DaprWorkflowClientTests
 
         public string? LastPurgeInstanceId { get; private set; }
         public bool PurgeResult { get; set; }
+
+        public string? LastListContinuationToken { get; private set; }
+        public int? LastListPageSize { get; private set; }
+        public WorkflowInstancePage ListInstanceIdsResult { get; set; } =
+            new(new ReadOnlyCollection<string>(Array.Empty<string>()), null);
+
+        public string? LastGetHistoryInstanceId { get; private set; }
+        public IReadOnlyList<WorkflowHistoryEvent> GetInstanceHistoryResult { get; set; } =
+            new ReadOnlyCollection<WorkflowHistoryEvent>(Array.Empty<WorkflowHistoryEvent>());
+
+        public string? LastRerunSourceInstanceId { get; private set; }
+        public uint LastRerunEventId { get; private set; }
+        public RerunWorkflowFromEventOptions? LastRerunOptions { get; private set; }
+        public string RerunWorkflowFromEventResult { get; set; } = "new-id";
 
         public bool DisposeCalled { get; private set; }
 
@@ -282,7 +422,12 @@ public class DaprWorkflowClientTests
             string instanceId,
             bool getInputsAndOutputs = true,
             CancellationToken cancellationToken = default)
-            => Task.FromResult(WaitForCompletionResult);
+        {
+            LastWaitForCompletionInstanceId = instanceId;
+            LastWaitForCompletionGetInputsAndOutputs = getInputsAndOutputs;
+            LastWaitForCompletionCancellationToken = cancellationToken;
+            return Task.FromResult(WaitForCompletionResult);
+        }
 
         public override Task RaiseEventAsync(
             string instanceId,
@@ -330,6 +475,36 @@ public class DaprWorkflowClientTests
         {
             LastPurgeInstanceId = instanceId;
             return Task.FromResult(PurgeResult);
+        }
+
+        public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
+            string? continuationToken = null,
+            int? pageSize = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastListContinuationToken = continuationToken;
+            LastListPageSize = pageSize;
+            return Task.FromResult(ListInstanceIdsResult);
+        }
+
+        public override Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(
+            string instanceId,
+            CancellationToken cancellationToken = default)
+        {
+            LastGetHistoryInstanceId = instanceId;
+            return Task.FromResult(GetInstanceHistoryResult);
+        }
+
+        public override Task<string> RerunWorkflowFromEventAsync(
+            string sourceInstanceId,
+            uint eventId,
+            RerunWorkflowFromEventOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastRerunSourceInstanceId = sourceInstanceId;
+            LastRerunEventId = eventId;
+            LastRerunOptions = options;
+            return Task.FromResult(RerunWorkflowFromEventResult);
         }
 
         public override ValueTask DisposeAsync()

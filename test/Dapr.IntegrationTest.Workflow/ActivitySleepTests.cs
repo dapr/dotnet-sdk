@@ -11,6 +11,7 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Diagnostics;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
@@ -29,8 +30,9 @@ public sealed class ActivitySleepTests
         var workflowInstanceId2 = Guid.NewGuid().ToString();
 
         // Build the environment
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        Debug.Assert(environment != null, nameof(environment) + " != null");
+        await environment.StartAsync(TestContext.Current.CancellationToken);
         
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -67,7 +69,7 @@ public sealed class ActivitySleepTests
         var cts1 = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(Test2Workflow), workflowInstanceId2, startingValue, null, cts1.Token);
 
-        var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId1);
+        var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId1, cancellation: TestContext.Current.CancellationToken);
         Assert.NotNull(state);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
 

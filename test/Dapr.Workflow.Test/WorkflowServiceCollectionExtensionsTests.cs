@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using System.Collections.Generic;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Client;
@@ -114,6 +113,24 @@ public class WorkflowServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddDaprWorkflowBuilder_WithSerializerInstance_ShouldReplaceDefaultSerializer()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var serializer = new MockSerializer();
+
+        services
+            .AddDaprWorkflowBuilder(_ => { })
+            .WithSerializer(serializer);
+
+        var sp = services.BuildServiceProvider();
+        var resolved = sp.GetRequiredService<IWorkflowSerializer>();
+
+        Assert.Same(serializer, resolved);
+    }
+
+    [Fact]
     public void AddDaprWorkflowBuilder_WithSerializerFactory_ShouldResolveDependenciesFromServiceProvider()
     {
         var services = new ServiceCollection();
@@ -158,8 +175,7 @@ public class WorkflowServiceCollectionExtensionsTests
         var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
 
         var grpcOptions =
-            monitor.Get(clientType.FullName!)
-            ?? monitor.Get(clientType.Name);
+            monitor.Get(clientType.FullName!);
 
         if (grpcOptions.ChannelOptionsActions.Count == 0)
         {
@@ -198,13 +214,13 @@ public class WorkflowServiceCollectionExtensionsTests
         Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var wf));
         Assert.NotNull(wf);
 
-        var wfResult = await wf!.RunAsync(new FakeWorkflowContext(), 10);
+        var wfResult = await wf.RunAsync(new FakeWorkflowContext(), 10);
         Assert.Equal(11, wfResult);
 
         Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var act));
         Assert.NotNull(act);
 
-        var actResult = await act!.RunAsync(new FakeActivityContext(), 10);
+        var actResult = await act.RunAsync(new FakeActivityContext(), 10);
         Assert.Equal(12, actResult);
     }
 
@@ -263,8 +279,7 @@ public class WorkflowServiceCollectionExtensionsTests
         var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
 
         var grpcOptions =
-            monitor.Get(clientType.FullName!)
-            ?? monitor.Get(clientType.Name);
+            monitor.Get(clientType.FullName!);
 
         if (grpcOptions.ChannelOptionsActions.Count == 0)
         {
@@ -282,6 +297,77 @@ public class WorkflowServiceCollectionExtensionsTests
 
         Assert.Equal(4321, channelOptions.MaxReceiveMessageSize);
         Assert.Equal(8765, channelOptions.MaxSendMessageSize);
+    }
+
+    [Fact]
+    public void WithGrpcMessageSizeLimits_ShouldNotModifyOptions_WhenNoValuesProvided()
+    {
+        var baselineServices = new ServiceCollection();
+        baselineServices.AddLogging();
+        baselineServices.AddDaprWorkflowClient();
+
+        using var baselineProvider = baselineServices.BuildServiceProvider();
+        var baselineCount = GetGrpcChannelOptionsActionCount(baselineProvider);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits();
+
+        using var provider = services.BuildServiceProvider();
+        var count = GetGrpcChannelOptionsActionCount(provider);
+
+        Assert.Equal(baselineCount, count);
+    }
+
+    [Fact]
+    public void WithGrpcMessageSizeLimits_ShouldApplyOnlyReceiveLimit_WhenSendIsNull()
+    {
+        var baselineServices = new ServiceCollection();
+        baselineServices.AddLogging();
+        baselineServices.AddDaprWorkflowClient();
+
+        using var baselineProvider = baselineServices.BuildServiceProvider();
+        var baseline = ApplyGrpcOptions(baselineProvider);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits(maxReceiveMessageSize: 1111);
+
+        using var provider = services.BuildServiceProvider();
+        var channelOptions = ApplyGrpcOptions(provider);
+
+        Assert.Equal(1111, channelOptions.MaxReceiveMessageSize);
+        Assert.Equal(baseline.MaxSendMessageSize, channelOptions.MaxSendMessageSize);
+    }
+
+    [Fact]
+    public void WithGrpcMessageSizeLimits_ShouldApplyOnlySendLimit_WhenReceiveIsNull()
+    {
+        var baselineServices = new ServiceCollection();
+        baselineServices.AddLogging();
+        baselineServices.AddDaprWorkflowClient();
+
+        using var baselineProvider = baselineServices.BuildServiceProvider();
+        var baseline = ApplyGrpcOptions(baselineProvider);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits(maxSendMessageSize: 2222);
+
+        using var provider = services.BuildServiceProvider();
+        var channelOptions = ApplyGrpcOptions(provider);
+
+        Assert.Equal(baseline.MaxReceiveMessageSize, channelOptions.MaxReceiveMessageSize);
+        Assert.Equal(2222, channelOptions.MaxSendMessageSize);
     }
 
     [Theory]
@@ -312,7 +398,7 @@ public class WorkflowServiceCollectionExtensionsTests
 
         var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DaprWorkflowClient));
         Assert.NotNull(descriptor);
-        Assert.Equal(lifetime, descriptor!.Lifetime);
+        Assert.Equal(lifetime, descriptor.Lifetime);
     }
     
     [Fact]
@@ -384,6 +470,31 @@ public class WorkflowServiceCollectionExtensionsTests
             Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
         }
     }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldApplyDaprApiToken_FromEnvironmentVariable()
+    {
+        var originalToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "workflow-env-token");
+
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+            services.AddDaprWorkflow(_ => { });
+
+            var sp = services.BuildServiceProvider();
+            var client = sp.GetRequiredService<DaprWorkflowClient>();
+
+            Assert.Equal("workflow-env-token", client.DaprApiToken);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
+        }
+    }
     
     private sealed record SerializerDependency(string Value);
 
@@ -432,5 +543,42 @@ public class WorkflowServiceCollectionExtensionsTests
         public string Serialize(object? value, Type? inputType = null) => "mock";
         public T? Deserialize<T>(string? data) => default;
         public object? Deserialize(string? data, Type returnType) => null;
+    }
+
+    private static int GetGrpcChannelOptionsActionCount(ServiceProvider provider)
+        => GetGrpcOptionsCandidates(provider).Sum(options => options.ChannelOptionsActions.Count);
+
+    private static GrpcChannelOptions ApplyGrpcOptions(ServiceProvider provider)
+    {
+        var channelOptions = new GrpcChannelOptions();
+
+        foreach (var grpcOptions in GetGrpcOptionsCandidates(provider))
+        {
+            foreach (var action in grpcOptions.ChannelOptionsActions)
+            {
+                action(channelOptions);
+            }
+        }
+
+        return channelOptions;
+    }
+
+    private static IEnumerable<GrpcClientFactoryOptions> GetGrpcOptionsCandidates(ServiceProvider provider)
+    {
+        var monitor = provider.GetRequiredService<IOptionsMonitor<GrpcClientFactoryOptions>>();
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        var fullNameOptions = monitor.Get(clientType.FullName!);
+        var nameOptions = monitor.Get(clientType.Name);
+
+        if (fullNameOptions is not null)
+        {
+            yield return fullNameOptions;
+        }
+
+        if (nameOptions is not null && !ReferenceEquals(nameOptions, fullNameOptions))
+        {
+            yield return nameOptions;
+        }
     }
 }

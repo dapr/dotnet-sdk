@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,16 +31,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<CreateInstanceRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => capturedRequest = r)
+            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateInstanceRequest, CallOptions>((r, _) => capturedRequest = r)
             .Returns(CreateAsyncUnaryCall(new CreateInstanceResponse { InstanceId = "id-from-sidecar" }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var instanceId = await client.ScheduleNewWorkflowAsync(
-            "MyWorkflow",
-            input: new { A = 1 },
-            options: new StartWorkflowOptions { InstanceId = "instance-123" });
+        var instanceId = await client.ScheduleNewWorkflowAsync("MyWorkflow", input: new { A = 1 }, options: new StartWorkflowOptions { InstanceId = "instance-123" }, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("id-from-sidecar", instanceId);
         Assert.NotNull(capturedRequest);
@@ -58,13 +55,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<CreateInstanceRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => capturedRequest = r)
+            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateInstanceRequest, CallOptions>((r, _) => capturedRequest = r)
             .Returns(CreateAsyncUnaryCall(new CreateInstanceResponse { InstanceId = "returned" }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await client.ScheduleNewWorkflowAsync("MyWorkflow", input: null, options: new StartWorkflowOptions { InstanceId = null });
+        await client.ScheduleNewWorkflowAsync("MyWorkflow", input: null, options: new StartWorkflowOptions { InstanceId = null }, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(capturedRequest);
         Assert.False(string.IsNullOrEmpty(capturedRequest!.InstanceId));
@@ -80,16 +77,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<CreateInstanceRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => capturedRequest = r)
+            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateInstanceRequest, CallOptions>((r, _) => capturedRequest = r)
             .Returns(CreateAsyncUnaryCall(new CreateInstanceResponse { InstanceId = "returned" }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await client.ScheduleNewWorkflowAsync(
-            "MyWorkflow",
-            input: null,
-            options: new StartWorkflowOptions { InstanceId = "i", StartAt = startAt });
+        await client.ScheduleNewWorkflowAsync("MyWorkflow", input: null, options: new StartWorkflowOptions { InstanceId = "i", StartAt = startAt }, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(capturedRequest);
         Assert.NotNull(capturedRequest!.ScheduledStartTimestamp);
@@ -103,12 +97,12 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse { Exists = false }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.GetWorkflowMetadataAsync("missing", getInputsAndOutputs: true);
+        var result = await client.GetWorkflowMetadataAsync("missing", getInputsAndOutputs: true, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -120,12 +114,12 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCallThrows<GetInstanceResponse>(new RpcException(new Status(StatusCode.NotFound, "not found"))));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.GetWorkflowMetadataAsync("missing", getInputsAndOutputs: true);
+        var result = await client.GetWorkflowMetadataAsync("missing", getInputsAndOutputs: true, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -139,8 +133,8 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<GetInstanceRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => captured = r)
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Callback<GetInstanceRequest, CallOptions>((r, _) => captured = r)
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
@@ -149,7 +143,7 @@ public class WorkflowGrpcClientTests
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await client.GetWorkflowMetadataAsync("i", getInputsAndOutputs: false);
+        await client.GetWorkflowMetadataAsync("i", getInputsAndOutputs: false, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("i", captured!.InstanceId);
@@ -163,7 +157,7 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
@@ -177,7 +171,7 @@ public class WorkflowGrpcClientTests
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.WaitForWorkflowStartAsync("i", getInputsAndOutputs: true);
+        var result = await client.WaitForWorkflowStartAsync("i", getInputsAndOutputs: true, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("i", result.InstanceId);
         Assert.Equal(WorkflowRuntimeStatus.Running, result.RuntimeStatus);
@@ -190,12 +184,12 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse { Exists = false }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => client.WaitForWorkflowStartAsync("missing", getInputsAndOutputs: true));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.WaitForWorkflowStartAsync("missing", getInputsAndOutputs: true, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -205,7 +199,7 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
@@ -220,7 +214,7 @@ public class WorkflowGrpcClientTests
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true);
+        var result = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("i", result.InstanceId);
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
@@ -234,7 +228,7 @@ public class WorkflowGrpcClientTests
         var grpcClientMock = CreateGrpcClientMock();
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("", "evt", eventPayload: null));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("", "evt", eventPayload: null, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -244,7 +238,7 @@ public class WorkflowGrpcClientTests
         var grpcClientMock = CreateGrpcClientMock();
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("i", "", eventPayload: null));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("i", "", eventPayload: null, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -255,13 +249,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.RaiseEventAsync(It.IsAny<RaiseEventRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<RaiseEventRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => captured = r)
+            .Setup(x => x.RaiseEventAsync(It.IsAny<RaiseEventRequest>(), It.IsAny<CallOptions>()))
+            .Callback<RaiseEventRequest, CallOptions>((r, _) => captured = r)
             .Returns(CreateAsyncUnaryCall(new RaiseEventResponse()));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await client.RaiseEventAsync("i", "evt", new { P = 1 });
+        await client.RaiseEventAsync("i", "evt", new { P = 1 }, TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("i", captured!.InstanceId);
@@ -277,13 +271,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.TerminateInstanceAsync(It.IsAny<TerminateRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<TerminateRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => captured = r)
+            .Setup(x => x.TerminateInstanceAsync(It.IsAny<TerminateRequest>(), It.IsAny<CallOptions>()))
+            .Callback<TerminateRequest, CallOptions>((r, _) => captured = r)
             .Returns(CreateAsyncUnaryCall(new TerminateResponse()));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await client.TerminateWorkflowAsync("i", output: new { Done = true });
+        await client.TerminateWorkflowAsync("i", output: new { Done = true }, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("i", captured!.InstanceId);
@@ -299,13 +293,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.SuspendInstanceAsync(It.IsAny<SuspendRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<SuspendRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => captured = r)
+            .Setup(x => x.SuspendInstanceAsync(It.IsAny<SuspendRequest>(), It.IsAny<CallOptions>()))
+            .Callback<SuspendRequest, CallOptions>((r, _) => captured = r)
             .Returns(CreateAsyncUnaryCall(new SuspendResponse()));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await client.SuspendWorkflowAsync("i", reason: null);
+        await client.SuspendWorkflowAsync("i", reason: null, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("i", captured!.InstanceId);
@@ -320,13 +314,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.ResumeInstanceAsync(It.IsAny<ResumeRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<ResumeRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => captured = r)
+            .Setup(x => x.ResumeInstanceAsync(It.IsAny<ResumeRequest>(), It.IsAny<CallOptions>()))
+            .Callback<ResumeRequest, CallOptions>((r, _) => captured = r)
             .Returns(CreateAsyncUnaryCall(new ResumeResponse()));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        await client.ResumeWorkflowAsync("i", reason: null);
+        await client.ResumeWorkflowAsync("i", reason: null, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("i", captured!.InstanceId);
@@ -344,18 +338,189 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.PurgeInstancesAsync(It.IsAny<PurgeInstancesRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Callback<PurgeInstancesRequest, Metadata?, DateTime?, CancellationToken>((r, _, _, _) => captured = r)
+            .Setup(x => x.PurgeInstancesAsync(It.IsAny<PurgeInstancesRequest>(), It.IsAny<CallOptions>()))
+            .Callback<PurgeInstancesRequest, CallOptions>((r, _) => captured = r)
             .Returns(CreateAsyncUnaryCall(new PurgeInstancesResponse { DeletedInstanceCount = deletedCount }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.PurgeInstanceAsync("i");
+        var result = await client.PurgeInstanceAsync("i", TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("i", captured!.InstanceId);
         Assert.True(captured.Recursive);
         Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public async Task ListInstanceIdsAsync_ShouldSendRequestAndReturnPage()
+    {
+        var serializer = new StubSerializer();
+        ListInstanceIDsRequest? captured = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.ListInstanceIDsAsync(It.IsAny<ListInstanceIDsRequest>(), It.IsAny<CallOptions>()))
+            .Callback<ListInstanceIDsRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new ListInstanceIDsResponse
+            {
+                InstanceIds = { "id1", "id2", "id3" },
+                ContinuationToken = "next-page"
+            }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var result = await client.ListInstanceIdsAsync(continuationToken: "prev-token", pageSize: 3, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(captured);
+        Assert.Equal("prev-token", captured!.ContinuationToken);
+        Assert.Equal(3u, captured.PageSize);
+        Assert.Equal(3, result.InstanceIds.Count);
+        Assert.Equal("id1", result.InstanceIds[0]);
+        Assert.Equal("next-page", result.ContinuationToken);
+    }
+
+    [Fact]
+    public async Task ListInstanceIdsAsync_ShouldReturnNullContinuationToken_WhenNoneInResponse()
+    {
+        var serializer = new StubSerializer();
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.ListInstanceIDsAsync(It.IsAny<ListInstanceIDsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(new ListInstanceIDsResponse
+            {
+                InstanceIds = { "id1" }
+            }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var result = await client.ListInstanceIdsAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Single(result.InstanceIds);
+        Assert.Null(result.ContinuationToken);
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    {
+        var serializer = new StubSerializer();
+        var grpcClientMock = CreateGrpcClientMock();
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetInstanceHistoryAsync("", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldReturnConvertedHistoryEvents()
+    {
+        var serializer = new StubSerializer();
+        GetInstanceHistoryRequest? captured = null;
+
+        var timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(
+            new DateTime(2025, 6, 15, 10, 30, 0, DateTimeKind.Utc));
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()))
+            .Callback<GetInstanceHistoryRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new GetInstanceHistoryResponse
+            {
+                Events =
+                {
+                    new HistoryEvent
+                    {
+                        EventId = 1,
+                        Timestamp = timestamp,
+                        ExecutionStarted = new ExecutionStartedEvent { Name = "MyWorkflow" }
+                    },
+                    new HistoryEvent
+                    {
+                        EventId = 2,
+                        Timestamp = timestamp,
+                        TaskScheduled = new TaskScheduledEvent { Name = "MyActivity" }
+                    }
+                }
+            }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var result = await client.GetInstanceHistoryAsync("i", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(captured);
+        Assert.Equal("i", captured!.InstanceId);
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0].EventId);
+        Assert.Equal(WorkflowHistoryEventType.ExecutionStarted, result[0].EventType);
+        Assert.Equal(2, result[1].EventId);
+        Assert.Equal(WorkflowHistoryEventType.TaskScheduled, result[1].EventType);
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldThrowArgumentException_WhenSourceInstanceIdIsNullOrEmpty()
+    {
+        var serializer = new StubSerializer();
+        var grpcClientMock = CreateGrpcClientMock();
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RerunWorkflowFromEventAsync("", 1, cancellationToken: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldSendRequestAndReturnNewInstanceId()
+    {
+        var serializer = new StubSerializer { SerializeResult = "{\"key\":\"value\"}" };
+        RerunWorkflowFromEventRequest? captured = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.RerunWorkflowFromEventAsync(It.IsAny<RerunWorkflowFromEventRequest>(), It.IsAny<CallOptions>()))
+            .Callback<RerunWorkflowFromEventRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new RerunWorkflowFromEventResponse { NewInstanceID = "new-instance" }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var options = new RerunWorkflowFromEventOptions
+        {
+            NewInstanceId = "custom-id",
+            Input = new { Key = "value" },
+            OverwriteInput = true
+        };
+
+        var result = await client.RerunWorkflowFromEventAsync("source-id", 42, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal("new-instance", result);
+        Assert.NotNull(captured);
+        Assert.Equal("source-id", captured!.SourceInstanceID);
+        Assert.Equal(42u, captured.EventID);
+        Assert.Equal("custom-id", captured.NewInstanceID);
+        Assert.True(captured.OverwriteInput);
+        Assert.Equal("{\"key\":\"value\"}", captured.Input);
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldNotSetOptionalFields_WhenOptionsIsNull()
+    {
+        var serializer = new StubSerializer();
+        RerunWorkflowFromEventRequest? captured = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.RerunWorkflowFromEventAsync(It.IsAny<RerunWorkflowFromEventRequest>(), It.IsAny<CallOptions>()))
+            .Callback<RerunWorkflowFromEventRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new RerunWorkflowFromEventResponse { NewInstanceID = "auto-id" }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var result = await client.RerunWorkflowFromEventAsync("source-id", 5, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("auto-id", result);
+        Assert.NotNull(captured);
+        Assert.Equal("source-id", captured!.SourceInstanceID);
+        Assert.Equal(5u, captured.EventID);
+        Assert.False(captured.HasNewInstanceID);
+        Assert.False(captured.OverwriteInput);
+        Assert.Null(captured.Input);
     }
 
     [Fact]
@@ -380,8 +545,8 @@ public class WorkflowGrpcClientTests
         var callCount = 0;
 
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetInstanceRequest request, Metadata? _, DateTime? __, CancellationToken ___) =>
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns((GetInstanceRequest request, CallOptions _) =>
             {
                 requests.Add(request);
                 callCount++;
@@ -424,8 +589,8 @@ public class WorkflowGrpcClientTests
         var callCount = 0;
 
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
-            .Returns((GetInstanceRequest request, Metadata? _, DateTime? __, CancellationToken ___) =>
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns((GetInstanceRequest request, CallOptions _) =>
             {
                 requests.Add(request);
                 callCount++;
@@ -470,7 +635,7 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
@@ -484,7 +649,7 @@ public class WorkflowGrpcClientTests
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true);
+        var result = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("i", result.InstanceId);
         Assert.Equal(expectedStatus, result.RuntimeStatus);
@@ -497,13 +662,13 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse { Exists = false }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.WaitForWorkflowCompletionAsync("missing", getInputsAndOutputs: true));
+            () => client.WaitForWorkflowCompletionAsync("missing", getInputsAndOutputs: true, cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains("missing", ex.Message);
     }
@@ -515,7 +680,7 @@ public class WorkflowGrpcClientTests
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
-            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), null, null, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
@@ -569,8 +734,8 @@ public class WorkflowGrpcClientTests
 
         public string Serialize(object? value, Type? inputType = null) => value is null ? string.Empty : SerializeResult;
 
-        public T? Deserialize<T>(string? data) => throw new NotSupportedException();
+        public T Deserialize<T>(string? data) => throw new NotSupportedException();
 
-        public object? Deserialize(string? data, Type returnType) => throw new NotSupportedException();
+        public object Deserialize(string? data, Type returnType) => throw new NotSupportedException();
     }
 }

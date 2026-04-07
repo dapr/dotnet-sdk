@@ -126,7 +126,7 @@ public class InvocationHandlerTests
         };
 
         Assert.True(handler.TryRewriteUri(new Uri(uri), out var rewritten));
-        Assert.Equal(expected, rewritten!.OriginalString);
+        Assert.Equal(expected, rewritten.OriginalString);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class InvocationHandlerTests
         var handler = new InvocationHandler();
         var ex = await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await CallSendAsync(handler, new HttpRequestMessage() { }); // No URI set
+            await InvocationHandlerTests.CallSendAsync(handler, new HttpRequestMessage() { }, TestContext.Current.CancellationToken); // No URI set
         });
 
         Assert.Contains("The request URI '' is not a valid Dapr service invocation destination.", ex.Message);
@@ -156,7 +156,7 @@ public class InvocationHandlerTests
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, uri);
-        await CallSendAsync(handler, request);
+        await InvocationHandlerTests.CallSendAsync(handler, request, TestContext.Current.CancellationToken);
 
         Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
         Assert.Null(capture.DaprApiToken);
@@ -181,7 +181,7 @@ public class InvocationHandlerTests
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, uri);
-        await CallSendAsync(handler, request);
+        await InvocationHandlerTests.CallSendAsync(handler, request, TestContext.Current.CancellationToken);
 
         Assert.Equal("https://localhost:5000/v1.0/invoke/Bank/method/accounts/17?", capture.RequestUri?.OriginalString);
         Assert.Null(capture.DaprApiToken);
@@ -205,7 +205,7 @@ public class InvocationHandlerTests
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, uri);
-        await CallSendAsync(handler, request);
+        await InvocationHandlerTests.CallSendAsync(handler, request, TestContext.Current.CancellationToken);
 
         Assert.Equal("https://localhost:5000/v1.0/invoke/bank/method/accounts/17?", capture.RequestUri?.OriginalString);
         Assert.Equal("super-duper-secure", capture.DaprApiToken);
@@ -214,7 +214,7 @@ public class InvocationHandlerTests
         Assert.False(request.Headers.TryGetValues("dapr-api-token", out _));
     }
 
-    private async Task<HttpResponseMessage> CallSendAsync(InvocationHandler handler, HttpRequestMessage message, CancellationToken cancellationToken = default)
+    private static async Task<HttpResponseMessage> CallSendAsync(InvocationHandler handler, HttpRequestMessage message, CancellationToken cancellationToken = default)
     {
         // SendAsync is protected, can't call it directly.
         var method = handler.GetType().GetMethod("SendAsync", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -222,7 +222,7 @@ public class InvocationHandlerTests
 
         try
         {
-            return await (Task<HttpResponseMessage>)method!.Invoke(handler, new object[] { message, cancellationToken, })!;
+            return await (Task<HttpResponseMessage>)method!.Invoke(handler, [message, cancellationToken])!;
         }
         catch (TargetInvocationException tie) // reflection always adds an extra layer of exceptions.
         {

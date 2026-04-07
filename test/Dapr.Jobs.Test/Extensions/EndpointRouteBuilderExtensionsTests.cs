@@ -39,7 +39,7 @@ public class EndpointRouteBuilderExtensionsTest
         var content = new StringContent(serializedPayload, Encoding.UTF8, "application/json");
 
         const string jobName = "testJob";
-        var response = await client.PostAsync($"/job/{jobName}", content);
+        var response = await client.PostAsync($"/job/{jobName}", content, TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
 
@@ -59,7 +59,7 @@ public class EndpointRouteBuilderExtensionsTest
         var content = new StringContent(serializedPayload, Encoding.UTF8, "application/json");
 
         const string jobName = "testJob";
-        var response = await client.PostAsync($"/job/{jobName}", content);
+        var response = await client.PostAsync($"/job/{jobName}", content, TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
 
@@ -101,7 +101,7 @@ public class EndpointRouteBuilderExtensionsTest
             return Task.CompletedTask;
         }, timeout);
 
-        await app.StartAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
         var testServer = app.GetTestServer();
         var client = testServer.CreateClient();
 
@@ -112,7 +112,7 @@ public class EndpointRouteBuilderExtensionsTest
         };
 
         // Act & Assert
-        var response = await client.SendAsync(request);
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
         Assert.True(response.IsSuccessStatusCode);
     }
     
@@ -131,8 +131,8 @@ public class EndpointRouteBuilderExtensionsTest
         var app = builder.Build();
         app.UseRouting();
         app.MapDaprScheduledJobHandler(async (
-            string jobName,
-            ReadOnlyMemory<byte> jobPayload,
+            string _,
+            ReadOnlyMemory<byte> _,
             ILogger? logger,
             CancellationToken cancellationToken) =>
         {
@@ -149,7 +149,7 @@ public class EndpointRouteBuilderExtensionsTest
             return Task.CompletedTask;
         }, timeout);
 
-        await app.StartAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
         var testServer = app.GetTestServer();
         var client = testServer.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(20);
@@ -163,7 +163,7 @@ public class EndpointRouteBuilderExtensionsTest
         // Act & Assert
         try
         {
-            var response = await client.SendAsync(request);
+            var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
             Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
         }
         catch (Exception ex)

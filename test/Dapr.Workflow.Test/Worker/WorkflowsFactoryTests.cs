@@ -39,7 +39,7 @@ public class WorkflowsFactoryTests
         Assert.True(created);
         Assert.NotNull(workflow);
         Assert.IsType<TestWorkflowWithDependency>(workflow);
-        Assert.Equal("dep-1", ((TestWorkflowWithDependency)workflow!).Dep.Value);
+        Assert.Equal("dep-1", ((TestWorkflowWithDependency)workflow).Dep.Value);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class WorkflowsFactoryTests
         Assert.True(created);
         Assert.NotNull(activity);
         Assert.IsType<TestActivityWithDependency>(activity);
-        Assert.Equal("dep-2", ((TestActivityWithDependency)activity!).Dep.Value);
+        Assert.Equal("dep-2", ((TestActivityWithDependency)activity).Dep.Value);
     }
     
     [Fact]
@@ -184,7 +184,7 @@ public class WorkflowsFactoryTests
         Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var workflow));
         Assert.NotNull(workflow);
 
-        var result = await workflow!.RunAsync(new FakeWorkflowContext(), 10);
+        var result = await workflow.RunAsync(new FakeWorkflowContext(), 10);
 
         Assert.Equal(11, result);
     }
@@ -202,7 +202,7 @@ public class WorkflowsFactoryTests
         Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var activity));
         Assert.NotNull(activity);
 
-        var result = await activity!.RunAsync(new FakeActivityContext(), 10);
+        var result = await activity.RunAsync(new FakeActivityContext(), 10);
 
         Assert.Equal(11, result);
     }
@@ -299,7 +299,7 @@ public class WorkflowsFactoryTests
 
         Assert.True(created);
         Assert.NotNull(workflow);
-        Assert.Equal(typeof(int), workflow!.InputType);
+        Assert.Equal(typeof(int), workflow.InputType);
         Assert.Equal(typeof(string), workflow.OutputType);
 
         var result = await workflow.RunAsync(new FakeWorkflowContext(), 7);
@@ -320,7 +320,7 @@ public class WorkflowsFactoryTests
 
         Assert.True(created);
         Assert.NotNull(activity);
-        Assert.Equal(typeof(int), activity!.InputType);
+        Assert.Equal(typeof(int), activity.InputType);
         Assert.Equal(typeof(string), activity.OutputType);
 
         var result = await activity.RunAsync(new FakeActivityContext(), 7);

@@ -20,7 +20,7 @@ using Dapr.Actors;
 using Dapr.E2E.Test.Actors.Reminders;
 using Xunit;
 
-public partial class E2ETests : IAsyncLifetime
+public partial class E2ETests
 {
     [Fact]
     public async Task ActorCanStartAndStopReminder()
@@ -115,7 +115,7 @@ public partial class E2ETests : IAsyncLifetime
         await proxy.StartReminderWithRepetitions(repetitions);
         var start = DateTime.Now;
             
-        await Task.Delay(TimeSpan.FromSeconds(7));
+        await Task.Delay(TimeSpan.FromSeconds(7), TestContext.Current.CancellationToken);
 
         var state = await proxy.GetState();
 
@@ -141,7 +141,7 @@ public partial class E2ETests : IAsyncLifetime
         await proxy.StartReminderWithTtlAndRepetitions(TimeSpan.FromSeconds(5), repetitions);
         var start = DateTime.Now;
             
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             
         var state = await proxy.GetState();
 
@@ -167,7 +167,7 @@ public partial class E2ETests : IAsyncLifetime
 
         // Record the start time and wait for longer than the reminder should exist for.
         var start = DateTime.Now;
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         var state = await proxy.GetState();
 

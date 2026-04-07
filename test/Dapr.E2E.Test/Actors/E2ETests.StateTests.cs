@@ -19,7 +19,7 @@ using Dapr.Actors;
 using Dapr.E2E.Test.Actors.State;
 using Xunit;
 
-public partial class E2ETests : IAsyncLifetime
+public partial class E2ETests
 {
     [Fact]
     public async Task ActorCanSaveStateWithTTL()
@@ -34,7 +34,7 @@ public partial class E2ETests : IAsyncLifetime
         var resp = await proxy.GetState("key");
         Assert.Equal("value", resp);
 
-        await Task.Delay(TimeSpan.FromSeconds(2.5));
+        await Task.Delay(TimeSpan.FromSeconds(2.5), cts.Token);
 
         // Assert key no longer exists.
         await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
@@ -60,7 +60,7 @@ public partial class E2ETests : IAsyncLifetime
         Assert.Equal("value", resp);
 
         // TLL 2 seconds
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
         resp = await proxy.GetState("key");
         Assert.Equal("value", resp);
 
@@ -68,12 +68,12 @@ public partial class E2ETests : IAsyncLifetime
         await proxy.SetState("key", "value", TimeSpan.FromSeconds(4));
 
         // TLL 2 seconds
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
         resp = await proxy.GetState("key");
         Assert.Equal("value", resp);
 
         // TLL 0 seconds
-        await Task.Delay(TimeSpan.FromSeconds(2.5));
+        await Task.Delay(TimeSpan.FromSeconds(2.5), cts.Token);
 
         // Assert key no longer exists.
         await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
@@ -90,11 +90,11 @@ public partial class E2ETests : IAsyncLifetime
         // Can remove TTL and then add again
         await proxy.SetState("key", "value", TimeSpan.FromSeconds(2));
         await proxy.SetState("key", "value", null);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
         var resp = await proxy.GetState("key");
         Assert.Equal("value", resp);
         await proxy.SetState("key", "value", TimeSpan.FromSeconds(2));
-        await Task.Delay(TimeSpan.FromSeconds(2.5));
+        await Task.Delay(TimeSpan.FromSeconds(2.5), cts.Token);
         await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy.GetState("key"));
     }
 
@@ -114,7 +114,7 @@ public partial class E2ETests : IAsyncLifetime
         resp = await proxy2.GetState("key");
         Assert.Equal("value", resp);
 
-        await Task.Delay(TimeSpan.FromSeconds(2.5));
+        await Task.Delay(TimeSpan.FromSeconds(2.5), cts.Token);
         await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy1.GetState("key"));
         await Assert.ThrowsAsync<ActorMethodInvocationException>(() => proxy2.GetState("key"));
     }

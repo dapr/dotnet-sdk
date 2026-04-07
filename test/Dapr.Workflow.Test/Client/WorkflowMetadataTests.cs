@@ -152,6 +152,6 @@ public class WorkflowMetadataTests
             return (T?)NextGenericResult;
         }
 
-        public object? Deserialize(string? data, Type returnType) => throw new NotSupportedException();
+        public object Deserialize(string? data, Type returnType) => throw new NotSupportedException();
     }
 }
