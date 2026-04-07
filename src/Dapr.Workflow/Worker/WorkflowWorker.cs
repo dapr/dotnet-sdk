@@ -345,6 +345,11 @@ internal sealed class WorkflowWorker(
                 context.ProcessEvents(request.NewEvents, false);
             }
 
+            // Populate CarryoverEvents now that all events in this turn have been processed.
+            // ContinueAsNew cannot do this inline because it runs mid-ProcessEvents; events
+            // arriving later in the same NewEvents batch would be buffered after the snapshot.
+            context.FinalizeCarryoverEvents();
+
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)
             {
