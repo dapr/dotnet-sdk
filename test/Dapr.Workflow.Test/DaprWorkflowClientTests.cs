@@ -74,13 +74,18 @@ public class DaprWorkflowClientTests
         Assert.Equal(new DateTimeOffset(start), inner.LastScheduleOptions.StartAt);
     }
 
-    [Fact]
-    public async Task GetWorkflowStateAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInstanceIdIsNullOrEmpty(string? instanceId)
     {
         var inner = new CapturingWorkflowClient();
         var client = new DaprWorkflowClient(inner);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => client.GetWorkflowStateAsync("", cancellation: TestContext.Current.CancellationToken));
+        var state = await client.GetWorkflowStateAsync(instanceId!, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Null(state);
+        Assert.Null(inner.LastGetMetadataInstanceId);
     }
 
     [Fact]
@@ -94,6 +99,17 @@ public class DaprWorkflowClientTests
         Assert.Null(state);
         Assert.Equal("missing", inner.LastGetMetadataInstanceId);
         Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerThrows()
+    {
+        var inner = new CapturingWorkflowClient { GetWorkflowMetadataException = new InvalidOperationException("RPC error") };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Null(state);
     }
 
     [Fact]
@@ -341,6 +357,7 @@ public class DaprWorkflowClientTests
         public string? LastGetMetadataInstanceId { get; private set; }
         public bool LastGetMetadataGetInputsAndOutputs { get; private set; }
         public WorkflowMetadata? GetWorkflowMetadataResult { get; set; }
+        public Exception? GetWorkflowMetadataException { get; set; }
 
         public string? LastWaitForStartInstanceId { get; private set; }
         public bool LastWaitForStartGetInputsAndOutputs { get; private set; }
@@ -405,6 +422,8 @@ public class DaprWorkflowClientTests
         {
             LastGetMetadataInstanceId = instanceId;
             LastGetMetadataGetInputsAndOutputs = getInputsAndOutputs;
+            if (GetWorkflowMetadataException is not null)
+                return Task.FromException<WorkflowMetadata?>(GetWorkflowMetadataException);
             return Task.FromResult(GetWorkflowMetadataResult);
         }
 
