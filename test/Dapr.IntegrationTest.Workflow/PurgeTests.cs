@@ -73,8 +73,8 @@ public sealed class PurgeTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -96,18 +96,18 @@ public sealed class PurgeTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
-        var runningState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId);
+        var runningState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Running, runningState.RuntimeStatus);
 
-        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId);
-        var suspendedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        var suspendedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.NotNull(suspendedState);
         Assert.Equal(WorkflowRuntimeStatus.Suspended, suspendedState.RuntimeStatus);
 
-        var purged = await daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId);
+        var purged = await daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId, TestContext.Current.CancellationToken);
         Assert.True(purged);
 
-        var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Null(stateAfterPurge);
     }
 
@@ -117,8 +117,8 @@ public sealed class PurgeTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -140,17 +140,17 @@ public sealed class PurgeTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
-        var runningState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId);
+        var runningState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Running, runningState.RuntimeStatus);
 
-        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId);
-        var terminatedState = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        var terminatedState = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Terminated, terminatedState.RuntimeStatus);
 
-        var purged = await daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId);
+        var purged = await daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId, TestContext.Current.CancellationToken);
         Assert.True(purged);
 
-        var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Null(stateAfterPurge);
     }
 

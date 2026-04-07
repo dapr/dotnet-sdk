@@ -27,8 +27,8 @@ public sealed class TerminateWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -51,7 +51,7 @@ public sealed class TerminateWorkflowTests
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
 
-        var startState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId);
+        var startState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Running, startState.RuntimeStatus);
 
         using var preTerminationCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
@@ -59,7 +59,7 @@ public sealed class TerminateWorkflowTests
             daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: preTerminationCts.Token));
 
         const string terminationOutput = "terminated";
-        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, terminationOutput);
+        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, terminationOutput, TestContext.Current.CancellationToken);
 
         using var completionCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         WorkflowState result;
@@ -70,7 +70,7 @@ public sealed class TerminateWorkflowTests
         }
         catch (OperationCanceledException)
         {
-            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true);
+            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true, cancellation: TestContext.Current.CancellationToken);
             Assert.Fail($"Timed out waiting for workflow termination. Current state: {state?.RuntimeStatus}, CustomStatus: {state?.ReadCustomStatusAs<string>()}");
             throw;
         }
@@ -86,8 +86,8 @@ public sealed class TerminateWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -109,7 +109,7 @@ public sealed class TerminateWorkflowTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
-        await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId);
+        await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         using var terminateCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
@@ -118,7 +118,7 @@ public sealed class TerminateWorkflowTests
         }
         catch (OperationCanceledException)
         {
-            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true);
+            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true, cancellation: terminateCts.Token);
             Assert.Fail($"Terminate gRPC call timed out. Current state: {state?.RuntimeStatus}, CustomStatus: {state?.ReadCustomStatusAs<string>()}");
             throw;
         }
@@ -130,8 +130,8 @@ public sealed class TerminateWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
@@ -153,9 +153,9 @@ public sealed class TerminateWorkflowTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
-        await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId);
+        await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
-        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId);
+        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         using var statusCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         while (true)
