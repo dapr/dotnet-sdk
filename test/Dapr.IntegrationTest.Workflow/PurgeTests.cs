@@ -14,6 +14,7 @@
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -68,7 +69,7 @@ public sealed class PurgeTests
     }
 
     [Fact]
-    public async Task ShouldPurgeSuspendedWorkflowInstance()
+    public async Task PurgeShouldNotWorkOnSuspendedWorkflowInstance()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
@@ -104,11 +105,11 @@ public sealed class PurgeTests
         Assert.NotNull(suspendedState);
         Assert.Equal(WorkflowRuntimeStatus.Suspended, suspendedState.RuntimeStatus);
 
-        var purged = await daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId, TestContext.Current.CancellationToken);
-        Assert.True(purged);
+        await Assert.ThrowsAnyAsync<RpcException>(() =>
+            daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId, TestContext.Current.CancellationToken));
 
-        var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
-        Assert.Null(stateAfterPurge);
+        // Terminate the workflow so the test app shuts down cleanly rather than waiting on the suspended instance
+        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
     }
 
     [Fact]
